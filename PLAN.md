@@ -394,6 +394,7 @@ codebase keeps paying for.
     not Finder's record.
   - What it costs is **Finder's `ptbL`/`ptbN` Put Back for a provider item only** — this package can
     read those records and cannot write them. An ordinary delete is byte-for-byte what it always was.
+    Slice 4 takes that cost back for Dirnex's own deletes, from the origin the delete already knew.
 - **Slice 3 — the sentence. Landed 2026-08-31**, re-taken rather than executed as written, and the
   re-take moved it off "over a refusal nobody has yet seen in the wild": **it is reachable today, in
   one keystroke.** A Google Drive mount root is `dr-x------` — measured on both live Drive accounts,
@@ -422,9 +423,73 @@ codebase keeps paying for.
     inherits the developer's own `AppleLanguages` pin; the English wording is checked behind a guard.
   - The new sentence is translated into all fourteen languages in the same pass, so it cannot join
     the class docs/NOTES.md documents where a wrapped-but-uncatalogued key compiles to itself.
-    Note `scripts/check_localization_keys.py` **already fails on five strings from the pack work**
+    Note `scripts/check_localization_keys.py` **already failed on five strings from the pack work**
     (`Pack…`, `Packing…`, `Pack %@`, `Packing %@`, `Couldn't create the archive "%@"`), absent from
-    the catalog on HEAD and untouched here — a separate gap, in separate files, left for its own pass.
+    the catalog on HEAD and untouched by this slice — a separate gap, in separate files, and it took
+    its own pass: the five landed in all fourteen languages immediately afterwards, and the script
+    now reads **970 extracted keys, all present in the catalogs**.
+- **Verified end to end in the app, 2026-08-31**, which is the half Slice 2's script could not
+  reach: the same five domains driven through the *shipped* F8 — `reveal` then
+  `run operation "file.trash"` over the AppleScript verbs — against a LaunchServices-launched build,
+  since a shell-launched one borrows the terminal's grant and passes either way. **6 of 6 deleted**
+  with the fix, each landing in exactly the trash the table above predicts, including the two that
+  are not the obvious answer (Drive streaming → `<mount>/.Trash`, iCloud →
+  `~/Library/Mobile Documents/.Trash`). With `LocalBackend`'s default reverted to
+  `FileManagerTrashPerformer`, **1 of 6** — and *which* one is the whole value of the run:
+  **mirror-mode Google Drive still deleted in both directions**, because `~/My Drive` is an ordinary
+  local file outside every domain, so it takes `trashItem` either way and keeps Finder's Put Back.
+  A control that failed there too would have been measuring a broken app or a bad path rather than
+  the routing; passing in both directions is what makes the other five a measurement of exactly the
+  provider branch and nothing wider. No confirmation sheet stands in the way — `confirmTrash`
+  defaults off — so the whole gesture is drivable headlessly, which is what makes this repeatable
+  rather than a one-off screenshot.
+- **Slice 4 — Put Back for a provider delete. Planned**, and it is the one regression this milestone
+  knowingly introduced: `trashItem` writes Finder's `ptbL`/`ptbN` pair and the rename that replaces
+  it cannot, so an item Dirnex trashed out of a domain lands correctly and then has no way home.
+  ⌘Z is *not* the gap — `DeletePass.Restoration` rides the landing path and undo works — but the
+  journal is a session-scoped stack, where Put Back is the gesture for an item sitting in the Trash
+  a week later.
+  - **The data already exists at the moment of the delete, which is what makes this a store and a
+    read rather than a measurement.** `DeletePass.run` already builds
+    `Restoration(original:trashed:)` — origin and landing — for *every* trashed item, because ⌘Z
+    needed it; and `TrashPutBack.origins(inDSStore:ofTrashAt:)` already hands the app a
+    `[String: TrashOrigin]` keyed by the filename **as it appears in that trash**, which the restore
+    flow matches a listing into. So the slice is a durable record in that same shape and a merge at
+    the one call site that reads it. Nothing in `TrashPerformer` changes.
+  - **Finder's record wins wherever it exists, and the store is only ever consulted for what it does
+    not cover.** An ordinary local delete still goes through `trashItem`, which writes the pair — so
+    the common case must keep answering from the `.DS_Store` and not from us, or Dirnex's Put Back
+    and Finder's own could send the same file to two different folders. That is the merge rule and
+    it is the whole correctness argument: a second source of truth for a question already answered
+    is the shape this codebase keeps paying for, so this one answers only where the first is silent.
+  - **Key on the full landing path, not the filename.** `origins` is keyed per trash directory
+    because a `.DS_Store` only ever describes its own; the merged Trash spans `~/.Trash`, every
+    volume's, iCloud's and every provider mount's at once, and two of them can hold the same name.
+  - **It must respect ``VaultPrivacy``, which is the reason this is not simply "record every
+    delete".** A record pairs a file's name with the folder it came from and outlives both — exactly
+    the *implicit* memory M19 §6 keeps vault paths out of, and a file deleted from inside a mounted
+    vault would otherwise leave its name and its origin in a plain store outside the vault. The
+    frecency index and session restore already have this rule; a third store needs it before it
+    ships, not after.
+  - **Records go stale and that is tolerable; unbounded growth is not.** Finder's own outlive their
+    files by weeks (measured — the probe machine's `~/.Trash` still listed records for files long
+    gone), so `origins` is deliberately a *superset* the caller matches into, and ours may be too.
+    What it may not be is permanent: drop an entry whose landing path no longer exists, on the read
+    that is already enumerating those trashes anyway.
+  - **The bonus worth naming is iCloud, which M9 left undone for a reason this route sidesteps.**
+    Put Back inside `~/Library/Mobile Documents/.Trash` has never worked for anybody: that trash
+    keeps no `.DS_Store` at all, and the origin rides on the item as
+    `com.apple.clouddocs.private.trash-parent-bookmark`, an opaque provider reference with no path
+    in it. A record Dirnex wrote itself needs none of that — so this closes M9's gap for **Dirnex's
+    own** deletes, without touching the reason it is still open for Finder's.
+  - **What it still cannot do, and must not claim**: an item **Finder** deleted out of a provider
+    domain — on Box that does not land on this Mac at all, it goes to Box's server-side trash — and
+    anything trashed before the store shipped. Both keep today's honest answer, which the restore
+    flow already gives by name rather than by guessing at a folder.
+  - The controls the slice owes: without the store a provider item still reports that its origin is
+    unknown (today's behaviour, so the fix must be what changes it); with the store allowed to
+    *override* a `.DS_Store` record, an ordinary local item restores to the wrong folder — which is
+    the narrowness half, and the one that keeps the merge rule from quietly inverting.
 
 Left deliberately undone: **the remote backends**, which have no Trash at all and are already
 degraded to a confirmed permanent delete (§M5, and M25 §7's decision not to invent one); **any

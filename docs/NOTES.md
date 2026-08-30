@@ -53,6 +53,28 @@ at build time.
     while the app is still running, or before a quit that has not finished, is overwritten by the
     state being torn down. Quit, wait for the process to be gone, *then* seed, then launch.
 
+- **A measurement about a *TCC-shaped* behaviour needs its fixture chosen as carefully as its
+  launch, and this Mac happens to carry the control already.** M26's whole subject is that
+  `FileManager.trashItem` refuses an item inside a File Provider domain only when the app is its own
+  TCC responsible process — so the run has to be LaunchServices-launched (`open`), since a
+  shell-launched build borrows the terminal's grant and passes whatever the code does. That much is
+  recorded under The Trash. The half worth keeping *here* is the fixture: with the fix, F8 deleted
+  **6 of 6** across Box, OneDrive, Dropbox, streaming Drive, mirror Drive and iCloud; with
+  `LocalBackend`'s default performer reverted, **1 of 6** — and the one that survived is the point.
+  **Google Drive in *mirror* mode is a positive control that costs nothing**, because
+  `<mount>/My Drive` is a symlink out to `~/My Drive`, so a file "in Drive" is an ordinary local file
+  outside every domain and takes `trashItem` in *both* builds. Had it failed alongside the other
+  five, the run would have been measuring a broken app, a bad path or a wedged AppleScript rather
+  than the routing; passing in both directions is what makes the other five a measurement of the
+  provider branch and nothing wider. Two Drive accounts of different modes is not a setup anyone
+  arranged — check what the machine already has before building a control.
+  - **The gesture is drivable headlessly because move-to-Trash does not confirm.**
+    `AppPreferences.confirmTrash` defaults **off** (it is an opt-in "Ask before moving items to
+    Trash"), so `deleteSelection` reaches `runDelete` with no sheet — which is the difference between
+    this and the family above that ends in a sheet nobody can click. `reveal "<path>"` then
+    `run operation "file.trash"` over the `.sdef` verbs runs the whole shipped path per item. Read
+    the preference before assuming a delete is unreachable; ⇧F8 and every *permanent* delete do
+    confirm, and are not drivable this way.
 - **Fully quit a running Dirnex before relaunching.** `open` re-focuses the stale process, so
   new menu items and behavior silently don't appear. A Debug build's code lives in
   `Dirnex.debug.dylib`, not the thin executable — grep the dylib to confirm new code actually
