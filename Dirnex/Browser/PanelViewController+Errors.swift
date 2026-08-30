@@ -51,6 +51,22 @@ enum VFSErrorText {
                 The server refused that. This account may not have permission for it.
                 """)
             }
+            // **The same rule, arriving on a path that *is* on this Mac.** A sync client's mount
+            // under `~/Library/CloudStorage` is an ordinary local path with an ordinary local
+            // backend, so the remote test above cannot see it — and Full Disk Access does not gate
+            // that tree at all (probed 2026-07-21), so the sentence below is advice about a switch
+            // that is already on and could not help if it were off. Reachable today rather than in
+            // theory: a Google Drive mount root is `dr-x------`, so every refusal it hands back is
+            // `EACCES` → `.permissionDenied` (measured 2026-08-31, PLAN.md §M26 Slice 3).
+            //
+            // `~/Library/Mobile Documents` deliberately keeps the Full Disk Access sentence: it
+            // *is* TCC-gated, so there the advice is right. The two provider roots are opposites
+            // for this question even though they are twins for the trash route.
+            if CloudStorageMounts.isInsideCloudStorage(path) {
+                return String(localized: """
+                The sync client refused that. This account may not have permission for it.
+                """)
+            }
             return String(localized: """
             You don’t have permission. Dirnex may need Full Disk Access in System Settings.
             """)

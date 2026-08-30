@@ -3900,6 +3900,23 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     about where the failure happened**, and any such string needs to know that before it can be
     right. Grep for user-facing text naming System Settings, a disk or a permission dialog and ask
     what it says on a server.
+  - **The "is it on a server" test is not the whole rule, and the case it misses is on this Mac.**
+    A sync client's mount under `~/Library/CloudStorage` is an ordinary local path with an ordinary
+    `.local` backend, so `isRemoteConnection` answers `false` and the Full Disk Access sentence is
+    handed straight to it — and that directory is **not TCC-gated** (probed 2026-07-21), so the
+    advice names a switch that is already on and could not help if it were off. It is reachable in
+    one keystroke rather than in theory: measured 2026-08-31, a Google Drive mount root is
+    `dr-x------` on both live accounts, so creating or deleting there answers `EACCES` →
+    `.permissionDenied`. The refusal belongs to the *account's* sharing, which is set in the cloud.
+    So the honest predicate is not "is this remote" but **"can a macOS grant affect this at all"**,
+    and the two questions part company exactly where a remote filesystem is mounted locally.
+  - **The two File Provider roots are opposites for this question and twins for the trash route**,
+    which is the trap worth naming: `TrashLanding.providerRoots` lists `Library/CloudStorage` and
+    `Library/Mobile Documents` together because `FileManager.trashItem` refuses both (▸ The Trash).
+    For the *sentence* they invert — `Mobile Documents` is TCC-gated, so Full Disk Access is exactly
+    right for an iCloud path and exactly wrong for a `CloudStorage` one. Reusing the trash list here
+    is the tempting one-liner and it silently takes the correct advice away from iCloud; only a
+    narrowness control catches it, since the fix's own tests pass in both directions.
   - **Only AWS can produce it**, which is why it went unmeasured for a milestone: an S3-compatible
     endpoint refuses every storage class but `STANDARD` outright (`400 InvalidStorageClass`), so
     there is no archived object there to fail on.

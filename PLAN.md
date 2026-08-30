@@ -394,15 +394,37 @@ codebase keeps paying for.
     not Finder's record.
   - What it costs is **Finder's `ptbL`/`ptbN` Put Back for a provider item only** — this package can
     read those records and cannot write them. An ordinary delete is byte-for-byte what it always was.
-- **Slice 3 — the sentence. Its premise changed when Slice 2 landed, and it is worth re-taking rather
-  than executing as written.** The sentence that cost a user an evening — *"Dirnex may need Full Disk
-  Access"* — was produced by the 513 refusal, and that refusal is now unreachable: a provider item no
-  longer goes near `trashItem`. What can still fail on the new route is an errno from `renamex_np`,
-  and for those the advice is not uniformly wrong the way it was — `~/Library/Mobile Documents` **is**
-  TCC-gated, so Full Disk Access is the correct remedy for an iCloud path, while `~/Library/
-  CloudStorage` is not gated at all and it remains wrong there. So the slice is no longer "stop saying
-  it inside a provider domain" but the narrower "stop saying it for a path under `CloudStorage`", over
-  a refusal nobody has yet seen in the wild.
+- **Slice 3 — the sentence. Landed 2026-08-31**, re-taken rather than executed as written, and the
+  re-take moved it off "over a refusal nobody has yet seen in the wild": **it is reachable today, in
+  one keystroke.** A Google Drive mount root is `dr-x------` — measured on both live Drive accounts,
+  where creating a file answers `EACCES` — so every refusal it hands back arrives as
+  `EACCES` → `.permissionDenied` → the sentence that cost a user an evening, on the *new* route.
+  The 513 refusal is indeed gone (a provider item no longer goes near `trashItem`); what replaced it
+  reaches the same wrong words by a different door.
+  - **The fix is the M21 split arriving on a path that is on this Mac.** `VFSErrorText` already asks
+    `path.backend.isRemoteConnection`, because "Dirnex may need Full Disk Access" is a claim about
+    *where* the failure happened. A `CloudStorage` mount is an ordinary local path with an ordinary
+    local backend, so that test cannot see it — and Full Disk Access does not gate that tree, so the
+    advice names a switch that is already on and could not help if it were off.
+    ``CloudStorageMounts/isInsideCloudStorage(_:home:)`` is the predicate: pure, no I/O, free to ask
+    on an error path, and living beside the root and the not-TCC-gated fact it rests on.
+  - **The narrowness is the whole design, and the two provider roots are opposites for this
+    question.** `~/Library/Mobile Documents` **is** TCC-gated, so Full Disk Access is exactly right
+    for an iCloud path — which is why the branch names `CloudStorage` alone rather than reusing
+    ``TrashLanding/providerRoots``, whose two entries are twins for the trash route. One pair of
+    roots, two questions, and only a name keeps them from being merged.
+  - **Both controls run, and they fail on disjoint tests**, which is what makes the seven green ones
+    evidence: disabling the branch fails the two fix tests with the reporter's own sentence verbatim
+    and leaves all five narrowness tests green; widening it to both provider roots — the "stop saying
+    it inside a provider domain" version this slice was originally written as — fails *only* the
+    iCloud test, taking the correct advice away with the wrong one. The assertions are
+    language-independent (which sentences match, not what they say), since the app test target
+    inherits the developer's own `AppleLanguages` pin; the English wording is checked behind a guard.
+  - The new sentence is translated into all fourteen languages in the same pass, so it cannot join
+    the class docs/NOTES.md documents where a wrapped-but-uncatalogued key compiles to itself.
+    Note `scripts/check_localization_keys.py` **already fails on five strings from the pack work**
+    (`Pack…`, `Packing…`, `Pack %@`, `Packing %@`, `Couldn't create the archive "%@"`), absent from
+    the catalog on HEAD and untouched here — a separate gap, in separate files, left for its own pass.
 
 Left deliberately undone: **the remote backends**, which have no Trash at all and are already
 degraded to a confirmed permanent delete (§M5, and M25 §7's decision not to invent one); **any

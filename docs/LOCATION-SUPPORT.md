@@ -209,7 +209,10 @@ same trash `trashItem` would have used, so **F8 works on all five**; what it can
 `ptbL`/`ptbN` record, which this codebase can read and not write. So such an item goes to the Trash,
 is visible there, and is restorable with **⌘Z** — which rides the landing path Dirnex journaled
 rather than Finder's record, and is therefore unaffected in every case above — but not with Finder's
-own Put Back. An ordinary local delete is untouched and keeps both.
+own Put Back. An ordinary local delete is untouched and keeps both. What still refuses is what the
+*account* refuses: a Google Drive mount root is `dr-x------`, so deleting `My Drive` itself answers
+`EACCES` — which M26 Slice 3 stopped wording as a Full Disk Access problem, since that grant does not
+gate `~/Library/CloudStorage` and the permission being refused is the one set in the cloud account.
 
 <sup>p</sup> Rename, move and New Folder are journaled and reversed through the backend, so they
 undo remotely. A **permanent delete is not reversible anywhere** — which is every remote delete,

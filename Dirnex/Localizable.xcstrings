@@ -83574,6 +83574,95 @@
         }
       }
     },
+    "The sync client refused that. This account may not have permission for it.": {
+      "comment": "Error sentence: permission denied on a path inside a sync client's ~/Library/CloudStorage mount. Deliberately says nothing about Full Disk Access, which does not gate that directory — the refusal comes from the cloud account's own sharing permissions, not from macOS.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Sync-Client hat das abgelehnt. Möglicherweise fehlt diesem Konto die Berechtigung dafür."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The sync client refused that. This account may not have permission for it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El cliente de sincronización lo rechazó. Es posible que esta cuenta no tenga permiso para hacerlo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le client de synchronisation a refusé. Ce compte n’a peut-être pas l’autorisation nécessaire."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il client di sincronizzazione ha rifiutato. Questo account potrebbe non avere il permesso necessario."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同期クライアントによって拒否されました。このアカウントに権限がない可能性があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동기화 클라이언트가 거부했습니다. 이 계정에 해당 권한이 없을 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De synchronisatieclient heeft dit geweigerd. Deze account heeft er mogelijk geen toestemming voor."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klient synchronizacji odrzucił tę operację. To konto może nie mieć do niej uprawnień."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O cliente de sincronização recusou. Esta conta pode não ter permissão para isso."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Клиент синхронизации отклонил операцию. Возможно, у этой учётной записи нет прав на неё."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Клієнт синхронізації відхилив операцію. Можливо, цей обліковий запис не має на неї прав."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同步客户端拒绝了该操作。此账户可能没有相应权限。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同步用戶端拒絕了該操作。此帳戶可能沒有相應權限。"
+          }
+        }
+      }
+    },
     "The system reported an error (code %d).": {
       "comment": "Error sentence: generic I/O. %d is an error code.",
       "localizations": {

@@ -88,6 +88,29 @@ public enum CloudStorageMounts {
         VFSPath.local(home).appending("Library").appending("CloudStorage")
     }
 
+    /// Whether `path` is `~/Library/CloudStorage` or anything inside it — a pure string test, no
+    /// I/O, so it is free to ask on an error path.
+    ///
+    /// **This is the "is a macOS grant even relevant here" question**, which is why it names the
+    /// directory rather than a mount: a refusal on `CloudStorage` itself is as far outside TCC's
+    /// reach as one three levels into somebody's Drive. Full Disk Access does not gate this tree
+    /// (probed 2026-07-21, ▸ ``cloudStorage(home:)``), so a permission failure here is the sync
+    /// client's answer about the account's own sharing and **not** something System Settings can
+    /// change — the same "a sentence naming a remedy on *this machine* is making a claim about
+    /// where the failure happened" rule that already splits the remote case (PLAN.md §M26 Slice 3).
+    ///
+    /// Deliberately **not** ``TrashLanding/providerRoots``, which lists this directory alongside
+    /// `~/Library/Mobile Documents` because both refuse `FileManager.trashItem`. They are opposites
+    /// for *this* question: `Mobile Documents` is TCC-gated, so Full Disk Access is exactly the
+    /// right advice for an iCloud path and exactly the wrong advice for a `CloudStorage` one. One
+    /// pair of roots, two questions, and only a name keeps them from being merged.
+    public static func isInsideCloudStorage(
+        _ path: VFSPath,
+        home: String = NSHomeDirectory()
+    ) -> Bool {
+        path.backend == .local && path.isSelfOrDescendant(of: cloudStorage(home: home))
+    }
+
     /// Every provider mount that exists right now, ordered by display name, each pointing at the
     /// directory a click should open (`entryDirectory`).
     ///
