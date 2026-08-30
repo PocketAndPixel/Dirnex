@@ -336,8 +336,10 @@ never prompts), Full Disk Access (above), and `kTCCServiceSystemPolicyAppData`'s
 (shared with the process that *succeeds*). Not established: which policy actually denies, and
 therefore whether any grant the user can reach would fix it.
 
-So the milestone is **open on its design**, not on its implementation, and the fork is worth putting
-to a person rather than guessing:
+So the milestone was **open on its design**, not on its implementation. Put to the user on
+2026-08-31, the fork below was resolved as **route by domain, one performer** — the first option,
+with `trashItem` kept wherever `trashItem` works, so the regression it costs falls only on the items
+that were already broken:
 
 - **Perform the move ourselves.** A plain `rename` into the right trash is measured working from the
   failing process, so this cannot be refused. It costs Finder parity: the collision-safe naming and,
@@ -364,14 +366,43 @@ codebase keeps paying for.
   candidate performer plugs in here, and the suite already pins that both refusals the backend owns
   survive the seam (negative control: neutering it fails 4 of the 5 tests, and correctly leaves the
   already-in-a-trash one green, since that never reaches a performer either way).
-- **Slice 2 — the performer that works.** Blocked on the fork above. `WorkspaceTrashPerformer` was
-  written, live-tested and **removed**: it is not a fix, and leaving it in the tree would have been a
-  second route that fails exactly where the first one does.
-- **Slice 3 — the sentence.** Whatever lands, a refusal here is not about Full Disk Access, so
-  ``VFSErrorText`` must stop saying it is for a path inside a provider domain — the advice that cost
-  a user an evening of toggling a switch that was already correct. New catalog key, 14 languages, and
-  `scripts/check_localization_keys.py` in CI. Held until Slice 2 settles what the surviving refusals
-  actually are.
+- **Slice 2 — the performer that works. Landed 2026-08-31.** ``ProviderAwareTrashPerformer``:
+  `FileManager.trashItem` for an ordinary item, and the rename macOS would have made for one inside a
+  domain. It is **core, not app** — nothing in the answer is AppKit, so §2 puts it with the bytes it
+  touches, and it is `LocalBackend`'s default rather than something the app injects, so the fix
+  reaches every caller without one of them having to remember. `WorkspaceTrashPerformer` was written,
+  live-tested and **removed** before this: it is not a fix, and leaving it would have been a second
+  route that fails exactly where the first one does.
+  - **Every part of it was measured against the five live domains before any Swift was written**, and
+    two of the measurements overturned the design the slice opened on. The destination is **not**
+    `~/.Trash`: renaming an evicted placeholder out of its domain **materializes it** — a 4 MB iCloud
+    file took 1.15 s and arrived with blocks — where the rename into the provider's own trash took
+    **0.001 s and left it dataless**, exactly as `trashItem` does. On a 14 GB placeholder that is the
+    download-nobody-asked-for the M24 risk row names, arriving inside a delete. And the destination
+    cannot be tabulated per provider (docs/NOTES.md is emphatic that a real delete is the only thing
+    that answers), so it is **asked of Foundation and then verified with a `stat`** — the pair agrees
+    with `trashItem`'s own destination on all five domains plus both controls, where the lookup alone
+    disagrees on two and names a `.Trash` for Box and OneDrive that does not exist.
+  - **`renamex_np` with `RENAME_EXCL`, never `rename`**, which replaces its destination silently and
+    would destroy the copy the user had already thrown away. The collision name reproduces
+    `trashItem`'s own measured format, because a Trash holding items Dirnex named one way and Finder
+    another is a surface the user reads.
+  - **Verified live with a control, which is the only instrument this bug has**: the same script,
+    LaunchServices-launched, across all five domains — **5 of 5 deleted** with the fix and **0 of 5**
+    with `LocalBackend`'s default reverted, the files landing in exactly the trashes the table
+    predicts. What ⌘Z does is unaffected either way: `DeletePass.Restoration` rides the landing path,
+    not Finder's record.
+  - What it costs is **Finder's `ptbL`/`ptbN` Put Back for a provider item only** — this package can
+    read those records and cannot write them. An ordinary delete is byte-for-byte what it always was.
+- **Slice 3 — the sentence. Its premise changed when Slice 2 landed, and it is worth re-taking rather
+  than executing as written.** The sentence that cost a user an evening — *"Dirnex may need Full Disk
+  Access"* — was produced by the 513 refusal, and that refusal is now unreachable: a provider item no
+  longer goes near `trashItem`. What can still fail on the new route is an errno from `renamex_np`,
+  and for those the advice is not uniformly wrong the way it was — `~/Library/Mobile Documents` **is**
+  TCC-gated, so Full Disk Access is the correct remedy for an iCloud path, while `~/Library/
+  CloudStorage` is not gated at all and it remains wrong there. So the slice is no longer "stop saying
+  it inside a provider domain" but the narrower "stop saying it for a path under `CloudStorage`", over
+  a refusal nobody has yet seen in the wild.
 
 Left deliberately undone: **the remote backends**, which have no Trash at all and are already
 degraded to a confirmed permanent delete (§M5, and M25 §7's decision not to invent one); **any

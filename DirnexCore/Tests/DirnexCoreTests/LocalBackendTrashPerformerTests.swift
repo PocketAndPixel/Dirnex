@@ -4,14 +4,15 @@ import Testing
 @testable import DirnexCore
 
 /// The seam PLAN.md §M26 opens: `LocalBackend` keeps every decision about a Trash move and hands the
-/// one byte-touching step to an injected ``TrashPerformer``, because the only spelling that works
-/// for a File Provider item (`NSWorkspace.recycle`) lives in AppKit and this package is headless.
+/// one byte-touching step to an injected ``TrashPerformer``, because `FileManager.trashItem` refuses
+/// every item inside a File Provider domain.
 ///
-/// Driven against a fake for the same reason ``LocalBackendTrashRefusalTests`` is: what the app's
-/// real performer does is a property of macOS, measured live rather than asserted here (the live
-/// half is the M26 Slice 2 run — LaunchServices-launched, across all five provider domains). What
-/// *is* ours is that the injection is honoured, that a `nil` landing is not a failure, and that
-/// neither refusal the backend owns was moved into the performer along with the move.
+/// Driven against a fake for the same reason ``LocalBackendTrashRefusalTests`` is: what the shipping
+/// performer does is a property of macOS, measured against the five live domains rather than
+/// asserted here (``TrashLandingTests`` and ``ProviderAwareTrashPerformerTests`` pin the halves that
+/// *are* ours). What this suite owns is that the injection is honoured, that a `nil` landing is not
+/// a failure, and that neither refusal the backend owns was moved into the performer along with the
+/// move.
 @Suite("LocalBackend trash performer")
 struct LocalBackendTrashPerformerTests {
     /// Records what it was asked to move and answers however the test told it to.

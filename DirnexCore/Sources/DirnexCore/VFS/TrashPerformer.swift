@@ -23,9 +23,18 @@ import Foundation
 /// feature. Nothing automated can see it: the suites are green, the pane lists the folder, and only
 /// F8 from a normally launched app shows it.
 ///
-/// The app therefore injects ``WorkspaceTrashPerformer`` (`NSWorkspace.recycle`), which succeeds in
-/// exactly that context on all five domains, writes the `ptbL`/`ptbN` pair so **Put Back keeps
-/// working**, and sends an iCloud item to that container's own trash the way Finder does.
+/// **`NSWorkspace.recycle` is not the way out, and the run that said it was is the lesson.** It was
+/// measured succeeding in the failing context on all five domains — and that measurement was
+/// contaminated by the diagnostic probe above it, which had renamed each item out to `~/.Trash` and
+/// straight back before `recycle` was asked, detaching it from its provider. Asked with no probe in
+/// front of it, `recycle` fails with the byte-identical `NSCocoaErrorDomain` 513: it wraps the same
+/// `trashItem`. Re-adding the bounce flips it back, 1/1 each way.
+///
+/// So the shipping performer is ``ProviderAwareTrashPerformer``, which routes on where the item
+/// lives: `FileManager.trashItem` wherever it works, and the rename macOS would have made — into
+/// the same trash, verified by a `stat` — for an item inside a domain. It is core rather than app
+/// code because nothing in that answer is AppKit, which is what §2 asks for once the byte-touching
+/// step is expressible headlessly.
 public protocol TrashPerformer: Sendable {
     /// Move `url` to the Trash it belongs to.
     ///
@@ -40,11 +49,12 @@ public protocol TrashPerformer: Sendable {
 /// `FileManager.trashItem`, the platform's own answer — and the one the note above measures as
 /// unable to trash anything inside a File Provider domain.
 ///
-/// Kept as the default so `LocalBackend()` stays constructible in tests and in callers that never
-/// trash, and never used by the app, which injects ``WorkspaceTrashPerformer`` at every site. It is
-/// deliberately *not* a fallback the shipping path can reach: two routes differing only by which one
-/// macOS happens to refuse is the shape this codebase keeps paying for, and there is no case this
-/// one handles better.
+/// Still the right answer for every item *outside* a provider domain, and still what runs there:
+/// ``ProviderAwareTrashPerformer`` delegates to it rather than replacing it, so an ordinary delete
+/// keeps Finder's destination, Finder's collision naming and Finder's `ptbL`/`ptbN` **Put Back**
+/// record — none of which this package can write. What it is deliberately *not* is a fallback the
+/// provider route can reach: two routes differing only by which one macOS happens to refuse is the
+/// shape this codebase keeps paying for, so the choice is made up front from the path.
 public struct FileManagerTrashPerformer: TrashPerformer {
     public init() {}
 

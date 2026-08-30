@@ -4485,6 +4485,73 @@ what made the milestone affordable and the rest inverted rules borrowed from the
 
 ### The Trash
 
+- **`FileManager.trashItem` refuses every item inside a File Provider domain, and *which process
+  launched the app* is what decides it — so a developer running from a terminal sees a working
+  feature.** Measured 2026-08-31 across all five live domains (Box, Dropbox, OneDrive, Google Drive,
+  iCloud): it throws `NSCocoaErrorDomain` **513** with **no underlying POSIX errno**, while at the
+  instant of the throw the same process can `open` the file, `rename` it in place, `rename` it into
+  `~/.Trash`, and read `~/.Trash`. Nothing underneath refused anything and no grant the user can
+  reach is involved — `tccutil reset FileProviderDomain` changes nothing and macOS never prompts.
+  Same binary, same signature, back to back: launched from a shell it trashes fine (2/2), launched by
+  LaunchServices — the Dock, Finder, `open` — it fails (2/2), because a shell-launched app inherits
+  the launching process as its TCC *responsible* process. It is invisible to everything: both suites
+  green, both linters clean, the pane lists the folder perfectly. **Any probe of a TCC-shaped
+  behaviour has to be launched the way the user launches it**, and this trap cost the first two
+  diagnoses of the bug.
+  - **`NSWorkspace.recycle` is not the escape, and the run that said it was is the lesson.** It was
+    measured succeeding in the failing context on all five domains — and that measurement was
+    contaminated by the diagnostic probe a few lines above it, which had renamed each item out to
+    `~/.Trash` and straight back, **detaching it from its provider** before `recycle` was asked. With
+    no probe in front of it, `recycle` fails with the byte-identical 513: it wraps the same
+    `trashItem`. Re-adding the bounce flips it back, 1/1 each way. This file's own rule about a
+    probe's *actions* being part of the experiment, met for the third time in one investigation.
+  - **The fix is to route, not to fall back**: `trashItem` wherever it works, and a plain rename for
+    an item inside a domain. A *fallback* — try one, and on refusal try the other — is the shape this
+    codebase keeps paying for; a route decided up front from a property of the path is what
+    `CompositeBackend` already does. Routing is also what keeps the cost narrow: Finder's `ptbL`/
+    `ptbN` **Put Back** record, which this package can read and cannot write, is lost only for the
+    items that were already broken.
+  - **Where it must land is the provider's own trash, and getting that wrong downloads the file.**
+    Renaming an evicted placeholder *out* of its domain **materializes it** — a 4 MB iCloud file,
+    evicted through `evictUbiquitousItem`, took **1.15 s and arrived with `st_blocks` set** — while
+    renaming it into that provider's own trash took **0.001 s and left it `SF_DATALESS`**, which is
+    exactly what `trashItem` does (0.019 s, still dataless). On a 14 GB placeholder the out-of-domain
+    version is a multi-gigabyte download inside a delete.
+  - **And the destination is asked, then verified, because it cannot be tabulated.** The entry above
+    on `<mount>/.Trash` says a real delete is the only thing that answers which trash a provider
+    uses; the constructive half is that
+    `FileManager.url(for: .trashDirectory, appropriateFor:)` **plus a `stat`** reproduces that answer
+    everywhere. The lookup alone does not — it is a path computation, and it happily names a
+    `<mount>/.Trash` that is not there:
+
+    | domain | lookup names | exists | so it lands | `trashItem` |
+    |---|---|---|---|---|
+    | Box | `<mount>/.Trash` | **no** | `~/.Trash` | `~/.Trash` |
+    | OneDrive | `<mount>/.Trash` | **no** | `~/.Trash` | `~/.Trash` |
+    | Dropbox | *throws 3328* | — | `~/.Trash` | `~/.Trash` |
+    | Drive (streaming) | `<mount>/.Trash` | yes | `<mount>/.Trash` | `<mount>/.Trash` |
+    | Drive (mirror) | `~/.Trash` | yes | `~/.Trash` | `~/.Trash` |
+    | iCloud Drive | `~/Library/Mobile Documents/.Trash` | yes | that | that |
+
+    Note Dropbox is settled by the lookup **throwing**, which is the one signal that separates a
+    provider with a real trash from one that has the directory, the marker xattr and the declared
+    capability and does not use it. Never pass `create: true`: that would put a folder inside
+    somebody's cloud account, which then syncs.
+  - **Use `renamex_np` with `RENAME_EXCL`, never `rename(2)`,** which replaces its destination
+    silently — here that is destroying a file the user had already thrown away, the one direction a
+    delete must never fail in. `EEXIST` is then the signal to stamp the name the way `trashItem`
+    does, and that format is measured rather than invented: `<whole original name> HH-MM-SS-mmm` plus
+    the **last** path extension if there is one, so `report.pdf` → `report.pdf 01-14-42-179.pdf`,
+    `a.tar.gz` → `a.tar.gz 01-14-42-527.gz`, and a name with no extension gains nothing.
+  - **`try?` on a resource-value read flattens the two optionals and erases the distinction the
+    routing rests on.** `try? url.resourceValues(…).isUbiquitousItem` is `Bool?`, not `Bool??`, so a
+    read that *succeeded with the key absent* — every ordinary file, and every **mirror-mode** Google
+    Drive file, whose `<mount>/My Drive` is a symlink out to `~/My Drive` — becomes indistinguishable
+    from a read that *threw*. Route on the flattened value and the mirror-mode file takes the
+    provider path and loses Finder's Put Back for no reason. `do`/`catch`, with an absent key read as
+    `false`. Caught by SwiftLint's `redundant_nil_coalescing` rather than by a test, which is the
+    only reason it did not ship.
+
 - **`FileManager.trashItem` on an item already in a trash reports success and does nothing** — it
   hands back the path it was given. So "move to Trash" inside the Trash is a silent no-op that looks
   like it worked. Dirnex withdraws the `.trash` capability for any path inside a trash, which turns

@@ -145,7 +145,7 @@ the file it was mounted from is gone by the next launch.
 | New / Edit File `⇧F4` | yes | yes | no | yes | yes | yes | n/a | no | no |
 | Rename `F2` | yes | yes | no | yes | yes | yes, limited<sup>i</sup> | no | yes | no<sup>m</sup> |
 | Multi-rename `⇧F2` | yes | yes | no | yes | yes | yes, limited<sup>i</sup> | no | yes | no<sup>m</sup> |
-| Delete `F8` → Trash | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | n/a |
+| Delete `F8` → Trash | yes | yes, limited<sup>o</sup> | n/a | n/a | n/a | n/a | n/a | yes | n/a |
 | Delete `F8` → permanent (confirmed) | yes | yes | yes, limited<sup>n</sup> | yes | yes | yes | yes, limited<sup>l</sup> | yes | yes |
 | Put Back (restore from Trash) | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes, limited<sup>o</sup> |
 | Undo `⌘Z` | yes | yes | no<sup>qq</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially | yes | no |
@@ -198,9 +198,18 @@ permanently. Finder refuses the same gesture.
 <sup>n</sup> Deleting an archive member **rewrites the archive**. No Trash, and not undoable.
 Top-level archives only.
 
-<sup>o</sup> Works for anything Finder or Dirnex trashed to `~/.Trash`, a volume's `.Trashes`, or
-a Google Drive mount's `.Trash`. It **cannot** work in the iCloud trash or for a Finder delete on
-Box — those origins are opaque provider references with no path in them.
+<sup>o</sup> Two halves, and they meet on a cloud mount. **Put Back** works for anything Finder or
+Dirnex trashed to `~/.Trash`, a volume's `.Trashes`, or a Google Drive mount's `.Trash`; it
+**cannot** work in the iCloud trash or for a Finder delete on Box, whose origins are opaque provider
+references with no path in them. **F8 on a cloud mount** was broken outright until M26 —
+`FileManager.trashItem` refuses every item inside a File Provider domain (Dropbox, OneDrive, Box,
+Google Drive, iCloud alike) whenever the app is responsible for itself, which is every launch that
+is not from a terminal (PLAN.md §M26, docs/NOTES.md). Dirnex now performs that move itself, into the
+same trash `trashItem` would have used, so **F8 works on all five**; what it cannot reproduce is the
+`ptbL`/`ptbN` record, which this codebase can read and not write. So such an item goes to the Trash,
+is visible there, and is restorable with **⌘Z** — which rides the landing path Dirnex journaled
+rather than Finder's record, and is therefore unaffected in every case above — but not with Finder's
+own Put Back. An ordinary local delete is untouched and keeps both.
 
 <sup>p</sup> Rename, move and New Folder are journaled and reversed through the backend, so they
 undo remotely. A **permanent delete is not reversible anywhere** — which is every remote delete,

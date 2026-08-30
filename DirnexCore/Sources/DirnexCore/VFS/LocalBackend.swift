@@ -15,12 +15,17 @@ public struct LocalBackend: VFSBackend {
     public let capabilities: VFSCapabilities =
         [.read, .write, .trash, .clone, .rename, .watch, .internalCopy]
 
-    /// How the Trash move is actually performed — injected, because the only spelling that works
-    /// for a File Provider item lives in AppKit (▸ ``TrashPerformer``). Defaulted so every caller
-    /// that never trashes, and every test, keeps constructing `LocalBackend()`.
+    /// How the Trash move is actually performed — a seam, because `FileManager.trashItem` refuses
+    /// every item inside a File Provider domain (▸ ``TrashPerformer``).
+    ///
+    /// Defaults to the shipping answer rather than to the platform's, so the fix reaches every
+    /// caller without one of them having to remember to inject it — and because there is nothing
+    /// left to inject *from* the app: ``ProviderAwareTrashPerformer`` is Foundation and `renamex_np`,
+    /// so it lives here with the bytes it touches. The seam stays for the tests, which drive a fake
+    /// to pin that the decisions this type owns survive it.
     public let trashPerformer: any TrashPerformer
 
-    public init(trashPerformer: any TrashPerformer = FileManagerTrashPerformer()) {
+    public init(trashPerformer: any TrashPerformer = ProviderAwareTrashPerformer()) {
         self.trashPerformer = trashPerformer
     }
 
