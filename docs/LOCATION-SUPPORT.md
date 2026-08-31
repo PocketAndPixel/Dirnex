@@ -487,12 +487,14 @@ which is the quantity the walk measures in advance (docs/NOTES.md ▸ bsdtar). O
 is not ours: a **browsed archive cannot receive** an archive, because `ArchiveBackend` advertises
 `.read` alone and writing into one is a repack.
 
-<sup>ii</sup> A remote folder can be pinned from the menu, but the pin is not restored at launch
-and is not a drag target in the sidebar (PLAN.md §M8's deliberate omission). The **Servers** section
-is the reconnectable surface. A `FavoriteEntry` carries a `VFSPath`, whose `VFSBackendID` says nothing
-about the auth method — which is exactly the gap `PersistedTab` closed by carrying a
-`StoredServerEndpoint`, so the same fix one type along is what would make the pin reconnect
-(PLAN.md §4 ▸ *Still open*).
+<sup>ii</sup> A pin on a connected account **carries where to reconnect** — a
+`StoredServerEndpoint`, the field `PersistedTab` already used — so it survives a quit and opens the
+account again from any of the four surfaces that can pick one: the ⌘F popup, a sidebar row, that
+row's Open item, and Go ▸ Places. The credential rules are the restore's, because it is the restore's
+code: an account needing a password it no longer has comes back disconnected rather than prompting.
+What stays partial is the *gesture* — a remote folder is pinned from the menu, never by dragging it
+into the sidebar (PLAN.md §M8's deliberate omission) — and a pin made before the field existed, which
+carries no way back and fails as it always did, naming the account.
 
 <sup>tt</sup> Read-only since M24 Slice 7: a row that is not on this Mac opens
 `RemoteAttributesController`, which states **what the listing actually reported** and nothing else.

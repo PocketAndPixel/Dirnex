@@ -133,7 +133,7 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 
 ### Still open
 
-Everything through M26 is shipped, and the record of it — the milestone checklists, the thirty-two
+Everything through M26 is shipped, and the record of it — the milestone checklists, the thirty-four
 dated passes that landed outside a milestone of their own, and the reasoning behind every decision —
 is in **[docs/HISTORY.md](docs/HISTORY.md)**. What is still open, rather than merely imaginable, is
 the *undone* column in the table above, plus the list below: one cut that is a unit of work on its
@@ -147,10 +147,6 @@ each too small to have been a slice of M24 or M25, and too real to leave unwritt
   backend but `.local`, so a browsed `.zip` re-reads only when something asks it to. The decision is
   already made and tested — `ArchiveIdentity` compares device, inode, size and mtime — so this is an
   FSEvents stream on the archive file, not a rule.
-- **A favorite pointing at a remote folder does not survive a launch.** A `FavoriteEntry` carries a
-  `VFSPath`, whose `VFSBackendID` says nothing about the auth method — which is precisely the gap
-  `PersistedTab` closed by carrying a `StoredServerEndpoint`. Same fix, one type along, and it is
-  what would make the Favorites row as reconnectable as the Servers section.
 - **Size bars are local-only for a cost reason that covers only half of what it gates.**
   `areSizeBarsVisible` requires `.local` because a bar needs *every* sibling's total, which remotely
   is N bounded walks where the cursor's own total is one — and that argument does not apply to an

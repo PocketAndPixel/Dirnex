@@ -11,6 +11,14 @@ import DirnexCore
 @MainActor
 protocol SidebarViewControllerDelegate: AnyObject {
     func sidebar(_ sidebar: SidebarViewController, didActivate path: VFSPath)
+    /// A pinned folder was picked — open it in the active pane, reconnecting its account first when
+    /// the pin is on one (docs/LOCATION-SUPPORT.md ▸ the Favorites row).
+    ///
+    /// It carries the whole ``FavoriteEntry`` where the row above carries a path, and that is the
+    /// difference the method exists for: a `VFSBackendID` is an account's *descriptor* and says
+    /// nothing about the auth method, so a pin reduced to its path is one that can be drawn and
+    /// never opened again after a relaunch.
+    func sidebar(_ sidebar: SidebarViewController, didActivateFavorite entry: FavoriteEntry)
     /// A saved-search row was picked — re-run its query in the active pane and show the hits in
     /// a virtual results panel (PLAN.md §M4 "Saved searches … in the places strip").
     func sidebar(_ sidebar: SidebarViewController, didActivateSavedSearch savedSearch: SavedSearch)

@@ -79,9 +79,18 @@ extension SidebarViewController {
         return item
     }
 
+    /// Open goes through `activate(_:)` — the same funnel a click on the row uses — rather than
+    /// handing the delegate a bare path of its own. It is one rule with two spellings otherwise,
+    /// and the second one silently loses what a pin on a server needs to reconnect.
+    ///
+    /// The entry is re-read from the store by its path, mirroring `renameFavoriteItem` right below:
+    /// the item deliberately carries the path rather than the entry so a mid-open store change acts
+    /// on the right row. A pin unpinned while the menu was open falls back to the bare path, which
+    /// is what this did for every pin before the endpoint existed.
     @objc private func openFavoriteItem(_ sender: NSMenuItem) {
         guard let path = sender.representedObject as? VFSPath else { return }
-        delegate?.sidebar(self, didActivate: path)
+        let stored = FavoritesStore.load().entries.first { $0.path == path }
+        activate(.favorite(stored ?? FavoriteEntry(path: path)))
     }
 
     @objc private func renameFavoriteItem(_ sender: NSMenuItem) {

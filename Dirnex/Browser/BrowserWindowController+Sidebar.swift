@@ -43,6 +43,13 @@ extension BrowserWindowController: SidebarViewControllerDelegate {
         target.focusTable()
     }
 
+    /// A pinned folder opens in the active pane through the pane's own jump — the same funnel the
+    /// ⌘F popup uses, so a row and a keystroke cannot come to disagree about what a favorite means,
+    /// and so a pin on a server reconnects from either. It focuses the pane itself.
+    func sidebar(_ sidebar: SidebarViewController, didActivateFavorite entry: FavoriteEntry) {
+        (activePanel ?? leftPanel).jumpToFavorite(entry)
+    }
+
     /// A saved search re-runs its query in the active pane, opening the hits in a virtual
     /// results tab, then hands focus back so browsing the results continues without a mouse.
     func sidebar(_ sidebar: SidebarViewController, didActivateSavedSearch savedSearch: SavedSearch) {

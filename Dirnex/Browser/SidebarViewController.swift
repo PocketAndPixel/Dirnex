@@ -263,9 +263,11 @@ final class SidebarViewController: NSViewController {
     /// (PLAN.md §M20). A sidebar row and a Go ▸ Places menu item both arrive here, so the two can
     /// never come to disagree about what opening a vault or a tag means.
     ///
-    /// Note how little of this is navigation: four of the ten hand over a `VFSPath`, and the rest
-    /// run a query, connect, unlock, or assemble a merged listing. That is exactly why a menu built
-    /// out of paths would have been wrong rather than merely duplicated.
+    /// Note how little of this is navigation: two of the ten hand over a bare `VFSPath`, and the
+    /// rest run a query, connect, unlock, or assemble a merged listing. That is exactly why a menu
+    /// built out of paths would have been wrong rather than merely duplicated — and why a favorite
+    /// hands over its **entry**: a pin on a connected account carries where to reconnect beside
+    /// where to go, which a path cannot express.
     func activate(_ place: SidebarPlace) {
         switch place {
         case .recents:
@@ -285,7 +287,9 @@ final class SidebarViewController: NSViewController {
             // the merge of that container with the app libraries beside it, which is a listing to
             // assemble rather than a directory to list (PLAN.md §M9).
             delegate?.sidebarDidActivateICloud(self)
-        case .favorite, .cloudMount, .volume:
+        case let .favorite(entry):
+            delegate?.sidebar(self, didActivateFavorite: entry)
+        case .cloudMount, .volume:
             guard let path = place.path else { return }
             delegate?.sidebar(self, didActivate: path)
         }

@@ -8,18 +8,44 @@ public struct FavoriteEntry: Sendable, Hashable, Identifiable, Codable {
     public var name: String
     /// Where the entry jumps to — and the entry's identity: a path is pinned at most once.
     public let path: VFSPath
+    /// Where to reconnect before this pin can list, for a folder on a connected account; absent for
+    /// every local one. Read it through ``serverEndpoint``.
+    ///
+    /// ``path`` cannot answer it alone: a ``VFSBackendID`` is the account's *descriptor* — host,
+    /// user, port, region — and says nothing about the auth method, or about an FTPS certificate
+    /// the user chose to trust. So a pinned server folder survived a quit as a row that could never
+    /// be opened again, which is exactly the gap ``PersistedTab`` closed one type along by carrying
+    /// this same field. It holds no secret — ``ServerConnection`` makes that argument for its own
+    /// JSON — and the host and username were already here, inside ``path``, before it existed.
+    ///
+    /// Stored on the pin rather than looked up in the sidebar's saved servers, for the two reasons
+    /// ``PersistedTab`` states: a server connected once from the Connect sheet and never saved still
+    /// opens from its pin, and deleting a Servers row does not silently break the pins pointing at
+    /// it. It is ``StoredServerEndpoint`` and not a bare ``ServerEndpoint`` because the pins are one
+    /// array in one blob — an enum with associated values throws on a case this build has never
+    /// heard of, and a throw here would empty the whole sidebar section rather than drop one row.
+    public let endpoint: StoredServerEndpoint?
 
-    public init(name: String, path: VFSPath) {
+    public init(name: String, path: VFSPath, endpoint: ServerEndpoint? = nil) {
         self.name = name
         self.path = path
+        // `map`, so a local pin writes no field rather than a null — and so a `nil` read back out of
+        // a stored one can only ever mean "written, and unreadable by this build".
+        self.endpoint = endpoint.map(StoredServerEndpoint.init)
     }
 
     /// Pin `path` under its own folder name (the backend root shows as "/").
-    public init(path: VFSPath) {
-        self.init(name: path.lastComponent, path: path)
+    public init(path: VFSPath, endpoint: ServerEndpoint? = nil) {
+        self.init(name: path.lastComponent, path: path, endpoint: endpoint)
     }
 
+    /// The path, and only the path: re-pinning a folder from a second connection to the same
+    /// account is the same pin, not a new one.
     public var id: VFSPath { path }
+
+    /// Where to reconnect, or `nil` for a local pin — and for one whose stored endpoint this build
+    /// cannot read, which is a pin that opens the way it did before this field existed.
+    public var serverEndpoint: ServerEndpoint? { endpoint?.endpoint }
 }
 
 /// An ordered, de-duplicated list of pinned directories — the model behind the ⌘F

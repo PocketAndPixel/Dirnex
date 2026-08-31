@@ -12656,16 +12656,47 @@ eliminated, and which neither implementable route depended on.
 
 ---
 
-### After M19 — the follow-on log (2026-08-07 → 2026-08-26)
+### After M19 — the follow-on log (2026-08-07 → 2026-09-01)
 
-Thirty-two dated passes that landed outside a milestone of their own, between M18's close on
-2026-08-07 and 2026-08-26: user-reported bugs, three vault features, the tree crossing into S3,
+Thirty-four dated passes that landed outside a milestone of their own, between M18's close on
+2026-08-07 and 2026-09-01: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
 sit here at the end rather than in a numeric slot — and they keep their **newest-first** order,
 because several read as a chain and refer to the entry below. Moved out of [PLAN.md](../PLAN.md)
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
+
+**2026-09-01 — a pinned folder on a server comes back.** A `FavoriteEntry` was a `VFSPath` and
+nothing else, so pinning a folder on a connected account produced a sidebar row that survived the
+quit and could never be opened again: a `VFSBackendID` is the account's *descriptor* — host, user,
+port, region — and says nothing about the auth method, or about an FTPS certificate the user chose to
+trust. That is the gap session restore closed on 2026-08-27 (below), so the fix is the same field one
+type along — and `StoredServerEndpoint` rather than a bare `ServerEndpoint` for the reason that type
+exists: the pins are one array in one blob, and an enum with associated values throws on a case a
+newer build wrote.
+
+**Nothing had to be built to reconnect, which is what kept it a field rather than a feature.** The
+seam is `navigate` — it asks `canListAfterReconnecting`, which registers whatever endpoint the tab is
+carrying — so a pin only has to *record* one, and it inherits the credential rules, the "a gesture
+connects at any refresh floor" rule, and the region-301 and path-style corrections having nothing
+left to correct on a path an earlier connect settled. The endpoint is weighed against the path
+through the same `TabRestorePolicy` a restored tab uses, rather than trusted on sight: two fields of
+JSON in a defaults domain could name different servers, which would connect to one account and list a
+path belonging to another — a plausible listing under the wrong name.
+
+**What needed the care was that a pin has four surfaces and only one of them held the endpoint.** The
+⌘F popup carried `entry.path` in its menu item, the sidebar reduced `.favorite(entry)` to
+`didActivate: path`, and that row's own Open item spelled the same handover a third time — one rule,
+three spellings, which is this file's most repeated bug. All three now go through one
+`jumpToFavorite`, and the *recording* is split out of it (`recordPendingConnection`) for the reason
+`AlertKeyCatcher.button(for:)` is split from the click it decides: the act is a navigation, so a test
+driving the whole gesture against a server fixture would spawn a real `sftp` at a host nobody owns.
+Three controls, each firing on exactly one test — a pin that captures nothing, a jump that records
+nothing, and the field as a bare `ServerEndpoint`, whose decode **throws** inside
+`FavoritesStore.load()`'s `try?` and takes the user's entire Favorites section with it. Still
+deliberately undone: dragging a remote folder into the sidebar (§M8's omission), and any pin made
+before the field, which carries no way back and fails as it always did.
 
 **2026-08-30 — ⌥F5 packs a folder off a server, and every pack is a queue job.** Two cells from
 PLAN.md §4's *Still open* list, closed together because they are the same gesture: packing refused
