@@ -12658,7 +12658,7 @@ eliminated, and which neither implementable route depended on.
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-01)
 
-Thirty-four dated passes that landed outside a milestone of their own, between M18's close on
+Thirty-five dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-01: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12666,6 +12666,63 @@ sit here at the end rather than in a numeric slot — and they keep their **newe
 because several read as a chain and refer to the entry below. Moved out of [PLAN.md](../PLAN.md)
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
+
+**2026-09-01 — an archive pane notices its own file changing.** The last of PLAN.md §4's small
+cuts, and the smallest: the *answer* had shipped at M4 and been tested since — every mount is
+stamped with an ``ArchiveIdentity`` (device, inode, size, mtime) and `CompositeBackend.mountedArchive`
+re-reads the table of contents the moment that stops describing the file — while nothing ever put
+the question. `startWatching` returned early for any backend but `.local`, so a browsed `.zip` was
+re-read only when a navigation, a tab switch or a write Dirnex made itself happened to ask. A
+`.zip` repacked in another window went on listing its old members for the life of the pane.
+
+**The flag is the whole finding, and a file stream without it fails in the quiet direction.**
+Probed before any Swift, against a real stream: a path handed to FSEvents *without*
+`kFSEventStreamCreateFlagFileEvents` reports only that path appearing and disappearing — a
+delete-and-repack fired, a rename fired, and an archive **rewritten in place** fired **zero** times.
+That last is exactly the case the identity's size and mtime fields exist for, so the natural
+spelling would have covered the loud half of the problem and left the quiet half looking fixed. With
+the flag, all four shapes fire.
+
+**Two more measurements chose the file over its enclosing directory**, which also sees everything
+and was the obvious alternative. The stream is keyed to the **path**, not to an inode, so it
+survives the file being deleted and recreated under the same name and goes on reporting writes to
+the new one — which is the ordinary way to redo an archive, i.e. the main case. And it is silent for
+siblings: a sibling created, written five times, and written again after a repack produced **0**
+callbacks on the file stream against one apiece on the directory. So a pane sitting inside an
+archive in a busy Downloads folder pays nothing for the churn around it.
+
+**Tree mode had the same hole for a different reason and got the same stream.** `treeWatchSources`
+drops every path FSEvents cannot watch, and every directory a tree rooted in an archive lists is an
+`archive:` path — so the set came out empty and the watcher was torn down, meaning switching to tree
+mode inside an archive silently cost the pane its refresh. One file answers for every row of such a
+tree, so both modes arm the identical stream and `watchedSources` records the archive file, which is
+what keeps the set comparison matching and the stream from being rebuilt on every refresh.
+
+**The control found a bug in the test helper rather than in the product, which is why it is worth
+recording.** With the flag removed the three new file tests did not fail — they **hung**, past seven
+minutes, while the five directory tests passed in under 0.1 s. `Pulse.wait` raced a sleeper against
+a `withCheckedContinuation` in a task group and returned `false` on time, then waited for the group
+to drain a continuation nothing would ever resume (a continuation carries no cancellation, ▸ NOTES
+Swift 6 and concurrency). Every event these tests wait for does arrive, so it had never shown; the
+first run that withheld one turned a reporting instrument into a hang, which reads as broken
+infrastructure rather than as the regression it was reporting. Resuming the *same* continuation from
+the timeout fixes it, and the control then failed the three file tests in 10.5 s naming the in-place
+rewrite each time, with the five directory tests still green.
+
+**The narrowness control needed a drain, and its first two versions were flaky in the reassuring
+direction.** "A sibling does not wake this stream" was read as a count, and the count kept coming
+back 1 — not from the sibling but from the *setup's own* write, since FSEvents' "since now" is
+approximate at the edges and a single write can arrive as more than one callback, so a reset taken
+on the first of them is overtaken by the rest. A quiesce until the counts stop moving, and then
+three sibling rounds, is green 22 consecutive runs against a 1-in-5 flake before it.
+
+**Verified end to end, in a checked-in test rather than by hand, because the gesture cannot be driven
+from outside the app**: session restore is `.local`-only, so a tab cannot come back inside an
+archive, and nothing in the `.sdef` or `CommandBinding` enters one. A real pane lists a real zip, the
+zip is repacked by another process, and the pane's rows follow with **no gesture at all** — the whole
+shipped path, stream to `installSortedModel`. Reverted, it fails on the pane still listing the
+archive that is no longer there, which is the user-visible bug verbatim. 3065 core tests and 953 app
+tests green, the app suite 4/4 and unchanged in wall time from its 952-test baseline.
 
 **2026-09-01 — a pinned folder on a server comes back.** A `FavoriteEntry` was a `VFSPath` and
 nothing else, so pinning a folder on a connected account produced a sidebar row that survived the

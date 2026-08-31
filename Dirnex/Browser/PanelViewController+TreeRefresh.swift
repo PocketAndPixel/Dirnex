@@ -43,11 +43,22 @@ extension PanelViewController {
     /// same single path but must swap the callback from the list refresh to the tree one.
     func startWatchingTree(force: Bool = false) {
         guard panel.isTree else { return }
+        // A tree rooted in an archive watches that archive's **file**, exactly as list mode does:
+        // every directory such a tree lists is an `archive:` path, so `treeWatchSources` has
+        // nothing to offer and the one thing that can change any of those rows is the container on
+        // disk. Ahead of the set comparison because the set it would compare is empty — the archive
+        // file is what `watchedSources` records here, so the stream is rebuilt on a change of
+        // archive and not on every refresh.
+        if let archiveFile = watchableArchiveFile(for: panel.path) {
+            guard force || [archiveFile] != watchedSources else { return }
+            watchArchiveFile(archiveFile, listing: panel.path)
+            return
+        }
         let sources = treeWatchSources
         guard force || sources != watchedSources else { return }
-        // A tree whose listed directories are all remote, inside an archive, or synthetic has nothing
-        // FSEvents can watch. Tear the stream down rather than leave the previous location's running
-        // under a listing it no longer describes.
+        // A tree whose listed directories are all remote or synthetic has nothing FSEvents can
+        // watch. Tear the stream down rather than leave the previous location's running under a
+        // listing it no longer describes.
         guard !sources.isEmpty else {
             watcher = nil
             watchedSources = []
@@ -70,6 +81,10 @@ extension PanelViewController {
     /// directories behind a merged root — which is synthetic and cannot be watched itself, while what
     /// it was gathered from can (the same set list mode watches). Sorted so the equality check against
     /// `watchedSources` is stable (the core's set is unordered).
+    ///
+    /// Archive paths are filtered out here and watched separately, as the archive *file* they all
+    /// come from (`startWatchingTree`): FSEvents cannot watch a path inside a `.zip`, and the file
+    /// underneath answers for every row at once.
     ///
     /// The filter tests the path for **`.local`**, not its capabilities for `.watch`, and that is
     /// load-bearing rather than belt-and-braces: `CompositeBackend.capabilities(for:)` answers the

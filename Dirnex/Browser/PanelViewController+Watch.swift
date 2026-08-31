@@ -33,6 +33,17 @@ extension PanelViewController {
             watchMergedSources(for: path)
             return
         }
+        // A browsed archive's rows are read from a **file**, so that file is what it must notice
+        // changing. Nothing else in the app asks: the mount is already a cache rather than a memory
+        // (`CompositeBackend.mountedArchive` re-reads the table of contents whenever
+        // ``ArchiveIdentity`` stops describing the file), and until this stream existed the question
+        // was only ever put to it by something else — a navigation, a tab switch, a write Dirnex
+        // made itself. So a `.zip` repacked in another window went on listing its old members for
+        // the life of the pane. The decision was made and tested at M4; this is the ping.
+        if let archiveFile = watchableArchiveFile(for: path) {
+            watchArchiveFile(archiveFile, listing: path)
+            return
+        }
         // Any other virtual listing has nothing to watch: a `.search` path isn't a real location,
         // and its hits are a snapshot of a question that was asked once.
         guard path.backend == .local, backend.capabilities.contains(.watch) else {
@@ -89,6 +100,43 @@ extension PanelViewController {
             }
         }
         watchedSources = mergedSources
+    }
+
+    /// The on-disk archive a pane showing `path` reads its rows from, or `nil` when its listing
+    /// does not come from one file.
+    ///
+    /// The capability is asked of `backend` rather than of `backend.capabilities(for: path)`,
+    /// which is the same asymmetry the merged branch above rests on and is right for the same
+    /// reason: an `archive:` path's own capabilities describe *browsing the archive* — read-only,
+    /// no watching — while the thing being watched is an ordinary local file. Asking the path
+    /// would refuse every archive, which is the state this exists to leave.
+    func watchableArchiveFile(for path: VFSPath) -> VFSPath? {
+        guard let archivePath = path.backend.archivePath,
+              backend.capabilities.contains(.watch) else { return nil }
+        return .local(archivePath)
+    }
+
+    /// Watch the archive `file` a pane's listing was read from, keyed to the inner path on screen
+    /// so a late event from an archive the pane has since left is ignored — the same guard the
+    /// directory and merged watchers keep.
+    ///
+    /// Internal because tree mode arms the identical stream: every listed directory of a tree
+    /// rooted in an archive is an `archive:` path, so the one thing that can change any of them is
+    /// the container on disk, and there is nothing else for `treeWatchSources` to offer.
+    func watchArchiveFile(_ file: VFSPath, listing path: VFSPath) {
+        watcher = DirectoryWatcher(filePath: file.path) { [weak self] in
+            Task { @MainActor in
+                guard let self, self.panel.path == path else { return }
+                if self.panel.isTree {
+                    // Not `refreshTree` directly, for the reason `startWatchingTree` gives: the
+                    // funnel owns which kind of root this is.
+                    self.refreshCurrentDirectory()
+                } else {
+                    self.directoryDidChange(path)
+                }
+            }
+        }
+        watchedSources = [file]
     }
 
     /// A watched directory changed on disk. Re-list it and hand the fresh snapshot to

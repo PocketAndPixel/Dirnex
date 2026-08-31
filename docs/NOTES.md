@@ -509,6 +509,32 @@ at build time.
     timer fires no earlier, is what says when to look. Reverted, it now fails 3/3. The two other
     waits in the suite were put under the same treatment and each still failed 3/3, which is what
     bounds the audit: they are settled by work already in flight, not by a timer nobody has armed.
+- **A test helper that waits by racing a sleeper against `withCheckedContinuation` in a task group
+  *hangs* on the timeout path instead of returning, and it only shows the day something finally
+  fails.** `withTaskGroup` waits for every child on the way out, and a continuation carries no
+  cancellation (▸ Swift 6 and concurrency) — so the sleeper returns `false` on time, `cancelAll()`
+  does nothing to the other child, and the group never drains. Measured 2026-09-01: with an FSEvents
+  flag deliberately removed, the three tests whose event no longer arrived ran past **seven minutes**
+  with no assertion, while the five unaffected ones passed in under 0.1 s. Every event that helper
+  had ever waited for did arrive, which is why it had sat there since the suite was written.
+  - **The failure mode is what makes it worth a note rather than a fix in passing**: a bounded wait
+    exists so a missing event is a *failure*, and this turned the instrument into a hang — which
+    reads as broken infrastructure, or as a slow build, rather than as the regression it was
+    reporting. Same family as the modal-alert wedge below, reached through a helper instead of a
+    dialog.
+  - **Resume the same continuation from the timeout** — one continuation, resumed with `true` by the
+    event and `false` by a deadline task, guarded so it resumes once. The control then failed the
+    three tests in 10.5 s apiece, naming the right assertion.
+  - **And that deadline needs a generation token, because `Task.cancel()` does not unwind a
+    `try? await Task.sleep`** — the error is swallowed and the body runs on, so a deadline cancelled
+    the instant its own wait succeeded still arrives and answers the **next** wait with `false`.
+    Measured immediately afterwards, in the same helper: two *pre-existing* tests failed in **0.68 s**
+    against a 10 s budget, in a full run and never in a filtered one. **A bounded wait that fails
+    fast did not time out**, and that is the whole tell — the reflex reading is a flaky event, and
+    the clock says it cannot have been. Stamp each wait and have the deadline refuse a stale token;
+    claim the token in a *synchronous* helper, since Swift 6 refuses `NSLock.lock()` inside an
+    `async` function.
+
 - **A negative control over code that reports through a modal path *wedges* the run instead of
   failing it, and inverting a guard is the easy way to write one by accident.** Measured 2026-08-27
   while controlling M24 Slice 3's "a short set is a failure" rule: `presentOperationFailure` keeps
@@ -1076,6 +1102,28 @@ at build time.
   vanishes and focus jumps. Guard both refresh sites and replay the owed refresh when editing
   ends. Only reproducible with a *real* FSEvents change landing during the edit window, not via
   synthetic F2 → type → Enter.
+- **FSEvents on a *file* path reports only that path appearing and disappearing, unless you ask for
+  `kFSEventStreamCreateFlagFileEvents` — so a file rewritten in place fires nothing.** Measured
+  2026-09-01 against a real stream while giving an archive pane a watcher over its own `.zip`:
+  without the flag, a delete-and-recreate fired, a rename fired, and an **in-place rewrite fired 0
+  times**; with it, all four shapes fire. That is the quiet direction and the expensive half of the
+  bug, because the loud cases work — a fix written the natural way looks correct on the gesture
+  everyone tests with (repack) and silently misses the one a cache's size and mtime fields exist for.
+  - **Two properties then choose the file over its enclosing directory**, which also sees everything
+    and is the obvious alternative. The stream is keyed to the **path**, not to an inode, so it
+    survives the file being deleted and recreated under the same name and goes on reporting writes to
+    the new one — the ordinary way to redo an archive, i.e. the main case rather than an edge. And it
+    is silent for siblings: a sibling created, written five times, and written again after a repack
+    gave **0** callbacks against one apiece on the directory, so a pane inside an archive in a busy
+    folder pays nothing for the churn around it.
+  - **Do not ask for the flag over a directory.** It reports one callback per *file* instead of one
+    per directory, multiplying an event rate this app already treats as a cost (the recursive-stream
+    measurement immediately below).
+  - **A count taken straight after arming carries the setup's own writes**, which reads exactly like
+    the thing you are trying to disprove: "since now" is approximate at the edges, and one write can
+    arrive as more than one callback, so a reset taken on the first of them is overtaken by the rest.
+    A sibling-silence test flaked 1 run in 5 at a count of 1 that was never the sibling. Quiesce
+    until the counts stop moving, *then* start counting — 22 consecutive green runs after.
 - **An `FSEventStream` is *recursive*, so a pane on a home directory is told about `~/Library` several
   times a second — and reacting to each with a `reloadData` is visible to the user, because AppKit's
   expansion tooltip dies with the cell view a reload discards.** `DirectoryWatcher` also discards the

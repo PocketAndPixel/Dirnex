@@ -64,7 +64,7 @@ watched live. It is still a virtual container: no size bars, no pack, no Open in
 | Sort, column layout, hidden files | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Type-to-filter, marks, `⌘A`, invert | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Tree view (`→` to expand) | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Live auto-refresh when it changes elsewhere | yes | yes | no<sup>d</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | n/a | yes |
+| Live auto-refresh when it changes elsewhere | yes | yes | yes<sup>d</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | n/a | yes |
 | Folder size on `Space` / `⌥⇧⏎` | yes | yes | yes | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | n/a | yes | yes |
 | Size visualization bars (`⌃B`) | yes | yes | no<sup>nn</sup> | no<sup>nn</sup> | no<sup>nn</sup> | no<sup>nn</sup> | no<sup>nn</sup> | n/a<sup>nn</sup> | n/a<sup>nn</sup> |
 | Git status column, `.gitignore`-aware sizes | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
@@ -82,10 +82,13 @@ to walk to.
 <sup>c</sup> Leaving a virtual listing resets the trail, so back cannot return to the hits.
 
 <sup>d</sup> An archive re-reads when its file on disk changes identity (device/inode/size/mtime),
-so repacking it under the same name is picked up — but only when something asks it to: `startWatching`
-returns early for any backend but `.local`, so nothing wakes the pane. The decision is already made
-and tested (`ArchiveIdentity`); the stream over the archive file is not built (PLAN.md §4 ▸
-*Still open*). There is no watcher on the members, and there cannot be one.
+so repacking it under the same name is picked up — and since 2026-09-01 the pane **asks by itself**:
+it watches the archive file through an FSEvents stream carrying
+`kFSEventStreamCreateFlagFileEvents`, in list and tree mode alike, so a `.zip` rewritten in another
+window reaches the rows with no gesture. The flag is the whole of it — a file path without it
+reports the path appearing and disappearing and **not** a rewrite in place. There is no watcher on
+the members, and there cannot be one: what changed is the container, and the container is what is
+watched.
 
 <sup>e</sup> Bounded at **1000 directories** (`DirectorySizeBudget.remote`) because a remote walk
 is a billed request and a round trip each — measured 0.601–0.699 s per `ListObjectsV2`, so
