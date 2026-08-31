@@ -50,6 +50,10 @@ public enum TrashPutBack {
     public static let locationKey = "ptbL"
     public static let nameKey = "ptbN"
 
+    /// The per-directory sidecar the pair lives in. One spelling, because both a reader and a
+    /// writer now name it.
+    public static let storeName = ".DS_Store"
+
     /// The boot volume's data firmlink. Paths recorded through it name the same files as the
     /// unprefixed ones.
     private static let dataFirmlink = "System/Volumes/Data/"
@@ -100,6 +104,73 @@ public enum TrashPutBack {
             return VFSPath.local("/")
         }
         return VFSPath.local("/" + components[..<index].joined(separator: "/"))
+    }
+
+    /// Write the `ptbL`/`ptbN` pair for an item that has just landed in `trash`, into the records
+    /// that trash's `.DS_Store` already holds (PLAN.md §M26 Slice 5).
+    ///
+    /// Needed because `FileManager.trashItem` writes the pair itself and cannot be used on an item
+    /// inside a File Provider domain, so ``ProviderAwareTrashPerformer`` performs that move with a
+    /// rename — and a rename records nothing. Without this, a Dropbox file deleted in Dirnex offers
+    /// no **Put Back** in Finder while the same file deleted in Finder does (reported 2026-08-31).
+    ///
+    /// `name` is the name the item has *in the trash*, which a collision may have stamped; the
+    /// origin's own name is what `ptbN` carries, and the difference is the whole reason there are
+    /// two records rather than one.
+    ///
+    /// - Returns: the merged records, or `nil` when the origin cannot be expressed relative to the
+    ///   trash's own volume — a record Finder could not read, and one no reader here would either.
+    public static func recording(
+        _ origin: TrashOrigin,
+        forItemNamed name: String,
+        inTrashAt trash: VFSPath,
+        into entries: [DSStoreEntry]
+    ) -> [DSStoreEntry]? {
+        guard let location = location(of: origin.directory, forTrashAt: trash) else { return nil }
+        // Replace rather than append: a name reused after an earlier item left the Trash would
+        // otherwise carry two locations, and which one a reader takes is undefined.
+        var merged = entries.filter { !(
+            $0.filename == name && ($0.key == locationKey || $0.key == nameKey)
+        ) }
+        merged.append(.string(filename: name, key: locationKey, value: location))
+        merged.append(.string(filename: name, key: nameKey, value: origin.name))
+        return merged
+    }
+
+    /// The string a `ptbL` record carries for `directory` — the inverse of
+    /// ``directory(recordedAs:onVolumeAt:)``, and written in the same shape the system does.
+    ///
+    /// Relative to the trash's own volume, with a trailing slash, and with a **leading** slash only
+    /// for a volume trash (`<volume>/.Trashes/<uid>`), which is the form probed on a real one. A
+    /// home or File Provider trash records against `/` and writes no leading slash — the form
+    /// `FileManager.trashItem` leaves in `~/.Trash`, and the one Finder read back correctly when it
+    /// was written here by hand (probed 2026-08-31, in `~/.Trash` and in Google Drive's
+    /// `<mount>/.Trash`).
+    ///
+    /// The volume's own root is a bare `/` in both forms.
+    ///
+    /// - Returns: `nil` for a directory that is not on the trash's volume at all, which cannot be
+    ///   recorded and must not be guessed at.
+    public static func location(of directory: VFSPath, forTrashAt trash: VFSPath) -> String? {
+        guard directory.backend == .local, trash.backend == .local else { return nil }
+        let volume = volumeRoot(ofTrashAt: trash)
+        let volumeComponents = components(of: volume)
+        let directoryComponents = components(of: directory)
+        guard directoryComponents.count >= volumeComponents.count,
+              Array(directoryComponents.prefix(volumeComponents.count)) == volumeComponents
+        else {
+            return nil
+        }
+        let relative = directoryComponents.dropFirst(volumeComponents.count).joined(separator: "/")
+        // The volume's own root is recorded as a bare "/" — not as the empty relative path with a
+        // slash on each side. Caught by comparing this against the strings macOS wrote in the
+        // fixture, which is the only reason it is right.
+        guard !relative.isEmpty else { return "/" }
+        return (volumeComponents.isEmpty ? "" : "/") + relative + "/"
+    }
+
+    private static func components(of path: VFSPath) -> [String] {
+        path.path.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
     }
 
     /// Turn one recorded folder into a real path on `volume`, absorbing both forms the system

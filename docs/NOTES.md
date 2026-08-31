@@ -4569,8 +4569,8 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     an item inside a domain. A *fallback* — try one, and on refusal try the other — is the shape this
     codebase keeps paying for; a route decided up front from a property of the path is what
     `CompositeBackend` already does. Routing is also what keeps the cost narrow: Finder's `ptbL`/
-    `ptbN` **Put Back** record, which this package can read and cannot write, is lost only for the
-    items that were already broken.
+    `ptbN` **Put Back** record, which is lost only for the items that were already broken — and only
+    until the entry below, which retires the "cannot write" half of that sentence.
   - **Where it must land is the provider's own trash, and getting that wrong downloads the file.**
     Renaming an evicted placeholder *out* of its domain **materializes it** — a 4 MB iCloud file,
     evicted through `evictUbiquitousItem`, took **1.15 s and arrived with `st_blocks` set** — while
@@ -4611,6 +4611,46 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     provider path and loses Finder's Put Back for no reason. `do`/`catch`, with an absent key read as
     `false`. Caught by SwiftLint's `redundant_nil_coalescing` rather than by a test, which is the
     only reason it did not ship.
+
+- **The `ptbL`/`ptbN` put-back record is writable, Finder reads it live, and this file said twice
+  that it could only be read.** That claim was an assumption about effort, and it cost the user the
+  gesture: an item Dirnex trashed out of a File Provider domain moves by a rename, which records
+  nothing, so Finder offers no **Put Back** for it (reported 2026-08-31, with two screenshots of the
+  same file — deleted in Dirnex, no Put Back; deleted in Finder, Put Back). Measured before writing
+  any Swift, against the live `~/.Trash`: with a pair written by a throwaway writer, the **same
+  already-open context menu** grew a Put Back and restored the file to its Dropbox folder. The half
+  that makes it a fact about the format rather than about one menu: **Finder then rewrote the file
+  from our content**, all 284 of its own records intact — it adopted our output as its database.
+  - **A `.DS_Store` writer is a bulk load, not an insertion.** The file is small and rewritten whole,
+    so there is no split, merge or rebalance to get wrong: pack the records into pages, promote the
+    one that did not fit as the separator, repeat for the level above. The buddy allocator is seeded
+    with the whole 2 GiB arena and the first 32 bytes spent immediately — allocator offsets count
+    from just past the file's leading word, so **offset 0 is the header**, and an allocator that
+    hands it out writes a block over `Bud1`.
+  - **Preserve every record's value *as written*, not as parsed.** The database belongs to Finder,
+    so a type this build has no opinion about has to come back byte for byte — keeping the encoded
+    bytes makes that true by construction, where a switch over known types is a thing somebody has
+    to keep complete.
+  - **The order is what fails quietly.** A tree sorted by a comparator Finder does not share still
+    parses; Finder's own lookup walks into the wrong child and answers "no record". Validated rather
+    than assumed: the 284 records in this Mac's `~/.Trash/.DS_Store`, written by Finder and
+    `trashItem` over months, have **zero inversions** under `(name.lowercased(), key)`.
+  - **A real fixture is the oracle for the *inverse*, and it earned its keep immediately**: asked to
+    produce the location string for each folder a macOS-written `.DS_Store` already records, the
+    first version answered `//` where macOS wrote `/` for the volume's own root. Comparing against a
+    string this code produced would only have proved the two halves agree.
+  - **The dangerous failure is a lost database, not a wrong record**, and the rule that prevents it
+    is narrower than it looks: a parse that cannot complete leaves the file alone, and **only a file
+    that is genuinely absent counts as "no database yet"**. `~/.Trash` is behind Full Disk Access, so
+    a refused read (`NSCocoaErrorDomain` 257) presented as an empty database would replace 142 of
+    Finder's records with the single row being added — silently, with nothing downstream to complain,
+    and the user would find Put Back had stopped working for everything they ever deleted. Parse the
+    output back before it replaces anything, too: that is the guard about *this* code rather than
+    about the filesystem.
+  - **A provider trash usually has no `.DS_Store` at all**, which is the ordinary state rather than
+    an edge: all five of this Mac's were empty. One created from nothing gave Google Drive's
+    `<mount>/.Trash` a working Put Back, so the from-scratch path is the common one and needs its own
+    live check.
 
 - **`FileManager.trashItem` on an item already in a trash reports success and does nothing** — it
   hands back the path it was given. So "move to Trash" inside the Trash is a silent no-op that looks

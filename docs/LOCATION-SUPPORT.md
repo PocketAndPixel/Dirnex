@@ -202,22 +202,26 @@ Top-level archives only.
 trashed to `~/.Trash`, a volume's `.Trashes`, or a Google Drive mount's `.Trash`, and — since M26
 Slice 4 — for anything **Dirnex** trashed to any of them, the iCloud trash included. What it
 **cannot** do is put back an item *Finder* deleted out of a provider domain, or anything trashed
-before that slice shipped: those origins are opaque provider references with no path in them (on Box
-a Finder delete does not land on this Mac at all — it goes to Box's server-side trash), and the flow
-says so by name rather than guessing at a folder. **F8 on a cloud mount** was broken outright until
-M26 —
-`FileManager.trashItem` refuses every item inside a File Provider domain (Dropbox, OneDrive, Box,
-Google Drive, iCloud alike) whenever the app is responsible for itself, which is every launch that
-is not from a terminal (PLAN.md §M26, docs/NOTES.md). Dirnex now performs that move itself, into the
-same trash `trashItem` would have used, so **F8 works on all five**; what it cannot reproduce is the
-`ptbL`/`ptbN` record, which this codebase can read and not write — so **Slice 4 keeps its own**,
-from the origin the delete already knew, and Put Back merges the two with Finder's record winning
-wherever it exists. Such an item is therefore restorable with **⌘Z** (which rides the landing path
-Dirnex journaled rather than Finder's record, and is unaffected in every case above) *and* with Put
-Back. An ordinary local delete is untouched and keeps Finder's own. What still refuses is what the
-*account* refuses: a Google Drive mount root is `dr-x------`, so deleting `My Drive` itself answers
-`EACCES` — which M26 Slice 3 stopped wording as a Full Disk Access problem, since that grant does not
-gate `~/Library/CloudStorage` and the permission being refused is the one set in the cloud account.
+before that slice shipped: those origins are opaque provider references with no path in them (on
+Box a Finder delete does not land on this Mac at all — it goes to Box's server-side trash), and
+the flow says so by name rather than guessing at a folder. **F8 on a cloud mount** was broken
+outright until M26 — `FileManager.trashItem` refuses every item inside a File Provider domain
+(Dropbox, OneDrive, Box, Google Drive, iCloud alike) whenever the app is responsible for itself,
+which is every launch that is not from a terminal (PLAN.md §M26, docs/NOTES.md). Dirnex now
+performs that move itself, into the same trash `trashItem` would have used, so **F8 works on all
+five**; and since **Slice 5** it writes the `ptbL`/`ptbN` record too, so **Finder's own Put Back
+works on such an item exactly as it does on one Finder deleted** — measured live in Finder's menu,
+with a neighbouring item in the same trash and no record as the control. **Slice 4's own store
+stays** and answers where that write cannot happen (no Full Disk Access, a read-only trash) and
+for an item *Finder* deleted out of a domain; Put Back merges the two with Finder's record winning
+wherever it exists, and where both speak they were written from the same origin. Such an item is
+therefore restorable with **⌘Z** (which rides the landing path Dirnex journaled rather than
+Finder's record, and is unaffected in every case above), with Dirnex's Put Back, *and* with
+Finder's. An ordinary local delete is untouched and keeps Finder's own. What still refuses is what
+the *account* refuses: a Google Drive mount root is `dr-x------`, so deleting `My Drive` itself
+answers `EACCES` — which M26 Slice 3 stopped wording as a Full Disk Access problem, since that
+grant does not gate `~/Library/CloudStorage` and the permission being refused is the one set in
+the cloud account.
 
 <sup>p</sup> Rename, move and New Folder are journaled and reversed through the backend, so they
 undo remotely. A **permanent delete is not reversible anywhere** — which is every remote delete,
@@ -609,6 +613,7 @@ rows, and the app is already as close as the technology permits:
   mirror mode: neither is exposed to anyone but Finder.
 - Put Back for an item **Finder** deleted out of a provider domain — the iCloud trash keeps no
   `.DS_Store` at all, and on Box such a delete does not land on this Mac. The origin is an opaque
-  provider reference with no path in it. Dirnex's *own* deletes there are covered (M26 Slice 4).
+  provider reference with no path in it. Dirnex's *own* deletes there are covered (M26 Slices 4–5,
+  which also give Finder's Put Back back for them).
 - Live change notifications from any remote protocol: SFTP has no `inotify`, FTP has no verb, and
   S3 has no session to hold one open on. A poll is not a notification, and nothing can make it one.

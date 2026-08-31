@@ -195,4 +195,59 @@ struct ProviderAwareTrashPerformerTests {
         // The performer did not move it itself.
         #expect(FileManager.default.fileExists(atPath: source.path))
     }
+
+    // MARK: - The put-back record
+
+    /// The wiring the seams exist for (PLAN.md §M26 Slice 5). A provider item is moved by a rename,
+    /// which records nothing — so unless this call is made, Finder offers no **Put Back** for a
+    /// Dropbox file Dirnex deleted, which is exactly what a user reported on 2026-08-31.
+    @Test("the provider route records where the item came from")
+    func recordsThePutBackOrigin() throws {
+        let root = try Self.temporaryDirectory()
+        let trash = root.appendingPathComponent("Trash")
+        try FileManager.default.createDirectory(at: trash, withIntermediateDirectories: true)
+        let folder = root.appendingPathComponent("Cloud")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let source = Self.file(folder.appendingPathComponent("report.pdf"), "a")
+        let performer = ProviderAwareTrashPerformer(
+            ordinary: SpyOrdinary(),
+            isProvider: { _ in true },
+            landingDirectory: { _ in trash }
+        )
+
+        let landed = try #require(try performer.moveToTrash(source))
+
+        let store = try Data(contentsOf: trash.appendingPathComponent(TrashPutBack.storeName))
+        let origin = try TrashPutBack.origins(inDSStore: store, ofTrashAt: .local(trash.path))[
+            landed.lastPathComponent
+        ]
+        #expect(origin?.directory == .local(folder.path))
+        #expect(origin?.name == "report.pdf")
+    }
+
+    /// The narrowness half, and the one that keeps the fix from becoming a change to every delete:
+    /// an ordinary item still goes to `FileManager.trashItem`, which writes the record itself. A
+    /// second writer over the same database would be two sources answering one question.
+    @Test("an ordinary item is left to trashItem, and nothing is written here")
+    func writesNothingForAnOrdinaryItem() throws {
+        let root = try Self.temporaryDirectory()
+        let trash = root.appendingPathComponent("Trash")
+        try FileManager.default.createDirectory(at: trash, withIntermediateDirectories: true)
+        let source = Self.file(root.appendingPathComponent("report.pdf"), "a")
+        let spy = SpyOrdinary()
+        let performer = ProviderAwareTrashPerformer(
+            ordinary: spy,
+            isProvider: { _ in false },
+            landingDirectory: { _ in trash }
+        )
+
+        _ = try performer.moveToTrash(source)
+
+        #expect(spy.urls == [source])
+        #expect(
+            !FileManager.default.fileExists(
+                atPath: trash.appendingPathComponent(TrashPutBack.storeName).path
+            )
+        )
+    }
 }

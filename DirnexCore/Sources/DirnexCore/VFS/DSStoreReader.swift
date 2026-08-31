@@ -54,9 +54,11 @@ public enum DSStoreError: Error, Sendable, Equatable {
 /// **Every block offset in the file is 4 bytes short** — the allocator numbers from just after the
 /// leading alignment word — which is the one detail that turns a working parse into garbage.
 ///
-/// Read-only, deliberately. Finder does not delete a record when an item leaves the Trash (the real
-/// `~/.Trash/.DS_Store` on the probe machine still listed files removed weeks earlier), so put-back
-/// data going stale is the format's normal condition rather than something a writer would fix.
+/// Reading is the half M8 needed and the whole of what shipped until M26 Slice 5, which had to
+/// **write** the pair for an item `FileManager.trashItem` refuses — see ``DSStoreWriter``. Note
+/// what a writer still does not do: Finder does not delete a record when an item leaves the Trash
+/// (the real `~/.Trash/.DS_Store` on the probe machine listed files removed weeks earlier), so
+/// put-back data going stale is the format's normal condition rather than something to repair.
 public enum DSStoreReader {
     /// Every string-valued record in the file, in tree order.
     ///
@@ -64,6 +66,19 @@ public enum DSStoreReader {
     /// "this item has no put-back record", which is indistinguishable from the truth and would send
     /// a restore to the wrong place — or nowhere — with no way to tell.
     public static func stringRecords(in data: Data) throws -> [DSStoreRecord] {
+        try entries(in: data).compactMap { entry in
+            entry.stringValue.map {
+                DSStoreRecord(filename: entry.filename, key: entry.key, value: $0)
+            }
+        }
+    }
+
+    /// Every record in the file, in tree order, with each value kept exactly as written.
+    ///
+    /// What ``DSStoreWriter`` needs, and the reason it is a separate answer from the one above: a
+    /// rewrite has to put back the records this build has no opinion about — Finder's own put-back
+    /// pairs, and in a folder that is not a trash its window furniture — byte for byte.
+    public static func entries(in data: Data) throws -> [DSStoreEntry] {
         let bytes = [UInt8](data)
         var header = ByteCursor(bytes: bytes)
         guard try header.uint32() == 1, try header.fourCharacterCode() == "Bud1" else {
@@ -77,7 +92,7 @@ public enum DSStoreReader {
         var treeHeader = try allocator.cursor(forBlock: headerBlock)
         let rootNode = try treeHeader.uint32()
 
-        var records: [DSStoreRecord] = []
+        var records: [DSStoreEntry] = []
         var visited: Set<UInt32> = []
         try walk(node: rootNode, allocator: allocator, visited: &visited, into: &records)
         return records
@@ -93,7 +108,7 @@ public enum DSStoreReader {
         node: UInt32,
         allocator: Allocator,
         visited: inout Set<UInt32>,
-        into records: inout [DSStoreRecord]
+        into records: inout [DSStoreEntry]
     ) throws {
         guard visited.insert(node).inserted else { throw DSStoreError.malformed }
         var cursor = try allocator.cursor(forBlock: node)
@@ -104,35 +119,36 @@ public enum DSStoreReader {
                 let child = try cursor.uint32()
                 try walk(node: child, allocator: allocator, visited: &visited, into: &records)
             }
-            if let record = try readRecord(&cursor) { records.append(record) }
+            records.append(try readRecord(&cursor))
         }
         if next != 0 {
             try walk(node: next, allocator: allocator, visited: &visited, into: &records)
         }
     }
 
-    /// One record, returning `nil` for the non-string properties (whose values are stepped over so
-    /// the cursor still lands on the next record).
-    private static func readRecord(_ cursor: inout ByteCursor) throws -> DSStoreRecord? {
+    /// One record, with its value captured **as written** — length prefix included — so a type this
+    /// build has no opinion about still survives a rewrite. An unknown type is still refused rather
+    /// than skipped: without its length there is no way to find the next record either.
+    private static func readRecord(_ cursor: inout ByteCursor) throws -> DSStoreEntry {
         let filename = try cursor.utf16String(codeUnits: Int(try cursor.uint32()))
         let key = try cursor.fourCharacterCode()
         let type = try cursor.fourCharacterCode()
+        let value: [UInt8]
         switch type {
         case "bool":
-            try cursor.skip(1)
+            value = try cursor.bytes(count: 1)
         case "long", "shor", "type":
-            try cursor.skip(4)
+            value = try cursor.bytes(count: 4)
         case "comp", "dutc":
-            try cursor.skip(8)
-        case "blob":
-            try cursor.skip(Int(try cursor.uint32()))
-        case "ustr":
-            let value = try cursor.utf16String(codeUnits: Int(try cursor.uint32()))
-            return DSStoreRecord(filename: filename, key: key, value: value)
+            value = try cursor.bytes(count: 8)
+        case "blob", "ustr":
+            let length = Int(try cursor.uint32())
+            let payload = try cursor.bytes(count: type == "ustr" ? length * 2 : length)
+            value = DSStoreWriter.bigEndian(UInt32(length)) + payload
         default:
             throw DSStoreError.unsupportedValueType(type)
         }
-        return nil
+        return DSStoreEntry(filename: filename, key: key, type: type, encodedValue: value)
     }
 
     /// The block table and name directory from the allocator's info block — everything needed to
@@ -196,6 +212,12 @@ private struct ByteCursor {
         self.bytes = bytes
         self.offset = start
         limit = start + size
+    }
+
+    mutating func bytes(count: Int) throws -> [UInt8] {
+        guard count >= 0, offset + count <= limit else { throw DSStoreError.malformed }
+        defer { offset += count }
+        return Array(bytes[offset..<offset + count])
     }
 
     mutating func skip(_ count: Int) throws {

@@ -118,4 +118,64 @@ struct TrashPutBackTests {
                 == "/Volumes/X"
         )
     }
+
+    // MARK: - Writing the record
+
+    /// The inverse is checked against **the strings macOS itself wrote** in the fixture: whatever
+    /// `location(of:forTrashAt:)` produces for one of those folders has to be the record that is
+    /// already sitting in that file, or Finder is being handed a spelling it did not choose.
+    @Test("the recorded location is the one macOS wrote for the same folder")
+    func writesTheSameLocationMacOSDid() throws {
+        let recorded = try TrashPutBack.origins(inDSStore: fixture(), ofTrashAt: trash)
+        for (name, origin) in recorded {
+            let written = try DSStoreReader.stringRecords(in: fixture())
+                .first { $0.filename == name && $0.key == TrashPutBack.locationKey }?.value
+            #expect(TrashPutBack.location(of: origin.directory, forTrashAt: trash) == written)
+        }
+        #expect(!recorded.isEmpty)
+    }
+
+    /// The other spelling, and the one every File Provider delete now takes: a home or provider
+    /// trash records against `/` with no leading slash — the form `FileManager.trashItem` leaves in
+    /// `~/.Trash`, and the form Finder read back correctly when it was written here by hand
+    /// (probed 2026-08-31).
+    @Test("a home trash records without the leading slash, a volume trash with it")
+    func writesBothPathForms() {
+        let home = VFSPath.local("/Users/oleg/.Trash")
+        #expect(
+            TrashPutBack.location(of: .local("/Users/oleg/Downloads"), forTrashAt: home)
+                == "Users/oleg/Downloads/"
+        )
+        #expect(
+            TrashPutBack.location(of: .local("/Volumes/DirnexProbe/deep"), forTrashAt: trash) == "/deep/"
+        )
+        #expect(TrashPutBack.location(of: .local("/Volumes/DirnexProbe"), forTrashAt: trash) == "/")
+    }
+
+    /// A folder on another volume cannot be named in this trash's records at all — the recorded
+    /// path is relative to the volume, so there is nothing to write and nothing to guess.
+    @Test("a folder on another volume is refused rather than recorded wrongly")
+    func refusesAnOffVolumeFolder() {
+        #expect(TrashPutBack.location(of: .local("/Users/oleg/Downloads"), forTrashAt: trash) == nil)
+    }
+
+    @Test("what is written is what the reader reads back")
+    func recordRoundTrips() throws {
+        let origin = TrashOrigin(
+            directory: .local("/Volumes/DirnexProbe/deep/nested"),
+            name: "beta file.txt"
+        )
+        let entries = try #require(
+            TrashPutBack.recording(
+                origin,
+                forItemNamed: "beta file 01.txt",
+                inTrashAt: trash,
+                into: []
+            )
+        )
+        let data = try #require(DSStoreWriter.data(for: entries))
+
+        let read = try TrashPutBack.origins(inDSStore: data, ofTrashAt: trash)
+        #expect(read["beta file 01.txt"] == origin)
+    }
 }

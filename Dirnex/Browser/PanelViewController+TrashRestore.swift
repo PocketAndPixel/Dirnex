@@ -235,7 +235,7 @@ struct TrashOriginIndex {
     /// nor an unreadable one is worth failing a restore over: both mean "no record", which the
     /// caller already reports per item.
     private static func readOrigins(inTrashAt trash: VFSPath) -> [String: TrashOrigin] {
-        let store = trash.appending(".DS_Store")
+        let store = trash.appending(TrashPutBack.storeName)
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: store.path)),
               let origins = try? TrashPutBack.origins(inDSStore: data, ofTrashAt: trash)
         else {

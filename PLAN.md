@@ -523,6 +523,73 @@ codebase keeps paying for.
     sheet. Re-granting is password-gated. The read half is covered instead by an app test driving the
     real ``TrashOriginIndex`` — the one place the two sources meet — with the control above.
 
+- **Slice 5 — Put Back in *Finder*, for a provider delete. Landed 2026-08-31.** Reported by the same
+  user hours after Slice 4 shipped, with two screenshots of Finder's own context menu over the same
+  file: deleted from Dropbox in Dirnex, no **Put Back**; deleted from Dropbox in Finder, Put Back.
+  Slice 4 is not the answer to that and never was — it gave *Dirnex's* Put Back the origin, and
+  Finder is where a person looks. Every one of the five domains had it; Dropbox is simply the one
+  they tried.
+  - **The premise this milestone opened on is retired: the record *can* be written.** Slice 2 said
+    the `ptbL`/`ptbN` pair is one "this package can read and cannot write", and that was an
+    assumption about effort rather than a measurement. `.DS_Store` is a documented-by-reverse-
+    engineering buddy allocator holding a B-tree, and `DSStoreReader` already models all of it but
+    the direction. ``DSStoreWriter`` is the other direction: a bulk load rather than an insertion,
+    since the file is small and rewritten whole, so there is no split, merge or rebalance to get
+    wrong.
+  - **Finder was asked before any Swift was written, and it answered three times.** Against the live
+    `~/.Trash`: a Dropbox file renamed in by hand had no Put Back — the reported bug, reproduced —
+    and with a pair written by a throwaway writer the **same already-open context menu** grew one and
+    restored the file to its Dropbox folder. Again in Google Drive's `<mount>/.Trash`, from a
+    database created from nothing, which is the state every provider trash is in. The half that makes
+    it more than "Finder tolerated our file": Finder then **rewrote it from our content**, all 284 of
+    its own records intact — it took our output as its own database.
+  - **A rewrite has to put back what it does not understand**, which decides the reader's shape.
+    ``DSStoreRecord`` answers *what does this say*; ``DSStoreEntry`` is the format's own unit, with
+    the value kept exactly as written, so a record this build has no opinion about — Finder's window
+    furniture in a folder that is not a trash, anything a later macOS adds — survives byte for byte
+    rather than depending on a switch somebody has to keep complete.
+  - **The ordering is the one thing a malformed tree fails *quietly* on**, and it was validated
+    rather than assumed: the 284 records in this Mac's own `~/.Trash/.DS_Store`, written by Finder
+    and `trashItem` over months, have **zero inversions** under case-insensitive-name-then-property.
+    A tree sorted differently still parses, and Finder's own lookup walks into the wrong child and
+    answers "no record".
+  - **The fixture caught a real defect, which is the argument for having it as the oracle.** Asked to
+    produce the location string for each folder the fixture already records, the writer answered
+    `//` where macOS wrote `/` for the volume's own root. Comparing against a string this code
+    produced would have proved the two halves agree; comparing against macOS's is what found it.
+  - **The dangerous failure is not a wrong record, it is a lost database**, and two rules answer it.
+    A parse this build cannot complete leaves the file untouched — and *only a file that is genuinely
+    absent* counts as "no database yet", because `~/.Trash` is behind Full Disk Access and a refused
+    read presented as an empty database would replace 142 of Finder's records with the one row we
+    came to add. The output is also parsed back before it replaces anything, which is the guard about
+    *this* code rather than about the filesystem.
+  - **Verified end to end through the shipped F8, LaunchServices-launched**, with a control that came
+    free: a Google Drive file deleted in Dirnex, and in the same `<mount>/.Trash` a neighbour that
+    got there another way. Finder offers Put Back on the first and **not** on the second, in the same
+    folder and the same menu — so it is the item's own record doing the work, not something about the
+    directory — and Put Back returned the file to `My Drive`. The instrumented run names each step
+    (`route provider=true`, `landed=…/.Trash/…`, `store read`, `wrote 4100 bytes`), which is what
+    turns "it works" into which branch ran.
+  - **What the same run could not reach is `~/.Trash`, and the reason is the developer-machine one
+    Slice 4 already hit**: a rebuilt ad-hoc-signed Debug binary has lost Full Disk Access, so the
+    probe recorded `NSCocoaErrorDomain 257` reading `~/.Trash/.DS_Store` while the TCC row still read
+    *allowed* — the stale-code-requirement state docs/NOTES.md documents. The safety rule above did
+    exactly its job (the user's 284 records were byte-identical afterwards), and the write half of
+    that path is what the by-hand run above measured against the real file. Re-granting is
+    password-gated, so it is the user's to do.
+  - **Slice 4's store is not retired by this and must not be**: it answers where a `.DS_Store` cannot
+    be written at all — no Full Disk Access, a read-only trash — and for an item **Finder** deleted
+    out of a domain. The merge rule is unchanged and now agrees with itself: where both sources speak
+    they were both written from the same origin.
+  - **Five controls run and each fails on its own claim**: a recorder that writes nothing fails the
+    six recorder tests and the wiring test and leaves the two refusal tests green; removing the call
+    from the performer fails *only* the wiring test; treating an unreadable database as empty fails
+    *only* the "left exactly as it was" test; a writer that does not sort fails *only* the ordering
+    test; and always prefixing the recorded location with a slash fails *only* the path-form test.
+    The narrowness test that matters most stays green throughout — an **ordinary** item is still left
+    to `trashItem`, and nothing is written here for it, because two writers over one database would
+    be two sources answering one question.
+
 Left deliberately undone: **the remote backends**, which have no Trash at all and are already
 degraded to a confirmed permanent delete (§M5, and M25 §7's decision not to invent one); **any
 workaround inside F8 while this is open**, since ⇧F8's confirmed permanent delete already works — it uses

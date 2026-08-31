@@ -13,9 +13,12 @@ import Foundation
 /// was — Finder's collision naming, Finder's destination, and Finder's `ptbL`/`ptbN` **Put Back**
 /// record, none of which this package can write.
 ///
-/// What a provider item loses is exactly that Put Back record. **Dirnex's own ⌘Z is unaffected**:
-/// `DeletePass.Restoration` rides the landing path returned here, not Finder's record, so undo
-/// after an F8 puts the file back where it came from either way.
+/// What a provider item used to lose is exactly that Put Back record, and since M26 Slice 5 it does
+/// not: ``TrashPutBackRecorder`` writes the `ptbL`/`ptbN` pair the rename could not, so Finder
+/// offers Put Back for a Dropbox file Dirnex deleted exactly as it does for one Finder deleted
+/// (reported by a user 2026-08-31, verified live the same day). **Dirnex's own ⌘Z never depended on
+/// it**: `DeletePass.Restoration` rides the landing path returned here, so undo after an F8 puts the
+/// file back where it came from either way.
 ///
 /// ### Where it lands, and why it is asked rather than tabulated
 ///
@@ -47,14 +50,47 @@ public struct ProviderAwareTrashPerformer: TrashPerformer {
     private static let collisionAttempts = 8
 
     private let ordinary: any TrashPerformer
+    private let isProvider: @Sendable (URL) -> Bool
+    private let landingDirectory: @Sendable (URL) -> URL
 
     public init(ordinary: any TrashPerformer = FileManagerTrashPerformer()) {
+        self.init(
+            ordinary: ordinary,
+            isProvider: { Self.isProviderItem($0) },
+            landingDirectory: { Self.trashDirectory(for: $0) }
+        )
+    }
+
+    /// Both questions are seams for one reason, and the initializer is internal because only a test
+    /// has any business answering them: **no fixture can create a File Provider domain**, so without
+    /// them the provider route — the branch this whole type exists for, and the only one that writes
+    /// a put-back record — is unreachable from any test, and a wiring that quietly stopped recording
+    /// would be invisible everywhere (docs/NOTES.md ▸ an opt-in seam whose default is *do nothing*).
+    init(
+        ordinary: any TrashPerformer,
+        isProvider: @escaping @Sendable (URL) -> Bool,
+        landingDirectory: @escaping @Sendable (URL) -> URL
+    ) {
         self.ordinary = ordinary
+        self.isProvider = isProvider
+        self.landingDirectory = landingDirectory
     }
 
     public func moveToTrash(_ url: URL) throws -> URL? {
-        guard Self.isProviderItem(url) else { return try ordinary.moveToTrash(url) }
-        return try Self.moveIntoTrash(url, trashDirectory: Self.trashDirectory(for: url))
+        guard isProvider(url) else { return try ordinary.moveToTrash(url) }
+        let landed = try Self.moveIntoTrash(url, trashDirectory: landingDirectory(url))
+        // Best effort, and deliberately unreported: the bytes have moved, so the delete succeeded,
+        // and Dirnex's own put-back store knows the origin whatever happens here. What a failure
+        // costs is Finder's Put Back for this one item — which is what it had before this slice —
+        // and there is nothing the user could do about it if told.
+        TrashPutBackRecorder.record(
+            TrashOrigin(
+                directory: .local(url.deletingLastPathComponent().path),
+                name: url.lastPathComponent
+            ),
+            forItemAt: landed
+        )
+        return landed
     }
 
     // MARK: - Which route
