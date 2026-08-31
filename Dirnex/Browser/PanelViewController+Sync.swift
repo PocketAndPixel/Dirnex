@@ -443,9 +443,7 @@ extension PanelViewController {
                     refused: trashed.refused
                 )
             }
-            if let record = UndoRecord.trash(outcome.restorations.map { ($0.original, $0.trashed) }) {
-                host?.recordUndoableAction(record)
-            }
+            noteTrashed(outcome.restorations)
             if let window = host as? BrowserWindowController {
                 window.leftPanel.refreshCurrentDirectory()
                 window.rightPanel.refreshCurrentDirectory()

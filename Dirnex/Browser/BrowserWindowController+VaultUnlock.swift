@@ -248,14 +248,15 @@ extension BrowserWindowController {
     /// A vault has just locked: nothing Dirnex keeps implicitly may still name what was in it
     /// (PLAN.md §M19 / ``VaultPrivacy``).
     ///
-    /// Both stores are guarded on the way *in* as well, so on the ordinary path there is nothing
-    /// here to remove and both calls are no-ops. This is the second wall, for the case the guard
+    /// All three stores are guarded on the way *in* as well, so on the ordinary path there is
+    /// nothing here to remove and every call is a no-op. This is the second wall, for the case the guard
     /// cannot cover: an image unlocked outside Dirnex, browsed in the window between the mount and
     /// the notification that reports it. Re-persisting the panes is what rewrites a tab list saved
     /// while the vault was open — they have already been navigated out, above.
     private func forgetVaultContents(under mountPoint: String) {
         VaultMounts.shared.forget(mountPoint: mountPoint)
         FrecencyStore.shared.forget(pathsUnder: mountPoint)
+        TrashOriginStore.shared.forget(pathsUnder: mountPoint)
         leftPanel.persistState()
         rightPanel.persistState()
     }

@@ -836,6 +836,27 @@ at build time.
     Pre-creating the bucket **is**: with a real leftover, the plain create fails with `.alreadyExists`
     and the retrying helper passes, which exercises the same branch. Reach for the reproducible
     neighbour when the failure you are guarding against will not come when called.
+- **The app test target's `UserDefaults.standard` is the developer's own `com.dirnex.Dirnex`, so any
+  app-wide store a test can reach is the live one.** The Localization section records the *read*
+  direction of this (a suite inherits whatever `AppleLanguages` Dirnex is pinned to); the write
+  direction is worse and has no equivalent tell. Measured 2026-08-31 while adding M26 Slice 4's
+  put-back store: every pane `TrashlessProbe` builds can reach `runDelete`, which files a put-back
+  origin — so a full run left `Dirnex.putBackOrigins` holding a record naming the fixture's
+  `/Volumes/Photos` in the store a real Put Back reads from. Nothing fails, nothing logs, and the
+  record is *well-formed*, which is what stops anything downstream from complaining. Same shape as
+  the S3 live suites' Keychain capture below — **a store keyed by what it describes cannot tell who
+  wrote it** — and the fix is the same shape too: arrange the isolation at the one funnel every such
+  test already goes through (`TrashlessProbe.pane`) rather than leaving each test to remember, with a
+  `static let` so it runs once however many tests race into it. The positive control is free: the key
+  was present after a run before, and absent after one since.
+  - **A control that fires too *widely* is a finding, not noise.** The vault control for that slice
+    failed three tests where it should have failed one, and the two extras were the suite's own: two
+    tests swap the shared store, which is one piece of process state, and Swift Testing runs a suite
+    in parallel by default — so they filed into each other's scratch domains. It passed in the
+    unmodified run, which is the only reason it had not already been noticed. Reach for `.serialized`
+    on the merits (shared mutable state) as the entry below says — and read a control's *whole*
+    failure list, not just whether the test you aimed at went red.
+
 - **A live suite's cleanup is keyed on the *fixture's* identity, not on who filed the item — so
   "delete what we leave behind" deletes the user's own credential the day the fixture names an
   account they also use.** Both S3 live suites ended with `SecretKeychain.removePassword`, on the

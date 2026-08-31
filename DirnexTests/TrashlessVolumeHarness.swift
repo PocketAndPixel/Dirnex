@@ -17,6 +17,7 @@ enum TrashlessProbe {
     static let directory = VFSPath.local("/Volumes/Photos")
 
     static func pane(with backend: any VFSBackend, in window: NSWindow) -> PanelViewController {
+        _ = scratchPutBackStore
         let pane = PanelViewController(
             backend: backend,
             restoration: nil,
@@ -67,6 +68,23 @@ enum TrashlessProbe {
     }
 
     private static var retained: [NSWindow] = []
+
+    /// Point ``TrashOriginStore/shared`` at a scratch domain for the life of the test host.
+    ///
+    /// The app test target runs **inside the app**, so its `UserDefaults.standard` is the
+    /// developer's own `com.dirnex.Dirnex` — and every pane built here can reach `runDelete`, which
+    /// files a put-back record. Without this, running the suite writes fake origins naming
+    /// `/Volumes/Photos` into the store a real Put Back reads from. Same shape as the S3 live
+    /// suites' Keychain capture (docs/NOTES.md): a store keyed by what it describes cannot tell who
+    /// wrote it, so the isolation has to be arranged rather than assumed.
+    ///
+    /// Installed from `pane(_:in:)` rather than left to each test to remember, and a `static let` so
+    /// it runs once however many tests race into it. A test that wants to *watch* the writes swaps
+    /// in its own store afterwards.
+    private static let scratchPutBackStore: Void = {
+        guard let suite = UserDefaults(suiteName: "com.dirnex.tests.putback.host") else { return }
+        TrashOriginStore.shared = TrashOriginStore(defaults: suite, isInVault: { _ in false })
+    }()
 
     /// The button an alert binds Return to — found through `defaultButtonCell`, never by title,
     /// which would pass in English and fail in thirteen languages (docs/NOTES.md ▸ Localization).

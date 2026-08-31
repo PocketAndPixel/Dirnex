@@ -314,11 +314,9 @@ extension PanelViewController {
             panel.clearSelection()
             refreshCurrentDirectory()
             focusTable()
-            // Permanent delete is irreversible and never journaled; Trash is restorable.
-            if !permanent,
-               let record = UndoRecord.trash(outcome.restorations.map { ($0.original, $0.trashed) }) {
-                host?.recordUndoableAction(record)
-            }
+            // Permanent delete is irreversible and never journaled; Trash is restorable, and a
+            // permanent pass produces no restorations to note.
+            noteTrashed(outcome.restorations)
             if !outcome.failures.isEmpty {
                 presentDeletionFailures(outcome.failures, permanent: permanent)
             }
@@ -327,6 +325,25 @@ extension PanelViewController {
             offerPermanentDelete(forVolumeWithoutTrash: outcome.refused) { [weak self] refused in
                 self?.runDelete(refused, permanent: true)
             }
+        }
+    }
+
+    /// Record what a Trash pass moved, in the two places that need it — the session's undo journal
+    /// and the durable put-back store — from the one pair of paths `DeletePass` already produced.
+    ///
+    /// One funnel rather than a line at each of the three flows that trash items (F8, the F6 move
+    /// into an archive, a directory sync's deletes): all three were already spelling the undo half
+    /// for themselves, and a rule written three times is where one of them ends up missing a line.
+    ///
+    /// **The two are not the same record and neither replaces the other.** ⌘Z is a session-scoped
+    /// stack the user can walk back through in the minutes after a delete; Put Back is the gesture
+    /// for an item still sitting in the Trash a week later, which needs a record that outlives the
+    /// launch (PLAN.md §M26 Slice 4).
+    func noteTrashed(_ restorations: [DeletePass.Restoration]) {
+        guard !restorations.isEmpty else { return }
+        TrashOriginStore.shared.record(restorations)
+        if let record = UndoRecord.trash(restorations.map { ($0.original, $0.trashed) }) {
+            host?.recordUndoableAction(record)
         }
     }
 

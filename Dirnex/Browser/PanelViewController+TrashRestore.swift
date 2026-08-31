@@ -20,11 +20,23 @@ import DirnexCore
 /// - **One failure never abandons the rest**, exactly like Empty Trash: an item with no record is
 ///   collected and reported by name at the end.
 ///
-/// **Items trashed out of iCloud Drive are that last case, always.** Their trash keeps no
-/// `.DS_Store`; the origin rides on the item as `com.apple.clouddocs.private.trash-parent-bookmark`,
-/// an opaque `com.apple.CloudDocs/<UUID>/<hash>` provider reference with no path in it (probed
-/// 2026-07-21). So they list, they delete, and Put Back says it doesn't know where they came from —
-/// which is the truth, and better than a guess at a folder.
+/// **There is a second source, and it answers only where the first is silent** (PLAN.md §M26
+/// Slice 4). ``ProviderAwareTrashPerformer`` moves an item inside a File Provider domain with a
+/// `renamex_np` of ours, which cannot write the `ptbL`/`ptbN` pair — so M26 would otherwise have
+/// left every Dropbox, OneDrive, Box, Drive and iCloud delete with no way home. ``TrashOriginStore``
+/// keeps the origin the delete already knew, and ``TrashOriginRecords/origin(of:finderRecord:)``
+/// merges the two with **Finder's record winning wherever it exists**: an ordinary local delete
+/// still goes through `trashItem`, and two sources answering one question is exactly what must not
+/// happen.
+///
+/// **That closes iCloud's own gap for Dirnex's deletes, and only for those.** Its trash keeps no
+/// `.DS_Store` at all; the origin rides on the item as
+/// `com.apple.clouddocs.private.trash-parent-bookmark`, an opaque `com.apple.CloudDocs/<UUID>/<hash>`
+/// provider reference with no path in it (probed 2026-07-21), so an item **Finder** trashed there is
+/// still the last case above — as is anything trashed before the store shipped, and anything Finder
+/// deleted out of a provider domain (on Box that does not land on this Mac at all, it goes to Box's
+/// server-side trash). All of those keep the honest answer: Put Back says it doesn't know where the
+/// item came from, which is the truth and better than a guess at a folder.
 extension PanelViewController {
     /// "Put Back" — return the marked items (or the one under the cursor) to where they came from.
     @objc func putBackSelection(_ sender: Any?) {
@@ -97,9 +109,12 @@ extension PanelViewController {
     private func runPutBack(_ entries: [FileEntry]) {
         let paths = entries.map(\.path)
         let backend = backend
+        // Taken here, on the main actor: the store is a `@MainActor` object and its records are a
+        // `Sendable` value, which is what lets the matching below run off the main thread.
+        let recorded = TrashOriginStore.shared.snapshot
         Task {
             let outcome = await BlockingWork.run { () -> PutBackOutcome in
-                var origins = TrashOriginIndex(backend: backend)
+                var origins = TrashOriginIndex(backend: backend, recorded: recorded)
                 var outcome = PutBackOutcome()
                 for path in paths {
                     guard let origin = origins.origin(of: path) else {
@@ -186,20 +201,33 @@ extension PanelViewController {
 /// Cached per directory because "Restore All" asks for every item at once: without it, a Trash
 /// holding 500 items would parse the same 6 KB B-tree 500 times. Keyed by the item's *parent*,
 /// which for a merged listing is whichever volume's trash it actually sits in.
-private struct TrashOriginIndex {
+/// Internal rather than private so the merge can be driven directly in a test: it is the one place
+/// the two sources of a put-back origin meet, and a wiring that quietly stopped consulting the
+/// store would be invisible everywhere else (the "an opt-in seam whose default is *do it the old
+/// way*" family in docs/NOTES.md).
+struct TrashOriginIndex {
     let backend: any VFSBackend
+    /// What Dirnex recorded for its own deletes — consulted only where the `.DS_Store` is silent
+    /// (``TrashOriginRecords``).
+    let recorded: TrashOriginRecords
     private var indexes: [String: [String: TrashOrigin]] = [:]
 
-    init(backend: any VFSBackend) {
+    init(backend: any VFSBackend, recorded: TrashOriginRecords) {
         self.backend = backend
+        self.recorded = recorded
     }
 
+    /// **Finder's record wins wherever it exists**, and the direction is the whole correctness
+    /// argument: an ordinary local delete still goes through `trashItem`, which writes the
+    /// `ptbL`/`ptbN` pair, so the common case must keep answering from the `.DS_Store` — otherwise
+    /// Dirnex's Put Back and Finder's own could send one file to two different folders. The merge
+    /// itself lives in the core value, where a test can fail on it being inverted.
     mutating func origin(of path: VFSPath) -> TrashOrigin? {
         guard let trash = path.parent else { return nil }
         if indexes[trash.path] == nil {
             indexes[trash.path] = Self.readOrigins(inTrashAt: trash)
         }
-        return indexes[trash.path]?[path.lastComponent]
+        return recorded.origin(of: path, finderRecord: indexes[trash.path]?[path.lastComponent])
     }
 
     /// Read and parse one trash's put-back database, or an empty map when it has none — a trash
@@ -217,7 +245,10 @@ private struct TrashOriginIndex {
     }
 
     /// Move one item home, recreating the folder it came from if that has since been deleted.
-    func putBack(_ path: VFSPath, to origin: TrashOrigin) -> PutBackResult {
+    ///
+    /// `fileprivate` because it answers in this file's own vocabulary — only ``origin(of:)`` is the
+    /// decision worth reaching from a test.
+    fileprivate func putBack(_ path: VFSPath, to origin: TrashOrigin) -> PutBackResult {
         // Checked, not left to `rename(2)`, which would replace whatever is there — see the note on
         // the extension. The gap between this stat and the move is a race no filesystem call closes
         // for a cross-directory rename; losing it needs the same name to appear in that folder in

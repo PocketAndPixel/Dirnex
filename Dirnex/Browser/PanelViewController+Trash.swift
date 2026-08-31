@@ -226,9 +226,11 @@ extension PanelViewController {
         Task {
             let outcome = await BlockingWork.run { () -> TrashGather in
                 var entries: [FileEntry] = []
+                var read: [VFSPath] = []
                 for directory in directories {
                     do {
                         entries.append(contentsOf: try backend.listDirectory(at: directory))
+                        read.append(directory)
                     } catch let error as VFSError {
                         if case .permissionDenied = error { return .denied }
                         // A volume unmounted between the enumeration and the listing is not worth
@@ -238,11 +240,18 @@ extension PanelViewController {
                         continue
                     }
                 }
-                return .listed(entries)
+                return .listed(entries, read: read)
             }
 
             switch outcome {
-            case let .listed(entries): present(entries, directories)
+            case let .listed(entries, read):
+                // The pass that is already enumerating every trash is where the put-back store gets
+                // trimmed: a record whose item has left is dead weight, and nothing else in the app
+                // knows what is still in there (PLAN.md §M26 Slice 4). Scoped to the directories
+                // this pass actually *read* — a trash it could not open contributed no entries, and
+                // pruning against the merged set would throw away every record that trash owns.
+                TrashOriginStore.shared.prune(stillTrashed: entries, inTrashesRead: read)
+                present(entries, directories)
             case .denied: FullDiskAccessOnboarding.presentForTrash(over: view.window)
             }
         }
@@ -252,7 +261,11 @@ extension PanelViewController {
     /// grant is missing. Deliberately not an `Error` — a denied read here is an answer to show the
     /// user, not a failure to report.
     private enum TrashGather: Sendable {
-        case listed([FileEntry])
+        /// `read` is the subset of the candidate directories the pass actually managed to list,
+        /// which is what the put-back store's pruning is scoped to. The candidates themselves are
+        /// what the caller watches, so the two must not be collapsed: a trash that momentarily
+        /// failed to list is still one to watch.
+        case listed([FileEntry], read: [VFSPath])
         case denied
     }
 }

@@ -182,9 +182,7 @@ extension PanelViewController {
             panel.clearSelection()
             refreshCurrentDirectory()
             focusTable()
-            if let record = UndoRecord.trash(outcome.restorations.map { ($0.original, $0.trashed) }) {
-                host?.recordUndoableAction(record)
-            }
+            noteTrashed(outcome.restorations)
             // A real failure (a permission problem, a read-only folder) is reported for the same
             // reason F8 reports one: the originals are still there, and only the user can act on it.
             if !outcome.failures.isEmpty {

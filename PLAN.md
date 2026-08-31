@@ -443,9 +443,10 @@ codebase keeps paying for.
   provider branch and nothing wider. No confirmation sheet stands in the way — `confirmTrash`
   defaults off — so the whole gesture is drivable headlessly, which is what makes this repeatable
   rather than a one-off screenshot.
-- **Slice 4 — Put Back for a provider delete. Planned**, and it is the one regression this milestone
-  knowingly introduced: `trashItem` writes Finder's `ptbL`/`ptbN` pair and the rename that replaces
-  it cannot, so an item Dirnex trashed out of a domain lands correctly and then has no way home.
+- **Slice 4 — Put Back for a provider delete. Landed 2026-08-31**, taking back the one regression
+  this milestone knowingly introduced: `trashItem` writes Finder's `ptbL`/`ptbN` pair and the rename
+  that replaces it cannot, so an item Dirnex trashed out of a domain lands correctly and then has no
+  way home.
   ⌘Z is *not* the gap — `DeletePass.Restoration` rides the landing path and undo works — but the
   journal is a session-scoped stack, where Put Back is the gesture for an item sitting in the Trash
   a week later.
@@ -486,10 +487,41 @@ codebase keeps paying for.
     domain — on Box that does not land on this Mac at all, it goes to Box's server-side trash — and
     anything trashed before the store shipped. Both keep today's honest answer, which the restore
     flow already gives by name rather than by guessing at a folder.
-  - The controls the slice owes: without the store a provider item still reports that its origin is
-    unknown (today's behaviour, so the fix must be what changes it); with the store allowed to
-    *override* a `.DS_Store` record, an ordinary local item restores to the wrong folder — which is
-    the narrowness half, and the one that keeps the merge rule from quietly inverting.
+  - **All four controls run and they fail on disjoint tests**, which is what makes the twenty-three
+    green ones evidence. Making the restore index ignore the store fails *only* the wiring test and
+    leaves the seven narrowness tests green; inverting the merge fails *only* «Finder's record wins»,
+    and its message is the plan's own sentence — an ordinary local item resolving to
+    `/Users/oleg/Wrong` instead of `/Users/oleg/Documents`; deleting the `record` call in
+    ``noteTrashed`` fails *only* the write-side test; and neutering the vault predicate fails *only*
+    the vault test.
+  - **The vault control found a defect in the tests rather than in the code, which is the half worth
+    keeping.** It failed three tests instead of one, and the two extras were the suite's own: two
+    tests swap ``TrashOriginStore/shared``, which is one piece of process state, and Swift Testing
+    runs a suite in parallel — so they filed into each other's scratch stores. `.serialized` on the
+    merits (shared mutable state), not as a flake workaround, and the control then fires on exactly
+    the vault test. A control that fires *too widely* is as much a finding as one that fires at all.
+  - **The app test target runs inside the app, so the suite was writing fake origins into the
+    developer's own store.** `UserDefaults.standard` there *is* `com.dirnex.Dirnex`, and every pane
+    the trashless harness builds can reach `runDelete` — measured, `Dirnex.putBackOrigins` held a
+    record naming `/Volumes/Photos` after a full run. Same shape as the S3 live suites' Keychain
+    capture: a store keyed by what it describes cannot tell who wrote it. `TrashlessProbe.pane`
+    now installs a scratch domain once per process, and the key stays absent across a full run —
+    which is a positive control, since it was present before.
+  - **Verified live against all five domains, LaunchServices-launched**, with the same `reveal` +
+    `run operation "file.trash"` driving as the milestone's own end-to-end run: **6 of 6 deleted and
+    6 of 6 recorded**, each origin naming the folder it came from and each landing exactly where the
+    Slice 2 table predicts. The decisive half is a raw byte scan of the three trashes' `.DS_Store`
+    files — deliberately **not** `DSStoreReader`, since using our own parser as the oracle would only
+    prove the two agree: **`drive-mirror` is the only one of the six Finder has a `ptbL` for**, which
+    is exactly the item that went through `trashItem`. So the two branches of the merge rule are not
+    hypothetical — five of these six items had no way home before this slice and one keeps Finder's
+    record, measured on one run.
+  - **What the live run could not reach is the Put Back gesture itself**, and the reason is the
+    documented developer-machine one rather than anything about the fix: the Trash pane is only
+    reachable from its sidebar row, and a rebuilt ad-hoc-signed Debug binary has lost its Full Disk
+    Access grant (`Signature=adhoc`, `TeamIdentifier=not set`), so clicking it raises the onboarding
+    sheet. Re-granting is password-gated. The read half is covered instead by an app test driving the
+    real ``TrashOriginIndex`` — the one place the two sources meet — with the control above.
 
 Left deliberately undone: **the remote backends**, which have no Trash at all and are already
 degraded to a confirmed permanent delete (§M5, and M25 §7's decision not to invent one); **any

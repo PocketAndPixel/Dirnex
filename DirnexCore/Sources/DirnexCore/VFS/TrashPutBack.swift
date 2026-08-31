@@ -6,7 +6,11 @@ import Foundation
 /// `alpha.txt` renames the newcomer — probed: it landed as `alpha.txt 13-12-35-977.txt` — while the
 /// put-back record still says `alpha.txt`. Restoring under the trash's name would quietly rename
 /// the user's file.
-public struct TrashOrigin: Sendable, Equatable {
+///
+/// `Codable` because ``TrashOriginRecords`` persists it: the records Dirnex writes for its own
+/// deletes have to survive relaunch, since Put Back is the gesture for an item sitting in the Trash
+/// a week later.
+public struct TrashOrigin: Sendable, Equatable, Codable {
     public let directory: VFSPath
     public let name: String
 
