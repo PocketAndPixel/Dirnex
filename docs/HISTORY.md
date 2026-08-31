@@ -11687,8 +11687,8 @@ Core first, app untouched until (2), as usual. Each lands runnable.
    forty independent write-backs, each re-`stat`ing and uploading on its own the way F4's single save
    does — no combined bar, no Stop, no ordering. That is the shape M24 Slice 2 gave the *download*
    direction and the upload direction has never had. It was handed to M25 here and M25 never took a
-   slice for it; **demoted 2026-08-30** to PLAN.md §4 ▸ *Smaller than a milestone*, which is where its
-   size honestly puts it — one `FileOperation` kind over the queue that already exists, not a design.
+   slice for it; **demoted 2026-08-30** to PLAN.md §4 ▸ *Still open*, which is where its size
+   honestly puts it — one `FileOperation` kind over the queue that already exists, not a design.
 6. **Pack in both directions, and browsing a `.zip` on a server.** Both ends of ⌥F5 stage — build
    into temp, upload the archive — and browsing one is the mirror. This is the slice that needs the
    "the whole file is coming down" sentence, and the one where a *nested* archive stays out of
@@ -12668,9 +12668,8 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 stretch stayed there.
 
 **2026-08-30 — ⌥F5 packs a folder off a server, and every pack is a queue job.** Two cells from
-PLAN.md §4's *Smaller than a milestone* list, closed together because they are the same gesture:
-packing refused a folder that is not on this disk, and a plain pack had no bar and no Stop for its
-upload.
+PLAN.md §4's *Still open* list, closed together because they are the same gesture: packing refused
+a folder that is not on this disk, and a plain pack had no bar and no Stop for its upload.
 
 **The refusal's own advice was the implementation.** It told the user to *"copy it over with F5 and
 pack the copy"* — and `CopyEngine.preScan` has sized remote directories through `DirectorySizer`
@@ -13495,7 +13494,7 @@ the chord's — and `AlertKeyCatcher` answers ⎋/⏎ whose modifiers are a **su
 and a deliberate ⌘⏎ can never confirm a ⇧F8 delete, which is what made forgiving the committing key
 affordable at all. Two presses from byte-identical window state is what said to stop instrumenting
 the window and instrument the event; the full diagnosis, and why a test suite that presents real
-sheets kills the test host, are in [docs/NOTES.md](docs/NOTES.md) ▸ AppKit. **A second, intermittent refusal
+sheets kills the test host, are in [NOTES.md](NOTES.md) ▸ AppKit. **A second, intermittent refusal
 was found underneath it and fixed in the same pass**: a *bare* ⎋ or ⏎ that the alert declines with
 every measurable property identical to a press that worked. A witness inside the key-equivalent walk
 showed that `Cancel[⎋]`'s own binding never matches during the walk *even when the dialog works* —

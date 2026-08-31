@@ -18,7 +18,7 @@ closed simply reads differently — it is not explained here.
 |---|---|
 | **yes** | Fully done. Behaves as it does on the local disk. |
 | **yes, limited** | Fully done for what the technology allows. The remaining difference **cannot** be closed from our side — the protocol, the service or macOS does not expose it. |
-| **yes, partially** | Done, and the gap **could** be narrowed to look more local. What is left of the parity backlog is the short list at PLAN.md §4 ▸ *Smaller than a milestone*. |
+| **yes, partially** | Done, and the gap **could** be narrowed to look more local. What is left of the parity backlog is the short list at PLAN.md §4 ▸ *Still open*. |
 | **no** | Not implemented, and nothing structural prevents it — so it is backlog too, and its footnote names the milestone. A "no" with no route to a yes is written **n/a** instead. |
 | **n/a** | The concept does not exist there (a Trash inside the Trash, a checksum of a bucket list). |
 
@@ -85,7 +85,7 @@ to walk to.
 so repacking it under the same name is picked up — but only when something asks it to: `startWatching`
 returns early for any backend but `.local`, so nothing wakes the pane. The decision is already made
 and tested (`ArchiveIdentity`); the stream over the archive file is not built (PLAN.md §4 ▸
-*Smaller than a milestone*). There is no watcher on the members, and there cannot be one.
+*Still open*). There is no watcher on the members, and there cannot be one.
 
 <sup>e</sup> Bounded at **1000 directories** (`DirectorySizeBudget.remote`) because a remote walk
 is a billed request and a round trip each — measured 0.601–0.699 s per `ListObjectsV2`, so
@@ -112,7 +112,7 @@ rather than the cursor's — remotely that is N bounded walks where the `Space` 
 an archive it is cheap (the whole table of contents is already in hand) and simply gated with the
 rest; on a virtual listing whose rows live in a dozen different folders "share of this directory" has
 no referent, which is why those two read n/a. So what is missing is a budget for the set, not a
-capability (PLAN.md §4 ▸ *Smaller than a milestone*).
+capability (PLAN.md §4 ▸ *Still open*).
 
 <sup>oo</sup> Recents is Spotlight's `kMDItemLastUsedDate` over the local index, so a location macOS
 does not index cannot appear in it whatever Dirnex does. The same is true of the ⌘L fuzzy jump, which
@@ -293,7 +293,7 @@ connection. FTP has no symlink verb at all.
 
 <sup>qq</sup> Deleting a member **rewrites the container**, and the journal has nowhere to put the
 bytes that left. Reversing it means keeping them, which is a storage decision rather than a missing
-hook (PLAN.md §4 ▸ *Smaller than a milestone*).
+hook (PLAN.md §4 ▸ *Still open*).
 
 ## 3. Preview, open and edit
 
@@ -427,7 +427,7 @@ per connection at run time.
 <sup>ss</sup> FTP has neither an exec channel nor a delimiter-less listing, so its search is one
 `LIST` per directory. `curl` reuses one connection across many `ftp://` URLs, which is the shape
 worth measuring — and worth much less than it looks now that `ProcessWaiting` no longer taxes every
-child ~71 ms (PLAN.md §4 ▸ *Smaller than a milestone*).
+child ~71 ms (PLAN.md §4 ▸ *Still open*).
 
 ## 5. Metadata and macOS integration
 
@@ -492,7 +492,7 @@ and is not a drag target in the sidebar (PLAN.md §M8's deliberate omission). Th
 is the reconnectable surface. A `FavoriteEntry` carries a `VFSPath`, whose `VFSBackendID` says nothing
 about the auth method — which is exactly the gap `PersistedTab` closed by carrying a
 `StoredServerEndpoint`, so the same fix one type along is what would make the pin reconnect
-(PLAN.md §4 ▸ *Smaller than a milestone*).
+(PLAN.md §4 ▸ *Still open*).
 
 <sup>tt</sup> Read-only since M24 Slice 7: a row that is not on this Mac opens
 `RemoteAttributesController`, which states **what the listing actually reported** and nothing else.
@@ -521,7 +521,7 @@ command" has the control withdrawn for the rest of that connection. Owner and gr
 redraws from what the item carries rather than from what was sent — `sftp`'s `chmod` reports success
 for a mode the server did not store, measured (docs/NOTES.md ▸ sftp / ssh). It is **not undoable**,
 which the panel states: ⌘Z reverses an attribute change through local syscalls, and a backend-driven
-undo step is not built (PLAN.md §4 ▸ *Smaller than a milestone*).
+undo step is not built (PLAN.md §4 ▸ *Still open*).
 
 <sup>uu</sup> A vault is an encrypted disk image that macOS mounts as a volume, so it is a *local*
 thing by construction; `hdiutil` cannot attach one over SFTP, FTP or S3. Copying the image file to a
@@ -587,7 +587,7 @@ file changed since it was fetched, which is a narrower window and not a guarante
 
 <sup>vv</sup> S3 splits a large upload into parts that fail and retry independently; the other two
 send one stream, so a transfer that dies late resumes from wherever `-C -` or `put -a` can pick it up
-rather than from a part boundary (PLAN.md §4 ▸ *Smaller than a milestone*).
+rather than from a part boundary (PLAN.md §4 ▸ *Still open*).
 
 ---
 
@@ -597,9 +597,9 @@ The two milestones this list was written for have closed: **M24** (every local-o
 file that is not local) on 2026-08-28 and **M25** (what a remote write carries, and what a remote
 delete costs) on 2026-08-29, both archived in [HISTORY.md](HISTORY.md). What is left of the **"no"**
 and **"yes, partially"** cells that are *ours* to close is the short list at [PLAN.md](../PLAN.md)
-§4 ▸ *Smaller than a milestone* — the cells that were too small to be a slice of either. This file is
-the status; the plan is the work. Nothing that has already shipped is argued here — a closed gap is
-simply a changed cell, and why it changed is in [HISTORY.md](HISTORY.md).
+§4 ▸ *Still open* — the cells that were too small to be a slice of either. This file is the status;
+the plan is the work. Nothing that has already shipped is argued here — a closed gap is simply a
+changed cell, and why it changed is in [HISTORY.md](HISTORY.md).
 
 What is **not** scheduled, because it cannot be closed from here — these are the "yes, limited"
 rows, and the app is already as close as the technology permits:
