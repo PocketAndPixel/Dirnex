@@ -1,7 +1,7 @@
 # What works where
 
 Every user-facing capability against every kind of location Dirnex can open, as of
-**2026-08-30** (M0–M25 shipped). The purpose is the parity question:
+**2026-08-31** (M0–M26 shipped). The purpose is the parity question:
 *where does working on a server still feel unlike working on the disk, and which of those gaps are
 ours to close?*
 

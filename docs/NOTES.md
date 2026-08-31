@@ -5029,13 +5029,33 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     root is accepted and kept, and never uploads (permanently "uploading", where an ordinary file in
     a team folder goes uploading → uploaded in ~4 s); one such file was silently **relocated by
     Dropbox into the member folder** as `… (view-only conflicts 2026-08-18).txt`; and `rm` at the
-    root reports success and the file is **back within 5 s**, re-materialized at mode 600. A `mv` out
-    of the root is honoured where the plain unlink is not, which is what let the probe clean up after
-    itself. This matters because `entryDirectory` deliberately lands a click at the mount root
-    whenever it has more than one visible child, which a team account always does — so F7, F5 and F8
-    at the Dropbox row are gestures the provider will quietly revert, with the syscall having
-    succeeded and nothing to report. Nothing in the ubiquity keys exposes "view-only", so there is no
-    honest gate to write; this is a fact about the provider, recorded rather than papered over.
+    root reports success and the file is **back within 5 s**, re-materialized at mode 600. This
+    matters because `entryDirectory` deliberately lands a click at the mount root whenever it has
+    more than one visible child, which a team account always does — so F7, F5 and F8 at the Dropbox
+    row are gestures the provider will quietly revert, with the syscall having succeeded and nothing
+    to report. Nothing in the ubiquity keys exposes "view-only", so there is no honest gate to write;
+    this is a fact about the provider, recorded rather than papered over.
+    - **Correction, 2026-09-01: a `mv` *out of the mount* is reverted exactly like the unlink, and
+      this entry claimed the opposite for two weeks.** `~/Library/CloudStorage` and `/tmp` report the
+      **same `st_dev`** (16777230 here), so moving a file to a temp directory is a plain `rename(2)`
+      rather than the cross-volume copy-and-unlink it reads as — and it was back in 10 s, **6 of 6**
+      ten-second samples, having been **re-created**: the FS record went `docID(1182)` →
+      `docID(1185)` and the inode 65068401 → 65069380, agreed by `stat` and the dump. So it is the
+      provider re-materializing from its own record, not a delete that never landed.
+    - **What *is* honoured is a rename within the domain, into a writable folder**, and the
+      record is the thing to watch rather than the file: it re-parents (`dbitem:51 p:.root` →
+      `p:dbitem:3`) and inherits that folder's `cap:rwdpfTe--`, after which `rm` sticks — 8 of 8
+      samples gone, and `dbitem:51` **absent from the dump** afterwards, which is the evidence that
+      matters, since the record is what was doing the resurrecting.
+      - **The stuck upload is not a precondition, which is the half that would cost another hour.**
+        The file read `uploaded=false uploading=true` for the whole minute it was watched in the
+        writable folder, having already been stuck there since it was created 13 hours earlier — so
+        waiting for `uploaded` is the obvious next move and never returns. A delete is legal on the
+        item's **capability word**, not on its sync state.
+      - The shape worth carrying past Dropbox: **`st_dev` is not evidence about which filesystem you
+        are on** once a File Provider domain is involved, so "I moved it off the mount" needs the
+        device ids read rather than assumed — and a probe that tidies up by moving its fixture *out*
+        of the thing under test has not tidied up at all.
   - **`.DS_Store` badges as a permanent upload here too, and Dropbox is where the two explanations
     separate.** OneDrive's entry above reads it as the client excluding `.DS_Store` from sync; the
     root's own never-uploads behaviour is an equally good fit and a different cause. The control:

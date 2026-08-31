@@ -1,4 +1,4 @@
-# Dirnex — build history (M0 → M25)
+# Dirnex — build history (M0 → M26)
 
 The shipped record of Dirnex's milestones: the milestone checklists as they were completed,
 plus the per-pass progress log — what was probed, what was decided, what was rejected and why.
@@ -12,9 +12,14 @@ other milestone in that fortnight was cut around. M23 (the pasteboard and drag-a
 every backend) opened and closed 08-26. The parity backlog then closed in two: **M24** (every
 local-only feature, on a file that is not local) opened 08-27 and closed 08-28, and **M25** (what a
 remote write carries, and what a remote delete costs) opened alongside it and closed 08-29, taking
-the plan's last open question with it. A final section, **After M19**, carries the thirty-one dated
+the plan's last open question with it. **M26** (move to Trash, wherever the file lives) opened
+and closed 08-31, and is the only one that opened on a design fork rather than on an
+implementation. **After M19** carries the thirty-one dated
 passes from 2026-08-07 → 08-25 that landed outside a milestone of their own — it sits at the end
-rather than in date order, because it is the file's catch-all rather than a numeric slot.
+rather than in date order, because it is the file's catch-all rather than a numeric slot. Two
+sections frame them, both handed over by the plan on 2026-09-01 once it had nothing left to say
+about them: **Scope decided against** sits ahead of M0, and **The questions the plan asked** closes
+the file.
 
 This file is **archive, not instruction.** It moved out of [PLAN.md](../PLAN.md) once M7
 closed, so the plan could go back to being a plan, and each milestone since is archived
@@ -27,6 +32,34 @@ here the same way as it closes. Nothing here binds current work:
 
 Read it when you want the *reasoning* behind a shipped decision. The chronology is the point:
 several entries record a design being reworked against reality after a probe contradicted it.
+
+---
+
+### Scope decided against, and two deliberate deviations
+
+Moved out of [PLAN.md](../PLAN.md) §4 on 2026-09-01, once every milestone had closed and the plan
+had nothing left to say about them.
+
+The *undone* column of [PLAN.md](../PLAN.md)'s milestone table is scope that was decided against,
+not forgotten — each one is argued in its milestone entry below. The largest such call is the **built-in text editor** (2026-07-22): a
+real one is encoding detection, line-ending preservation, a binary gate, undo grouping and
+find/replace — a whole app, and every Mac already has one the user has already chosen, so F4
+hands the file over the way ⌥F3 hands two files to FileMerge. Revisit only if leaving the app
+proves to break the keyboard-first flow, which is a claim to test by living with the handoff
+first. The other big one is the **Drive API backend** (2026-07-22): the Desktop mount reaches
+every Drive account that is actually on this Mac, and going past it would have bought a second,
+worse path to the same files at the price of an OAuth flow, a restricted-scope verification and
+a paid annual security assessment. It also lines up with §1's standing non-goal — cloud folders
+are folders, no proprietary APIs.
+
+M8 also closed with one deliberate deviation from its own exit criterion: **the Trash is a
+merged listing, not a location** — macOS keeps one trash per volume, so the one sidebar row
+that cannot be a directory browses like a *results* pane rather than like a folder. M9 closed
+with a second: **"what Finder's iCloud Drive shows" is matched approximately, on purpose** —
+which app containers Finder lists is not derivable from anything public, so Dirnex's rule is
+declared public scope and a folder that exists. Both are argued below. The *direction* of
+that approximation was reversed on 2026-07-21 (see M10): it used to also require a
+non-empty folder, which hid three folders Finder shows.
 
 ---
 
@@ -12290,6 +12323,337 @@ the old behaviour standing where it cannot be established.
    this slice's among the failures. Its `hold(until:)` neighbour is deliberately untouched: there
    the length *is* the claim.
 
+### M26 — Move to Trash, wherever the file lives (S)
+
+Opened and closed 2026-08-31: five slices in a day, plus the milestone's own end-to-end run through
+the shipped F8 against all five live File Provider domains. It is the one milestone here that opened
+**on a design fork rather than on an implementation** — the bug had been measured to the byte, and
+the three routes out of it cost different things, so the fork went to the user before any Swift was
+written. Its own last slice then retired the premise the first four rest on: the `ptbL`/`ptbN` Put
+Back record Slice 2 called one "this package can read and cannot write" turned out to be writable,
+which is why **Finder's** Put Back works for a provider delete and not only Dirnex's. The premise
+below is left standing as it read at open.
+
+**F8 does nothing for any file inside a File Provider domain** — Dropbox, OneDrive, Box, Google
+Drive and iCloud Drive alike — and reports *"Couldn't move “x” to the Trash · You don't have
+permission. Dirnex may need Full Disk Access in System Settings."* Reported by a user 2026-08-30,
+present since those mounts became browsable, and the sentence is the worst part: Full Disk Access is
+granted, is *correct*, and toggling it does nothing, so the report reads as the app being confused
+about a permission the user can see is switched on.
+
+**It is not a permission the app lacks, and the probe that says so is the whole finding.** At the
+instant `FileManager.trashItem` throws — `NSCocoaErrorDomain` **513**, with **no underlying POSIX
+errno**, so nothing beneath it refused anything — the same process was asked what it could actually
+do with that file:
+
+```
+[trashItem]             NSCocoaErrorDomain 513   under=nil
+[read ~/.Trash]         OK  3 entries
+[open O_RDONLY]         OK
+[rename in place]       OK
+[rename into ~/.Trash]  OK
+[stat]                  OK
+```
+
+It can perform the very move `trashItem` claims it may not. So `FileManager` is declining on its
+own, and no grant the user can reach changes it: `tccutil reset FileProviderDomain com.dirnex.Dirnex`
+removed every per-provider row and nothing changed, macOS never prompts, and no TCC service is
+consulted during the call at all.
+
+**What decides it is how the app was launched, which is why it survived every pass.** Same binary,
+same Developer ID signature, back to back: launched from a shell it trashes fine (**2/2**), launched
+by LaunchServices — the Dock, Finder, `open` — it fails (**2/2**). A shell-launched app inherits the
+launching process as its TCC *responsible* process, so a developer running from a terminal borrows
+that process's Full Disk Access and sees a working feature. Every automated signal is clean, both
+suites and both linters are green, the pane lists the folder perfectly, and only pressing F8 from a
+normally launched app shows it. The same trap wasted the first two diagnoses of this bug (▸
+docs/NOTES.md), which is the reason it is written down here rather than only in the fix.
+
+**`NSWorkspace.recycle` is *not* the answer, and the run that said it was is the lesson.** It was
+measured succeeding in the failing context on all five domains — and that measurement was
+contaminated by the diagnostic probe sitting a few lines above it, which had renamed each item out
+to `~/.Trash` and straight back before `recycle` was asked. Implemented for real, with no probe in
+front of it, `recycle` fails with the byte-identical `NSCocoaErrorDomain` 513 — it wraps the same
+`trashItem` refusal. Re-adding the bounce as a control flips it back to succeeding, 1/1 each way.
+The probe had **detached the item from its provider**, so what was being measured was a trash of an
+ordinary file. This is docs/NOTES.md's own rule about a probe's actions being part of the experiment,
+met for the third time in one investigation.
+
+**What is established, and what is not.** Established: the refusal is exact and reproducible; it
+covers every File Provider domain and nothing else; it follows the TCC *responsible* process, not
+the app's own grants; and the process is not missing any file permission — at the instant of the
+throw the same process can `open` the item, `rename` it in place, `rename` it into `~/.Trash`, and
+read `~/.Trash`. **Full Disk Access is effective in both cases and is not the gate** — the failing
+LaunchServices-launched process read the system TCC database and `~/Library/Mail`, both FDA-only,
+in the same call that was refused. Three candidate mechanisms have been measured and eliminated:
+the per-provider `kTCCServiceFileProviderDomain` grants (resetting them changes nothing, and macOS
+never prompts), Full Disk Access (above), and `kTCCServiceSystemPolicyAppData`'s odd `auth_value 5`
+(shared with the process that *succeeds*). Not established: which policy actually denies, and
+therefore whether any grant the user can reach would fix it.
+
+So the milestone was **open on its design**, not on its implementation. Put to the user on
+2026-08-31, the fork below was resolved as **route by domain, one performer** — the first option,
+with `trashItem` kept wherever `trashItem` works, so the regression it costs falls only on the items
+that were already broken:
+
+- **Perform the move ourselves.** A plain `rename` into the right trash is measured working from the
+  failing process, so this cannot be refused. It costs Finder parity: the collision-safe naming and,
+  more seriously, the `ptbL`/`ptbN` **Put Back** record, which this package can read (`DSStoreReader`)
+  and cannot write. Trading "delete does not work at all" for "delete works, Put Back does not" is a
+  real improvement and a real regression, and which one is a person's call.
+- **Ask Finder**, whose own delete succeeds on these files. That is an Apple event, so it needs the
+  Automation grant and Finder running, and it makes the most ordinary gesture in the app depend on
+  another process.
+- **Keep looking for the grant**, which is the only route that ends with the platform doing this
+  properly — and the three cheapest candidates are already eliminated.
+
+**The design is one path, not a fallback.** `NSWorkspace` and any Apple event are AppKit, and
+`LocalBackend.trashItem` is headless core, so whichever route wins takes the seam the project already
+uses for `bsdtar` and `sftp`: the core keeps the decision (the already-in-a-trash refusal, the
+Trash-less-volume refusal ``trashFailure`` reads, the landing path a `Restoration` needs) and an
+injected performer does the byte-touching. Keeping a second route alive as a fallback is rejected at
+open: two paths differing only by which one macOS happens to refuse is exactly the shape this
+codebase keeps paying for.
+
+- **Slice 1 — core.** ``TrashPerformer``, a one-method seam returning where the item landed; the
+  `alreadyInTrash` guard and ``trashFailure`` stay where they are; tests drive a fake.
+  **Landed 2026-08-31**, and it is the half that holds whichever way the fork above goes: every
+  candidate performer plugs in here, and the suite already pins that both refusals the backend owns
+  survive the seam (negative control: neutering it fails 4 of the 5 tests, and correctly leaves the
+  already-in-a-trash one green, since that never reaches a performer either way).
+- **Slice 2 — the performer that works. Landed 2026-08-31.** ``ProviderAwareTrashPerformer``:
+  `FileManager.trashItem` for an ordinary item, and the rename macOS would have made for one inside a
+  domain. It is **core, not app** — nothing in the answer is AppKit, so §2 puts it with the bytes it
+  touches, and it is `LocalBackend`'s default rather than something the app injects, so the fix
+  reaches every caller without one of them having to remember. `WorkspaceTrashPerformer` was written,
+  live-tested and **removed** before this: it is not a fix, and leaving it would have been a second
+  route that fails exactly where the first one does.
+  - **Every part of it was measured against the five live domains before any Swift was written**, and
+    two of the measurements overturned the design the slice opened on. The destination is **not**
+    `~/.Trash`: renaming an evicted placeholder out of its domain **materializes it** — a 4 MB iCloud
+    file took 1.15 s and arrived with blocks — where the rename into the provider's own trash took
+    **0.001 s and left it dataless**, exactly as `trashItem` does. On a 14 GB placeholder that is the
+    download-nobody-asked-for the M24 risk row names, arriving inside a delete. And the destination
+    cannot be tabulated per provider (docs/NOTES.md is emphatic that a real delete is the only thing
+    that answers), so it is **asked of Foundation and then verified with a `stat`** — the pair agrees
+    with `trashItem`'s own destination on all five domains plus both controls, where the lookup alone
+    disagrees on two and names a `.Trash` for Box and OneDrive that does not exist.
+  - **`renamex_np` with `RENAME_EXCL`, never `rename`**, which replaces its destination silently and
+    would destroy the copy the user had already thrown away. The collision name reproduces
+    `trashItem`'s own measured format, because a Trash holding items Dirnex named one way and Finder
+    another is a surface the user reads.
+  - **Verified live with a control, which is the only instrument this bug has**: the same script,
+    LaunchServices-launched, across all five domains — **5 of 5 deleted** with the fix and **0 of 5**
+    with `LocalBackend`'s default reverted, the files landing in exactly the trashes the table
+    predicts. What ⌘Z does is unaffected either way: `DeletePass.Restoration` rides the landing path,
+    not Finder's record.
+  - What it costs is **Finder's `ptbL`/`ptbN` Put Back for a provider item only** — this package can
+    read those records and cannot write them. An ordinary delete is byte-for-byte what it always was.
+    Slice 4 takes that cost back for Dirnex's own deletes, from the origin the delete already knew.
+- **Slice 3 — the sentence. Landed 2026-08-31**, re-taken rather than executed as written, and the
+  re-take moved it off "over a refusal nobody has yet seen in the wild": **it is reachable today, in
+  one keystroke.** A Google Drive mount root is `dr-x------` — measured on both live Drive accounts,
+  where creating a file answers `EACCES` — so every refusal it hands back arrives as
+  `EACCES` → `.permissionDenied` → the sentence that cost a user an evening, on the *new* route.
+  The 513 refusal is indeed gone (a provider item no longer goes near `trashItem`); what replaced it
+  reaches the same wrong words by a different door.
+  - **The fix is the M21 split arriving on a path that is on this Mac.** `VFSErrorText` already asks
+    `path.backend.isRemoteConnection`, because "Dirnex may need Full Disk Access" is a claim about
+    *where* the failure happened. A `CloudStorage` mount is an ordinary local path with an ordinary
+    local backend, so that test cannot see it — and Full Disk Access does not gate that tree, so the
+    advice names a switch that is already on and could not help if it were off.
+    ``CloudStorageMounts/isInsideCloudStorage(_:home:)`` is the predicate: pure, no I/O, free to ask
+    on an error path, and living beside the root and the not-TCC-gated fact it rests on.
+  - **The narrowness is the whole design, and the two provider roots are opposites for this
+    question.** `~/Library/Mobile Documents` **is** TCC-gated, so Full Disk Access is exactly right
+    for an iCloud path — which is why the branch names `CloudStorage` alone rather than reusing
+    ``TrashLanding/providerRoots``, whose two entries are twins for the trash route. One pair of
+    roots, two questions, and only a name keeps them from being merged.
+  - **Both controls run, and they fail on disjoint tests**, which is what makes the seven green ones
+    evidence: disabling the branch fails the two fix tests with the reporter's own sentence verbatim
+    and leaves all five narrowness tests green; widening it to both provider roots — the "stop saying
+    it inside a provider domain" version this slice was originally written as — fails *only* the
+    iCloud test, taking the correct advice away with the wrong one. The assertions are
+    language-independent (which sentences match, not what they say), since the app test target
+    inherits the developer's own `AppleLanguages` pin; the English wording is checked behind a guard.
+  - The new sentence is translated into all fourteen languages in the same pass, so it cannot join
+    the class docs/NOTES.md documents where a wrapped-but-uncatalogued key compiles to itself.
+    Note `scripts/check_localization_keys.py` **already failed on five strings from the pack work**
+    (`Pack…`, `Packing…`, `Pack %@`, `Packing %@`, `Couldn't create the archive "%@"`), absent from
+    the catalog on HEAD and untouched by this slice — a separate gap, in separate files, and it took
+    its own pass: the five landed in all fourteen languages immediately afterwards, and the script
+    now reads **970 extracted keys, all present in the catalogs**.
+- **Verified end to end in the app, 2026-08-31**, which is the half Slice 2's script could not
+  reach: the same five domains driven through the *shipped* F8 — `reveal` then
+  `run operation "file.trash"` over the AppleScript verbs — against a LaunchServices-launched build,
+  since a shell-launched one borrows the terminal's grant and passes either way. **6 of 6 deleted**
+  with the fix, each landing in exactly the trash the table above predicts, including the two that
+  are not the obvious answer (Drive streaming → `<mount>/.Trash`, iCloud →
+  `~/Library/Mobile Documents/.Trash`). With `LocalBackend`'s default reverted to
+  `FileManagerTrashPerformer`, **1 of 6** — and *which* one is the whole value of the run:
+  **mirror-mode Google Drive still deleted in both directions**, because `~/My Drive` is an ordinary
+  local file outside every domain, so it takes `trashItem` either way and keeps Finder's Put Back.
+  A control that failed there too would have been measuring a broken app or a bad path rather than
+  the routing; passing in both directions is what makes the other five a measurement of exactly the
+  provider branch and nothing wider. No confirmation sheet stands in the way — `confirmTrash`
+  defaults off — so the whole gesture is drivable headlessly, which is what makes this repeatable
+  rather than a one-off screenshot.
+- **Slice 4 — Put Back for a provider delete. Landed 2026-08-31**, taking back the one regression
+  this milestone knowingly introduced: `trashItem` writes Finder's `ptbL`/`ptbN` pair and the rename
+  that replaces it cannot, so an item Dirnex trashed out of a domain lands correctly and then has no
+  way home.
+  ⌘Z is *not* the gap — `DeletePass.Restoration` rides the landing path and undo works — but the
+  journal is a session-scoped stack, where Put Back is the gesture for an item sitting in the Trash
+  a week later.
+  - **The data already exists at the moment of the delete, which is what makes this a store and a
+    read rather than a measurement.** `DeletePass.run` already builds
+    `Restoration(original:trashed:)` — origin and landing — for *every* trashed item, because ⌘Z
+    needed it; and `TrashPutBack.origins(inDSStore:ofTrashAt:)` already hands the app a
+    `[String: TrashOrigin]` keyed by the filename **as it appears in that trash**, which the restore
+    flow matches a listing into. So the slice is a durable record in that same shape and a merge at
+    the one call site that reads it. Nothing in `TrashPerformer` changes.
+  - **Finder's record wins wherever it exists, and the store is only ever consulted for what it does
+    not cover.** An ordinary local delete still goes through `trashItem`, which writes the pair — so
+    the common case must keep answering from the `.DS_Store` and not from us, or Dirnex's Put Back
+    and Finder's own could send the same file to two different folders. That is the merge rule and
+    it is the whole correctness argument: a second source of truth for a question already answered
+    is the shape this codebase keeps paying for, so this one answers only where the first is silent.
+  - **Key on the full landing path, not the filename.** `origins` is keyed per trash directory
+    because a `.DS_Store` only ever describes its own; the merged Trash spans `~/.Trash`, every
+    volume's, iCloud's and every provider mount's at once, and two of them can hold the same name.
+  - **It must respect ``VaultPrivacy``, which is the reason this is not simply "record every
+    delete".** A record pairs a file's name with the folder it came from and outlives both — exactly
+    the *implicit* memory M19 §6 keeps vault paths out of, and a file deleted from inside a mounted
+    vault would otherwise leave its name and its origin in a plain store outside the vault. The
+    frecency index and session restore already have this rule; a third store needs it before it
+    ships, not after.
+  - **Records go stale and that is tolerable; unbounded growth is not.** Finder's own outlive their
+    files by weeks (measured — the probe machine's `~/.Trash` still listed records for files long
+    gone), so `origins` is deliberately a *superset* the caller matches into, and ours may be too.
+    What it may not be is permanent: drop an entry whose landing path no longer exists, on the read
+    that is already enumerating those trashes anyway.
+  - **The bonus worth naming is iCloud, which M9 left undone for a reason this route sidesteps.**
+    Put Back inside `~/Library/Mobile Documents/.Trash` has never worked for anybody: that trash
+    keeps no `.DS_Store` at all, and the origin rides on the item as
+    `com.apple.clouddocs.private.trash-parent-bookmark`, an opaque provider reference with no path
+    in it. A record Dirnex wrote itself needs none of that — so this closes M9's gap for **Dirnex's
+    own** deletes, without touching the reason it is still open for Finder's.
+  - **What it still cannot do, and must not claim**: an item **Finder** deleted out of a provider
+    domain — on Box that does not land on this Mac at all, it goes to Box's server-side trash — and
+    anything trashed before the store shipped. Both keep today's honest answer, which the restore
+    flow already gives by name rather than by guessing at a folder.
+  - **All four controls run and they fail on disjoint tests**, which is what makes the twenty-three
+    green ones evidence. Making the restore index ignore the store fails *only* the wiring test and
+    leaves the seven narrowness tests green; inverting the merge fails *only* «Finder's record wins»,
+    and its message is the plan's own sentence — an ordinary local item resolving to
+    `/Users/oleg/Wrong` instead of `/Users/oleg/Documents`; deleting the `record` call in
+    ``noteTrashed`` fails *only* the write-side test; and neutering the vault predicate fails *only*
+    the vault test.
+  - **The vault control found a defect in the tests rather than in the code, which is the half worth
+    keeping.** It failed three tests instead of one, and the two extras were the suite's own: two
+    tests swap ``TrashOriginStore/shared``, which is one piece of process state, and Swift Testing
+    runs a suite in parallel — so they filed into each other's scratch stores. `.serialized` on the
+    merits (shared mutable state), not as a flake workaround, and the control then fires on exactly
+    the vault test. A control that fires *too widely* is as much a finding as one that fires at all.
+  - **The app test target runs inside the app, so the suite was writing fake origins into the
+    developer's own store.** `UserDefaults.standard` there *is* `com.dirnex.Dirnex`, and every pane
+    the trashless harness builds can reach `runDelete` — measured, `Dirnex.putBackOrigins` held a
+    record naming `/Volumes/Photos` after a full run. Same shape as the S3 live suites' Keychain
+    capture: a store keyed by what it describes cannot tell who wrote it. `TrashlessProbe.pane`
+    now installs a scratch domain once per process, and the key stays absent across a full run —
+    which is a positive control, since it was present before.
+  - **Verified live against all five domains, LaunchServices-launched**, with the same `reveal` +
+    `run operation "file.trash"` driving as the milestone's own end-to-end run: **6 of 6 deleted and
+    6 of 6 recorded**, each origin naming the folder it came from and each landing exactly where the
+    Slice 2 table predicts. The decisive half is a raw byte scan of the three trashes' `.DS_Store`
+    files — deliberately **not** `DSStoreReader`, since using our own parser as the oracle would only
+    prove the two agree: **`drive-mirror` is the only one of the six Finder has a `ptbL` for**, which
+    is exactly the item that went through `trashItem`. So the two branches of the merge rule are not
+    hypothetical — five of these six items had no way home before this slice and one keeps Finder's
+    record, measured on one run.
+  - **What the live run could not reach is the Put Back gesture itself**, and the reason is the
+    documented developer-machine one rather than anything about the fix: the Trash pane is only
+    reachable from its sidebar row, and a rebuilt ad-hoc-signed Debug binary has lost its Full Disk
+    Access grant (`Signature=adhoc`, `TeamIdentifier=not set`), so clicking it raises the onboarding
+    sheet. Re-granting is password-gated. The read half is covered instead by an app test driving the
+    real ``TrashOriginIndex`` — the one place the two sources meet — with the control above.
+    **The gesture itself was confirmed by the user on 2026-09-01**: Put Back works.
+
+- **Slice 5 — Put Back in *Finder*, for a provider delete. Landed 2026-08-31.** Reported by the same
+  user hours after Slice 4 shipped, with two screenshots of Finder's own context menu over the same
+  file: deleted from Dropbox in Dirnex, no **Put Back**; deleted from Dropbox in Finder, Put Back.
+  Slice 4 is not the answer to that and never was — it gave *Dirnex's* Put Back the origin, and
+  Finder is where a person looks. Every one of the five domains had it; Dropbox is simply the one
+  they tried.
+  - **The premise this milestone opened on is retired: the record *can* be written.** Slice 2 said
+    the `ptbL`/`ptbN` pair is one "this package can read and cannot write", and that was an
+    assumption about effort rather than a measurement. `.DS_Store` is a documented-by-reverse-
+    engineering buddy allocator holding a B-tree, and `DSStoreReader` already models all of it but
+    the direction. ``DSStoreWriter`` is the other direction: a bulk load rather than an insertion,
+    since the file is small and rewritten whole, so there is no split, merge or rebalance to get
+    wrong.
+  - **Finder was asked before any Swift was written, and it answered three times.** Against the live
+    `~/.Trash`: a Dropbox file renamed in by hand had no Put Back — the reported bug, reproduced —
+    and with a pair written by a throwaway writer the **same already-open context menu** grew one and
+    restored the file to its Dropbox folder. Again in Google Drive's `<mount>/.Trash`, from a
+    database created from nothing, which is the state every provider trash is in. The half that makes
+    it more than "Finder tolerated our file": Finder then **rewrote it from our content**, all 284 of
+    its own records intact — it took our output as its own database.
+  - **A rewrite has to put back what it does not understand**, which decides the reader's shape.
+    ``DSStoreRecord`` answers *what does this say*; ``DSStoreEntry`` is the format's own unit, with
+    the value kept exactly as written, so a record this build has no opinion about — Finder's window
+    furniture in a folder that is not a trash, anything a later macOS adds — survives byte for byte
+    rather than depending on a switch somebody has to keep complete.
+  - **The ordering is the one thing a malformed tree fails *quietly* on**, and it was validated
+    rather than assumed: the 284 records in this Mac's own `~/.Trash/.DS_Store`, written by Finder
+    and `trashItem` over months, have **zero inversions** under case-insensitive-name-then-property.
+    A tree sorted differently still parses, and Finder's own lookup walks into the wrong child and
+    answers "no record".
+  - **The fixture caught a real defect, which is the argument for having it as the oracle.** Asked to
+    produce the location string for each folder the fixture already records, the writer answered
+    `//` where macOS wrote `/` for the volume's own root. Comparing against a string this code
+    produced would have proved the two halves agree; comparing against macOS's is what found it.
+  - **The dangerous failure is not a wrong record, it is a lost database**, and two rules answer it.
+    A parse this build cannot complete leaves the file untouched — and *only a file that is genuinely
+    absent* counts as "no database yet", because `~/.Trash` is behind Full Disk Access and a refused
+    read presented as an empty database would replace 142 of Finder's records with the one row we
+    came to add. The output is also parsed back before it replaces anything, which is the guard about
+    *this* code rather than about the filesystem.
+  - **Verified end to end through the shipped F8, LaunchServices-launched**, with a control that came
+    free: a Google Drive file deleted in Dirnex, and in the same `<mount>/.Trash` a neighbour that
+    got there another way. Finder offers Put Back on the first and **not** on the second, in the same
+    folder and the same menu — so it is the item's own record doing the work, not something about the
+    directory — and Put Back returned the file to `My Drive`. The instrumented run names each step
+    (`route provider=true`, `landed=…/.Trash/…`, `store read`, `wrote 4100 bytes`), which is what
+    turns "it works" into which branch ran.
+  - **What the same run could not reach is `~/.Trash`, and the reason is the developer-machine one
+    Slice 4 already hit**: a rebuilt ad-hoc-signed Debug binary has lost Full Disk Access, so the
+    probe recorded `NSCocoaErrorDomain 257` reading `~/.Trash/.DS_Store` while the TCC row still read
+    *allowed* — the stale-code-requirement state docs/NOTES.md documents. The safety rule above did
+    exactly its job (the user's 284 records were byte-identical afterwards), and the write half of
+    that path is what the by-hand run above measured against the real file. Re-granting is
+    password-gated, so it was the user's to do — and it was: **Put Back reported working on
+    2026-09-01**, which is the one instrument that half had.
+  - **Slice 4's store is not retired by this and must not be**: it answers where a `.DS_Store` cannot
+    be written at all — no Full Disk Access, a read-only trash — and for an item **Finder** deleted
+    out of a domain. The merge rule is unchanged and now agrees with itself: where both sources speak
+    they were both written from the same origin.
+  - **Five controls run and each fails on its own claim**: a recorder that writes nothing fails the
+    six recorder tests and the wiring test and leaves the two refusal tests green; removing the call
+    from the performer fails *only* the wiring test; treating an unreadable database as empty fails
+    *only* the "left exactly as it was" test; a writer that does not sort fails *only* the ordering
+    test; and always prefixing the recorded location with a slash fails *only* the path-form test.
+    The narrowness test that matters most stays green throughout — an **ordinary** item is still left
+    to `trashItem`, and nothing is written here for it, because two writers over one database would
+    be two sources answering one question.
+
+Left deliberately undone: **the remote backends**, which have no Trash at all and are already
+degraded to a confirmed permanent delete (§M5, and M25 §7's decision not to invent one); **any
+workaround inside F8 while it was open**, since ⇧F8's confirmed permanent delete already worked — it
+uses `removeItem` and consults no Trash, so it was never affected; and **chasing the refusal further
+into TCC and `fileproviderd`**, which is not observable from here past the three candidates already
+eliminated, and which neither implementable route depended on.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-08-26)
@@ -13468,3 +13832,163 @@ in it: the promise and its escape hatch, measured on one running app. `Composite
 endpoint memory and, with it, a split — `CompositeBackend+Connect.swift` now owns *a connection
 existing* while the original owns which backend a path belongs to, by concept rather than by the
 twelve lines that were left under the file ceiling.
+
+---
+
+### The questions the plan asked, and how each closed
+
+[PLAN.md](../PLAN.md) §7 carried every open design question and its resolution as it was taken.
+All of them are closed — M25's was the last, on 2026-08-29 — so the log moved here on 2026-09-01
+and the plan keeps only the one-line answer. Newest first, the order the plan held them in.
+
+Opened with M25 (2026-08-27) and **closed by the user (2026-08-29)**:
+
+- **Whether Dirnex should invent a Trash the protocol does not have** — resolved: **no.** A remote
+  delete stays permanent, the confirmation is what stands in for the Trash, and the alert says in as
+  many words that there is nothing to undo. The alternative was a managed `.dirnex-trash/` prefix, a
+  rename into it, and a sidecar naming the origin the way a trash folder's `.DS_Store` carries its
+  `ptbL`/`ptbN` pair — the one safety net remote browsing has never had, at three prices.
+  **The one that decided it is that the price is not uniform**: a rename is one cheap verb over SFTP
+  and FTP and is **N copies plus N deletes** on S3, so a delete on a bucket would stop being N
+  deletes and become a billed movement of every byte under the prefix. Offering it only where it is
+  cheap is the worse half of that fork rather than the escape from it — a Trash that exists on some
+  backends and not others is a promise the user cannot carry from one pane to the next, and the pane
+  looks identical either way. The other two prices stand and are why this was a question rather than
+  a slice: it is a **format** other software meets — a stranger's FTP client, or the account's owner
+  on the web console, sees a folder of renamed junk and no explanation, so the layout outlives our
+  code the way M19's cipher choice does — and the sidecar is a second source of truth that can drift
+  from the files beside it, which the `.DS_Store` origin records survive only because Finder writes
+  them too.
+  - What the answer costs is **nothing to build**, which is what makes it the honest answer rather
+    than merely the cheap one: `deleteStrategy` already degrades to `.permanent` wherever `.trash`
+    is absent, so F8 on a server already raises `confirmPermanentDelete`'s critical alert reading
+    *Delete “x” permanently?* over *This can’t be undone.*, and `runDelete` already journals
+    nothing on that branch. The decision is to keep saying the true thing rather than to build a
+    safety net that is true on two backends of three.
+  - **Reopening is not symmetric with having taken it**, which is the reason to write it down:
+    staying permanent stays reopenable, while the format, once anyone's files are sitting in it,
+    cannot be withdrawn from accounts Dirnex does not own. docs/LOCATION-SUPPORT.md therefore
+    carries this as a **limit** rather than a gap — the `F8 → Trash` row is `n/a` in every remote
+    column, and footnote `p` names the decision.
+
+M19's two were taken at open and M18's one likewise (both below); M15's two
+closed with it, and M17's one closed at open and was then
+**re-taken twice** (2026-08-06, every time by the user):
+
+- **How much of a syntax theme the user owns** — resolved in favor of **a small fixed set of
+  semantic kinds, no Settings surface at all**. That half never moved. What moved, twice, is where
+  the colors come from. The question closed on *system dynamic colors*, on the ground that each
+  resolves per appearance for free — and Slice 3 measured them and found `.systemGreen` at
+  **2.22:1** on a white text background, with teal, cyan, mint, orange and yellow all between 1.5
+  and 2.4. The system palette is tuned for fills, not for text on white, so the premise held in
+  dark mode and collapsed in light. Re-taken as authored light values with the system color in
+  dark; then re-taken again, the same day and on sight of the result, as **VS Code's Dark Modern
+  and Light Modern on both halves** — the `dark_plus` / `light_plus` token colors. The reason is
+  not aesthetic preference but *whose* theme: a preview is read next to the editor the file will be
+  opened in, and matching that editor is worth more than any hue chosen in isolation. It cost
+  nothing to check — every published value clears the same ≥ 4.5:1 floor `SyntaxThemeTests` already
+  pinned, in both appearances, because `.textBackgroundColor` resolves to exactly `#1E1E1E` in
+  dark, which *is* VS Code's editor background. Everything the original answer was *for* survives
+  both moves: one `NSColor` per kind, resolving itself, no picker, no persistence. Reopening the
+  *owned-theme* half still means the M15 palette machinery (persistence, a Settings section, a
+  derived-foreground rule), which is why it stays written down.
+- Kind count is the one detail the answer no longer pins: it opened at "six and no more" and is
+  **eight**, `.inserted` and `.deleted` having been added with the diff scanner (HISTORY.md §M17
+  ▸ Slice 2). That is two more entries in the same dictionary, not a Settings surface.
+
+Opened with M18 (2026-08-06) and **closed at open, by the user**:
+
+- **Where mermaid diagrams come from** — resolved in favor of **a hand-rolled SVG renderer in the
+  core, over a named subset (flowchart and sequence)**, against the alternative of vendoring
+  `mermaid.min.js` and running it in the preview. The fork is real because the two answers cost
+  opposite things: bundling buys every diagram type mermaid supports, at ~3 MB of third-party
+  JavaScript, a JS engine running on every cursor step, and output §2 cannot test — which is
+  Highlightr's and tree-sitter's rejection at M17 arriving in a different shape. Hand-rolling buys a
+  pure, tested renderer with no dependency and no script in the page at all, at the price of a
+  subset that will visibly diverge from what the user's editor draws. The security half turned out
+  *not* to be the deciding argument in either direction: escaping the file's raw HTML (M18, above)
+  already means no script from the `.md` reaches the page, so a bundled mermaid would have been
+  running our code over the file's data rather than the file's code — a materially different posture
+  from M16's toggle, and one that would have needed saying out loud in the JavaScript policy.
+  Reopening it means taking on a vendored asset with its own update cadence, which is why the
+  reasoning stays written down.
+
+Opened with M19 (2026-08-09) and **closed at open, by the user** — both are format commitments that
+outlive the code, which is why they are written down rather than left in the implementation:
+
+- **Which cipher an encrypted archive uses** — resolved: **AES-256 and nothing else.** `zipcrypt` is
+  the only choice every Windows and macOS unzip can read and it has a published known-plaintext
+  break, so offering it under a checkbox saying "Encrypt" would be the app lying; AES-128 is sound
+  and buys nothing on hardware AES. The price is paid by the recipient rather than by us and is
+  therefore stated in the sheet: nothing Apple ships opens an AES-256 zip (measured — `unzip`,
+  `ditto` and Archive Utility all refuse it), so Keka, 7-Zip or WinRAR is required at the other end.
+  Reopening it means deciding that reach is worth a broken cipher, which is the whole argument in
+  one sentence.
+- **What a vault is made of** — resolved: an encrypted APFS **sparsebundle**. It is growable, so the
+  user is never asked to predict how much they will ever store (23 MB for a declared 10 GB), and
+  unlocked it is an ordinary mounted volume `LocalBackend` already browses, so the milestone added
+  no backend. What it costs is that a vault is a *directory* and therefore awkward to send — which
+  is the archive half's job, and the reason the milestone has two halves.
+
+All four opened before M1 are closed — the first three by shipping and living in the result,
+which was the stated way to decide them. Recorded because reopening one is a real design
+change, not a free choice:
+
+- **Space key** — TC's select+dir-size won over macOS's Quick Look. ⌘Y and a palette action
+  carry Quick Look. Validated by use across M1–M8.
+- **Quick view panel shortcut** — ⌃Q. ⌘Q is untouchable and ⌘⇧Q was free but less TC-like.
+- **Tabs UI** — compact TC-style, auto-hiding at a single tab.
+- **Name/brand check for "Dirnex"** — resolved 2026-07-19: the name is free, cleared by the
+  user, no conflicting prior marks. The `NOTICE` / `TRADEMARKS.md` carve-out stands as written.
+
+Opened and closed during M8:
+
+- **Seeding an existing favorites** — resolved 2026-07-20: **standard places lead, existing pins
+  follow.** The sidebar therefore looks unchanged on the launch after the merge, which matters more
+  than the one thing it costs: a path pinned under a custom label ("Dl" for Downloads) is reclaimed
+  as the standard row and loses that label. The alternatives were pins-first (nothing the user chose
+  moves, but the sidebar's top rows change on update) and seeding fresh installs only (honest about
+  ownership, but Home/Desktop/Documents visibly vanish on update). Still needs a one-shot "seeded"
+  flag in `FavoritesStore`, so it is a real migration and not a first-run branch.
+
+Opened and closed during M10:
+
+- **Google OAuth scope for a Drive API backend** — resolved 2026-07-22 by **not needing one.** The
+  fork was `drive`/`drive.readonly` (restricted: browse the *whole* Drive, but Google requires
+  restricted-scope verification **plus a paid annual CASA third-party security assessment** before a
+  distributed build may use it) versus `drive.file` (unrestricted, no assessment, but limited to files
+  the app itself created or the user explicitly picked — which cannot list a pre-existing Drive and so
+  is useless for a file manager). Dropping the API backend drops the question with it: the Desktop
+  mount browses through `LocalBackend` with no OAuth, no scope and no assessment. Reopening it means
+  taking on the whole verification commitment, which is why it stays written down.
+
+Opened during M13 planning (2026-07-25) and **closed** in it (both by the user, 2026-07-25; the
+security posture revisited and re-confirmed 2026-07-26):
+
+- **How much of FTP's insecurity is Dirnex's to editorialize about?** — resolved: **default the
+  connect form to FTPS and make plain FTP the deliberate switch**, with no per-connect nagging. It
+  costs nothing when the server supports FTPS and states the tradeoff exactly once, where it is
+  actionable; the failure mode to avoid — a warning firing on every connect to a decade-old NAS — is
+  avoided. The corollary was settled 2026-07-26: **no opportunistic "TLS optional" client mode.** The
+  three explicit modes reach every server, and `--ssl`'s silent fall-back to cleartext is a
+  password-downgrade vector, so `FTPProcessArguments` requires the upgrade (`--ssl-reqd`). A mismatch
+  is surfaced as a clear, actionable error (`tlsNotAvailable` / `tlsRequired`), never guessed around.
+- **Whether `curl`'s progress output is good enough for the queue, or transfers need chunking.** —
+  resolved: **one exact byte count per file**, via `-w '%{size_download}'` / `'%{size_upload}'`, which
+  matches what `SFTPProcessTransport` ships and hands the queue its delta directly. `curl`'s live meter
+  was measured at ~1 Hz rounded to `k`/`M` — good for a bar, not for accounting — so an intra-file
+  determinate bar is deferred as a thing worth doing for both remote backends together or not at all.
+
+Opened with M15 (2026-08-02) and **closed** in it the same day, as recommended — both about what a
+*marked set spanning directories* means for an operation:
+
+- **What F5/F6 do with marks spanning levels** — resolved: **TC's branch-view behavior**, flatten
+  *preserving relative paths* under the destination. Copying everything flat into one folder is the
+  alternative and it silently collides the moment two folders hold an `x.jpg`.
+- **F8 with an ancestor and its descendant both marked** — resolved: **dedupe to the ancestor**
+  before enqueuing, since deleting the parent already takes the child. Implementing it added the half
+  the settling did not say: **the dedupe belongs to F5/F6 too** — a copy fails *politely* there, with
+  a conflict prompt over a file the user never chose to duplicate, which is quieter and no less wrong.
+
+Both live in `TreeSelection` (core, 18 tests); the app keeps one `recursiveTargets()` for the
+operations that recurse and the raw `selectionTargets()` for the ones that don't. See §M15 above.
