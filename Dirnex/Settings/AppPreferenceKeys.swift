@@ -24,6 +24,7 @@ extension AppPreferences {
         static let cursorColorHex = "Dirnex.pref.cursorColorHex"
         static let markColorHex = "Dirnex.pref.markColorHex"
         static let confirmTrash = "Dirnex.pref.confirmTrash"
+        static let showVaultsInFinder = "Dirnex.pref.showVaultsInFinder"
         static let diffToolIdentifier = "Dirnex.pref.diffToolIdentifier"
         static let textEditorIdentifier = "Dirnex.pref.textEditorIdentifier"
         static let focusOpenedSearchDirectory = "Dirnex.pref.focusOpenedSearchDirectory"

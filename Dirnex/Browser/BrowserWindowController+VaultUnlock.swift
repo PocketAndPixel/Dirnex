@@ -115,12 +115,14 @@ extension BrowserWindowController {
     ) {
         // Resolve against the store before anything else. Two entry points *construct* a
         // `VaultLocation` from a file under the cursor — the Unlock command and the pane's Enter —
-        // and such a value carries the defaults for everything that is not addressing: today
-        // `showsInFinder`, tomorrow whatever else a vault remembers. Since a successful attach ends
-        // in `VaultStore.remember`, which replaces the saved entry wholesale, unlocking a vault from
-        // the pane rather than from the sidebar would silently reset its settings. One line here
-        // covers every caller; correcting it inside `remember` would instead make the setting
-        // impossible to turn back off.
+        // and such a value knows only what the file name says, while `VaultStore.remember` at the
+        // end of a successful attach replaces the saved entry wholesale. So without this line,
+        // unlocking from the pane would write back a `volumeName` taken from the image's file name
+        // over the one an earlier unlock read off the real mount (and over a rename).
+        //
+        // It used to matter for a second reason, which is worth knowing is gone: a vault also
+        // carried its own `showsInFinder`, and a constructed value carried that flag's *default*.
+        // A vault now carries nothing but addressing, so the one field this protects is the name.
         let vault = VaultStore.load().vault(atPath: requested.imagePath) ?? requested
         if let point = DiskImageMount.isMounted(
             imageAtPath: vault.imagePath,
@@ -171,7 +173,10 @@ extension BrowserWindowController {
     ) {
         SidebarRowActivity.shared.begin(vault.resolvedImagePath)
         let imagePath = vault.imagePath
-        let showsInFinder = vault.showsInFinder
+        // One app-wide preference, read at the moment of the attach rather than stored per vault —
+        // `-nobrowse` is decided here and nowhere else, and `VaultVisibility` is what carries a
+        // later change to a vault that is already open.
+        let showsInFinder = AppPreferences.shared.showVaultsInFinder
         Task { [weak self] in
             defer { SidebarRowActivity.shared.end(vault.resolvedImagePath) }
             do {

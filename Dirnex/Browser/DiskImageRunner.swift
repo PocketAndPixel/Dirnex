@@ -93,14 +93,14 @@ enum DiskImageRunner {
 
     /// Attach `path` and mount its volume, returning where it landed.
     ///
-    /// `showingInFinder` is the vault's own ``VaultLocation/showsInFinder``, which decides whether
-    /// `-nobrowse` goes on the command line. It defaults to the private answer for the reason
-    /// `DiskImageArguments.attach` documents: the mistake worth designing against is a vault
-    /// published because a call site forgot to say anything.
+    /// `showingInFinder` is the app's **Show unlocked vaults in Finder** preference, which decides
+    /// whether `-nobrowse` goes on the command line. Required rather than defaulted, for the reason
+    /// `DiskImageArguments.attach` documents: one app-wide setting is the answer, and a default here
+    /// would be a second one.
     static func attach(
         atPath path: String,
         passphrase: ArchivePassphrase,
-        showingInFinder: Bool = false
+        showingInFinder: Bool
     ) throws -> DiskImageMount.Mounted {
         let name = (path as NSString).lastPathComponent
         let run = try Run(
@@ -144,7 +144,7 @@ enum DiskImageRunner {
     // MARK: - Visibility
 
     /// What happened when a vault that is **already unlocked** was shown or hidden.
-    enum VisibilityChange: Equatable {
+    enum VisibilityChange: Equatable, Sendable {
         /// The live volume was remounted; Finder's sidebar reflects it now.
         case applied
         /// It was already like that.

@@ -74785,95 +74785,6 @@
         }
       }
     },
-    "Show in Finder When Unlocked": {
-      "comment": "Vault context-menu item, a checkbox: while this vault is unlocked, let its volume appear in Finder's sidebar and in other apps' Open panels. Off by default.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Im Finder anzeigen, wenn entsperrt"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Show in Finder When Unlocked"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mostrar en el Finder cuando esté desbloqueada"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Afficher dans le Finder lorsqu’il est déverrouillé"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mostra nel Finder quando è sbloccata"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ロック解除中にFinderに表示"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "잠금 해제 시 Finder에 표시"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Toon in Finder wanneer ontgrendeld"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pokazuj w Finderze po odblokowaniu"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mostrar no Finder quando desbloqueado"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Показывать в Finder, когда разблокирован"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Показувати у Finder, коли розблоковано"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "解锁时在访达中显示"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "解鎖時在 Finder 中顯示"
-          }
-        }
-      }
-    },
     "Show operation details": {
       "comment": "Queue-bar disclosure button: reveal the per-operation list.",
       "localizations": {
@@ -75048,6 +74959,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "顯示此金鑰可見的儲存桶"
+          }
+        }
+      }
+    },
+    "Show unlocked vaults in Finder": {
+      "comment": "General settings toggle: while a vault is unlocked, let its volume appear in Finder's sidebar, on the desktop and in other apps' Open panels. On by default.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entsperrte Tresore im Finder anzeigen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show unlocked vaults in Finder"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar las cajas fuertes desbloqueadas en el Finder"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher les coffres-forts déverrouillés dans le Finder"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra le casseforti sbloccate nel Finder"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ロック解除中の保管庫をFinderに表示"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠금 해제된 보관함을 Finder에 표시"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toon ontgrendelde kluizen in de Finder"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokazuj odblokowane sejfy w Finderze"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar cofres desbloqueados no Finder"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показывать разблокированные сейфы в Finder"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показувати розблоковані сейфи у Finder"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在访达中显示已解锁的保险库"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 Finder 中顯示已解鎖的保險庫"
           }
         }
       }
@@ -81682,6 +81682,95 @@
         }
       }
     },
+    "The change will apply the next time you unlock.": {
+      "comment": "Title shown when a vault that is already unlocked could not be shown in or hidden from Finder without being locked first.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Änderung wird beim nächsten Entsperren übernommen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The change will apply the next time you unlock."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El cambio se aplicará la próxima vez que desbloquees."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La modification sera appliquée au prochain déverrouillage."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La modifica verrà applicata al prossimo sblocco."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この変更は次回のロック解除時に適用されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 변경 사항은 다음에 잠금을 해제할 때 적용됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De wijziging wordt toegepast bij de volgende ontgrendeling."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zmiana zostanie zastosowana przy następnym odblokowaniu."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A alteração será aplicada no próximo desbloqueio."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменение применится при следующей разблокировке."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зміну буде застосовано під час наступного розблокування."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改将在下次解锁时应用。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改將在下次解鎖時套用。"
+          }
+        }
+      }
+    },
     "The checksum file has to be written beside the items it describes, so this needs somewhere that can be written to.": {
       "comment": "Create-checksum failure detail: the manifest's own directory is read-only or is a virtual listing with no directory of its own.",
       "localizations": {
@@ -85955,91 +86044,91 @@
         }
       }
     },
-    "The setting is saved. This vault’s volume can’t be changed while it is open — locking and unlocking it will apply the change.": {
+    "The setting is saved. A vault that is already open can’t always be changed while it is mounted — locking and unlocking it applies the change.": {
       "comment": "Body of the alert explaining that a vault visibility change is deferred.",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Einstellung wurde gesichert. Das Volume dieses Tresors kann nicht geändert werden, solange er geöffnet ist – Sperren und erneutes Entsperren übernimmt die Änderung."
+            "value": "Die Einstellung wurde gesichert. Ein bereits geöffneter Tresor lässt sich nicht immer ändern, solange er aktiviert ist – Sperren und erneutes Entsperren übernimmt die Änderung."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The setting is saved. This vault’s volume can’t be changed while it is open — locking and unlocking it will apply the change."
+            "value": "The setting is saved. A vault that is already open can’t always be changed while it is mounted — locking and unlocking it applies the change."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El ajuste se ha guardado. El volumen de esta caja fuerte no se puede cambiar mientras está abierta: bloquéala y desbloquéala para aplicar el cambio."
+            "value": "El ajuste se ha guardado. Una caja fuerte ya abierta no siempre se puede cambiar mientras está montada: bloquéala y desbloquéala para aplicar el cambio."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le réglage est enregistré. Le volume de ce coffre-fort ne peut pas être modifié tant qu’il est ouvert — le verrouiller puis le déverrouiller appliquera la modification."
+            "value": "Le réglage est enregistré. Un coffre-fort déjà ouvert ne peut pas toujours être modifié tant qu’il est monté — le verrouiller puis le déverrouiller applique la modification."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "L’impostazione è stata salvata. Il volume di questa cassaforte non può essere modificato mentre è aperta: bloccala e sbloccala per applicare la modifica."
+            "value": "L’impostazione è stata salvata. Una cassaforte già aperta non sempre può essere modificata mentre è montata: bloccala e sbloccala per applicare la modifica."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "設定は保存されました。この保管庫のボリュームは開いている間は変更できません。ロックしてから解除すると変更が適用されます。"
+            "value": "設定は保存されました。すでに開いている保管庫は、マウント中は変更できないことがあります。ロックしてから解除すると変更が適用されます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "설정이 저장되었습니다. 이 보관함의 볼륨은 열려 있는 동안 변경할 수 없습니다. 잠근 다음 다시 잠금을 해제하면 변경 사항이 적용됩니다."
+            "value": "설정이 저장되었습니다. 이미 열려 있는 보관함은 마운트된 상태에서 변경하지 못할 수 있습니다. 잠근 다음 다시 잠금을 해제하면 변경 사항이 적용됩니다."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "De instelling is bewaard. Het volume van deze kluis kan niet worden gewijzigd terwijl deze open is — vergrendel en ontgrendel de kluis om de wijziging toe te passen."
+            "value": "De instelling is bewaard. Een kluis die al open is, kan niet altijd worden gewijzigd zolang deze is gekoppeld — vergrendel en ontgrendel de kluis om de wijziging toe te passen."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ustawienie zostało zapisane. Woluminu tego sejfu nie można zmienić, gdy jest otwarty — zablokowanie i ponowne odblokowanie zastosuje zmianę."
+            "value": "Ustawienie zostało zapisane. Otwartego sejfu nie zawsze można zmienić, gdy jest zamontowany — zablokowanie i ponowne odblokowanie zastosuje zmianę."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "A configuração foi salva. O volume deste cofre não pode ser alterado enquanto ele está aberto — bloquear e desbloquear aplicará a alteração."
+            "value": "A configuração foi salva. Um cofre já aberto nem sempre pode ser alterado enquanto está montado — bloquear e desbloquear aplica a alteração."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Настройка сохранена. Том этого сейфа нельзя изменить, пока он открыт — заблокируйте и снова разблокируйте его, чтобы применить изменение."
+            "value": "Настройка сохранена. Уже открытый сейф не всегда можно изменить, пока он подключён — заблокируйте и снова разблокируйте его, чтобы применить изменение."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Налаштування збережено. Том цього сейфа не можна змінити, поки він відкритий — заблокуйте та знову розблокуйте його, щоб застосувати зміну."
+            "value": "Налаштування збережено. Уже відкритий сейф не завжди можна змінити, поки його змонтовано — заблокуйте та знову розблокуйте його, щоб застосувати зміну."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "设置已存储。此保险库的宗卷在打开时无法更改——锁定后再解锁即可应用更改。"
+            "value": "设置已存储。已经打开的保险库在装载期间未必能更改——锁定后再解锁即可应用更改。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "設定已儲存。此保險庫的儲存空間在開啟時無法更改——鎖定後再解鎖即可套用變更。"
+            "value": "設定已儲存。已經打開的保險庫在掛載期間未必能更改——鎖定後再解鎖即可套用變更。"
           }
         }
       }
@@ -95259,6 +95348,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "位置："
+          }
+        }
+      }
+    },
+    "While a vault is unlocked, its volume also appears in Finder’s sidebar, on the desktop and in other apps’ Open panels — so you can attach a file from it to an email. Turn this off to keep an unlocked vault visible only inside Dirnex. Either way, locking a vault removes it from everywhere.": {
+      "comment": "General settings footer, under the \"Show unlocked vaults in Finder\" toggle.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solange ein Tresor entsperrt ist, erscheint sein Volume auch in der Finder-Seitenleiste, auf dem Schreibtisch und in den Öffnen-Dialogen anderer Apps — so kannst du eine Datei daraus an eine E-Mail anhängen. Deaktiviere dies, damit ein entsperrter Tresor nur in Dirnex sichtbar ist. In beiden Fällen entfernt das Sperren eines Tresors ihn überall."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "While a vault is unlocked, its volume also appears in Finder’s sidebar, on the desktop and in other apps’ Open panels — so you can attach a file from it to an email. Turn this off to keep an unlocked vault visible only inside Dirnex. Either way, locking a vault removes it from everywhere."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mientras una caja fuerte está desbloqueada, su volumen también aparece en la barra lateral del Finder, en el escritorio y en los diálogos Abrir de otras apps, así que puedes adjuntar un archivo suyo a un correo. Desactiva esta opción para que una caja fuerte desbloqueada solo sea visible dentro de Dirnex. En cualquier caso, bloquearla la retira de todas partes."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tant qu’un coffre-fort est déverrouillé, son volume apparaît aussi dans la barre latérale du Finder, sur le bureau et dans les fenêtres Ouvrir des autres apps — vous pouvez ainsi joindre un fichier à un e-mail. Désactivez cette option pour qu’un coffre-fort déverrouillé reste visible uniquement dans Dirnex. Dans les deux cas, le verrouiller le retire de partout."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finché una cassaforte è sbloccata, il suo volume compare anche nella barra laterale del Finder, sulla Scrivania e nelle finestre Apri delle altre app: così puoi allegare un file a un’e-mail. Disattiva questa opzione per rendere una cassaforte sbloccata visibile solo dentro Dirnex. In entrambi i casi, bloccarla la rimuove da ovunque."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保管庫のロックが解除されている間、そのボリュームはFinderのサイドバーやデスクトップ、ほかのAppの「開く」ダイアログにも表示されます。中のファイルをメールに添付できるようになります。オフにすると、ロック解除中の保管庫はDirnexの中だけに表示されます。どちらの場合も、保管庫をロックするとすべての場所から消えます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "보관함의 잠금이 해제되어 있는 동안에는 해당 볼륨이 Finder 사이드바, 데스크탑, 다른 앱의 열기 대화상자에도 나타납니다. 덕분에 보관함의 파일을 이메일에 첨부할 수 있습니다. 이 옵션을 끄면 잠금이 해제된 보관함이 Dirnex 안에서만 보입니다. 어느 쪽이든 보관함을 잠그면 모든 곳에서 사라집니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zolang een kluis ontgrendeld is, verschijnt het volume ook in de Finder-navigatiekolom, op het bureaublad en in de Open-vensters van andere apps — zo kun je er een bestand uit aan een e-mail toevoegen. Schakel dit uit om een ontgrendelde kluis alleen binnen Dirnex zichtbaar te houden. Hoe dan ook verdwijnt een kluis overal zodra je hem vergrendelt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dopóki sejf jest odblokowany, jego wolumin pojawia się także na pasku bocznym Findera, na biurku i w oknach Otwórz innych programów — dzięki temu możesz dołączyć plik z sejfu do wiadomości e-mail. Wyłącz tę opcję, aby odblokowany sejf był widoczny tylko w programie Dirnex. Tak czy inaczej, zablokowanie sejfu usuwa go zewsząd."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enquanto um cofre está desbloqueado, seu volume também aparece na barra lateral do Finder, na mesa e nas janelas Abrir de outros apps — assim você pode anexar um arquivo dele a um e-mail. Desative esta opção para que um cofre desbloqueado fique visível apenas dentro do Dirnex. De qualquer forma, bloquear um cofre o remove de todos os lugares."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пока сейф разблокирован, его том виден также в боковом меню Finder, на рабочем столе и в окнах «Открыть» других приложений — так можно вложить файл из сейфа в письмо. Отключите, чтобы разблокированный сейф был виден только в Dirnex. В любом случае блокировка сейфа убирает его отовсюду."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поки сейф розблоковано, його том видно також у бічній панелі Finder, на робочому столі та у вікнах «Відкрити» інших програм — так можна долучити файл із сейфа до листа. Вимкніть, щоб розблокований сейф було видно лише в Dirnex. У будь-якому разі блокування сейфа прибирає його звідусіль."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保险库解锁期间，其宗卷也会出现在访达边栏、桌面以及其他 App 的“打开”对话框中，因此你可以把其中的文件添加为邮件附件。关闭后，已解锁的保险库仅在 Dirnex 中可见。无论哪种方式，锁定保险库都会让它从各处消失。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保險庫解鎖期間，其儲存空間也會出現在 Finder 側邊欄、桌面以及其他 App 的「打開」對話框中，因此你可以將其中的檔案加入郵件附件。關閉後，已解鎖的保險庫僅在 Dirnex 中可見。無論哪種方式，鎖定保險庫都會讓它從各處消失。"
           }
         }
       }
@@ -130889,184 +131067,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "「%@」會對每個檔案執行一次。請先選取一個或多個項目。"
-          }
-        }
-      }
-    },
-    "“%@” will appear in Finder the next time you unlock it.": {
-      "comment": "Title shown when a vault's volume could not be made visible while it is already mounted; %@ is the vault's volume name.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "„%@“ wird beim nächsten Entsperren im Finder angezeigt."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@” will appear in Finder the next time you unlock it."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@” aparecerá en el Finder la próxima vez que la desbloquees."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "« %@ » apparaîtra dans le Finder au prochain déverrouillage."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@” apparirà nel Finder al prossimo sblocco."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "次回ロックを解除したときに、「%@」がFinderに表示されます。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "다음에 잠금을 해제하면 “%@”이(가) Finder에 표시됩니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@” verschijnt in Finder wanneer je de kluis de volgende keer ontgrendelt."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "„%@” pojawi się w Finderze przy następnym odblokowaniu."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@” aparecerá no Finder na próxima vez que você desbloqueá-lo."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "«%@» появится в Finder при следующей разблокировке."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "«%@» з’явиться у Finder під час наступного розблокування."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "下次解锁时，“%@”将显示在访达中。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "下次解鎖時，「%@」將顯示在 Finder 中。"
-          }
-        }
-      }
-    },
-    "“%@” will be hidden from Finder the next time you unlock it.": {
-      "comment": "Title shown when a vault's volume could not be hidden while it is already mounted; %@ is the vault's volume name.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "„%@“ wird beim nächsten Entsperren im Finder ausgeblendet."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@” will be hidden from Finder the next time you unlock it."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@” se ocultará del Finder la próxima vez que la desbloquees."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "« %@ » sera masqué dans le Finder au prochain déverrouillage."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@” sarà nascosta nel Finder al prossimo sblocco."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "次回ロックを解除したときに、「%@」はFinderに表示されなくなります。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "다음에 잠금을 해제하면 “%@”이(가) Finder에서 숨겨집니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@” wordt verborgen in Finder wanneer je de kluis de volgende keer ontgrendelt."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "„%@” zostanie ukryty w Finderze przy następnym odblokowaniu."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“%@” ficará oculto no Finder na próxima vez que você desbloqueá-lo."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "«%@» будет скрыт из Finder при следующей разблокировке."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "«%@» буде приховано з Finder під час наступного розблокування."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "下次解锁时，“%@”将不再显示在访达中。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "下次解鎖時，「%@」將不再顯示在 Finder 中。"
           }
         }
       }

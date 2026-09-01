@@ -37,7 +37,8 @@ public enum DiskVolumeArguments {
         ["rename", mountPoint, name]
     }
 
-    /// What to do about ``VaultLocation/showsInFinder`` for a vault that is **already unlocked**.
+    /// What to do about the **Show unlocked vaults in Finder** preference for a vault that is
+    /// **already unlocked**.
     public enum Remount: Equatable, Sendable {
         /// The volume is already as the user asked. Nothing to spawn.
         case unnecessary

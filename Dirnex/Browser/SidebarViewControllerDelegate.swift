@@ -52,13 +52,6 @@ protocol SidebarViewControllerDelegate: AnyObject {
     /// unlocking it first if it is locked (PLAN.md §M19). Unlike a favorite's rename this is not a
     /// row label: a vault has no name but its volume's.
     func sidebar(_ sidebar: SidebarViewController, didRequestRenameOf vault: VaultLocation)
-    /// A vault's "Show in Finder When Unlocked" was toggled — save it, and apply it to the live
-    /// volume if the vault happens to be open (PLAN.md §M19).
-    func sidebar(
-        _ sidebar: SidebarViewController,
-        didSet showsInFinder: Bool,
-        asShowsInFinderFor vault: VaultLocation
-    )
     /// A tag row was picked — search for the files carrying it and show the hits in a virtual
     /// results panel (PLAN.md §M6 "Finder tags: … filter chips in search"), like Finder's own
     /// sidebar tags.

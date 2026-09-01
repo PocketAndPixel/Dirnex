@@ -3,16 +3,18 @@ import Testing
 
 @testable import DirnexCore
 
-/// Per-vault Finder visibility: the attach flag, the live remount, and the migration that decides
-/// whether anybody still has a Vaults section after the update.
+/// Finder visibility for an unlocked vault: the attach flag, the live remount, and the rule that
+/// keeps a shown vault out of the sidebar's Volumes section.
+///
+/// The answer is one app-wide preference (**Settings ▸ General ▸ Show unlocked vaults in Finder**,
+/// default on) rather than a flag on each vault, so nothing here reads a stored value — every
+/// function below is handed the answer, which is what makes all of it testable.
 @Suite("Vault visibility")
 struct VaultVisibilityTests {
     // MARK: - Attaching
 
-    @Test("a vault is private unless it was told otherwise, and silence means private")
+    @Test("the attach flag is the whole difference, and it is never inferred")
     func attachVisibility() {
-        // The default is the whole safety property: a call site that says nothing gets `-nobrowse`.
-        #expect(DiskImageArguments.attach(atPath: "/v/P.sparsebundle").contains("-nobrowse"))
         #expect(
             DiskImageArguments.attach(atPath: "/v/P.sparsebundle", showingInFinder: false)
                 .contains("-nobrowse")
@@ -176,67 +178,40 @@ struct VaultVisibilityTests {
 
     // MARK: - Persistence
 
-    @Test("a vault saved before this setting existed still loads")
-    func decodesLegacyJSON() throws {
-        // The trap this guards: `SavedVaults` is decoded through a `try?`, and a synthesized decoder
-        // throws on a missing key regardless of the property's default. Without the hand-written
-        // `init(from:)` this JSON — every vault anybody already has — decodes to *nothing*, the
-        // sidebar's Vaults section empties on first launch after the update, and each vault's
-        // Keychain item is orphaned. Nothing would log.
-        let legacy = Data("""
-        {"vaults":[{"imagePath":"/v/Personal.sparsebundle","volumeName":"Personal"}]}
+    @Test("a vault saved while the setting was per-vault still loads, retired key and all")
+    func decodesRetiredKeyJSON() throws {
+        // Both shapes anybody has on disk: the original two-field one, and the one written while
+        // `showsInFinder` was a property of the vault. `JSONDecoder` ignores a key no property
+        // claims, so the retired one costs nothing — which is the *opposite* of the case that made
+        // this type decode by hand in the first place (a synthesized decoder throws on a key that is
+        // **missing**, and `SavedVaults` is read through a `try?`, so the whole Vaults section would
+        // have emptied on first launch after that update).
+        let stored = Data("""
+        {"vaults":[
+          {"imagePath":"/v/Personal.sparsebundle","volumeName":"Personal"},
+          {"imagePath":"/v/Work.sparsebundle","volumeName":"Work","showsInFinder":true}
+        ]}
         """.utf8)
-        let saved = try JSONDecoder().decode(SavedVaults.self, from: legacy)
-        #expect(saved.vaults.count == 1)
-        #expect(saved.vaults.first?.volumeName == "Personal")
-        #expect(saved.vaults.first?.showsInFinder == false)
+        let saved = try JSONDecoder().decode(SavedVaults.self, from: stored)
+        #expect(saved.vaults.map(\.volumeName) == ["Personal", "Work"])
+        #expect(saved.vaults.map(\.imagePath) == [
+            "/v/Personal.sparsebundle", "/v/Work.sparsebundle"
+        ])
     }
 
-    @Test("the setting round-trips")
+    @Test("a vault round-trips, and carries no settings of its own")
     func roundTrip() throws {
         let saved = SavedVaults(vaults: [
-            VaultLocation(imagePath: "/v/A.sparsebundle", volumeName: "A", showsInFinder: true),
+            VaultLocation(imagePath: "/v/A.sparsebundle", volumeName: "A"),
             VaultLocation(imagePath: "/v/B.sparsebundle", volumeName: "B")
         ])
-        let decoded = try JSONDecoder().decode(
-            SavedVaults.self,
-            from: JSONEncoder().encode(saved)
-        )
-        #expect(decoded == saved)
-        #expect(decoded.vaults.first?.showsInFinder == true)
-        #expect(decoded.vaults.last?.showsInFinder == false)
-    }
-
-    @Test("setShowsInFinder reports whether anything changed, and finds either path spelling")
-    func setting() {
-        var saved = SavedVaults(vaults: [
-            VaultLocation(imagePath: "/tmp/A.sparsebundle", volumeName: "A")
-        ])
-        // A `mutating` call cannot sit inside `#expect` — hoist each result first (docs/NOTES.md).
-        let turnedOn = saved.setShowsInFinder(true, forPath: "/tmp/A.sparsebundle")
-        #expect(turnedOn)
-        #expect(saved.vaults.first?.showsInFinder == true)
-        // Same value again: no change, so the caller can skip the write and the sidebar rebuild.
-        let again = saved.setShowsInFinder(true, forPath: "/tmp/A.sparsebundle")
-        #expect(!again)
-        // The other spelling of the same path is the same vault — the identity rule `SavedVaults`
-        // exists for, applied to this mutator too.
-        let byResolvedPath = saved.setShowsInFinder(false, forPath: "/private/tmp/A.sparsebundle")
-        #expect(byResolvedPath)
-        #expect(saved.vaults.first?.showsInFinder == false)
-        let absent = saved.setShowsInFinder(true, forPath: "/tmp/nothing.sparsebundle")
-        #expect(!absent)
-    }
-
-    @Test("the volume name survives a visibility change")
-    func settingKeepsTheName() {
-        // Why this is a mutator rather than a read-modify-`add`: `add` replaces the whole entry, so a
-        // caller rebuilding a `VaultLocation` to flip one flag would write back whatever name it had
-        // to hand — clobbering the one the unlock path reads off the real mount.
-        var saved = SavedVaults(vaults: [
-            VaultLocation(imagePath: "/v/A.sparsebundle", volumeName: "Renamed Later")
-        ])
-        saved.setShowsInFinder(true, forPath: "/v/A.sparsebundle")
-        #expect(saved.vaults.first?.volumeName == "Renamed Later")
+        let encoded = try JSONEncoder().encode(saved)
+        #expect(try JSONDecoder().decode(SavedVaults.self, from: encoded) == saved)
+        // Nothing about visibility is written any more: one preference is the whole answer, so a
+        // saved vault cannot disagree with it. Asserted on the bytes, since the round trip above is
+        // true whatever extra fields ride along.
+        let text = String(bytes: encoded, encoding: .utf8) ?? ""
+        #expect(!text.isEmpty)
+        #expect(!text.contains("showsInFinder"))
     }
 }

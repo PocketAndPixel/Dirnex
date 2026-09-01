@@ -40,13 +40,6 @@ final class AppPreferences: ObservableObject {
     /// new value to its tabs and re-render. `object` is the `AppPreferences` that changed.
     static let showHiddenDidChange = Notification.Name("Dirnex.showHiddenDidChange")
 
-    /// Flip the app-wide show-hidden state. The shared entry point for the header button, the
-    /// ⇧⌘. shortcut, and the palette/menu command — all of which want the same one-line effect.
-    /// The View menu owns this toggle; Settings deliberately does not restate it.
-    func toggleShowHidden() {
-        showHidden.toggle()
-    }
-
     /// View ▸ show Finder tags as dots at the right edge of each name, where Finder puts them
     /// (PLAN.md §M6 "Finder tags: column…"). Default **on**: someone who tags files sees them
     /// without having to find a setting first, and someone who doesn't pays nothing for it — an
@@ -63,12 +56,6 @@ final class AppPreferences: ObservableObject {
     /// column live. `object` is the `AppPreferences` that changed.
     static let showTagsDidChange = Notification.Name("Dirnex.showTagsDidChange")
 
-    /// Flip the app-wide tags-column state — the shared entry point for the View menu item and the
-    /// palette command, which own this toggle; Settings deliberately does not restate it.
-    func toggleShowTags() {
-        showTags.toggle()
-    }
-
     /// View ▸ show each file's cloud sync state as a badge at the right edge of its name, where
     /// Finder puts it (PLAN.md §M6 "iCloud/provider sync status"). Default **on**, and it can afford
     /// to be: a folder that isn't a cloud folder is recognized in a single read and never scanned,
@@ -84,12 +71,6 @@ final class AppPreferences: ObservableObject {
     /// Posted (on the main actor) when `showSyncStatus` flips, so every open pane picks the badges
     /// up or drops them live. `object` is the `AppPreferences` that changed.
     static let showSyncStatusDidChange = Notification.Name("Dirnex.showSyncStatusDidChange")
-
-    /// Flip the app-wide sync-badge state — the shared entry point for the View menu item and the
-    /// palette command, which own this toggle; Settings deliberately does not restate it.
-    func toggleShowSyncStatus() {
-        showSyncStatus.toggle()
-    }
 
     /// View ▸ show the Total-Commander-style function-key bar along the window bottom (PLAN.md
     /// §M6). Default **on**: the bar is a signature discoverability win — it puts Copy/Move/
@@ -108,12 +89,6 @@ final class AppPreferences: ObservableObject {
     /// Posted (on the main actor) when `showFunctionBar` flips, so every open window installs or
     /// collapses its bar live. `object` is the `AppPreferences` that changed.
     static let showFunctionBarDidChange = Notification.Name("Dirnex.showFunctionBarDidChange")
-
-    /// Flip the app-wide function-bar state — the shared entry point for the View menu item and the
-    /// palette command, which own this toggle; Settings deliberately does not restate it.
-    func toggleShowFunctionBar() {
-        showFunctionBar.toggle()
-    }
 
     /// Panels ▸ how tall each file row is drawn, and how big the icon in it (PLAN.md §M15). A
     /// single app-wide value like `showHidden`, not a per-tab one: it is a reading preference, not
@@ -248,13 +223,6 @@ final class AppPreferences: ObservableObject {
         }
     }
 
-    /// The same floor as the whole number of seconds the Settings field edits. A computed forward
-    /// rather than a second stored value, so the two can never disagree about what is in force.
-    var remoteRefreshFloorSeconds: Int {
-        get { Int(remoteRefreshFloor.rounded()) }
-        set { remoteRefreshFloor = TimeInterval(newValue) }
-    }
-
     /// Posted (on the main actor) when `remoteRefreshFloor` changes, so every open remote pane
     /// re-arms — turning polling off has to stop the pane the user is looking at, not the one they
     /// see after the next navigation.
@@ -262,29 +230,12 @@ final class AppPreferences: ObservableObject {
         "Dirnex.remoteRefreshFloorDidChange"
     )
 
-    /// The same limit in the decimal megabytes the Settings field edits. A computed forward rather
-    /// than a second stored value, so the two can never disagree about what is in force.
-    var quickViewFetchLimitMegabytes: Int {
-        get { Int(quickViewFetchLimit / 1_000_000) }
-        set { quickViewFetchLimit = Int64(newValue) * 1_000_000 }
-    }
-
     /// Posted (on the main actor) when `quickViewFetchLimit` changes, so an open Quick View
     /// re-weighs the row it is showing — raising the limit has to resolve the card the user is
     /// looking at, not the one they see after the next cursor step.
     static let quickViewFetchLimitDidChange = Notification.Name(
         "Dirnex.quickViewFetchLimitDidChange"
     )
-
-    /// A read of the same value for the one caller that needs it *per navigation* rather than per
-    /// change: `QuickViewWebView`'s policy delegate, which is handed a fresh `WKWebpagePreferences`
-    /// for every load and sets it there. Reading it at each navigation is what makes the toggle
-    /// take effect on a live web view — the value baked into a `WKWebViewConfiguration` at init
-    /// cannot be changed afterwards (probed: mutating `webView.configuration` is inert, and reads
-    /// back as though it worked).
-    static var quickViewJavaScriptValue: Bool {
-        shared.quickViewJavaScriptEnabled
-    }
 
     /// Panels ▸ the three colors the user owns (PLAN.md §M15 Slice 2), each as `#RRGGBB` or the
     /// empty string for **Follow System** — the default, so an untouched install renders exactly as
@@ -407,14 +358,36 @@ final class AppPreferences: ObservableObject {
         didSet { defaults.set(receiveBetaUpdates, forKey: Keys.receiveBetaUpdates) }
     }
 
-    /// A thread-safe read of the beta-updates opt-in straight from `UserDefaults`, for the one
-    /// caller that runs off the main actor: Sparkle's `allowedChannels(for:)` delegate hook, which
-    /// it invokes synchronously inside an update check. `UserDefaults` is itself thread-safe, so
-    /// this reads the same key the `@MainActor` `receiveBetaUpdates` property writes without hopping
-    /// actors, and re-reads every call so a Settings toggle is picked up on the next check.
-    nonisolated static func receiveBetaUpdatesValue(in defaults: UserDefaults = .standard) -> Bool {
-        defaults.bool(forKey: Keys.receiveBetaUpdates)
+    /// General ▸ let an unlocked vault's volume appear to the rest of the Mac: Finder's sidebar, the
+    /// desktop, every other app's Open panel (PLAN.md §M19).
+    ///
+    /// **On** by default, and one app-wide answer rather than a flag on each vault. It was per-vault
+    /// and off until 2026-09-02, on the argument that the two questions have different answers for
+    /// the same person — a vault of scanned documents is one you want to attach a file from in Mail,
+    /// while another should stay where you put it. What that cost was a setting living in one
+    /// sidebar row's context menu, which is nowhere anybody looks, for the thing most people want
+    /// most of the time. The default flip is the deliberate part of it: a vault is now published to
+    /// the whole Mac while it is unlocked unless this is turned off, so *locking it* is what makes
+    /// it private again rather than the attach flag.
+    ///
+    /// `-nobrowse` is still the whole mechanism
+    /// (``DiskImageArguments/attach(atPath:showingInFinder:)``); this decides whether it goes on the
+    /// command line. Changing it posts `showVaultsInFinderDidChange`, which `VaultVisibility` turns
+    /// into a live remount of every vault that is open right now — a setting that only took effect
+    /// at the next unlock would look like it did nothing at all.
+    @Published var showVaultsInFinder: Bool {
+        didSet {
+            guard showVaultsInFinder != oldValue else { return }
+            defaults.set(showVaultsInFinder, forKey: Keys.showVaultsInFinder)
+            NotificationCenter.default.post(name: Self.showVaultsInFinderDidChange, object: self)
+        }
     }
+
+    /// Posted (on the main actor) when `showVaultsInFinder` flips, so the vaults that are unlocked
+    /// right now are remounted to match. `object` is the `AppPreferences` that changed.
+    static let showVaultsInFinderDidChange = Notification.Name(
+        "Dirnex.showVaultsInFinderDidChange"
+    )
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -471,6 +444,10 @@ final class AppPreferences: ObservableObject {
         focusOpenedSearchDirectory = defaults.bool(forKey: Keys.focusOpenedSearchDirectory)
         // Defaults off — a fresh install rides the stable channel until the user opts in.
         receiveBetaUpdates = defaults.bool(forKey: Keys.receiveBetaUpdates)
+        // Defaults on, like `showTags`: `object(forKey:)`, not `bool(forKey:)`, which answers
+        // `false` for a never-written key and would ship every vault hidden while the property
+        // above documents the opposite.
+        showVaultsInFinder = defaults.object(forKey: Keys.showVaultsInFinder) as? Bool ?? true
         hasSeenFullDiskAccessOnboarding = defaults.bool(forKey: Keys.hasSeenFullDiskAccessOnboarding)
         hasOfferedFullDiskAccessForICloud = defaults.bool(
             forKey: Keys.hasOfferedFullDiskAccessForICloud

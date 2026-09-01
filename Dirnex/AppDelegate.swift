@@ -60,6 +60,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // by the first navigation rather than by the second.
         VaultMounts.start()
 
+        // And start listening for the Show-unlocked-vaults-in-Finder preference changing, so
+        // flipping it in Settings reaches the vaults that are already open rather than only the
+        // next unlock (PLAN.md §M19).
+        VaultVisibility.start()
+
         // Rebuild the registry-driven menu whenever the user rebinds a shortcut, so the new
         // key equivalents take effect immediately (PLAN.md §M3 "rebindable shortcuts").
         NotificationCenter.default.addObserver(

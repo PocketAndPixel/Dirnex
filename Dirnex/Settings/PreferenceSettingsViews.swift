@@ -22,6 +22,21 @@ struct GeneralSettingsView: View {
             }
 
             Section {
+                Toggle("Show unlocked vaults in Finder", isOn: $preferences.showVaultsInFinder)
+            } footer: {
+                Text(
+                    """
+                    While a vault is unlocked, its volume also appears in Finder’s sidebar, on the desktop and \
+                    in other apps’ Open panels — so you can attach a file from it to an email. Turn this off to \
+                    keep an unlocked vault visible only inside Dirnex. Either way, locking a vault removes it \
+                    from everywhere.
+                    """
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
+            Section {
                 Toggle("Receive beta updates", isOn: $preferences.receiveBetaUpdates)
             } footer: {
                 Text(

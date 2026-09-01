@@ -12667,6 +12667,39 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
 
+**2026-09-02 — the vault visibility setting moved into Settings, and its default flipped on.** It
+had been a checked item on one vault's sidebar context menu since 2026-08-11, per vault and off
+(the entry below argues why). Both halves of that argument were reconsidered rather than one: a
+setting nobody can find is not a setting, and the thing most people want most of the time is to
+unlock a vault and then attach a file from it to an email. So `VaultLocation.showsInFinder` is gone
+and `AppPreferences.showVaultsInFinder` (Settings ▸ General) is the one answer, **on** by default —
+which means a vault is published to the whole Mac while it is unlocked unless somebody says
+otherwise, and *locking it* is what makes it private again rather than the attach flag. That is the
+deliberate part, and it is worth stating as a reversal rather than a tidy-up.
+
+Three things fell out of it. `DiskImageArguments.attach` lost its `showingInFinder: Bool = false`
+**default** — the right shape while the answer was a per-vault flag a call site could forget, and
+exactly wrong once one preference is the answer, since a default would be a second one and silently
+the opposite (docs/NOTES.md ▸ Design lessons, a defaulted store path). `VaultLocation` carries no
+settings at all now, so its hand-written `init(from:)` went with the field: the retired key is
+simply ignored by `JSONDecoder`, which is the *opposite* of the missing-key case that made it decode
+by hand — worth a test of its own with both stored JSON shapes in it, and worth the comment saying
+the synthesized decoder is only correct while every property stays required. And the live remount
+had to move: `VaultVisibility` (a singleton started from `AppDelegate`) hears the preference change
+and remounts every vault that is open right now, because `-nobrowse` is decided at attach time and a
+setting that only took effect at the next unlock would look like it did nothing.
+
+Verified live against a real throwaway encrypted sparsebundle, with the mount flags and
+`mountedVolumeURLs(options: [.skipHiddenVolumes])` as the judge rather than a screenshot. With the
+key never written, the unlock attached browsable (`0x04A09218`, `MNT_DONTBROWSE` clear) and Finder
+listed the disk by name; clicking the toggle off remounted the *open* vault to `0x04B09218` —
+`MNT_DONTBROWSE` set with `MNT_IGNORE_OWNERSHIP`, `MNT_NOSUID` and `MNT_NODEV` all still there,
+which is the finding that whole remount path exists for — and `skipHiddenVolumes` stopped returning
+it; clicking it back on reversed both. The attach-time control is separate and was run separately:
+locked, switch off, unlocked again, `nobrowse` present from the start. The sidebar's vault menu is
+now Unlock / Rename… / Remove from Sidebar, and a shown vault still appears under Vaults only, which
+is the rule `SidebarLocations.hidingVaults` has held since it stopped being free.
+
 **2026-09-01 — the live suites were run, and the run summary turned out to be no tell at all.**
 NOTES.md had recorded that morning that a live suite whose config file has gone reports success by
 *skipping*, and that `sendsPartsConcurrently` had therefore shipped with its suite never once having

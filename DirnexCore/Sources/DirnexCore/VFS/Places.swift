@@ -254,11 +254,13 @@ public enum SidebarLocations {
     ///
     /// This used to be true for free. A vault is attached `-nobrowse`, and `mountedVolumeURLs(
     /// options: [.skipHiddenVolumes])` skips a hidden volume — so the sections could not overlap
-    /// however they were assembled. ``VaultLocation/showsInFinder`` is exactly the withdrawal of
-    /// that flag, which makes the vault's volume browsable and therefore *enumerable* (verified
-    /// against a live one: it came back from `mountedVolumeURLs` the moment it was shown). So the
-    /// rule now needs stating, and stating somewhere it can be tested — the shape docs/NOTES.md
-    /// keeps recording, where one question has two spellings and the compiler checks neither.
+    /// however they were assembled. The app's **Show unlocked vaults in Finder** preference is
+    /// exactly the withdrawal of that flag, which makes the vault's volume browsable and therefore
+    /// *enumerable* (verified against a live one: it came back from `mountedVolumeURLs` the moment it
+    /// was shown). So the rule needs stating, and stating somewhere it can be tested — the shape
+    /// docs/NOTES.md keeps recording, where one question has two spellings and the compiler checks
+    /// neither. It is load-bearing for the ordinary case rather than an edge one, since that
+    /// preference ships **on**.
     public static func hidingVaults(
         in volumes: [MountedVolume],
         mountedAt vaultMountPoints: Set<String>

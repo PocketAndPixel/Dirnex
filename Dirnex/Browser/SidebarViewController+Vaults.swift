@@ -121,27 +121,11 @@ extension SidebarViewController {
                 vault
             ))
         }
-        menu.addItem(.separator())
-        // A checked item rather than a submenu or a Settings pane: it is one boolean about the vault
-        // the user just right-clicked, and it belongs where the vault is. The check is the whole
-        // state display — a locked vault answers it just as well as an unlocked one, which is the
-        // point of storing it rather than reading it off a mount that may not exist.
-        let visible = NSMenuItem(
-            title: String(
-                localized: "Show in Finder When Unlocked",
-                comment: """
-                Vault context-menu item, a checkbox: while this vault is unlocked, let its volume \
-                appear in Finder's sidebar and in other apps' Open panels. Off by default.
-                """
-            ),
-            action: #selector(toggleVaultVisibilityItem(_:)),
-            keyEquivalent: ""
-        )
-        visible.target = self
-        visible.representedObject = vault.imagePath
-        visible.state = vault.showsInFinder ? .on : .off
-        menu.addItem(visible)
-
+        // No "Show in Finder When Unlocked" here any more. It was a checked item on this menu until
+        // 2026-09-02, on the reasoning that one boolean about the vault you just right-clicked
+        // belongs where the vault is — and what that meant in practice was a setting nobody could
+        // find. It is now one app-wide preference (Settings ▸ General), applied to whatever is open
+        // by `VaultVisibility`.
         menu.addItem(.separator())
         menu.addItem(vaultMenuItem(
             String(
@@ -194,14 +178,6 @@ extension SidebarViewController {
     @objc private func lockVaultItem(_ sender: NSMenuItem) {
         guard let vault = vault(from: sender) else { return }
         delegate?.sidebar(self, didRequestLockOf: vault)
-    }
-
-    /// The vault is re-read from the store rather than taken from the menu item, so the new value is
-    /// computed against what is saved *now* — a second window's menu, opened before this one was
-    /// used, would otherwise carry a stale `showsInFinder` and write the value back unchanged.
-    @objc private func toggleVaultVisibilityItem(_ sender: NSMenuItem) {
-        guard let vault = vault(from: sender) else { return }
-        delegate?.sidebar(self, didSet: !vault.showsInFinder, asShowsInFinderFor: vault)
     }
 
     @objc private func renameVaultItem(_ sender: NSMenuItem) {

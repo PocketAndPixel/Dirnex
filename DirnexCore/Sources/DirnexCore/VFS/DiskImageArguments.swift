@@ -89,16 +89,18 @@ public enum DiskImageArguments {
 
     /// Unlocking a vault: attach it and mount its volume.
     ///
-    /// `-nobrowse` keeps it out of the Finder sidebar, because Dirnex is the one presenting it —
-    /// and a vault that silently appears in every other app's open panel is not what "unlock in my
-    /// file manager" means. `-plist` makes the result parseable by ``DiskImageMount`` rather than
-    /// scraped from prose.
+    /// `-nobrowse` keeps the volume out of Finder's sidebar, the desktop and every other app's Open
+    /// panel; withholding it publishes the vault to the whole Mac for as long as it is unlocked.
+    /// `-plist` makes the result parseable by ``DiskImageMount`` rather than scraped from prose.
     ///
-    /// `showingInFinder` withdraws that flag for one vault (``VaultLocation/showsInFinder``). It is a
-    /// parameter with a private default rather than two functions, so a call site that says nothing
-    /// gets the private behavior: the failure that matters here is a vault published by omission, and
-    /// this is the shape where forgetting cannot cause it.
-    public static func attach(atPath path: String, showingInFinder: Bool = false) -> [String] {
+    /// `showingInFinder` is the app's own **Show unlocked vaults in Finder** preference, and it has
+    /// **no default on purpose**. It used to default to `false`, so that a call site saying nothing
+    /// got the private behavior — the right shape while the answer was a per-vault flag that could be
+    /// forgotten. It is now one app-wide setting, and a default here would be a second answer to the
+    /// same question: silently the *opposite* one, since the preference ships on. A required argument
+    /// makes the compiler ask each caller where its answer came from, which is the same fix
+    /// docs/NOTES.md records for a defaulted store path.
+    public static func attach(atPath path: String, showingInFinder: Bool) -> [String] {
         var argv = ["attach", "-stdinpass"]
         if !showingInFinder { argv.append("-nobrowse") }
         argv += ["-plist", path]

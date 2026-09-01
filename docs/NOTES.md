@@ -5738,8 +5738,10 @@ overturned the decision the milestone opened on.
 - **`-nobrowse` can be withdrawn from a *mounted* volume, unprivileged — but a remount keeps only the
   options it is handed.** `mount -u -o browse <point>` puts an unlocked vault into Finder's Locations
   immediately, and `nobrowse` puts it back, with no unmount and no passphrase; that is what makes
-  "show this one vault in Finder" a per-vault setting rather than something that only applies at the
-  next unlock. The trap is the second half, and it is silent: a bare `-o browse` took the volume's
+  "show unlocked vaults in Finder" a setting that takes effect **now** rather than one that only
+  applies at the next unlock. (It was per-vault when this was measured and is one app-wide
+  preference since 2026-09-02 — which changes nothing here except that the remount is a loop over
+  whatever is open.) The trap is the second half, and it is silent: a bare `-o browse` took the volume's
   flags from `0x04B09218` to `0x04809218` — clearing **`MNT_IGNORE_OWNERSHIP`** along with
   `MNT_DONTBROWSE`, so a vault that ignored ownership quietly started enforcing it, with every file in
   it owned by a uid from whichever Mac wrote it. `MNT_NOSUID` and `MNT_NODEV` happened to survive,
@@ -5774,6 +5776,13 @@ overturned the decision the milestone opened on.
   which is the part that looks like it should. Worth a test with real legacy JSON in it, and worth
   running the negative control — neutering the decoder failed it with `keyNotFound`, which is the
   proof the test is about this and not about nothing.
+  - **Taking the field away again is free, and the asymmetry is the point.** `showsInFinder` was
+    retired on 2026-09-02 for one app-wide preference, and the key is still in every saved vault's
+    JSON: `JSONDecoder` **ignores a key no property claims**, so the hand-written decoder went with
+    the field and nothing had to be migrated. Adding a field is a migration; removing one is not.
+    What that leaves behind is a type whose synthesized decoder is correct only while every property
+    stays required — worth a sentence in the doc comment, since the next optional field brings the
+    whole trap back with nothing to notice it.
   - The same edit has a quieter twin one layer up: a store's `add` that **replaces** an entry will
     reset any field a caller didn't know to carry. Two of the unlock entry points *construct* a
     `VaultLocation` from the file under the cursor, so unlocking from the pane rather than the sidebar

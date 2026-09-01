@@ -28,7 +28,7 @@ struct VaultTests {
                 atPath: "/tmp/v.sparsebundle", volumeName: "Vault", kind: .sparseBundle,
                 megabytes: 512
             ),
-            DiskImageArguments.attach(atPath: "/tmp/v.sparsebundle"),
+            DiskImageArguments.attach(atPath: "/tmp/v.sparsebundle", showingInFinder: false),
             DiskImageArguments.detach(mountPoint: "/Volumes/Vault"),
             DiskImageArguments.info()
         ]
@@ -39,7 +39,10 @@ struct VaultTests {
         #expect(DiskImageArguments.create(
             atPath: "/tmp/v.sparsebundle", volumeName: "Vault", kind: .sparseBundle, megabytes: 512
         ).contains("-stdinpass"))
-        #expect(DiskImageArguments.attach(atPath: "/tmp/v.sparsebundle").contains("-stdinpass"))
+        #expect(
+            DiskImageArguments.attach(atPath: "/tmp/v.sparsebundle", showingInFinder: true)
+                .contains("-stdinpass")
+        )
     }
 
     @Test("the bytes written to hdiutil's stdin are the passphrase and nothing else")
@@ -79,9 +82,14 @@ struct VaultTests {
         #expect(argv.last == "/vaults/Personal.sparsebundle")
     }
 
-    @Test("an unlocked vault stays out of every other app's sidebar")
+    @Test("an unlocked vault stays out of every other app's sidebar when it is told to")
     func attachIsNoBrowse() {
-        let argv = DiskImageArguments.attach(atPath: "/vaults/Personal.sparsebundle")
+        // Whether it is told to is the app's **Show unlocked vaults in Finder** preference; what
+        // that answer *does* is here, and in `VaultVisibilityTests` for the other direction.
+        let argv = DiskImageArguments.attach(
+            atPath: "/vaults/Personal.sparsebundle",
+            showingInFinder: false
+        )
         #expect(argv.contains("-nobrowse"))
         #expect(argv.contains("-plist"))
     }
