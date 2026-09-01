@@ -21,6 +21,14 @@ import Foundation
 /// (``SFTPTransport/upload(_:to:resume:progress:isCancelled:)``), where a split one reports as each
 /// part lands.
 extension SFTPProcessTransport {
+    /// Yes: the children below are spawned before any of them is waited on.
+    ///
+    /// Asserted by a test rather than left to the reader, because it is the one thing about this
+    /// route that nothing else can see — the protocol's sequential default reports progress per part
+    /// exactly as this does, so a build that lost this file would keep every assertion green and
+    /// silently upload in one connection at a time (docs/NOTES.md ▸ Design lessons).
+    var sendsPartsConcurrently: Bool { true }
+
     @discardableResult
     func uploadParts(
         _ parts: [UploadSegment],

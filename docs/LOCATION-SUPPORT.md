@@ -645,6 +645,10 @@ afterwards and the **times are reported lost**, the same trade the server-side `
 (<sup>bbb</sup>). An account confined to the `sftp` subsystem has no exec channel and cannot join
 anything: it is asked once, before a byte is sent, and every upload on that connection takes the
 single stream — measured, the file still lands byte-identical, in order, with nothing left behind.
+What a **failed part** costs is the transfer, not the part: the run is abandoned, the server swept,
+and the file sent again in one stream. S3's multipart has no retry unit either — it aborts the upload
+and throws — so this is parity rather than a shortfall, and it is the one thing PLAN.md's wording for
+this cell described that neither backend does.
 
 <sup>ww</sup> **FTP cannot, and this is a measurement rather than an assumption.** `curl -C <offset>`
 on an upload sends **`APPE`**, not `REST`+`STOR`, so it can only ever append at the end. A raw

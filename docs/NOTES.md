@@ -6619,6 +6619,29 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     through it records a loss. Generalizes to any seam whose good answer is also its default: the
     test needs a state the default cannot produce, and if the default is "nothing", that state is
     "something went wrong earlier".
+  - **The third instance came a milestone later and inverts the usual reading of "additive": here the
+    forwarding default is *worse* than the route it stands in for.** A segmented SFTP upload's
+    transport verb sends N parts at once; the protocol's default sends them one at a time, which is
+    the house rule's own test for a legitimate default — the caller cannot tell, since the parts land
+    under the same names holding the same bytes and the server joins the identical file. And the
+    costs are all still paid: a slice per part on this disk, a connection per part, the destination's
+    size again in scratch on the server, and two extra round trips for the join and the rename. So a
+    transport on the default takes a route whose *only* benefit it cannot deliver and ends up slower
+    than the single `put` it replaced. "Slow and never wrong" is the phrase to distrust — ask slower
+    **than what**, and if the answer is "than not taking this route at all", forwarding is the wrong
+    default.
+  - **What makes it invisible is that the observable is identical**, which is the same trap one layer
+    along: the default reports progress per part exactly as the concurrent implementation does, so
+    the live suite's own discriminator (four reports rather than one) passes either way. Measured by
+    deleting the shipped transport's declaration: **one test of 1018 failed**, and it was the one
+    written for precisely this.
+  - **The fix is a declaration rather than an inference**, the shape ``RemoteWriteTransport
+    .metadataCapabilities`` already had: `sendsPartsConcurrently`, `false` by default, read by the
+    fork *before* anything is spent. Only the transport knows whether it implemented the verb, and a
+    route that is worth nothing without a capability should be withheld from a transport that lacks
+    it rather than degraded into. Two tests, and both halves are needed — the shipped transport says
+    `true`, and a minimal conformer says `false`, or the first is reading a constant nobody
+    consults.
 
 - **A shortcut that replaces a walk has to reproduce what the walk *inferred*, not just what the
   source hands back.** A delimiter-less `ListObjectsV2` returns no `CommonPrefixes` whatsoever — S3

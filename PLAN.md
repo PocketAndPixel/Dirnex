@@ -146,7 +146,10 @@ joined by the server (measured 3.6× through the shipped path, 16.92 s → 4.73 
 it has no way to write at an offset into a file that does not already exist at full length, and no
 way to make one without sending the file twice. The refusal moved to
 [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)'s *"cannot be closed from here"* list with the
-numbers behind it, and what remains here is M15's own cut.
+numbers behind it. One phrase of that cell's own wording is deliberately **not** claimed — *"parts
+that fail and retry independently"*: a failed part abandons the run on both backends (S3 aborts and
+throws; SFTP falls back to one stream), so a retry unit smaller than the file is a capability neither
+has, and it is a separate question from splitting. What remains here is M15's own cut.
 
 - **The thumbnail grid, brief view and the `PaneSurface` extraction** — M15's cut, and one unit
   rather than three items, argued in HISTORY.md §M15. Any future grid inherits two constraints from

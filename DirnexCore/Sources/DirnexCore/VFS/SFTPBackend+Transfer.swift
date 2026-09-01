@@ -195,11 +195,14 @@ extension SFTPBackend {
     /// account can join them, in one stream when it is not. Returns the bytes actually transferred
     /// (the whole file, or just the remainder on resume).
     ///
-    /// The fork has four conditions and each excludes a case the segmented path cannot serve, in the
+    /// The fork has five conditions and each excludes a case the segmented path cannot serve, in the
     /// order that keeps the cheap questions in front of the dear ones. A **partial already on the
     /// server** takes the resuming route untouched, because parts are sent under names of their own
     /// and have nothing to continue from — and it costs nothing to ask, since the remote size was
-    /// already being read for exactly that decision. A file under
+    /// already being read for exactly that decision. A transport that **does not send parts at
+    /// once** is not offered the route at all: without the concurrency it would pay every one of the
+    /// costs and collect none of the benefit, which is worse than the single `put`
+    /// (``SFTPTransport/sendsPartsConcurrently``). A file under
     /// ``SegmentedUploadLimits/threshold`` is not worth four key exchanges, a slice on this disk and
     /// a second copy on the server's. A connection that has already shown it **cannot join parts** is
     /// not asked again. And only then is the account itself asked, once, whether it has an exec
@@ -223,6 +226,7 @@ extension SFTPBackend {
         let resume = existingRemote > 0 && existingRemote < sourceSize
 
         if !resume,
+           transport.sendsPartsConcurrently,
            SegmentedUploadPlan.isWorthwhile(totalSize: sourceSize, limits: segmentedUploadLimits),
            !segmentedUpload.isRefused,
            let plan = SegmentedUploadPlan(totalSize: sourceSize, limits: segmentedUploadLimits),

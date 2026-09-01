@@ -112,6 +112,21 @@ public protocol SFTPTransport: RemoteWriteTransport {
         isCancelled: () -> Bool
     ) throws -> Int64
 
+    /// Whether ``uploadParts(_:progress:isCancelled:)`` really does send them at once.
+    ///
+    /// **A declaration, not an inference, and the reason is that this route is worth nothing
+    /// without it.** A segmented upload buys concurrency and a progress bar that moves; it *costs* a
+    /// slice on this disk, one connection per part, the destination's size again in scratch on the
+    /// server, and two more round trips for the join and the rename. Sent one part at a time that is
+    /// a worse deal than the single `put` it replaced — so a transport that has not implemented the
+    /// concurrent send must not be handed the route at all, and only it can say whether it has.
+    ///
+    /// The same shape ``RemoteWriteTransport/metadataCapabilities`` already has, for the same
+    /// reason: declaring it is an obligation to implement the verb below, and the `false` default is
+    /// what keeps a transport that has not done so honest. It is read *before* the exec probe, being
+    /// free and a fact about this build rather than about the server.
+    var sendsPartsConcurrently: Bool { get }
+
     /// Send several parts of one local file **at once**, each to its own remote name, for the
     /// server to join afterwards (``SSHAssembleCommand``).
     ///
@@ -282,13 +297,22 @@ public extension SFTPTransport {
         ))
     }
 
+    /// A transport says nothing about concurrency until it implements the verb below.
+    ///
+    /// `false` is what keeps the route off a transport that cannot serve it — see
+    /// ``sendsPartsConcurrently``.
+    var sendsPartsConcurrently: Bool { false }
+
     /// The additive half of ``uploadParts(_:progress:isCancelled:)``: a transport that predates
     /// segmented uploads keeps compiling and keeps working.
     ///
     /// It forwards rather than throwing, by the test this project applies before letting a default
     /// stand in — the caller cannot tell it was not honoured, because the parts land under the same
-    /// names holding the same bytes and the server joins the identical file. What it loses is the
-    /// concurrency, which is the whole point of the route and not its correctness.
+    /// names holding the same bytes and the server joins the identical file. It is nonetheless
+    /// **unreachable in the shipped app**, and deliberately so: `sendsPartsConcurrently` is `false`
+    /// alongside it, so the backend never offers the route to a transport running on this. What it
+    /// loses is the concurrency, which is not merely the point of the route — without it the route
+    /// is *worse* than the single `put` it replaces, since the costs are all still paid.
     @discardableResult
     func uploadParts(
         _ parts: [UploadSegment],

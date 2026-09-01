@@ -317,6 +317,11 @@ final class FakeSFTPTransport: SFTPTransport, @unchecked Sendable {
     /// Fails the *n*th part upload, counting from 1, the way a server out of room would.
     var failsPartNumber: Int?
 
+    /// Whether this double claims to send parts at once. **On**, because it implements the verb —
+    /// a test that wants the *other* state sets it to false and gets the route withheld, which is
+    /// the only way that wiring is visible at all.
+    var sendsPartsConcurrently = true
+
     /// Run just before a batch is sent — the seam that lets a test read what was on disk, and
     /// what had already been asked of the server, at the moment the parts went out.
     var beforeUploadingParts: (([UploadSegment]) -> Void)?

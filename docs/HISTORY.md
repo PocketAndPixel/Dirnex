@@ -12712,6 +12712,24 @@ to [LOCATION-SUPPORT.md](LOCATION-SUPPORT.md)'s *"cannot be closed from here"* l
 behind it. `curl` is **not** what is at fault, and separating that mattered: given a pre-existing file
 it expresses the offset write fine, so this is the protocol's limit and not the tool's.
 
+**The route is withheld from a transport that cannot serve it, rather than degraded into.** The
+protocol's forwarding default sends the parts one at a time, which passes the house test for a
+legitimate default — the file is identical — and is nonetheless *worse than the single `put` it
+replaces*, since the slice, the connection per part, the server-side scratch and the two extra round
+trips are all still paid for a benefit that is no longer there. Worse, it is invisible: the default
+reports progress per part exactly as the concurrent implementation does, so the live suite's own
+discriminator passes either way. Hence `SFTPTransport.sendsPartsConcurrently`, `false` by default and
+read by the fork before anything is spent — the shape `metadataCapabilities` already had. Measured by
+deleting the shipped transport's declaration: **one test of 1018 failed**, which is what says the hole
+was real (NOTES.md ▸ Design lessons, the third instance of a seam whose good answer is also its
+default).
+
+**What is *not* here is a retry unit smaller than the file**, which is what PLAN.md's own wording for
+this cell described. Neither backend has one: S3's multipart aborts the whole upload and throws, and
+SFTP's falls back to a single stream — better, in that the file still lands — but a failed part costs
+the transfer either way. Parity is reached and the capability is not, so it stays written down rather
+than claimed.
+
 **Six negative controls, each firing on the test named for it**, plus the one only a second server
 can run: pointed at an account with `ForceCommand internal-sftp`, the live suite fails on *exactly*
 the assertion that distinguishes the routes — one progress report instead of four — while every other

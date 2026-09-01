@@ -134,6 +134,31 @@ struct SFTPSegmentedUploadForkTests {
         #expect(backend.segmentedUpload.isRefused)
     }
 
+    @Test("a transport that does not send parts at once is not offered the route")
+    func aSequentialTransportIsNotSplit() throws {
+        let transport = SegmentedUploadFixture.readyTransport()
+        // The protocol's own default. A transport on it would send the parts one at a time and still
+        // pay for the slices, the connections, the server-side scratch and the join — every cost of
+        // the route with none of its benefit, which is worse than the `put` it replaced.
+        transport.sendsPartsConcurrently = false
+        let backend = SegmentedUploadFixture.backend(transport)
+
+        try SegmentedUploadFixture.withFile(Data(repeating: 1, count: 1000)) { localPath in
+            _ = try backend.uploadFile(
+                fromLocal: localPath,
+                remote: SegmentedUploadFixture.destination(on: backend),
+                source: RemoteSourceMetadata(permissions: nil, modificationTime: nil),
+                progress: { _ in },
+                isCancelled: { false }
+            )
+        }
+        #expect(transport.partRuns.isEmpty)
+        #expect(transport.uploads.count == 1)
+        // Read before the exec probe, so a transport that cannot serve the route costs no round trip
+        // finding out.
+        #expect(transport.commands.isEmpty)
+    }
+
     @Test("the exec channel is asked before a byte is sent")
     func theProbeComesFirst() throws {
         let transport = SegmentedUploadFixture.readyTransport()
