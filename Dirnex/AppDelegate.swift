@@ -44,6 +44,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ArchiveWriter.purgeTemporaries()
         RemoteFileCache.purgeTemporaries()
         CompositeBackend.purgeTemporaries()
+        // And the copies that make an archive rewrite undoable — pruned rather than purged, since
+        // the journal that names them survives relaunch too. Here for the same reason as the
+        // others: nothing is rewriting yet, and the persisted journal *is* the live set until a
+        // window exists to change it.
+        ArchiveUndoStorage.purgeUnreferenced()
 
         // Merge the standard places into the pin list before any window builds its sidebar
         // (PLAN.md §M8) — the Favorites section reads the favorites now, so an un-seeded store

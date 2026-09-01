@@ -21,7 +21,7 @@ enum UndoOutcome {
 
 @MainActor
 final class UndoController {
-    private static let persistenceKey = "Dirnex.undoJournal"
+    private nonisolated static let persistenceKey = "Dirnex.undoJournal"
 
     private var journal: UndoJournal
     private let backend: any VFSBackend
@@ -112,7 +112,25 @@ final class UndoController {
         UserDefaults.standard.set(data, forKey: Self.persistenceKey)
     }
 
-    private static func load() -> UndoJournal {
+    /// Every archive snapshot the *persisted* stacks still name, **furthest from the next ⌘Z
+    /// first** — what `ArchiveUndoStorage` prunes against at launch and what a capture evicts from.
+    ///
+    /// Ordered, not a set, because that order is the whole answer to "which of these will be wanted
+    /// last" and only the journal has it (``ArchiveUndoBudget/plan(adding:held:live:)``). Undo's
+    /// stack comes first, oldest end leading, since its bottom is the furthest thing from any key
+    /// the user can press; the redo stack follows, because everything on it is one ⇧⌘Z away.
+    ///
+    /// Read from the file rather than from a live journal: this runs at launch, before any window
+    /// exists. A journal that fails to decode answers empty, which prunes the store empty — right
+    /// rather than merely convenient, since a journal nothing can read reverses nothing.
+    nonisolated static func persistedArchiveSnapshots() -> [String] {
+        let journal = load()
+        let records = (journal.records + journal.redoRecords).compactMap(\.fileOperation)
+        var seen: Set<String> = []
+        return records.flatMap { $0.archiveSnapshotPaths.sorted() }.filter { seen.insert($0).inserted }
+    }
+
+    private nonisolated static func load() -> UndoJournal {
         guard let data = UserDefaults.standard.data(forKey: persistenceKey),
               let blob = try? JSONDecoder().decode(Persisted.self, from: data)
         else { return UndoJournal() }

@@ -9,11 +9,12 @@ import DirnexCore
 /// archive, navigate both panes elsewhere, close the tab, and save an hour later — and the answer
 /// still has to be "put it back", not "the pane that started this is gone".
 ///
-/// **It asks.** Repacking rewrites the whole archive and cannot be undone (the same wording F8 and
-/// paste already use), so it is a mutation of a file the user did not name in this gesture — they
-/// named it when they pressed ⏎, possibly a long time ago and possibly in an app that autosaves.
-/// Silently rewriting an archive because a text editor flushed a buffer is the version of this
-/// feature nobody asked for.
+/// **It asks.** Repacking rewrites the whole archive, so it is a mutation of a file the user did not
+/// name in this gesture — they named it when they pressed ⏎, possibly a long time ago and possibly
+/// in an app that autosaves. Silently rewriting an archive because a text editor flushed a buffer is
+/// the version of this feature nobody asked for, and that is true whether or not it can be reversed
+/// afterwards. What the reversibility changes is the *sentence*, which says which it will be — the
+/// same wording F8 and paste use.
 extension BrowserWindowController {
     /// A watched member has been saved — offer to write it back into `archivePath`, at
     /// `innerDirectory`.
@@ -31,13 +32,27 @@ extension BrowserWindowController {
             file's name and the second the archive's.
             """
         )
-        alert.informativeText = String(
-            localized: """
-            You edited a copy that was extracted from the archive. Saving it back rewrites the \
-            archive and can’t be undone.
-            """,
-            comment: "Body of the write-back prompt."
-        )
+        alert.informativeText = ArchiveUndoStorage.willBeUndoable(archiveAt: archivePath)
+            ? String(
+                localized: """
+                You edited a copy that was extracted from the archive. Saving it back rewrites \
+                the archive; Undo puts it back.
+                """,
+                comment: """
+                Body of the write-back prompt when the rewrite will be undoable — Dirnex keeps a \
+                copy of the archive as it was.
+                """
+            )
+            : String(
+                localized: """
+                You edited a copy that was extracted from the archive. Saving it back rewrites \
+                the archive and can’t be undone.
+                """,
+                comment: """
+                Body of the write-back prompt when the archive is too large for Dirnex to keep a \
+                copy of, so the rewrite cannot be reversed.
+                """
+            )
         alert.addButton(withTitle: String(
             localized: "Save Back",
             comment: "Button that writes an edited member back into its archive."
@@ -83,12 +98,14 @@ extension BrowserWindowController {
                         localPaths: [temporaryPath],
                         toInnerDirectory: innerDirectory,
                         ofArchiveAt: archivePath,
-                        passphrase: passphrase
+                        passphrase: passphrase,
+                        undo: ArchiveUndoStorage.request()
                     )
                 }
             }.get()
-        } onSuccess: { [weak self] in
+        } onSuccess: { [weak self] snapshot in
             guard let self else { return }
+            pane.journalArchiveRewrite(snapshot)
             // Stop watching the copy that has now been absorbed: the archive is a new file, and the
             // next open re-extracts. Leaving the watcher would offer the same edit again on the
             // editor's next autosave, against an archive that already has it.
@@ -111,7 +128,10 @@ extension BrowserWindowController {
     /// Both panes, by *content* rather than by role: the pane that opened the file may have
     /// navigated away, both may be inside the same archive, or neither may be — the same "ask which
     /// pane is showing this, don't assume" shape the pack outcome needed.
-    private func refreshPanesShowingArchive(at archivePath: String) {
+    ///
+    /// Shared with ⌘Z, which swaps the container under whatever pane is standing in it
+    /// (`+Undo`) — the same question, so the same answer rather than a second spelling of it.
+    func refreshPanesShowingArchive(at archivePath: String) {
         for pane in [leftPanel, rightPanel] {
             guard pane.panel.path.backend.archivePath == archivePath else { continue }
             (pane.backend as? CompositeBackend)?.invalidateMountedArchive(at: archivePath)

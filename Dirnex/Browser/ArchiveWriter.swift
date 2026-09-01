@@ -38,12 +38,19 @@ enum ArchiveWriter {
     ///
     /// `passphrase` is required for an encrypted archive and ignored otherwise, so a caller holding
     /// one may pass it speculatively.
+    ///
+    /// Returns the copy of the archive taken on the way past, for the caller to journal — or `nil`
+    /// when the rewrite is not undoable (see ``rewrite(archiveOnDiskPath:passphrase:undo:edit:)``).
+    @discardableResult
     static func delete(
         innerPaths: [String],
         fromArchiveAt archiveOnDiskPath: String,
-        passphrase: ArchivePassphrase? = nil
-    ) throws {
-        try rewrite(archiveOnDiskPath: archiveOnDiskPath, passphrase: passphrase) { workingDirectory in
+        passphrase: ArchivePassphrase? = nil,
+        undo: ArchiveUndoStorage.Request
+    ) throws -> ArchiveUndoSnapshot? {
+        try rewrite(
+            archiveOnDiskPath: archiveOnDiskPath, passphrase: passphrase, undo: undo
+        ) { workingDirectory in
             // Remove each target by its exact extracted path. A member that isn't there (already
             // gone, or a stale selection) is not a failure — the rewrite still drops it.
             for innerPath in innerPaths {
@@ -66,14 +73,18 @@ enum ArchiveWriter {
     /// `passphrase` is required for an encrypted archive and ignored otherwise. This is also the
     /// primitive behind editing a member in place: writing one edited file back is an add of that
     /// file into the directory it came from, replacing the member of the same name.
+    @discardableResult
     static func add(
         localPaths: [String],
         toInnerDirectory innerDirectory: String,
         ofArchiveAt archiveOnDiskPath: String,
-        passphrase: ArchivePassphrase? = nil
-    ) throws {
+        passphrase: ArchivePassphrase? = nil,
+        undo: ArchiveUndoStorage.Request
+    ) throws -> ArchiveUndoSnapshot? {
         let name = (archiveOnDiskPath as NSString).lastPathComponent
-        try rewrite(archiveOnDiskPath: archiveOnDiskPath, passphrase: passphrase) { workingDirectory in
+        return try rewrite(
+            archiveOnDiskPath: archiveOnDiskPath, passphrase: passphrase, undo: undo
+        ) { workingDirectory in
             // The destination directory exists already when adding into a browsed folder, but make
             // sure — the archive could have been emptied, or the add could target a fresh path.
             let destinationDirectory = ArchiveMutation.additionDirectory(
@@ -105,11 +116,23 @@ enum ArchiveWriter {
     /// The shared rewrite: make a scratch directory, extract the whole archive into it, let `edit`
     /// mutate the extracted tree by real filesystem paths, then repack + atomically swap. Both
     /// `delete` and `add` are just different `edit` closures over this one flow (see the type doc).
+    ///
+    /// **Undo is a copy of the archive taken here and nowhere else** (HISTORY.md ▸ After M19,
+    /// 2026-09-01). A rewrite repacks the container whole, so there is no
+    /// diff to journal and the only exact reversal is the container as it was; this is the last
+    /// moment it exists. The copy is taken *after* the repack has succeeded, so a rewrite that
+    /// fails costs nothing at all, and is discarded again if the swap then fails — the store must
+    /// never hold a snapshot of an archive that was never replaced.
+    ///
+    /// `nil` back means the rewrite happened and is not undoable: the archive is larger than the
+    /// whole budget, or the copy could not be made. The gesture has already told the user which it
+    /// will be, from `ArchiveUndoStorage.willBeUndoable(archiveAt:)`.
     private static func rewrite(
         archiveOnDiskPath: String,
         passphrase: ArchivePassphrase?,
+        undo: ArchiveUndoStorage.Request,
         edit: (_ workingDirectory: String) throws -> Void
-    ) throws {
+    ) throws -> ArchiveUndoSnapshot? {
         let archiveURL = URL(fileURLWithPath: archiveOnDiskPath)
         let name = archiveURL.lastPathComponent
 
@@ -146,6 +169,7 @@ enum ArchiveWriter {
         let rewrittenURL = archiveURL.deletingLastPathComponent().appendingPathComponent(
             ArchiveMutation.temporaryArchiveName(forArchiveNamed: name, token: UUID().uuidString)
         )
+        var snapshot: ArchiveUndoSnapshot?
         do {
             try repackAll(
                 from: workingDirectory.path,
@@ -157,13 +181,16 @@ enum ArchiveWriter {
             guard FileManager.default.fileExists(atPath: rewrittenURL.path) else {
                 throw VFSError.unsupported(.archiveRewriteFailed(archive: name))
             }
+            snapshot = undo.store?.capture(archiveAt: archiveOnDiskPath, live: undo.live)
             _ = try FileManager.default.replaceItemAt(archiveURL, withItemAt: rewrittenURL)
         } catch {
             try? FileManager.default.removeItem(at: rewrittenURL)
+            snapshot.map { undo.store?.discard($0.snapshot) }
             throw error is VFSError || error is EncryptedArchiveError
                 ? error
                 : VFSError.unsupported(.archiveUpdateFailed(archive: name))
         }
+        return snapshot
     }
 
     /// Unpack the whole archive into the scratch directory, by whichever engine its format needs.

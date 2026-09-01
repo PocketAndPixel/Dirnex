@@ -25,6 +25,11 @@ public enum UndoActionLabel: String, Sendable, Equatable, Codable, CaseIterable 
     case rename
     case moveToTrash
     case changeAttributes
+    /// A rewrite of a browsed archive — members deleted, items added, or an edited member saved
+    /// back. One label for the three, because what a ⌘Z puts back is the same thing in every case:
+    /// the container as it was (``UndoStep/restoreArchive(archive:snapshot:expected:restored:)``).
+    /// Phrased as ``changeAttributes`` is, since the menu reads "Undo <label>".
+    case changeArchive
 
     // Selection gestures — authored in the app, passed in on a `SelectionChange`.
     case mark
@@ -45,6 +50,7 @@ public enum UndoActionLabel: String, Sendable, Equatable, Codable, CaseIterable 
         case .rename: return "Rename"
         case .moveToTrash: return "Move to Trash"
         case .changeAttributes: return "Change Attributes"
+        case .changeArchive: return "Change Archive"
         case .mark: return "Mark"
         case .selectAll: return "Select All"
         case .invertSelection: return "Invert Selection"

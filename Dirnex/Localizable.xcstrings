@@ -12103,6 +12103,95 @@
         }
       }
     },
+    "An item with the same name is already in the archive. Replacing rewrites the archive; Undo puts it back.": {
+      "comment": "Replace-in-archive confirmation body when the rewrite will be undoable — Dirnex keeps a copy of the archive as it was. “Undo” is the Edit-menu command.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An item with the same name is already in the archive. Replacing rewrites the archive; Undo puts it back."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Objekt mit demselben Namen ist bereits im Archiv. Das Ersetzen schreibt das Archiv neu; „Widerrufen“ stellt es wieder her."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ya hay un ítem con el mismo nombre en el archivo comprimido. Reemplazarlo reescribe el archivo comprimido; «Deshacer» lo restaura."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un élément du même nom se trouve déjà dans l’archive. Le remplacement réécrit l’archive ; « Annuler » la rétablit."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un elemento con lo stesso nome è già nell’archivio. La sostituzione riscrive l’archivio; “Annulla” lo ripristina."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同じ名前の項目がすでにアーカイブにあります。置き換えるとアーカイブを書き換えますが、「取り消す」で元に戻せます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "같은 이름의 항목이 이미 아카이브에 있습니다. 교체하면 아카이브를 다시 쓰지만 ‘실행 취소’로 되돌릴 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Er staat al een onderdeel met dezelfde naam in het archief. Vervangen herschrijft het archief; ‘Herstel’ zet het terug."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Element o tej samej nazwie już jest w archiwum. Zastąpienie zapisze archiwum ponownie; „Cofnij” je przywróci."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объект с таким именем уже есть в архиве. Замена перезапишет архив; «Отменить» вернёт его обратно."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Об’єкт із такою назвою вже є в архіві. Заміна перезапише архів; «Скасувати» поверне його назад."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um item com o mesmo nome já está no arquivo compactado. Substituir reescreve o arquivo compactado; “Desfazer” o restaura."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "归档中已有同名项目。替换会重写归档；“撤销”可将其还原。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "壓縮檔中已有同名項目。取代會重寫壓縮檔；「還原」可將其復原。"
+          }
+        }
+      }
+    },
     "An update is available — click to install": {
       "comment": "Titlebar update indicator tooltip when the appcast named no version.",
       "localizations": {
@@ -87312,6 +87401,95 @@
         }
       }
     },
+    "This rewrites the archive. Undo puts it back.": {
+      "comment": "Delete-from-archive confirmation body when the rewrite will be undoable — Dirnex keeps a copy of the archive as it was. “Undo” is the Edit-menu command; use the same word your Edit menu uses.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This rewrites the archive. Undo puts it back."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dadurch wird das Archiv neu geschrieben. „Widerrufen“ stellt es wieder her."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esto reescribe el archivo comprimido. «Deshacer» lo restaura."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cela réécrit l’archive. « Annuler » la rétablit."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo riscrive l’archivio. “Annulla” lo ripristina."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アーカイブを書き換えます。「取り消す」で元に戻せます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아카이브를 다시 씁니다. ‘실행 취소’로 되돌릴 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiermee wordt het archief herschreven. ‘Herstel’ zet het terug."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spowoduje to ponowne zapisanie archiwum. „Cofnij” je przywróci."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Архив будет перезаписан. «Отменить» вернёт его обратно."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Архів буде перезаписано. «Скасувати» поверне його назад."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Isso reescreve o arquivo compactado. “Desfazer” o restaura."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这将重写归档。“撤销”可将其还原。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這會重寫壓縮檔。「還原」可將其復原。"
+          }
+        }
+      }
+    },
     "This saved search points at a place that can’t be searched. Open the folder or server you want to search and start a new search there.": {
       "comment": "Body shown when a saved search's stored scope has nothing to search — a results listing, or an S3 account whose rows are buckets rather than files.",
       "localizations": {
@@ -93781,6 +93959,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "你編輯的是從封存檔中取出的副本。儲存回去會重寫封存檔，且無法還原。"
+          }
+        }
+      }
+    },
+    "You edited a copy that was extracted from the archive. Saving it back rewrites the archive; Undo puts it back.": {
+      "comment": "Body of the write-back prompt when the rewrite will be undoable — Dirnex keeps a copy of the archive as it was. “Undo” is the Edit-menu command.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You edited a copy that was extracted from the archive. Saving it back rewrites the archive; Undo puts it back."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sie haben eine aus dem Archiv extrahierte Kopie bearbeitet. Das Zurückspeichern schreibt das Archiv neu; „Widerrufen“ stellt es wieder her."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editaste una copia extraída del archivo comprimido. Guardarla de vuelta reescribe el archivo comprimido; «Deshacer» lo restaura."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous avez modifié une copie extraite de l’archive. L’enregistrer réécrit l’archive ; « Annuler » la rétablit."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hai modificato una copia estratta dall’archivio. Salvarla riscrive l’archivio; “Annulla” lo ripristina."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アーカイブから取り出したコピーを編集しました。書き戻すとアーカイブを書き換えますが、「取り消す」で元に戻せます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아카이브에서 추출한 사본을 편집했습니다. 다시 저장하면 아카이브를 다시 쓰지만 ‘실행 취소’로 되돌릴 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je hebt een kopie bewerkt die uit het archief is uitgepakt. Terugschrijven herschrijft het archief; ‘Herstel’ zet het terug."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edytowano kopię wypakowaną z archiwum. Zapisanie jej z powrotem zapisze archiwum ponownie; „Cofnij” je przywróci."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вы редактировали копию, извлечённую из архива. Сохранение обратно перезапишет архив; «Отменить» вернёт его обратно."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ви редагували копію, видобуту з архіву. Збереження назад перезапише архів; «Скасувати» поверне його назад."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você editou uma cópia extraída do arquivo compactado. Salvá-la de volta reescreve o arquivo compactado; “Desfazer” o restaura."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你编辑的是从归档中提取的副本。存回会重写归档；“撤销”可将其还原。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你編輯的是從壓縮檔中取出的副本。存回會重寫壓縮檔；「還原」可將其復原。"
           }
         }
       }
@@ -118527,6 +118794,95 @@
         }
       }
     },
+    "undo.action.changeArchive.title": {
+      "comment": "Undo/redo action name spliced into “Undo %@”; DirnexCore data (UndoActionLabel). Names a rewrite of a browsed archive — members deleted, items added, or an edited member saved back. Russian is the accusative noun that follows “Отменить/Повторить”.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change Archive"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archiv ändern"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar archivo comprimido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier l’archive"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifica archivio"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アーカイブを変更"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아카이브 변경"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archief wijzigen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zmianę archiwum"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "изменение архива"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "зміну архіву"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alterar Arquivo Compactado"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改归档"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改壓縮檔"
+          }
+        }
+      }
+    },
     "undo.action.changeAttributes.title": {
       "comment": "Undo/redo action name spliced into “Undo %@”; DirnexCore data (UndoActionLabel). Russian is the accusative noun that follows “Отменить/Повторить”.",
       "localizations": {
@@ -121030,6 +121386,95 @@
         }
       }
     },
+    "vfs.unsupported.archiveChangedSinceRewrite": {
+      "comment": "Shown when ⌘Z would put an old archive back over one something else has changed since; %@ is the archive's name. DirnexCore data (VFSUnsupportedReason).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” has changed since then — undoing would discard the newer version."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ hat sich seitdem geändert – ein Widerruf würde die neuere Fassung verwerfen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» ha cambiado desde entonces; deshacer descartaría la versión más reciente."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« %@ » a changé depuis — annuler écarterait la version plus récente."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” è cambiato da allora: annullare scarterebbe la versione più recente."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」はその後変更されています。取り消すと新しい方が失われます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그 이후 ‘%@’이(가) 변경되었습니다. 실행을 취소하면 최신 버전이 사라집니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%@’ is sindsdien gewijzigd — ongedaan maken zou de nieuwere versie weggooien."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@” zmieniło się od tego czasu — cofnięcie odrzuciłoby nowszą wersję."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» с тех пор изменился — отмена отбросила бы более новую версию."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» відтоді змінився — скасування відкинуло б новішу версію."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” mudou desde então — desfazer descartaria a versão mais recente."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”此后已更改，撤销会丢弃较新的版本。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」此後已變更，還原會捨棄較新的版本。"
+          }
+        }
+      }
+    },
     "vfs.unsupported.archiveCreateFailed": {
       "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the archive name.",
       "localizations": {
@@ -121560,6 +122005,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "無法執行 bsdtar 來打開封存檔。"
+          }
+        }
+      }
+    },
+    "vfs.unsupported.archiveUndoCopyUnavailable": {
+      "comment": "Shown when ⌘Z cannot undo an archive rewrite because Dirnex no longer keeps the copy of the archive it would need; %@ is the archive's name. DirnexCore data (VFSUnsupportedReason).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex no longer keeps the copy of “%@” that Undo needs."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex bewahrt die Kopie von „%@“ nicht mehr auf, die zum Widerrufen nötig wäre."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex ya no conserva la copia de «%@» que necesita Deshacer."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex ne conserve plus la copie de « %@ » nécessaire pour annuler."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex non conserva più la copia di “%@” necessaria per annullare."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取り消しに必要な「%@」のコピーは、Dirnex にもう保存されていません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "실행 취소에 필요한 ‘%@’의 사본을 Dirnex가 더 이상 보관하지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex bewaart de kopie van ‘%@’ die nodig is om ongedaan te maken niet meer."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex nie przechowuje już kopii „%@”, która jest potrzebna do cofnięcia."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex больше не хранит копию «%@», необходимую для отмены."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex більше не зберігає копію «%@», потрібну для скасування."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex não mantém mais a cópia de “%@” necessária para desfazer."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 不再保留撤销“%@”所需的副本。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 不再保留還原「%@」所需的副本。"
           }
         }
       }

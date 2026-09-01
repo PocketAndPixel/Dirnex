@@ -2,10 +2,18 @@ import AppKit
 import DirnexCore
 
 /// Deleting members from inside a browsed archive (F8, PLAN.md §M4 "Archive writes: add/delete
-/// inside zip"). Unlike a local delete this can't go to the Trash and isn't undoable — the archive
-/// is rewritten whole (`ArchiveWriter`, extract → drop members → repack → atomic swap) — so it
-/// always confirms first with permanent wording. On success the pane drops the archive's stale
-/// mount and re-lists the current inner directory in place.
+/// inside zip"). Unlike a local delete this can't go to the Trash — the archive is rewritten whole
+/// (`ArchiveWriter`, extract → drop members → repack → atomic swap) — so it always confirms first.
+/// On success the pane drops the archive's stale mount and re-lists the current inner directory in
+/// place.
+///
+/// **It is undoable, and the sheet says which it will be before it runs** (HISTORY.md ▸ After M19,
+/// 2026-09-01). The rewrite keeps a copy
+/// of the container as it was (`ArchiveUndoStorage`), so ⌘Z swaps it back and ⇧⌘Z swaps the rewrite
+/// back in; an archive larger than the whole budget keeps the permanent wording it always had. The
+/// question is asked of the archive's size, so the answer is stable — see
+/// ``ArchiveUndoBudget/admits(archiveOfSize:)`` for why the store's current contents are not
+/// consulted.
 extension PanelViewController {
     /// Delete the marked members (or the cursor member) from the archive being browsed. A no-op off
     /// an archive pane or with nothing selected. F8 and Shift+F8 both land here — there's no Trash
@@ -14,20 +22,37 @@ extension PanelViewController {
         guard let archivePath = panel.path.backend.archivePath else { return }
         let targets = selectionTargets()
         guard !targets.isEmpty else { return }
-        confirmArchiveDelete(of: targets) { [weak self] in
+        confirmArchiveDelete(of: targets, inArchiveAt: archivePath) { [weak self] in
             self?.runArchiveDelete(targets, inArchiveAt: archivePath)
         }
     }
 
-    private func confirmArchiveDelete(of targets: [FileEntry], proceed: @escaping () -> Void) {
-        let archiveName = (panel.path.backend.archivePath.map { ($0 as NSString).lastPathComponent })
-            ?? String(localized: "the archive")
+    private func confirmArchiveDelete(
+        of targets: [FileEntry],
+        inArchiveAt archivePath: String,
+        proceed: @escaping () -> Void
+    ) {
+        let archiveName = (archivePath as NSString).lastPathComponent
         let alert = NSAlert()
         alert.alertStyle = .critical
         alert.messageText = targets.count == 1
             ? String(localized: "Delete “\(targets[0].name)” from “\(archiveName)”?")
             : String(localized: "Delete \(targets.count) items from “\(archiveName)”?")
-        alert.informativeText = String(localized: "This rewrites the archive and can’t be undone.")
+        alert.informativeText = ArchiveUndoStorage.willBeUndoable(archiveAt: archivePath)
+            ? String(
+                localized: "This rewrites the archive. Undo puts it back.",
+                comment: """
+                Body of the delete-from-archive confirmation when the rewrite will be undoable — \
+                Dirnex keeps a copy of the archive as it was.
+                """
+            )
+            : String(
+                localized: "This rewrites the archive and can’t be undone.",
+                comment: """
+                Body of the delete-from-archive confirmation when the archive is too large for \
+                Dirnex to keep a copy of, so the rewrite cannot be reversed.
+                """
+            )
         alert.addButton(withTitle: String(localized: "Delete"))
         alert.addButton(withTitle: String(localized: "Cancel"))
         alert.enableEscapeToCancel()
@@ -51,14 +76,18 @@ extension PanelViewController {
             try await BlockingWork.run {
                 Result {
                     try ArchiveWriter.delete(
-                        innerPaths: innerPaths, fromArchiveAt: archivePath, passphrase: passphrase
+                        innerPaths: innerPaths,
+                        fromArchiveAt: archivePath,
+                        passphrase: passphrase,
+                        undo: ArchiveUndoStorage.request()
                     )
                 }
             }.get()
-        } onSuccess: { [weak self] in
+        } onSuccess: { [weak self] snapshot in
             guard let self else { return }
             // The mounted TOC is now stale — drop it so the re-list re-reads the rewritten archive.
             (backend as? CompositeBackend)?.invalidateMountedArchive(at: archivePath)
+            journalArchiveRewrite(snapshot)
             panel.clearSelection()
             refreshArchiveDirectory()
             focusTable()
@@ -70,6 +99,22 @@ extension PanelViewController {
                 detail: self?.describe(error) ?? ""
             )
         }
+    }
+
+    /// Journal a finished archive rewrite so ⌘Z can swap the container back.
+    ///
+    /// One funnel for all three gestures that rewrite an archive — F8 delete, ⌘V/F5/F6 add, and an
+    /// edited member saved back — because what each of them produced is the same thing: one new
+    /// container, with one copy of the old one beside it. `nil` is the ordinary "not undoable"
+    /// answer (an archive over the budget, or a store that could not be written) and is silent,
+    /// because the gesture's own confirmation already said so before it ran.
+    ///
+    /// The record is built here rather than at capture time because half of it describes what the
+    /// rewrite *produced*, which only exists once the swap has landed
+    /// (``ArchiveUndoSnapshot/record(date:)``).
+    func journalArchiveRewrite(_ snapshot: ArchiveUndoSnapshot?) {
+        guard let record = snapshot?.record() else { return }
+        host?.recordUndoableAction(record)
     }
 
     /// Re-list the current archive inner directory after a rewrite, re-anchoring the cursor by

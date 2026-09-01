@@ -160,7 +160,7 @@ the file it was mounted from is gone by the next launch.
 | Delete `F8` → Trash | yes | yes, limited<sup>o</sup> | n/a | n/a | n/a | n/a | n/a | yes | n/a |
 | Delete `F8` → permanent (confirmed) | yes | yes | yes, limited<sup>n</sup> | yes | yes | yes | yes, limited<sup>l</sup> | yes | yes |
 | Put Back (restore from Trash) | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes, limited<sup>o</sup> |
-| Undo `⌘Z` | yes | yes | no<sup>qq</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially | yes | no |
+| Undo `⌘Z` | yes | yes | yes, limited<sup>qq</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially | yes | no |
 | Background queue, progress bar, Stop | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Per-file conflict dialog | yes | yes | yes | yes | yes | yes | n/a | yes | yes |
 | Preserve permissions / dates / xattrs on copy | yes | yes | yes, limited | yes, limited<sup>q</sup> | yes, limited<sup>q</sup> | n/a<sup>q</sup> | n/a | yes | yes |
@@ -207,7 +207,9 @@ listing-backed existence check because `HeadBucket` goes stale for ~1 read in 3 
 in the trash folder's `.DS_Store`, so renaming would orphan the origin record silently and
 permanently. Finder refuses the same gesture.
 
-<sup>n</sup> Deleting an archive member **rewrites the archive**. No Trash, and not undoable.
+<sup>n</sup> Deleting an archive member **rewrites the archive**. No Trash — but it is
+reversible: ⌘Z swaps the container back (▸ <sup>qq</sup>), and the confirmation says which
+it will be before it runs.
 Top-level archives only.
 
 <sup>o</sup> Two halves, and they meet on a cloud mount. **Put Back** works for anything Finder
@@ -303,9 +305,16 @@ It degrades per connection, like §M22's search walk: one exec answers a whole d
 (77 ms on loopback, the same for one link or twelve), and a refusal is remembered for that
 connection. FTP has no symlink verb at all.
 
-<sup>qq</sup> Deleting a member **rewrites the container**, and the journal has nowhere to put the
-bytes that left. Reversing it means keeping them, which is a storage decision rather than a missing
-hook (PLAN.md §4 ▸ *Still open*).
+<sup>qq</sup> Every gesture that rewrites a browsed archive — F8 delete, ⌘V/F5/F6 add, an edited
+member saved back — is one undo step. There is no diff to journal (the container is repacked whole),
+so what is kept is the container as it was, and ⌘Z **exchanges** the two files: the archive takes the
+old bytes and the copy takes the rewrite, which is what makes ⇧⌘Z free and costs no second copy. The
+limit is the storage decision behind it — Dirnex keeps up to 5 GB of these, oldest given up first, so
+an archive larger than the whole budget is rewritten and *not* undoable, and every confirmation sheet
+says which of the two it will be before it runs. Undo refuses rather than proceeds if the copy has
+since been given up, or if anything else has changed the archive in the meantime. On one APFS volume
+the copy is a `clonefile` and consumes nothing: what it really costs is that the archive's old bytes
+are not reclaimed until the record leaves the journal.
 
 ## 3. Preview, open and edit
 
@@ -370,7 +379,8 @@ exec channel falls back to the walk. A **delete** says what it will really do: n
 a Trash, so those items are named as permanent up front rather than promised the Trash and quietly
 erased. And a direction whose destination cannot receive files is withdrawn rather than offered and
 failed inside the queue. An **archive** stays refused because a sync deletes and deleting a member
-rewrites the container with nothing the journal can undo; an S3 **account** pane is a connection and
+rewrites the container — undoable since 2026-09-01 (▸ <sup>qq</sup>), but as one step over the whole
+container rather than per item, which is not what a sync's per-file report means; an S3 **account** pane is a connection and
 not a folder; a virtual listing has no directory to synchronize.
 
 <sup>y</sup> `ArchiveBackend.init(archiveOnDiskPath:)` needs a real path, so browsing an archive on a

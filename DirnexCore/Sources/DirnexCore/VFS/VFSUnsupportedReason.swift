@@ -200,6 +200,13 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
     case archiveAddFailed(item: String, archive: String)
     case archiveRewriteFailed(archive: String)
     case archiveUpdateFailed(archive: String)
+    /// ⌘Z on an archive rewrite whose snapshot is no longer in the store. It is evictable by
+    /// construction (``ArchiveUndoBudget``), so a record can outlive the bytes it needs — a real
+    /// state with a plain reason, not a failure to report as one.
+    case archiveUndoCopyUnavailable(archive: String)
+    /// ⌘Z on an archive rewrite whose archive is no longer the file the rewrite produced: something
+    /// else has updated it since, and putting the old container back would discard that.
+    case archiveChangedSinceRewrite(archive: String)
 
     /// The stable translation key token — the case name, spelled once, never derived.
     public var key: String {
@@ -245,6 +252,8 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
         case .archiveAddFailed: return "archiveAddFailed"
         case .archiveRewriteFailed: return "archiveRewriteFailed"
         case .archiveUpdateFailed: return "archiveUpdateFailed"
+        case .archiveUndoCopyUnavailable: return "archiveUndoCopyUnavailable"
+        case .archiveChangedSinceRewrite: return "archiveChangedSinceRewrite"
         }
     }
 }
@@ -382,6 +391,13 @@ public extension VFSUnsupportedReason {
             return ("Couldn’t rewrite the archive “%@”.", [archive])
         case let .archiveUpdateFailed(archive):
             return ("Couldn’t update the archive “%@”.", [archive])
+        case let .archiveUndoCopyUnavailable(archive):
+            return ("Dirnex no longer keeps the copy of “%@” that Undo needs.", [archive])
+        case let .archiveChangedSinceRewrite(archive):
+            return (
+                "“%@” has changed since then — undoing would discard the newer version.",
+                [archive]
+            )
         }
     }
 
@@ -430,7 +446,9 @@ public extension VFSUnsupportedReason {
             .archiveExtractFailed(archive: ""),
             .archiveAddFailed(item: "", archive: ""),
             .archiveRewriteFailed(archive: ""),
-            .archiveUpdateFailed(archive: "")
+            .archiveUpdateFailed(archive: ""),
+            .archiveUndoCopyUnavailable(archive: ""),
+            .archiveChangedSinceRewrite(archive: "")
         ]
     }
 }

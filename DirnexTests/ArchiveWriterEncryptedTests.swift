@@ -23,7 +23,8 @@ struct ArchiveWriterEncryptedTests {
         try ArchiveWriter.delete(
             innerPaths: ["/one.txt"],
             fromArchiveAt: fixture.archive,
-            passphrase: Fixture.passphrase
+            passphrase: Fixture.passphrase,
+            undo: fixture.undo
         )
 
         let inspection = try EncryptedArchiveReader.inspect(archiveAt: fixture.archive)
@@ -43,7 +44,8 @@ struct ArchiveWriterEncryptedTests {
             localPaths: [extra.path],
             toInnerDirectory: "/",
             ofArchiveAt: fixture.archive,
-            passphrase: Fixture.passphrase
+            passphrase: Fixture.passphrase,
+            undo: fixture.undo
         )
 
         let inspection = try EncryptedArchiveReader.inspect(archiveAt: fixture.archive)
@@ -68,7 +70,8 @@ struct ArchiveWriterEncryptedTests {
             localPaths: [edited.path],
             toInnerDirectory: "/",
             ofArchiveAt: fixture.archive,
-            passphrase: Fixture.passphrase
+            passphrase: Fixture.passphrase,
+            undo: fixture.undo
         )
 
         let inspection = try EncryptedArchiveReader.inspect(archiveAt: fixture.archive)
@@ -87,7 +90,8 @@ struct ArchiveWriterEncryptedTests {
         try ArchiveWriter.delete(
             innerPaths: ["/one.txt"],
             fromArchiveAt: fixture.archive,
-            passphrase: Fixture.passphrase
+            passphrase: Fixture.passphrase,
+            undo: fixture.undo
         )
 
         // After: still exactly one entry, still the wrapper. A rewrite that forgot this would
@@ -101,7 +105,9 @@ struct ArchiveWriterEncryptedTests {
     @Test("an unencrypted archive still rewrites through the bsdtar route")
     func plainArchiveIsUnaffected() throws {
         let fixture = try Fixture(encryption: .none)
-        try ArchiveWriter.delete(innerPaths: ["/one.txt"], fromArchiveAt: fixture.archive)
+        try ArchiveWriter.delete(
+            innerPaths: ["/one.txt"], fromArchiveAt: fixture.archive, undo: fixture.undo
+        )
 
         let inspection = try EncryptedArchiveReader.inspect(archiveAt: fixture.archive)
         #expect(!inspection.needsPassphrase)
@@ -122,7 +128,9 @@ struct ArchiveWriterEncryptedTests {
         let before = try fixture.archiveBytes()
 
         #expect(throws: EncryptedArchiveError.passphraseRequired) {
-            try ArchiveWriter.delete(innerPaths: ["/one.txt"], fromArchiveAt: fixture.archive)
+            try ArchiveWriter.delete(
+                innerPaths: ["/one.txt"], fromArchiveAt: fixture.archive, undo: fixture.undo
+            )
         }
         #expect(try fixture.archiveBytes() == before)
     }
@@ -138,7 +146,8 @@ struct ArchiveWriterEncryptedTests {
             try ArchiveWriter.delete(
                 innerPaths: ["/one.txt"],
                 fromArchiveAt: fixture.archive,
-                passphrase: ArchivePassphrase("not-it")
+                passphrase: ArchivePassphrase("not-it"),
+                undo: fixture.undo
             )
         }
         #expect(try fixture.archiveBytes() == before)
@@ -151,14 +160,15 @@ struct ArchiveWriterEncryptedTests {
             try ArchiveWriter.delete(
                 innerPaths: ["/one.txt"],
                 fromArchiveAt: fixture.archive,
-                passphrase: ArchivePassphrase("not-it")
+                passphrase: ArchivePassphrase("not-it"),
+                undo: fixture.undo
             )
         }
         // The rewrite builds its replacement as a hidden sibling; a failed one that stayed behind
         // would show up in the user's folder as a dot-file nobody put there.
         let siblings = try FileManager.default
             .contentsOfDirectory(atPath: fixture.directory.path)
-            .filter { $0 != "source" && $0 != "fixture.zip" && $0 != "one.txt" }
+            .filter { !["source", "fixture.zip", "one.txt", "undo-store"].contains($0) }
         #expect(siblings.isEmpty)
     }
 
@@ -169,6 +179,10 @@ struct ArchiveWriterEncryptedTests {
 
         let directory: URL
         let archive: String
+        /// Every rewrite in this suite captures its undo copy here rather than into the app's own
+        /// store, which in this target is the *developer's* `~/Library/Application Support/Dirnex`
+        /// — see `ArchiveUndoStorage.Request` for why `undo:` has no default.
+        let undo: ArchiveUndoStorage.Request
 
         init(
             encryption: ArchiveEncryption = .aes256,
@@ -183,6 +197,11 @@ struct ArchiveWriterEncryptedTests {
             )
             try "second".write(
                 to: source.appendingPathComponent("two.txt"), atomically: true, encoding: .utf8
+            )
+
+            let store = directory.appendingPathComponent("undo-store", isDirectory: true)
+            undo = ArchiveUndoStorage.Request(
+                store: ArchiveUndoStore(root: store), live: []
             )
 
             archive = directory.appendingPathComponent("fixture.zip").path

@@ -146,9 +146,6 @@ each too small to have been a slice of M24 or M25, and too real to leave unwritt
 - **No multipart upload over SFTP or FTP.** S3 splits a large upload into parts that fail and retry
   independently; the other two send one stream, so a transfer that dies late resumes from wherever
   `put -a` or `curl -C -` can pick it up rather than from a part boundary.
-- **An archive rewrite is not undoable.** Deleting a member rewrites the container, and the journal
-  has nowhere to put the bytes that left. Reversing it means keeping them, which is a storage
-  decision rather than a missing hook.
 - **A remote attribute change cannot be undone.** M25 Slice 5a writes a mode over SFTP and a mode
   and a time over FTP, and the panel says plainly that ⌘Z will not reverse it: `restoreAttributes`
   applies through `FileAttributeIO` — local syscalls — and `RemoteAttributesController` records no

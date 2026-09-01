@@ -53,6 +53,7 @@ extension BrowserWindowController {
                 // once; the FSEvents watchers would catch up anyway, but this is immediate.
                 leftPanel.refreshCurrentDirectory()
                 rightPanel.refreshCurrentDirectory()
+                refreshPanesShowingRewrittenArchives(in: record)
                 // A reverted move puts a vault's image back where it was, so the saved list has to
                 // come back with it. The record names both ends and the disk decides which one is
                 // real, so undo needs no inverse of its own — and a partial revert still lands
@@ -73,11 +74,29 @@ extension BrowserWindowController {
             case let .fileOperation(record, report):
                 leftPanel.refreshCurrentDirectory()
                 rightPanel.refreshCurrentDirectory()
+                refreshPanesShowingRewrittenArchives(in: record)
                 followVaultImageMoves(in: record)
                 presentRedoOutcome(record: record, report: report)
             case let .selection(change):
                 applySelectionChange(change)
             }
+        }
+    }
+
+    /// Re-list any pane standing *inside* an archive this record just swapped.
+    ///
+    /// `refreshCurrentDirectory` deliberately skips a virtual pane, and an archive pane is one — so
+    /// the two calls above leave a pane inside the archive drawing the members of a container that
+    /// no longer exists, with a mounted table of contents to match. Undo is the third gesture that
+    /// needs this after the rewrite itself and the write-back, which is why the write-back's
+    /// `refreshPanesShowingArchive` is the shared funnel rather than a fourth copy.
+    ///
+    /// Keyed on the record's own steps: a journal full of moves names no archive and this does
+    /// nothing at all.
+    private func refreshPanesShowingRewrittenArchives(in record: UndoRecord) {
+        for step in record.steps {
+            guard case let .restoreArchive(archive, _, _, _) = step else { continue }
+            refreshPanesShowingArchive(at: archive.path)
         }
     }
 

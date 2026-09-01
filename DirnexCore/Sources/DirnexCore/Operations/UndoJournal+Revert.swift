@@ -34,6 +34,10 @@ extension UndoJournal {
                 restoreAccessControlList(
                     apply, at: path, actsOnLink: actsOnLink, failures: &failures
                 )
+            case let .restoreArchive(archive, snapshot, expected, _):
+                restoreArchive(
+                    archive, from: snapshot, expecting: expected, failures: &failures
+                )
             }
         }
         return UndoReport(failures: failures)
@@ -188,6 +192,50 @@ extension UndoJournal {
             failures.append(.init(path: path, error: error))
         } catch {
             failures.append(.init(path: path, error: .io(path: path, code: 0)))
+        }
+    }
+
+    /// Exchange an archive with the copy of itself taken before it was rewritten.
+    ///
+    /// Two refusals, and each is the archive-shaped form of a guard the other steps get from their
+    /// paths. **The snapshot has to still be there** — it is evictable by construction
+    /// (``ArchiveUndoBudget``), so a record can outlive the bytes it needs, and a swap that
+    /// silently did nothing would read as an undo that worked. **And the archive has to still be
+    /// the one the rewrite produced**: this is the only step whose destination is always occupied,
+    /// by the file it is replacing, so nothing about the paths can tell whether something else has
+    /// updated the archive since — only ``ArchiveUndoWitness`` can, and undo protects existing data
+    /// over completing the reversal exactly as ``restore(from:to:using:failures:)`` does.
+    ///
+    /// Local file primitives rather than a backend verb: the swap is an atomic same-directory
+    /// rename, which no `VFSBackend` offers, and an archive is a real file on this disk whatever
+    /// backend is showing its insides.
+    private static func restoreArchive(
+        _ archive: VFSPath,
+        from snapshot: VFSPath,
+        expecting expected: ArchiveUndoWitness,
+        failures: inout [OperationItemFailure]
+    ) {
+        let name = archive.lastComponent
+        guard FileManager.default.fileExists(atPath: snapshot.path) else {
+            failures.append(.init(
+                path: archive,
+                error: .unsupported(.archiveUndoCopyUnavailable(archive: name))
+            ))
+            return
+        }
+        guard expected.matchesFile(at: archive.path) else {
+            failures.append(.init(
+                path: archive,
+                error: .unsupported(.archiveChangedSinceRewrite(archive: name))
+            ))
+            return
+        }
+        do {
+            try ArchiveUndoStore.exchange(archiveAt: archive.path, snapshotAt: snapshot.path)
+        } catch let error as VFSError {
+            failures.append(.init(path: archive, error: error))
+        } catch {
+            failures.append(.init(path: archive, error: .io(path: archive, code: 0)))
         }
     }
 }

@@ -9,7 +9,8 @@ import DirnexCore
 /// which copies the items into the extracted tree). A same-named member is a *replace*, so any
 /// collisions are confirmed up front before the archive is touched. Add is a copy: F6 "move" adds
 /// the items and then trashes the local originals (recoverable + undoable via the standard Trash
-/// journal, even though the archive rewrite itself isn't undoable).
+/// journal), and the rewrite itself is undoable too — one ⌘Z per half, since they are two
+/// operations on two different files.
 ///
 /// `self` is always the *destination* archive pane. Paste enters here on the pane the ⌘V lands on;
 /// F5/F6 route from the local source pane to the archive counterpart via `PanelViewController+Copy`.
@@ -94,12 +95,27 @@ extension PanelViewController {
         alert.messageText = names.count == 1
             ? String(localized: "Replace “\(names[0])” in “\(archiveName)”?")
             : String(localized: "Replace \(names.count) items in “\(archiveName)”?")
-        alert.informativeText = String(
-            localized: """
-            An item with the same name is already in the archive. Replacing rewrites the archive \
-            and can’t be undone.
-            """
-        )
+        alert.informativeText = ArchiveUndoStorage.willBeUndoable(archiveAt: archivePath)
+            ? String(
+                localized: """
+                An item with the same name is already in the archive. Replacing rewrites the \
+                archive; Undo puts it back.
+                """,
+                comment: """
+                Body of the replace-in-archive confirmation when the rewrite will be undoable — \
+                Dirnex keeps a copy of the archive as it was.
+                """
+            )
+            : String(
+                localized: """
+                An item with the same name is already in the archive. Replacing rewrites the \
+                archive and can’t be undone.
+                """,
+                comment: """
+                Body of the replace-in-archive confirmation when the archive is too large for \
+                Dirnex to keep a copy of, so the rewrite cannot be reversed.
+                """
+            )
         alert.addButton(withTitle: String(localized: "Replace"))
         alert.addButton(withTitle: String(localized: "Cancel"))
         alert.enableEscapeToCancel()
@@ -134,14 +150,16 @@ extension PanelViewController {
                         localPaths: localPaths,
                         toInnerDirectory: innerDirectory,
                         ofArchiveAt: archivePath,
-                        passphrase: passphrase
+                        passphrase: passphrase,
+                        undo: ArchiveUndoStorage.request()
                     )
                 }
             }.get()
-        } onSuccess: { [weak self] in
+        } onSuccess: { [weak self] snapshot in
             guard let self else { return }
             // The mounted TOC is now stale — drop it so the re-list re-reads the rewritten archive.
             (backend as? CompositeBackend)?.invalidateMountedArchive(at: archivePath)
+            journalArchiveRewrite(snapshot)
             panel.clearSelection()
             refreshArchiveDirectory()
             focusTable()

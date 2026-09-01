@@ -12658,7 +12658,7 @@ eliminated, and which neither implementable route depended on.
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-01)
 
-Thirty-seven dated passes that landed outside a milestone of their own, between M18's close on
+Thirty-eight dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-01: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12666,6 +12666,67 @@ sit here at the end rather than in a numeric slot — and they keep their **newe
 because several read as a chain and refer to the entry below. Moved out of [PLAN.md](../PLAN.md)
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
+
+**2026-09-01 — an archive rewrite is undoable.** PLAN.md §4's last *"a storage decision rather
+than a missing hook"*, taken. Every gesture that rewrites a browsed archive — F8 delete, ⌘V/F5/F6
+add, an edited member saved back — now puts one step on the undo stack, and every one of their
+confirmation sheets stops saying "can't be undone" unless it is true.
+
+**The decision the plan was holding open was what to keep, and the measurement inverted how it
+reads.** A rewrite repacks the container whole, so there is no diff to journal and the only exact
+reversal is the container as it was. Probed before any Swift: on one APFS volume that copy is a
+`clonefile` — **0.1 ms and 0 bytes** for a 200 MB archive — and after the rewrite replaces the
+original, **nothing is freed**, because the copy now holds the blocks the archive released; deleting
+it later returns all of them (104 845 312 for a 100 MB archive, measured). So an undoable rewrite
+does not *spend* disk, it defers reclaiming the archive's old bytes until the record leaves the
+journal. Oleg took a **total budget, oldest given up first** (5 GB) over a per-archive cap, and
+**copy across volumes** rather than leaving an external disk silently non-undoable — the rewrite
+already writes the whole extracted archive to the boot volume's temp directory, so the archive file
+itself is the same order of cost as what already happens.
+
+**The step is its own inverse, and that is the design rather than a coincidence.**
+``UndoStep/restoreArchive(archive:snapshot:expected:restored:)`` **exchanges** the two files — the
+archive takes the snapshot's bytes and the snapshot takes the archive's — so ⇧⌘Z falls out of the
+same code with no second copy stored, and neither direction can destroy the version the other one
+wants. A one-way "put the old bytes back" would have needed a second snapshot for redo and would
+have thrown away the rewrite in between. Ordered so nothing is ever the only copy of itself: clone
+the snapshot to a hidden sibling of the archive, copy the archive's current bytes into the store,
+then two `rename(2)`s — measured, `replaceItemAt` and `rename` both refuse to cross a volume, which
+is why the staging file has to be on the archive's own.
+
+**It is the one step whose destination is always occupied, so its guard had to be invented.** Every
+other step refuses to clobber what it did not create by looking at the *paths*; here the file being
+replaced is the point. ``ArchiveUndoWitness`` — size and modification time, recorded when the
+rewrite landed and checked again at ⌘Z — is what stands in, and it is deliberately **not**
+``ArchiveIdentity``: that type is carried by the inode, which is right for spotting a repacked
+archive and wrong here, because the swap always gives the archive a new one. The negative control
+is the sharp one: with the witness check removed, undoing over an archive somebody else had changed
+put the old container back and discarded theirs.
+
+**The eviction order came from a flake, and the fix was to stop asking the filesystem.** A first
+version ranked snapshots by their files' `st_birthtime` and read it as `tv_sec` — so three taken in
+the same second had an equal key, and `sorted(by:)` is not stable. It failed about one full core run
+in three while passing alone every time, which is what a non-deterministic comparator looks like from
+outside; the first hypothesis (coarse birth times) was measured **wrong** — APFS records them to the
+nanosecond. What replaced it is the journal's own order, handed in as a list rather than a set: the
+store cannot answer "which of these will be wanted last" better than the stack that holds them can.
+Five consecutive full runs green after.
+
+**The app test target runs inside the app, so `undo:` has no default.** Adding one meant every
+existing rewrite test quietly filed a snapshot of its fixture into the *developer's*
+`~/Library/Application Support/Dirnex` — well-formed, so nothing complained. Caught by looking, and
+fixed structurally rather than by a habit each new test has to remember: `ArchiveUndoStorage.Request`
+is a required argument, so a test that wants no store has to say `.none`. Positive control in both
+directions — a snapshot present after a full run before, the directory absent after one since.
+
+Verified live in the LaunchServices-launched app, driving what the code *reads* rather than the
+gesture (F8 ends in a sheet, and no `.sdef` verb enters an archive): a real `.zip` captured and
+rewritten through the core's own encoder, the journal seeded as `Dirnex.undoJournal` with
+`defaults write -data`, then `run operation "edit.undo"`. The archive went `./ ./two.txt` →
+`one.txt two.txt`, **SHA-256 identical** to the pre-rewrite original, and redo and a second undo
+exchanged the two files back and forth with **one** snapshot on disk throughout. The launch prune
+was measured in the same run and carries its own narrowness control: an orphan snapshot no record
+named was gone after launch while the one the journal named survived.
 
 **2026-09-01 — a whole level of an FTP tree over one login.** PLAN.md §4's *"FTP has no
 server-side walk"*, closed — and it still has none, which is the finding rather than a caveat.

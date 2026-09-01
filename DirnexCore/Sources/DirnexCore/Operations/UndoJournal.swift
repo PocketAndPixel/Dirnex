@@ -67,6 +67,32 @@ public enum UndoStep: Sendable, Equatable, Codable {
         reverse: AccessControlList
     )
 
+    /// Undo/redo an archive rewrite: exchange the archive with the copy of itself taken before
+    /// the rewrite ran (F8 delete inside an archive, ⌘V/F5/F6 add, an edited member saved back).
+    ///
+    /// The one step here that is **its own inverse**, and that is the whole design rather than a
+    /// coincidence. A rewrite has no diff to journal — the container is repacked whole, so the only
+    /// exact reversal is the container as it was — and a one-way "put the old bytes back" would
+    /// destroy the rewrite a Redo would need. Swapping the two files keeps both versions alive at
+    /// all times and makes ⇧⌘Z fall out of the same code, with no second copy stored.
+    ///
+    /// `expected` is what the archive must look like for *this* direction to be allowed to run, and
+    /// `restored` what it will look like afterwards; `inverse` swaps them. That guard is what stands
+    /// in for the clobber check every other step gets from its paths: the destination of an archive
+    /// swap is always occupied, by the file being replaced, so "has anything else changed this
+    /// archive since?" has to be asked of its contents (see ``ArchiveUndoWitness``).
+    ///
+    /// Executed through ``ArchiveUndoStore/exchange(archiveAt:snapshotAt:)`` — local file
+    /// primitives — rather than the `VFSBackend`, for the reason ``restoreAttributes`` is: an
+    /// archive being browsed is a real file on this disk whatever backend is showing its insides,
+    /// and the swap needs an atomic same-directory rename no backend verb offers.
+    case restoreArchive(
+        archive: VFSPath,
+        snapshot: VFSPath,
+        expected: ArchiveUndoWitness,
+        restored: ArchiveUndoWitness
+    )
+
     /// The step that reverses this one — the heart of Redo (see `UndoRecord.inverted`).
     var inverse: UndoStep {
         switch self {
@@ -88,6 +114,13 @@ public enum UndoStep: Sendable, Equatable, Codable {
                 actsOnLink: actsOnLink,
                 apply: reverse,
                 reverse: apply
+            )
+        case let .restoreArchive(archive, snapshot, expected, restored):
+            return .restoreArchive(
+                archive: archive,
+                snapshot: snapshot,
+                expected: restored,
+                restored: expected
             )
         }
     }
@@ -221,6 +254,31 @@ public extension UndoRecord {
         return UndoRecord(label: .rename, date: date, steps: steps)
     }
 
+    /// Undo an archive rewrite by exchanging the archive with the copy of itself taken before the
+    /// rewrite ran. One step, whichever gesture asked for it — deleting members, adding items and
+    /// saving an edited member back all produce exactly one new container.
+    ///
+    /// Built by ``ArchiveUndoSnapshot/record(date:)`` rather than called directly, because half of
+    /// it — `expected` — can only be read once the rewrite has landed.
+    static func archiveRewrite(
+        archive: VFSPath,
+        snapshot: VFSPath,
+        expected: ArchiveUndoWitness,
+        restored: ArchiveUndoWitness,
+        date: Date = Date()
+    ) -> UndoRecord {
+        UndoRecord(
+            label: .changeArchive,
+            date: date,
+            steps: [.restoreArchive(
+                archive: archive,
+                snapshot: snapshot,
+                expected: expected,
+                restored: restored
+            )]
+        )
+    }
+
     /// Undo a Move-to-Trash by restoring each item from the Trash location it landed at back
     /// to where it came from. Returns `nil` if nothing was actually trashed (e.g. the backend
     /// reported no Trash location for any item).
@@ -231,6 +289,21 @@ public extension UndoRecord {
         let steps = items.map { UndoStep.restore(from: $0.trashed, to: $0.original) }
         guard !steps.isEmpty else { return nil }
         return UndoRecord(label: .moveToTrash, date: date, steps: steps)
+    }
+}
+
+public extension UndoRecord {
+    /// Every archive snapshot this record's steps still point at.
+    ///
+    /// The store prunes against the union of these over both stacks: a snapshot no record names is
+    /// holding the user's disk for nobody (``ArchiveUndoStore/prune(live:)``). Paths rather than
+    /// ids, because the step already carries the path and a second spelling of the same fact is how
+    /// the two drift.
+    var archiveSnapshotPaths: Set<String> {
+        Set(steps.compactMap { step in
+            guard case let .restoreArchive(_, snapshot, _, _) = step else { return nil }
+            return snapshot.path
+        })
     }
 }
 

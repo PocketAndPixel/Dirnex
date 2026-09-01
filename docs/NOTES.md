@@ -888,6 +888,16 @@ at build time.
   test already goes through (`TrashlessProbe.pane`) rather than leaving each test to remember, with a
   `static let` so it runs once however many tests race into it. The positive control is free: the key
   was present after a run before, and absent after one since.
+  - **`UserDefaults` is the famous case and it is not the only one: any *directory* the app derives
+    once is the developer's too.** Making an archive rewrite undoable added an
+    `Application Support` store reached through a defaulted parameter, and every pre-existing rewrite
+    test immediately began filing a snapshot of its fixture into
+    `~/Library/Application Support/Dirnex` — well-formed, so nothing downstream complained, and
+    invisible to both suites and both linters. The fix that holds is to **remove the default**: a
+    required argument makes the compiler ask each test where its bytes should go, where a `static
+    let` funnel still relies on every future test going through it. Positive control both ways — a
+    snapshot present in the real store after a full run before, the directory absent after one
+    since.
   - **A control that fires too *widely* is a finding, not noise.** The vault control for that slice
     failed three tests where it should have failed one, and the two extras were the suite's own: two
     tests swap the shared store, which is one piece of process state, and Swift Testing runs a suite
@@ -5304,6 +5314,56 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     - The file's name was Cyrillic, so the non-ASCII path travelled the listing, the resource-value
       read and the badge unchanged. Incidental, and free.
 
+### Keeping a file's previous bytes (APFS clones, and swapping two files)
+
+M26-era work on making an archive rewrite undoable. All measured 2026-09-01 on macOS 26, APFS,
+against a second APFS volume from `hdiutil`.
+
+- **A same-volume `clonefile` costs nothing and takes no time, and the cost arrives later as space
+  that is never *reclaimed*.** Cloning a 200 MB file took **0.1 ms** and moved free space by **0
+  bytes**; replacing the original afterwards freed **nothing** (12 KB consumed), because the clone
+  now holds the blocks the original released; deleting the clone returned **104 845 312** bytes for
+  a 100 MB file. So "keep a copy of this file before overwriting it" is free at the moment it
+  happens and is a *deferred reclamation*, not a second allocation — which is the honest way to
+  describe it to a user, and the opposite of how a storage budget reads.
+  - `st_blocks` is no help here: a clone reports the file's **full** logical allocation (409 600 for
+    200 MB), not the blocks it uniquely owns, so `du` over-reports a clone store several-fold. The
+    instrument that answers is `statfs`'s `f_bavail` across the operation.
+- **`FileManager.replaceItemAt` refuses to cross a volume** — `NSCocoaErrorDomain` 512 wrapping
+  `EXDEV` — and so does `rename(2)`. Any atomic swap therefore needs a staging file on the
+  *destination's* own volume, whatever the source is; a store kept somewhere central cannot be
+  renamed from directly.
+- **`replaceItemAt(…backupItemName:options:.withoutDeletingBackupItem)` preserves the original as a
+  rename in its own directory** — 5 ms for a 50 MB file, i.e. size-independent — which is a way to
+  capture a file's previous bytes at zero cost on *any* volume, including one a clone cannot reach.
+  Not taken here (a clone before the replace is simpler and already free in the common case), and
+  worth knowing before designing around a cross-volume copy.
+- **Swapping two files is four steps and the order is the whole safety argument**: duplicate the
+  incoming file to a hidden sibling of the target (same volume), duplicate the target's *current*
+  bytes somewhere they survive, then `rename(2)` each into place. Measured at 0.6 ms for a 50 MB
+  pair. Anything that fails before the first rename leaves both files untouched; a failure after it
+  costs the *reverse* direction rather than the one that just succeeded, so it is reported rather
+  than rolled back — undoing the thing that worked is the worse outcome.
+- **A `Date` built from a `stat` sits up to 179 ns from the true stamp and survives JSON exactly.**
+  Measured over 200 000 random `(sec, nsec)` pairs: `Date(timeIntervalSince1970:)` plus a
+  nanosecond fraction round-trips through `JSONEncoder`/`JSONDecoder` byte-identically **every**
+  time, while differing from the real stamp by up to 179 ns (a `Double` has ~200 ns of resolution
+  near 2026). So an *exact* modification-time comparison across a relaunch is sound as long as both
+  sides are built the same way — and would not be if one side were an integer pair and the other a
+  `Date`.
+- **`clonefile`, `FileManager.copyItem` (cross-volume) and `rename` all carry a nanosecond `mtime`
+  faithfully**, so an explicit `utimensat` after a duplicate is unwatched insurance rather than a
+  tested behaviour — the negative control that removes it changes nothing, because no route
+  available on this Mac loses the stamp. Kept anyway: only the clone is documented to preserve it,
+  and a filesystem that rounded would refuse a perfectly good undo. Worth stating as *unwatched*
+  rather than implying coverage.
+- **`st_birthtime` is nanosecond-resolute on APFS** (six files created in a loop had six distinct
+  stamps), so a coarse birth time is *not* the reason a birth-time sort misbehaves. Reading it as
+  `tv_sec` is — which is how anyone writes it, and which gives every file created in the same second
+  an equal key. `sorted(by:)` is not stable, so the result is a non-deterministic comparator: it
+  failed about one full test run in three while passing alone every time. ▸ Design lessons for what
+  replaced it.
+
 ### shasum, md5sum and the checksum-file formats
 
 macOS 26 ships more producers than expected — `/sbin/md5sum`, `/sbin/sha1sum` and `/sbin/sha256sum`
@@ -6003,6 +6063,37 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   pipelines satisfy both gates automatically, so this is a local-verification problem only.
 
 ## Design lessons that generalize
+
+- **When a policy needs an order, ask which component actually *has* it — a derived signal will be
+  an approximation and can be a non-deterministic one.** The archive-undo store evicts snapshots
+  "oldest first", and the first version read that off the snapshot files' `st_birthtime`: an
+  approximation of the journal's order that also happened to be *wrong*, because it was read as
+  `tv_sec` and `sorted(by:)` is not stable, so snapshots taken in the same second were ordered
+  arbitrarily. It failed about one full core run in three and passed alone every time. The fix was
+  not a finer timestamp but to stop asking the filesystem: the journal is a stack and knows exactly
+  which record is furthest from the next ⌘Z, so `live` became an ordered **list** rather than a set
+  and the store reads no timestamps at all. Two things generalize — a *set* parameter is worth a
+  second look wherever the caller has an order and the callee is about to invent one; and the first
+  hypothesis for an ordering flake ("the timestamps must be coarse") was measured **wrong** here,
+  APFS recording birth times to the nanosecond, so the tell was in how the field was *read*.
+- **A guard that keeps an undo from destroying what it did not create has to be re-derived when the
+  destination is always occupied.** Every step in this journal refuses to clobber by looking at the
+  paths — `restore` will not take a reoccupied slot, `removeCreatedFolder` will not remove a folder
+  somebody filled — and an archive swap has no such affordance, because the file it replaces *is*
+  the point. What stands in is a description of the expected contents (`ArchiveUndoWitness`: size
+  and modification time), checked again at ⌘Z. The control is what makes it worth the type: with it
+  removed, undoing over an archive something else had changed put the old container back and
+  discarded the newer one — silently, and days after the operation being reversed.
+  - It is deliberately **not** the neighbouring `ArchiveIdentity`, whose load-bearing field is the
+    inode. That is right for "is this still the same archive" and wrong for a guard on an operation
+    that *always* gives the file a new inode. A witness has to survive the thing it describes, which
+    is a different question from identifying it.
+- **A step that is its own inverse buys Redo for free and cannot destroy either version.** An
+  archive rewrite has no diff to journal, so the natural shape is "put the old bytes back" — which
+  needs a *second* copy for Redo and throws away the rewrite in between. Exchanging the two files
+  instead makes `inverse` a swap of two witnesses, one stored copy serves both directions, and there
+  is no state in which only one version exists. Worth reaching for whenever an operation's undo is a
+  whole-object replacement rather than a delta.
 
 - **When a gate and a policy type disagree about the same cost, the policy type is the measured
   one** — and the gate is where a stale reason goes to be believed. `areSizeBarsVisible` required
