@@ -6076,6 +6076,33 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   second look wherever the caller has an order and the callee is about to invent one; and the first
   hypothesis for an ordering flake ("the timestamps must be coarse") was measured **wrong** here,
   APFS recording birth times to the nanosecond, so the tell was in how the field was *read*.
+- **An undo that is a *second write* rather than a rewind inherits every doubt the first write had —
+  including the one about whether it landed.** Reversing a remote attribute change sends the previous
+  values back through the same `applyMetadata` the panel's Save used, so a server free to refuse the
+  original is free to refuse the reversal, and `sftp`'s `chmod` exits 0 for a mode it did not store.
+  An executor that stopped at the exit code would report a completed undo over an item that still
+  carries the new value — the exact failure the forward path was built to prevent, one gesture later
+  and with nobody looking, since a clean undo is silent by design. The rule is that the *same*
+  read-back and the same verdict type judge both directions; the tell that it has been skipped is an
+  undo executor with no `stat` in it, over a backend whose write verb is documented as not being
+  proof.
+  - **What may be journaled is decided by the same evidence, field by field, and the medium decides
+    which evidence there is.** A mode can be measured by re-reading the item; a modification time
+    cannot, because a remote `stat` here is a listing row (`ls -la` rounds to the minute, FTP's
+    `LIST` is zone-less on the server's clock). So the mode is journaled whenever the read-back
+    disagrees with what was there before — which keeps a *silently downgraded* write reversible,
+    `0644 → 0755` having really happened even though `chmod 2755` was refused — while the time is
+    journaled only where the transport refused nothing. Both err the same way on purpose: declining
+    to journal a change that did land costs a ⌘Z that does nothing, where journaling one that did
+    not land makes ⌘Z write an old value over a field nothing touched. **Ask what the journal entry
+    is a claim about**, and where the medium cannot measure a field, build the record from the
+    verb's answer rather than from a diff.
+  - **A patch-shaped step needs no clobber witness and a whole-object one does**, which is worth
+    stating because the two sit next to each other. An archive swap replaces a container, so only
+    its contents can say whether something else changed it since; a step naming two fields writes
+    only those two, which is the exposure the local attributes step has carried since M14. Adding a
+    guard to one half of a pair is a second rule for one of two panels.
+
 - **A guard that keeps an undo from destroying what it did not create has to be re-derived when the
   destination is always occupied.** Every step in this journal refuses to clobber by looking at the
   paths — `restore` will not take a reoccupied slot, `removeCreatedFolder` will not remove a folder

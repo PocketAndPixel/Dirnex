@@ -37,7 +37,7 @@ extension RemoteAttributesController {
             """,
             comment: "Info panel note: what a non-local listing cannot report."
         )))
-        notes.append(AttributeRow.note(editability.isReadOnly ? readOnlyNote() : notUndoableNote()))
+        notes.append(AttributeRow.note(editability.isReadOnly ? readOnlyNote() : undoNote()))
         return [AttributeRow.separator()] + notes
     }
 
@@ -100,20 +100,23 @@ extension RemoteAttributesController {
         )
     }
 
-    /// The asymmetry with the local panel, stated rather than left to be discovered.
+    /// What Save commits to, and what ⌘Z can and cannot do about it.
     ///
-    /// ⌘Z reverses a local attribute change through `FileAttributeIO`'s syscalls, which no server
-    /// speaks; a backend-driven undo step is its own piece of work and is not in this pass. PLAN.md
-    /// §6 is explicit that an operation which cannot be reversed is marked and never silently
-    /// dropped, and this is that mark.
-    private func notUndoableNote() -> String {
+    /// This used to say the change could not be undone at all, which was true until 2026-09-01
+    /// (PLAN.md §4 ▸ *Still open*). What replaces it is narrower than "you can undo this", because
+    /// the mechanism is: ⌘Z sends the previous values back as a **second change**, so a server free
+    /// to refuse the first one is free to refuse that too — and the sentence has to leave the user
+    /// expecting a write rather than a rewind. PLAN.md §6's rule is unchanged either way: what an
+    /// operation cannot promise is marked, never silently dropped.
+    private func undoNote() -> String {
         String(
             localized: """
-            A change made here is sent to the server straight away and cannot be undone with \
-            Command-Z. What the panel shows after saving is what the server stored, which is not \
-            always what was asked for.
+            A change made here is sent to the server straight away. Command-Z sends the previous \
+            values back as another change, which the server can refuse in turn — and what the \
+            panel shows after saving is what the server stored, which is not always what was \
+            asked for.
             """,
-            comment: "Info panel note: a remote attribute change is immediate and not undoable."
+            comment: "Info panel note: a remote attribute change is immediate, and its undo is a second write."
         )
     }
 

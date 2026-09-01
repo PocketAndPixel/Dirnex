@@ -41,6 +41,12 @@ final class RemoteAttributesController: NSViewController {
     let editability: RemoteAttributeEditability
     /// Re-list the pane after a change lands, so the row on screen agrees with the server.
     var onApplied: (() -> Void)?
+    /// Hand a landed change to the window's undo journal — the local panel's own hook, arriving
+    /// here (PLAN.md §4 ▸ *Still open*, taken 2026-09-01). Journaling is the window's job because
+    /// ⌘Z spans both panes; what this panel owes is knowing *what* actually landed, which only the
+    /// read-back can say. Left `nil` by every test that builds the panel directly, so the record is
+    /// something to assert on rather than a side effect somewhere else.
+    var recordUndo: ((UndoRecord) -> Void)?
 
     /// One `rwx` checkbox and the bit it stands for.
     struct ModeBox {

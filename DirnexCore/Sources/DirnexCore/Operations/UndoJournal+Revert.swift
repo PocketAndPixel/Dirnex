@@ -34,6 +34,8 @@ extension UndoJournal {
                 restoreAccessControlList(
                     apply, at: path, actsOnLink: actsOnLink, failures: &failures
                 )
+            case let .restoreRemoteAttributes(path, apply, _):
+                restoreRemoteAttributes(apply, at: path, using: backend, failures: &failures)
             case let .restoreArchive(archive, snapshot, expected, _):
                 restoreArchive(
                     archive, from: snapshot, expecting: expected, failures: &failures

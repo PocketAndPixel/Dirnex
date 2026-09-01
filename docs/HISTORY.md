@@ -12658,7 +12658,7 @@ eliminated, and which neither implementable route depended on.
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-01)
 
-Thirty-eight dated passes that landed outside a milestone of their own, between M18's close on
+Thirty-nine dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-01: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12666,6 +12666,53 @@ sit here at the end rather than in a numeric slot — and they keep their **newe
 because several read as a chain and refer to the entry below. Moved out of [PLAN.md](../PLAN.md)
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
+
+**2026-09-01 — a remote attribute change is undoable.** PLAN.md §4's *"a pair of small pieces
+rather than a hook that already exists"*, taken on the same day as the archive one above and for the
+same reason: it was the last operation in the app that wrote something and put nothing on the undo
+stack. A mode changed over SFTP, or a mode and a modification time over FTP, now journal one step,
+and the panel's note stops saying ⌘Z cannot reverse it.
+
+**What ⌘Z is here is a second write, not a rewind, and the whole design follows from saying so.**
+The local twin (``UndoStep/restoreAttributes(path:actsOnLink:apply:reverse:)``) runs
+`FileAttributeIO`'s syscalls and is deliberately handed a backend it never touches; this one is
+nothing but ``VFSBackend/applyMetadata(_:at:)`` — the very verb Save sends — so there is one
+definition of what a remote metadata write is rather than a second spelling of it for undo. It
+follows that a server free to refuse the original change is free to refuse the reversal, so the
+executor **re-reads the item and weighs the answer** through the same ``RemoteAttributeVerdict``
+Save uses, and a refusal is a failed step (``VFSUnsupportedReason/remoteAttributeRestoreRefused``)
+rather than an undo reported as done. An undo that trusted `sftp`'s exit code would be committing
+precisely the error M25 Slice 5 exists to prevent, one gesture later.
+
+**What may go on the stack is decided field by field, and the two fields are decided by different
+evidence.** The mode rests on the *item's* own answer, so a step is journaled whenever the read-back
+disagrees with what was there before — which covers the measured silent downgrade as well as a clean
+write: `chmod 2755` on a file whose group the account is not in stores `0755`, and a file that went
+`0644 → 0755` has moved and is worth putting back even though the verdict calls that write refused.
+The modification time rests on the *verb's* answer, because a remote `stat` here is a listing row and
+cannot measure one — `ls -la` rounds to the minute and FTP's `LIST` is zone-less on the server's
+clock — so it is journaled only where the transport refused nothing. Both rules err the same way on
+purpose: declining to journal a change that did land costs a ⌘Z that does nothing, where journaling
+one that did *not* land would have ⌘Z write an old value over a field the save never touched.
+
+**No witness, and that is a decision rather than an omission.** The archive step above needs
+``ArchiveUndoWitness`` because its destination is always occupied — it replaces a whole container, so
+only the contents can say whether something else changed it since. A two-field patch names only what
+the edit moved, which is the same exposure the local attributes step has carried since M14; inventing
+a guard for the remote half alone would be a second rule for one side of a pair.
+
+**Six negative controls, and the app-side pair is the point.** In the core: trusting the exit code
+fails only the read-back test; judging the time by the listing fails only the exact-`MFMT` test;
+journaling the mode from what was *asked* rather than from the read-back fails only the silent-
+downgrade test; and journaling unconditionally fails the three "nothing to reverse" tests. In the
+app: dropping the pane's hook fails the reach test, and building the record *after* `reload` — which
+replaces the entry with the server's answer — fails the two that read the recorded values. That last
+pair is the class of bug nothing else can see, because a panel that journaled nothing would save
+exactly as it does now with every other assertion green, which is why `remoteAttributesController(for:)`
+was split out of presenting the panel and `StubPanelHost.recordUndoableAction` stopped being a no-op.
+One control had to be written twice: the first spelling of "drop the pane's hook" matched three sites
+and its `assert` caught it, which is the file's own rule about a control's edit not matching the file
+it is aimed at, met from the safe side.
 
 **2026-09-01 — an archive rewrite is undoable.** PLAN.md §4's last *"a storage decision rather
 than a missing hook"*, taken. Every gesture that rewrites a browsed archive — F8 delete, ⌘V/F5/F6

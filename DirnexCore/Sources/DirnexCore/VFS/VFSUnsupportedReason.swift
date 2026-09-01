@@ -105,6 +105,17 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
     /// the control in that state, so reaching here means something changed between the panel opening
     /// and Save; naming the item is what makes that legible instead of a bare failure.
     case attributeChangeNeedsConnection(name: String)
+    /// ⌘Z sent a remote item's previous mode or modification time back and the server did not store
+    /// it (PLAN.md §4 ▸ *Still open*, taken 2026-09-01).
+    ///
+    /// An undo here is a *second write*, not a rewind: it asks the server to take the old values,
+    /// and a server free to refuse the first change is free to refuse this one — a `chmod` whose
+    /// set-group-ID bit the account cannot set, an `MFMT` the connection has since withdrawn. It is
+    /// read back and weighed exactly as the forward save is (``RemoteAttributeVerdict``), so this
+    /// names the case where the reversal was attempted and the item still does not carry what it
+    /// carried before. Saying so is the whole point: an undo that reported success on a clean exit
+    /// code would claim a reversal it did not have.
+    case remoteAttributeRestoreRefused(name: String)
     /// The file is larger than the object store can hold at all — S3's ceiling is 5 TiB, which no
     /// number of parts moves.
     ///
@@ -233,6 +244,7 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
         case .attributeChangeNeedsAdministrator: return "attributeChangeNeedsAdministrator"
         case .attributesNeedLocalItem: return "attributesNeedLocalItem"
         case .attributeChangeNeedsConnection: return "attributeChangeNeedsConnection"
+        case .remoteAttributeRestoreRefused: return "remoteAttributeRestoreRefused"
         case .objectTooLargeForStore: return "objectTooLargeForStore"
         case .bucketNotEmpty: return "bucketNotEmpty"
         case .bucketNameNotValid: return "bucketNameNotValid"
@@ -329,6 +341,8 @@ public extension VFSUnsupportedReason {
             return ("“%@” isn’t on this Mac, so it has no permissions to change.", [name])
         case let .attributeChangeNeedsConnection(name):
             return ("“%@” can’t be changed from here. Its server doesn’t offer that.", [name])
+        case let .remoteAttributeRestoreRefused(name):
+            return ("The server wouldn’t put “%@” back the way it was.", [name])
         case let .objectTooLargeForStore(name):
             return ("“%@” is too large for this storage service to hold.", [name])
         case let .bucketNotEmpty(name):
@@ -428,6 +442,7 @@ public extension VFSUnsupportedReason {
             .attributeChangeNeedsAdministrator(name: ""),
             .attributesNeedLocalItem(name: ""),
             .attributeChangeNeedsConnection(name: ""),
+            .remoteAttributeRestoreRefused(name: ""),
             .objectTooLargeForStore(name: ""),
             .bucketNotEmpty(name: ""),
             .bucketNameNotValid(name: ""),

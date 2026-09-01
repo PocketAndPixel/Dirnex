@@ -15,11 +15,14 @@ import DirnexCore
 /// and stores `100755` — set-gid silently gone. So the panel reports what the item *reads as*
 /// afterwards, never what it sent (``RemoteAttributeVerdict``).
 ///
-/// **Not undoable, and the panel says so.** ⌘Z reverses an attribute change through
-/// `FileAttributeIO`'s syscalls (`UndoStep.restoreAttributes`), which is a local-only executor; a
-/// backend-driven step is its own piece of work and is not in this pass. Stating that in the note is
-/// what keeps it from being a silent asymmetry with the local panel (PLAN.md §6: non-reversible
-/// operations are marked, never silently dropped).
+/// **Undoable since 2026-09-01, and the panel says what that means.** ⌘Z on a *local* attribute
+/// change rewinds it through `FileAttributeIO`'s syscalls, which no server speaks; here it sends
+/// the previous values back through the very verb Save used
+/// (``UndoStep/restoreRemoteAttributes(path:apply:reverse:)``), so it is a second write and a
+/// server free to refuse the first is free to refuse it. What goes on the stack is therefore what
+/// the read-back says actually *moved*, not what was asked for — and the note states the
+/// difference rather than promising a rewind (PLAN.md §6: what an operation cannot promise is
+/// marked, never silently dropped).
 extension RemoteAttributesController {
     /// A grid of the nine `rwx` bits, plus the three special ones — the twelve `chmod` carries over
     /// the wire, which is strictly more than a transfer's preserve flag can express.

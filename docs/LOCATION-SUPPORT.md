@@ -237,8 +237,9 @@ answers `EACCES` — which M26 Slice 3 stopped wording as a Full Disk Access pro
 grant does not gate `~/Library/CloudStorage` and the permission being refused is the one set in
 the cloud account.
 
-<sup>p</sup> Rename, move and New Folder are journaled and reversed through the backend, so they
-undo remotely. A **permanent delete is not reversible anywhere** — which is every remote delete,
+<sup>p</sup> Rename, move, New Folder and — since 2026-09-01 — an **attribute change** are journaled
+and reversed through the backend, so they undo remotely (▸ <sup>tt</sup> for what that last one can
+and cannot promise, since sending old values back is a write a server may refuse). A **permanent delete is not reversible anywhere** — which is every remote delete,
 since no remote backend has a Trash. That is a **decision rather than a gap**: inventing one — a
 managed `.dirnex-trash/` prefix and a sidecar naming the origin — was weighed and declined
 (PLAN.md §7, 2026-08-29), because it costs one cheap rename over SFTP and FTP against N copies plus
@@ -548,9 +549,16 @@ command" has the control withdrawn for the rest of that connection. Owner and gr
 **nowhere**: `chown`/`chgrp` need a numeric id and `sftp`'s `ls -la` prints names, and a remote
 `chgrp` clears set-uid and set-gid as a side effect. A saved change is **read back**, and the panel
 redraws from what the item carries rather than from what was sent — `sftp`'s `chmod` reports success
-for a mode the server did not store, measured (docs/NOTES.md ▸ sftp / ssh). It is **not undoable**,
-which the panel states: ⌘Z reverses an attribute change through local syscalls, and a backend-driven
-undo step is not built (PLAN.md §4 ▸ *Still open*).
+for a mode the server did not store, measured (docs/NOTES.md ▸ sftp / ssh). It has been **undoable
+since 2026-09-01**, and ⌘Z there is a *second write* rather than a rewind: the previous values go
+back through the same `applyMetadata` Save used, are read back and weighed the same way, and a
+server free to refuse the first change can refuse this one — which the panel's note says outright.
+What goes on the stack is what the read-back proves **moved**, so a mode that landed as something
+other than what was asked is still reversible, while a modification time the transport refused is
+not journaled at all: a listing cannot measure a timestamp (`ls -la` rounds to the minute, `LIST` is
+zone-less), so the time rests on the verb's own answer and declining to journal one costs a ⌘Z that
+does nothing where journaling a wrong one would write an old date over a field the save never
+touched.
 
 <sup>uu</sup> A vault is an encrypted disk image that macOS mounts as a volume, so it is a *local*
 thing by construction; `hdiutil` cannot attach one over SFTP, FTP or S3. Copying the image file to a

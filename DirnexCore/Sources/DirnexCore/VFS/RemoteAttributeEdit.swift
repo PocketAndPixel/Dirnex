@@ -77,7 +77,12 @@ public struct RemoteAttributeEditability: Sendable, Equatable {
 /// A patch rather than a whole `FileAttributes`, because only the fields that changed should reach
 /// the wire: an unchanged mode re-sent is a round trip that can be refused, and on a server that
 /// clears set-uid on a neighbouring write it is a round trip that can do *harm*.
-public struct RemoteAttributeChange: Sendable, Equatable {
+///
+/// `Codable` because it is also what the undo journal carries in both directions
+/// (``UndoStep/restoreRemoteAttributes(path:apply:reverse:)``): the values a ⌘Z would send back are
+/// the same patch, and the journal survives relaunch. The patch shape is what makes that safe —
+/// a step puts back only the fields the edit actually moved, so nothing else on the item is written.
+public struct RemoteAttributeChange: Sendable, Equatable, Codable {
     /// The mode to store, or `nil` to leave it alone.
     public let permissions: POSIXPermissions?
     /// The modification time to store, or `nil` to leave it alone.

@@ -37,13 +37,31 @@ extension PanelViewController {
     /// the per-row rule `AttributesRoute` already settled for the read half. Asking the pane instead
     /// would offer a control from the wrong account, or withhold one from the right account.
     private func showRemoteAttributes(_ entry: FileEntry) {
+        presentAsMovableWindow(remoteAttributesController(for: entry))
+    }
+
+    /// The panel over `entry`, wired to this pane and this window.
+    ///
+    /// Split from presenting it for the reason `remoteEditability(for:)` is: the wiring is the part
+    /// worth pinning and a test that presents a real window in the test host makes the pane do real
+    /// pane work and destabilizes its neighbours (docs/NOTES.md ▸ Testing). It earns the split twice
+    /// over now that there are **two** hooks, because a missing one is invisible in every direction
+    /// — a panel that journaled nothing would save exactly as it does today, and every remote change
+    /// would silently be a one-way door again (PLAN.md §4 ▸ *Still open*, taken 2026-09-01).
+    ///
+    /// The same two hooks the local panel gets, and for the same reasons: journaling a commit is the
+    /// window's job (⌘Z spans both panes), re-listing after one lands is this pane's.
+    func remoteAttributesController(for entry: FileEntry) -> RemoteAttributesController {
         let controller = RemoteAttributesController(
             entry: entry,
             backend: backend,
             editability: remoteEditability(for: entry)
         )
+        controller.recordUndo = { [weak self] record in
+            self?.host?.recordUndoableAction(record)
+        }
         controller.onApplied = { [weak self] in self?.refreshCurrentDirectory() }
-        presentAsMovableWindow(controller)
+        return controller
     }
 
     /// What the panel over `entry` will let the user change.

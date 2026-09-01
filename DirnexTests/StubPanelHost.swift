@@ -55,7 +55,15 @@ final class StubPanelHost: PanelHost {
         enqueued.append(operation)
     }
 
-    func recordUndoableAction(_ record: UndoRecord) {}
+    /// Every record a gesture journaled, in order.
+    ///
+    /// A recorder rather than a no-op for the reason `enqueued` is: journaling is a seam whose
+    /// *absence* is invisible in every other direction. A remote Get Info that never handed a
+    /// record over would save exactly as it does now and simply not be undoable, with no error, no
+    /// log line and every other assertion green (PLAN.md §4 ▸ *Still open*, taken 2026-09-01).
+    private(set) var recordedUndo: [UndoRecord] = []
+
+    func recordUndoableAction(_ record: UndoRecord) { recordedUndo.append(record) }
     func recordSelectionChange(
         on pane: PanelViewController,
         directory: VFSPath,

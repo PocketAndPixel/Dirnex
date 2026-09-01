@@ -67,6 +67,33 @@ public enum UndoStep: Sendable, Equatable, Codable {
         reverse: AccessControlList
     )
 
+    /// Undo/redo an attribute change on an item that is **not on this Mac** — a mode over SFTP, a
+    /// mode or a modification time over FTP (PLAN.md §4 ▸ *Still open*, taken 2026-09-01).
+    ///
+    /// The sibling of ``restoreAttributes(path:actsOnLink:apply:reverse:)`` and the opposite of it
+    /// in the one way that matters: that step deliberately ignores the backend and runs local
+    /// syscalls, and this one is *nothing but* a backend verb — ``VFSBackend/applyMetadata(_:at:)``,
+    /// the same one the panel's Save sends, so there is one definition of what a remote metadata
+    /// write is rather than a second spelling of it for undo.
+    ///
+    /// `apply` is the patch this direction sends and `reverse` its counterpart, so `inverse` is a
+    /// plain swap exactly as the local step's is. Both are **patches**: only the fields the edit
+    /// actually moved are named, so an undo writes nothing else on the item — which is what stands
+    /// in for the clobber refusal the path-shaped steps get for free, and is why this needs no
+    /// ``ArchiveUndoWitness`` of its own. An archive swap replaces a whole container and has to ask
+    /// whether anything else changed it since; a two-field patch is the same exposure the local
+    /// attributes step has carried since M14, and inventing a guard for one of the two panels would
+    /// be a second rule for one half of a pair.
+    ///
+    /// **What it does not inherit from the local step is trusting the write.** A server's clean
+    /// answer is not proof a mode landed (``RemoteAttributeVerdict``), so the executor re-reads the
+    /// item and reports a refusal as a failed step rather than as a completed undo.
+    case restoreRemoteAttributes(
+        path: VFSPath,
+        apply: RemoteAttributeChange,
+        reverse: RemoteAttributeChange
+    )
+
     /// Undo/redo an archive rewrite: exchange the archive with the copy of itself taken before
     /// the rewrite ran (F8 delete inside an archive, ⌘V/F5/F6 add, an edited member saved back).
     ///
@@ -115,6 +142,8 @@ public enum UndoStep: Sendable, Equatable, Codable {
                 apply: reverse,
                 reverse: apply
             )
+        case let .restoreRemoteAttributes(path, apply, reverse):
+            return .restoreRemoteAttributes(path: path, apply: reverse, reverse: apply)
         case let .restoreArchive(archive, snapshot, expected, restored):
             return .restoreArchive(
                 archive: archive,

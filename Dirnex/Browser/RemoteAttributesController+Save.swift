@@ -53,6 +53,16 @@ extension RemoteAttributesController {
             presentFailure(VFSErrorText.sentence(for: error))
         case let .success(verdict):
             lastVerdict = verdict
+            // Journal what landed **before** redrawing, because `reload` replaces `entry` with the
+            // server's answer and the record needs the values the item had going in. The builder
+            // takes the verdict rather than the two entries: what may be put back is what actually
+            // moved, and over a listing whose timestamps are coarse only the mode can be measured
+            // that way (``UndoRecord/remoteAttributeChange(from:asked:verdict:date:)``).
+            if let record = UndoRecord.remoteAttributeChange(
+                from: entry, asked: change, verdict: verdict
+            ) {
+                recordUndo?(record)
+            }
             // Redraw from the server's answer **before** deciding what to say, so whatever the panel
             // shows next is what the item carries — including in the case where that disagrees with
             // what was asked.

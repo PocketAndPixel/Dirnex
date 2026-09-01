@@ -9077,91 +9077,91 @@
         }
       }
     },
-    "A change made here is sent to the server straight away and cannot be undone with Command-Z. What the panel shows after saving is what the server stored, which is not always what was asked for.": {
-      "comment": "Info panel note: a remote attribute change is immediate and not undoable.",
+    "A change made here is sent to the server straight away. Command-Z sends the previous values back as another change, which the server can refuse in turn — and what the panel shows after saving is what the server stored, which is not always what was asked for.": {
+      "comment": "Info panel note: a remote attribute change is immediate, and its undo is a second write.",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A change made here is sent to the server straight away and cannot be undone with Command-Z. What the panel shows after saving is what the server stored, which is not always what was asked for."
+            "value": "A change made here is sent to the server straight away. Command-Z sends the previous values back as another change, which the server can refuse in turn — and what the panel shows after saving is what the server stored, which is not always what was asked for."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Eine hier vorgenommene Änderung wird sofort an den Server gesendet und lässt sich nicht mit Befehl-Z widerrufen. Nach dem Sichern zeigt das Fenster, was der Server gespeichert hat – das ist nicht immer das, was angefordert wurde."
+            "value": "Eine hier vorgenommene Änderung wird sofort an den Server gesendet. Befehl-Z schickt die vorherigen Werte als weitere Änderung zurück, die der Server seinerseits ablehnen kann – und nach dem Sichern zeigt das Fenster, was der Server gespeichert hat, was nicht immer das Angeforderte ist."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un cambio hecho aquí se envía al servidor de inmediato y no se puede deshacer con Comando-Z. Tras guardar, el panel muestra lo que el servidor almacenó, que no siempre es lo que se pidió."
+            "value": "Un cambio hecho aquí se envía al servidor de inmediato. Comando-Z devuelve los valores anteriores como otro cambio, que el servidor puede rechazar a su vez; y tras guardar, el panel muestra lo que el servidor almacenó, que no siempre es lo que se pidió."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Une modification faite ici est envoyée immédiatement au serveur et ne peut pas être annulée avec Commande-Z. Après l’enregistrement, la fenêtre affiche ce que le serveur a enregistré, ce qui n’est pas toujours ce qui a été demandé."
+            "value": "Une modification faite ici est envoyée immédiatement au serveur. Commande-Z renvoie les valeurs précédentes sous la forme d’une autre modification, que le serveur peut refuser à son tour — et après l’enregistrement, la fenêtre affiche ce que le serveur a enregistré, ce qui n’est pas toujours ce qui a été demandé."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Una modifica fatta qui viene inviata subito al server e non può essere annullata con Comando-Z. Dopo il salvataggio il pannello mostra ciò che il server ha memorizzato, che non è sempre quanto richiesto."
+            "value": "Una modifica fatta qui viene inviata subito al server. Comando-Z rimanda indietro i valori precedenti come un’altra modifica, che il server può a sua volta rifiutare; e dopo il salvataggio il pannello mostra ciò che il server ha memorizzato, che non è sempre quanto richiesto."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ここでの変更はすぐにサーバーへ送信され、Command-Z では取り消せません。保存後にパネルが示すのはサーバーが実際に保存した内容で、要求した内容とは限りません。"
+            "value": "ここでの変更はすぐにサーバーへ送信されます。Command-Z は以前の値を別の変更として送り返すため、サーバーがそれを拒否することもあります。保存後にパネルが示すのはサーバーが実際に保存した内容で、要求した内容とは限りません。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "여기서 변경한 내용은 즉시 서버로 전송되며 Command-Z로 실행 취소할 수 없습니다. 저장 후 패널에 표시되는 것은 서버가 저장한 내용이며, 요청한 내용과 항상 같지는 않습니다."
+            "value": "여기서 변경한 내용은 즉시 서버로 전송됩니다. Command-Z는 이전 값을 또 하나의 변경으로 되돌려 보내므로 서버가 이를 다시 거부할 수 있습니다. 저장 후 패널에 표시되는 것은 서버가 저장한 내용이며, 요청한 내용과 항상 같지는 않습니다."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Een wijziging die je hier maakt, wordt meteen naar de server gestuurd en kan niet ongedaan worden gemaakt met Command-Z. Wat het paneel na het bewaren toont, is wat de server heeft opgeslagen — dat is niet altijd wat er gevraagd is."
+            "value": "Een wijziging die je hier maakt, wordt meteen naar de server gestuurd. Command-Z stuurt de vorige waarden terug als nog een wijziging, die de server op zijn beurt kan weigeren — en wat het paneel na het bewaren toont, is wat de server heeft opgeslagen, wat niet altijd is wat er gevraagd is."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zmiana wprowadzona tutaj jest natychmiast wysyłana na serwer i nie można jej cofnąć przy użyciu Command-Z. Po zapisaniu panel pokazuje to, co zapisał serwer, a nie zawsze to, o co poproszono."
+            "value": "Zmiana wprowadzona tutaj jest natychmiast wysyłana na serwer. Command-Z odsyła poprzednie wartości jako kolejną zmianę, którą serwer może z kolei odrzucić — a po zapisaniu panel pokazuje to, co zapisał serwer, a nie zawsze to, o co poproszono."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uma alteração feita aqui é enviada ao servidor imediatamente e não pode ser desfeita com Command-Z. Após salvar, o painel mostra o que o servidor armazenou, que nem sempre é o que foi pedido."
+            "value": "Uma alteração feita aqui é enviada ao servidor imediatamente. Command-Z envia os valores anteriores de volta como outra alteração, que o servidor pode recusar por sua vez — e, após salvar, o painel mostra o que o servidor armazenou, que nem sempre é o que foi pedido."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Изменение, сделанное здесь, сразу отправляется на сервер и не отменяется по Command-Z. После сохранения панель показывает то, что сохранил сервер, а это не всегда то, о чём просили."
+            "value": "Изменение, сделанное здесь, сразу отправляется на сервер. Command-Z отправляет прежние значения обратно как ещё одно изменение, которое сервер тоже может отклонить, — а после сохранения панель показывает то, что сохранил сервер, а это не всегда то, о чём просили."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Зміна, зроблена тут, одразу надсилається на сервер і не скасовується через Command-Z. Після збереження панель показує те, що зберіг сервер, а це не завжди те, про що просили."
+            "value": "Зміна, зроблена тут, одразу надсилається на сервер. Command-Z надсилає попередні значення назад як ще одну зміну, яку сервер теж може відхилити, — а після збереження панель показує те, що зберіг сервер, а це не завжди те, про що просили."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在此所做的更改会立即发送到服务器，且无法用 Command-Z 撤销。存储后面板显示的是服务器实际保存的内容，未必是所请求的内容。"
+            "value": "在此所做的更改会立即发送到服务器。Command-Z 会把先前的值作为另一次更改发回，服务器同样可以拒绝；存储后面板显示的是服务器实际保存的内容，未必是所请求的内容。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "在此所做的更改會立即傳送到伺服器，且無法用 Command-Z 還原。儲存後面板顯示的是伺服器實際儲存的內容，未必是所請求的內容。"
+            "value": "在此所做的更改會立即傳送到伺服器。Command-Z 會將先前的值作為另一次更改送回，伺服器同樣可以拒絕；儲存後面板顯示的是伺服器實際儲存的內容，未必是所請求的內容。"
           }
         }
       }
@@ -124231,6 +124231,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "路徑 %@ 不屬於 %@。"
+          }
+        }
+      }
+    },
+    "vfs.unsupported.remoteAttributeRestoreRefused": {
+      "comment": "Shown when ⌘Z sent a remote item's previous mode or date back and the server didn't store it; %@ is the item's name. DirnexCore data (VFSUnsupportedReason).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server wouldn’t put “%@” back the way it was."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server hat „%@“ nicht in den vorherigen Zustand zurückversetzt."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servidor no ha devuelto «%@» a su estado anterior."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le serveur n’a pas remis « %@ » dans son état précédent."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server non ha riportato “%@” allo stato precedente."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバは「%@」を元の状態に戻しませんでした。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버가 ‘%@’을(를) 이전 상태로 되돌리지 않았습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De server heeft ‘%@’ niet teruggezet zoals het was."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serwer nie przywrócił „%@” do poprzedniego stanu."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер не вернул «%@» в прежнее состояние."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер не повернув «%@» до попереднього стану."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O servidor não devolveu “%@” ao estado anterior."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器没有把“%@”恢复原状。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器並未將「%@」還原為原本的狀態。"
           }
         }
       }
