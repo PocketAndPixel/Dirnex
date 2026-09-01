@@ -3290,6 +3290,47 @@ one, so all four columnar parsers — `bsdtar -tvf`, `sftp`'s `ls -la`, FTP's `L
   substring checks before its prefix scan (neither message starts with `can't`/`couldn't`/`remote`,
   so the prefix scan alone would have missed both).
 
+- **There is no way to *write* at an offset over SFTP either, so a split upload is parts plus a
+  server-side `cat` — and the three ways it is not the download's mirror are what decide the
+  design.** `help` lists `put`, `put -a` and `reput`, all of which append at the file's current
+  length, so parts cannot be written concurrently into one file and have to go under names of their
+  own. Measured 2026-09-01 against a real `sshd` behind a 2 MB/s-per-connection throttle — the
+  instrument that makes a parallel measurement mean anything on loopback, where nothing is the
+  bottleneck: 32 MiB took **16.85 s in one stream against 4.32 s in four parts**, byte-identical, of
+  which the join was **0.09 s**. Re-measured end to end through the shipped backend, 16.92 s against
+  4.73 s, so the app-side half — slicing, the probe, the join, the commit — costs about 0.4 s on
+  32 MiB.
+  - **The route has to be checked before anything is sent, not after.** A refused *download* wastes a
+    download; here the parts cross the network first and only the join needs the exec channel, so an
+    account confined to the `sftp` subsystem would carry the whole file over and *then* fail. One
+    sentinel `echo`, once per connection, settles it — 64 ms, latched. The refusal itself is the
+    shape §M22 already records: prose on **stdout**, exit 1, which is why the probe needs a token to
+    look for and not a bare `true`.
+  - **The part itself is a local slice sent by `sftp put`, not the source seeked and bounded
+    remotely.** Both work and both reassemble identically; the tempting one avoids cutting anything
+    on this disk by handing `ssh` a file descriptor already seeked to the offset and letting a remote
+    `head -c <length>` stop it. What kills it is **over-send**: `ssh` keeps pushing until the remote
+    closes, so the wire carried **1.35× the part for 4 MiB and 1.13× for 16 MiB** — about 2 MB per
+    part, the SSH channel window — and a truncated part still exits 0, the same silent shape the
+    download's pipeline has. A slice costs one part of scratch and gives exact bounds and `sftp`'s
+    own diagnostics.
+  - **Join under a staging name and rename, never straight into the destination.** A redirect creates
+    its target before `cat` writes a byte, so joining into the real name would leave a *partial file
+    under it* whenever the server ran out of room. Renaming within the directory is atomic, so a
+    split upload's destination appears whole or not at all — which is more than the single-stream
+    `put` it replaces can say.
+  - **A short part joins perfectly happily**, since `cat` has nothing to compare against — measured,
+    a 3-byte part spliced without complaint. So the size `wc -c` reports is the only evidence there
+    is, and it has to be read **before** the rename. Read it as *the last line, digits only*: the rc
+    of the account's login shell runs before the command and can print, and an `sftp`-only account's
+    refusal arrives as a sentence on the same stream.
+  - **`cat`, not `dd`.** Writing each part straight into the destination at its offset would need no
+    join and no second copy, and `dd` is the only tool that can — but it performs one `read()` per
+    block and BSD has no `iflag=fullblock`, so a short read writes a short block at the *right*
+    offset and loses the rest. The one shape that removes the join is the one that can silently
+    corrupt the middle of a file. What `cat` costs is a second pass over the bytes on the server,
+    measured at **1.9 GiB/s** (0.55 s for a gibibyte), and the destination's size again in scratch
+    there until it finishes.
 - **There is no way to fetch a byte *range* over SFTP, so a segmented download is not SFTP at all.**
   Two dead ends, both cheap to check and both decisive: the system `curl` is built without libssh2 —
   its `--version` protocol list carries no `sftp` and no `scp` — so the one-`curl -Z`-with-N-sections
@@ -3731,6 +3772,27 @@ off a man page.
     instrument; the tell that the earlier two were wrong is a single "connection" serving listings
     from four different tests.
 
+- **An FTP upload cannot be split, and the reason is that it cannot write where the file is not.**
+  Measured 2026-09-01 against a real `pyftpdlib` server, because the natural assumption — that
+  `curl -C <offset> -T` resumes the way its download twin does — is wrong in a way that decides the
+  whole question. On an **upload** `-C` sends **`APPE`**, not `REST`+`STOR`: it skips the head of the
+  *local* file and appends the rest, so there is no offset anywhere in it. A raw `REST <offset>`
+  followed by `STOR` *does* write at an offset — traced on the wire, `350 Restarting at position …`
+  and the bytes land there — but **only into a file that already exists at that length**; otherwise
+  the server answers `550 No such file or directory`, because it opens the file to seek. And nothing
+  can make it exist without sending the bytes: `ALLO` is advisory by RFC 959 and answers
+  `202 No storage allocation necessary`, and neither `SITE TRUNCATE` nor `SITE ALLO` is a verb
+  (`500 … not understood`). Two concurrent `APPE`s to one file interleave arbitrarily, with nothing
+  in the protocol naming which half is which. So the only route uploads the file's own size in zeros
+  first and then overwrites it — sending the file twice, which is worse than sending it once.
+  - The one thing *not* at fault is `curl`: given a pre-existing file it expresses the offset write
+    fine, its redundant `TYPE I` after the quote commands notwithstanding. Worth separating, because
+    "the tool cannot" and "the protocol cannot" have different shelf lives — this one is the
+    protocol's, and it is not going to change.
+  - **SFTP's answer does not transfer**, and the asymmetry is worth stating: SFTP cannot write at an
+    offset either, and it has `cat` over the exec channel to join what it could not write in place.
+    FTP has no verb that reads one of its own files, so parts sent under names of their own can never
+    be put back together on the server.
 - **`APPE` is FTP's create-if-absent, and it is the reason a create there is non-destructive where
   SFTP's cannot be.** Measured 2026-08-23 against a real server with `-v` read for the verb:
   `curl --append -T <empty file>` sends **`APPE`**, which **creates** the file when it is absent

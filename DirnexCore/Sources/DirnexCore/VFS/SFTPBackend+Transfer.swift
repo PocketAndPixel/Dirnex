@@ -191,12 +191,29 @@ extension SFTPBackend {
         return hint.expectedSize ?? remoteFileSize(destination)
     }
 
-    /// Upload `localPath` to `remote`, resuming from a remote partial when one is a proper prefix.
-    /// Returns the bytes actually transferred (the whole file, or just the remainder on resume).
+    /// Upload `localPath` to `remote` — in several parts at once when that is worth doing and this
+    /// account can join them, in one stream when it is not. Returns the bytes actually transferred
+    /// (the whole file, or just the remainder on resume).
+    ///
+    /// The fork has four conditions and each excludes a case the segmented path cannot serve, in the
+    /// order that keeps the cheap questions in front of the dear ones. A **partial already on the
+    /// server** takes the resuming route untouched, because parts are sent under names of their own
+    /// and have nothing to continue from — and it costs nothing to ask, since the remote size was
+    /// already being read for exactly that decision. A file under
+    /// ``SegmentedUploadLimits/threshold`` is not worth four key exchanges, a slice on this disk and
+    /// a second copy on the server's. A connection that has already shown it **cannot join parts** is
+    /// not asked again. And only then is the account itself asked, once, whether it has an exec
+    /// channel at all — which has to happen *before* a byte is sent, or an `sftp`-only account would
+    /// carry the whole file across the network and then fail (``SegmentedUploadSupport``).
+    ///
+    /// **The retry after a refused run reports nothing**, exactly as the download's does: whatever
+    /// parts landed have already been handed to `progress`, and reporting them again would count one
+    /// file twice in a job total that only adds. The tail in ``copyFile`` still tops the count up to
+    /// whatever the stream actually moved.
     func uploadFile(
         fromLocal localPath: String,
         remote destination: VFSPath,
-        carrying carry: RemoteMetadataPlan,
+        source sourceMetadata: RemoteSourceMetadata,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> Int64 {
@@ -204,17 +221,87 @@ extension SFTPBackend {
         // The remote size costs a round trip, so only look when resuming could pay off (a big file).
         let existingRemote = sourceSize > Self.resumeUploadThreshold ? remoteFileSize(destination) : 0
         let resume = existingRemote > 0 && existingRemote < sourceSize
-        let outcome = try mapErrors(destination) {
+
+        if !resume,
+           SegmentedUploadPlan.isWorthwhile(totalSize: sourceSize, limits: segmentedUploadLimits),
+           !segmentedUpload.isRefused,
+           let plan = SegmentedUploadPlan(totalSize: sourceSize, limits: segmentedUploadLimits),
+           canAssembleOnServer(isCancelled: isCancelled) {
+            let split = SFTPUploadRequest(
+                localPath: localPath,
+                destination: destination,
+                carry: segmentedUploadPlan(for: sourceMetadata)
+            )
+            if let moved = try uploadInSegments(
+                split,
+                plan: plan,
+                progress: progress,
+                isCancelled: isCancelled
+            ) {
+                return moved
+            }
+            return try uploadWholeFile(
+                SFTPUploadRequest(
+                    localPath: localPath,
+                    destination: destination,
+                    carry: uploadPlan(for: sourceMetadata)
+                ),
+                resuming: nil,
+                progress: { _ in },
+                isCancelled: isCancelled
+            )
+        }
+
+        return try uploadWholeFile(
+            SFTPUploadRequest(
+                localPath: localPath,
+                destination: destination,
+                carry: uploadPlan(for: sourceMetadata)
+            ),
+            resuming: resume ? existingRemote : nil,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    /// One `sftp` `put`, the whole file, resuming from a remote partial when the caller asks it to.
+    ///
+    /// `sftp` leaves the *whole* file on the server and reports its size, so the transferred delta
+    /// is the caller's to derive — which is why the pre-existing length travels with the decision
+    /// rather than being read again here.
+    private func uploadWholeFile(
+        _ request: SFTPUploadRequest,
+        resuming existingRemote: Int64?,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        let outcome = try mapErrors(request.destination) {
             try transport.upload(
-                localPath,
-                to: destination.path,
-                options: RemoteTransferOptions(resume: resume, carry: carry),
+                request.localPath,
+                to: request.destination.path,
+                options: RemoteTransferOptions(
+                    resume: existingRemote != nil,
+                    carry: request.carry
+                ),
                 progress: progress,
                 isCancelled: isCancelled
             )
         }
-        record(outcome, against: carry)
-        let finalSize = outcome.bytes
-        return resume ? max(0, finalSize - existingRemote) : finalSize
+        record(outcome, against: request.carry)
+        guard let existingRemote else { return outcome.bytes }
+        return max(0, outcome.bytes - existingRemote)
     }
+}
+
+/// What one SFTP upload is about: which local file, where it lands, and what it is carrying.
+///
+/// The mirror of ``SFTPDownloadRequest`` and bundled for the same reason — every step needs the same
+/// three and none of them varies between steps, so spelling them out pushes each signature past the
+/// parameter-count ceiling the moment a progress hook is added.
+struct SFTPUploadRequest {
+    let localPath: String
+    let destination: VFSPath
+    /// What this route may carry, which differs between the two: a single stream rides `put -p`,
+    /// where a split one is assembled by `cat` and has no transfer verb to ride at all.
+    let carry: RemoteMetadataPlan
 }

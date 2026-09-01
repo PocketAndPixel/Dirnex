@@ -11,7 +11,13 @@ public enum S3PartSliceError: Error, Sendable, Equatable {
     case sourceChanged(expected: Int64, available: Int64)
 }
 
-/// Cuts one part out of a local file and writes it where `curl` can upload it (PLAN.md §M21).
+/// Cuts one part out of a local file and writes it where the uploader can send it (PLAN.md §M21).
+///
+/// **Two callers, one primitive, and the name is S3's because the measurements are.** A segmented
+/// *SFTP* upload cuts its parts the same way (``SFTPBackend/uploadInSegments(_:plan:progress:isCancelled:)``),
+/// and for the same reason one layer along: `sftp put` takes a path, so a part has to be a real file
+/// there too. Everything below is about why that is not merely convenient — it is `curl`'s
+/// arithmetic, and it is kept here rather than generalised into prose that would have lost it.
 ///
 /// **A part has to be a real file, and that is a measurement rather than a preference.** `curl -T`
 /// is the only upload shape this backend can afford — 5.3 MB resident against `--data-binary`'s

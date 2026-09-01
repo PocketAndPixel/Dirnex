@@ -159,10 +159,55 @@ final class FakeSFTPTransport: SFTPTransport, @unchecked Sendable {
     var commandError: Error?
     private(set) var commands: [String] = []
 
+    /// Answers ``SSHAssembleCommand``'s three commands the way a real shell would — joining the
+    /// parts this fake is holding, renaming the staging file, and sweeping up — so a test can assert
+    /// the **file the server ends up with** rather than only the command that was sent.
+    ///
+    /// Off unless a test sets it, because every suite that predates segmented uploads must keep
+    /// getting the protocol's own default: an account with no exec channel, which declines the whole
+    /// route.
+    var actsAsShell = false
+
     func runCommand(_ command: String, isCancelled: () -> Bool) throws -> String? {
         if let commandError { throw commandError }
         commands.append(command)
+        // The same account property ``hasNoExecChannel`` names for a segmented download, answered
+        // where an exec request goes: prose, on stdout, which is where the answer would have been.
+        // Checked ahead of ``actsAsShell`` because an account with no exec channel has no shell to
+        // act as, and a fixture that set both would otherwise silently get one.
+        if hasNoExecChannel { return "This service allows sftp connections only.\n" }
+        guard actsAsShell else { return commandOutput }
+        if command.hasPrefix("/usr/bin/env echo ") {
+            return Self.words(command).last
+        }
+        if command.hasPrefix("/usr/bin/env cat ") {
+            // `cat 'p1' … 'pN' > 'staging' && wc -c < 'staging'` names the staging file twice.
+            let paths = Self.words(command)
+            guard let staging = paths.last, paths.count >= 3 else { return "" }
+            let joined = paths.dropLast(2).reduce(into: Data()) { $0 += remoteFiles[$1] ?? Data() }
+            remoteFiles[staging] = joined
+            return "\(joined.count)\n"
+        }
+        if command.hasPrefix("/usr/bin/env mv ") {
+            let paths = Self.words(command)
+            if paths.count >= 2 { remoteFiles[paths[1]] = remoteFiles.removeValue(forKey: paths[0]) }
+            for path in paths.dropFirst(2) { remoteFiles.removeValue(forKey: path) }
+            return ""
+        }
+        if command.hasPrefix("/usr/bin/env rm ") {
+            for path in Self.words(command) { remoteFiles.removeValue(forKey: path) }
+            return ""
+        }
         return commandOutput
+    }
+
+    /// The single-quoted operands of one of ``SSHAssembleCommand``'s commands, in order — enough of
+    /// a shell to serve the three shapes it emits, and nothing more.
+    private static func words(_ command: String) -> [String] {
+        command.split(separator: "'", omittingEmptySubsequences: false)
+            .enumerated()
+            .filter { $0.offset % 2 == 1 }
+            .map { String($0.element) }
     }
 
     /// Fails **only** `makeDirectory`, leaving listings answerable — the state a real server is in
@@ -254,6 +299,51 @@ final class FakeSFTPTransport: SFTPTransport, @unchecked Sendable {
             progress(Int64(served.count))
         }
         return .segments(bytes: moved)
+    }
+
+    /// Every batch of parts this fake was asked to send, in call order — the observable that says
+    /// whether the backend split the upload at all, and into what.
+    private(set) var partBatches: [[UploadSegment]] = []
+    /// The part numbers of each batch — the shape a test asserts when it cares about the *plan*
+    /// rather than about the bytes.
+    var partRuns: [[Int]] { partBatches.map { $0.map(\.number) } }
+    /// What the server ends up holding, keyed by remote path: the parts as they land, and — once the
+    /// join has been asked for — whatever `cat` produced. Written by the fake's own handling of
+    /// ``SSHAssembleCommand``, which is what lets a test assert the *file*, not just the requests.
+    private(set) var remoteFiles: [String: Data] = [:]
+    /// Makes every part land one byte short, which no `cat` can notice — the quiet failure the
+    /// join's size check exists to catch.
+    var truncatesParts = false
+    /// Fails the *n*th part upload, counting from 1, the way a server out of room would.
+    var failsPartNumber: Int?
+
+    /// Run just before a batch is sent — the seam that lets a test read what was on disk, and
+    /// what had already been asked of the server, at the moment the parts went out.
+    var beforeUploadingParts: (([UploadSegment]) -> Void)?
+
+    @discardableResult
+    func uploadParts(
+        _ parts: [UploadSegment],
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        beforeUploadingParts?(parts)
+        if isCancelled() {
+            cancelledTransfers.append(parts.first?.remotePath ?? "")
+            throw CancellationError()
+        }
+        partBatches.append(parts)
+        if let error { throw error }
+        var moved: Int64 = 0
+        for part in parts.sorted(by: { $0.number < $1.number }) {
+            if part.number == failsPartNumber { throw SFTPTransportError.failure("no space left") }
+            var bytes = (try? Data(contentsOf: URL(fileURLWithPath: part.localPath))) ?? Data()
+            if truncatesParts, !bytes.isEmpty { bytes = bytes.dropLast() }
+            remoteFiles[part.remotePath] = bytes
+            moved += Int64(bytes.count)
+            progress(part.length)
+        }
+        return moved
     }
 
     private static func slice(_ contents: Data, _ range: Range<Int64>) -> Data {

@@ -12658,7 +12658,7 @@ eliminated, and which neither implementable route depended on.
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-01)
 
-Forty dated passes that landed outside a milestone of their own, between M18's close on
+Forty-one dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-01: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12666,6 +12666,58 @@ sit here at the end rather than in a numeric slot — and they keep their **newe
 because several read as a chain and refer to the entry below. Moved out of [PLAN.md](../PLAN.md)
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
+
+**2026-09-01 — a large SFTP upload goes in parts; FTP's cannot, and now that is measured.** PLAN.md
+§4's last parity cell, *"No multipart upload over SFTP or FTP"*, and it closed as two different
+answers rather than one. Above 32 MiB an SFTP upload is now cut into parts of 16–32 MiB, **four sent
+at once**, each under a hidden name beside the destination, joined by one server-side `cat` over the
+exec channel and renamed into place only once the size the server reports matches what was sent.
+Measured through the shipped backend against a real `sshd` behind a 2 MB/s-per-connection throttle:
+**16.92 s in one stream against 4.73 s in four parts** for 32 MiB, byte-identical, matching the
+16.85 → 4.32 the bare mechanism measured before any Swift was written.
+
+**The probe overturned the file's own doc comment, which is what the pass was for.**
+`SFTPBackend.copyFile` had said since M5 that an upload could not be split at all, "since a segment's
+route here is the server *reading* a range, and nothing symmetrical exists for writing one". The
+first half is true — `sftp`'s `help` lists `put`, `put -a` and `reput`, all of which append at the
+file's current length — and the conclusion does not follow: parts go under names of their own and
+`cat` joins them. The comment now carries the correction rather than being quietly deleted, the way
+M25 owed one for *"neither remote protocol has a copy verb"*.
+
+**Three ways it is not the download's mirror, and each is a rule with a test whose failure would
+otherwise be silent.** The exec channel is asked for **before** a byte is sent — a refused download
+wastes a download, where here the parts cross the network first and only the join needs the channel,
+so an `sftp`-only account would carry the whole file over and *then* fail. The joined size is checked
+**before** the rename, because `cat` has nothing to compare against and a truncated part splices
+without complaint. And the destination is created by `cat` rather than by `put -p`, so there is no
+transfer verb to carry anything: the mode is applied afterwards through the `applyMetadata` a remote
+Get Info already uses, and the **times are reported lost** — the same trade §M25 Slice 3 shipped for
+the server-side `cp`, bought the same way, with a report rather than with silence.
+
+**The part is a local slice, not the source seeked and bounded remotely, and that was measured
+rather than assumed.** The tempting shape cuts nothing on this disk: hand `ssh` a descriptor already
+seeked to the offset and let a remote `head -c` stop it. Both work and both reassemble identically;
+what kills it is **over-send** — `ssh` keeps pushing until the remote closes, so the wire carried
+**1.35× the part for 4 MiB and 1.13× for 16 MiB**, about 2 MB apiece, the SSH channel window — and a
+truncated part still exits 0. A slice costs one part of scratch and buys exact bounds and `sftp`'s own
+diagnostics, which is `S3PartSlice`'s existing shape.
+
+**FTP closed by being proved impossible, and the measurement is the deliverable.** `curl -C <offset>`
+on an *upload* sends **`APPE`**, not `REST`+`STOR`, so there is no offset in it anywhere. A raw
+`REST` + `STOR` does write at an offset — but only into a file that already exists at that length,
+otherwise `550 No such file or directory` — and nothing can create one without sending the bytes:
+`ALLO` is advisory (`202 No storage allocation necessary`), there is no `SITE TRUNCATE`, and two
+concurrent `APPE`s to one file interleave arbitrarily. The only route sends the file twice. It moved
+to [LOCATION-SUPPORT.md](LOCATION-SUPPORT.md)'s *"cannot be closed from here"* list with the numbers
+behind it. `curl` is **not** what is at fault, and separating that mattered: given a pre-existing file
+it expresses the offset write fine, so this is the protocol's limit and not the tool's.
+
+**Six negative controls, each firing on the test named for it**, plus the one only a second server
+can run: pointed at an account with `ForceCommand internal-sftp`, the live suite fails on *exactly*
+the assertion that distinguishes the routes — one progress report instead of four — while every other
+assertion passes, which is the degradation working rather than breaking. The live suite's own
+discriminator is that report count, and it had to be added: the first version asserted the bytes
+landed and nothing was left behind, both of which a single-stream fallback satisfies just as well.
 
 **2026-09-01 — save-backs coordinate, remote and archive.** PLAN.md §4's last M25 leftover, and the one it
 described most exactly: *"the mirror of a job that already exists rather than a new one"*. A user

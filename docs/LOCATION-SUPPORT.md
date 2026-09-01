@@ -604,7 +604,7 @@ local one.
 | Determinate byte progress, uploading | yes | yes | n/a | **yes, limited**<sup>jj</sup> | yes | yes | n/a |
 | Resume an interrupted transfer | n/a | n/a | n/a | yes | yes | yes | n/a |
 | Split one file over several connections | n/a | n/a | n/a | yes | yes | yes | n/a |
-| Multipart upload for very large files | n/a | n/a | n/a | no<sup>vv</sup> | no<sup>vv</sup> | yes | n/a |
+| Multipart upload for very large files | n/a | n/a | n/a | **yes**<sup>vv</sup> | **no**<sup>ww</sup> | yes | n/a |
 | Stop actually stops the bytes | yes | yes | yes | yes | yes | yes | n/a |
 | Server-side copy (bytes never touch this Mac) | yes<sup>kk</sup> | yes<sup>kk</sup> | n/a | yes, limited<sup>ll</sup> | **no**<sup>ll</sup> | yes | n/a |
 | Duplicate a file inside one account | yes | yes | n/a | yes, limited<sup>ll</sup> | yes, limited<sup>ll</sup> | yes | n/a |
@@ -615,7 +615,8 @@ local one.
 <sup>jj</sup> `sftp` prints no progress meter to a spawned process, and no flag changes that
 (measured in six configurations over a 1 GiB transfer). A **download** watches its own destination
 file grow, so it is exact; an **upload** has no observable at all and reports its byte count once,
-at the end.
+at the end — unless it is **split**, in which case it reports once per part as each one lands, which
+is the finest granularity this protocol allows (<sup>vv</sup>).
 
 <sup>kk</sup> An APFS clone, which is instant and costs no bytes.
 
@@ -632,9 +633,27 @@ twice.
 <sup>mm</sup> S3 sends `If-Match`; SFTP and FTP re-`stat` before uploading and tell you if the
 file changed since it was fetched, which is a narrower window and not a guarantee.
 
-<sup>vv</sup> S3 splits a large upload into parts that fail and retry independently; the other two
-send one stream, so a transfer that dies late resumes from wherever `-C -` or `put -a` can pick it up
-rather than from a part boundary (PLAN.md §4 ▸ *Still open*).
+<sup>vv</sup> Above 32 MiB an SFTP upload is cut into parts of 16–32 MiB, **four sent at once**,
+each under a hidden name beside the destination; the server joins them with one `cat` over the exec
+channel and the file is renamed into place only once the size it reports matches what was sent.
+Measured 2026-09-01 through the shipped backend against a real `sshd` behind a 2 MB/s-per-connection
+throttle: **16.92 s in one stream against 4.73 s in four parts** for 32 MiB, byte-identical. Three
+costs, all stated rather than waved at — the parts are staged one batch at a time on this disk
+(128 MiB at most), the join needs the destination's own size again in scratch **on the server** until
+it finishes, and the file is created by `cat` rather than by `put -p`, so the mode is applied
+afterwards and the **times are reported lost**, the same trade the server-side `cp` makes
+(<sup>bbb</sup>). An account confined to the `sftp` subsystem has no exec channel and cannot join
+anything: it is asked once, before a byte is sent, and every upload on that connection takes the
+single stream — measured, the file still lands byte-identical, in order, with nothing left behind.
+
+<sup>ww</sup> **FTP cannot, and this is a measurement rather than an assumption.** `curl -C <offset>`
+on an upload sends **`APPE`**, not `REST`+`STOR`, so it can only ever append at the end. A raw
+`REST <offset>` + `STOR` *does* write at an offset — but only into a file that already exists at that
+length (`550 No such file or directory` otherwise), and FTP has no way to make one without sending the
+bytes: `ALLO` is advisory (`202 No storage allocation necessary`) and there is no `SITE TRUNCATE`.
+Two concurrent `APPE`s to one file interleave arbitrarily, with nothing naming which half is which.
+So the only route sends the file twice, which is worse than sending it once — see *Where remote still
+feels unlike local*.
 
 ---
 
@@ -654,6 +673,10 @@ rows, and the app is already as close as the technology permits:
 - A server-side *walk* over FTP: there is no recursive verb `curl` can send, so the tree costs one
   `LIST` per directory whoever asks. What was closeable — the connection around each of them — was
   closed on 2026-09-01.
+- A **split upload over FTP**: the protocol has no way to write at an offset into a file that is not
+  already there at full length, and no way to create one without sending the bytes. The full
+  measurement is under <sup>ww</sup>; SFTP's own split, which *is* possible because `cat` over the
+  exec channel can join what `sftp` cannot write in place, landed on 2026-09-01.
 - Content search and Finder-tag search on a server: both need every file's bytes or its xattrs.
 - Exact FTP timestamps: `LIST` stamps are year-less, zone-less and on the server's clock, and
   `curl` cannot send `MLSD`.

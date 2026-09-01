@@ -29,6 +29,14 @@ public struct SFTPBackend: RemoteTransportBackend {
     /// exercised at 50 000 rows, and a rule with no test is a rule nobody has watched fail. Left at
     /// its default everywhere in the app.
     public var subtreeRowLimit = SSHFindCommand.defaultRowLimit
+    /// The limits a segmented **upload** plans against — ``SegmentedUploadLimits/sftp`` everywhere in
+    /// the app.
+    ///
+    /// Settable for the reason ``subtreeRowLimit`` is: it is what makes the route *reachable* in a
+    /// test. The shipped threshold is 32 MiB, so exercising the fork, the batching and the join at
+    /// real sizes would mean a fixture of tens of megabytes per test — and a rule with no test is a
+    /// rule nobody has watched fail.
+    public var segmentedUploadLimits = SegmentedUploadLimits.sftp
     /// What this connection has learned about splitting a download into several exec channels. A
     /// reference held by a value type on purpose: the backend is copied freely, and what it knows
     /// about the *server* must not be copied away with it (``SegmentedDownloadSupport``).
@@ -43,6 +51,11 @@ public struct SFTPBackend: RemoteTransportBackend {
     /// freely, and what it knows about the *server* must not be copied away with it
     /// (``ServerSideCopySupport``).
     let serverSideCopy = ServerSideCopySupport()
+    /// What this connection has learned about joining an upload's parts **on the server** — a
+    /// reference held by a value type for the same reason the others here are: the backend is copied
+    /// freely, and what it knows about the *server* must not be copied away with it
+    /// (``SegmentedUploadSupport``).
+    let segmentedUpload = SegmentedUploadSupport()
     /// What this connection has learned about reading a symlink's **target** over the exec channel —
     /// a reference held by a value type for the same reason the three above are: the backend is
     /// copied freely, and what it knows about the *server* must not be copied away with it
@@ -166,8 +179,14 @@ public struct SFTPBackend: RemoteTransportBackend {
     ///
     /// It is deliberately consulted **only** for the download direction. An upload's shape is
     /// decided by the local file's own size, which this backend reads for itself and which cannot be
-    /// stale — and there is no way to split one in any case, since a segment's route here is the
-    /// server *reading* a range, and nothing symmetrical exists for writing one.
+    /// stale.
+    ///
+    /// **Correction, 2026-09-01**: this comment used to go on to say that an upload could not be
+    /// split at all, "since a segment's route here is the server *reading* a range, and nothing
+    /// symmetrical exists for writing one". The first half is true — `sftp` has no verb that writes
+    /// at an offset — and the conclusion does not follow: the parts go under names of their own and
+    /// the server joins them with `cat`, measured at 16.85 s against 4.32 s for 32 MiB over a
+    /// throttled link (``SFTPBackend/uploadInSegments(fromLocal:remote:carrying:plan:progress:isCancelled:)``).
     public func copyFile(
         at source: VFSPath,
         to destination: VFSPath,
@@ -224,7 +243,7 @@ public struct SFTPBackend: RemoteTransportBackend {
             transferred = try uploadFile(
                 fromLocal: source.path,
                 remote: destination,
-                carrying: uploadPlan(for: hint.metadata, localSource: source.path),
+                source: hint.metadata ?? .ofLocalFile(source.path),
                 progress: streamed,
                 isCancelled: isCancelled
             )
@@ -266,14 +285,22 @@ public struct SFTPBackend: RemoteTransportBackend {
     /// What an upload may carry: whatever this connection still honours, over the local source's own
     /// metadata.
     ///
-    /// The hint is read from the local file when the caller did not supply one, because here it is
-    /// free — an upload's source is on this machine, so its mode and times are one `lstat`, and
-    /// leaving them out would drop a carry for want of a parameter.
-    private func uploadPlan(
-        for hint: RemoteSourceMetadata?,
-        localSource: String
-    ) -> RemoteMetadataPlan {
-        metadata.plan(for: hint ?? .ofLocalFile(localSource))
+    /// The hint is resolved by the caller — read from the local file when none was supplied, because
+    /// here that is free: an upload's source is on this machine, so its mode and times are one
+    /// `lstat`, and leaving them out would drop a carry for want of a parameter.
+    func uploadPlan(for source: RemoteSourceMetadata) -> RemoteMetadataPlan {
+        metadata.plan(for: source)
+    }
+
+    /// What a **segmented** upload may carry, which is strictly less.
+    ///
+    /// Its destination is created by a server-side `cat` rather than by `put`, so there is no
+    /// transfer verb for `-p` to ride on: the mode goes as its own batch afterwards and the times
+    /// have no route at all over this protocol, exactly as they have none for a server-side `cp`
+    /// (PLAN.md §M25 Slice 3). Subtracting the flag is what makes the plan *report* that rather than
+    /// claim a carry with no mechanism behind it.
+    func segmentedUploadPlan(for source: RemoteSourceMetadata) -> RemoteMetadataPlan {
+        metadata.planWithoutTransferFlag(for: source)
     }
 
     /// The size of a local regular file, or 0 when it is absent or unreadable (so a missing

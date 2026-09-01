@@ -133,22 +133,24 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 
 ### Still open
 
-Everything through M26 is shipped, and the record of it — the milestone checklists, the thirty-nine
+Everything through M26 is shipped, and the record of it — the milestone checklists, the forty-one
 dated passes that landed outside a milestone of their own, and the reasoning behind every decision —
 is in **[docs/HISTORY.md](docs/HISTORY.md)**. What is still open, rather than merely imaginable, is
-the *undone* column in the table above, plus the list below: one cut that is a unit of work on its
-own, and the last cells of [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)'s parity backlog —
-each too small to have been a slice of M24 or M25, and too real to leave unwritten. Both of M25's
-own leftovers left this list on **2026-09-01** (HISTORY.md ▸ the follow-on log) — *"A remote
-attribute change cannot be undone"* and *"Many remote write-backs do not coordinate"* — so what
-remains is M15's own cut and one parity cell written down before either milestone ran.
+the *undone* column in the table above, plus the list below. Everything that came off this list came
+off in the eight days to **2026-09-01** (HISTORY.md ▸ the follow-on log): both of M25's own leftovers
+— *"A remote attribute change cannot be undone"* and *"Many remote write-backs do not coordinate"* —
+and the last parity cell, *"No multipart upload over SFTP or FTP"*, which closed by being **half
+built and half proved impossible**. SFTP splits a large upload into parts that go at once and are
+joined by the server (measured 3.6× through the shipped path, 16.92 s → 4.73 s on 32 MiB over a
+2 MB/s-per-connection link); FTP cannot, and that is now a measurement rather than an assumption —
+it has no way to write at an offset into a file that does not already exist at full length, and no
+way to make one without sending the file twice. The refusal moved to
+[docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)'s *"cannot be closed from here"* list with the
+numbers behind it, and what remains here is M15's own cut.
 
 - **The thumbnail grid, brief view and the `PaneSurface` extraction** — M15's cut, and one unit
   rather than three items, argued in HISTORY.md §M15. Any future grid inherits two constraints from
   it: skip `FileEntry.isDataless` rows, and move sort off the column header first.
-- **No multipart upload over SFTP or FTP.** S3 splits a large upload into parts that fail and retry
-  independently; the other two send one stream, so a transfer that dies late resumes from wherever
-  `put -a` or `curl -C -` can pick it up rather than from a part boundary.
 
 ## 5. Cross-cutting: testing strategy
 
