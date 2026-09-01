@@ -66,7 +66,7 @@ watched live. It is still a virtual container: no size bars, no pack, no Open in
 | Tree view (`→` to expand) | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Live auto-refresh when it changes elsewhere | yes | yes | yes<sup>d</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | n/a | yes |
 | Folder size on `Space` / `⌥⇧⏎` | yes | yes | yes | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | n/a | yes | yes |
-| Size visualization bars (`⌃B`) | yes | yes | no<sup>nn</sup> | no<sup>nn</sup> | no<sup>nn</sup> | no<sup>nn</sup> | no<sup>nn</sup> | n/a<sup>nn</sup> | n/a<sup>nn</sup> |
+| Size visualization bars (`⌃B`) | yes | yes | yes | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | n/a<sup>nn</sup> | n/a<sup>nn</sup> |
 | Git status column, `.gitignore`-aware sizes | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
 | Appears in Recents | yes | yes | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a | n/a |
 | Reopens at launch / in a saved workspace | yes | yes | yes | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | n/a | n/a |
@@ -111,11 +111,19 @@ moment it is visible again rather than waiting out a fresh interval. FSEvents st
 which is why the local and cloud-mount columns are a plain yes.
 
 <sup>nn</sup> A bar is a row's share of **its own directory**, so it needs every sibling's total
-rather than the cursor's — remotely that is N bounded walks where the `Space` total above is one. In
-an archive it is cheap (the whole table of contents is already in hand) and simply gated with the
-rest; on a virtual listing whose rows live in a dozen different folders "share of this directory" has
-no referent, which is why those two read n/a. So what is missing is a budget for the set, not a
-capability (PLAN.md §4 ▸ *Still open*).
+rather than the cursor's, where the `Space` total above needs one. That is what used to gate the mode
+to the local disk, and it was two different mistakes. An **archive** never cost anything — its whole
+table of contents is already in memory (5.8 µs a directory, against the local disk's 33 µs) — and it
+was gated with the rest by accident. On a **server** the cost is real and is now bounded twice: the
+sizer asks the backend for the whole subtree before walking it, which for SFTP is one exec and for S3
+one delimiter-less listing, and whatever cannot be answered that way runs under one allowance shared
+by the entire column rather than one per row. Measured in the app against a real `sshd`: **9 sessions
+for the whole column, against 149** with the exec channel withdrawn. A row the allowance never
+reached carries the same marker and tooltip a `Space` walk that gave up does, rather than a dash that
+would read as "still measuring". FTP has no subtree shortcut at all
+(*Still open* ▸ "FTP has no server-side walk"), so it always takes the walk and its allowance. On a
+virtual listing whose rows live in a dozen different folders "share of this directory" has no
+referent whatever it would cost, which is why those two still read n/a.
 
 <sup>oo</sup> Recents is Spotlight's `kMDItemLastUsedDate` over the local index, so a location macOS
 does not index cannot appear in it whatever Dirnex does. The same is true of the ⌘L fuzzy jump, which

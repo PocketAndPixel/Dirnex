@@ -122,8 +122,14 @@ enum DirectoryLoader {
     /// task (this is not detached), it inherits cancellation from the scan queue's task group, and
     /// `DirectorySizer` checks the flag at every directory it pops.
     ///
-    /// Returns `nil` when canceled, exactly as it does when the walk fails — both mean "no total",
-    /// and the cache stores neither.
+    /// Reports **what it spent** as well as what it found, because the caller holds one allowance
+    /// across a whole set of these (`DirectorySizeBudget.forSet(ofBackend:)`) and cannot charge it
+    /// from the total: a folder of one enormous file and a folder of ten thousand small ones are
+    /// the same bytes and a thousand-fold difference in requests.
+    ///
+    /// `isAbandoned` is the second way in, beside task cancellation, and it is what makes
+    /// ``DirectorySizeBudget/abandonsWhenUnwatched`` reach an individual walk: the queue runs these
+    /// in a task group, so cancelling *one* of them is not something a task handle can express.
     ///
     /// `isExcluded` prunes subtrees out of the total — `.gitignore`-aware sizing, whose predicate is
     /// `GitStatusSnapshot.isExcludedFromSize`. It is `@Sendable` because it crosses onto the walk's
@@ -131,14 +137,27 @@ enum DirectoryLoader {
     static func cancellableSize(
         _ backend: any VFSBackend,
         of path: VFSPath,
-        excluding isExcluded: @escaping @Sendable (VFSPath) -> Bool = { _ in false }
-    ) async -> Int64? {
-        try? DirectorySizer.size(
-            of: path,
-            using: backend,
-            excluding: isExcluded,
-            isCancelled: { Task.isCancelled }
-        )
+        budget: DirectorySizeBudget = .unbounded,
+        excluding isExcluded: @escaping @Sendable (VFSPath) -> Bool = { _ in false },
+        isAbandoned: @escaping @Sendable () -> Bool = { false }
+    ) async -> ScanResult {
+        do {
+            let measured = try DirectorySizer.measure(
+                of: path,
+                using: backend,
+                budget: budget,
+                excluding: isExcluded,
+                isCancelled: { Task.isCancelled || isAbandoned() }
+            )
+            return ScanResult(outcome: .total(measured.bytes), requestsMade: measured.requestsMade)
+        } catch let exceeded as DirectorySizeBudgetExceeded {
+            return ScanResult(outcome: .gaveUp, requestsMade: exceeded.directoriesListed)
+        } catch {
+            // Cancelled, or the listing failed. A cancelled walk is charged **nothing**: the only
+            // thing that cancels one is the pane having stopped looking, at which point its scan is
+            // dropped and there is no allowance left to protect.
+            return .cancelled
+        }
     }
 
     /// How a budgeted walk ended. Three outcomes rather than an `Int64?`, because a walk that
@@ -154,6 +173,22 @@ enum DirectoryLoader {
         /// Cancelled, or the top-level listing failed. Both mean "no total" and the cache stores
         /// neither, which is the pre-existing meaning of this function's `nil`.
         case unavailable
+    }
+
+    /// How a scan-queue walk ended, and what it spent — see ``DirectorySizeMeasurement``.
+    ///
+    /// Three outcomes rather than an `Int64?` for the same reason `SizeOutcome` has them, one layer
+    /// along: a walk that **gave up** at the set's allowance and one that failed look identical
+    /// from outside and mean opposite things to the pane, which draws the first as a marked row
+    /// with a reason and the second as the dash it already had.
+    ///
+    /// The cost is carried on **every** ending, including the give-up, because the allowance is
+    /// what a give-up proves was spent.
+    struct ScanResult: Sendable, Equatable {
+        let outcome: SizeOutcome
+        let requestsMade: Int
+
+        static let cancelled = ScanResult(outcome: .unavailable, requestsMade: 0)
     }
 
     /// The Space-on-dir walk for a backend whose listings are **billed round trips** (PLAN.md §M21

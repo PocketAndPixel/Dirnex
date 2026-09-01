@@ -81,6 +81,27 @@ public struct DirectorySizeBudget: Sendable, Hashable {
     /// Keeping it here is what stops the two halves from being two spellings the compiler cannot
     /// compare: a backend that gains a budget gains the cancellation with it.
     public var abandonsWhenUnwatched: Bool { directoryLimit != nil }
+
+    /// The allowance a **whole bar column's worth of walks** shares — size-visualization mode asks
+    /// for every sibling's recursive total at once, because the mode is on rather than because
+    /// anybody pointed at a folder.
+    ///
+    /// The same number as one walk's, and that is the finding rather than a shortcut: **the set
+    /// costs one walk of the parent, not N of them.** The siblings' subtrees are disjoint, so
+    /// however the work is sliced it is the same directories listed once each — measured
+    /// 2026-09-01 through the real ``DirectorySizer``, sizing 40 top-level rows separately against
+    /// sizing their container whole (6.46 ms against 6.59 ms over an archive of 1410 directories),
+    /// and again against a live `sshd`, where the set of 8 spent **136** sessions against the whole
+    /// walk's 137. So what a bounded backend needed before its rows could carry bars was not a
+    /// bigger number but an allowance held across the *set*: without one, N walks each entitled to
+    /// ``remote``'s thousand listings is N thousand billed requests for one keystroke.
+    ///
+    /// A separate function rather than a second call to ``forBackend(_:)`` because the *subject*
+    /// differs even where the number does not — this is what one keystroke may spend, and it is the
+    /// place to change if the two ever have to part.
+    public static func forSet(ofBackend backend: VFSBackendID) -> DirectorySizeBudget {
+        forBackend(backend)
+    }
 }
 
 /// Thrown by ``DirectorySizer/size(of:using:budget:excluding:isCancelled:)`` when a walk reaches

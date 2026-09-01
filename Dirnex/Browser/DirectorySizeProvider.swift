@@ -88,6 +88,11 @@ final class DirectorySizeProvider {
     /// Absent on the invalidation publish, which genuinely has nothing to hand over.
     static let totalsKey = "totals"
     static let scopeKey = "scope"
+    /// Children this publish is reporting **no total** for, because the set ran out of allowance
+    /// before reaching them (`DirectorySizeBudget.forSet(ofBackend:)`). The pane draws them with the
+    /// marker and tooltip Space-on-dir's own give-up already uses, rather than leaving them looking
+    /// like a walk that has not landed yet — which is the one thing they are not.
+    static let gaveUpKey = "gaveUp"
     /// Set on the one publish that means "the totals you are showing answer the wrong question":
     /// the repository's ignore rules moved, so every git-aware number is not stale but *invalid*.
     /// Panes drop what they are holding rather than merely re-seeding — the distinction
@@ -103,12 +108,12 @@ final class DirectorySizeProvider {
     /// `setDirectorySizes` and one re-render, so this is what keeps a 68-directory scan from
     /// becoming 68 re-sorts: at width 8 totals land in bursts, and coalescing them into ~10
     /// publishes a second makes the cost independent of how many rows the directory has.
-    private let publishInterval: Duration = .milliseconds(100)
+    let publishInterval: Duration = .milliseconds(100)
 
     /// Every total this session has learned, outliving the panes that asked for it. This is the
     /// authority-free latency optimization the core documents: seeding from it makes bars appear
     /// with the folder, and a re-walk corrects them.
-    private var cache = DirectorySizeCache()
+    var cache = DirectorySizeCache()
 
     /// Directories with a scan requested, and the children each still owes a walk. Keyed by the
     /// *displayed* directory **and scope** rather than by pane, so two panes on one folder coalesce
@@ -134,15 +139,34 @@ final class DirectorySizeProvider {
     /// its unfiltered one was being walked — the request would be swallowed as a duplicate and the
     /// row would sit without a bar until something else disturbed it.
     private var inFlight: Set<DirectorySizeKey> = []
+    /// Children whose set ran out of allowance before reaching them, so they carry no total and
+    /// **must not be asked for again** until something changes.
+    ///
+    /// It is the memory that keeps a bound from becoming a metronome. The pane re-derives its
+    /// pending list from the projection on every render and a row with no total is pending forever,
+    /// so without this the exhausted set would be re-queued — and re-granted — on each repaint.
+    /// Cleared by `invalidate(under:)`, which is proof the folder changed, and by `cancelAllScans`,
+    /// which is the mode being switched off everywhere: both are the user or the filesystem saying
+    /// the question is worth asking again, where idling is not.
+    var gaveUp: Set<DirectorySizeKey> = []
+    /// The one bounded walk in flight and the flag that abandons it mid-walk.
+    ///
+    /// One, not a set, because bounded scans are deliberately serialized — see `nextWork`. That is
+    /// what makes ``DirectorySizeBudget/abandonsWhenUnwatched`` expressible here at all: a task
+    /// group cannot cancel one of its children, so the walk is handed a flag instead.
+    private var boundedWalk: (key: DirectorySizeKey, abandon: AbandonFlag)?
     /// Totals banked since the last publish, grouped by the directory they belong to and the scope
     /// they were counted under — the payload described on `totalsKey`, and the reason a landing can
     /// no longer be lost to an invalidation arriving before the publish does.
-    private var landed: [DirectorySizeKey: [VFSPath: Int64]] = [:]
-    private var publish: Task<Void, Never>?
+    var landed: [DirectorySizeKey: [VFSPath: Int64]] = [:]
+    /// Children this scan gave up on since the last publish, grouped like `landed` and published
+    /// beside it — see `gaveUpKey`.
+    var gaveUpSinceLastPublish: [DirectorySizeKey: Set<VFSPath>] = [:]
+    var publish: Task<Void, Never>?
     /// The ignored set each repository had when its git-aware totals were last walked — the basis
     /// `gitStatusDidChange` compares against. Bounded by `GitStatusProvider`'s own 8-snapshot cache
     /// in practice, since only repositories it is tracking ever appear here.
-    private var ignoredPaths: [VFSPath: Set<String>] = [:]
+    var ignoredPaths: [VFSPath: Set<String>] = [:]
 
     private init() {
         // Ignore rules changing is the one thing that invalidates a git-aware total without a byte
@@ -164,6 +188,19 @@ final class DirectorySizeProvider {
         let rule: DirectorySizeRule
         /// Children still owing a walk, in display order.
         var children: [VFSPath]
+        /// What the **whole set** may still spend, or `nil` where a walk costs nothing anybody is
+        /// billed for (`DirectorySizeBudget.forSet(ofBackend:)`).
+        ///
+        /// One allowance for the batch, not one per child, and that is the difference between the
+        /// bars being affordable on a server and not: N children each entitled to
+        /// `DirectorySizeBudget.remote`'s thousand listings is N thousand billed requests for one
+        /// keystroke. Decremented by what each walk reports it spent
+        /// (``DirectorySizeMeasurement/requestsMade``), which is 1 for a backend that can hand over
+        /// a whole subtree and one per directory for one that cannot.
+        var allowance: Int?
+
+        var isBounded: Bool { allowance != nil }
+        var hasAllowanceLeft: Bool { (allowance ?? 1) > 0 }
     }
 
     // MARK: - Reading (the render path)
@@ -196,17 +233,44 @@ final class DirectorySizeProvider {
     ) {
         let scope = rule.scope
         let unknown = children.filter { child in
-            cache.size(for: child, scope: scope) == nil
-                && !inFlight.contains(DirectorySizeKey(path: child, scope: scope))
+            let childKey = DirectorySizeKey(path: child, scope: scope)
+            return cache.size(for: child, scope: scope) == nil
+                && !inFlight.contains(childKey)
+                // A child a spent set already gave up on must not be re-queued. The pane re-derives
+                // its pending list from the projection on **every render**, and a row with no total
+                // is pending forever — so without this the allowance would be re-granted and spent
+                // again on each repaint, which on a billed backend is a bill that never stops.
+                // Cleared by `invalidate`, so a real change re-earns the attempt, as does the user
+                // toggling the mode off and on.
+                && !gaveUp.contains(childKey)
         }
         guard !unknown.isEmpty else {
             // Nothing to do — but the directory may have had work a moment ago (everything just
             // landed, or the cache was seeded), so clear it rather than leave a spent entry behind.
-            cancelScan(for: directory)
+            //
+            // **Not `cancelScan`**, which also abandons the walk in flight. For a bounded set that
+            // is exactly one walk, and "nothing left to queue" is the state a re-render reaches
+            // while the *last* child is still being walked — so routing this through the pane's own
+            // cancellation would abandon the row the user is waiting for, on every repaint, every
+            // time. One function, two intents: the pane saying it stopped looking, and the queue
+            // saying it has nothing more to hand out.
+            clearQueuedWork(for: directory)
             return
         }
         let key = DirectorySizeKey(path: directory, scope: scope)
-        queue[key] = Scan(backend: backend, rule: rule, children: unknown)
+        // A re-request replaces the outstanding *work* and **carries the allowance forward**, which
+        // is the half that makes it a bound at all. The pane re-requests on every render — ten
+        // times a second while a scan streams in — so seeding afresh each time would hand the same
+        // set a new thousand listings per repaint, which is not a budget but a metronome. A fresh
+        // one is seeded only when no scan for this directory is outstanding: a visit that starts
+        // over may spend again, a repaint may not.
+        queue[key] = Scan(
+            backend: backend,
+            rule: rule,
+            children: unknown,
+            allowance: queue[key]?.allowance
+                ?? DirectorySizeBudget.forSet(ofBackend: directory.backend).directoryLimit
+        )
         order.removeAll { $0 == key }
         order.append(key)
         startDraining()
@@ -222,6 +286,22 @@ final class DirectorySizeProvider {
     /// pane left the mode", and neither wants the folder's other total either. Taking a scope here
     /// would only create a way to forget to cancel the one the pane just stopped using.
     func cancelScan(for directory: VFSPath) {
+        clearQueuedWork(for: directory)
+        // A **bounded** walk in flight is abandoned rather than left to finish, which is the
+        // opposite of the rule above for a local one and is
+        // ``DirectorySizeBudget/abandonsWhenUnwatched`` reaching an individual walk. Locally nobody
+        // pays for a walk nobody is waiting for and its answer is still true; remotely it is the
+        // user's money and their bandwidth, spent on a number that now has no row to land in.
+        //
+        // This is the half `clearQueuedWork` deliberately leaves out, because only *this* caller
+        // knows the pane has stopped looking.
+        if let bounded = boundedWalk, bounded.key.path.isSelfOrDescendant(of: directory) {
+            bounded.abandon.abandon()
+        }
+    }
+
+    /// Drop `directory`'s **queued** work under both scopes, touching nothing already in flight.
+    private func clearQueuedWork(for directory: VFSPath) {
         for scope in DirectorySizeScope.allCases {
             queue.removeValue(forKey: DirectorySizeKey(path: directory, scope: scope))
         }
@@ -234,19 +314,39 @@ final class DirectorySizeProvider {
     func cancelAllScans() {
         queue.removeAll()
         order.removeAll()
+        boundedWalk?.abandon.abandon()
+        boundedWalk = nil
+        // The mode is off everywhere, so the next time it is switched on is a fresh question the
+        // user asked — a set that gave up gets another allowance rather than being refused for the
+        // life of the session.
+        gaveUp.removeAll()
         drain?.cancel()
         drain = nil
     }
 
-    /// One walk to perform: which child, on whose behalf, with what, counted how.
+    /// One walk to perform: which child, on whose behalf, with what, counted how, and how much of
+    /// the set's allowance it may spend.
     private struct Work {
         let directory: VFSPath
         let child: VFSPath
         let backend: any VFSBackend
         let rule: DirectorySizeRule
+        /// What is left of the whole set's allowance — this walk may spend all of it, which is safe
+        /// because a bounded set runs one walk at a time (`nextWork`).
+        let budget: DirectorySizeBudget
+        let abandon: AbandonFlag
     }
 
     /// The next child to walk: from the **most recently requested** directory that still owes work.
+    ///
+    /// A **bounded** scan hands out one walk at a time, and stops the fill loop dead rather than
+    /// skipping past itself. Two reasons, and either would be enough. The allowance is only exact
+    /// if nothing else is spending it concurrently — eight walks each granted the remainder can
+    /// spend eight times it — and a burst of remote listings is its own problem: a stock OpenSSH
+    /// server begins **dropping** connections at ten concurrent unauthenticated ones
+    /// (`MaxStartups`, docs/NOTES.md ▸ Testing), which this project has already been bitten by from
+    /// its own live suites. Nothing is lost by stopping: the loop refills on every landing, and the
+    /// newest scan is the one the user is looking at.
     private func nextWork() -> Work? {
         while let key = order.last {
             guard var scan = queue[key], !scan.children.isEmpty else {
@@ -255,23 +355,57 @@ final class DirectorySizeProvider {
                 order.removeLast()
                 continue
             }
+            guard scan.hasAllowanceLeft else {
+                // The set spent everything it had. Whatever it never reached is *given up* rather
+                // than merely unwalked, so the pane can say so and nothing re-queues it.
+                retire(scan, at: key)
+                continue
+            }
+            if scan.isBounded, boundedWalk != nil { return nil }
             let child = scan.children.removeFirst()
             queue[key] = scan
+            let abandon = AbandonFlag()
+            if scan.isBounded {
+                boundedWalk = (DirectorySizeKey(path: child, scope: key.scope), abandon)
+            }
             return Work(
                 directory: key.path,
                 child: child,
                 backend: scan.backend,
-                rule: scan.rule
+                rule: scan.rule,
+                budget: DirectorySizeBudget(directoryLimit: scan.allowance),
+                abandon: abandon
             )
         }
         return nil
+    }
+
+    /// Drop a scan that has nothing left to spend, remembering every child it never reached.
+    private func retire(_ scan: Scan, at key: DirectorySizeKey) {
+        for child in scan.children {
+            let childKey = DirectorySizeKey(path: child, scope: key.scope)
+            gaveUp.insert(childKey)
+            gaveUpSinceLastPublish[key, default: []].insert(child)
+        }
+        queue.removeValue(forKey: key)
+        order.removeAll { $0 == key }
+        schedulePublish()
     }
 
     private func startDraining() {
         guard drain == nil else { return }
         drain = Task { [weak self] in
             await self?.drainQueue()
-            self?.drain = nil
+            guard let self else { return }
+            drain = nil
+            // **Re-check after clearing the handle.** `drainQueue` decides it is finished, and only
+            // then unwinds its task group and hands control back here — several main-actor turns
+            // later. A `requestScan` landing in that window is queued while `drain` still holds a
+            // task that has already stopped looking, so `startDraining` returns early and the work
+            // sits there. The app heals itself (the pane re-requests on every render, so the next
+            // repaint starts a fresh drain), which is why it has never been visible; a caller that
+            // asks once does not, and `SizeScanQueueTests` is that caller.
+            if !order.isEmpty { startDraining() }
         }
     }
 
@@ -289,39 +423,62 @@ final class DirectorySizeProvider {
                     let scope = work.rule.scope
                     inFlight.insert(DirectorySizeKey(path: work.child, scope: scope))
                     let exclude = work.rule.exclude
+                    let budget = work.budget
+                    let abandon = work.abandon
                     group.addTask(priority: .utility) {
-                        let bytes = await DirectoryLoader.cancellableSize(
+                        let result = await DirectoryLoader.cancellableSize(
                             work.backend,
                             of: work.child,
-                            excluding: exclude
+                            budget: budget,
+                            excluding: exclude,
+                            isAbandoned: { abandon.isAbandoned }
                         )
                         return Landing(
                             directory: work.directory,
                             child: work.child,
                             scope: scope,
-                            bytes: bytes
+                            result: result
                         )
                     }
                     running += 1
                 }
                 guard running > 0, let landing = await group.next() else { break }
                 running -= 1
-                inFlight.remove(DirectorySizeKey(path: landing.child, scope: landing.scope))
+                let childKey = DirectorySizeKey(path: landing.child, scope: landing.scope)
+                inFlight.remove(childKey)
+                if boundedWalk?.key == childKey { boundedWalk = nil }
                 guard !Task.isCancelled else { break }
-                // A failed or canceled walk banks nothing: an absent total re-walks next visit,
-                // where a wrong one would be believed. The core's cache is a latency optimization
-                // and never an authority — this is the boundary that keeps it honest.
-                guard let bytes = landing.bytes else { continue }
-                cache.store(bytes, for: landing.child, scope: landing.scope)
                 let key = DirectorySizeKey(path: landing.directory, scope: landing.scope)
-                landed[key, default: [:]][landing.child] = bytes
-                schedulePublish()
+                charge(landing.result.requestsMade, to: key)
+                switch landing.result.outcome {
+                case let .total(bytes):
+                    cache.store(bytes, for: landing.child, scope: landing.scope)
+                    landed[key, default: [:]][landing.child] = bytes
+                    schedulePublish()
+                case .gaveUp:
+                    // The set's allowance ran out inside this walk. Remembered so it is not asked
+                    // again, and published so the row says so rather than sitting at a dash that
+                    // reads as "still measuring".
+                    gaveUp.insert(childKey)
+                    gaveUpSinceLastPublish[key, default: []].insert(landing.child)
+                    schedulePublish()
+                case .unavailable:
+                    // A failed or canceled walk banks nothing: an absent total re-walks next visit,
+                    // where a wrong one would be believed. The core's cache is a latency
+                    // optimization and never an authority — this is the boundary that keeps it
+                    // honest. Nor is it a give-up: nothing was refused, so the row keeps its dash
+                    // and the next visit tries again.
+                    continue
+                }
             }
             group.cancelAll()
             // Whatever `cancelAll` just abandoned is no longer in flight; leaving it in the set
             // would make those children permanently unrequestable — a folder that never gets a bar
-            // again for the rest of the session.
+            // again for the rest of the session. The bounded slot is the same hazard one step
+            // worse: a walk left recorded there blocks **every** bounded scan for the life of the
+            // process, since that is exactly what it exists to do.
             inFlight.removeAll()
+            boundedWalk = nil
         }
     }
 
@@ -329,91 +486,15 @@ final class DirectorySizeProvider {
         let directory: VFSPath
         let child: VFSPath
         let scope: DirectorySizeScope
-        let bytes: Int64?
+        let result: DirectoryLoader.ScanResult
     }
 
-    // MARK: - Publishing
-
-    /// Announce the directories that gained totals, at most once per `publishInterval`. The trailing
-    /// edge is the useful one here (unlike the providers', which debounce a *request*): results
-    /// arrive continuously and the panes want them continuously, just not 68 times.
-    private func schedulePublish() {
-        guard publish == nil else { return }
-        let interval = publishInterval
-        publish = Task { [weak self] in
-            try? await Task.sleep(for: interval)
-            self?.publish = nil
-            self?.flush()
-        }
-    }
-
-    private func flush() {
-        let batches = landed
-        landed = [:]
-        for (key, totals) in batches {
-            NotificationCenter.default.post(
-                name: Self.didChangeNotification,
-                object: self,
-                userInfo: [
-                    Self.directoryKey: key.path,
-                    Self.scopeKey: key.scope,
-                    Self.totalsKey: totals
-                ]
-            )
-        }
-    }
-
-    // MARK: - Invalidation
-
-    /// Forget every total a change under `path` could have altered, and tell the panes.
-    ///
-    /// The rule itself is the core's (`DirectorySizeCache.invalidate(under:)`): the path, its
-    /// descendants *and* its ancestors — everything on one root-to-leaf line — because an FSEvents
-    /// ping proves only "something under here changed" (`DirectoryWatcher` discards the event paths)
-    /// and an ancestor's total sums whatever it was. Siblings survive, which is the whole value.
-    ///
-    /// The publish is unconditional and immediate rather than batched: this is the path where a
-    /// *stale* number is on screen right now, and it is rare (a real filesystem change), where the
-    /// batched path is common (a scan landing).
-    func invalidate(under path: VFSPath) {
-        cache.invalidate(under: path)
-        NotificationCenter.default.post(
-            name: Self.didChangeNotification,
-            object: self,
-            userInfo: [Self.directoryKey: path]
-        )
-    }
-
-    /// A repository was re-read. Drop its git-aware totals **only if what it ignores actually
-    /// changed**, and tell the panes to stop showing the ones they hold.
-    ///
-    /// The conditional is the whole method. `GitStatusProvider` republishes on every debounced read
-    /// — the pane it feeds does its own equality check — so in a repository under a build this fires
-    /// continuously. Invalidating on each would re-walk every sized folder several times a second,
-    /// against the same disk the build is using. `GitStatusSnapshot.ignoredPaths` moves only when
-    /// the rules do (a `.gitignore` edit, a branch switch, a `git add` of an ignored file), which is
-    /// exactly when a git-aware total stops being true.
-    ///
-    /// A repository whose status could not be read caches no snapshot; its remembered set is dropped
-    /// so the next successful read is treated as a first look rather than compared against a basis
-    /// that no longer describes anything.
-    @objc private func gitStatusDidChange(_ notification: Notification) {
-        guard let root = notification.userInfo?[GitStatusProvider.repositoryRootKey] as? VFSPath
-        else { return }
-        guard let snapshot = GitStatusProvider.shared.cachedSnapshot(for: root) else {
-            ignoredPaths.removeValue(forKey: root)
-            return
-        }
-        let ignored = snapshot.ignoredPaths
-        let previous = ignoredPaths.updateValue(ignored, forKey: root)
-        // A first look establishes the basis without invalidating: nothing has been walked under
-        // rules we never saw, so there is nothing to be wrong.
-        guard let previous, previous != ignored else { return }
-        cache.invalidateGitAware(under: root)
-        NotificationCenter.default.post(
-            name: Self.didChangeNotification,
-            object: self,
-            userInfo: [Self.directoryKey: root, Self.rulesChangedKey: true]
-        )
+    /// Subtract what a walk spent from its set's allowance, flooring at zero. A scan that has since
+    /// been dropped has nothing to charge, which is the ordinary case for a landing that arrives
+    /// after the pane navigated away.
+    private func charge(_ requests: Int, to key: DirectorySizeKey) {
+        guard var scan = queue[key], let allowance = scan.allowance else { return }
+        scan.allowance = max(0, allowance - requests)
+        queue[key] = scan
     }
 }

@@ -158,6 +158,19 @@ at build time.
     with `defaults export` first, and `ssh-keyscan` the throwaway host key into `known_hosts` or the
     connect raises a trust dialog that wedges a headless run; put both back afterwards.
 
+- **A speedup measured in the running app needs the slow path run *beside* it, and for a remote
+  backend the server's own config is the cheapest way to arrange one.** Adopting
+  `subtreeListing` in the sizer took a whole bar column over SFTP from 136 sessions to 9 — but "9"
+  alone is a number with nothing to compare against, and a screenshot of correct bars says nothing
+  about what they cost. Restarting the throwaway `sshd` with **`ForceCommand internal-sftp`**
+  withdraws the exec channel, so the shortcut answers `nil` and the *same build* falls back to the
+  walk: measured 2026-09-01, the identical bars and identical totals at **149 sessions** (eight
+  refused execs plus 136 listings). One line of server config turns a measurement into an A/B, and
+  it exercises the degradation path at the same time — which is the branch a live run over a healthy
+  server can never reach.
+  - Count `Accepted publickey` in the server's own log across the gesture, not requests in flight:
+    it is the server's bookkeeping rather than the client's opinion, and the delta is immune to the
+    pane's background poll drifting the absolute number (▸ the session-count warning above).
 - **For pixel and geometry work, probe the live view hierarchy — never eyeball a screenshot.**
   Measuring a captured screenshot by eye produced a *wrong* diagnosis twice in one session (a
   "13 pt gap" that was really 11, then an offset attributed to the wrong cause). The screenshot
@@ -5953,6 +5966,60 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
 
 ## Design lessons that generalize
 
+- **When a gate and a policy type disagree about the same cost, the policy type is the measured
+  one** — and the gate is where a stale reason goes to be believed. `areSizeBarsVisible` required
+  `backend == .local` because "a bar needs every sibling's total, which remotely is N walks", while
+  `DirectorySizeBudget.forBackend` had been answering *unbounded* for an archive since M21, with the
+  measurement in its doc comment. Both were in the tree for four milestones; the pane had been
+  sizing archive folders on Space the whole time under the budget's rule, and only the bars refused.
+  The tell is a gate whose **justification names a cost** while a type nearby exists to *hold* that
+  cost: the gate's version is prose somebody wrote once, the type's has a number in it.
+  - **The two spellings were the usual half of it and not the interesting half.** The rule was also
+    hand-copied into `validateMenuItem`, which this file already has four entries about. What was
+    new is that de-duplicating them would have produced *one* wrong answer rather than two, because
+    both copies were wrong in the same direction — so the fix that matters is asking what the rule
+    is a claim about, not merely how many places say it.
+- **A bug the caller heals by asking again is invisible until something asks once**, and a queue
+  driven by a repainting UI is full of them. `DirectorySizeProvider.startDraining` guards on a
+  `drain` handle that its own task clears *after* `drainQueue` returns — which is several main-actor
+  turns later, because a task group unwinds — so a request landing in that window is queued behind a
+  task that has already stopped looking, and simply sits there. The pane re-derives its pending list
+  on every render, so the next repaint starts a fresh drain and the folder gets its bar a frame late;
+  nobody could ever have noticed. It surfaced the day a *test* made one request and waited, failing
+  about one full run in three while passing alone every time — which reads as the ordinary
+  shared-pool flake this file has four entries about, and was not.
+  - The general shape is worth more than the fix (clear the handle, then re-check the queue):
+    **a self-healing defect is a defect with no reporter**, and the way to find one is to write the
+    caller that does not heal it. Any "start the worker if it is not running" guard has this hazard
+    whenever the worker's *stopping* is not atomic with the flag that says it stopped.
+  - It also means the reverse: when a new test flakes against old code, check whether it is finding
+    something rather than merely being fragile. Two of the three plausible readings here — a
+    singleton's cache leaking between tests, and the process-wide bounded-walk slot — were real
+    hazards too, and only one of the three was the actual cause.
+- **A set of sibling walks costs one walk of the parent, not N of them**, which is worth knowing
+  before designing a budget for one: the subtrees are disjoint, so however the work is sliced it is
+  the same directories listed once each. Measured through the real `DirectorySizer` — 40 top-level
+  rows separately at **6.46 ms** against their container whole at **6.59 ms**, and against a live
+  `sshd` the set of 8 spending **136 sessions** against the whole walk's **137**. The natural
+  arithmetic ("N rows × the per-walk budget") is off by the row count and argues for a limit nobody
+  needs; the honest missing piece is an allowance held across the *set*, at the number one walk
+  already had.
+  - **An allowance the caller re-supplies is a metronome, not a budget.** The pane re-derives its
+    pending list and re-requests on **every render** — ten times a second while results stream in —
+    so a queue that seeded a fresh allowance per request would hand the same set a new thousand
+    listings per repaint. Carry it forward while the work is outstanding and seed only when nothing
+    is; the distinction to encode is "a visit that starts over may spend again, a repaint may not".
+  - **And a refusal has to be *remembered*, or the bound cannot terminate.** A row with no total is
+    pending forever by construction, so the moment an allowance is exhausted the caller re-asks for
+    exactly the rows it was refused — on a billed backend, a bill that never stops. The give-up set
+    is what closes the loop, and what it is cleared by is the whole design: a filesystem change and
+    the user switching the mode off, both of which are somebody saying the question is worth asking
+    again, where idling is not.
+  - **A bounded set must also run one walk at a time**, which is what makes the allowance exact
+    (eight concurrent walks each granted the remainder can spend eight times it) and is independently
+    right: a stock OpenSSH server begins dropping connections at ten concurrent unauthenticated ones
+    (▸ Testing, `MaxStartups`). Two reasons, either sufficient, is the shape to prefer when a
+    concurrency limit looks like a workaround.
 - **A stand-in justified by a reader that does not exist is a bug waiting for its first reader, and
   it is invisible until that reader arrives.** S3 and FTP's DOS/IIS dialect both synthesized
   `0o755`/`0o644` for items that have no POSIX mode, each under a comment saying `0` "would render
@@ -6253,6 +6320,16 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   - **The narrowness control is the other half and is not optional**: a forward that answered for
     *everything* passes the routing test and breaks every other search. Assert that the local disk
     still reports `nil`.
+  - **The sibling failure is a seam with a *missing caller*, and it is quieter still**, because
+    there is no forward to look for: `VFSBackend.subtreeListing` shipped at M22 for search and was
+    adopted by `DirectorySync` at M25, while `DirectorySizer` — whose whole job is "everything under
+    here" — went on asking one directory at a time for four milestones. Measured 2026-09-01 against a
+    real `sshd` over 136 directories: **137 sessions and 19.24 s** walking against **1 session and
+    0.156 s** through the shortcut, byte-identical totals. Nothing was wrong: every answer was
+    correct, every test passed, and the only symptom was the bill. The audit is to read a seam's own
+    doc comment for the *general* question it answers ("every entry beneath a folder") and then grep
+    for who asks it — a consumer that predates the seam will not have been converted, because
+    converting it was nobody's slice.
   - **It happened again, in the same shape, one milestone later — in a session that had already
     written a routing test for the sibling verb because of this very entry.** M25 Slice 5b added
     `VFSBackend.metadataTally(at:)` (what a connection has failed to carry, read before and after a

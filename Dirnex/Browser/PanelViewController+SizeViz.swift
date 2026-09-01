@@ -13,6 +13,14 @@ import DirnexCore
 /// in the app that *spends* something to be on. An app-wide flag would set every open tab walking at
 /// once, and the measured cost of walking one `~` is ~16 s of eight-wide background I/O.
 ///
+/// **On a server that spend is somebody's money, and it is bounded twice.** `DirectorySizer` asks
+/// the backend for the whole subtree before walking it — one exec over SFTP, one delimiter-less
+/// listing over S3 — and what cannot be answered that way runs under a single allowance shared by
+/// the entire column (`DirectorySizeBudget.forSet(ofBackend:)`), not one per row. Measured in the
+/// app against a real `sshd`: **9 sessions for the whole column, against 149** with the exec channel
+/// withdrawn. A row the allowance never reached is drawn as *refused* rather than left at the dash
+/// of a walk that has not landed (`DirectorySizeProvider.gaveUpKey`).
+///
 /// **Auto-scan, ncdu's model** (the policy question pass 9 raised, settled by the user): switching
 /// the mode on queues every unsized directory child immediately, rather than waiting for the user to
 /// press Space on each. The alternative was never really available — the core's rule is that an
@@ -39,15 +47,39 @@ extension PanelViewController {
     }
 
     /// Whether bars belong on these rows: the tab wants them, **and** these rows can be walked at
-    /// all. The second half is not the toggle being second-guessed — a `.search` results pane is a
-    /// synthetic listing whose rows live in a dozen different folders, so "share of this directory"
-    /// has no referent, and an archive's or SFTP's tree costs a network round trip per level.
-    ///
-    /// A tree is *not* excluded (it was, before per-level scoping): `SizeVisualization(tree:)` groups
-    /// each row against its own parent directory, so an expanded folder's children are measured
-    /// against each other and the shares stay meaningful across levels (PLAN.md §M15).
+    /// all.
     var areSizeBarsVisible: Bool {
-        isSizeVisualizationEnabled && panel.path.backend == .local && !isResultsListing
+        isSizeVisualizationEnabled && canShowSizeBars
+    }
+
+    /// Whether this listing can carry bars at all, whatever the tab's own flag says — the half of
+    /// `areSizeBarsVisible` the menu validator needs on its own, so the mode grays out where it
+    /// cannot apply instead of leaving the suppression looking like a bug.
+    ///
+    /// **One property, read by both, because it was two hand-copied spellings of
+    /// `panel.path.backend == .local`** — and the cost argument behind that spelling covered only
+    /// half of what it gated. Turning the mode on asks for *every sibling's* recursive total, which
+    /// on a server used to be a billed request per directory with no allowance held across the set.
+    /// Neither half of that is true any more:
+    ///
+    /// - An **archive** never cost anything. Its listings come out of a table of contents already
+    ///   in memory (5.8 µs a directory against the local disk's 33 µs, measured), and
+    ///   `DirectorySizeBudget.forBackend` had been calling it unbounded since M21 — which is why
+    ///   Space on a folder inside a zip has always sized it. Only the bars refused.
+    /// - A **server** is now bounded twice over: ``DirectorySizer`` asks the backend for the whole
+    ///   subtree before walking it (one request against 137, measured against a real `sshd`), and
+    ///   what cannot be answered that way runs under one allowance shared by the whole set
+    ///   (`DirectorySizeBudget.forSet(ofBackend:)`). A row the allowance never reached says so
+    ///   rather than sitting at a dash.
+    ///
+    /// So what is left is not about cost at all. A results, Trash or iCloud listing is **synthetic**
+    /// — its rows live in a dozen different folders, so "share of this directory" has no referent
+    /// however cheap the walk. A tree is *not* excluded (it was, before per-level scoping):
+    /// `SizeVisualization(tree:)` groups each row against its own parent directory, so an expanded
+    /// folder's children are measured against each other and the shares stay meaningful across
+    /// levels (PLAN.md §M15).
+    var canShowSizeBars: Bool {
+        !isResultsListing
     }
 
     // MARK: - .gitignore-aware totals
@@ -175,7 +207,8 @@ extension PanelViewController {
         guard areSizeBarsVisible else { return }
         // A rename in progress owns the table; the end-editing handler replays what it skipped.
         if deferRefreshIfRenaming() { return }
-        guard apply(notification) || seedFromCache() else { return }
+        let refused = adoptGiveUps(notification)
+        guard apply(notification) || seedFromCache() || refused else { return }
         // A size can reorder the list when sorting by size, so this is a real re-render — but the
         // background kind that never scrolls: bars arriving must not yank the user's reading spot.
         renderRefresh()
@@ -207,6 +240,24 @@ extension PanelViewController {
         guard !fresh.isEmpty else { return false }
         reconcileCursorFromTable()
         panel.setDirectorySizes(fresh)
+        return true
+    }
+
+    /// Take the rows this publish is reporting **no total** for, reporting whether any were news.
+    ///
+    /// They are given the same marker and tooltip Space-on-dir's own give-up uses
+    /// (`directorySizeState`), which is the whole reason this is three lines rather than a surface:
+    /// the fact is identical — a recursive total that was refused rather than merely not computed
+    /// yet — and that rendering is already written, already explained in a tooltip, and already
+    /// localized in fourteen languages.
+    @discardableResult
+    private func adoptGiveUps(_ notification: Notification) -> Bool {
+        guard let refused = notification.userInfo?[
+            DirectorySizeProvider.gaveUpKey
+        ] as? Set<VFSPath>, !refused.isEmpty else { return false }
+        let fresh = refused.subtracting(directorySizesGaveUp)
+        guard !fresh.isEmpty else { return false }
+        directorySizesGaveUp.formUnion(fresh)
         return true
     }
 
@@ -313,8 +364,27 @@ extension PanelViewController {
     /// Tell the provider a real filesystem change landed under `path`, so cached totals on that
     /// root-to-leaf line stop being believed. Called from the pane's own FSEvents handler — the
     /// watcher we already have, since a change to this folder's tree is exactly what it reports.
+    ///
+    /// **An archive is widened to its own root, because that is what its wake proves.** A pane
+    /// inside a `.zip` watches the *container file*, not the inner path, so the event says the whole
+    /// archive was rewritten — and a repack is the ordinary way anyone redoes one. Invalidating the
+    /// pane's own line would leave a sibling folder's total banked under the identical
+    /// `archive:<on-disk path>` id, describing an archive that no longer exists: the mount is
+    /// re-read on ``ArchiveIdentity`` and the rows come back correct while the number beside them
+    /// does not. Nothing else here can widen it — the caller is handed the listing path, and the
+    /// event carries no paths at all (`DirectoryWatcher` discards them).
+    ///
+    /// Local paths are untouched, and deliberately: there the recursive stream really is rooted at
+    /// the directory on screen, so its own line is exactly what the ping proves.
     func invalidateDirectorySizes(under path: VFSPath) {
-        DirectorySizeProvider.shared.invalidate(under: path)
+        DirectorySizeProvider.shared.invalidate(under: Self.sizeInvalidationRoot(for: path))
+    }
+
+    /// The path an invalidation triggered by a wake about `path` should really be rooted at — see
+    /// `invalidateDirectorySizes(under:)`. Static and pure so the archive rule is assertable
+    /// without a pane, a watcher or a repack.
+    static func sizeInvalidationRoot(for path: VFSPath) -> VFSPath {
+        path.backend.isArchive ? VFSPath(backend: path.backend, path: "/") : path
     }
 
     // MARK: - The projection

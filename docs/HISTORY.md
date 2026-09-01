@@ -12658,7 +12658,7 @@ eliminated, and which neither implementable route depended on.
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-01)
 
-Thirty-five dated passes that landed outside a milestone of their own, between M18's close on
+Thirty-six dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-01: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12666,6 +12666,86 @@ sit here at the end rather than in a numeric slot — and they keep their **newe
 because several read as a chain and refer to the entry below. Moved out of [PLAN.md](../PLAN.md)
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
+
+**2026-09-01 — size bars wherever a folder has siblings.** PLAN.md §4's *"Size bars are local-only
+for a cost reason that covers only half of what it gates"*, closed. `areSizeBarsVisible` required
+`panel.path.backend == .local` — a rule written twice by hand, once there and once in the menu
+validator — and the argument behind it (a bar needs *every* sibling's total, which remotely is N
+walks where the cursor's own is one) was wrong about one backend and out of date about the others.
+
+**An archive never cost anything, and the project's own type had been saying so since M21.**
+`DirectorySizeBudget.forBackend` calls an archive *unbounded* because its listings come out of a
+`bsdtar -tvf` already in memory — which is why **Space on a folder inside a zip has always sized
+it**, under exactly the reasoning the bars refused. Measured through the real `DirectorySizer` on a
+1410-directory archive: **6.5 ms**, against **47 ms** for the identical tree on disk, or 5.8 µs a
+directory against 33 — six times cheaper than the case that was always allowed. Linear to 24 200
+directories (141 ms). One property now answers for both readers (`canShowSizeBars`), which is this
+file's most repeated bug retired at one more site.
+
+**The set costs one walk of the parent, not N of them**, which is the measurement the whole design
+turns on: sibling subtrees are disjoint, so however the work is sliced it is the same directories
+listed once each. Sizing 40 top-level rows separately came to **6.46 ms against the container's
+6.59 ms**, and against a live `sshd` the set of 8 spent **136 sessions against the whole walk's
+137**. So what a bounded backend was missing was never a bigger number — it was an allowance held
+across the *set*, where N rows each entitled to `DirectorySizeBudget.remote`'s thousand listings is
+N thousand billed requests for one keystroke.
+
+**And the sizer had been asking for everything the expensive way.** `VFSBackend.subtreeListing`
+shipped at M22 for search and was adopted by `DirectorySync` at M25; `DirectorySizer` walked a
+directory at a time and never asked. Probed against a real `sshd` before any Swift, over 136
+directories: **137 sessions and 19.24 s** walking, **1 session and 0.156 s** through the shortcut,
+and the byte totals identical (748 654 each way) — which is the control that makes the two routes
+interchangeable rather than merely comparable. It now asks first and walks when there is no answer,
+so the shortcut's three refusals all fail safe: a backend without one (every local path, and an
+`internal-sftp` account) answers `nil`; an **incomplete** listing is refused, because SFTP caps its
+own output and a capped slice summed as a total is a confident wrong number; and a shortcut that
+throws falls back too, since the walk behind it will surface a real failure with a real error.
+Cancellation is the one thing that travels.
+
+**Verified in the running app against that server, and the control is what makes it a
+measurement.** A seeded session tab reconnected at launch, ⌃B on the eight-row remote listing drew
+real bars (79–107 KB, summing to the fixture's 748 654) and cost **9 sessions**. The same build
+against the same tree with `ForceCommand internal-sftp` — the exec channel withdrawn, so the
+shortcut answers `nil` — drew the **identical** bars and cost **149**: eight refused execs plus the
+136 listings. So the degradation is right and the shortcut is unambiguously what does the work.
+The archive half was verified the same way, by hand, including a tree expanded inside the zip where
+an only child correctly fills its own level's bar.
+
+**Three smaller things the slice needed.** A **row the allowance never reached** is a refusal rather
+than a walk that has not landed, and those look identical — both leave a dash — so the queue
+publishes them (`DirectorySizeProvider.gaveUpKey`) and the pane routes them into the marker and
+tooltip Space-on-dir's own give-up already draws, localized in fourteen languages. The allowance is
+**carried across a re-request**, because the pane re-requests on every render and seeding afresh
+each time would be a metronome rather than a budget; and a set that gave up is *remembered*, or the
+exhausted rows — pending forever, having no total — would be re-queued and re-granted on each
+repaint. Bounded scans run **one walk at a time**, which is what makes the allowance exact and is
+independently right: a stock OpenSSH server starts dropping connections at ten concurrent
+unauthenticated ones, as this project's own live suites have already been bitten by.
+
+**Two hazards the slice created and one it merely found.** Making `cancelScan` abandon the walk in
+flight is right for the pane saying it stopped looking and *wrong* for the queue saying it has
+nothing more to hand out — and those went through one function. Since a bounded set runs one walk at
+a time, "nothing left to queue" is exactly the state a re-render reaches while the **last** child is
+being walked, so the merged version abandoned the row the user was waiting for, on every repaint,
+whenever the race went that way. Split into `clearQueuedWork`, and pinned: the control fails 3/3 and
+its sibling — the pane genuinely leaving, which must still abandon — stays green. The second was a
+leaked slot: a drain unwinding under cancellation could leave `boundedWalk` set, which blocks every
+bounded scan for the life of the process, since blocking is what it is for.
+
+**And the one it found was already there.** `startDraining` guards on a handle its own task clears
+*after* `drainQueue` returns — several main-actor turns later, because a task group unwinds — so a
+request landing in that window is queued behind a task that has stopped looking. The app heals
+itself, because the pane re-requests on every render; a test that asks once does not, and this one
+failed about a run in three until the handle was cleared before a re-check. A defect nobody can
+report is still a defect (docs/NOTES.md ▸ Design lessons).
+
+**An archive's wake had to widen, too.** A pane inside a zip watches the **container file**, so its
+event says the whole archive was rewritten — and every inner path keeps the same
+`archive:<on-disk path>` identity across a repack. Invalidating only the pane's own root-to-leaf
+line would have left a sibling folder's total banked against an archive that no longer exists: the
+mount is re-read on `ArchiveIdentity` and the rows come back correct while the number beside them
+does not. Nothing else could widen it — the caller is handed the listing path, and `DirectoryWatcher`
+discards the event's paths.
 
 **2026-09-01 — an archive pane notices its own file changing.** The last of PLAN.md §4's small
 cuts, and the smallest: the *answer* had shipped at M4 and been tested since — every mount is

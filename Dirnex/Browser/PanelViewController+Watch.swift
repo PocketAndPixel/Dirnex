@@ -219,11 +219,11 @@ extension PanelViewController {
         // A **poll** cannot say that, which is the one thing the two wakes genuinely disagree
         // about (`RefreshWake.provesSubtreeChanged`). Nothing told it anything; the listing diff
         // is the whole of its evidence, and it says nothing about what is below these rows. So it
-        // evicts only when the rows it can see actually moved. Inert today either way — a remote
-        // path never enters `DirectorySizeProvider`, whose only writer is the local-only size-bar
-        // scan — and gated regardless, because the day a budgeted remote walk banks a total there,
-        // an ungated poll would drop a ten-minute answer every fifteen seconds and nothing would
-        // say why.
+        // evicts only when the rows it can see actually moved. **That gate is live now**: it was
+        // written when a remote path could not enter `DirectorySizeProvider` at all, against the
+        // day one could, and size-visualization mode reaching a server is that day — an ungated
+        // poll would drop a total the set spent its whole allowance on, every fifteen seconds,
+        // with nothing on screen to say why.
         if wake.provesSubtreeChanged || listingChanged {
             invalidateDirectorySizes(under: watchedPath)
         }

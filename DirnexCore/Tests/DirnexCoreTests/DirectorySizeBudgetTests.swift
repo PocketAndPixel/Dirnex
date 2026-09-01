@@ -64,6 +64,35 @@ struct DirectorySizeBudgetTests {
     func unboundedAllowsEverything() {
         #expect(DirectorySizeBudget.unbounded.allows(directoriesListed: 1_000_000))
     }
+
+    /// The allowance one keystroke may spend, which is what makes the bars affordable on a backend
+    /// where a listing is billed. The same number as one walk's, for the measured reason on
+    /// ``DirectorySizeBudget/forSet(ofBackend:)`` — asserted as *agreement* rather than as 1000, so
+    /// the two cannot drift while the reasoning says they are one quantity.
+    @Test("a set's allowance is one walk's, for every backend")
+    func setAllowanceMatchesOneWalk() {
+        let backends: [VFSBackendID] = [
+            .local,
+            .archive(forArchiveAt: "/tmp/pkg.zip"),
+            .sftp(SFTPLocation(host: "h", username: "u")),
+            .ftp(FTPLocation(host: "h", username: "u")),
+            .s3(S3Location(host: "h", bucket: "b", region: "r", accessKeyID: "k"))
+        ]
+        for backend in backends {
+            #expect(
+                DirectorySizeBudget.forSet(ofBackend: backend)
+                    == DirectorySizeBudget.forBackend(backend),
+                "\(backend)'s set and its single walk are one quantity"
+            )
+        }
+        // And it really is a bound where it matters: a keystroke on a server may spend a thousand
+        // listings in total, not a thousand per row.
+        #expect(
+            DirectorySizeBudget.forSet(ofBackend: .ftp(FTPLocation(host: "h", username: "u")))
+                .directoryLimit == 1000
+        )
+        #expect(DirectorySizeBudget.forSet(ofBackend: .local).directoryLimit == nil)
+    }
 }
 
 /// The walk honouring the budget. `LocalBackend` over a real temp tree, with the counting wrapper
@@ -145,6 +174,42 @@ struct DirectorySizerBudgetTests {
         defer { tree.cleanup() }
 
         #expect(try DirectorySizer.size(of: tree.vfsPath(), using: LocalBackend()) == 12)
+    }
+
+    /// **The arithmetic ``DirectorySizeBudget/allowsUnaskedWalks`` rests on**: sizing every child
+    /// separately costs what sizing their container costs, because the subtrees are disjoint. So
+    /// "the bars ask for N walks" is not N times a walk — it is one walk, sliced — and what a
+    /// bounded backend is missing is an allowance held across the set rather than a larger number
+    /// per walk. Measured through the real sizer on 2026-09-01 (6.46 ms against 6.59 ms over an
+    /// archive of 1410 directories); pinned here as an exact count so it cannot quietly stop being
+    /// true.
+    @Test("sizing every child costs one walk of the parent, not one per child")
+    func theSetCostsOneWalk() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        for child in ["a", "b", "c"] {
+            try tree.makeDir(child)
+            try tree.writeFile("\(child)/f.bin", bytes: 2)
+            try tree.makeDir("\(child)/deep")
+            try tree.writeFile("\(child)/deep/g.bin", bytes: 3)
+        }
+
+        let whole = CountingLocalBackend()
+        let total = try DirectorySizer.size(of: tree.vfsPath(), using: whole)
+
+        let perChild = CountingLocalBackend()
+        let children = try perChild.listDirectory(at: tree.vfsPath()).filter { $0.kind == .directory }
+        let sum = try children.reduce(Int64(0)) {
+            try $0 + DirectorySizer.size(of: $1.path, using: perChild)
+        }
+
+        #expect(sum == total)
+        // Exactly the same directories, each listed once: the set pays for the parent when it
+        // reads the row list, and for every descendant inside one child's walk or another's.
+        // Equality of the *sets* is what says nothing was listed twice, and equality of the counts
+        // is what says nothing was listed twice within one of them.
+        #expect(perChild.listed.count == whole.listed.count)
+        #expect(Set(perChild.listed) == Set(whole.listed))
     }
 
     /// Cancellation is checked before the budget, and both mean "no total" — but a caller wording a

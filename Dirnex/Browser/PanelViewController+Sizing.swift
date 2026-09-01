@@ -157,7 +157,12 @@ extension PanelViewController {
     }
 
     /// How the size column should draw `entry` right now — the two states a byte count cannot
-    /// express. Both are remote-only in practice, because only a budgeted walk is tracked.
+    /// express.
+    ///
+    /// Both are remote-only in practice, because only a **bounded** walk is refused. Two things
+    /// reach the give-up set and they mean the same thing to the reader: Space on one folder whose
+    /// own walk ran past `DirectorySizeBudget.remote`, and a row size-visualization mode never got
+    /// to because the whole set's allowance ran out first (`DirectorySizeProvider.gaveUpKey`).
     func directorySizeState(for entry: FileEntry) -> DirectorySizeDisplayState {
         if directorySizeWalks[entry.path] != nil { return .measuring }
         if directorySizesGaveUp.contains(entry.path) { return .gaveUp }
