@@ -146,8 +146,14 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// Two properties rather than a type, because between them they *are* the pacing rule and it is
     /// three lines long: a save appends here, the gather takes everything and runs a batch, and
     /// whatever arrived meanwhile is waiting when it comes back round. The flag is what stops a
-    /// second gather starting beside the first — with two, the same copy could be uploaded twice.
-    var pendingWriteBacks: [PendingWriteBack] = []
+    /// second gather starting beside the first — with two, the same copy could be written back
+    /// twice.
+    ///
+    /// **`EditedFile`, not a destination-specific pair**, because the split into "up to a server"
+    /// and "back into an archive" happens *after* gathering: both endings were paying for a
+    /// forty-file script one save at a time, so both wanted the same pacing and neither should own
+    /// a copy of it (`+WriteBack`).
+    var pendingWriteBacks: [EditedFile] = []
     var isGatheringWriteBacks = false
     /// The last observed pause state, so the queue bar's button knows which way to toggle.
     var lastPaused = false

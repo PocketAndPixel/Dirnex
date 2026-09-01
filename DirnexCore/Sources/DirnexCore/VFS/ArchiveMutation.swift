@@ -76,6 +76,25 @@ public enum ArchiveMutation {
         return (workingDirectory as NSString).appendingPathComponent(relative)
     }
 
+    /// One on-disk item to copy into an archive, and the inner directory it lands in
+    /// (PLAN.md §4 ▸ *Still open*, taken 2026-09-01).
+    ///
+    /// A pair rather than a directory plus a list of paths, because a **rewrite is per archive and
+    /// not per directory**: repacking the container is the whole cost, so several edited members
+    /// saved at once belong in one pass whatever folders they live in. The single-directory
+    /// spelling (a paste, a drag) is the special case of this, not the other way round.
+    public struct Addition: Sendable, Equatable {
+        /// The item on this disk, an absolute path. Copied under its own last component.
+        public let localPath: String
+        /// Where it lands inside the archive — `/` for the root.
+        public let innerDirectory: String
+
+        public init(localPath: String, innerDirectory: String) {
+            self.localPath = localPath
+            self.innerDirectory = innerDirectory
+        }
+    }
+
     /// The subset of `addingNames` that already exist among `existingNames`, compared
     /// case-insensitively (APFS is case-insensitive by default, and the archive is extracted onto
     /// APFS, so `README` and `readme` collide on disk regardless of the archive's own case

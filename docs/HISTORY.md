@@ -12667,7 +12667,7 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
 
-**2026-09-01 — remote save-backs coordinate.** PLAN.md §4's last M25 leftover, and the one it
+**2026-09-01 — save-backs coordinate, remote and archive.** PLAN.md §4's last M25 leftover, and the one it
 described most exactly: *"the mirror of a job that already exists rather than a new one"*. A user
 script that rewrote forty files on a server produced forty independent uploads — each its own
 `Task`, each `stat`ing and uploading on its own, with no combined bar, no Stop, no ordering, and
@@ -12721,14 +12721,45 @@ next save says *"Dirnex has no record of what this file looked like"* — true �
 else has edited it"*, which would be a confident false sentence about our own write. Two wrong
 triggers came first and each read as a bug in the runner (docs/NOTES.md ▸ the entry this produced).
 
-**Six negative controls, and the sixth is the one worth having.** The default dropping a condition,
-the runner abandoning the batch on a refusal, over-reporting the landings, Skip uploading everything,
-and the button mapping ignoring whether Skip was offered — each fails exactly its own test. The
-sixth, deleting the queue's route back to the batch, compiled clean and **nothing caught it**: the
+**The archive half had the same shape and a worse cost, so it took the same gathering.** A rewrite
+is extract-everything → mutate → repack → atomic swap, which is proportional to the **container**
+rather than to what changed in it — so forty edited members saved one at a time meant forty full
+passes over one archive, each extracting and re-compressing everything the previous had just
+written, with forty sheets in front of them. Grouped, it is one pass and one question per archive.
+The switch between the two endings therefore moved from the *edit* to the *batch*: saves are
+gathered first and split afterwards, so one pacing rule serves both instead of each growing a copy.
+
+**Per archive is the unit for both halves of the question, and that is why there is no single sheet
+over a whole batch.** The rewrite is per archive because that is what a repack is; the sentence is
+per archive because it names the archive *and* says whether Undo will be able to put it back, which
+depends on that archive's size against ``ArchiveUndoBudget``. One sheet spanning two archives could
+state neither truthfully. And this half still asks **every time** where the remote half is silent on
+a clean check — a repack rewrites a file the user did not name in this gesture, so silence would
+rewrite an archive because a text editor flushed a buffer. Batching changed how many times that is
+put, not whether it is.
+
+**`ArchiveWriter.add` grew an `ArchiveMutation.Addition` pair, and that is what made one pass
+possible at all.** Its old spelling took many local paths into **one** inner directory, so members
+edited in different folders of the same archive could not travel together — one rewrite per folder
+is barely better than one per file when the cost is the container. The single-directory spelling is
+now one call into the general form, so a paste and a drag are unchanged. Pinned against real
+archives (`ArchiveMultiAddTests`), with the archive's own **inode** as the witness that it really is
+one pass: every rewrite ends in an atomic swap onto a freshly packed file, so N passes would have
+replaced it N times and left N−1 snapshots in the undo store.
+
+**Ten negative controls across the two halves, and two of them are the ones worth having.** The default dropping a condition, the
+runner abandoning the batch on a refusal, over-reporting the landings, Skip uploading everything, the
+button mapping ignoring whether Skip was offered, the grouping losing first-seen order, every
+addition landing in the first item's folder, and one group per member rather than per archive — each
+fails exactly its own test. Two needed a rule extracted before anything *could* fail. Deleting the
+queue's route back to the batch compiled clean and **nothing caught it**: the
 gesture would wait on a report that never comes, and because the gather is serialized, no further
 save-back would happen for the life of the window. So the rule was extracted
 (`BrowserWindowController.reportsToItsGesture(_:)`) — an exhaustive `switch` assertable with no
-window, which retroactively covers `.materialize`'s identical route, untested since M24 Slice 2.
+window, which retroactively covers `.materialize`'s identical route, untested since M24 Slice 2. The
+batch **split** got the same treatment for the same reason: an archive member routed to the remote
+ending would try to upload to an `archive:` path, and the sentence the user reads would be about a
+server they were never on.
 
 **2026-09-01 — a remote attribute change is undoable.** PLAN.md §4's *"a pair of small pieces
 rather than a hook that already exists"*, taken on the same day as the archive one above and for the

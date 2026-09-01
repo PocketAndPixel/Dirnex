@@ -81,22 +81,56 @@ enum ArchiveWriter {
         passphrase: ArchivePassphrase? = nil,
         undo: ArchiveUndoStorage.Request
     ) throws -> ArchiveUndoSnapshot? {
+        try add(
+            localPaths.map {
+                ArchiveMutation.Addition(localPath: $0, innerDirectory: innerDirectory)
+            },
+            ofArchiveAt: archiveOnDiskPath,
+            passphrase: passphrase,
+            undo: undo
+        )
+    }
+
+    /// Add items that land in **different inner directories**, in one rewrite
+    /// (PLAN.md §4 ▸ *Still open*, taken 2026-09-01).
+    ///
+    /// The general form, and the single-directory spelling above is now one call into it. The
+    /// reason it exists is that a rewrite is per **archive**, not per directory: extracting and
+    /// repacking the container is the whole cost, so N edited members saved together belong in one
+    /// pass whatever folders they came from — where before, a script that rewrote forty members
+    /// repacked the archive forty times, each pass extracting and re-compressing everything the
+    /// previous one had just written.
+    ///
+    /// Each directory is created once rather than per item, which matters for the same reason: the
+    /// grouping is what makes this a single pass and not a loop that happens to share a scratch
+    /// tree.
+    @discardableResult
+    static func add(
+        _ additions: [ArchiveMutation.Addition],
+        ofArchiveAt archiveOnDiskPath: String,
+        passphrase: ArchivePassphrase? = nil,
+        undo: ArchiveUndoStorage.Request
+    ) throws -> ArchiveUndoSnapshot? {
         let name = (archiveOnDiskPath as NSString).lastPathComponent
         return try rewrite(
             archiveOnDiskPath: archiveOnDiskPath, passphrase: passphrase, undo: undo
         ) { workingDirectory in
-            // The destination directory exists already when adding into a browsed folder, but make
-            // sure — the archive could have been emptied, or the add could target a fresh path.
-            let destinationDirectory = ArchiveMutation.additionDirectory(
-                forInnerDirectory: innerDirectory,
-                inWorkingDirectory: workingDirectory
-            )
-            try FileManager.default.createDirectory(
-                atPath: destinationDirectory,
-                withIntermediateDirectories: true
-            )
-            for localPath in localPaths {
-                let sourceURL = URL(fileURLWithPath: localPath)
+            var prepared: Set<String> = []
+            for addition in additions {
+                // The destination directory exists already when adding into a browsed folder, but
+                // make sure — the archive could have been emptied, or the add could target a fresh
+                // path. Once per directory, not once per item.
+                let destinationDirectory = ArchiveMutation.additionDirectory(
+                    forInnerDirectory: addition.innerDirectory,
+                    inWorkingDirectory: workingDirectory
+                )
+                if prepared.insert(destinationDirectory).inserted {
+                    try FileManager.default.createDirectory(
+                        atPath: destinationDirectory,
+                        withIntermediateDirectories: true
+                    )
+                }
+                let sourceURL = URL(fileURLWithPath: addition.localPath)
                 let destinationURL = URL(fileURLWithPath: destinationDirectory)
                     .appendingPathComponent(sourceURL.lastPathComponent)
                 // Replace a same-named member (the overwrite was confirmed) — `copyItem` would

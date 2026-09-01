@@ -1,14 +1,20 @@
 import AppKit
 import DirnexCore
 
-/// Carrying saved copies back to their servers as **one queued job** (PLAN.md §4 ▸ *Still open*,
-/// taken 2026-09-01).
+/// Gathering saved copies into batches, and carrying the **remote** half back as one queued job
+/// (PLAN.md §4 ▸ *Still open*, taken 2026-09-01).
 ///
 /// Until this, every save-back was its own `Task`: a user script that rewrote forty files on a
 /// server produced forty independent uploads, each `stat`ing and uploading on its own — no combined
 /// bar, no Stop, no ordering, and forty sheets if any of them had something to say. The download
 /// direction had been the mirror of this since M24 Slice 2, so what was missing was the job kind
 /// and the gathering in front of it, not a design.
+///
+/// **The gathering serves both endings.** An archive member's save had the same shape and a worse
+/// cost — forty saves meant forty full repacks of one container, each extracting and re-compressing
+/// everything the last had just written — so the batch is split by destination *after* it is
+/// gathered rather than at the moment each save arrives (`+WriteBack`). One pacing rule, two
+/// endings, which is what the write-back switch has always been.
 ///
 /// **Every save-back comes through here, including a single ⌘S**, because two spellings of "upload
 /// an edited file" is the shape this project keeps paying for and the two would drift the first
@@ -22,26 +28,13 @@ import DirnexCore
 /// batch is checking or uploading joins the *next* one, which is what makes a slow script form a
 /// few large batches instead of one per file, with no second timer and nothing to tune.
 extension BrowserWindowController {
-    /// A watched copy of a remote file has been saved — put it in the next batch.
-    ///
-    /// Replacing rather than appending a second entry for the same copy: an editor that autosaves
-    /// twice before a batch opens has one file to upload, and its *newer* bytes are the ones that
-    /// should go, which is what re-`stat`ing at check time gives for free.
-    func offerRemoteWriteBack(_ edit: EditedFile, to path: VFSPath) {
-        pendingWriteBacks.removeAll { $0.edit.temporaryURL == edit.temporaryURL }
-        pendingWriteBacks.append((edit: edit, destination: path))
-        guard !isGatheringWriteBacks else { return }
-        isGatheringWriteBacks = true
-        Task { await gatherWriteBacks() }
-    }
-
     /// Run batches until nothing is left waiting.
     ///
     /// The loop is the pacing: a batch takes everything pending, and whatever arrives during its
     /// checks and its upload is waiting when it comes back round. So the batch size is set by how
     /// long the previous one took rather than by a window somebody sized — a burst forms one batch,
     /// a script that writes a file every few seconds forms a few, and a lone ⌘S forms one of one.
-    private func gatherWriteBacks() async {
+    func gatherWriteBacks() async {
         defer { isGatheringWriteBacks = false }
         while !pendingWriteBacks.isEmpty {
             // Wait out the window the events themselves are coalesced over, so a burst that is
@@ -55,8 +48,44 @@ extension BrowserWindowController {
         }
     }
 
+    /// Split a batch by where its copies have to go, and run each ending.
+    ///
+    /// One after the other rather than together, so two sheets can never be up at once — and
+    /// remote first only because that half asks *less often*: a clean set of uploads goes in
+    /// silence, where every archive rewrite asks by construction.
+    private func runWriteBackBatch(_ batch: [EditedFile]) async {
+        let split = Self.split(batch)
+        await runRemoteWriteBacks(split.remote)
+        await runArchiveWriteBacks(split.members)
+    }
+
+    /// Which ending each save belongs to, in the order the batch gathered them.
+    ///
+    /// `static` and pure so the routing is assertable with no window, which is worth doing for the
+    /// one failure here that would be quiet: an archive member handed to the remote ending would
+    /// try to *upload to an `archive:` path* rather than repack, and the sentence the user would
+    /// read is about a server they were never on.
+    static func split(
+        _ batch: [EditedFile]
+    ) -> (remote: [PendingWriteBack], members: [PendingArchiveWriteBack]) {
+        var remote: [PendingWriteBack] = []
+        var members: [PendingArchiveWriteBack] = []
+        for edit in batch {
+            switch edit.destination {
+            case let .remoteFile(path):
+                remote.append((edit: edit, destination: path))
+            case let .archiveMember(archivePath, innerDirectory):
+                members.append(PendingArchiveWriteBack(
+                    edit: edit, archivePath: archivePath, innerDirectory: innerDirectory
+                ))
+            }
+        }
+        return (remote, members)
+    }
+
     /// Check, ask if there is anything to ask, upload, and report.
-    private func runWriteBackBatch(_ batch: [PendingWriteBack]) async {
+    private func runRemoteWriteBacks(_ batch: [PendingWriteBack]) async {
+        guard !batch.isEmpty else { return }
         let checked = await checkWriteBacks(batch)
         guard !checked.isEmpty else { return }
         let answer = await writeBackAnswer(for: checked)
@@ -289,5 +318,17 @@ extension BrowserWindowController {
     }
 }
 
-/// One save waiting to join a batch.
+/// One save on its way back to a server.
 typealias PendingWriteBack = (edit: EditedFile, destination: VFSPath)
+
+/// One save on its way back into an archive.
+///
+/// A struct rather than a tuple because three members trip SwiftLint's `large_tuple` — and because
+/// naming them is what keeps the two `String`s from being handed over the wrong way round.
+struct PendingArchiveWriteBack: Equatable {
+    let edit: EditedFile
+    /// The archive on this disk that the member came out of.
+    let archivePath: String
+    /// The folder *inside* that archive it goes back into — `/` for the root.
+    let innerDirectory: String
+}

@@ -31645,6 +31645,299 @@
         }
       }
     },
+    "Couldn’t save %lld files back into “%@”": {
+      "comment": "Alert title when writing several edited members back into their archive fails; %1$lld is how many files and %2$@ the archive's name.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Couldn’t save %lld file back into “%2$@”"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Couldn’t save %lld files back into “%2$@”"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Datei konnte nicht zurück in „%2$@“ geschrieben werden"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Dateien konnten nicht zurück in „%2$@“ geschrieben werden"
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "No se ha podido guardar %lld archivo de nuevo en «%2$@»"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "No se han podido guardar %lld archivos de nuevo en «%2$@»"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Impossible de réenregistrer %lld fichier dans « %2$@ »"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Impossible de réenregistrer %lld fichiers dans « %2$@ »"
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Impossibile salvare %lld file in “%2$@”"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Impossibile salvare %lld file in “%2$@”"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 個のファイルを「%2$@」に書き戻せませんでした"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 個のファイルを「%2$@」に書き戻せませんでした"
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld개 파일을 ‘%2$@’에 저장하지 못했습니다"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld개 파일을 ‘%2$@’에 저장하지 못했습니다"
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Kon %lld bestand niet terugschrijven naar ‘%2$@’"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Kon %lld bestanden niet terugschrijven naar ‘%2$@’"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Nie udało się zapisać %lld pliku z powrotem do „%2$@”"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Nie udało się zapisać %lld plików z powrotem do „%2$@”"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Nie udało się zapisać %lld plików z powrotem do „%2$@”"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Nie udało się zapisać %lld plików z powrotem do „%2$@”"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Não foi possível salvar %lld arquivo de volta em “%2$@”"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Não foi possível salvar %lld arquivos de volta em “%2$@”"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось записать %lld файл обратно в «%2$@»"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось записать %lld файла обратно в «%2$@»"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось записать %lld файлов обратно в «%2$@»"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не удалось записать %lld файлов обратно в «%2$@»"
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не вдалося записати %lld файл назад до «%2$@»"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не вдалося записати %lld файли назад до «%2$@»"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не вдалося записати %lld файлів назад до «%2$@»"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Не вдалося записати %lld файлів назад до «%2$@»"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "无法将 %lld 个文件写回“%2$@”"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "无法将 %lld 个文件写回“%2$@”"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "無法將 %lld 個檔案寫回「%2$@」"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "無法將 %lld 個檔案寫回「%2$@」"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Couldn’t save “%@” back": {
       "comment": "Alert title when writing an edited member back into its archive fails.",
       "localizations": {
@@ -70726,6 +71019,299 @@
         }
       }
     },
+    "Save %lld edited files back into “%@”?": {
+      "comment": "Title of the write-back prompt over several edited members of one archive; %1$lld is how many files and %2$@ the archive's name.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Save %lld edited file back into “%2$@”?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Save %lld edited files back into “%2$@”?"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld bearbeitete Datei zurück in „%2$@“ schreiben?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld bearbeitete Dateien zurück in „%2$@“ schreiben?"
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "¿Guardar %lld archivo editado de nuevo en «%2$@»?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "¿Guardar %lld archivos editados de nuevo en «%2$@»?"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Réenregistrer %lld fichier modifié dans « %2$@ » ?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Réenregistrer %lld fichiers modifiés dans « %2$@ » ?"
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Salvare %lld file modificato in “%2$@”?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Salvare %lld file modificati in “%2$@”?"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "編集した %lld 個のファイルを「%2$@」に書き戻しますか？"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "編集した %lld 個のファイルを「%2$@」に書き戻しますか？"
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "편집한 %lld개 파일을 ‘%2$@’에 저장할까요?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "편집한 %lld개 파일을 ‘%2$@’에 저장할까요?"
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld bewerkt bestand terugschrijven naar ‘%2$@’?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld bewerkte bestanden terugschrijven naar ‘%2$@’?"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Zapisać %lld zmieniony plik z powrotem do „%2$@”?"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Zapisać %lld zmienione pliki z powrotem do „%2$@”?"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Zapisać %lld zmienionych plików z powrotem do „%2$@”?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Zapisać %lld zmienionych plików z powrotem do „%2$@”?"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Salvar %lld arquivo editado de volta em “%2$@”?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Salvar %lld arquivos editados de volta em “%2$@”?"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Записать %lld изменённый файл обратно в «%2$@»?"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Записать %lld изменённых файла обратно в «%2$@»?"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Записать %lld изменённых файлов обратно в «%2$@»?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Записать %lld изменённых файлов обратно в «%2$@»?"
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Записати %lld змінений файл назад до «%2$@»?"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Записати %lld змінені файли назад до «%2$@»?"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Записати %lld змінених файлів назад до «%2$@»?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Записати %lld змінених файлів назад до «%2$@»?"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "将编辑过的 %lld 个文件写回“%2$@”？"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "将编辑过的 %lld 个文件写回“%2$@”？"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "將編輯過的 %lld 個檔案寫回「%2$@」？"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "將編輯過的 %lld 個檔案寫回「%2$@」？"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Save Back": {
       "comment": "Button that writes an edited member back into its archive.",
       "localizations": {
@@ -96518,6 +97104,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "你編輯的是從壓縮檔中取出的副本。存回會重寫壓縮檔；「還原」可將其復原。"
+          }
+        }
+      }
+    },
+    "You edited copies that were extracted from the archive. Saving them back rewrites the archive once, with all of them, and can’t be undone.": {
+      "comment": "Body of the batch write-back prompt when the archive is too large for Dirnex to keep a copy of.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You edited copies that were extracted from the archive. Saving them back rewrites the archive once, with all of them, and can’t be undone."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sie haben Kopien bearbeitet, die aus dem Archiv entpackt wurden. Beim Zurückschreiben wird das Archiv einmal neu geschrieben, mit allen zusammen, und das lässt sich nicht widerrufen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Has editado copias extraídas del archivo comprimido. Al guardarlas, el archivo se reescribe una sola vez, con todas ellas, y no se puede deshacer."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous avez modifié des copies extraites de l’archive. Les réenregistrer réécrit l’archive une seule fois, avec toutes, et ne peut pas être annulé."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hai modificato copie estratte dall’archivio. Salvarle riscrive l’archivio una sola volta, con tutte, e non può essere annullato."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アーカイブから展開されたコピーを編集しました。書き戻すと、アーカイブはすべてまとめて一度だけ書き換えられ、取り消せません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아카이브에서 추출한 사본을 편집했습니다. 저장하면 아카이브를 모두 함께 한 번만 다시 쓰며, 실행 취소할 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je hebt kopieën bewerkt die uit het archief zijn uitgepakt. Terugschrijven herschrijft het archief één keer, met allemaal tegelijk, en kan niet ongedaan worden gemaakt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edytowano kopie wypakowane z archiwum. Zapisanie ich z powrotem przepisuje archiwum raz, ze wszystkimi naraz, i nie można tego cofnąć."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você editou cópias extraídas do arquivo compactado. Salvá-las reescreve o arquivo uma única vez, com todas elas, e não pode ser desfeito."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вы изменили копии, извлечённые из архива. Запись обратно перезапишет архив один раз, со всеми сразу, и это нельзя отменить."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ви змінили копії, видобуті з архіву. Запис назад перезапише архів один раз, з усіма одразу, і це не можна скасувати."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你编辑了从归档中提取的副本。写回会把归档整体重写一次，包含全部文件，且无法撤销。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你編輯了從封存中取出的副本。寫回會把封存整體重寫一次，包含全部檔案，且無法還原。"
+          }
+        }
+      }
+    },
+    "You edited copies that were extracted from the archive. Saving them back rewrites the archive once, with all of them; Undo puts it back.": {
+      "comment": "Body of the batch write-back prompt when the rewrite will be undoable.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You edited copies that were extracted from the archive. Saving them back rewrites the archive once, with all of them; Undo puts it back."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sie haben Kopien bearbeitet, die aus dem Archiv entpackt wurden. Beim Zurückschreiben wird das Archiv einmal neu geschrieben, mit allen zusammen; Widerrufen stellt es wieder her."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Has editado copias extraídas del archivo comprimido. Al guardarlas, el archivo se reescribe una sola vez, con todas ellas; Deshacer lo restaura."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous avez modifié des copies extraites de l’archive. Les réenregistrer réécrit l’archive une seule fois, avec toutes ; Annuler la restaure."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hai modificato copie estratte dall’archivio. Salvarle riscrive l’archivio una sola volta, con tutte; Annulla lo ripristina."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アーカイブから展開されたコピーを編集しました。書き戻すと、アーカイブはすべてまとめて一度だけ書き換えられます。取り消しで元に戻せます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아카이브에서 추출한 사본을 편집했습니다. 저장하면 아카이브를 모두 함께 한 번만 다시 씁니다. 실행 취소로 되돌릴 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je hebt kopieën bewerkt die uit het archief zijn uitgepakt. Terugschrijven herschrijft het archief één keer, met allemaal tegelijk; Ongedaan maken zet het terug."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edytowano kopie wypakowane z archiwum. Zapisanie ich z powrotem przepisuje archiwum raz, ze wszystkimi naraz; Cofnij przywraca je."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você editou cópias extraídas do arquivo compactado. Salvá-las reescreve o arquivo uma única vez, com todas elas; Desfazer o restaura."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вы изменили копии, извлечённые из архива. Запись обратно перезапишет архив один раз, со всеми сразу; отмена вернёт его."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ви змінили копії, видобуті з архіву. Запис назад перезапише архів один раз, з усіма одразу; скасування поверне його."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你编辑了从归档中提取的副本。写回会把归档整体重写一次，包含全部文件；撤销可以恢复。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你編輯了從封存中取出的副本。寫回會把封存整體重寫一次，包含全部檔案；還原可以復原。"
           }
         }
       }

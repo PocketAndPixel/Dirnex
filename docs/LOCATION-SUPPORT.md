@@ -349,7 +349,9 @@ where it used to be a `Task` the window started and forgot — and several saves
 one job with one confirmation (▸ <sup>aaa</sup>).
 
 <sup>v</sup> A member of a **writable** (top-level) archive only; saving repacks the archive,
-preserving encryption and hidden names. A nested archive's member cannot.
+preserving encryption and hidden names. A nested archive's member cannot. Several members saved
+together are **one repack**, whatever folders they came from inside it (since 2026-09-01), with one
+question for the archive rather than one per file.
 
 <sup>w</sup> Both sides are brought down first, as one queued job with a determinate bar and a Stop
 (PLAN.md §M24 Slice 4) — `ByteComparator` still only ever sees real local paths, and the diff tool is
@@ -576,10 +578,12 @@ and per-item failures, and the script is handed the copies (PLAN.md §M24 Slice 
 more than a hand-off is the other direction: each copy is **watched**, so a script that rewrites its
 argument — `exiftool -overwrite_original`, `sips`, a formatter — has that save carried back to the
 server or repacked into the archive, through the machinery F4 already uses. Since **2026-09-01** the
-remote direction is one queued job too, so a script that rewrote forty files uploads them as one
-ordered run with a combined bar and a Stop, and asks **once** about whatever the pre-upload checks
-found rather than once per file; before that each save was its own `Task` with none of that. Four
-limits, and none of them is about the transfer. A **folder** that is not on this disk is not a target, for the hand-off's
+**both** directions are gathered, so a script that rewrote forty files carries them back together
+rather than one at a time: the remote ones as one queued run with a combined bar and a Stop, asking
+**once** about whatever the pre-upload checks found, and the archive ones as **one rewrite per
+archive** with one question each — where before, forty members meant forty full repacks of the same
+container, each extracting and re-compressing everything the last had just written. Four limits, and
+none of them is about the transfer. A **folder** that is not on this disk is not a target, for the hand-off's
 own reason. A panel that is not a folder on this disk exports **no `DIRNEX_CURRENT_DIR`** — the
 process runs in the folder holding the first file it was handed, and a script can test for the
 variable exactly as it already tests for `DIRNEX_OTHER_DIR` — so a `combined` script with nothing

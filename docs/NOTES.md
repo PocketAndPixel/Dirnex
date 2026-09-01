@@ -6100,6 +6100,25 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     are keying on**, and prefer an observable the code under test produces over one its dependency
     does.
 
+- **When two features have the same shape, the *unit* they batch by is not the same question as
+  whether to batch.** A save-back to a server and a save-back into an archive both arrive one file
+  at a time from the same watcher, and both needed gathering — so they share one pacing rule and the
+  switch between them moved from the *edit* to the *batch*. What they cannot share is the unit: an
+  upload is per **file**, so the whole batch is one job however many accounts it spans, while a
+  rewrite is extract-everything → repack → swap over the **container**, so the unit is the archive
+  and a batch touching two archives is two passes. It follows through to the question — the archive
+  sheet names the archive *and* whether Undo can put it back, which depends on that archive's size,
+  so one sheet over a whole batch could state neither truthfully.
+  - **The cost being per-container is also why the archive half mattered more.** Forty uploads is
+    forty transfers nobody could see or stop; forty repacks is forty full passes over one archive,
+    each extracting and re-compressing everything the previous one had just written.
+  - **And a plural API is not automatically the general one.** `ArchiveWriter.add` already took
+    *many* local paths — into **one** inner directory — which reads as ready for a batch and is not:
+    members edited in different folders of one archive could not travel together, and one rewrite
+    per folder is barely better than one per file when the cost is the container. The fix was a
+    `(localPath, innerDirectory)` pair, with the old spelling reduced to one call into it. Check
+    what a plural parameter is plural *in* before assuming it batches what you need.
+
 - **A batch's coalescing window is worth borrowing rather than choosing, and the delivery mechanism
   usually has one already.** Gathering N save-backs into one job needs a moment to let a burst
   arrive, and the tempting move is to pick a number. Each edited copy here is watched by its own
