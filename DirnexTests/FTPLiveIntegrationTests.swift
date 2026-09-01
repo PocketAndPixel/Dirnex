@@ -86,6 +86,123 @@ struct FTPLiveIntegrationTests {
         }
     }
 
+    // MARK: - The subtree shortcut (docs/HISTORY.md ▸ After M19)
+
+    /// The whole point of the batched listing, end to end: a real tree, over the real
+    /// `FTPCurlTransport`, answered by `subtreeListing` and compared against the walk it replaces.
+    ///
+    /// The comparison is what makes it a test rather than a demonstration. `subtreeListing`'s
+    /// contract is that its entries are **indistinguishable from what a walk would have produced** —
+    /// so a literal expectation would only pin what this code happens to do, where walking the same
+    /// tree with `listDirectory` and diffing pins the thing that was promised. The walk is written
+    /// out here rather than borrowed from `SubtreeSearch`, since reusing a caller of the code under
+    /// test would prove the two agree rather than that either is right.
+    ///
+    /// What it deliberately does **not** assert is the speed, or the login count. Those were
+    /// measured against a real server on 2026-09-01 — 159 logins and 11.264 s for the walk against
+    /// 4 and 0.404 s for this, on a server 50 ms away — and neither is a claim a test on somebody
+    /// else's machine can hold: a timing assertion here would be a fact about their link. The
+    /// invocation's own shape is pinned deterministically in `FTPBatchListingArgumentsTests`
+    /// instead, which is where the sequential-run invariant lives.
+    @Test("the subtree shortcut answers exactly what walking the same tree does")
+    func subtreeListingMatchesTheWalk() async throws {
+        try await offCooperativePool {
+            let (backend, config) = try makeBackend()
+            let base = VFSPath(backend: .ftp(config.location), path: config.remotePath)
+            let root = base.appending("dirnex_subtree_test_\(UUID().uuidString)")
+
+            // Provisioned here rather than assumed to be on the server: a live suite that expects a
+            // hand-prepared tree fails as a broken feature on any account nobody prepared
+            // (docs/NOTES.md ▸ sftp / ssh).
+            try backend.createDirectory(at: root)
+            defer { try? backend.removeItem(at: root) }
+            try backend.createFile(at: root.appending("top.txt"))
+            let docs = root.appending("docs")
+            try backend.createDirectory(at: docs)
+            try backend.createFile(at: docs.appending("report.txt"))
+            let images = docs.appending("images")
+            try backend.createDirectory(at: images)
+            try backend.createFile(at: images.appending("photo.txt"))
+            // An empty directory: the one case that separates "listed, and empty" from "could not be
+            // listed", which is the whole per-section signal the batch rests on.
+            try backend.createDirectory(at: root.appending("empty"))
+
+            let listing = try #require(try backend.subtreeListing(at: root, isCancelled: { false }))
+            #expect(listing.isComplete)
+
+            var walked: [FileEntry] = []
+            var queue = [root]
+            var head = 0
+            while head < queue.count {
+                let directory = queue[head]
+                head += 1
+                guard let entries = try? backend.listDirectory(at: directory) else { continue }
+                for entry in entries {
+                    walked.append(entry)
+                    if entry.isDirectory { queue.append(entry.path) }
+                }
+            }
+
+            #expect(Set(listing.entries.map(\.path.path)) == Set(walked.map(\.path.path)))
+            #expect(listing.entries.count == 6)
+            for entry in listing.entries {
+                let match = try #require(walked.first { $0.path == entry.path })
+                #expect(entry.kind == match.kind)
+                #expect(entry.byteSize == match.byteSize)
+                #expect(entry.name == match.name)
+            }
+            // Shallowest-first, which is what a result cap must be able to truncate safely.
+            #expect(listing.entries.prefix(3).allSatisfy { $0.path.parent == root })
+        }
+    }
+
+    /// The batch's per-section contract, live: a directory that could not be listed answers `nil`,
+    /// and an **empty** one answers the empty string. `curl` writes no file for the first and a
+    /// 0-byte file for the second, and nothing else in the run distinguishes them — the exit code
+    /// belongs to the last transfer, so it cannot.
+    @Test("a batched listing tells an empty directory from an unlistable one")
+    func batchedListingSeparatesEmptyFromUnlistable() async throws {
+        try await offCooperativePool {
+            let (backend, config) = try makeBackend()
+            let base = VFSPath(backend: .ftp(config.location), path: config.remotePath)
+            let root = base.appending("dirnex_batch_test_\(UUID().uuidString)")
+            try backend.createDirectory(at: root)
+            defer { try? backend.removeItem(at: root) }
+            let empty = root.appending("empty")
+            try backend.createDirectory(at: empty)
+
+            let transport = FTPCurlTransport(
+                location: config.location,
+                authentication: config.authentication,
+                password: config.password,
+                trustedPublicKey: config.trustedPublicKey
+            )
+            let answers = try transport.listDirectories(
+                [empty.path, root.appending("no_such_directory").path, root.path],
+                isCancelled: { false }
+            )
+            #expect(answers.count == 3)
+            #expect(answers[0]?.isEmpty == true)
+            #expect(answers[1] == nil)
+            #expect(answers[2]?.contains("empty") == true)
+
+            // **The refusal moved to the end**, which is the case that keeps "never consult the
+            // exit code" honest. Probed 2026-09-01: a refused section in the *middle* leaves
+            // `curl` at exit 0 and the same refusal *last* gives exit 9 — so a version that threw
+            // on a nonzero exit would pass the run above and silently discard this whole level,
+            // and the subtree would come back short while still claiming to be complete. Only this
+            // ordering fails it.
+            let refusalLast = try transport.listDirectories(
+                [root.path, empty.path, root.appending("no_such_directory").path],
+                isCancelled: { false }
+            )
+            #expect(refusalLast.count == 3)
+            #expect(refusalLast[0]?.contains("empty") == true)
+            #expect(refusalLast[1]?.isEmpty == true)
+            #expect(refusalLast[2] == nil)
+        }
+    }
+
     /// FTP's refusal for a taken name is **550**, its single ambiguous "file unavailable", which the
     /// classifier reads as `.notFound` — the wrong answer in the most confusing direction, since the
     /// name is refused precisely because it is there. The backend disambiguates with a `stat`.

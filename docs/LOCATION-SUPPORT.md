@@ -120,10 +120,11 @@ one delimiter-less listing, and whatever cannot be answered that way runs under 
 by the entire column rather than one per row. Measured in the app against a real `sshd`: **9 sessions
 for the whole column, against 149** with the exec channel withdrawn. A row the allowance never
 reached carries the same marker and tooltip a `Space` walk that gave up does, rather than a dash that
-would read as "still measuring". FTP has no subtree shortcut at all
-(*Still open* ▸ "FTP has no server-side walk"), so it always takes the walk and its allowance. On a
-virtual listing whose rows live in a dozen different folders "share of this directory" has no
-referent whatever it would cost, which is why those two still read n/a.
+would read as "still measuring". FTP's shortcut is the weakest of the three and still helps: it
+cannot move the work to the server, so it makes the same one `LIST` per directory, but it makes a
+whole level of them over one login instead of one connection apiece.<sup>ss</sup> On a virtual
+listing whose rows live in a dozen different folders "share of this directory" has no referent
+whatever it would cost, which is why those two still read n/a.
 
 <sup>oo</sup> Recents is Spotlight's `kMDItemLastUsedDate` over the local index, so a location macOS
 does not index cannot appear in it whatever Dirnex does. The same is true of the ⌘L fuzzy jump, which
@@ -413,7 +414,7 @@ until its rows are files on this disk.
 | by **file contents** | yes | yes | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | n/a | yes | yes |
 | by **Finder tag** | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
 | Runs off an index (instant) | yes | yes | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | n/a | yes | yes |
-| Server-side walk (one request, not one per folder) | n/a | n/a | n/a | yes, limited<sup>dd</sup> | **no**<sup>ss</sup> | yes | n/a | — | — |
+| Server-side walk (one request, not one per folder) | n/a | n/a | n/a | yes, limited<sup>dd</sup> | n/a<sup>ss</sup> | yes | n/a | — | — |
 | Live progress + Stop | yes | yes | yes | yes | yes | yes | n/a | yes | yes |
 | Save the search to the sidebar, re-run later | yes | yes | yes | yes | yes | yes | n/a | yes | yes |
 
@@ -435,10 +436,15 @@ return *more* results under the same name.
 `sftp`-only account (`ForceCommand internal-sftp`) falls back to the per-directory walk, decided
 per connection at run time.
 
-<sup>ss</sup> FTP has neither an exec channel nor a delimiter-less listing, so its search is one
-`LIST` per directory. `curl` reuses one connection across many `ftp://` URLs, which is the shape
-worth measuring — and worth much less than it looks now that `ProcessWaiting` no longer taxes every
-child ~71 ms (PLAN.md §4 ▸ *Still open*).
+<sup>ss</sup> **n/a rather than "no": there is no route to a yes.** FTP has neither an exec channel
+nor a delimiter-less listing, and no recursive verb `curl` can send, so its walk is one `LIST` per
+directory and always will be — but since 2026-09-01 it is one **connection per level** rather than
+one per directory, which is nearly all of the cost. One `curl` carrying a multi-section config lists
+a whole level over a single login; measured against a real server over a 159-directory tree, 527
+entries and identical results either way: **160 invocations and 159 logins against 4 and 4**,
+11.264 s against 0.404 s with the server 50 ms away. `LIST -R` was retired at the
+probe — `curl` sends it, but the servers that honour it are the minority and none reachable from
+this Mac does, so the fast path would have shipped unverified.
 
 ## 5. Metadata and macOS integration
 
@@ -617,6 +623,9 @@ changed cell, and why it changed is in [HISTORY.md](HISTORY.md).
 What is **not** scheduled, because it cannot be closed from here — these are the "yes, limited"
 rows, and the app is already as close as the technology permits:
 
+- A server-side *walk* over FTP: there is no recursive verb `curl` can send, so the tree costs one
+  `LIST` per directory whoever asks. What was closeable — the connection around each of them — was
+  closed on 2026-09-01.
 - Content search and Finder-tag search on a server: both need every file's bytes or its xattrs.
 - Exact FTP timestamps: `LIST` stamps are year-less, zone-less and on the server's clock, and
   `curl` cannot send `MLSD`.

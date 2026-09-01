@@ -156,8 +156,14 @@ public enum FTPProcessArguments {
     /// List a remote directory. The trailing slash is what makes `curl` send `LIST` rather than
     /// fetch a file of that name, so it is appended here rather than left to callers.
     public static func list(session: FTPSession, remotePath: String) -> [String] {
-        let path = remotePath.hasSuffix("/") ? remotePath : remotePath + "/"
-        return common(session: session) + configFromStandardInput + [url(session, path)]
+        common(session: session) + configFromStandardInput + [listingURL(session, remotePath)]
+    }
+
+    /// The URL that makes `curl` send `LIST` for `remotePath` — the trailing slash and the
+    /// percent-encoding in one place, since the batched listing needs exactly the same rule and two
+    /// spellings of it would be one spelling away from fetching a *file* of that name instead.
+    static func listingURL(_ session: FTPSession, _ remotePath: String) -> String {
+        url(session, remotePath.hasSuffix("/") ? remotePath : remotePath + "/")
     }
 
     /// Download a remote file to `localPath`, optionally resuming from what is already there.

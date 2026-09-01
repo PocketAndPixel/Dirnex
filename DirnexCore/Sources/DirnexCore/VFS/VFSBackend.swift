@@ -124,17 +124,22 @@ public protocol VFSBackend: Sendable {
     /// requests than a walk would take** — or `nil`, the default, meaning there is no such shortcut
     /// and the caller should walk with `listDirectory` (PLAN.md §M22).
     ///
-    /// Two backends fill it, for two unrelated reasons, and between them they say what the seam is
-    /// for. S3 is not a tree at all — it is a flat keyspace that *renders* as one, so `ListObjectsV2`
-    /// with no delimiter answers the whole subtree at 1000 keys a request. SFTP browses a real
-    /// filesystem where a listing genuinely is one round trip per directory, but it can borrow the
-    /// server's own `find` over an SSH exec channel and have the tree walked *there*, at 501
-    /// directories in 98 ms against 34.3 s of per-directory connections (measured 2026-08-16).
+    /// Three backends fill it, for three unrelated reasons, and between them they say what the seam
+    /// is for. S3 is not a tree at all — it is a flat keyspace that *renders* as one, so
+    /// `ListObjectsV2` with no delimiter answers the whole subtree at 1000 keys a request. SFTP
+    /// browses a real filesystem where a listing genuinely is one round trip per directory, but it
+    /// can borrow the server's own `find` over an SSH exec channel and have the tree walked *there*,
+    /// at 501 directories in 98 ms against 34.3 s of per-directory connections (measured
+    /// 2026-08-16). FTP can do neither: it has no recursive verb `curl` can send, so it still makes
+    /// one `LIST` per directory — but it can make a whole **level** of them over one connection, and
+    /// the connection is nearly all of the cost (159 logins and 11.264 s against 4 and 0.404 s over
+    /// a 159-directory tree, measured 2026-09-01).
     ///
-    /// `nil` is therefore not "this backend is slow"; it is "asking cannot beat walking, or the one
-    /// way of asking is unavailable on this server". FTP is the first, an `sftp`-only account the
-    /// second — and the second is decided per connection, at run time, which is why the answer is a
-    /// return value rather than a capability flag.
+    /// So the saving is not always "fewer listings", and the seam does not require it to be: it is
+    /// "fewer *requests*", and over FTP a request is a login. `nil` is therefore not "this backend
+    /// is slow"; it is "asking cannot beat walking, or the one way of asking is unavailable on this
+    /// server" — an `sftp`-only account with no exec channel is the second, decided per connection
+    /// at run time, which is why the answer is a return value rather than a capability flag.
     ///
     /// `isCancelled` is polled between pages: the whole point is that the call may be long, and a
     /// shortcut that could not be abandoned would be worse than the walk it replaces. Implementers

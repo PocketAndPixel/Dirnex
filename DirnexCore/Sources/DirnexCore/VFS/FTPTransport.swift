@@ -105,6 +105,34 @@ public protocol FTPTransport: RemoteWriteTransport {
         isCancelled: () -> Bool
     ) throws -> Int64
 
+    /// The raw `LIST` output for **several** directories, gathered over one connection — one answer
+    /// per input path, in order, `nil` for a directory that could not be listed.
+    ///
+    /// This is the verb behind FTP's subtree shortcut, and it is a batch rather than a loop for one
+    /// reason: over FTP a listing is cheap and the *connection* around it is not. Measured
+    /// 2026-09-01 over a 159-directory tree, one `curl` per directory against one `curl` per level:
+    /// **159 logins and 11.264 s against 4 and 0.404 s** on a server 50 ms away, for identical
+    /// entries. See ``FTPProcessArguments/listDirectories(session:requests:credentials:)`` for the
+    /// whole measurement and for what `LIST -R` was found to be worth.
+    ///
+    /// **`nil` means "this directory could not be listed", never "it was empty"** — the two are
+    /// distinct and both are ordinary. A walk skips an unreadable subdirectory and reports an empty
+    /// one as empty, so a batch that could not tell them apart would silently prune whole branches;
+    /// ``FTPBackend`` relies on the difference, and refuses the shortcut outright when it is the
+    /// *root* that failed.
+    ///
+    /// **It takes `isCancelled` where ``listDirectory(_:)`` deliberately does not**, and the reason
+    /// is the one that doc comment gives for the split: a single `LIST` is over before anyone could
+    /// press anything, while a batch is a whole level of a tree and may run for as long as a
+    /// transfer. It is polled between chunks and while the child runs.
+    ///
+    /// Additive, with a default that **forwards** to one ``listDirectory(_:)`` per path: the answers
+    /// are the same answers, so a transport that has not implemented this is slow and never wrong —
+    /// the test this project applies before letting a default stand in, and the same one
+    /// ``downloadSegments(_:of:to:progress:isCancelled:)`` passes. The conditional write's default
+    /// throws for the opposite reason.
+    func listDirectories(_ remotePaths: [String], isCancelled: () -> Bool) throws -> [String?]
+
     /// The exact size of one remote file (`SIZE`, via `curl -I`), used to decide whether a partial
     /// is resumable. Costs a round trip, so it is a stat-one-item path and never a listing path.
     func fileSize(_ remotePath: String) throws -> Int64
@@ -118,14 +146,32 @@ public protocol FTPTransport: RemoteWriteTransport {
     func fetchCertificate() throws -> FTPCertificate
 }
 
-/// The additive half of ``FTPTransport/downloadSegments(_:of:to:progress:isCancelled:)``: a
-/// transport that predates segmented downloads keeps compiling and keeps working.
+/// The additive halves of ``FTPTransport/listDirectories(_:isCancelled:)`` and
+/// ``FTPTransport/downloadSegments(_:of:to:progress:isCancelled:)``: a transport that predates
+/// either keeps compiling and keeps working.
 ///
 /// It forwards rather than throwing — the test this project applies before letting a default stand
 /// in is whether the caller can tell it was not honoured, and here the two paths produce the
 /// identical file. The conditional write's default has to throw for the opposite reason: forwarding
 /// there would drop a protection the caller believes is in place.
 public extension FTPTransport {
+    func listDirectories(_ remotePaths: [String], isCancelled: () -> Bool) throws -> [String?] {
+        try remotePaths.map { remotePath in
+            guard !isCancelled() else { throw CancellationError() }
+            // A refusal is an answer here, not a failure: the caller's whole vocabulary for "this
+            // directory could not be listed" is `nil`, and it distinguishes that from the empty
+            // string an empty directory legitimately gives. Cancellation is the one thing that must
+            // travel, since it is the caller's own instruction rather than the server's answer.
+            do {
+                return try listDirectory(remotePath)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                return nil
+            }
+        }
+    }
+
     @discardableResult
     func downloadSegments(
         _ segments: [DownloadSegment],

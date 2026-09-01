@@ -82,6 +82,7 @@ extension FTPCurlTransport {
         _ arguments: [String],
         configuration: String? = nil,
         watching source: TransferProgressWatch.Source = .none,
+        backstop: Int? = nil,
         progress: (Int64) -> Void = { _ in },
         isCancelled: () -> Bool = { false }
     ) throws -> RunResult {
@@ -155,10 +156,18 @@ extension FTPCurlTransport {
 
         // `curl`'s own `--max-time` should fire first; this is the backstop for a process that is
         // wedged rather than merely slow, so it is deliberately looser than the flag.
-        let budget = max(
+        //
+        // A caller may state its own, and one has to: `--max-time` is **per transfer** (probed —
+        // five 0.4 s transfers under a 1 s budget each ran 2.056 s in total and all five landed),
+        // so a run carrying many *sequential* sections may legitimately outlast the largest of
+        // them by the section count. Derived from the sections the way it is below, a batched
+        // listing of a wide level would be killed while it was working perfectly. The parallel
+        // callers want the maximum and keep it: their sections overlap, so the run is as long as
+        // its slowest section rather than as long as all of them.
+        let budget = backstop ?? (max(
             curlMaxTime(in: arguments),
             Self.curlMaxTime(inConfiguration: config)
-        ) + 30
+        ) + 30)
         switch ProcessWaiting.wait(
             for: group,
             deadline: .now() + .seconds(budget),

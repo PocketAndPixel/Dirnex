@@ -3683,6 +3683,44 @@ off a man page.
   correctly. It fails in the quiet direction (an empty listing reads as an empty directory), so a
   smoke test must assert *non-empty* rather than merely "no error".
 
+- **One `curl` can carry many `ftp://` URLs over *one* login, and that is the whole of FTP's subtree
+  shortcut — the listings themselves cannot be made fewer.** There is no recursive verb `curl` can
+  send: `-X "LIST -R"` does go out verbatim (traced), and support is the minority — ProFTPD and
+  wu-ftpd yes; vsftpd only under `ls_recurse_enable`, which is off by default and documented as a
+  DoS risk; pure-ftpd, FileZilla Server, IIS and pyftpdlib no — with **none reachable from this Mac**,
+  so choosing it would have shipped the common case unverified (▸ the same reason M22 retired GNU
+  `find -printf`). What *is* available is the connection around each listing, which is nearly all of
+  the cost. Measured 2026-09-01 over a 159-directory tree, 527 entries, identical either way: one
+  `curl` per directory is **160 invocations, 159 logins, 1.036 s on loopback and 11.264 s with the
+  server 50 ms away**; one `curl` per *level* is **4, 4, 0.149 s and 0.404 s**. A level of 1000
+  directories is one login and 0.649 s on 234 KB of config. Take the latency figure, not loopback's:
+  loopback removes the only cost being replaced.
+  - **`-Z` would undo it.** Parallel opens a connection per transfer, re-buying the per-directory
+    login — and it returns every listing correctly, so no assertion over the *answers* can see it.
+    The sequential run is a claim only the argv can carry, which is why it has a test of its own.
+  - **The exit code is the *last* transfer's, not the run's.** A refused section in the middle leaves
+    exit **0**; the identical refusal last gives exit **9**. So a multi-URL run cannot be classified
+    at all — the same finding the segmented download already records, arriving on a listing. A reader
+    that threw on a nonzero exit would discard a whole good level whenever its final directory
+    happened to be unreadable, and the subtree would come back short *while still claiming to be
+    complete*: the quiet direction, and only reachable by a test that puts the refusal last.
+  - **The per-section answer is the output file, and it separates the two cases exactly**: a refused
+    section creates **no file**, an *empty* directory creates a **0-byte** one. Nothing else does —
+    `write-out` markers on stdout would have to be framed against listing bytes a stranger chose, and
+    a file name may contain a newline. The bytes that land are byte-identical to a single `LIST`, so
+    the existing parser is reused and no second dialect appears.
+  - **`max-time` is per transfer, not per run** — five 0.4 s transfers under a 1 s budget each ran
+    2.056 s in total, exit 0, all five landed. So sections keep the ordinary metadata budget however
+    many there are; what has to change is the *process* backstop, which for a sequential batch is
+    their **sum** where the house rule (the maximum across sections) is right only for a parallel one
+    and would kill a healthy run part-way through.
+  - **`id(self)` is not a connection id.** Python recycles object ids, so keying a probe's per-session
+    accounting on one silently merged four concurrent connections into one and read as batching that
+    was not there — after attributing listings to logins *in order* had already been contaminated by
+    Swift Testing running the suite in parallel. A monotonic counter assigned on connect is the
+    instrument; the tell that the earlier two were wrong is a single "connection" serving listings
+    from four different tests.
+
 - **`APPE` is FTP's create-if-absent, and it is the reason a create there is non-destructive where
   SFTP's cannot be.** Measured 2026-08-23 against a real server with `-v` read for the verb:
   `curl --append -T <empty file>` sends **`APPE`**, which **creates** the file when it is absent

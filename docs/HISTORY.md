@@ -12658,7 +12658,7 @@ eliminated, and which neither implementable route depended on.
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-01)
 
-Thirty-six dated passes that landed outside a milestone of their own, between M18's close on
+Thirty-seven dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-01: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12666,6 +12666,72 @@ sit here at the end rather than in a numeric slot — and they keep their **newe
 because several read as a chain and refer to the entry below. Moved out of [PLAN.md](../PLAN.md)
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
+
+**2026-09-01 — a whole level of an FTP tree over one login.** PLAN.md §4's *"FTP has no
+server-side walk"*, closed — and it still has none, which is the finding rather than a caveat.
+SFTP borrows the server's own `find` over an exec channel and S3 asks for a delimiter-less listing;
+FTP has no recursive verb `curl` can send at all, so it makes one `LIST` per directory and always
+will. It was the last connected backend refusing ``VFSBackend/subtreeListing``, which by then had
+three consumers: search, `DirectorySync`, and — since the entry below — every folder total and size
+bar.
+
+**`LIST -R` was retired at the probe, which decided everything after it.** `curl -X "LIST -R"` does
+send it verbatim, confirmed on the wire; the servers that honour it are the minority — ProFTPD and
+wu-ftpd yes, vsftpd only under `ls_recurse_enable` (off by default, documented as a denial-of-service
+risk), pure-ftpd, FileZilla Server, IIS and pyftpdlib no — and **none reachable from this Mac does**.
+Taking it would have shipped the common case unverified against a second output dialect with its own
+framing hazards, which is the trade M22 refused when it retired GNU `find -printf`.
+
+**What was closeable is the connection around each listing, and that is nearly all of the cost.** One
+`curl` reading a multi-section `-K` config lists a whole *level* over one login. Measured against a
+real server over a 159-directory tree, 527 entries and identical results either way: one invocation
+per directory is **160 invocations and 159 logins**, one per level is **4 and 4** — 1.036 s against
+0.149 s on loopback, and **11.264 s against 0.404 s** with the server 50 ms away. Take the second
+pair: loopback flatters the walk by removing the only cost being replaced, the same warning the SFTP
+measurement carries. A single level of 1000 directories is one login and 0.649 s on 234 KB of config,
+so nothing a pane meets is near a ceiling.
+
+Three probe results shaped the code and none is guessable. **The run must not be parallel** — `-Z`
+opens a connection per transfer, re-buying the login this exists to avoid, and it would still return
+every listing correctly, so no assertion over the *answers* could ever see it; the absence of `-Z` is
+a claim only the argv can carry and has a test of its own. **`curl`'s exit code belongs to the last
+transfer, not the run** — a refused section in the middle leaves exit 0 and the identical refusal
+last gives exit 9 — so a batch cannot be classified at all, and a version that threw on a nonzero
+exit would discard a whole good level whenever its final directory happened to be unreadable, coming
+back short *while still claiming to be complete*. **The per-section answer is the output file**: a
+refused section creates none and an empty directory creates a 0-byte one, so presence separates
+"listed, and empty" from "could not be listed" exactly, and the bytes that arrive are byte-identical
+to a single `LIST` — `FTPListingParser` is reused and no second dialect appears. A fourth kept the
+runner honest: **`max-time` is per transfer, not per run** (five 0.4 s transfers under a 1 s budget
+each ran 2.056 s in total and all five landed), so the *process* backstop had to become the sum of
+the sections where the house rule takes their maximum, which is right for a parallel batch and would
+kill a healthy sequential one part-way through.
+
+The two rules inherited from the walk are opposite and one line apart: **below** the root an
+unreadable directory is skipped, and **at** the root it withdraws the shortcut outright so the walk
+lists the root itself and throws the server's own reason — answering an empty, complete subtree there
+would report an unreadable folder as an empty one. Recursion is on `kind == .directory` rather than
+`isDirectoryLike`, which is what the walk does and what makes a cycle through a symlink unreachable.
+There is no TLS-1.2 retry, for the reason `downloadSegments` has none: a failed batch falls back to
+the walk, whose `listDirectory` already carries it.
+
+Verified live against a real `pyftpdlib` server driving the real `FTPCurlTransport`, with the
+**server's own log** as the independent judge — and the instrument took two corrections before it was
+one. Attributing listings to logins *in order* was contaminated by Swift Testing running the suite's
+four tests in parallel, and keying them on `id(self)` was worse: Python recycles object ids, so four
+concurrent connections silently merged into one and read as batching that was not there. With a
+monotonic per-connection counter the answer is exact — of 53 connections that listed anything,
+**exactly two served more than one listing**, one carrying `docs` and `empty` (level 1 of the
+fixture) and one carrying the three-path batch whose middle path does not exist. The live suite
+compares the shortcut against a **walk of the same tree** rather than against a literal, since the
+seam's contract is that the two are indistinguishable, and that walk is written out by hand rather
+than borrowed from `SubtreeSearch` — reusing a caller of the code under test would prove the two
+agree rather than that either is right. Four negative controls each fired on its own claim: `-Z`
+fails the sequential invariant; conflating `nil` with `""` fails the root case and nothing else,
+correctly, since for a *subdirectory* the two produce the same subtree; throwing on a nonzero exit
+fails the live failure-last assertion; and renaming the witness out of the extension fails the
+existential-dispatch test, which exists because `CompositeBackend` holds an `any VFSBackend` and a
+witness that failed to land would leave the protocol's `nil` default silently in its place.
 
 **2026-09-01 — size bars wherever a folder has siblings.** PLAN.md §4's *"Size bars are local-only
 for a cost reason that covers only half of what it gates"*, closed. `areSizeBarsVisible` required

@@ -74,10 +74,34 @@ final class FakeFTPTransport: FTPTransport, @unchecked Sendable {
         let resume: Bool
     }
 
+    /// Directories this server will not list — the ordinary permission gap, which `error` cannot
+    /// express because it fails *every* verb. What makes the subtree shortcut's two opposite rules
+    /// testable: below the root such a directory is skipped, and at the root it withdraws the
+    /// shortcut altogether.
+    var unlistablePaths: Set<String> = []
+    /// Each batched request, in call order — the only place the difference between "one connection
+    /// per level" and "one per directory" is visible at all.
+    private(set) var listedBatches: [[String]] = []
+
     func listDirectory(_ remotePath: String) throws -> String {
         if let error { throw error }
+        if unlistablePaths.contains(remotePath) { throw FTPTransportError.permissionDenied }
         listedPaths.append(remotePath)
         return listings[remotePath] ?? ""
+    }
+
+    /// The batched listing, answered the way a real one is: one entry per request in order, `nil`
+    /// for a directory that could not be listed — never conflated with the empty string an empty
+    /// directory gives.
+    func listDirectories(_ remotePaths: [String], isCancelled: () -> Bool) throws -> [String?] {
+        if let error { throw error }
+        guard !isCancelled() else { throw CancellationError() }
+        listedBatches.append(remotePaths)
+        return remotePaths.map { path in
+            guard !unlistablePaths.contains(path) else { return nil }
+            listedPaths.append(path)
+            return listings[path] ?? ""
+        }
     }
 
     /// Fails **only** `makeDirectory`, leaving listings answerable — the state a real server is in

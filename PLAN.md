@@ -133,7 +133,7 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 
 ### Still open
 
-Everything through M26 is shipped, and the record of it — the milestone checklists, the thirty-six
+Everything through M26 is shipped, and the record of it — the milestone checklists, the thirty-seven
 dated passes that landed outside a milestone of their own, and the reasoning behind every decision —
 is in **[docs/HISTORY.md](docs/HISTORY.md)**. What is still open, rather than merely imaginable, is
 the *undone* column in the table above, plus the list below: one cut that is a unit of work on its
@@ -143,14 +143,6 @@ each too small to have been a slice of M24 or M25, and too real to leave unwritt
 - **The thumbnail grid, brief view and the `PaneSurface` extraction** — M15's cut, and one unit
   rather than three items, argued in HISTORY.md §M15. Any future grid inherits two constraints from
   it: skip `FileEntry.isDataless` rows, and move sort off the column header first.
-- **FTP has no server-side walk.** SFTP got one at M22 through the exec channel and S3 through a
-  delimiter-less listing; FTP has neither, so its search is one `LIST` per directory. `curl` reuses
-  one connection across many `ftp://` URLs, which is the shape worth measuring — and worth far less
-  than it looks now that `ProcessWaiting` no longer taxes every child ~71 ms. It has a **third**
-  consumer since 2026-09-01: `DirectorySizer` asks for a subtree before walking one, so FTP is the
-  only connected backend whose folder sizes and size bars still pay a round trip per directory —
-  measured elsewhere at 19.24 s against 0.156 s for the same tree — and the only one whose bar column
-  can exhaust its set allowance in ordinary use.
 - **No multipart upload over SFTP or FTP.** S3 splits a large upload into parts that fail and retry
   independently; the other two send one stream, so a transfer that dies late resumes from wherever
   `put -a` or `curl -C -` can pick it up rather than from a part boundary.

@@ -28,6 +28,15 @@ public struct FTPBackend: RemoteTransportBackend {
     /// failed to carry so far — held by reference for the reason ``segmentation`` is, so a fact
     /// about the *server* is not copied away with this value type (``RemoteMetadataSupport``).
     let metadata: RemoteMetadataSupport
+    /// The most entries the subtree shortcut may gather before it stops and reports itself
+    /// incomplete (``FTPBackend/subtreeListing(at:isCancelled:)``).
+    ///
+    /// A cap is not optional: the shortcut holds a whole tree in memory, and a level of a large
+    /// server's home directory can be very wide. The same 50 000 `SFTPBackend` uses, for the same
+    /// arithmetic and for one more reason — it is a `var` so a test can lower it, since a constant
+    /// chosen never to be met in practice makes its own rule untestable, which is a lesson this
+    /// project has already paid for once (docs/NOTES.md ▸ The SSH exec channel).
+    public var subtreeRowLimit = SSHFindCommand.defaultRowLimit
 
     public init(location: FTPLocation, transport: any FTPTransport) {
         self.location = location
@@ -380,7 +389,11 @@ public struct FTPBackend: RemoteTransportBackend {
         }
     }
 
-    private func entry(from parsed: FTPListingParser.Entry, in directory: VFSPath) -> FileEntry {
+    // Internal rather than private: the subtree shortcut lives in `FTPBackend+Subtree.swift` and
+    // builds its entries through this, so the two routes cannot drift into producing different
+    // rows for the same listing bytes. Swift's `private` does not cross files (docs/NOTES.md ▸ file
+    // splitting).
+    func entry(from parsed: FTPListingParser.Entry, in directory: VFSPath) -> FileEntry {
         entry(from: parsed, at: directory.appending(parsed.name), name: parsed.name)
     }
 
