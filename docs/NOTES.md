@@ -650,6 +650,32 @@ at build time.
   run, since 1018 passing tests look identical whether the live eight are among them or not. Worth
   standing a throwaway server up and re-running before believing any claim a live suite is supposed
   to be holding up; it is ten minutes (▸ The SSH exec channel).
+  - **Re-measured 2026-09-01 with both servers actually up, and the run summary is not merely a weak
+    tell — it is *no* tell.** The two runs report the identical `Test run with 1018 tests in 169
+    suites passed`, because a suite disabled by `.enabled(if:)` is still *counted*; what moves is
+    what executed, **979 ticks across 161 suites against 922 across 147** (and 997/165 with the six
+    S3 suites live as well). So the discriminator is
+    the per-suite list or the tick count, never the summary, and the gap is bigger than this entry
+    said: **fourteen** suites and ~53 tests, not eight. The eight it names are the SFTP ones; the
+    rest are the FTP suite, the relay (which needs *both* servers and had therefore never run
+    either), the two server-side-copy suites and the two pack suites.
+  - **`scripts/live_test_servers.sh up` is that "ten minutes" as one command**, and it exists for
+    the reason this file gives everywhere else: a check living in prose is not a check. It stands
+    up the throwaway `sshd` and a `pyftpdlib` server, writes both configs, and `down` removes them
+    and unpins the host key. Its own two traps are recorded at the top of it — teardown kills by
+    **port** rather than by a pid file, which is the one record that goes missing exactly when it
+    is needed; and the state directory must be under **`/private/tmp`**.
+  - **That last one is a *fixture* precondition, not a preference, and getting it wrong reads as
+    a broken feature.** `/private/tmp` is itself gid 0, so a file created there lands in `wheel` —
+    which is what lets `RemoteAttributeWriteLiveTests` chown its fixture to gid 0 to reach a group
+    the account is not in (the only way `sftp`'s silent set-gid drop is arrangeable ▸ sftp / ssh):
+    from a group you already hold, that chown is a permitted no-op. Under `${TMPDIR}` the parent
+    is gid 20, the same chown is a real group change, and it fails `EPERM`. Measured: pointing
+    `remotePath` there produced **79 issues** whose text claims a mode write was not refused when
+    it should have been — a wrong answer about the *product* from a misplaced fixture, and the
+    same shape this file already records for a live suite's unstated preconditions. The run still
+    printed `** TEST SUCCEEDED **` under all 79, which is the issue-count rule below arriving from
+    the outside.
 
 - **A doc comment between `@MainActor` and `@Suite` discovers *zero tests*, and reports success.**
   Same run: the suite printed `✔ Suite "…" passed after 0.001 seconds` and the run summary read

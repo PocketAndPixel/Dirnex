@@ -12667,6 +12667,42 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
 
+**2026-09-01 — the live suites were run, and the run summary turned out to be no tell at all.**
+NOTES.md had recorded that morning that a live suite whose config file has gone reports success by
+*skipping*, and that `sendsPartsConcurrently` had therefore shipped with its suite never once having
+run against a server. The configs were gone again by evening, so **every** SFTP, FTP and S3 live
+suite was dark. A throwaway `sshd` and a `pyftpdlib` server were stood up and all of them run: the
+split-upload suite passed against a real server for the first time (three tests, including the
+four-reports assertion that is the only thing distinguishing the split from the single-stream
+fallback), and so did the relay suite, which needs *both* servers and had therefore almost certainly
+never run either — SFTP→FTP and FTP→SFTP, byte for byte. Full app suite with everything live:
+**979 executed across 161 suites, zero issues**.
+
+The measurement that came out of it corrects the morning's note rather than confirming it. The run
+summary reads `Test run with 1018 tests in 169 suites passed` **identically** with the configs
+present and absent, because a suite disabled by `.enabled(if:)` is still counted — what moves is
+what *executed*, 979/161 against 922/147. So the gap is fourteen suites and ~53 tests, not the eight
+the note named, and the only discriminator is the per-suite list. Two further things fell out. The
+"ten minutes" of prose became `scripts/live_test_servers.sh`, on this project's own argument that a
+check living in prose is not a check; and its first version put the remote root under `${TMPDIR}`,
+which produced **79 issues** claiming a mode write had not been refused when it should have been.
+That is a *fixture* precondition, not a preference: `/private/tmp` is itself gid 0, so a file
+created there lands in `wheel` and `RemoteAttributeWriteLiveTests`' chown to gid 0 — the only way
+`sftp`'s silent set-gid drop is arrangeable — is a permitted no-op, where under `${TMPDIR}` it is a
+real group change and fails `EPERM`. A misplaced fixture reading as a wrong answer about the
+product. The run
+printed `** TEST SUCCEEDED **` under all 79 of them.
+
+Credentials for a dedicated `dirnex-s3-test` IAM user arrived in the same session, so the S3 half
+ran too — all six suites, against a real `eu-north-1` bucket, green. **997 executed across 165
+suites with all three transports live**, against 979/161 for SFTP and FTP alone and 922/147 for
+none. Three of those tests are worth naming because they had been argued from a local endpoint
+until now: a bucket really is created and deleted through the pane's own backend (so the IAM user
+holds `CreateBucket` on the probe ARN), a name another account owns really is refused as globally
+taken rather than as a local collision, and **a stale tag really does refuse the completion of a
+multipart upload and publish nothing** — the 412-inside-a-200 shape §M21 had only ever pinned
+against our own SigV4-verifying endpoint.
+
 **2026-09-01 — Amazon finally answered the multipart questions, and the answer was yes.**
 `S3MultipartLiveIntegrationTests` has carried a doc comment since it shipped saying its subject had
 *"never been answered by Amazon"* — Slices 5 and 8 verified multipart against a local endpoint and
