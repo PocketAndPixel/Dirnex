@@ -1,11 +1,18 @@
 import AppKit
 import DirnexCore
 
-/// Putting an edited remote file back on the server it came from (PLAN.md §M21 Slice 10).
+/// The **decisions** behind putting an edited remote file back on the server it came from
+/// (PLAN.md §M21 Slice 10) — what the check found, what precondition the write carries, and what a
+/// refusal means.
 ///
-/// The window owns this for the reason the archive write-back lives here: an edit outlives whatever
-/// the panes are showing. Someone can open a file off a bucket, navigate both panes elsewhere, close
-/// the tab, and save an hour later — and the answer still has to be "put it back".
+/// The flow that runs them is `+WriteBackBatch`, which gathers saves into one queued job. The split
+/// is by concept and not by line count: everything here is pure and `static`, so the rules and
+/// their wording are testable with no window, no server and no queue — which is what let the flow
+/// underneath them be rewritten (2026-09-01) with the sentences the user reads left untouched.
+///
+/// The window owns both halves for the reason the archive write-back lives here: an edit outlives
+/// whatever the panes are showing. Someone can open a file off a bucket, navigate both panes
+/// elsewhere, close the tab, and save an hour later — and the answer still has to be "put it back".
 ///
 /// **It re-`stat`s before it writes, and only *asks* when that answered something.** None of the
 /// three remote protocols has a lock, and an upload is a whole-file write: S3's is a whole-object
@@ -33,64 +40,6 @@ import DirnexCore
 /// layer out. The four-way `RemoteRevisionEvidence` that graded those blind spots went with the
 /// wording it existed to produce, so `isSuperseded(by:)` is now the whole of the comparison.
 extension BrowserWindowController {
-    /// A watched copy of a remote file has been saved — check the server, then upload it or ask.
-    func offerRemoteWriteBack(_ edit: EditedFile, to path: VFSPath) {
-        let backend = focusedPanel.backend
-        let recorded = remoteFileCache.revision(for: path)
-        Task {
-            let current = await BlockingWork.run { try? backend.stat(at: path) }
-            let checked = current.map(RemoteFileRevision.init)
-            let condition = Self.writeCondition(checked: checked)
-            guard let concern = Self.writeBackConcern(recorded: recorded, current: checked) else {
-                // Nothing to weigh, so nothing to interrupt for: this is the save the user asked
-                // for, landing where they asked for it.
-                uploadEditedFile(edit, to: path, condition: condition)
-                return
-            }
-            presentRemoteWriteBackOffer(edit, to: path, concern: concern, condition: condition)
-        }
-    }
-
-    /// The one dialog, raised only when ``writeBackConcern(recorded:current:)`` had something to say
-    /// and worded by it.
-    private func presentRemoteWriteBackOffer(
-        _ edit: EditedFile,
-        to path: VFSPath,
-        concern: String,
-        condition: S3WriteCondition
-    ) {
-        let alert = NSAlert()
-        alert.messageText = String(
-            localized: "Upload “\(edit.name)” back to the server?",
-            comment: """
-            Title of the write-back prompt after a file downloaded from a server was edited; %@ is \
-            the file's name.
-            """
-        )
-        alert.informativeText = concern
-        alert.addButton(withTitle: String(
-            localized: "Upload",
-            comment: "Button that uploads an edited file back to the server it came from."
-        ))
-        alert.addButton(withTitle: String(
-            localized: "Keep Editing",
-            comment: """
-            Button that declines uploading an edited file, leaving the editor open so the user can \
-            save again later.
-            """
-        ))
-        // `NSAlert` binds Escape by matching the byte string "Cancel", which neither button is —
-        // so the response, not the title, is what says which one ⎋ means (docs/NOTES.md).
-        alert.enableEscapeToCancel(safe: .alertSecondButtonReturn)
-
-        let handler: (NSApplication.ModalResponse) -> Void = { [weak self] response in
-            guard response == .alertFirstButtonReturn else { return }
-            self?.uploadEditedFile(edit, to: path, condition: condition)
-        }
-        // The watcher raised this, not the user — see `beginSheetIfVisible`.
-        alert.beginSheetIfVisible(over: window, completionHandler: handler)
-    }
-
     /// What the re-`stat` found, in the user's terms — or `nil` when it found nothing worth saying.
     ///
     /// The split that decides whether anybody is interrupted is not "changed / unchanged": it is
@@ -182,108 +131,7 @@ extension BrowserWindowController {
         return .ifMatches(entityTag: entityTag)
     }
 
-    // MARK: - The upload
-
-    /// Send the edited copy back up, then re-baseline what a *second* save will compare against.
-    ///
-    /// The write is routed to the backend that can carry `condition` when there is one, and to the
-    /// ordinary `copyFile` when there is not — never the other way about. A conditional call that
-    /// quietly lost its precondition is the one outcome worse than not having the feature, which is
-    /// why the seam beneath this throws rather than dropping it (`S3WriteConditionUnsupported`).
-    ///
-    /// **It says so afterwards**, on the status line rather than in an alert, because since
-    /// 2026-08-23 the ordinary save reaches here having asked nothing — and an upload that leaves no
-    /// trace on screen is indistinguishable from one that never happened. Reported unconditionally,
-    /// including on the paths that *did* ask: a second surface saying the same thing costs a line
-    /// nobody has to dismiss, where a branch on how the user got here is a rule to keep right.
-    /// Failures keep their alert; this is the routine half, which is the half a modal is wrong for.
-    private func uploadEditedFile(
-        _ edit: EditedFile,
-        to path: VFSPath,
-        condition: S3WriteCondition
-    ) {
-        let backend = focusedPanel.backend
-        let writer = condition.isConditional
-            ? (backend as? CompositeBackend)?.conditionalWriter(for: path)
-            : nil
-        let source = VFSPath.local(edit.temporaryURL.path)
-        let url = edit.temporaryURL
-        Task {
-            let outcome = await BlockingWork.run { () -> Result<Void, any Error> in
-                Result {
-                    guard let writer else {
-                        return try backend.copyFile(
-                            at: source, to: path, progress: { _ in }, isCancelled: { false }
-                        )
-                    }
-                    // The answer — whether the precondition actually travelled — is deliberately
-                    // not shown anywhere: a file over the multipart threshold reports `false`, and
-                    // the prompt the user already agreed to never claimed the write was guarded.
-                    // It rests on the re-`stat`, which works on every server and in every size.
-                    // Saying "this large save was not protected" would be announcing the absence
-                    // of a protection nothing had promised (`S3ConditionalWrite`).
-                    try writer.upload(
-                        localPath: url.path,
-                        over: path,
-                        condition: condition,
-                        progress: { _ in },
-                        isCancelled: { false }
-                    )
-                }
-            }
-            do {
-                try outcome.get()
-            } catch {
-                presentWriteBackFailure(error, edit: edit, to: path)
-                return
-            }
-            // The watch deliberately stays: unlike a repack, an upload changes nothing on this Mac,
-            // the editor still has this very file open, and a second save has to come back through
-            // here (`EditedFileRegistry.stopWatching`). What must move is the revision the next check
-            // compares against — leaving the pre-upload one would have our own write read back as
-            // "someone else has edited it", which is the one sentence that must never be wrong.
-            await rebaseline(path, to: url, using: backend)
-            refreshPanesShowing(path.parent)
-            // On the focused pane, not on whichever pane is drawing the directory: this reports
-            // where the user's attention is, and both of them may have navigated away during an
-            // edit that took an hour.
-            focusedPanel.showTransientStatus(String(
-                localized: "Uploaded “\(edit.name)” to the server",
-                comment: """
-                Status line shown after an edited file was uploaded back to the server it came \
-                from; %@ is the file's name.
-                """
-            ))
-        }
-    }
-
     // MARK: - When the server says no
-
-    /// Report a failed upload — or, when the *precondition* is what refused it, offer the way
-    /// through rather than a dead end.
-    ///
-    /// A refused precondition is not a malfunction: it means the object moved under us in the
-    /// window between the check and the `PUT`, which is the exact race this slice added the header
-    /// for. The user has already answered one question about overwriting and is entitled to answer
-    /// this one, so the sentence arrives as a *decision* rather than as an error with an OK button
-    /// — otherwise the only route left is saving again in the editor, and an editor asked to save a
-    /// file it has not changed may write nothing for the watcher to notice.
-    private func presentWriteBackFailure(_ error: any Error, edit: EditedFile, to path: VFSPath) {
-        guard let conflict = Self.writeBackConflict(from: error) else {
-            focusedPanel.presentOperationFailure(
-                message: String(
-                    localized: "Couldn’t upload “\(edit.name)”",
-                    comment: """
-                    Alert title when uploading an edited file back to its server fails; %@ is the \
-                    file's name.
-                    """
-                ),
-                detail: focusedPanel.describe(error)
-            )
-            return
-        }
-        presentUploadAnywayOffer(conflict, edit: edit, to: path)
-    }
 
     /// Whether `error` is the server refusing the precondition, as opposed to anything else that
     /// can go wrong on the way up.
@@ -301,53 +149,6 @@ extension BrowserWindowController {
         case .remoteFileGoneSinceFetch: return .gone
         default: return nil
         }
-    }
-
-    /// The second question, asked once and never in a loop: the retry is **unconditional**, so it
-    /// cannot come back here.
-    ///
-    /// That is a decision rather than a shortcut. Re-reading the object and conditioning on the new
-    /// tag would be more precise and could be refused again by a third writer, which is a loop with
-    /// a round trip in it (the same shape the FTPS trust retry had to guard against); and the user
-    /// has now been told twice, so a third round trip has nothing left to tell them. An
-    /// unconditional write is exactly what this save would have done before this slice existed.
-    private func presentUploadAnywayOffer(
-        _ conflict: RemoteWriteBackConflict,
-        edit: EditedFile,
-        to path: VFSPath
-    ) {
-        let alert = NSAlert()
-        alert.messageText = String(
-            localized: "Upload “\(edit.name)” anyway?",
-            comment: """
-            Title of the prompt shown when the server refused a conditional save-back; %@ is the \
-            file's name.
-            """
-        )
-        alert.informativeText = Self.uploadAnywayBody(conflict)
-        alert.addButton(withTitle: String(
-            localized: "Upload Anyway",
-            comment: """
-            Button that uploads an edited file over the server's copy after the server refused the \
-            guarded upload.
-            """
-        ))
-        alert.addButton(withTitle: String(
-            localized: "Keep Editing",
-            comment: """
-            Button that declines uploading an edited file, leaving the editor open so the user can \
-            save again later.
-            """
-        ))
-        alert.enableEscapeToCancel(safe: .alertSecondButtonReturn)
-
-        let handler: (NSApplication.ModalResponse) -> Void = { [weak self] response in
-            guard response == .alertFirstButtonReturn else { return }
-            self?.uploadEditedFile(edit, to: path, condition: .unconditional)
-        }
-        // The chain this continues was raised by the edit watcher, not by a key anybody pressed, so
-        // a window that has gone away in the meantime has nobody to ask (`beginSheetIfVisible`).
-        alert.beginSheetIfVisible(over: window, completionHandler: handler)
     }
 
     /// What the server refused, and what uploading anyway would do about it.
@@ -384,38 +185,6 @@ extension BrowserWindowController {
                 the file no longer exists.
                 """
             )
-        }
-    }
-
-    /// Re-read what the server now holds and record it as the copy's revision.
-    ///
-    /// A failed read drops the entry instead of keeping the stale one: with nothing recorded the
-    /// next save says plainly that it cannot tell, which is true, where a stale revision would say
-    /// something false with confidence.
-    private func rebaseline(_ path: VFSPath, to url: URL, using backend: any VFSBackend) async {
-        let uploaded = await BlockingWork.run { try? backend.stat(at: path) }
-        guard let uploaded else {
-            remoteFileCache.drop(path)
-            return
-        }
-        remoteFileCache.rebaseline(path, to: RemoteFileRevision(uploaded), url: url)
-    }
-
-    /// Re-list any pane drawing `directory`, so the size and date it shows for the object are the
-    /// ones just written.
-    ///
-    /// Both panes, by *content* rather than by role — the pane that opened the file may have
-    /// navigated away, both may be in the same directory, or neither may be. The same "ask which
-    /// pane is showing this, don't assume" shape the archive write-back and the pack outcome need.
-    ///
-    /// Through `isShowing`, not `panel.path ==`, and that is the whole of the 2026-08-22 fix: a tree
-    /// draws several directories at once, so an object edited from an account pane with its bucket
-    /// expanded is two levels below the path this used to compare against. The upload succeeded and
-    /// the row kept the size and date it had.
-    private func refreshPanesShowing(_ directory: VFSPath?) {
-        guard let directory else { return }
-        for pane in [leftPanel, rightPanel] where pane.isShowing(directory) {
-            pane.refreshCurrentDirectory()
         }
     }
 }

@@ -6076,6 +6076,43 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   second look wherever the caller has an order and the callee is about to invent one; and the first
   hypothesis for an ordering flake ("the timestamps must be coarse") was measured **wrong** here,
   APFS recording birth times to the nanosecond, so the tell was in how the field was *read*.
+- **A cancelled upload's destination is in a state the client cannot name, and "it completed" is not
+  the same claim as "the bytes are there".** Measured live 2026-09-01 against a real `sshd` while
+  building the save-back batch: stopping a run at the moment the *second* file's bytes appeared on
+  the server left `put` having already written them, and the transport then noticed the cancellation
+  and threw — so the runner returned a report that did **not** name that destination, correctly,
+  because from inside there is no way to tell a transfer that finished a microsecond before the stop
+  from one truncated halfway. It is the mirror of the download rule this file already records — a
+  cancelled *fetch* takes its whole directory with it, since a truncated document renders as damage
+  — and it inverts, because the truncated thing is now on somebody else's server and is not ours to
+  delete.
+  - **What follows is that the caller must drop what it cannot vouch for, not keep it.** A save-back
+    re-baselines the revision the *next* save compares against, and an interrupted item left holding
+    its pre-upload revision produces a confident false sentence — "someone else has edited it" —
+    about our own write. Dropping the record makes the next save say it cannot tell, which is the
+    true answer.
+  - **It cost two wrong test triggers before it was visible, and both read as bugs in the code.**
+    Counting how many times `isCancelled` was asked assumed a poll rhythm that belongs to the
+    *transport* (the SFTP backend polls its own number of times inside a transfer, not twice per
+    item); stopping on the **first** file's bytes cancels the very transfer that produced them, so
+    nothing is ever claimed. The signal that works is the bytes of a *later* item — by then the
+    earlier one is finished whatever the transport is doing. **Ask which layer owns the rhythm you
+    are keying on**, and prefer an observable the code under test produces over one its dependency
+    does.
+
+- **A batch's coalescing window is worth borrowing rather than choosing, and the delivery mechanism
+  usually has one already.** Gathering N save-backs into one job needs a moment to let a burst
+  arrive, and the tempting move is to pick a number. Each edited copy here is watched by its own
+  `FSEventStream`, and every one of those is *already* holding its events for
+  `DirectoryWatcher.coalescingWindow` — so waiting exactly that long is waiting out the thing that
+  is delivering them, which is a fact rather than a guess, and it moves if the watcher's does.
+  - **The rest of the pacing needs no constant at all.** A batch takes everything pending, and
+    whatever arrives during its checks and its upload is waiting when the loop comes back round —
+    so the batch size is set by how long the previous one took. A burst forms one batch, a script
+    that writes a file every few seconds forms a few, and a lone ⌘S forms one of one. A fixed window
+    would have had to be right for all three, and the one that is right for a burst is wrong for a
+    script that takes a minute per file.
+
 - **An undo that is a *second write* rather than a rewind inherits every doubt the first write had —
   including the one about whether it landed.** Reversing a remote attribute change sends the previous
   values back through the same `applyMetadata` the panel's Save used, so a server free to refuse the

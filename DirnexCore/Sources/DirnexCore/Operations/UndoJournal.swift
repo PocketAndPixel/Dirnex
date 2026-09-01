@@ -234,7 +234,14 @@ public extension UndoRecord {
         // `.materialize` joins the three that produce no `outcomes`, and for the strongest of the
         // four reasons: the others changed something the user cannot see back; this one moved bytes
         // into a temp directory and changed nothing at all.
-        case .checksum, .attributes, .pack, .plainPack, .materialize: return nil
+        //
+        // `.writeBack` is the one whose `nil` is a *refusal* rather than a shrug. It really does
+        // change something the user would want back — the server's previous copy — and that copy is
+        // what the upload destroyed, so there is nothing to put back rather than nowhere to put it.
+        // Every write-back confirmation has said so since M21 Slice 10 ("uploading replaces the
+        // copy on the server and can't be undone"), which is what makes this the marked
+        // non-reversible operation PLAN.md §6 requires rather than a silently dropped one.
+        case .checksum, .attributes, .pack, .plainPack, .materialize, .writeBack: return nil
         }
         var steps: [UndoStep] = []
         var nonReversible = 0

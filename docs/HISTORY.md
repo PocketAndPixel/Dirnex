@@ -12658,7 +12658,7 @@ eliminated, and which neither implementable route depended on.
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-01)
 
-Thirty-nine dated passes that landed outside a milestone of their own, between M18's close on
+Forty dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-01: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12666,6 +12666,69 @@ sit here at the end rather than in a numeric slot — and they keep their **newe
 because several read as a chain and refer to the entry below. Moved out of [PLAN.md](../PLAN.md)
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
+
+**2026-09-01 — remote save-backs coordinate.** PLAN.md §4's last M25 leftover, and the one it
+described most exactly: *"the mirror of a job that already exists rather than a new one"*. A user
+script that rewrote forty files on a server produced forty independent uploads — each its own
+`Task`, each `stat`ing and uploading on its own, with no combined bar, no Stop, no ordering, and
+forty sheets if any of them had something to say. They are now one `.writeBack` job, the mirror of
+the `.materialize` M24 Slice 2 built for the download direction.
+
+**Every save-back goes through it, including a single ⌘S** — Oleg's call, and the download side had
+already settled the same question the same way: a one-row Open With fetch is a queue job with no
+single-file branch. The alternative was to leave the single save on its old path and queue only a
+batch, which is two spellings of "upload an edited file" and the shape this project keeps paying
+for; the two would have drifted the first time the precondition or the re-baseline changed. What a
+single save gains is a queue row and a Stop it did not have.
+
+**The gathering paces itself, and its one constant is borrowed rather than chosen.** A batch opens
+on the first save and closes ``DirectoryWatcher/coalescingWindow`` later — the same window each
+watcher is already holding its events for, so what it waits out is the delivery mechanism rather
+than a guess about how fast a script writes. Everything arriving while a batch is checking or
+uploading joins the *next* one, so a slow script forms a few large batches rather than one per file,
+with no second timer and nothing to tune.
+
+**The checks run sequentially, and that is the ordering rather than a concession.** Forty concurrent
+`stat`s over SFTP is forty connections at once, which a stock OpenSSH server begins refusing at ten
+(`MaxStartups`) — and on S3 each is a billed request nobody is waiting on individually. One pass
+costs a round trip per file and can flood nothing.
+
+**One sheet, and Oleg took the three-way answer.** A check that found nothing is not a question — the
+rule the single save has followed since 2026-08-23, and the common case here by construction, since
+the copies were downloaded minutes earlier by the same gesture that rewrote them. When something is
+contested the sheet says how many of how many and offers **Upload All / Skip Changed Files / Keep
+Editing**: all-or-nothing was the alternative, and cancelling to protect three files would abandon
+thirty-seven edits the user would then have to re-trigger by saving again in an editor that may
+write nothing because nothing changed. The Skip button is withheld when *every* file is contested,
+where it would do exactly what Keep Editing does under a name that says otherwise.
+
+**The job is core code because the seam moved into `VFSBackend`.** A guarded save-back used to reach
+`S3Backend` through an `as? CompositeBackend` cast and a `conditionalWriter(for:)` lookup, which a
+queue runner holding `any VFSBackend` cannot do. ``VFSBackend/writeBack(localPath:to:condition:progress:isCancelled:)``
+replaces it: `S3Backend` forwards to the `upload` it already had, `CompositeBackend` routes on the
+**destination**, and the default writes through `copyFile` — while **throwing rather than dropping**
+a condition it cannot carry. That last rule used to rest on an argument (only an S3 listing carries
+an entity tag, so only S3 is ever asked) and the old code's `nil` lookup fell through to an
+unconditional `copyFile`, i.e. a silently unguarded write under a promise that it was guarded. It is
+now the seam's own default, and the argument is no longer load-bearing.
+
+**The live run found the thing no fake could.** Stopping a batch the moment the second file's bytes
+appeared on the server left `put` having already written them, and the transport then threw — so the
+report does **not** name that destination, correctly, because from inside there is no way to tell a
+transfer that finished a microsecond before the stop from one truncated halfway. The consequence is
+the caller's: an interrupted item's recorded revision is now **dropped** rather than kept, so the
+next save says *"Dirnex has no record of what this file looked like"* — true — instead of *"someone
+else has edited it"*, which would be a confident false sentence about our own write. Two wrong
+triggers came first and each read as a bug in the runner (docs/NOTES.md ▸ the entry this produced).
+
+**Six negative controls, and the sixth is the one worth having.** The default dropping a condition,
+the runner abandoning the batch on a refusal, over-reporting the landings, Skip uploading everything,
+and the button mapping ignoring whether Skip was offered — each fails exactly its own test. The
+sixth, deleting the queue's route back to the batch, compiled clean and **nothing caught it**: the
+gesture would wait on a report that never comes, and because the gather is serialized, no further
+save-back would happen for the life of the window. So the rule was extracted
+(`BrowserWindowController.reportsToItsGesture(_:)`) — an exhaustive `switch` assertable with no
+window, which retroactively covers `.materialize`'s identical route, untested since M24 Slice 2.
 
 **2026-09-01 — a remote attribute change is undoable.** PLAN.md §4's *"a pair of small pieces
 rather than a hook that already exists"*, taken on the same day as the archive one above and for the

@@ -53,6 +53,29 @@ extension NSAlert {
         beginSheetModal(for: host, completionHandler: completionHandler)
     }
 
+    /// The `await` spelling of ``beginSheetIfVisible(over:completionHandler:)`` — and the reason it
+    /// is not ``runSheet(over:onPresented:)`` is the one that method's own fallback line makes.
+    ///
+    /// `runSheet` answers a windowless caller with `runModal()`, which is right for an alert a user
+    /// pressed something to get and **wrong for one a watcher raised**: it blocks the process on a
+    /// dialog that arrived by itself. So this one asks nobody and answers `whenUnasked`.
+    ///
+    /// The caller has to name that answer rather than getting a default, because it is a decision
+    /// about the user's files: for a save-back it is "upload nothing", which leaves the copy watched
+    /// so the next save asks again — never a silent yes to a question that was never put.
+    ///
+    /// One `resume` on every path, which is the whole hazard here: the non-async spelling simply
+    /// returns when there is no host, and a continuation wrapped around it would wait forever.
+    func sheetAnswer(
+        over window: NSWindow?,
+        whenUnasked: NSApplication.ModalResponse
+    ) async -> NSApplication.ModalResponse {
+        guard let host = NSAlert.sheetHost(over: window) else { return whenUnasked }
+        return await withCheckedContinuation { continuation in
+            beginSheetModal(for: host) { continuation.resume(returning: $0) }
+        }
+    }
+
     /// Present as a sheet on ``sheetHost(over:)`` and wait for the answer.
     ///
     /// `onPresented` runs once the sheet is up, for the one thing a sheet cannot do for itself:

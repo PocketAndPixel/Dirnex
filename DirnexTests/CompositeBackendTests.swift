@@ -1,4 +1,5 @@
 import DirnexCore
+import Foundation
 import Testing
 
 @testable import Dirnex
@@ -165,37 +166,81 @@ struct CompositeBackendTests {
 
     // MARK: - Who can carry a precondition
 
-    /// The lookup a guarded save-back routes through (PLAN.md §M21 Slice 18), and the reason it is
-    /// a lookup rather than a test on the path: `path.backend.isS3` is `true` for a bucket nobody
-    /// has connected, where there is no credential to sign with and nothing to write through.
-    @Test("a connected bucket can carry a precondition, and an unconnected one cannot")
-    func conditionalWriterNeedsAConnection() {
-        let path = VFSPath(backend: .s3(Self.bucket), path: "/docs/notes.txt")
-        #expect(backend.conditionalWriter(for: path) == nil)
-
-        backend.connectS3(location: Self.bucket, secretAccessKey: "secret")
-        #expect(backend.conditionalWriter(for: path) != nil)
+    /// A save-back is routed by its **destination** and refuses a precondition it cannot carry
+    /// (PLAN.md §M21 Slice 18, re-seated on ``VFSBackend/writeBack(localPath:to:condition:progress:isCancelled:)``
+    /// 2026-09-01).
+    ///
+    /// This replaced a `conditionalWriter(for:)` lookup that answered `nil` for everything but a
+    /// connected bucket — and whose `nil` the caller turned into an **unconditional `copyFile`**,
+    /// i.e. a silently unguarded write under a promise that it was guarded. That was unreachable in
+    /// practice (only an S3 listing carries an entity tag, and reading one needs a connection), so
+    /// it rested on an argument rather than on the code. Now the refusal is the seam's own default
+    /// and the argument is not load-bearing.
+    @Test("a precondition is refused by everything that cannot carry one, never dropped")
+    func conditionalWriteIsRefusedWhereItCannotBeCarried() throws {
+        backend.connectS3Account(account: Self.bucket.account, secretAccessKey: "secret")
+        let elsewhere: [VFSPath] = [
+            .local("/Users/me/notes.txt"),
+            VFSPath(backend: .s3Account(Self.bucket.account), path: "/photos/a.txt"),
+            VFSPath(backend: .sftp(SFTPLocation(host: "h", username: "u")), path: "/home/u/a"),
+            VFSPath(backend: .archive(forArchiveAt: "/Users/me/pkg.zip"), path: "/a/b.txt")
+        ]
+        for destination in elsewhere {
+            #expect(throws: (any Error).self) {
+                try backend.writeBack(
+                    localPath: "/dev/null",
+                    to: destination,
+                    condition: .ifMatches(entityTag: "\"abc\""),
+                    progress: { _ in },
+                    isCancelled: { false }
+                )
+            }
+        }
     }
 
-    /// The narrowness controls, and they are the half that matters: a lookup that answered for
-    /// everything would send an `If-Match` down a path that cannot carry one, and the seam beneath
-    /// it throws rather than dropping the header — so the failure would be a save-back that stops
-    /// working over SFTP, FTP and the local disk alike.
-    @Test("nothing but a bucket answers, connected or not")
-    func conditionalWriterIsNarrow() {
-        backend.connectS3(location: Self.bucket, secretAccessKey: "secret")
-        backend.connectS3Account(account: Self.bucket.account, secretAccessKey: "secret")
+    /// The narrowness half, and the one that would fail if "refuse a condition" became "refuse":
+    /// an **unconditional** save-back to the local disk is an ordinary copy and has to work.
+    @Test("an unconditional save-back writes the bytes")
+    func unconditionalWriteBackCopies() throws {
+        let directory = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = directory.appendingPathComponent("edited.txt")
+        let destination = directory.appendingPathComponent("original.txt")
+        try "edited".write(to: source, atomically: true, encoding: .utf8)
+        // A local destination stands in for the routing only: a real save-back always lands on a
+        // remote connection (`canEditRemoteFile`), where the transport truncates. `LocalBackend`
+        // refuses an occupied destination, so pre-creating one here would be testing a combination
+        // the product cannot reach.
 
-        #expect(backend.conditionalWriter(for: .local("/Users/me/notes.txt")) == nil)
-        #expect(backend.conditionalWriter(
-            for: VFSPath(backend: .s3Account(Self.bucket.account), path: "/photos")
-        ) == nil)
-        #expect(backend.conditionalWriter(
-            for: VFSPath(backend: .sftp(SFTPLocation(host: "h", username: "u")), path: "/home/u/a")
-        ) == nil)
-        #expect(backend.conditionalWriter(
-            for: VFSPath(backend: .archive(forArchiveAt: "/Users/me/pkg.zip"), path: "/a/b.txt")
-        ) == nil)
+        let guarded = try backend.writeBack(
+            localPath: source.path,
+            to: .local(destination.path),
+            condition: .unconditional,
+            progress: { _ in },
+            isCancelled: { false }
+        )
+        #expect(try String(contentsOf: destination, encoding: .utf8) == "edited")
+        // Never claims a guard it did not ask for — the answer is about this client, and the local
+        // disk sent no precondition because there was none to send.
+        #expect(!guarded)
+    }
+
+    /// An unconnected bucket is refused before anything is signed — the claim the old lookup made
+    /// by answering `nil`, now made by the router every other verb already goes through.
+    @Test("a save-back to an unconnected bucket is refused")
+    func writeBackNeedsAConnection() {
+        let path = VFSPath(backend: .s3(Self.bucket), path: "/docs/notes.txt")
+        #expect(throws: (any Error).self) {
+            try backend.writeBack(
+                localPath: "/dev/null",
+                to: path,
+                condition: .unconditional,
+                progress: { _ in },
+                isCancelled: { false }
+            )
+        }
     }
 
     // MARK: - Accounts

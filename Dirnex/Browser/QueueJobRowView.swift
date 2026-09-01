@@ -214,6 +214,11 @@ final class QueueJobRowView: NSView {
                 localized: "Download \(name)",
                 comment: "Queue row label; %@ is the remote file being downloaded."
             )
+        case .writeBack:
+            return String(
+                localized: "Upload \(name)",
+                comment: "Queue row label; %@ is the edited file being uploaded back to its server."
+            )
         }
     }
 
@@ -253,6 +258,11 @@ final class QueueJobRowView: NSView {
             return String(
                 localized: "Download…",
                 comment: "Queue row label for a remote-download job with no current item yet."
+            )
+        case .writeBack:
+            return String(
+                localized: "Upload…",
+                comment: "Queue row label for a save-back job with no current item yet."
             )
         }
     }

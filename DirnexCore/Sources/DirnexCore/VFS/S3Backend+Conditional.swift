@@ -57,6 +57,32 @@ public extension S3Backend {
     }
 }
 
+/// The routed spelling of the method above (PLAN.md §4 ▸ *Still open*, taken 2026-09-01).
+///
+/// One line, and it earns its place by being the *only* thing that lets the write-back job live in
+/// the core: a queue runner holds `any VFSBackend` and cannot reach a concrete `S3Backend`, which
+/// is what the app used to do with an `as? CompositeBackend` cast and a `conditionalWriter(for:)`
+/// lookup. Everything the write actually does is still `upload(localPath:over:condition:…)`, so
+/// there is no second implementation of a conditional PUT — only a second way in.
+public extension S3Backend {
+    @discardableResult
+    func writeBack(
+        localPath: String,
+        to destination: VFSPath,
+        condition: S3WriteCondition,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Bool {
+        try upload(
+            localPath: localPath,
+            over: destination,
+            condition: condition,
+            progress: progress,
+            isCancelled: isCancelled
+        ).conditionWasSent
+    }
+}
+
 /// What a conditional write actually did — specifically, whether the precondition travelled with
 /// it.
 ///

@@ -68,13 +68,11 @@ extension BrowserWindowController {
     private func finalizeCompletedJobs(in snapshot: QueueSnapshot) {
         for job in snapshot.jobs where job.status == .finished || job.status == .cancelled {
             guard finalizedJobs.insert(job.id).inserted else { continue }
-            // A materialize is the one kind that changes nothing either pane is showing: its
-            // destination is a temp root, so re-listing would spend a request per remote pane to
-            // redraw rows that cannot have moved. It reports through the gesture that queued it
-            // rather than through the copy/move wording below, which would call a failed download
-            // of forty objects "Couldn't move 40 items".
-            if case .materialize = job.kind {
-                deliverMaterializeReport(job.report ?? .empty, for: job.id)
+            // Two kinds hand their report back to the gesture that queued them and take nothing
+            // from the tail below — see `reportsToItsGesture(_:)` for why, and for the reason that
+            // question is a function rather than two `if case`s.
+            if Self.reportsToItsGesture(job.kind) {
+                deliverJobReport(job.report ?? .empty, kind: job.kind, id: job.id)
                 continue
             }
             refreshPanes()
@@ -123,6 +121,42 @@ extension BrowserWindowController {
             if !report.failures.isEmpty {
                 reportFailures(report, kind: job.kind)
             }
+        }
+    }
+
+    /// Whether a finished job reports through the **gesture that queued it** rather than through
+    /// the pane refresh and copy/move wording every other kind takes.
+    ///
+    /// Two kinds do, for the same reason worded twice. A **materialize** changes nothing either
+    /// pane is showing — its destination is a temp root, so re-listing would spend a request per
+    /// remote pane to redraw rows that cannot have moved — and a **save-back** re-baselines exactly
+    /// what landed and refreshes only the directories it wrote into, which a blanket refresh cannot
+    /// know. Both would also be *worded* wrongly by the tail: a refused upload of forty files is
+    /// not "Couldn't move 40 items".
+    ///
+    /// A function with an exhaustive `switch` rather than two `if case`s in the loop, and that is
+    /// the point: this is the seam whose **absence** nothing else can see. A kind that never
+    /// reaches its deliverer leaves the gesture waiting on a report that will not come — for a
+    /// save-back, a batch that never finishes and, because the gather is serialized, no further
+    /// save-back for the life of the window. Naming the rule makes it assertable with no window,
+    /// and makes the next kind added a compile error here.
+    static func reportsToItsGesture(_ kind: FileOperation.Kind) -> Bool {
+        switch kind {
+        case .materialize, .writeBack: true
+        case .copy, .move, .checksum, .attributes, .pack, .plainPack: false
+        }
+    }
+
+    /// Hand a finished job's report to whichever gesture is waiting for it.
+    private func deliverJobReport(
+        _ report: OperationReport,
+        kind: FileOperation.Kind,
+        id: OperationJobID
+    ) {
+        switch kind {
+        case .materialize: deliverMaterializeReport(report, for: id)
+        case .writeBack: deliverWriteBackReport(report, for: id)
+        default: break // `reportsToItsGesture` already said no
         }
     }
 

@@ -61,6 +61,14 @@ extension QueueBarView {
                 localized: "Downloading \(name)",
                 comment: "Queue-bar status; %@ is the remote file being downloaded."
             )
+        case .writeBack:
+            // "Uploading" for the reason "Downloading" is above: one batch can stand behind a
+            // single ⌘S or a script that rewrote forty files, and what the user needs told is that
+            // bytes are going over a network — the part that takes the time and that Stop ends.
+            return String(
+                localized: "Uploading \(name)",
+                comment: "Queue-bar status; %@ is the edited file being uploaded back to its server."
+            )
         }
     }
 
@@ -104,6 +112,11 @@ extension QueueBarView {
                 // happened to keep (docs/NOTES.md ▸ Localization).
                 localized: "Downloading…",
                 comment: "Cloud sync badge tooltip: the file is being fetched from the provider."
+            )
+        case .writeBack:
+            return String(
+                localized: "Uploading…",
+                comment: "Queue-bar status while a save-back batch is being prepared."
             )
         }
     }

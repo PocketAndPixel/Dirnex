@@ -362,6 +362,48 @@ public protocol VFSBackend: Sendable {
         at path: VFSPath
     ) throws -> [RemoteMetadataRefusal]
 
+    /// Replace the whole of a remote file with local bytes — a **save-back**, optionally guarded by
+    /// a precondition (PLAN.md §4 ▸ *Still open*, taken 2026-09-01).
+    ///
+    /// Deliberately not a parameter on ``copyFile(at:to:progress:isCancelled:)``, which is the
+    /// argument ``S3Backend/upload(localPath:over:condition:progress:isCancelled:)`` already makes
+    /// and this requirement inherits: that verb is the queue's, its contract is "move these bytes
+    /// there", and a save-back is a different act with a different failure — it can be *refused for
+    /// a reason the user has to read*, where a copy that fails is a copy that failed. A condition
+    /// parameter on `copyFile` would put that vocabulary in front of every F5.
+    ///
+    /// What it adds over that existing method is **routing**: it is the seam a queue runner can
+    /// call without knowing which backend owns the path, so the write-back job is core code rather
+    /// than an app loop reaching for a concrete `S3Backend` through a cast.
+    ///
+    /// The default writes through `copyFile` — which is exactly what a save-back over SFTP or FTP
+    /// has always been — so **what an occupied destination does is the performing backend's own
+    /// answer**, and it differs: `sftp`'s `put` and FTP's `STOR` truncate, which is what a
+    /// save-back is, while `LocalBackend` refuses with `.alreadyExists`. That is not a gap, because
+    /// a destination here is always on a remote connection by construction — a copy on this disk is
+    /// edited in place and has nothing to carry back (`PanelViewController.canEditRemoteFile`) —
+    /// but it is worth knowing before pointing this verb anywhere new.
+    ///
+    /// It **throws rather than dropping** a condition it cannot carry. That
+    /// asymmetry is the whole contract: a caller believing its write was guarded when it was not is
+    /// strictly worse than one that knows, so the one outcome forbidden here is a silent
+    /// unconditional write (``S3WriteConditionUnsupported``). Nothing reaches that throw today —
+    /// only S3 listings carry an entity tag, so only S3 destinations are ever asked — which makes
+    /// it a guard against the next backend rather than a live path.
+    ///
+    /// - Returns: whether the precondition travelled with the request the file's contents hang on.
+    ///   A claim about this client and never about the server, for ``S3ConditionalWrite``'s reason:
+    ///   a store that ignores `If-Match` answers 200 and overwrites, indistinguishable from having
+    ///   honoured it.
+    @discardableResult
+    func writeBack(
+        localPath: String,
+        to destination: VFSPath,
+        condition: S3WriteCondition,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Bool
+
     /// Fill in the symlink **targets** of whichever of `entries` arrived without one, for a backend
     /// that can learn them at a price a *listing* should not pay (PLAN.md §M25 Slice 4).
     ///

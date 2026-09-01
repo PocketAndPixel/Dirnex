@@ -21,11 +21,22 @@ public final class DirectoryWatcher {
     private let queue: DispatchQueue
     private var stream: FSEventStreamRef?
 
+    /// FSEvents' coalescing window: a burst of changes within it collapses into one callback.
+    ///
+    /// Named rather than left as a default argument because a *second* thing now has to wait the
+    /// same length. Each edited copy is watched through its own stream, so a script rewriting forty
+    /// files produces forty independent callbacks — clustered within about this long of each other,
+    /// since that is what each stream is holding them for. Anything gathering those into one batch
+    /// is therefore waiting out the delivery mechanism's own window rather than picking a number,
+    /// which is the difference between a constant with a reason and a guess
+    /// (`BrowserWindowController+WriteBackBatch`).
+    public static let coalescingWindow: TimeInterval = 0.15
+
     /// Begin watching `path` immediately. `latency` is FSEvents' coalescing window —
     /// bursts of changes within it collapse into one callback.
     public init(
         path: VFSPath,
-        latency: TimeInterval = 0.15,
+        latency: TimeInterval = DirectoryWatcher.coalescingWindow,
         queue: DispatchQueue = DispatchQueue(label: "com.dirnex.fsevents", qos: .utility),
         onChange: @escaping @Sendable () -> Void
     ) {
@@ -47,7 +58,7 @@ public final class DirectoryWatcher {
     /// (no trash exists yet, iCloud Drive is off) has nothing to notice.
     public init(
         paths: [VFSPath],
-        latency: TimeInterval = 0.15,
+        latency: TimeInterval = DirectoryWatcher.coalescingWindow,
         queue: DispatchQueue = DispatchQueue(label: "com.dirnex.fsevents", qos: .utility),
         onChange: @escaping @Sendable () -> Void
     ) {
@@ -78,7 +89,7 @@ public final class DirectoryWatcher {
     /// archive in a busy folder pays nothing for the churn around it.
     public init(
         filePath: String,
-        latency: TimeInterval = 0.15,
+        latency: TimeInterval = DirectoryWatcher.coalescingWindow,
         queue: DispatchQueue = DispatchQueue(label: "com.dirnex.fsevents", qos: .utility),
         onChange: @escaping @Sendable () -> Void
     ) {

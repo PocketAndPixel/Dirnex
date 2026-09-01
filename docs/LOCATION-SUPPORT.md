@@ -344,6 +344,9 @@ is ever fetched.
 <sup>t</sup> Opens the extracted copy. Read-only — `⏎` writes nothing back (that is `F4`'s job).
 
 <sup>u</sup> Downloads to a temp copy, opens that, and registers it so a save is offered back up.
+The upload is a **queued job** since 2026-09-01 — a bar, a Stop and a place in the queue's ordering,
+where it used to be a `Task` the window started and forgot — and several saves arriving together are
+one job with one confirmation (▸ <sup>aaa</sup>).
 
 <sup>v</sup> A member of a **writable** (top-level) archive only; saving repacks the archive,
 preserving encryption and hidden names. A nested archive's member cannot.
@@ -572,8 +575,11 @@ the same gesture works from the folder they actually live in.
 and per-item failures, and the script is handed the copies (PLAN.md §M24 Slice 5). What makes it
 more than a hand-off is the other direction: each copy is **watched**, so a script that rewrites its
 argument — `exiftool -overwrite_original`, `sips`, a formatter — has that save carried back to the
-server or repacked into the archive, through the machinery F4 already uses. Four limits, and none of
-them is about the transfer. A **folder** that is not on this disk is not a target, for the hand-off's
+server or repacked into the archive, through the machinery F4 already uses. Since **2026-09-01** the
+remote direction is one queued job too, so a script that rewrote forty files uploads them as one
+ordered run with a combined bar and a Stop, and asks **once** about whatever the pre-upload checks
+found rather than once per file; before that each save was its own `Task` with none of that. Four
+limits, and none of them is about the transfer. A **folder** that is not on this disk is not a target, for the hand-off's
 own reason. A panel that is not a folder on this disk exports **no `DIRNEX_CURRENT_DIR`** — the
 process runs in the folder holding the first file it was handed, and a script can test for the
 variable exactly as it already tests for `DIRNEX_OTHER_DIR` — so a `combined` script with nothing

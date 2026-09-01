@@ -138,9 +138,10 @@ dated passes that landed outside a milestone of their own, and the reasoning beh
 is in **[docs/HISTORY.md](docs/HISTORY.md)**. What is still open, rather than merely imaginable, is
 the *undone* column in the table above, plus the list below: one cut that is a unit of work on its
 own, and the last cells of [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)'s parity backlog —
-each too small to have been a slice of M24 or M25, and too real to leave unwritten. *"A remote
-attribute change cannot be undone"* left this list on **2026-09-01** (HISTORY.md ▸ the follow-on
-log), which leaves the coordination gap below as the last of M25's.
+each too small to have been a slice of M24 or M25, and too real to leave unwritten. Both of M25's
+own leftovers left this list on **2026-09-01** (HISTORY.md ▸ the follow-on log) — *"A remote
+attribute change cannot be undone"* and *"Many remote write-backs do not coordinate"* — so what
+remains is M15's own cut and one parity cell written down before either milestone ran.
 
 - **The thumbnail grid, brief view and the `PaneSurface` extraction** — M15's cut, and one unit
   rather than three items, argued in HISTORY.md §M15. Any future grid inherits two constraints from
@@ -148,12 +149,6 @@ log), which leaves the coordination gap below as the last of M25's.
 - **No multipart upload over SFTP or FTP.** S3 splits a large upload into parts that fail and retry
   independently; the other two send one stream, so a transfer that dies late resumes from wherever
   `put -a` or `curl -C -` can pick it up rather than from a part boundary.
-- **Many remote write-backs do not coordinate.** A user script that rewrites forty files on a server
-  produces forty independent uploads, each re-`stat`ing and uploading on its own the way F4's single
-  save does — no combined bar, no Stop, no ordering. M24 Slice 2 (HISTORY.md) gave the *download*
-  direction exactly that shape (`FileOperation.Kind.materialize`), so this is the mirror of a job
-  that already exists rather than a new one: M24 Slice 5 handed it to M25, M25 took no slice for it,
-  and it was demoted here on 2026-08-30, because one queue kind is not a milestone's worth of design.
 
 ## 5. Cross-cutting: testing strategy
 

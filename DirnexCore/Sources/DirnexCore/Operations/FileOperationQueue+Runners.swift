@@ -82,6 +82,13 @@ extension FileOperationQueue {
                 onProgress: { onProgress($0) },
                 isCancelled: { isCancelled() }
             )
+        case .writeBack:
+            report = WriteBackRunner.run(
+                operation,
+                using: backend,
+                onProgress: { onProgress($0) },
+                isCancelled: { isCancelled() }
+            )
         }
         return report
     }

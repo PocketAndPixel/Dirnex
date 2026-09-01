@@ -135,7 +135,20 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     var finalizedJobs: Set<OperationJobID> = []
     /// Where a queued `.materialize` job's report meets the gesture that asked for it
     /// (PLAN.md §M24 Slice 3) — see `BrowserWindowController+Materialize`.
-    let materializeDeliveries = MaterializeDeliveries()
+    let materializeDeliveries = JobDeliveries()
+    /// The same, for a queued `.writeBack` batch (PLAN.md §4 ▸ *Still open*, taken 2026-09-01) —
+    /// see `BrowserWindowController+WriteBackBatch`. Its own instance rather than sharing the one
+    /// above: they are keyed by job id and could not collide, and two names say which flow is
+    /// waiting where one would leave a reader guessing.
+    let writeBackDeliveries = JobDeliveries()
+    /// Saves waiting to join the next write-back batch, and whether a gather is already running.
+    ///
+    /// Two properties rather than a type, because between them they *are* the pacing rule and it is
+    /// three lines long: a save appends here, the gather takes everything and runs a batch, and
+    /// whatever arrived meanwhile is waiting when it comes back round. The flag is what stops a
+    /// second gather starting beside the first — with two, the same copy could be uploaded twice.
+    var pendingWriteBacks: [PendingWriteBack] = []
+    var isGatheringWriteBacks = false
     /// The last observed pause state, so the queue bar's button knows which way to toggle.
     var lastPaused = false
 

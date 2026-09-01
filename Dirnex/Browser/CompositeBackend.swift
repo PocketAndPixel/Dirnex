@@ -261,6 +261,29 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         try backend(for: path).applyMetadata(steps, at: path)
     }
 
+    /// A save-back, routed to whoever owns the **destination** (PLAN.md §4 ▸ *Still open*).
+    ///
+    /// The destination, unambiguously: the source is a temp copy on this disk and the bytes are
+    /// being written to the remote side, so the backend that has to carry the precondition is the
+    /// one that owns where they land. This replaces the app's old `conditionalWriter(for:)` lookup
+    /// — an `as? CompositeBackend` cast plus an `isS3` test — with the router every other verb
+    /// already goes through, which is what lets the write-back job be core code.
+    func writeBack(
+        localPath: String,
+        to destination: VFSPath,
+        condition: S3WriteCondition,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Bool {
+        try backend(for: destination).writeBack(
+            localPath: localPath,
+            to: destination,
+            condition: condition,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
     func copyMetadata(at source: VFSPath, to destination: VFSPath) throws {
         try copyMetadata(at: source, to: destination, sourceMetadata: nil)
     }
@@ -317,23 +340,6 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     func mayAttemptInternalCopy(from source: VFSPath, to destination: VFSPath) -> Bool {
         guard let owner = try? backend(for: source) else { return false }
         return owner.mayAttemptInternalCopy(from: source, to: destination)
-    }
-
-    /// The connected backend that can attach a **precondition** to a write at `path`, or `nil` when
-    /// nothing here can (PLAN.md §M21 Slice 18).
-    ///
-    /// Named for the question rather than for the type, because the answer is *not* "is this S3":
-    /// an unconnected bucket, an account root, an archive member and a local file all answer `nil`,
-    /// and a caller spelling `path.backend.isS3` would get `true` for two of those. One funnel is
-    /// what keeps that rule from being written a second way — this milestone has re-derived the
-    /// one-rule-several-spellings finding often enough to stop restating it (docs/NOTES.md ▸ AppKit).
-    ///
-    /// Deliberately concrete rather than a protocol: S3 is the only backend with a conditional
-    /// write, and a protocol over one conformer would hide which backend a call site is really
-    /// talking to while offering nothing a second implementation could use.
-    func conditionalWriter(for path: VFSPath) -> S3Backend? {
-        guard path.backend.isS3 else { return nil }
-        return s3Backend(for: path.backend)
     }
 
     /// One mounted archive and the file it was read from.

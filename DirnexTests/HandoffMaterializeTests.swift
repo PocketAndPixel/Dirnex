@@ -153,7 +153,7 @@ struct HandoffMaterializeTests {
     /// transfer that fails on its first request beats the caller writing down what to do about it.
     @Test("a report is delivered whichever half arrives first")
     func deliveriesPairInBothOrders() {
-        let deliveries = MaterializeDeliveries()
+        let deliveries = JobDeliveries()
         let waitingFirst = OperationJobID()
         let reportFirst = OperationJobID()
         let seen = Handed()

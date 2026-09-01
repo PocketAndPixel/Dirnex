@@ -47,7 +47,7 @@ extension BrowserWindowController {
     }
 }
 
-/// Where a queued `.materialize` job's report meets the gesture that asked for it.
+/// Where a queued job's report meets the gesture that asked for it.
 ///
 /// **Two halves that can arrive in either order, which is the whole reason this is a type.**
 /// `FileOperationQueue.enqueue` is an actor method, so the job's id — the only thing the two halves
@@ -60,8 +60,13 @@ extension BrowserWindowController {
 /// reason (that type sits near SwiftLint's body ceiling) and for a better one: the pairing rule is
 /// the thing worth keeping in one place, and split across two properties it would be a rule two
 /// call sites have to remember.
+///
+/// **Named for the pairing rather than for `.materialize`, since 2026-09-01.** The save-back batch
+/// has the identical race in the identical shape — it enqueues, gets an id back, and must then say
+/// what to do with a report that may already have arrived — so it holds one of these too. Nothing
+/// in here was ever about materializing; the kind only decided who was waiting.
 @MainActor
-final class MaterializeDeliveries {
+final class JobDeliveries {
     private var waiting: [OperationJobID: @MainActor (OperationReport) -> Void] = [:]
     private var arrived: [OperationJobID: OperationReport] = [:]
 

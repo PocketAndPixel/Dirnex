@@ -119,6 +119,29 @@ public extension VFSBackend {
         throw VFSError.unsupported(.attributeChangeNeedsConnection(name: path.lastComponent))
     }
 
+    @discardableResult
+    func writeBack(
+        localPath: String,
+        to destination: VFSPath,
+        condition: S3WriteCondition,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Bool {
+        // A condition this backend cannot carry is refused, never quietly dropped: the caller has
+        // been told its write is guarded, and an unguarded write under that promise is the one
+        // outcome worse than not offering the feature (see the requirement's doc).
+        guard !condition.isConditional else {
+            throw S3WriteConditionUnsupported(key: destination.path)
+        }
+        try copyFile(
+            at: .local(localPath),
+            to: destination,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+        return false
+    }
+
     func resolvingSymlinkTargets(in entries: [FileEntry]) -> [FileEntry] {
         entries // this backend's listing already said whatever it knows
     }

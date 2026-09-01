@@ -67,6 +67,17 @@ public struct FileOperation: Sendable {
         /// `sources`. What the set is *for* stays with the gesture, along with the decision, made
         /// before anything was queued, that the total was worth spending (`MaterializationPlan`).
         case materialize
+        /// Put a set of edited copies back where they came from — the mirror of ``materialize``
+        /// (PLAN.md §4 ▸ *Still open*, taken 2026-09-01).
+        ///
+        /// It moves bytes like a copy and is deliberately not one, for the opposite reason
+        /// ``materialize`` is not: there the *destination* was a temp root, here the **source** is,
+        /// and what the destination already holds is exactly what this write replaces. So it
+        /// produces no `outcomes` and there is nothing to undo — an upload has already destroyed
+        /// the version a reversal would need, which is what every write-back confirmation has said
+        /// since M21 Slice 10. What it does produce rides home on ``OperationReport/writtenBack``,
+        /// because the caller has to re-baseline exactly the items that landed.
+        case writeBack(WriteBackJob)
     }
 
     public let kind: Kind
@@ -358,6 +369,19 @@ public struct OperationReport: Sendable, Equatable {
     /// struct holding one array would be a type whose only field is the answer.
     public let materialized: [MaterializedFile]?
 
+    /// Which of a `.writeBack` job's destinations actually took the bytes. `nil` for every other
+    /// kind, and **empty for a batch that landed nothing** — the two are different answers.
+    ///
+    /// A list rather than a count, and that is what it is for: after an upload the caller has to
+    /// re-read each destination and re-baseline the revision a *second* save will compare against,
+    /// and leaving a stale one would have our own write read back as "someone else has edited it".
+    /// A cancelled batch is the case that makes a count useless — some items landed and some did
+    /// not, and only naming them says which.
+    ///
+    /// No outcome wrapper, for ``materialized``'s reason: the failures ride on ``failures`` where
+    /// every other kind's already do.
+    public let writtenBack: [VFSPath]?
+
     public init(
         completedItems: Int,
         completedBytes: Int64,
@@ -369,6 +393,7 @@ public struct OperationReport: Sendable, Equatable {
         attributeApply: AttributeApplyOutcome? = nil,
         pack: PackOutcome? = nil,
         materialized: [MaterializedFile]? = nil,
+        writtenBack: [VFSPath]? = nil,
         metadataLoss: RemoteMetadataLoss? = nil
     ) {
         self.completedItems = completedItems
@@ -381,6 +406,7 @@ public struct OperationReport: Sendable, Equatable {
         self.attributeApply = attributeApply
         self.pack = pack
         self.materialized = materialized
+        self.writtenBack = writtenBack
         self.metadataLoss = metadataLoss
     }
 
