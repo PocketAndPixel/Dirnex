@@ -12667,6 +12667,45 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
 
+**2026-09-01 — Amazon finally answered the multipart questions, and the answer was yes.**
+`S3MultipartLiveIntegrationTests` has carried a doc comment since it shipped saying its subject had
+*"never been answered by Amazon"* — Slices 5 and 8 verified multipart against a local endpoint and
+one S3-compatible account, no kept suite had ever crossed the 64 MiB threshold, and the progress
+suite's ladder deliberately stops below it. It had also never *run*, being gated on a config file
+nobody had (▸ the live-suite skip recorded in NOTES.md the same day). Pointed at a real
+`eu-north-1` bucket on a dedicated IAM user, the 70 MiB round trip **passed in 15.2 s**: the stored
+object is exactly 70 MiB, progress was reported and never exceeded the file, and the bytes came back
+**SHA-256 identical**. So the three rules the path rests on — a part's exact `Content-Length` with no
+chunked framing, ETags quoted back verbatim in the manifest, and a completion that can refuse inside
+a 200 — are confirmed against the service they were written for rather than against a fake.
+
+**The bill is the other assertion, and it is checked outside the suite.** An abandoned multipart
+upload keeps its parts and charges for them while being invisible to an ordinary listing, so the
+bucket's `?uploads` was read **before and after**: 0 either side, with the probe object swept
+(`dirnex-live-probe/` empty) and the bucket's own 11 objects untouched. That is the half a passing
+test cannot show, since the suite would be just as green having left an upload open.
+
+**The other four S3 live suites were then run too, and all sixteen pass** — account (8), conditional
+write (4), pagination (2) and transfer progress (2), in 17.6 s against the same bucket. Between them
+they answer, against Amazon rather than a fake, the things this project had only ever measured
+elsewhere: the 301 region correction and virtual-host addressing, a continuation token refused unless
+re-encoded going back, an upload *and* a download reporting bytes while still running, `If-Match`
+refused on a stale tag and accepted on a current one, `If-None-Match` on an occupied key, a tag for a
+deleted object refused as **gone** rather than as changed, and a stale tag refusing a multipart
+completion and publishing nothing. The three bucket tests pass as well, so the account really does
+carry `s3:CreateBucket` on the one ARN ``S3LiveProbeBucket`` is built around.
+
+**The Keychain hazard this file records for these suites no longer exists, and the fix is
+architectural rather than a cleanup step.** The scar above — a live suite's `removePassword` deleting
+the credential a user's own sidebar row depended on, because the key names the *account* and not who
+filed it — was answered by taking the test host off the real Keychain altogether:
+`SecretKeychain.backing` resolves to an `InMemorySecretStore` whenever `XCTestConfigurationFilePath`
+is set **and** XCTest is actually loaded, two signals rather than one because a false positive would
+silently put the shipping app on a dictionary. So there is nothing to capture and nothing to restore,
+and a run that is killed part-way cannot strand anybody's secret. Verified after the run: the saved
+Amazon item is still there, the probe bucket is 404, and no key of ours reached disk outside a 0600
+scratch file that was wiped.
+
 **2026-09-01 — a large SFTP upload goes in parts; FTP's cannot, and now that is measured.** PLAN.md
 §4's last parity cell, *"No multipart upload over SFTP or FTP"*, and it closed as two different
 answers rather than one. Above 32 MiB an SFTP upload is now cut into parts of 16–32 MiB, **four sent
@@ -12736,6 +12775,66 @@ the assertion that distinguishes the routes — one progress report instead of f
 assertion passes, which is the degradation working rather than breaking. The live suite's own
 discriminator is that report count, and it had to be added: the first version asserted the bytes
 landed and nothing was left behind, both of which a single-stream fallback satisfies just as well.
+
+**It was §4's last parity cell, so closing it emptied that half of the list** — what is left under
+*Still open* is M15's own cut and nothing else. The narrative that had been sitting in PLAN.md
+alongside this entry moved here on the same day, once the plan had nothing left to say about it: the
+speedup is **3.6×** through the shipped path, and the two halves are worth naming together because
+they are the milestone's answer rather than a result and an excuse — SFTP splits, FTP is refused by
+the protocol, and only one of those is a gap anybody could close later.
+
+**Re-verified end to end against a fresh throwaway `sshd` once the tree was complete**, which was not
+a formality: the live gate is a *file*, so with `/tmp/dirnex_sftp_live_test.json` gone the whole suite
+had been **skipping** rather than failing — a live suite that silently skips is not evidence, and the
+`sendsPartsConcurrently` fix had never been run against a server. Standing one up (a generated host
+key and `MaxStartups 1000:30:2000`, the first field being the lever) gave **3/3** on the segmented
+suite and **37 tests in 7 suites** across every other SFTP live suite, which is what says the
+transport's reshaping cost nothing elsewhere. The `ForceCommand internal-sftp` A/B was re-run in the
+same session and lands exactly where this entry claims: **2 issues** on the sftp-only account against
+**0** on the restored one, same build, the failure naming only the report-count assertion while the
+bytes and the swept directory both still pass. Two things from that run are worth having written
+down: the refusal arrives as OpenSSH's own sentence verbatim on **stdout**, which is why the probe
+needs a token rather than a bare `true`; and the `offCooperativePool` misattribution fired as
+docs/NOTES.md records — every tick read `✔ passed` while the real failures were filed under
+`Test «unknown»`, so the run summary's issue count was the only honest signal.
+
+**And driven through the running app, which is the half a suite cannot reach.** Against a throwaway
+`sshd` first, because it is the only account here that *has* an exec channel (the real NAS is the
+paragraph below); the gesture was the real F5 (`copy selection` over the `.sdef`, from a seeded local tab to a seeded
+remote one) on a **128 MiB** file, which is four parts of 32 MiB — the shipped shape rather than the
+live suite's shrunken one. **The evidence is the transient state, not the session count.** Polling
+the destination directory every 50 ms caught it passing through exactly three: the four parts at
+once, all carrying one run token (`.dirnex-upload-ea4cacc3-bigfile.bin.1…4`); then those four *plus*
+`.joined`, which is the staging name the `cat` writes into; then `bigfile.bin` alone. That sequence
+is the whole design visible from outside — concurrency, the staging name that keeps a partial file
+off the real one, the rename, and the sweep — where the session delta (**10**) is merely consistent
+with it, which is the distinction docs/NOTES.md draws for the Open With probe. SHA-256 identical to
+the source, one file in the directory afterwards.
+
+**The degradation was re-run the same way and is the sharper of the two results.** Restarted
+`ForceCommand internal-sftp` and relaunched, so the connection — and with it the latch — was fresh:
+**zero** `dirnex-upload` names appeared in any poll, the file went straight to its own name in one
+stream, delta **5**, same digest. Nothing was sent and then thrown away, which is the property the
+up-front probe exists for and the one a late refusal would have cost the whole upload.
+
+**Then against the real NAS, which turned out to be the more valuable of the two runs — it declines,
+and it declines in a shape the synthetic server could not have produced.** Oleg's own Synology
+(OpenSSH 8.2), on a purpose-made non-admin account: the SSH **authentication succeeds**, the session
+channel opens, the command is sent, and the *server* answers **`Permission denied, please try
+again.`** with exit 1. So the refusal is a fact about what the account may *run*, arriving after
+everything a connection check would look at has already gone right — and it is a different sentence
+from the `ForceCommand internal-sftp` case this entry measured against (`This service allows sftp
+connections only.`). Two vendors, two wordings, one detection: the probe asks for a **token** back
+rather than for success, so both answer `false` on the same line of code. That is the design choice
+``SSHAssembleCommand/probe(token:)`` argues for, confirmed against hardware nobody wrote it for.
+
+**The whole gesture was then run against it, and behaved.** A 40 MiB file — deliberately *above* the
+32 MiB threshold, so the fork has to consider the split and refuse it rather than never reaching the
+question — copied by the real F5 into the account's own home while an `sftp` poller watched that
+directory: **zero** `dirnex-upload` names in any poll, the directory going straight from empty to the
+file itself, and the bytes SHA-256 identical when read back. A production account on a mainstream NAS
+is therefore a single-stream account, which is worth knowing before reading the 3.6× as something
+every server will give: **the split is the exception the exec channel buys, not the default.**
 
 **2026-09-01 — save-backs coordinate, remote and archive.** PLAN.md §4's last M25 leftover, and the one it
 described most exactly: *"the mirror of a job that already exists rather than a new one"*. A user

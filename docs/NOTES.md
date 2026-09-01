@@ -639,6 +639,18 @@ at build time.
   through a different door (a filter matching no test rather than a macro attaching to none). The
   tell is the same and is the only one there is: the **count** in the run summary.
 
+- **A live suite whose config file has gone reports success by *skipping*, which is the same green
+  run that ran nothing reached through a third door — and this one hides a feature that was never
+  verified at all.** The file gate is right (▸ `xcodebuild` forwards no shell env), and its failure
+  mode is that `/tmp/dirnex_sftp_live_test.json` disappearing turns eight SFTP live suites off with
+  no tick, no skip notice anybody reads, and a full run that still says **TEST SUCCEEDED**. Measured
+  2026-09-01: the `sendsPartsConcurrently` fix had shipped and its live suite had never once run
+  against a server, because the config was gone by the time anyone re-ran it. The tell is the same
+  as the two entries above — the **count** — but it has to be read per *suite* rather than for the
+  run, since 1018 passing tests look identical whether the live eight are among them or not. Worth
+  standing a throwaway server up and re-running before believing any claim a live suite is supposed
+  to be holding up; it is ten minutes (▸ The SSH exec channel).
+
 - **A doc comment between `@MainActor` and `@Suite` discovers *zero tests*, and reports success.**
   Same run: the suite printed `✔ Suite "…" passed after 0.001 seconds` and the run summary read
   `Test run with 0 tests in 1 suite passed`, with no warning at build time and no error anywhere —
@@ -3551,6 +3563,18 @@ works, which makes this whole family probeable on any Mac).
   the operand it was given, so the root's own row is a sentinel that costs nothing to arrange, and
   its absence means "this is not a listing". An empty folder still prints that row, which is exactly
   the case "empty" and "no exec channel" have to be told apart on.
+- **A second real-world refusal shape, and it lands *after* a successful authentication — so nothing
+  about the connection looks wrong.** Measured 2026-09-01 against a Synology NAS (OpenSSH 8.2) on a
+  non-admin account: `ssh -v` prints `Authenticated to … using "password"`, the session channel
+  opens, the command is sent, and the **server** answers **`Permission denied, please try again.`**
+  with exit 1. So the exec channel is denied as a fact about what the account may *run*, not about
+  whether it may connect — and the wording shares nothing with the `ForceCommand internal-sftp`
+  sentence above. Two vendors, two sentences, and a detector keyed on either one would miss the
+  other; asking for a **token** back is what makes both answer `false` without knowing either
+  string. Worth knowing for a second reason: a non-admin account on a mainstream NAS is the *common*
+  case, so an exec-channel feature is the exception a server grants rather than the default — the
+  segmented upload, the `find` walk and a download's ranges all degrade there, and each has to be
+  cheap about discovering it.
 - **An exec channel runs the user's login shell and sources their rc, so a shell *function* shadows
   the command.** Probed: `find() { echo SHADOWED; }; find /tmp` printed `SHADOWED`, and bash reads
   `~/.bashrc` when it detects it was run by sshd — this Mac's own rc ran (errors and all) on every
