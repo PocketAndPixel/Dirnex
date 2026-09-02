@@ -633,6 +633,23 @@ at build time.
     duplicated trail — the suffix matched and every individual crumb was a real place — which is the
     shape of a wrong answer this project keeps meeting: plausible, ordered, and containing everything
     it should, plus something it should not.
+- **An assertion that tests a *broad* enum case as a proxy for a *narrow* claim expires silently the
+  day a new case joins that family — and it expires as a failure in the pass that is doing everything
+  right.** `S3MultipartConditionTests`' narrowness control said "a completion failure the
+  precondition did not cause is not read as a conflict" and spelled it `if case .unsupported =
+  thrown { Issue.record(…) }`, which was exact while the three *conflict* reasons were the only
+  `.unsupported` values that path could produce. Adding a fourth for a refused IAM action
+  (2026-09-03) made a correct, strictly-better error trip a control written to catch the opposite
+  thing. Nothing about the failure points at the test: it names a real suite, a real claim, and a
+  line that has been right for two milestones.
+  - **The tell is a control whose assertion is one level broader than its own name.** "Not read as a
+    conflict" is a claim about three reasons; `.unsupported` is a claim about forty. Where the
+    vocabulary can grow, name the members — `Set([reason.key, …])` — so the control keeps meaning
+    what it says, and add the positive half beside it (*what* it should be now), which is the part
+    that would have made the original expiry loud rather than puzzling.
+  - Same family as the fixture-identifier and stale-witness entries below: an assertion that was
+    right about the world it was written in, with nothing in the compiler to notice the world moved.
+
 - **`-only-testing:` naming a single Swift Testing function can select nothing, and reports
   success.** Measured 2026-08-29: `-only-testing:Target/SuiteName/functionName` ran **0 tests in 1
   suite** and printed a tick — the same "green run that ran nothing" as the entry below, reached
@@ -3996,6 +4013,35 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   - **403 covers two things that send the user to different places**, and only the `<Code>`
     separates them: `InvalidAccessKeyId`/`SignatureDoesNotMatch` is a credential they retype, while
     `AccessDenied` on a key that authenticated fine is a bucket policy they have to go and change.
+  - **And `AccessDenied` names the missing IAM action outright — which is the half worth showing,
+    and it must be named from the *caller* rather than read out of the message.** Measured against
+    real AWS 2026-09-02 on a key scoped to one bucket, after a user asked whether their account
+    really lacked the permission or Dirnex had a bug: `CreateBucket` answered *"not authorized to
+    perform: s3:CreateBucket … because no identity-based policy allows the s3:CreateBucket
+    action"*, identically for three unrelated names, while `ListAllMyBuckets` and `HeadBucket`
+    answered 200 on the same key. Dirnex was right and its sentence was empty — "this account may
+    not have permission for it" stops exactly where the user's question starts, and there is nothing
+    to do with it. `S3Action` and ``VFSUnsupportedReason/s3ActionNotPermitted(action:)`` name it.
+    - **The control is what makes it a measurement and it costs one request**: the byte-identical
+      request for `dirnex-live-probe` — the one ARN that account's policy grants — answered **200**,
+      so the refusal is the resource scope and not the request shape, the signature, the region or
+      the `LocationConstraint` body. Without it, "403 on a create" is equally well explained by a
+      bug in any of those, which is what the report was asking about.
+    - **The action is the request's own verb, never scraped from the prose.** AWS's sentence says it
+      and is still the wrong source — it is the remote's English (the rule ``S3ServiceError/message``
+      already states) and an S3-compatible endpoint need not phrase it that way, or at all. The verb
+      is known on this machine before the request is sent. AWS's message is then an *independent
+      oracle* rather than the input, which is what the live test asserts: an enum spelling
+      `s3:PutBucket` would pass every headless test and fail against the service.
+    - **They are IAM actions, not REST verbs.** There is no `s3:HeadBucket` or `s3:HeadObject` —
+      `HeadBucket` and `ListObjectsV2` are both authorized by `s3:ListBucket`, `HeadObject` by
+      `s3:GetObject`. Naming the verb hands the user a token that grants nothing when pasted into a
+      policy, which is worse than naming none: it *looks* actionable. For the same reason
+      `CopyObject` names **nothing** — it needs `s3:GetObject` on the source and `s3:PutObject` on
+      the destination, possibly in two different buckets, and a 403 does not say which was missing.
+    - **Key it on the `<Code>`, never on the 403.** The same status carries the two credential
+      failures, and telling somebody a permission is missing when their *secret* is wrong sends them
+      to edit a policy that is fine. That is the narrowness control the suite fails without.
 - **A wrong region answers 301 and hands back the endpoint that would have worked**, in
   `<Endpoint>`. Worth parsing the body for that field alone: from outside, a wrong region is
   indistinguishable from a missing bucket, so without it the connect form reports a failure the user

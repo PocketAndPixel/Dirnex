@@ -40,7 +40,7 @@ public extension S3Backend {
         try requireOwnBackend(path)
         let prefix = S3Key.listingPrefix(for: path)
         guard !prefix.isEmpty else { throw VFSError.alreadyExists(path) }
-        _ = try write(at: path) { try transport.putEmptyObject(key: prefix) }
+        _ = try write(at: path, action: .putObject) { try transport.putEmptyObject(key: prefix) }
     }
 
     /// Create an empty object at `path`.
@@ -99,10 +99,15 @@ public extension S3Backend {
         guard try isSingleObject(key: sourceKey, at: source) else {
             throw VFSError.io(path: source, code: EXDEV)
         }
-        _ = try write(at: source) {
+        // No action named: `CopyObject` is authorized by `s3:GetObject` on the source **and**
+        // `s3:PutObject` on the destination, and a 403 does not say which one was missing. Naming
+        // either would be a plausible wrong answer, which is worse here than naming none.
+        _ = try write(at: source, action: nil) {
             try transport.copyObject(from: sourceKey, to: destinationKey)
         }
-        _ = try write(at: source) { try transport.deleteObject(key: sourceKey) }
+        _ = try write(at: source, action: .deleteObject) {
+            try transport.deleteObject(key: sourceKey)
+        }
     }
 
     // MARK: - Removing
@@ -123,13 +128,15 @@ public extension S3Backend {
         guard !key.isEmpty else { throw VFSError.unsupported(.deleteConnectionRoot) }
 
         if try isSingleObject(key: key, at: path) {
-            _ = try write(at: path) { try transport.deleteObject(key: key) }
+            _ = try write(at: path, action: .deleteObject) { try transport.deleteObject(key: key) }
             return
         }
         let keys = try allKeys(under: S3Key.listingPrefix(for: path), at: path)
         guard !keys.isEmpty else { throw VFSError.notFound(path) }
         for batch in S3DeleteBatch.chunks(of: keys) {
-            let response = try write(at: path) { try transport.deleteObjects(keys: batch) }
+            let response = try write(at: path, action: .deleteObject) {
+                try transport.deleteObjects(keys: batch)
+            }
             let result = S3DeleteResult.parse(response.body)
             guard result.errors.isEmpty else {
                 throw Self.failure(result.errors[0], under: path)
@@ -200,10 +207,18 @@ public extension S3Backend {
     ///
     /// Internal rather than file-private: `copyFile` lives in the main file and goes through this
     /// same funnel, and Swift's `private` does not cross files.
-    func write(at path: VFSPath, _ body: () throws -> S3Response) throws -> S3Response {
+    /// `action` carries no default on purpose: it is the one thing the response cannot supply, so
+    /// the compiler asking each caller is what keeps a new write from silently losing its name
+    /// (NOTES.md ▸ Design lessons — remove the default and the compiler asks). `nil` is a real
+    /// answer, for the verb that genuinely needs two permissions — see ``copyFile(from:to:)``.
+    func write(
+        at path: VFSPath,
+        action: S3Action?,
+        _ body: () throws -> S3Response
+    ) throws -> S3Response {
         let response = try mapping(path, body)
         if let service = Self.serviceError(from: response) {
-            throw service.vfsError(for: path)
+            throw service.vfsError(for: path, action: action)
         }
         return response
     }
@@ -229,7 +244,12 @@ public extension S3Backend {
     ) throws -> S3Response {
         let response = try mapping(path, body)
         guard let service = Self.serviceError(from: response) else { return response }
-        throw Self.refusalError(condition.refusal(for: service), or: service, at: path)
+        throw Self.refusalError(
+            condition.refusal(for: service),
+            or: service,
+            at: path,
+            action: .putObject
+        )
     }
 
     /// The `VFSError` a refused precondition becomes — or the server's own failure when the
@@ -244,7 +264,8 @@ public extension S3Backend {
     static func refusalError(
         _ refusal: S3WriteConditionRefusal?,
         or service: S3ServiceError,
-        at path: VFSPath
+        at path: VFSPath,
+        action: S3Action?
     ) -> VFSError {
         switch refusal {
         case .alreadyThere:
@@ -254,7 +275,7 @@ public extension S3Backend {
         case .goneSince:
             return VFSError.unsupported(.remoteFileGoneSinceFetch(name: path.lastComponent))
         case .none:
-            return service.vfsError(for: path)
+            return service.vfsError(for: path, action: action)
         }
     }
 

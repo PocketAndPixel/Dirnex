@@ -115,7 +115,9 @@ extension S3Backend {
     /// there is nothing to upload parts against and — the half that matters — nothing to abort, so
     /// continuing would create parts that this code could never clean up.
     private func openUpload(key: String, at destination: VFSPath) throws -> String {
-        let response = try write(at: destination) { try transport.createMultipartUpload(key: key) }
+        let response = try write(at: destination, action: .putObject) {
+            try transport.createMultipartUpload(key: key)
+        }
         guard let uploadID = S3MultipartDocument.uploadID(from: response.body) else {
             throw VFSError.io(path: destination, code: EIO)
         }
@@ -178,7 +180,7 @@ extension S3Backend {
         }
         return try zip(slices, responses).map { slice, response in
             if let service = Self.serviceError(from: response) {
-                throw service.vfsError(for: destination)
+                throw service.vfsError(for: destination, action: .putObject)
             }
             guard let etag = response.etag, !etag.isEmpty else {
                 // A part with no ETag cannot be named in the manifest, so the upload can never be
@@ -223,7 +225,7 @@ extension S3Backend {
     /// *status* — measured, `HTTP=412` — and cannot see one that arrives under a status the server
     /// already committed to; the body reading below is the only thing that can, and it was measured
     /// in the same shape (`HTTP=200` carrying `<Code>PreconditionFailed</Code>`). Both end at
-    /// ``S3Backend/refusalError(_:or:at:)`` so the sentence has one definition.
+    /// ``S3Backend/refusalError(_:or:at:action:)`` so the sentence has one definition.
     private func closeUpload(
         key: String,
         uploadID: String,
@@ -243,7 +245,12 @@ extension S3Backend {
             from: response.body,
             status: response.status
         ) {
-            throw Self.refusalError(condition.refusal(for: failure), or: failure, at: destination)
+            throw Self.refusalError(
+                condition.refusal(for: failure),
+                or: failure,
+                at: destination,
+                action: .putObject
+            )
         }
     }
 

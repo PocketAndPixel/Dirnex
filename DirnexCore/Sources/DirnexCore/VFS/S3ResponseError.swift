@@ -129,12 +129,17 @@ public extension S3ServiceError {
     /// the three are 409s, which is worth noticing on its own: that status has meant "taken",
     /// "settling" and "taken by a stranger" on this one verb, and only the `<Code>` separates them.
     ///
+    /// A fourth earns one for a different reason: `AccessDenied` is not *wrong*, it is **empty** —
+    /// "this account may not have permission" is where the user's question starts. Naming the IAM
+    /// action needs something the response cannot supply, so `action` is the caller's own verb and
+    /// defaults to `nil`; a site that does not know one is byte-identical to before.
+    ///
     /// **The `<Code>` is read before the status, deliberately.** The status is what this backend
     /// classifies on everywhere else, and this milestone has already measured one verb where it
     /// lies — a `CompleteMultipartUpload` can refuse under a 200 it had already committed to
     /// (``S3WriteCondition``). A code is the server naming its own answer; asking it first costs
     /// nothing and cannot be wrong-footed by a status that was chosen before the outcome was known.
-    func vfsError(for path: VFSPath) -> VFSError {
+    func vfsError(for path: VFSPath, action: S3Action? = nil) -> VFSError {
         // 403 otherwise, and its sentence recommends Full Disk Access for an object on somebody
         // else's servers. Nothing is wrong with the credentials: it needs restoring on the service.
         if code == "InvalidObjectState" {
@@ -150,6 +155,15 @@ public extension S3ServiceError {
         // all and cannot be put there. The namespace is S3-wide (`bucketNameTakenGlobally`).
         if code == "BucketAlreadyExists" {
             return .unsupported(.bucketNameTakenGlobally(name: path.lastComponent))
+        }
+        // `AccessDenied` from a caller that knows what it asked for. The status alone cannot be
+        // used: 403 also carries `InvalidAccessKeyId` and `SignatureDoesNotMatch`
+        // (``isCredentialFailure``), which are a credential the user retypes rather than a policy
+        // they edit — so naming a missing permission there would send them to the wrong place.
+        // A caller that does not know its own action passes none and keeps the generic mapping,
+        // which is what makes this strictly additive.
+        if code == "AccessDenied", let action {
+            return .unsupported(.s3ActionNotPermitted(action: action))
         }
         switch status {
         case 404: return .notFound(path)

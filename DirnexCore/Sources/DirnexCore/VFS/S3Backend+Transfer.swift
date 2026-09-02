@@ -245,7 +245,10 @@ extension S3Backend {
     ) throws -> Int64 {
         let sourceKey = S3Key.key(for: source)
         let destinationKey = S3Key.key(for: destination)
-        _ = try write(at: destination) {
+        // No action named, for the reason `copyFile(from:to:)` sets out: a server-side copy needs
+        // `s3:GetObject` on the source and `s3:PutObject` on the destination — and here the source
+        // may be another bucket entirely, so the two are not even the same policy.
+        _ = try write(at: destination, action: nil) {
             if let origin, origin.bucket != location.bucket {
                 try transport.copyObject(
                     fromBucket: origin.bucket,

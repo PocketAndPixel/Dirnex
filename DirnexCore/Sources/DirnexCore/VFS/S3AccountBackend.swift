@@ -89,7 +89,7 @@ public struct S3AccountBackend: ConnectionScopedBackend {
         try requireOwnBackend(path)
         guard path.isRoot else { throw VFSError.notFound(path) }
 
-        let buckets = try mapping(path) {
+        let buckets = try mapping(path, action: .listAllMyBuckets) {
             try S3BucketEnumeration.allBuckets(pageLimit: pageLimit) { token in
                 let response = try transport.listBuckets(continuationToken: token)
                 guard response.isSuccess else {
@@ -117,9 +117,11 @@ public struct S3AccountBackend: ConnectionScopedBackend {
         guard !path.isRoot else { return rootEntry(at: path) }
 
         let name = path.lastComponent
-        let response = try mapping(path) { try transport.headBucket(name: name) }
+        let response = try mapping(path, action: .listBucket) {
+            try transport.headBucket(name: name)
+        }
         guard response.isSuccess else {
-            throw S3Backend.serviceError(from: response)?.vfsError(for: path)
+            throw S3Backend.serviceError(from: response)?.vfsError(for: path, action: .listBucket)
                 ?? VFSError.notFound(path)
         }
         return bucketEntry(named: name, at: path)
@@ -137,9 +139,11 @@ public struct S3AccountBackend: ConnectionScopedBackend {
     /// regions), and the existing 301 correction covers the rest.
     public func region(ofBucketNamed name: String) throws -> String? {
         let path = VFSPath(backend: id, path: "/\(name)")
-        let response = try mapping(path) { try transport.headBucket(name: name) }
+        let response = try mapping(path, action: .listBucket) {
+            try transport.headBucket(name: name)
+        }
         guard response.isSuccess else {
-            throw S3Backend.serviceError(from: response)?.vfsError(for: path)
+            throw S3Backend.serviceError(from: response)?.vfsError(for: path, action: .listBucket)
                 ?? VFSError.notFound(path)
         }
         return response.bucketRegion
@@ -190,9 +194,12 @@ public struct S3AccountBackend: ConnectionScopedBackend {
             throw VFSError.alreadyExists(path)
         }
 
-        let response = try mapping(path) { try transport.createBucket(name: name) }
+        let response = try mapping(path, action: .createBucket) {
+            try transport.createBucket(name: name)
+        }
         guard response.isSuccess else {
-            throw S3Backend.serviceError(from: response)?.vfsError(for: path)
+            throw S3Backend.serviceError(from: response)?
+                .vfsError(for: path, action: .createBucket)
                 ?? VFSError.io(path: path, code: EIO)
         }
     }
@@ -225,13 +232,16 @@ public struct S3AccountBackend: ConnectionScopedBackend {
         guard !path.isRoot else { throw VFSError.unsupported(.deleteConnectionRoot) }
 
         let name = path.lastComponent
-        let response = try mapping(path) { try transport.deleteBucket(name: name) }
+        let response = try mapping(path, action: .deleteBucket) {
+            try transport.deleteBucket(name: name)
+        }
         guard response.isSuccess else {
             let service = S3Backend.serviceError(from: response)
             if service?.code == "BucketNotEmpty" {
                 throw VFSError.unsupported(.bucketNotEmpty(name: name))
             }
-            throw service?.vfsError(for: path) ?? VFSError.io(path: path, code: EIO)
+            throw service?.vfsError(for: path, action: .deleteBucket)
+                ?? VFSError.io(path: path, code: EIO)
         }
     }
 
@@ -288,7 +298,11 @@ public struct S3AccountBackend: ConnectionScopedBackend {
     /// Normalize a transport failure onto the shared `VFSError` vocabulary — the same shape
     /// ``S3Backend/mapping(_:_:)`` has, and it exists twice because the two backends share no
     /// transport.
-    private func mapping<T>(_ path: VFSPath, _ body: () throws -> T) throws -> T {
+    private func mapping<T>(
+        _ path: VFSPath,
+        action: S3Action,
+        _ body: () throws -> T
+    ) throws -> T {
         do {
             return try body()
         } catch let error as S3ResponseError {
@@ -296,7 +310,7 @@ public struct S3AccountBackend: ConnectionScopedBackend {
             case .transport:
                 throw VFSError.io(path: path, code: EIO)
             case let .service(service):
-                throw service.vfsError(for: path)
+                throw service.vfsError(for: path, action: action)
             }
         }
     }

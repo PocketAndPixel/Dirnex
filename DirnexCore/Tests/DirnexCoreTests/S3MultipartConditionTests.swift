@@ -220,7 +220,24 @@ struct S3MultipartConditionTests {
                 isCancelled: { false }
             )
         }
-        if case .unsupported = thrown { Issue.record("an unrelated failure read as a conflict") }
+        // `.unsupported` used to stand in for "a conflict", which held only while the three
+        // conflict reasons were the only ones this path could reach. An `AccessDenied` now names
+        // the missing IAM action (``S3Action/putObject``) and is `.unsupported` too — so the proxy
+        // had quietly stopped meaning what it was written to mean, and the check now names the
+        // conflicts it is really about.
+        let error = try #require(thrown)
+        let conflicts = Set([
+            VFSUnsupportedReason.remoteFileChangedSinceFetch(name: "").key,
+            VFSUnsupportedReason.remoteFileGoneSinceFetch(name: "").key
+        ])
+        if case let .unsupported(reason) = error, conflicts.contains(reason.key) {
+            Issue.record("an unrelated failure read as a conflict")
+        }
+        if case .alreadyExists = error {
+            Issue.record("an unrelated failure read as a conflict")
+        }
+        // And positively: it keeps its own diagnosis, which is now a useful one.
+        #expect(error == .unsupported(.s3ActionNotPermitted(action: .putObject)))
     }
 
     private let preconditionFailedDocument = """

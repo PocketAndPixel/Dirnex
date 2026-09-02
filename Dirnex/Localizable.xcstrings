@@ -128181,6 +128181,96 @@
         }
       }
     },
+    "vfs.unsupported.s3ActionNotPermitted": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. S3 answers 403 AccessDenied when the account's policy does not allow the request. %@ is an AWS IAM action name — always Latin script, e.g. s3:CreateBucket — so leave it exactly as it is: the user pastes it into a policy, and a translated or re-spelled token grants nothing. Do not put quotation marks around it either; it is an identifier to copy, not a name being referred to.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server hat das abgelehnt. Dieser Account hat die Berechtigung %@ nicht."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server refused that. This account doesn’t have the %@ permission."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servidor lo ha rechazado. Esta cuenta no tiene el permiso %@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le serveur a refusé. Ce compte ne dispose pas de l’autorisation %@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server ha rifiutato. Questo account non dispone dell’autorizzazione %@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバーに拒否されました。このアカウントには %@ の権限がありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버가 거부했습니다. 이 계정에는 %@ 권한이 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De server heeft dat geweigerd. Dit account heeft de machtiging %@ niet."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serwer odmówił. To konto nie ma uprawnienia %@."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O servidor recusou. Esta conta não tem a permissão %@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер отклонил запрос. У этой учётной записи нет разрешения %@."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер відхилив запит. Цей обліковий запис не має дозволу %@."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器拒绝了该操作。此账户没有 %@ 权限。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器拒絕了該操作。此帳戶沒有 %@ 權限。"
+          }
+        }
+      }
+    },
     "vfs.unsupported.serverNotConnected": {
       "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the server descriptor.",
       "localizations": {

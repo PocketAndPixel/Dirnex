@@ -197,6 +197,20 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
     /// well-known names).
     case bucketNameTakenGlobally(name: String)
 
+    /// A request was refused because the account's policy does not allow the action it needed —
+    /// S3 answers `403 AccessDenied` (measured against real AWS 2026-09-02, `s3:CreateBucket` on a
+    /// key scoped to one bucket).
+    ///
+    /// Named because the generic mapping is not wrong here so much as **useless at the only moment
+    /// it is read**: 403 becomes `permissionDenied`, whose remote sentence says the account "may
+    /// not have permission for it" and stops exactly where the answer starts. The account holder
+    /// can do nothing with that; they can paste ``S3Action/iamName`` straight into a policy.
+    ///
+    /// Deliberately keyed on `AccessDenied` alone, never on the 403 itself. The same status carries
+    /// `InvalidAccessKeyId` and `SignatureDoesNotMatch`, which are a key the user *retypes* — and
+    /// telling them a permission is missing would send them to edit a policy that is fine.
+    case s3ActionNotPermitted(action: S3Action)
+
     // MARK: Routing and archives — authored in the app, named here
 
     case noBackendForPath(path: String)
@@ -253,6 +267,7 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
         case .objectNotRestored: return "objectNotRestored"
         case .bucketOperationInProgress: return "bucketOperationInProgress"
         case .bucketNameTakenGlobally: return "bucketNameTakenGlobally"
+        case .s3ActionNotPermitted: return "s3ActionNotPermitted"
         case .noBackendForPath: return "noBackendForPath"
         case .serverNotConnected: return "serverNotConnected"
         case .archiveToolUnavailableForRead: return "archiveToolUnavailableForRead"
@@ -383,6 +398,11 @@ public extension VFSUnsupportedReason {
                 """,
                 [name]
             )
+        case let .s3ActionNotPermitted(action):
+            return (
+                "The server refused that. This account doesn’t have the %@ permission.",
+                [action.iamName]
+            )
         case let .noBackendForPath(path):
             return ("No backend can handle %@.", [path])
         case let .serverNotConnected(server):
@@ -451,6 +471,7 @@ public extension VFSUnsupportedReason {
             .objectNotRestored(name: ""),
             .bucketOperationInProgress(name: ""),
             .bucketNameTakenGlobally(name: ""),
+            .s3ActionNotPermitted(action: .createBucket),
             .noBackendForPath(path: ""),
             .serverNotConnected(server: ""),
             .archiveToolUnavailableForRead,

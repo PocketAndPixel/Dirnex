@@ -12656,16 +12656,54 @@ eliminated, and which neither implementable route depended on.
 
 ---
 
-### After M19 — the follow-on log (2026-08-07 → 2026-09-01)
+### After M19 — the follow-on log (2026-08-07 → 2026-09-03)
 
-Forty-one dated passes that landed outside a milestone of their own, between M18's close on
-2026-08-07 and 2026-09-01: user-reported bugs, three vault features, the tree crossing into S3,
+Forty-five dated passes that landed outside a milestone of their own, between M18's close on
+2026-08-07 and 2026-09-03: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
 sit here at the end rather than in a numeric slot — and they keep their **newest-first** order,
 because several read as a chain and refer to the entry below. Moved out of [PLAN.md](../PLAN.md)
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
+
+**2026-09-03 — a refused S3 request names the IAM action it needed.** Reported as a question rather
+than a bug: F7 on an S3 account pane answered *"The server refused that. This account may not have
+permission for it."*, and the user asked whether the account really lacked the permission or Dirnex
+had got something wrong. It really lacked it — measured with `curl` against the live account, three
+unrelated bucket names each came back `403 AccessDenied` carrying *"not authorized to perform:
+s3:CreateBucket … because no identity-based policy allows the s3:CreateBucket action"*, while
+`ListAllMyBuckets` and `HeadBucket` answered 200 on the same key. So the diagnosis was right and the
+**sentence was empty**: it stopped exactly where the question started, and nothing in it can be acted
+on. The control that turned that into a measurement is one request — the byte-identical create for
+`dirnex-live-probe`, the one ARN that account's policy grants, answered **200**, which rules out the
+request shape, the signature, the region and the `LocationConstraint` body all at once.
+
+`S3Action` (core) is the vocabulary and ``VFSUnsupportedReason/s3ActionNotPermitted(action:)`` the
+reason, so the alert now reads *"…This account doesn't have the s3:CreateBucket permission."* — a
+token the account holder pastes into a policy. Four things decided its shape. The action is the
+**caller's own verb**, never scraped from AWS's prose, which is the remote's English and is not
+something an S3-compatible endpoint owes us; that makes the service's message an *independent*
+oracle instead of the input, and the live test asserts it, so an enum spelling `s3:PutBucket` would
+pass every headless test and fail against AWS. They are **IAM actions rather than REST verbs** —
+there is no `s3:HeadBucket`, `HeadBucket` and `ListObjectsV2` both riding on `s3:ListBucket` — so
+`CopyObject` deliberately names nothing, needing `s3:GetObject` on the source and `s3:PutObject` on
+the destination with no way to tell from a 403 which was missing. It is keyed on the **`<Code>`**
+and never on the 403, because that status also carries `InvalidAccessKeyId` and
+`SignatureDoesNotMatch`, where the user retypes a secret rather than editing a policy. And
+`vfsError(for:action:)` **defaults to `nil`**, so a site that does not know its verb is byte-identical
+to before — while `S3Backend.write(at:action:)` takes it with *no* default, so the compiler asks each
+caller rather than letting the next write lose its name quietly.
+
+Two things fell out. The core suite's own narrowness control in `S3MultipartConditionTests` failed —
+correctly, and against a better error: it had spelled "not read as a conflict" as `if case
+.unsupported`, exact while the three conflict reasons were the only `.unsupported` values that path
+could reach, and a proxy one level broader than its own name the moment a fourth arrived
+(docs/NOTES.md ▸ Testing). And the live half went in beside the suite that was already there
+(`S3AccountLiveIntegrationTests+BucketRefusals.swift`, an **extension** rather than a second `@Suite`
+so the `.serialized` trait still covers it), which put the parent file back under the 500-line
+ceiling along a real seam: everything left there is a pane crossing backends, and both refusals are a
+verb with no pane involved.
 
 **2026-09-02 — the vault visibility setting moved into Settings, and its default flipped on.** It
 had been a checked item on one vault's sidebar context menu since 2026-08-11, per vault and off

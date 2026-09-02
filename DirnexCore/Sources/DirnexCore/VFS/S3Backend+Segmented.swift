@@ -94,7 +94,7 @@ extension S3Backend {
         }
         for response in responses {
             if let service = Self.serviceError(from: response) {
-                throw service.vfsError(for: request.source)
+                throw service.vfsError(for: request.source, action: .getObject)
             }
         }
         // 206 is what a satisfied `Range` request answers. A 200 means the server sent the whole
