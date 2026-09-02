@@ -61,7 +61,7 @@ import Testing
 /// sibling pane in this very suite. It is answered in the product (a miss is not an answer) and
 /// pinned by `evictionFromTheSharedScanCacheDoesNotRepaint` below.
 @MainActor
-@Suite("Passive refresh")
+@Suite("Passive refresh", .serialized)
 struct PanelPassiveRefreshTests {
     // MARK: - Fixture
 
@@ -179,8 +179,10 @@ struct PanelPassiveRefreshTests {
         pane.updateSyncStatus()
     }
 
-    /// Wait until the providers this pane would pull from have actually published for its directory,
-    /// so the loop above collects a snapshot rather than racing one.
+    /// Wait until the providers this pane would pull from have actually published for its directory
+    /// **and make the pane adopt each answer in the same main-actor turn**. A cache entry can be
+    /// evicted by another suite between two turns, so waiting for the cache and pulling afterwards
+    /// is still a race in the full run.
     ///
     /// Waiting on the **provider's own cache** rather than on a duration is what makes this exact:
     /// the loop's rounds only narrow the window a late publish can land in, and the residual was
@@ -195,12 +197,17 @@ struct PanelPassiveRefreshTests {
     /// directory is not a repository, so its snapshot stays `nil` and `applyGitSnapshot` is a no-op
     /// however late it arrives.
     private static func waitForProviderScans(_ pane: PanelViewController) async {
-        let directory = pane.panel.path
         if pane.isSyncStatusVisible {
-            _ = await settle { CloudSyncStatusProvider.shared.cachedSnapshot(for: directory) != nil }
+            _ = await settle {
+                pane.updateSyncStatus()
+                return pane.syncSnapshot != nil
+            }
         }
         if pane.areTagsVisible {
-            _ = await settle { FinderTagProvider.shared.cachedSnapshot(for: directory) != nil }
+            _ = await settle {
+                pane.updateTagStatus()
+                return pane.tagSnapshot != nil
+            }
         }
     }
 

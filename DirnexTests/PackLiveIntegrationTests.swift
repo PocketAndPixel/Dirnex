@@ -334,89 +334,94 @@ struct PackFolderLiveIntegrationTests {
     /// is a subprocess, and no double for either would be evidence about the thing that changed.
     @Test("a folder on a server is staged whole and packed, at every depth")
     func remoteFolderIsStagedAndPacked() async throws {
-        let config = try #require(SFTPLiveEnvironment.current)
-        let backend = SFTPBackend(
-            location: config.location,
-            transport: SFTPProcessTransport(
+        // Off the cooperative pool: staging the tree blocks on several real SFTP subprocesses.
+        try await offCooperativePool {
+            let config = try #require(SFTPLiveEnvironment.current)
+            let backend = SFTPBackend(
+                location: config.location,
+                transport: SFTPProcessTransport(
+                    location: config.location,
+                    authentication: .key(identityFile: config.identityFile)
+                )
+            )
+            // **Staging a tree needs a *routing* backend, where staging a file does not** — and the
+            // live run is what showed it: `CopyEngine` creates directories and writes files on the
+            // destination side, so handed a bare `SFTPBackend` it refuses the local temp path with
+            // `pathOutsideConnection`. A one-file materialize never notices, because a download is one
+            // `copyFile` the remote backend answers itself. The app always holds a `CompositeBackend`,
+            // so this is the app's own shape rather than a convenience for the test.
+            let composite = CompositeBackend(local: LocalBackend())
+            _ = composite.connectSFTP(
                 location: config.location,
                 authentication: .key(identityFile: config.identityFile)
             )
-        )
-        // **Staging a tree needs a *routing* backend, where staging a file does not** — and the
-        // live run is what showed it: `CopyEngine` creates directories and writes files on the
-        // destination side, so handed a bare `SFTPBackend` it refuses the local temp path with
-        // `pathOutsideConnection`. A one-file materialize never notices, because a download is one
-        // `copyFile` the remote backend answers itself. The app always holds a `CompositeBackend`,
-        // so this is the app's own shape rather than a convenience for the test.
-        let composite = CompositeBackend(local: LocalBackend())
-        _ = composite.connectSFTP(
-            location: config.location,
-            authentication: .key(identityFile: config.identityFile)
-        )
-        let scratch = try scratch()
-        defer { try? FileManager.default.removeItem(at: scratch) }
-        // Minted here rather than assumed: an unstated fixture precondition fails as a broken
-        // feature, which this suite's neighbour had to learn once already.
-        let remoteDirectory = VFSPath(
-            backend: config.location.backendID,
-            path: config.remotePath
-        ).appending("dirnex-pack-tree-\(UUID().uuidString)")
-        try backend.createDirectory(at: remoteDirectory)
-        defer { try? backend.removeItem(at: remoteDirectory) }
-        let folderName = remoteDirectory.lastComponent
+            let scratch = try scratch()
+            defer { try? FileManager.default.removeItem(at: scratch) }
+            // Minted here rather than assumed: an unstated fixture precondition fails as a broken
+            // feature, which this suite's neighbour had to learn once already.
+            let remoteDirectory = VFSPath(
+                backend: config.location.backendID,
+                path: config.remotePath
+            ).appending("dirnex-pack-tree-\(UUID().uuidString)")
+            try backend.createDirectory(at: remoteDirectory)
+            defer { try? backend.removeItem(at: remoteDirectory) }
+            let folderName = remoteDirectory.lastComponent
 
-        let deepPayload = try provisionDepth(on: backend, under: remoteDirectory, staging: scratch)
+            let deepPayload = try provisionDepth(
+                on: backend, under: remoteDirectory, staging: scratch
+            )
 
-        // 1. Stage the folder, as the gesture now does before it queues a pack.
-        let staging = scratch.appendingPathComponent("staged", isDirectory: true)
-        try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
-        let folder = try backend.stat(at: remoteDirectory)
-        let fetched = MaterializeRunner.run(
-            FileOperation(
-                kind: .materialize,
-                sources: [folder],
-                destinationDirectory: .local(staging.path)
-            ),
-            using: composite,
-            directoryName: { "holder" }
-        )
-        #expect(fetched.succeeded)
-        let staged = try #require(fetched.materialized?.first)
-        // Not cacheable, which is what keeps a tree out of `RemoteFileCache`.
-        #expect(staged.isDirectory)
-
-        // 2. Pack what landed, through the real `bsdtar` on the real queue's writer.
-        let archive = scratch.appendingPathComponent("tree.zip").path
-        let packed = PlainPackRunner.run(
-            FileOperation(
-                kind: .plainPack(
-                    PlainPackJob(
-                        sources: [
-                            PackSource(
-                                directory: URL(fileURLWithPath: staged.localPath)
-                                    .deletingLastPathComponent().path,
-                                name: URL(fileURLWithPath: staged.localPath).lastPathComponent
-                            )
-                        ],
-                        archive: .local(archive),
-                        format: .zip
-                    )
+            // 1. Stage the folder, as the gesture now does before it queues a pack.
+            let staging = scratch.appendingPathComponent("staged", isDirectory: true)
+            try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+            let folder = try backend.stat(at: remoteDirectory)
+            let fetched = MaterializeRunner.run(
+                FileOperation(
+                    kind: .materialize,
+                    sources: [folder],
+                    destinationDirectory: .local(staging.path)
                 ),
-                sources: [],
-                destinationDirectory: .local(scratch.path)
-            ),
-            using: LocalBackend(),
-            writer: ArchivePacker()
-        )
-        #expect(packed.succeeded)
+                using: composite,
+                directoryName: { "holder" }
+            )
+            #expect(fetched.succeeded)
+            let staged = try #require(fetched.materialized?.first)
+            // Not cacheable, which is what keeps a tree out of `RemoteFileCache`.
+            #expect(staged.isDirectory)
 
-        // 3. Read the archive back with the tool, and check the deep file's own bytes — the claim a
-        // member list alone cannot make.
-        let member = "\(folderName)/inner/deep.txt"
-        let extraction = try ArchiveExtractor.extract(
-            innerPaths: [member], fromArchiveAt: archive
-        )
-        let extracted = extraction.directory.appendingPathComponent(member)
-        #expect(try String(contentsOf: extracted, encoding: .utf8) == deepPayload)
+            // 2. Pack what landed, through the real `bsdtar` on the real queue's writer.
+            let archive = scratch.appendingPathComponent("tree.zip").path
+            let packed = PlainPackRunner.run(
+                FileOperation(
+                    kind: .plainPack(
+                        PlainPackJob(
+                            sources: [
+                                PackSource(
+                                    directory: URL(fileURLWithPath: staged.localPath)
+                                        .deletingLastPathComponent().path,
+                                    name: URL(fileURLWithPath: staged.localPath).lastPathComponent
+                                )
+                            ],
+                            archive: .local(archive),
+                            format: .zip
+                        )
+                    ),
+                    sources: [],
+                    destinationDirectory: .local(scratch.path)
+                ),
+                using: LocalBackend(),
+                writer: ArchivePacker()
+            )
+            #expect(packed.succeeded)
+
+            // 3. Read the archive back with the tool, and check the deep file's own bytes — the claim a
+            // member list alone cannot make.
+            let member = "\(folderName)/inner/deep.txt"
+            let extraction = try ArchiveExtractor.extract(
+                innerPaths: [member], fromArchiveAt: archive
+            )
+            let extracted = extraction.directory.appendingPathComponent(member)
+            #expect(try String(contentsOf: extracted, encoding: .utf8) == deepPayload)
+        }
     }
 }

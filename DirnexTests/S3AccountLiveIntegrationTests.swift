@@ -21,8 +21,11 @@ import Testing
 ///
 /// ```json
 /// { "host": "127.0.0.1", "port": 9599, "region": "us-east-1", "accessKeyID": "…",
-///   "secretAccessKey": "…", "bucket": "…", "pathStyle": true, "usesTLS": false }
+///   "secretAccessKey": "…", "bucket": "…", "pathStyle": true, "usesTLS": false,
+///   "deniedCreateBucketName": "dirnex-denied-probe" }
 /// ```
+/// `deniedCreateBucketName` is optional. Set it only when IAM refuses `s3:CreateBucket` for that
+/// exact name; the refusal test stays disabled when the account grants the action more widely.
 ///
 /// Point it at a scratch account — the suite creates and deletes a bucket named
 /// `dirnex-live-probe`, one fixed name for the reason `createsAndDeletesABucket` sets out.
@@ -177,7 +180,8 @@ final class S3AccountLiveIntegrationTests {
         let config = S3LiveEnvironment.Config(
             account: live.account.addressed(.virtualHost),
             secretAccessKey: live.secretAccessKey,
-            bucket: live.bucket
+            bucket: live.bucket,
+            deniedCreateBucketName: live.deniedCreateBucketName
         )
         // The saved-server store is the *developer's own sidebar* — this target runs inside the app
         // (docs/NOTES.md ▸ Testing) — and a corrected connect writes the mode back into any record

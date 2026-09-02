@@ -15,6 +15,33 @@ import Testing
 /// everything there is a pane *crossing backends*, and both of these are a verb being refused with
 /// no pane involved at all.
 extension S3AccountLiveIntegrationTests {
+    private struct BucketCreationProbe: Sendable {
+        let bucket: VFSPath
+        let response: S3Response
+        let cleanup: S3Response?
+    }
+
+    /// Make the blocking request away from the test executor, then bring its answer back so any
+    /// issue is recorded by the test that owns it.
+    private func createBucketProbe(
+        named name: String,
+        config: S3LiveEnvironment.Config
+    ) async throws -> BucketCreationProbe {
+        try await offCooperativePool {
+            let transport = S3AccountCurlTransport(
+                account: config.account,
+                secretAccessKey: config.secretAccessKey
+            )
+            let response = try transport.createBucket(name: name)
+            let cleanup = response.isSuccess ? try transport.deleteBucket(name: name) : nil
+            return BucketCreationProbe(
+                bucket: config.accountRoot.appending(name),
+                response: response,
+                cleanup: cleanup
+            )
+        }
+    }
+
     /// The refusal a scoped key can never see: a bucket name another AWS account already holds
     /// (PLAN.md §M21).
     ///
@@ -33,93 +60,81 @@ extension S3AccountLiveIntegrationTests {
     /// about the endpoint, and this one is a claim about the *key*.
     @Test("a bucket name another account holds is refused as globally taken")
     func globallyTakenBucketNameIsRefused() async throws {
-        // Off the main actor, for the reason ``offCooperativePool`` gives.
-        try await offCooperativePool {
-            let config = try #require(S3LiveEnvironment.current)
-            let transport = S3AccountCurlTransport(
-                account: config.account,
-                secretAccessKey: config.secretAccessKey
-            )
-            // A name owned by another account since long before this test existed. Nothing here can
-            // create it, so the request has exactly one possible outcome.
-            let name = "images"
-            let bucket = config.accountRoot.appending(name)
-
-            let refused = try transport.createBucket(name: name)
-            #expect(
-                refused.status == 409,
-                """
-                expected 409 BucketAlreadyExists, got \(refused.status) — a 403 means this key lacks \
-                s3:CreateBucket on arn:aws:s3:::\(name); see the comment above
-                """
-            )
-            let error = S3ServiceError.parse(refused.body, status: refused.status)
-            #expect(error.code == "BucketAlreadyExists")
-            #expect(
-                error.vfsError(for: bucket) == .unsupported(.bucketNameTakenGlobally(name: name))
-            )
-            // The narrowness: the *other* 409 on this verb, a name this account owns, keeps reading as
-            // an ordinary collision — it really is in the pane, and "already exists" is true there.
-            #expect(error.vfsError(for: bucket) != .alreadyExists(bucket))
+        // A name owned by another account since long before this test existed. Nothing here can
+        // create it, so the request has exactly one possible outcome.
+        let config = try #require(S3LiveEnvironment.current)
+        let name = "images"
+        let probe = try await createBucketProbe(named: name, config: config)
+        let refused = probe.response
+        if refused.isSuccess {
+            #expect(probe.cleanup?.isSuccess == true, "the unexpected bucket was not removed")
         }
+        #expect(
+            refused.status == 409,
+            """
+            expected 409 BucketAlreadyExists, got \(refused.status) — a 403 means this key lacks \
+            s3:CreateBucket on arn:aws:s3:::\(name); see the comment above
+            """
+        )
+        let error = S3ServiceError.parse(refused.body, status: refused.status)
+        #expect(error.code == "BucketAlreadyExists")
+        #expect(
+            error.vfsError(for: probe.bucket)
+                == .unsupported(.bucketNameTakenGlobally(name: name))
+        )
+        // The narrowness: the *other* 409 on this verb, a name this account owns, keeps reading as
+        // an ordinary collision — it really is in the pane, and "already exists" is true there.
+        #expect(error.vfsError(for: probe.bucket) != .alreadyExists(probe.bucket))
     }
 
-    /// The refusal this account gives for **every** name but one, and the sentence that names why.
+    /// The refusal a scoped account gives for a configured name, and the sentence that names why.
     ///
     /// Measured 2026-09-02 with `curl` against this same account: `CreateBucket` on three unrelated
     /// names each answered *"not authorized to perform: s3:CreateBucket … because no identity-based
     /// policy allows the s3:CreateBucket action"*, while the byte-identical request for
     /// ``S3LiveProbeBucket/name`` — the one ARN the policy grants — answered **200**. So the
-    /// account is in exactly the state a scoped key is ordinarily issued in, and the old sentence
-    /// ("this account may not have permission for it") stopped where the answer starts.
+    /// account was in exactly the state a scoped key is ordinarily issued in, and the old sentence
+    /// ("this account may not have permission for it") stopped where the answer starts. The test is
+    /// enabled only when the fixture declares such a name; a broader key cannot reach this refusal.
     ///
     /// **AWS's own prose is the oracle for the token, and it is an independent one.** The action is
     /// named from *our* call site and never scraped (``S3Action``), so asserting that the service's
     /// message carries the same string is a cross-check rather than a tautology: an enum spelling
     /// `s3:PutBucket` would pass every headless test in the suite and fail here.
-    @Test("a name this account cannot create names the missing IAM action")
+    @Test(
+        "a name this account cannot create names the missing IAM action",
+        .enabled(if: S3LiveEnvironment.current?.deniedCreateBucketName != nil)
+    )
     func refusedCreateNamesTheMissingAction() async throws {
-        try await offCooperativePool {
-            let config = try #require(S3LiveEnvironment.current)
-            let transport = S3AccountCurlTransport(
-                account: config.account,
-                secretAccessKey: config.secretAccessKey
-            )
-            // Unique, so it cannot collide with a real bucket, and outside the one ARN this
-            // account's policy grants — IAM is evaluated first, so the answer is 403 whoever owns
-            // the name.
-            let name = "dirnex-denied-probe-\(UUID().uuidString.prefix(8).lowercased())"
-            let bucket = config.accountRoot.appending(name)
-            let refused = try transport.createBucket(name: name)
-
-            guard refused.status == 403 else {
-                // A key with a wider grant than this test assumes would have *created* it. Say so,
-                // and take it away again rather than leaving a bucket behind.
-                if (200..<300).contains(refused.status) {
-                    _ = try? transport.deleteBucket(name: name)
-                }
-                Issue.record("""
-                expected 403 AccessDenied, got \(refused.status) — this key grants s3:CreateBucket \
-                more widely than arn:aws:s3:::\(S3LiveProbeBucket.name), so the refusal this test \
-                is about cannot be reached
-                """)
-                return
-            }
-
-            let error = S3ServiceError.parse(refused.body, status: refused.status)
-            #expect(error.code == "AccessDenied")
-            #expect(!error.isCredentialFailure)
-            #expect(
-                error.vfsError(for: bucket, action: .createBucket)
-                    == .unsupported(.s3ActionNotPermitted(action: .createBucket))
-            )
-            // The service names the same action we do, from its own side of the wire.
-            let message = String(bytes: refused.body, encoding: .utf8) ?? ""
-            #expect(message.contains(S3Action.createBucket.iamName))
-            // Narrowness: this is the *action* being named, not the 403. A caller with no verb in
-            // hand still gets what it always got, which is what makes the change additive.
-            #expect(error.vfsError(for: bucket) == .permissionDenied(bucket))
+        let config = try #require(S3LiveEnvironment.current)
+        let name = try #require(config.deniedCreateBucketName)
+        let probe = try await createBucketProbe(named: name, config: config)
+        let refused = probe.response
+        if refused.isSuccess {
+            #expect(probe.cleanup?.isSuccess == true, "the unexpected bucket was not removed")
         }
+
+        guard refused.status == 403 else {
+            Issue.record("""
+            expected 403 AccessDenied, got \(refused.status) — deniedCreateBucketName does not \
+            name a bucket this key is refused permission to create
+            """)
+            return
+        }
+
+        let error = S3ServiceError.parse(refused.body, status: refused.status)
+        #expect(error.code == "AccessDenied")
+        #expect(!error.isCredentialFailure)
+        #expect(
+            error.vfsError(for: probe.bucket, action: .createBucket)
+                == .unsupported(.s3ActionNotPermitted(action: .createBucket))
+        )
+        // The service names the same action we do, from its own side of the wire.
+        let message = String(bytes: refused.body, encoding: .utf8) ?? ""
+        #expect(message.contains(S3Action.createBucket.iamName))
+        // Narrowness: this is the *action* being named, not the 403. A caller with no verb in hand
+        // still gets what it always got, which is what makes the change additive.
+        #expect(error.vfsError(for: probe.bucket) == .permissionDenied(probe.bucket))
     }
 }
 
@@ -150,10 +165,11 @@ final class CountingAccountTransport: S3AccountTransport, @unchecked Sendable {
 
 /// The opt-in configuration for the live S3 suite.
 enum S3LiveEnvironment {
-    struct Config {
+    struct Config: Sendable {
         let account: S3Account
         let secretAccessKey: String
         let bucket: String
+        let deniedCreateBucketName: String?
 
         var accountRoot: VFSPath { VFSPath(backend: .s3Account(account), path: "/") }
     }
@@ -170,6 +186,7 @@ enum S3LiveEnvironment {
         let bucket: String
         let pathStyle: Bool?
         let usesTLS: Bool?
+        let deniedCreateBucketName: String?
     }
 
     static var current: Config? {
@@ -185,7 +202,8 @@ enum S3LiveEnvironment {
                 usesTLS: file.usesTLS ?? true
             ),
             secretAccessKey: file.secretAccessKey,
-            bucket: file.bucket
+            bucket: file.bucket,
+            deniedCreateBucketName: file.deniedCreateBucketName
         )
     }
 }

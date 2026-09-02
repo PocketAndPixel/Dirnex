@@ -23,7 +23,7 @@ import Testing
 /// and is tested in the core; that the shortcut and the walk agree is `DirectorySizer`'s. What
 /// nothing else could see is that no one was asking.
 @MainActor
-@Suite("Where size bars apply")
+@Suite("Where size bars apply", .serialized)
 struct SizeBarReachTests {
     private enum Remote {
         static let sftp = VFSBackendID.sftp(

@@ -396,6 +396,21 @@ at build time.
   - **Wrap the whole body, not each call, wherever a test measures durations**, so the clock, the
     subprocess and its progress callbacks stay on the one thread that ran it. Wrapping each call
     leaves the timing assertions measuring the scheduler.
+  - **A new live test can re-open the same hole.** `PackFolderLiveIntegrationTests` called several
+    blocking SFTP verbs directly. With the S3 suites running too, full runs failed in unrelated
+    size-provider tests. Move the whole body through `offCooperativePool` before trusting the
+    remaining failures.
+- **A fixture that uses a process-wide cache must adopt a cached value in the same main-actor turn
+  that sees it.** `PanelPassiveRefreshTests` waited for a provider cache entry, returned from the
+  wait, and pulled it later. Other suites could evict the entry between those turns, so the pane
+  started the test with no snapshot. Pull inside the wait predicate, and serialize tests that share
+  one provider singleton. The affected suites passed 10 repeated isolated runs and then failed in
+  two full live runs before this change; both full live runs passed afterwards.
+- **An endpoint config does not imply a permission shape.** A live S3 test expected every valid
+  bucket name except one to get `403 AccessDenied`, but a broader key created the random probe and
+  made the suite fail. Gate such a test on an explicit config field for the denied name. Also bring
+  the response back from `offCooperativePool` before using `#expect` or `Issue.record`; an issue
+  recorded on its worker has no owning test and Xcode can repeat it under unrelated tests.
 - **A decision that reads live global state *inside itself* cannot be varied by a test, and the tell
   is a negative control that fails nothing.** `PanelViewController+Drop.resolvedKind` asked
   `NSEvent.modifierFlags` directly, so a rule keyed on ⌘ or ⌥ had exactly one reachable value — the
