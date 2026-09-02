@@ -80170,7 +80170,7 @@
       }
     },
     "That key signed in, but it isn’t allowed to list the buckets on %@. Type a bucket name to connect to just that one.": {
-      "comment": "S3 connect failure detail when the key lacks s3:ListAllMyBuckets; %@ is the endpoint. Not a fault: a key scoped to one bucket is the ordinary way these are issued.",
+      "comment": "S3 connect failure detail when a 403 carried no S3 error code, so the missing permission cannot be named; %@ is the endpoint. Not a fault: a key scoped to one bucket is the ordinary way these are issued.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -80258,91 +80258,180 @@
         }
       }
     },
-    "That key signed in, but it isn’t allowed to list “%@”. Check the bucket policy or the permissions on the key.": {
-      "comment": "S3 connect failure detail; %@ is the bucket name. The key is valid, the policy is not.",
+    "That key signed in, but it isn’t allowed to list the buckets on %@ — it doesn’t have the %@ permission. Type a bucket name to connect to just that one.": {
+      "comment": "S3 connect failure detail when the key lacks that permission. %1$@ is the endpoint. %2$@ is an AWS IAM action name — always Latin script, e.g. s3:ListAllMyBuckets — so leave it exactly as it is: the user pastes it into a policy, and a translated or re-spelled token grants nothing. Do not put quotation marks around it either; it is an identifier to copy, not a name being referred to. Not a fault: a key scoped to one bucket is the ordinary way these are issued, so the sentence still names the way forward rather than reporting an error.",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der Schlüssel wurde akzeptiert, darf „%@“ aber nicht auflisten. Prüfen Sie die Bucket-Richtlinie oder die Rechte des Schlüssels."
+            "value": "Der Schlüssel wurde akzeptiert, darf die Buckets auf %1$@ aber nicht auflisten – ihm fehlt die Berechtigung %2$@. Geben Sie einen Bucket-Namen ein, um sich nur mit diesem zu verbinden."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "That key signed in, but it isn’t allowed to list “%@”. Check the bucket policy or the permissions on the key."
+            "value": "That key signed in, but it isn’t allowed to list the buckets on %@ — it doesn’t have the %@ permission. Type a bucket name to connect to just that one."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La clave se autenticó, pero no tiene permiso para listar «%@». Revisa la política del bucket o los permisos de la clave."
+            "value": "La clave se autenticó, pero no tiene permiso para listar los buckets de %1$@: le falta el permiso %2$@. Escribe el nombre de un bucket para conectarte solo a ese."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "La clé a été acceptée, mais elle n’a pas le droit de lister « %@ ». Vérifiez la stratégie du compartiment ou les autorisations de la clé."
+            "value": "La clé a été acceptée, mais elle n’a pas le droit de lister les compartiments de %1$@ : elle ne dispose pas de l’autorisation %2$@. Saisissez le nom d’un compartiment pour vous connecter à celui-ci uniquement."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La chiave è stata accettata, ma non può elencare «%@». Controlla il criterio del bucket o i permessi della chiave."
+            "value": "La chiave è stata accettata, ma non può elencare i bucket su %1$@: non dispone dell’autorizzazione %2$@. Digita il nome di un bucket per connetterti solo a quello."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "キーは認証されましたが、「%@」の一覧を表示する権限がありません。バケットポリシーまたはキーの権限を確認してください。"
+            "value": "キーは認証されましたが、%1$@ のバケット一覧を表示する権限がありません。%2$@ の権限がないためです。バケット名を入力すると、そのバケットだけに接続できます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "키는 인증되었지만 ‘%@’의 목록을 볼 권한이 없습니다. 버킷 정책이나 키의 권한을 확인하십시오."
+            "value": "키는 인증되었지만 %1$@의 버킷 목록을 볼 권한이 없습니다. %2$@ 권한이 없기 때문입니다. 버킷 이름을 입력하면 해당 버킷에만 연결됩니다."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "De sleutel is geaccepteerd, maar mag ‘%@’ niet tonen. Controleer het bucketbeleid of de rechten van de sleutel."
+            "value": "De sleutel is geaccepteerd, maar mag de buckets op %1$@ niet tonen: de machtiging %2$@ ontbreekt. Typ een bucketnaam om alleen daarmee te verbinden."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Klucz został przyjęty, ale nie ma uprawnień do wyświetlenia „%@”. Sprawdź zasady zasobnika lub uprawnienia klucza."
+            "value": "Klucz został przyjęty, ale nie ma uprawnień do wyświetlenia zasobników na %1$@ — brakuje mu uprawnienia %2$@. Wpisz nazwę zasobnika, aby połączyć się tylko z nim."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "A chave foi aceita, mas não tem permissão para listar “%@”. Verifique a política do bucket ou as permissões da chave."
+            "value": "A chave foi aceita, mas não tem permissão para listar os buckets em %1$@ — falta a permissão %2$@. Digite o nome de um bucket para conectar-se apenas a ele."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ключ принят, но у него нет прав на просмотр «%@». Проверьте политику бакета или права ключа."
+            "value": "Ключ принят, но у него нет прав на просмотр списка бакетов на %1$@ — нет разрешения %2$@. Введите имя бакета, чтобы подключиться только к нему."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ключ прийнято, але він не має прав на перегляд «%@». Перевірте політику бакета або права ключа."
+            "value": "Ключ прийнято, але він не має прав на перегляд списку бакетів на %1$@ — немає дозволу %2$@. Введіть назву бакета, щоб під’єднатися лише до нього."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "密钥已通过验证，但无权列出“%@”。请检查存储桶策略或该密钥的权限。"
+            "value": "密钥已通过验证，但无权列出 %1$@ 上的存储桶——它没有 %2$@ 权限。输入存储桶名称即可仅连接该存储桶。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "金鑰已通過驗證，但無權列出「%@」。請檢查儲存桶政策或該金鑰的權限。"
+            "value": "金鑰已通過驗證，但無權列出 %1$@ 上的儲存桶——它沒有 %2$@ 權限。輸入儲存桶名稱即可僅連接該儲存桶。"
+          }
+        }
+      }
+    },
+    "That key signed in, but it isn’t allowed to list “%@” — this account doesn’t have the %@ permission for that bucket. Add it to the policy on the key, or to the bucket’s own policy.": {
+      "comment": "S3 connect failure detail. %1$@ is the bucket name. %2$@ is an AWS IAM action name — always Latin script, e.g. s3:ListBucket — so leave it exactly as it is: the user pastes it into a policy, and a translated or re-spelled token grants nothing. Do not put quotation marks around it either; it is an identifier to copy, not a name being referred to. The key is valid; the policy is not.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Schlüssel wurde akzeptiert, darf „%1$@“ aber nicht auflisten – diesem Account fehlt die Berechtigung %2$@ für diesen Bucket. Fügen Sie sie der Richtlinie des Schlüssels oder der Bucket-Richtlinie hinzu."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That key signed in, but it isn’t allowed to list “%@” — this account doesn’t have the %@ permission for that bucket. Add it to the policy on the key, or to the bucket’s own policy."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La clave se autenticó, pero no tiene permiso para listar «%1$@»: esta cuenta no tiene el permiso %2$@ para ese bucket. Añádelo a la política de la clave o a la del bucket."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La clé a été acceptée, mais elle n’a pas le droit de lister « %1$@ » : ce compte ne dispose pas de l’autorisation %2$@ pour ce compartiment. Ajoutez-la à la stratégie de la clé ou à celle du compartiment."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La chiave è stata accettata, ma non può elencare «%1$@»: questo account non dispone dell’autorizzazione %2$@ per quel bucket. Aggiungila al criterio della chiave o a quello del bucket."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キーは認証されましたが、「%1$@」の一覧を表示する権限がありません。このアカウントには、そのバケットに対する %2$@ の権限がありません。キーのポリシーまたはバケットポリシーに追加してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키는 인증되었지만 ‘%1$@’의 목록을 볼 권한이 없습니다. 이 계정에는 해당 버킷에 대한 %2$@ 권한이 없습니다. 키의 정책이나 버킷 정책에 추가하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De sleutel is geaccepteerd, maar mag ‘%1$@’ niet tonen: dit account heeft de machtiging %2$@ voor die bucket niet. Voeg deze toe aan het beleid van de sleutel of aan het bucketbeleid."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klucz został przyjęty, ale nie ma uprawnień do wyświetlenia „%1$@” — to konto nie ma uprawnienia %2$@ do tego zasobnika. Dodaj je do zasad klucza lub do zasad zasobnika."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A chave foi aceita, mas não tem permissão para listar “%1$@” — esta conta não tem a permissão %2$@ para esse bucket. Adicione-a à política da chave ou à política do bucket."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключ принят, но у него нет прав на просмотр «%1$@» — у этой учётной записи нет разрешения %2$@ для этого бакета. Добавьте его в политику ключа или в политику бакета."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключ прийнято, але він не має прав на перегляд «%1$@» — цей обліковий запис не має дозволу %2$@ для цього бакета. Додайте його до політики ключа або до політики бакета."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密钥已通过验证，但无权列出“%1$@”——此账户没有该存储桶的 %2$@ 权限。请将其添加到密钥策略或存储桶策略中。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "金鑰已通過驗證，但無權列出「%1$@」——此帳戶沒有該儲存桶的 %2$@ 權限。請將其新增至金鑰政策或儲存桶政策中。"
           }
         }
       }

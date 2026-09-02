@@ -313,14 +313,40 @@ extension PanelViewController {
         // still lands on the explanation rather than on an alarming sentence about credentials that
         // are fine. This is the ordinary case, not a fault — a key scoped to one bucket is how these
         // are normally issued — so it names the way forward instead of reporting an error.
+        //
+        // **Only `AccessDenied` earns the IAM token**, which is the rule
+        // ``S3ResponseError/vfsError(for:action:)`` already keeps: naming a permission is a claim
+        // about IAM, and a code-less 403 is not a refusal from S3 at all — it is as easily a proxy
+        // or a captive portal. Sending *that* user to edit a bucket policy is the mistake this
+        // backend already paid for once, when a 403 recommended Full Disk Access for an object on
+        // somebody else's servers (docs/NOTES.md ▸ curl for S3). The soft sentence still fits both.
+        guard service.code == "AccessDenied" else {
+            return String(
+                localized: """
+                That key signed in, but it isn’t allowed to list the buckets on \(account.host). \
+                Type a bucket name to connect to just that one.
+                """,
+                comment: """
+                S3 connect failure detail when a 403 carried no S3 error code, so the missing \
+                permission cannot be named; %@ is the endpoint. Not a fault: a key scoped to one \
+                bucket is the ordinary way these are issued.
+                """
+            )
+        }
         return String(
             localized: """
-            That key signed in, but it isn’t allowed to list the buckets on \(account.host). \
-            Type a bucket name to connect to just that one.
+            That key signed in, but it isn’t allowed to list the buckets on \(account.host) — it \
+            doesn’t have the \(S3Action.listAllMyBuckets.iamName) permission. Type a bucket name \
+            to connect to just that one.
             """,
             comment: """
-            S3 connect failure detail when the key lacks s3:ListAllMyBuckets; %@ is the endpoint. \
-            Not a fault: a key scoped to one bucket is the ordinary way these are issued.
+            S3 connect failure detail when the key lacks that permission. %1$@ is the endpoint. \
+            %2$@ is an AWS IAM action name — always Latin script, e.g. s3:ListAllMyBuckets — so \
+            leave it exactly as it is: the user pastes it into a policy, and a translated or \
+            re-spelled token grants nothing. Do not put quotation marks around it either; it is \
+            an identifier to copy, not a name being referred to. Not a fault: a key scoped to one \
+            bucket is the ordinary way these are issued, so the sentence still names the way \
+            forward rather than reporting an error.
             """
         )
     }

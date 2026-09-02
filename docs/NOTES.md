@@ -589,6 +589,23 @@ at build time.
     through to is not one. Ask what the *other* branch does before believing a negative wait or a
     presence check — here the alternative branch's first act was to present something of the same
     kind.
+- **A negative control can read as *inert* because a gate further down catches its input first, and
+  the reassuring reading is that the rule it protects is redundant.** Measured 2026-09-03 while
+  covering the S3 refusal sentences: neutering `isCredentialFailure` — the guard that stops a
+  mistyped secret being reported as a missing permission — left all five tests green, because
+  `InvalidAccessKeyId` then fell past it into an `AccessDenied` gate that turned it away anyway. The
+  assertion was true and was true *for the wrong reason*, so it said nothing about the guard it was
+  named for.
+  - **The tell is a control that fires nowhere at all**, which is the opposite of the family above
+    (a control that fires too *widely* is a finding). Here it means the test's observable is
+    satisfied by more than one branch — the same shape as "a sheet appeared" not being an assertion,
+    arriving on a string.
+  - **The repair is to assert what the *right* branch says rather than what the wrong one omits.**
+    "Names no permission" is true of three branches; "names neither the bucket nor the endpoint" is
+    true only of the credential sentence, which interpolates nothing — so it is still
+    language-independent, and the control then failed on demand. The neutered build was telling
+    somebody with a bad secret that their key had **signed in**, which the first version could not
+    see.
 - **A `git checkout` is not available to revert a control here, because the work is uncommitted** —
   Oleg commits, so a control's cleanup has to copy the file aside and copy it back. Done anyway
   2026-08-29, and what made it recoverable is worth the sentence: the copy taken aside was of the
@@ -4042,6 +4059,34 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     - **Key it on the `<Code>`, never on the 403.** The same status carries the two credential
       failures, and telling somebody a permission is missing when their *secret* is wrong sends them
       to edit a policy that is fine. That is the narrowness control the suite fails without.
+    - **The connect sheet never goes through that mapping, so the rule had to be kept twice — and
+      it was not.** Reported 2026-09-03: a bucket created the day before listed in the account pane
+      and refused to open, and the sheet said "check the bucket policy or the permissions on the
+      key" — the sentence `S3Action` had shipped the day before to replace. `PanelViewController`
+      composes its own detail from the raw ``S3ServiceError`` (it has no `VFSError`, and it carries
+      the bucket name and the way forward, which the shared vocabulary cannot), so `vfsError(for:
+      action:)` is not on that path at all. **A vocabulary is not a funnel**: naming an action in the
+      core does not name it anywhere the app writes its own words, and the grep that finds those
+      sites is for a sentence about permissions with no `S3Action` in the file.
+      - The account half needed the `<Code>` rule *re-derived*, not merely copied: it deliberately
+        keys on the **403 alone**, so that a server refusing in its own vocabulary still lands on the
+        explanation rather than on an alarming sentence about credentials that are fine. Softly
+        worded that is right; with a token in it the same branch tells somebody behind a proxy or a
+        captive portal to go and edit an IAM policy that may not exist. So the token is gated on
+        `AccessDenied` and the old sentence stays for the code-less 403 — two sentences, because the
+        two answers are not equally certain.
+- **`ListObjectsV2` answers `403 AccessDenied` for a bucket outside the key's scope and `404
+  NoSuchBucket` for one that is not there, so IAM is *not* evaluated ahead of the name registry on
+  this verb** — the opposite of `CreateBucket`, where it is (▸ the entry above, and the reason a
+  bucket name somebody else owns is unreachable from a scoped key). Measured 2026-09-03 against real
+  AWS in one run. Worth having before designing a fixture: a refusal cannot be arranged with a name
+  that does not exist, which is the cheap way to reach one on the create side.
+  - **The pane can therefore show a bucket it cannot open, and no pre-check can tell.** The row comes
+    from `ListAllMyBuckets`, authorized by the account-wide `s3:ListAllMyBuckets`, while opening it
+    needs `s3:ListBucket` **on that bucket** — and `HeadBucket` is authorized by the same action, so
+    the obvious cheap probe answers 403 too (measured: 403 on the scoped-out bucket, 200 on a
+    listable one, same key, same session). There is nothing to gray the row out with; only entering
+    it answers, which is why the *sentence* is the whole of the fix.
 - **A wrong region answers 301 and hands back the endpoint that would have worked**, in
   `<Endpoint>`. Worth parsing the body for that field alone: from outside, a wrong region is
   indistinguishable from a missing bucket, so without it the connect form reports a failure the user

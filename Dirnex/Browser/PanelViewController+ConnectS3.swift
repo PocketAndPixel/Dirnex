@@ -250,12 +250,22 @@ extension PanelViewController {
         }
         switch service.code {
         case "AccessDenied":
+            // The action is the probe’s own verb rather than a token scraped out of AWS’s message
+            // (``S3Action``): `probeConnection` is a `ListObjectsV2`, which IAM authorizes as
+            // `s3:ListBucket` — there is no `s3:ListObjectsV2` to paste into a policy.
             return String(
                 localized: """
-                That key signed in, but it isn’t allowed to list “\(location.bucket)”. Check the \
-                bucket policy or the permissions on the key.
+                That key signed in, but it isn’t allowed to list “\(location.bucket)” — this \
+                account doesn’t have the \(S3Action.listBucket.iamName) permission for that \
+                bucket. Add it to the policy on the key, or to the bucket’s own policy.
                 """,
-                comment: "S3 connect failure detail; %@ is the bucket name. The key is valid, the policy is not."
+                comment: """
+                S3 connect failure detail. %1$@ is the bucket name. %2$@ is an AWS IAM action \
+                name — always Latin script, e.g. s3:ListBucket — so leave it exactly as it is: \
+                the user pastes it into a policy, and a translated or re-spelled token grants \
+                nothing. Do not put quotation marks around it either; it is an identifier to \
+                copy, not a name being referred to. The key is valid; the policy is not.
+                """
             )
         case "NoSuchBucket":
             return String(
