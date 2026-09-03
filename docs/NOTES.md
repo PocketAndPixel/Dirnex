@@ -3254,6 +3254,47 @@ do not share a resolver, and neither half of that is obvious from either call si
   reported shape, reproducible against a throwaway `pyftpdlib` server bound to `0.0.0.0` with no
   hardware involved and nothing to lock anybody out of.
 
+### SMB (`NetFSMountURLSync` and the share the account may not use)
+
+- **A share the account may not use and a share that is not there are the *same* status, so no
+  mount error can tell them apart — and the sentence written for one of them is a confident wrong
+  answer about the other.** Measured 2026-09-04 against a real Synology, with both controls in the
+  same run: as an account with no access, `NetFSMountURLSync` answered **ENOENT (2)** for `Photos`
+  and `Movies` *and* **2** for `NoSuchShareXYZ`, while `homes` mounted (**0**) and the same `Photos`
+  mounted (**0**) for an account that has access. So the code carries no permission signal at all;
+  Dirnex read it as *"The share wasn’t found — check the share name"*, and a user whose account
+  simply lacked access went hunting for a typo (reported 2026-09-04). `SMBMountError` now names both
+  readings and names the **account**, which is the half the reporter was missing.
+  - **The picker flow cannot name the folder, and that is NetFS's doing rather than a shortcut.**
+    With the Share field blank, Dirnex lets NetFS's own UI through (`kNAUIOptionAllowUI` — macOS's
+    share picker is the only way to browse shares today), and a failed pick comes back as a status
+    with **no share** in it: `mountpoints` is empty and the location still holds `share == nil`. So
+    that sentence leaves the folder unnamed rather than naming it wrongly — and the user sees
+    *two* dialogs, NetAuthAgent's generic "There was a problem connecting to the server" first and
+    Dirnex's after it.
+  - **The listing is the discriminator, and it *is* reachable in-process — the shipped comment
+    saying otherwise was wrong.** The server names the refused share to the very account it refuses:
+    `smbutil view` as the denied account listed `Movies`, `Photos`, `home` and `homes`. Doing it
+    ourselves needs no subprocess and no credential in `argv`: `CFPlugInCreate` on
+    `/System/Library/Filesystems/NetFSPlugins/smb.bundle`, `CFPlugInInstanceCreate` for
+    `kNetFSTypeID`, then `CreateSessionRef` → `OpenSession` → `EnumerateShares` off
+    `NetFSMountInterface_V1` (`<NetFS/NetFSPlugin.h>`, a public SDK header). Measured working
+    against the NAS. So **listed + ENOENT = a permission problem** and **not listed + ENOENT = no
+    such share**, exactly, whenever the share is named.
+  - Three sharp edges in that probe, none of them guessable. The header is a **submodule** —
+    `import NetFS.NetFSPlugin`, where a plain `import NetFS` cannot see `NetFSMountInterface_V1`.
+    `QueryInterface` hands back a **`NetFSInterface` wrapper**, not the vtable: read
+    `.pointee._interface` and bind *that* to `NetFSMountInterface_V1`, or every function pointer in
+    it is `nil` and the first call traps. And `kNetFSGetAccessRightsKey` is **not honoured** by the
+    SMB plugin — no `AccessRights` comes back for any share — so the rights cannot be read directly
+    and the listing's own membership is the whole signal.
+  - **`smbutil` is not the way to do it in the product**, for the reason this file gives for
+    `curl -u`: its only credential route is `//user:pass@host`, i.e. `argv`, readable by any `ps`.
+    It is fine as a probe, where one more trap costs a wrong diagnosis: an **unescaped `@` in the
+    password** silently mangles the URL's host and the tool answers *"No route to host"* — which
+    reads as the NAS being unreachable, on a host that pings and whose 445 is open. Percent-encode
+    the password before believing any `smbutil` failure.
+
 ### bsdtar
 
 - **Each extract member is a shell-glob pattern, not a literal** — a name containing `* ? [`

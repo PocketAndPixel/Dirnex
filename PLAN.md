@@ -146,11 +146,27 @@ once and are joined by the server (measured 3.6× through the shipped path, 16.9
 assumption — it has no way to write at an offset into a file that does not already exist at full
 length, and no way to make one without sending the file twice. The refusal moved to
 [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)'s *"cannot be closed from here"* list with the
-numbers behind it, and what remains here is M15's own cut.
+numbers behind it. What remains here is M15's own cut, and one gap a bug report opened on
+**2026-09-04**.
 
 - **The thumbnail grid, brief view and the `PaneSurface` extraction** — M15's cut, and one unit
   rather than three items, argued in HISTORY.md §M15. Any future grid inherits two constraints from
   it: skip `FileEntry.isDataless` rows, and move sort off the column header first.
+
+- **Dirnex's own SMB share picker.** With the Share field blank the app hands the mount to NetFS's
+  own UI (`kNAUIOptionAllowUI`), which is macOS's share picker — the only way today to browse a
+  server's shares. It costs two things the user sees. A failed pick raises **two** dialogs,
+  NetAuthAgent's generic *"There was a problem connecting to the server"* and Dirnex's after it; and
+  NetFS never reports back *which* share was picked, so the second one cannot name the folder that
+  failed. That is what makes it worth a slice rather than a nicety: a share the account may not use
+  and a share that is not there come back as **one** status (ENOENT), so only the *listing* tells
+  them apart — and the server names a refused share to the very account it refuses. The listing is
+  reachable in-process, measured 2026-09-04 against a real NAS: `EnumerateShares` on the SMB plugin's
+  `NetFSMountInterface_V1` (`<NetFS/NetFSPlugin.h>`), credentials in memory, no subprocess and
+  nothing in `argv` (docs/NOTES.md ▸ SMB). One enumeration therefore buys all three — the picker, the
+  exact refusal (*"“dirnex-test” doesn't have permission to use “Photos”"* rather than a sentence
+  that has to hedge), and the duplicate dialog going away. The hedging wording shipped 2026-09-04 as
+  the half that needed no new machinery.
 
 ## 5. Cross-cutting: testing strategy
 

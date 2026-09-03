@@ -42,7 +42,7 @@ final class SMBMounter {
         }
 
         guard outcome.status == 0, let mountPoint = outcome.mountPoint else {
-            throw SMBMountError(status: outcome.status, host: location.host)
+            throw SMBMountError(status: outcome.status, location: location)
         }
         // Ours only if the mount didn't exist before we asked — NetFS can hand back a share
         // someone else (Finder, a prior session) mounted, and quit must not tear that one down.
@@ -86,7 +86,11 @@ final class SMBMounter {
         // named. There, letting the UI through is the whole point: `NetFSMountURLSync` on a bare
         // `smb://host` shows macOS's own share picker (the NetFS header: "the user will be prompted
         // with a window to let them select one or more items to mount"), which is how the user finds
-        // a share they don't know the name of. There is no public API to list shares ourselves.
+        // a share they don't know the name of. Dirnex has no picker of its own *yet* — the shares can
+        // be listed in-process (`EnumerateShares` on the SMB plugin's `NetFSMountInterface_V1`,
+        // <NetFS/NetFSPlugin.h>, measured working against a real server 2026-09-04), and the cost of
+        // not having one is that a failed pick can never be named: NetFS reports no share back, so
+        // `SMBMountError` has to leave the folder unnamed (docs/NOTES.md ▸ SMB).
         openOptions[kNAUIOptionKey as String] = location.share == nil ? kNAUIOptionAllowUI
             : kNAUIOptionNoUI
 
@@ -194,7 +198,11 @@ struct SMBMountError: LocalizedError {
     static let userCanceledErr: Int32 = -128
 
     let status: Int32
-    let host: String
+    /// Where the mount was aimed. The host is named in every sentence below; the share and the
+    /// account are named only by `shareUnavailable`, the one status that cannot diagnose itself.
+    let location: SMBLocation
+
+    private var host: String { location.host }
 
     var errorDescription: String? {
         switch status {
@@ -224,10 +232,20 @@ struct SMBMountError: LocalizedError {
                 localized: "“\(host)” doesn’t allow guest access. Enter a username and password.",
                 comment: "SMB mount failure: the server refused a guest mount; %@ is the host name."
             )
+        // A share the account may not use and a share that isn’t there are the *same* status.
+        // Measured 2026-09-04 against a real Synology: `NetFSMountURLSync` answers ENOENT for a share
+        // the server refuses this account (`Photos`, `Movies`) and for one that does not exist
+        // (`NoSuchShareXYZ`) alike, while a share the account may use mounts (status 0) and the same
+        // refused share mounts for another account — so the code carries no permission signal at all
+        // (docs/NOTES.md ▸ SMB, "a denied share and a missing share are one status"). The sentence
+        // therefore has to carry both readings: "check the share name" alone sent a user whose account
+        // simply lacked access hunting for a typo, and in the picker flow it named a Share field they
+        // had deliberately left blank.
         case Int32(ENOENT), Int32(ENODEV):
-            return String(
-                localized: "The share wasn’t found on “\(host)”. Check the share name.",
-                comment: "SMB mount failure; %@ is the host name."
+            return Self.shareUnavailable(
+                share: location.share,
+                host: host,
+                username: location.username
             )
         case Int32(EHOSTDOWN), Int32(EHOSTUNREACH), Int32(ETIMEDOUT), Int32(ECONNREFUSED):
             return String(
@@ -243,6 +261,58 @@ struct SMBMountError: LocalizedError {
             return String(
                 localized: "Couldn’t mount the share (error \(status)).",
                 comment: "SMB mount failure with no specific diagnosis; %lld is the errno."
+            )
+        }
+    }
+
+    /// The sentence for the one status that means two different things — the share is not there, or
+    /// this account may not use it (see the `ENOENT` case above).
+    ///
+    /// Four whole sentences rather than one with an interpolated fragment: a fragment spliced into a
+    /// localized sentence has to be pre-inflected to survive the case system of half the shipped
+    /// languages (docs/NOTES.md ▸ Localization). The share is absent exactly when the user left the
+    /// Share field blank and picked a folder from macOS’s own share picker, which never tells us what
+    /// they picked — hence the folder going unnamed there rather than being named wrongly.
+    private static func shareUnavailable(share: String?, host: String, username: String?) -> String {
+        switch (share, username) {
+        case let (share?, username?):
+            return String(
+                localized: """
+                Couldn’t open “\(share)” on “\(host)”. That shared folder may not exist, or \
+                “\(username)” may not have permission to use it.
+                """,
+                comment: """
+                SMB mount failure; %1$@ is the share name, %2$@ the host name, %3$@ the account name.
+                """
+            )
+        case let (share?, nil):
+            return String(
+                localized: """
+                Couldn’t open “\(share)” on “\(host)”. That shared folder may not exist, or a guest \
+                connection may not have permission to use it.
+                """,
+                comment: "SMB guest mount failure; %1$@ is the share name, %2$@ the host name."
+            )
+        case let (nil, username?):
+            return String(
+                localized: """
+                The shared folder couldn’t be opened on “\(host)”. It may not exist, or “\(username)” \
+                may not have permission to use it.
+                """,
+                comment: """
+                SMB mount failure, folder chosen in macOS’s share picker so its name is unknown; \
+                %1$@ is the host name, %2$@ the account name.
+                """
+            )
+        case (nil, nil):
+            return String(
+                localized: """
+                The shared folder couldn’t be opened on “\(host)”. It may not exist, or a guest \
+                connection may not have permission to use it.
+                """,
+                comment: """
+                SMB guest mount failure, folder chosen in macOS’s share picker; %@ is the host name.
+                """
             )
         }
     }

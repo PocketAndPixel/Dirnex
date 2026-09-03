@@ -30549,6 +30549,184 @@
         }
       }
     },
+    "Couldn’t open “%@” on “%@”. That shared folder may not exist, or a guest connection may not have permission to use it.": {
+      "comment": "SMB guest mount failure; %1$@ is the share name, %2$@ the host name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%1$@“ auf „%2$@“ konnte nicht geöffnet werden. Diese Freigabe existiert möglicherweise nicht, oder eine Gastverbindung hat keine Berechtigung, sie zu verwenden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t open “%@” on “%@”. That shared folder may not exist, or a guest connection may not have permission to use it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo abrir «%1$@» en «%2$@». Puede que esa carpeta compartida no exista o que una conexión de invitado no tenga permiso para usarla."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible d’ouvrir «%1$@» sur «%2$@». Ce dossier partagé n’existe peut-être pas, ou une connexion invité n’a pas l’autorisation de l’utiliser."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile aprire “%1$@” su “%2$@”. Quella cartella condivisa potrebbe non esistere, oppure una connessione ospite potrebbe non avere il permesso di usarla."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%2$@”上の“%1$@”を開けませんでした。その共有フォルダが存在しないか、ゲスト接続に使用する権限がない可能性があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%2$@”에서 “%1$@”을(를) 열 수 없습니다. 해당 공유 폴더가 없거나 게스트 연결에 사용 권한이 없을 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kan “%1$@” op “%2$@” niet openen. Die gedeelde map bestaat mogelijk niet, of een gastverbinding heeft er geen toegang toe."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można otworzyć „%1$@” na „%2$@”. Ten folder udostępniony może nie istnieć lub połączenie gościa może nie mieć uprawnień, aby go używać."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось открыть «%1$@» на «%2$@». Возможно, такой общей папки нет или у гостевого подключения нет прав на её использование."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося відкрити «%1$@» на «%2$@». Можливо, такої спільної папки немає або гостьове підключення не має прав на її використання."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível abrir “%1$@” em “%2$@”. Essa pasta compartilhada pode não existir, ou uma conexão de convidado pode não ter permissão para usá-la."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法打开“%2$@”上的“%1$@”。该共享文件夹可能不存在，或访客连接没有使用权限。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法打開「%2$@」上的「%1$@」。該共享檔案夾可能不存在，或訪客連線沒有使用權限。"
+          }
+        }
+      }
+    },
+    "Couldn’t open “%@” on “%@”. That shared folder may not exist, or “%@” may not have permission to use it.": {
+      "comment": "SMB mount failure; %1$@ is the share name, %2$@ the host name, %3$@ the account name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%1$@“ auf „%2$@“ konnte nicht geöffnet werden. Diese Freigabe existiert möglicherweise nicht, oder „%3$@“ hat keine Berechtigung, sie zu verwenden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t open “%@” on “%@”. That shared folder may not exist, or “%@” may not have permission to use it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo abrir «%1$@» en «%2$@». Puede que esa carpeta compartida no exista o que «%3$@» no tenga permiso para usarla."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible d’ouvrir «%1$@» sur «%2$@». Ce dossier partagé n’existe peut-être pas, ou «%3$@» n’a pas l’autorisation de l’utiliser."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile aprire “%1$@” su “%2$@”. Quella cartella condivisa potrebbe non esistere, oppure “%3$@” potrebbe non avere il permesso di usarla."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%2$@”上の“%1$@”を開けませんでした。その共有フォルダが存在しないか、“%3$@”に使用する権限がない可能性があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%2$@”에서 “%1$@”을(를) 열 수 없습니다. 해당 공유 폴더가 없거나 “%3$@”에 사용 권한이 없을 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kan “%1$@” op “%2$@” niet openen. Die gedeelde map bestaat mogelijk niet, of “%3$@” heeft er geen toegang toe."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można otworzyć „%1$@” na „%2$@”. Ten folder udostępniony może nie istnieć lub „%3$@” może nie mieć uprawnień, aby go używać."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось открыть «%1$@» на «%2$@». Возможно, такой общей папки нет или у «%3$@» нет прав на её использование."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося відкрити «%1$@» на «%2$@». Можливо, такої спільної папки немає або «%3$@» не має прав на її використання."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível abrir “%1$@” em “%2$@”. Essa pasta compartilhada pode não existir, ou “%3$@” pode não ter permissão para usá-la."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法打开“%2$@”上的“%1$@”。该共享文件夹可能不存在，或“%3$@”没有使用权限。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法打開「%2$@」上的「%1$@」。該共享檔案夾可能不存在，或「%3$@」沒有使用權限。"
+          }
+        }
+      }
+    },
     "Couldn’t preview this item": {
       "comment": "Alert title when an archive member can't be extracted for Quick Look or Quick View.",
       "localizations": {
@@ -86222,91 +86400,180 @@
         }
       }
     },
-    "The share wasn’t found on “%@”. Check the share name.": {
-      "comment": "SMB mount failure; %@ is the host name.",
+    "The shared folder couldn’t be opened on “%@”. It may not exist, or a guest connection may not have permission to use it.": {
+      "comment": "SMB guest mount failure, folder chosen in macOS’s share picker; %@ is the host name.",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Freigabe wurde auf „%@“ nicht gefunden. Prüfen Sie den Namen der Freigabe."
+            "value": "Die Freigabe konnte auf „%@“ nicht geöffnet werden. Möglicherweise existiert sie nicht, oder eine Gastverbindung hat keine Berechtigung, sie zu verwenden."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The share wasn’t found on “%@”. Check the share name."
+            "value": "The shared folder couldn’t be opened on “%@”. It may not exist, or a guest connection may not have permission to use it."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se encontró el recurso compartido en «%@». Revisa el nombre del recurso."
+            "value": "No se pudo abrir la carpeta compartida en «%@». Puede que no exista o que una conexión de invitado no tenga permiso para usarla."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le partage est introuvable sur «%@». Vérifiez son nom."
+            "value": "Le dossier partagé n’a pas pu être ouvert sur «%@». Il n’existe peut-être pas, ou une connexion invité n’a pas l’autorisation de l’utiliser."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La condivisione non è stata trovata su “%@”. Controlla il nome della condivisione."
+            "value": "Non è stato possibile aprire la cartella condivisa su “%@”. Potrebbe non esistere, oppure una connessione ospite potrebbe non avere il permesso di usarla."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "“%@”上に共有が見つかりませんでした。共有名を確認してください。"
+            "value": "“%@”上の共有フォルダを開けませんでした。存在しないか、ゲスト接続に使用する権限がない可能性があります。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "“%@”에서 공유를 찾을 수 없습니다. 공유 이름을 확인하십시오."
+            "value": "“%@”에서 공유 폴더를 열 수 없습니다. 폴더가 없거나 게스트 연결에 사용 권한이 없을 수 있습니다."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "De share is niet gevonden op “%@”. Controleer de sharenaam."
+            "value": "De gedeelde map kon niet worden geopend op “%@”. Mogelijk bestaat deze niet, of een gastverbinding heeft er geen toegang toe."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nie znaleziono udziału na „%@”. Sprawdź nazwę udziału."
+            "value": "Nie można otworzyć folderu udostępnionego na „%@”. Może on nie istnieć lub połączenie gościa może nie mieć uprawnień, aby go używać."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ресурс не найден на «%@». Проверьте имя ресурса."
+            "value": "Не удалось открыть общую папку на «%@». Возможно, её нет или у гостевого подключения нет прав на её использование."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Спільну папку не знайдено на «%@». Перевірте її назву."
+            "value": "Не вдалося відкрити спільну папку на «%@». Можливо, її немає або гостьове підключення не має прав на її використання."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O compartilhamento não foi encontrado em “%@”. Verifique o nome do compartilhamento."
+            "value": "Não foi possível abrir a pasta compartilhada em “%@”. Ela pode não existir, ou uma conexão de convidado pode não ter permissão para usá-la."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在“%@”上找不到该共享文件。请检查共享文件名。"
+            "value": "无法打开“%@”上的共享文件夹。它可能不存在，或访客连接没有使用权限。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "在「%@」上找不到該共享檔案夾。請檢查共享檔案夾名稱。"
+            "value": "無法打開「%@」上的共享檔案夾。它可能不存在，或訪客連線沒有使用權限。"
+          }
+        }
+      }
+    },
+    "The shared folder couldn’t be opened on “%@”. It may not exist, or “%@” may not have permission to use it.": {
+      "comment": "SMB mount failure, folder chosen in macOS’s share picker so its name is unknown; %1$@ is the host name, %2$@ the account name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Freigabe konnte auf „%1$@“ nicht geöffnet werden. Möglicherweise existiert sie nicht, oder „%2$@“ hat keine Berechtigung, sie zu verwenden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The shared folder couldn’t be opened on “%@”. It may not exist, or “%@” may not have permission to use it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo abrir la carpeta compartida en «%1$@». Puede que no exista o que «%2$@» no tenga permiso para usarla."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le dossier partagé n’a pas pu être ouvert sur «%1$@». Il n’existe peut-être pas, ou «%2$@» n’a pas l’autorisation de l’utiliser."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non è stato possibile aprire la cartella condivisa su “%1$@”. Potrebbe non esistere, oppure “%2$@” potrebbe non avere il permesso di usarla."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”上の共有フォルダを開けませんでした。存在しないか、“%2$@”に使用する権限がない可能性があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”에서 공유 폴더를 열 수 없습니다. 폴더가 없거나 “%2$@”에 사용 권한이 없을 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De gedeelde map kon niet worden geopend op “%1$@”. Mogelijk bestaat deze niet, of “%2$@” heeft er geen toegang toe."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można otworzyć folderu udostępnionego na „%1$@”. Może on nie istnieć lub „%2$@” może nie mieć uprawnień, aby go używać."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось открыть общую папку на «%1$@». Возможно, её нет или у «%2$@» нет прав на её использование."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося відкрити спільну папку на «%1$@». Можливо, її немає або «%2$@» не має прав на її використання."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível abrir a pasta compartilhada em “%1$@”. Ela pode não existir, ou “%2$@” pode não ter permissão para usá-la."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法打开“%1$@”上的共享文件夹。它可能不存在，或“%2$@”没有使用权限。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法打開「%1$@」上的共享檔案夾。它可能不存在，或「%2$@」沒有使用權限。"
           }
         }
       }
