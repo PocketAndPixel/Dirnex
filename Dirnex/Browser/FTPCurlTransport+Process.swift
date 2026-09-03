@@ -12,6 +12,7 @@ extension FTPCurlTransport {
     var session: FTPSession {
         FTPSession(
             location: location,
+            dial: dialer.dialed,
             trust: trustedPublicKey.map { .pinned(publicKey: $0) } ?? .systemDefault,
             tls: .negotiate,
             connectTimeout: connectTimeout,
@@ -41,6 +42,7 @@ extension FTPCurlTransport {
         if let timeout {
             base = FTPSession(
                 location: location,
+                dial: base.dial,
                 trust: base.trust,
                 tls: .negotiate,
                 connectTimeout: connectTimeout,

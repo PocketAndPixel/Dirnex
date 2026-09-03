@@ -59,11 +59,7 @@ extension SFTPProcessTransport {
     ) throws -> (output: String, refusals: [RemoteMetadataRefusal]) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/sftp")
-        process.arguments = SFTPProcessArguments.batch(
-            location: location,
-            authentication: authentication,
-            connectTimeout: connectTimeout
-        )
+        process.arguments = batchArguments
 
         let captured = try capture(
             process,
@@ -128,12 +124,7 @@ extension SFTPProcessTransport {
     func run(exec command: String, isCancelled: () -> Bool) throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-        process.arguments = SFTPProcessArguments.exec(
-            location: location,
-            authentication: authentication,
-            connectTimeout: connectTimeout,
-            command: command
-        )
+        process.arguments = execArguments(command: command)
         let captured = try capture(
             process,
             // Closed immediately: `find` reads nothing, and an open stdin would leave a server that

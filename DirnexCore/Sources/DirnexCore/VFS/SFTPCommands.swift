@@ -235,17 +235,23 @@ public enum SFTPAuthentication: Sendable, Hashable, Codable {
 ///   password when `SSH_ASKPASS` auto-answers it (macOS PAM), which would hang the pane on a typo;
 ///   and `PubkeyAuthentication=no` stops a machine's stray authorized key from bypassing the choice.
 public enum SFTPProcessArguments {
+    /// `dial` is **required** rather than defaulted, and deliberately: a default of "the location's
+    /// own host" would make a call site that forgot it behave exactly as it does today, so the
+    /// Bonjour fallback would be silently absent on whichever verb was missed and nothing — not a
+    /// test, not a linter, not the screen — would say so. Making the compiler ask each call site is
+    /// the fix that holds (docs/NOTES.md ▸ Design lessons, the `metadataTally` forward).
     public static func batch(
         location: SFTPLocation,
+        dial: DialedHost,
         authentication: SFTPAuthentication,
         connectTimeout: Int
     ) -> [String] {
         arguments(
             location: location,
+            dial: dial,
             authentication: authentication,
             connectTimeout: connectTimeout,
-            portFlag: "-P",
-            batchFile: true
+            channel: .sftp
         )
     }
 
@@ -264,37 +270,62 @@ public enum SFTPProcessArguments {
     ///   therefore has to ask for `BatchMode=yes` explicitly, which `-b` used to imply for it.
     public static func exec(
         location: SFTPLocation,
+        dial: DialedHost,
         authentication: SFTPAuthentication,
         connectTimeout: Int,
         command: String
     ) -> [String] {
         arguments(
             location: location,
+            dial: dial,
             authentication: authentication,
             connectTimeout: connectTimeout,
-            portFlag: "-p",
-            batchFile: false
+            channel: .exec
         ) + [command]
+    }
+
+    /// Which of the two tools is being armed. The port flag and the batch file are not independent
+    /// — `sftp` spells the port `-P` and reads `-b -`, `ssh` spells it `-p` and takes the command as
+    /// an operand — so they are one decision rather than two booleans a call site could mix.
+    enum Channel {
+        /// `sftp -b -`: the browsing and transfer channel.
+        case sftp
+        /// `ssh <command>`: the exec channel behind the search shortcut.
+        case exec
+
+        /// Getting this backwards is a *usage* error, which exits 1 having printed help
+        /// (docs/NOTES.md ▸ sftp / ssh).
+        var portFlag: String { self == .sftp ? "-P" : "-p" }
+        var readsBatchFile: Bool { self == .sftp }
     }
 
     private static func arguments(
         location: SFTPLocation,
+        dial: DialedHost,
         authentication: SFTPAuthentication,
         connectTimeout: Int,
-        portFlag: String,
-        batchFile: Bool
+        channel: Channel
     ) -> [String] {
-        let common = [
+        var common = [
             "-o", "ConnectTimeout=\(connectTimeout)",
             // Trust-on-first-use: a fresh host is added to known_hosts, a *changed* key still fails.
             "-o", "StrictHostKeyChecking=accept-new",
-            portFlag, String(location.port)
+            channel.portFlag, String(location.port)
         ]
-        let target = "\(location.username)@\(location.host)"
+        // `ssh`'s spelling of `curl -4`, and set on the same evidence: an IPv4 address has been
+        // observed for the dialed name, so asking for the family costs nothing and skips a query
+        // that provably never answers. Measured on an mDNS name: 5.07 s against 0.05 s.
+        if dial.restrictsToIPv4 { common += ["-o", "AddressFamily=inet"] }
+        // The *dialed* host, not the location's. The location's host is the account's **identity**
+        // — it keys the descriptor, the Keychain item and the saved record, and must stay what the
+        // user typed — while this is the name that resolved. `known_hosts` follows this one, since
+        // `ssh` files a key under the name it was given; that is stable rather than a hazard,
+        // because the fallback is deterministic, so the same account always dials the same name.
+        let target = "\(location.username)@\(dial.host)"
         switch authentication {
         case let .key(identityFile):
             return ["-i", identityFile, "-o", "BatchMode=yes"] + common
-                + (batchFile ? ["-b", "-"] : []) + [target]
+                + (channel.readsBatchFile ? ["-b", "-"] : []) + [target]
         case .password:
             // No `-b`: it would disable the prompt. Interactive over piped stdin; `SSH_ASKPASS`
             // answers the prompt (wired by the transport's environment).

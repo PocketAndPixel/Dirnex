@@ -12656,16 +12656,59 @@ eliminated, and which neither implementable route depended on.
 
 ---
 
-### After M19 — the follow-on log (2026-08-07 → 2026-09-03)
+### After M19 — the follow-on log (2026-08-07 → 2026-09-04)
 
-Forty-five dated passes that landed outside a milestone of their own, between M18's close on
-2026-08-07 and 2026-09-03: user-reported bugs, three vault features, the tree crossing into S3,
+Forty-six dated passes that landed outside a milestone of their own, between M18's close on
+2026-08-07 and 2026-09-04: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
 sit here at the end rather than in a numeric slot — and they keep their **newest-first** order,
 because several read as a chain and refer to the entry below. Moved out of [PLAN.md](../PLAN.md)
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
+
+**2026-09-04 — a server can be reached by its bare LAN name, the way SMB already could.**
+Reported as a question: `smb://nas` works and the FTP connect sheet answers *"The server couldn't be
+reached. Check the host name and port."* for the same `nas`. Both halves were measured before any
+Swift. The sentence is true and points at the wrong thing — `getaddrinfo("nas")` fails in **0.003 s**
+for every address family, because with no DNS search domain configured (`scutil --dns` showed none)
+a single label has nothing to be completed with, and `curl ftp://nas/` exits 6. SMB is not doing
+better name resolution; it is doing **different** name resolution — `NetFSMountURLSync` carries
+NetBIOS, and `smbutil lookup nas` answers off a broadcast, which is SMB-family machinery `curl` and
+`ssh` cannot borrow. It was never an FTP bug: `ssh nas` fails identically.
+
+So a bare label that resolves nowhere is now retried as `<host>.local`, which is the completion the
+user's own network already answers, for **SFTP and FTP alike**. The narrowness control is the half
+worth keeping: a single label the machine *can* already resolve — through `/etc/hosts` or a search
+domain — is kept and the fallback is never even asked about, or a working host would be silently
+re-pointed at a different machine on the LAN.
+
+The second half is what made it usable rather than merely correct. **An mDNS name costs a flat five
+seconds a lookup** — mDNS has no negative answer, so the AAAA query for a NAS that publishes no IPv6
+waits out its timeout: 5.005/5.007/5.008 s over three runs, against **0.003 s** held to IPv4, with
+`example.com` at 0.307 s as the control that says the stall is mDNS's and not hostname resolution's.
+Every FTP verb is a fresh `curl`, so that is five seconds *per listing*. `AI_ADDRCONFIG` does not
+dodge it. Both transports therefore carry the address family the resolution actually observed —
+`-4` for `curl`, `AddressFamily=inet` for `ssh` (5.07 s → 0.05 s) — which is never a downgrade,
+because it is set only once an IPv4 address has been seen.
+
+Two decisions are worth the sentence. The resolution lives in the **transport**, resolved once and
+cached, not in the connect flow: an *absent* `.local` name costs 5.003 s, and `connectFTP` is
+documented as costing no round trip precisely so session restore can run on the main actor at
+launch. And the dialed name is deliberately **not** written into the location — that host is the
+account's identity, keying the descriptor, the Keychain account and the saved record, so rewriting
+it would file the password under a name nothing looks up and leave a restored tab unable to match
+its own endpoint. Verified live end to end against a throwaway `pyftpdlib` server reached by this
+Mac's *own* Bonjour name (`Mac4` resolves nowhere, `Mac4.local` does — the reported shape, with no
+hardware involved): with the fallback, the seeded session restored, the server logged a login and
+the pane's cursor came back on `a-folder`, a name that exists only on that server; with it reverted
+and the app rebuilt, **zero** sessions and no cursor. Then confirmed on the reporter's own NAS across
+all three protocols it serves, each driven through the app on the bare label `nas`: **plain FTP**,
+**SFTP** and **explicit FTPS** all restored and listed, the pane's cursor landing on a directory that
+exists only there. FTPS needed its endpoint's `trustedPublicKey` seeded with the pin rather than a
+click, since the NAS presents Synology's default self-signed certificate (`CN = synology`) and the
+gesture otherwise ends in the trust sheet — which also exercised the half worth checking, that the
+fallback reaches the certificate probe's own argv. NOTES.md ▸ Resolving a host name
 
 **2026-09-03 — a refused S3 request names the IAM action it needed.** Reported as a question rather
 than a bug: F7 on an S3 account pane answered *"The server refused that. This account may not have

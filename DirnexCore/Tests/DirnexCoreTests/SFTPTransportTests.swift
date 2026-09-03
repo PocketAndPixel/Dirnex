@@ -191,6 +191,7 @@ struct SFTPTransportTests {
     func keyAuthArguments() {
         let arguments = SFTPProcessArguments.batch(
             location: location,
+            dial: .asTyped(location.host),
             authentication: .key(identityFile: "/keys/id_ed25519"),
             connectTimeout: 15
         )
@@ -209,6 +210,7 @@ struct SFTPTransportTests {
     func passwordAuthArguments() {
         let arguments = SFTPProcessArguments.batch(
             location: location,
+            dial: .asTyped(location.host),
             authentication: .password,
             connectTimeout: 20
         )

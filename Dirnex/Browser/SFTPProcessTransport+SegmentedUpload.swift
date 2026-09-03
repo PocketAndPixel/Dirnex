@@ -114,11 +114,7 @@ extension SFTPProcessTransport {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/sftp")
-        process.arguments = SFTPProcessArguments.batch(
-            location: location,
-            authentication: authentication,
-            connectTimeout: connectTimeout
-        )
+        process.arguments = batchArguments
         if isPasswordAuthentication {
             do {
                 process.environment = try passwordEnvironment()

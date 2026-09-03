@@ -44,6 +44,11 @@ public enum FTPTLSCompatibility: Sendable, Hashable {
 /// six, and so a new cross-cutting flag lands in one place.
 public struct FTPSession: Sendable, Hashable {
     public let location: FTPLocation
+    /// The name to dial and the address family to ask for — the account's own host unless a Bonjour
+    /// fallback resolved where it did not (``HostNameFallback``). Every invocation carries it, which
+    /// is why it lives here beside the trust decision rather than being threaded through each
+    /// builder.
+    public let dial: DialedHost
     public let trust: FTPTrust
     public let tls: FTPTLSCompatibility
     /// Seconds allowed for the TCP/TLS connect.
@@ -52,14 +57,18 @@ public struct FTPSession: Sendable, Hashable {
     /// unbounded wait is what wedged the `sftp` transport before it bounded its own (docs/NOTES.md).
     public let maxTime: Int
 
+    /// `dial` defaults to the location's own host, which is exactly today's behaviour: a session
+    /// nobody has resolved for dials what it was given and asks for no address family.
     public init(
         location: FTPLocation,
+        dial: DialedHost? = nil,
         trust: FTPTrust = .systemDefault,
         tls: FTPTLSCompatibility = .negotiate,
         connectTimeout: Int = 15,
         maxTime: Int = 120
     ) {
         self.location = location
+        self.dial = dial ?? .asTyped(location.host)
         self.trust = trust
         self.tls = tls
         self.connectTimeout = connectTimeout
@@ -72,6 +81,7 @@ public struct FTPSession: Sendable, Hashable {
     public func with(maxTime: Int) -> FTPSession {
         FTPSession(
             location: location,
+            dial: dial,
             trust: trust,
             tls: tls,
             connectTimeout: connectTimeout,
@@ -83,6 +93,7 @@ public struct FTPSession: Sendable, Hashable {
     public func with(tls: FTPTLSCompatibility) -> FTPSession {
         FTPSession(
             location: location,
+            dial: dial,
             trust: trust,
             tls: tls,
             connectTimeout: connectTimeout,
@@ -125,6 +136,10 @@ public enum FTPProcessArguments {
             "--connect-timeout", String(session.connectTimeout),
             "--max-time", String(session.maxTime)
         ]
+        // Only ever set once an IPv4 address has been observed for the dialed name, so this
+        // withholds a query whose answer is already known rather than a route that might work. On
+        // an mDNS name that is five seconds *per invocation*, and every FTP verb is a fresh `curl`.
+        if session.dial.restrictsToIPv4 { arguments.append("-4") }
         arguments += securityArguments(session: session)
         return arguments
     }
@@ -268,6 +283,10 @@ public enum FTPProcessArguments {
             "--write-out", "%{certs}",
             "--output", "/dev/null"
         ]
+        // This one assembles its own flags rather than going through `common`, so the address
+        // family has to be repeated here — it is a real connection to the dialed host like any
+        // other, and it is the *first* one a trust prompt makes.
+        if session.dial.restrictsToIPv4 { arguments.append("-4") }
         if session.location.security == .explicit { arguments.append("--ssl-reqd") }
         if session.tls == .forceTLS12 { arguments += ["--tlsv1.2", "--tls-max", "1.2"] }
         return arguments + configFromStandardInput + [url(session, "/")]
@@ -275,7 +294,7 @@ public enum FTPProcessArguments {
 
     /// The URL for a remote path, percent-encoded.
     static func url(_ session: FTPSession, _ remotePath: String) -> String {
-        session.location.url(forRemotePath: percentEncoded(remotePath))
+        session.location.url(forRemotePath: percentEncoded(remotePath), host: session.dial.host)
     }
 
     /// Percent-encode a remote path for a `curl` URL, keeping only unreserved characters and the

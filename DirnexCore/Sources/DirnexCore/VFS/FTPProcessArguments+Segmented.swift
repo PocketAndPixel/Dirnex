@@ -65,6 +65,7 @@ public extension FTPProcessArguments {
                 credentials.hasSuffix("\n") ? credentials : credentials + "\n",
                 "connect-timeout = \(session.connectTimeout)\n",
                 "max-time = \(session.maxTime)\n",
+                addressFamilyConfiguration(session: session),
                 security,
                 "range = \(FTPConfigFile.quote(segment.headerValue))\n",
                 "output = \(FTPConfigFile.quote(segment.localPath))\n",
@@ -81,6 +82,16 @@ public extension FTPProcessArguments {
             ],
             configuration: sections.joined(separator: "next\n")
         )
+    }
+
+    /// The address-family half of a section, in config spelling.
+    ///
+    /// Per **section** rather than in `argv` for the same reason the TLS half is: `curl` reads one
+    /// option set per transfer, so a batch that put this in `argv` would be relying on an option
+    /// leaking across `next` boundaries. Empty unless an IPv4 address was actually observed for the
+    /// dialed name (``HostNameFallback``), so nothing outside the mDNS family emits a byte of it.
+    static func addressFamilyConfiguration(session: FTPSession) -> String {
+        session.dial.restrictsToIPv4 ? "ipv4\n" : ""
     }
 
     /// The TLS half of a section, in config spelling.

@@ -346,6 +346,7 @@ struct SFTPProcessArgumentsExecTests {
     func usesSSHPortFlag() {
         let arguments = SFTPProcessArguments.exec(
             location: location,
+            dial: .asTyped(location.host),
             authentication: .key(identityFile: "/k"),
             connectTimeout: 15,
             command: "true"
@@ -362,6 +363,7 @@ struct SFTPProcessArgumentsExecTests {
     func putsTheCommandLast() {
         let arguments = SFTPProcessArguments.exec(
             location: location,
+            dial: .asTyped(location.host),
             authentication: .key(identityFile: "/k"),
             connectTimeout: 15,
             command: "find / -name x"
@@ -378,10 +380,12 @@ struct SFTPProcessArgumentsExecTests {
     func sharesTheBrowsingPosture() {
         for authentication in [SFTPAuthentication.key(identityFile: "/k"), .password] {
             let batch = SFTPProcessArguments.batch(
-                location: location, authentication: authentication, connectTimeout: 15
+                location: location, dial: .asTyped(location.host), authentication: authentication,
+                connectTimeout: 15
             )
             let exec = SFTPProcessArguments.exec(
-                location: location, authentication: authentication, connectTimeout: 15,
+                location: location, dial: .asTyped(location.host), authentication: authentication,
+                connectTimeout: 15,
                 command: "true"
             )
             for flag in [

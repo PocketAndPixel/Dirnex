@@ -107,6 +107,7 @@ public extension FTPProcessArguments {
                 credentials.hasSuffix("\n") ? credentials : credentials + "\n",
                 "connect-timeout = \(session.connectTimeout)\n",
                 "max-time = \(session.maxTime)\n",
+                addressFamilyConfiguration(session: session),
                 security,
                 "output = \(FTPConfigFile.quote(request.outputPath))\n",
                 "url = \(FTPConfigFile.quote(listingURL(session, request.remotePath)))\n"

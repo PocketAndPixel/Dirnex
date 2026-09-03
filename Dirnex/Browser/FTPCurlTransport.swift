@@ -27,6 +27,9 @@ struct FTPCurlTransport: FTPTransport {
     /// The public key the user has explicitly trusted for this server, if any.
     var trustedPublicKey: String?
     var connectTimeout: Int = 15
+    /// Resolves the name to dial once per connection — the Bonjour fallback that lets a bare `nas`
+    /// reach a server, and the record that keeps an mDNS name from costing five seconds a request.
+    let dialer: HostDialer
     /// Wall-clock bound for a metadata command. Generous enough for a large listing over a slow
     /// link, tight enough that a dead server doesn't hang the pane.
     var metadataTimeout: Int = 30
@@ -38,13 +41,15 @@ struct FTPCurlTransport: FTPTransport {
         authentication: FTPAuthentication,
         password: String = "",
         trustedPublicKey: String? = nil,
-        connectTimeout: Int = 15
+        connectTimeout: Int = 15,
+        dialer: HostDialer? = nil
     ) {
         self.location = location
         self.authentication = authentication
         self.password = password
         self.trustedPublicKey = trustedPublicKey
         self.connectTimeout = connectTimeout
+        self.dialer = dialer ?? HostDialer(host: location.host)
     }
 
     // MARK: - Reads

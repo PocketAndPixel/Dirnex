@@ -3190,6 +3190,70 @@ one, so all four columnar parsers — `bsdtar -tvf`, `sftp`'s `ls -la`, FTP's `L
     outright). Asserting that a parsed year-less date carries **zero seconds** cannot depend on
     timing, and it is what makes the negative control fail 3/3 instead of sometimes.
 
+### Resolving a host name (and why `smb://nas` works where `ftp://nas` does not)
+
+Measured 2026-09-04 after a user asked why SMB reaches their NAS by name and FTP does not. The two
+do not share a resolver, and neither half of that is obvious from either call site.
+
+- **A single-label host does not resolve at all, and it fails instantly.** With no DNS search domain
+  configured — `scutil --dns` showed none on this Mac — there is nothing for the resolver to
+  complete `nas` *with*: `getaddrinfo("nas")` fails in **0.003 s** for every address family, `ping`
+  says "Unknown host", and `curl ftp://nas/` exits **6**, which `FTPTransportError.classify` maps to
+  `.unreachable` → *"The server couldn't be reached. Check the host name and port."* The sentence is
+  true and points at the wrong thing: the name is fine, it is simply not a name this machine can
+  resolve. `ssh nas` fails identically, so it was never an FTP bug.
+- **SMB works because it never asks the system resolver.** Dirnex mounts through `NetFSMountURLSync`
+  (`SMBMounter.swift`), and Apple's SMB stack carries **NetBIOS** name resolution of its own —
+  `smbutil lookup nas` answers `192.168.1.3` off a broadcast. That is SMB-family machinery and there
+  is no general API behind it, so `curl` and `ssh` cannot borrow it. The macOS-wide way to name the
+  same machine is Bonjour, and `nas.local` resolves fine.
+- **So the fix is to complete a bare label with `.local`, and only after the machine's own resolver
+  has declined it** — a single label that `/etc/hosts` or a search domain *can* resolve must keep
+  working, or the fallback silently re-points a working host at a different machine on the LAN. That
+  narrowness control is the one worth keeping (`HostNameFallback`, and the test named for it).
+
+- **An mDNS name costs a flat five seconds per lookup, and that is the half that decides the
+  design.** mDNS has no negative answer, so a query for a record the host does not publish waits out
+  its timeout. Against a NAS publishing no IPv6, on a Mac with **no global IPv6 address at all**:
+
+  | lookup | time |
+  |---|---|
+  | `nas.local`, both families | **5.005 / 5.007 / 5.008 s** (3 runs) |
+  | `nas.local`, IPv4 only | **0.003 s** (5 runs) |
+  | `nas.local`, `getaddrinfo` unspecified | 10.85 s |
+  | `example.com`, both families | 0.307 s |
+
+  - **`example.com` is the control, and it is what bounds the whole feature**: the stall belongs to
+    mDNS, not to hostname resolution, so nothing outside the `.local` family is resolved, restricted
+    or changed at all — an IP literal and an ordinary dotted name cost **zero** syscalls.
+  - **`AI_ADDRCONFIG` does not dodge it** (5.004 s), which is the obvious thing to reach for and the
+    obvious thing to believe worked.
+  - `ssh` pays it identically — **5.07 s** against **0.05 s** with `-4` — so both transports carry
+    the same record, spelled `-4` for `curl` and `AddressFamily=inet` for `ssh`. It is never a
+    downgrade: it is only ever set once an IPv4 address has been *observed*, so it withholds a query
+    whose answer is already known rather than a route that might have worked.
+  - **In a `curl` config file the key is `ipv4`, and it has to be per *section*.** `curl` reads one
+    option set per transfer, so a batched listing or a segmented download repeats it in every
+    section — the same rule the TLS options already follow. Verified against a real server: 0.256 s
+    with it, 5.006 s without.
+
+- **The worst case is an *absent* `.local` name, at 5.003 s, and it is what keeps the resolution out
+  of the connect flow.** Registering a connection is documented as costing no round trip, which is
+  what lets session restore run synchronously on the main actor at launch — so resolving there would
+  block launch for five seconds whenever a saved NAS happened to be switched off. It lives in the
+  transport instead (`HostDialer`), resolved on first use and cached for the connection's life:
+  paid inside a verb that was already a network round trip, off the main actor, and never at launch.
+- **The dialed name is deliberately *not* written into the location.** The location's host is the
+  account's **identity** — it keys the descriptor, the Keychain account and the saved record — so a
+  fallback that rewrote it would file the password under a name nothing looks up and leave a
+  restored tab unable to match its own endpoint (`TabRestorePolicy` joins on exactly that string).
+  `known_hosts` follows the *dialed* name instead, which is stable rather than a hazard because the
+  fallback is deterministic.
+- **This Mac's own Bonjour name is a free live fixture**, and a better one than the NAS: `scutil
+  --get LocalHostName` here is `Mac4`, `Mac4` resolves nowhere and `Mac4.local` resolves — the exact
+  reported shape, reproducible against a throwaway `pyftpdlib` server bound to `0.0.0.0` with no
+  hardware involved and nothing to lock anybody out of.
+
 ### bsdtar
 
 - **Each extract member is a shell-glob pattern, not a literal** — a name containing `* ? [`

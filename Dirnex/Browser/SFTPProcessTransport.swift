@@ -23,6 +23,9 @@ struct SFTPProcessTransport: SFTPTransport {
     var password: String?
     /// Seconds to wait for the connection before giving up — a dead host must not hang the pane.
     var connectTimeout: Int = 15
+    /// Resolves the name to dial once per connection — the Bonjour fallback that lets a bare `nas`
+    /// reach a server, and the record that keeps an mDNS name from costing five seconds a request.
+    let dialer: HostDialer
     /// Overall wall-clock bound (seconds) on a single *password* command, so an unresponsive or
     /// non-standard server can't hang the pane on a read that never ends (some servers hold the
     /// channel open after the reply). Generous enough for browse/metadata and small transfers; large
@@ -34,12 +37,43 @@ struct SFTPProcessTransport: SFTPTransport {
         location: SFTPLocation,
         authentication: SFTPAuthentication,
         password: String? = nil,
-        connectTimeout: Int = 15
+        connectTimeout: Int = 15,
+        dialer: HostDialer? = nil
     ) {
         self.location = location
         self.authentication = authentication
         self.password = password
         self.connectTimeout = connectTimeout
+        self.dialer = dialer ?? HostDialer(host: location.host)
+    }
+
+    /// The `sftp -b -` argv this connection spawns — one definition, shared by the batch runner and
+    /// the segmented uploader.
+    ///
+    /// A property rather than four inline calls so that *which host is dialed* has a single answer
+    /// here as it does in the core, and so the forward can be asserted without spawning anything.
+    /// The seam it protects is the one this codebase keeps paying for: a call site that quietly kept
+    /// the location's own host would lose the Bonjour fallback on whichever verb it served, with
+    /// nothing on screen to say so.
+    var batchArguments: [String] {
+        SFTPProcessArguments.batch(
+            location: location,
+            dial: dialer.dialed,
+            authentication: authentication,
+            connectTimeout: connectTimeout
+        )
+    }
+
+    /// The `ssh` argv for one exec channel — ``batchArguments``' twin, and deliberately built from
+    /// the same dial so the exec channel cannot drift into contacting a different host.
+    func execArguments(command: String) -> [String] {
+        SFTPProcessArguments.exec(
+            location: location,
+            dial: dialer.dialed,
+            authentication: authentication,
+            connectTimeout: connectTimeout,
+            command: command
+        )
     }
 
     func listDirectory(_ remotePath: String) throws -> String {

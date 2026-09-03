@@ -104,10 +104,7 @@ extension SFTPProcessTransport {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-        process.arguments = SFTPProcessArguments.exec(
-            location: location,
-            authentication: authentication,
-            connectTimeout: connectTimeout,
+        process.arguments = execArguments(
             command: SSHSegmentCommand.read(remotePath, range: segment.range)
         )
         if let environment { process.environment = environment }
