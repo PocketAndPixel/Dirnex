@@ -170,6 +170,12 @@ numbers behind it. What remains here is M15's own cut, and one gap a bug report 
 
 ## 5. Cross-cutting: testing strategy
 
+Progress (2026-09-04): fixed the shared gesture wait used by `ChecksumMaterializeTests`.
+It checks completion before the deadline, allows 30 seconds for main-actor delays in full runs,
+and reports a timeout at the calling test. Regression tests cover completed and missing work at
+the deadline; the completed-work test fails with the old helper. Validation: 1,040 app tests
+(including the expected timeout check), 3,209 core tests, and both linters passed.
+
 | Layer | Approach |
 |---|---|
 | DirnexCore | Unit tests against generated fixtures; every operation tested for: success, cancel mid-flight, permission denied, disk full, source mutated during op |

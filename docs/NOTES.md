@@ -468,6 +468,12 @@ at build time.
   waiting a delay **out** to prove nothing happens has its length *as* the claim and cannot be
   widened for a slow machine. Split them — `settle(within:until:)` at 10 s against a 1200 ms sheet
   delay, `hold(until:)` fixed at 2–2.5 s — rather than scaling one number for both.
+  - **Check completion before checking the deadline.** The shared `settleUntil` helper checked
+    the clock first, so a delayed main-actor resume could report a timeout without looking at work
+    that had already finished. A ready predicate with a zero budget reproduced this without a
+    scheduling race. Fixed 2026-09-04, with a second test proving missing work still reports a
+    timeout at the caller. The default is now 30 s, matching the remote-fetch waits; the checksum
+    suite took 8.3 s in the baseline full run, close to the old 10 s limit.
   - **That split is right and both of its numbers were still wrong, because a third clock was
     hiding behind them: the *fixture's*.** Same suite, same message, 2026-08-27 — `attachedSheet →
     nil → nil` about **1 full run in 8–16**, passing alone every time, and this entry's own fix

@@ -247,17 +247,3 @@ struct ChecksumMaterializeTests {
         )
     }
 }
-
-/// Wait for something a `Task` will make true, generously — a satisfied predicate returns on the
-/// next poll, so the budget only sets how much scheduling delay is absorbed before blaming the code
-/// (docs/NOTES.md ▸ Testing). Never a run-loop spin: that drives layout but never lands the result
-/// of a detached read, which is the exact shape being waited on here.
-@MainActor
-func settleUntil(within: Duration = .seconds(10), _ predicate: () -> Bool) async throws {
-    let deadline = ContinuousClock.now + within
-    while ContinuousClock.now < deadline {
-        if predicate() { return }
-        try await Task.sleep(for: .milliseconds(10))
-    }
-    Issue.record("timed out waiting for the gesture to settle")
-}
