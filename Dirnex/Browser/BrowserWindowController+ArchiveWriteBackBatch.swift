@@ -81,6 +81,7 @@ extension BrowserWindowController {
         let archivePath = group.archivePath
         let additions = group.additions
         let copies = group.items.map(\.edit.temporaryURL)
+        let encoding = pane.declaredNameEncoding(forArchiveAt: archivePath)
         await withCheckedContinuation { continuation in
             pane.withArchivePassphrase(forArchiveAt: archivePath) { passphrase in
                 try await BlockingWork.run {
@@ -89,7 +90,8 @@ extension BrowserWindowController {
                             additions,
                             ofArchiveAt: archivePath,
                             passphrase: passphrase,
-                            undo: ArchiveUndoStorage.request()
+                            undo: ArchiveUndoStorage.request(),
+                            nameEncoding: encoding
                         )
                     }
                 }.get()

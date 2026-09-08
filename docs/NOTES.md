@@ -3402,6 +3402,52 @@ do not share a resolver, and neither half of that is obvious from either call si
     newest sample is ever wanted — and cut it on a line boundary, since the parser's own rule is that
     a half-arrived line is not a sample.
 
+- **A zip whose names are in a code page cannot be *rewritten* until somebody says which one, and
+  the wall is APFS rather than any tool.** Measured 2026-09-09 on the CP866 fixture: a file name that
+  is not valid UTF-8 is refused by the kernel outright — `open(2)` → **`EILSEQ` (92)**, and `bsdtar
+  -x` reports it itself as `Can't create '\217\240…': Illegal byte sequence`, exit 1, under the
+  pinned UTF-8 locale *and* under `C`. Every archive rewrite here stages on disk (extract → edit →
+  repack), so such a member has nowhere to exist in between; `entryNameNotUTF8` is the only honest
+  answer and removing the guard buys nothing but a worse message.
+  - **The lever is libarchive's `hdrcharset` read option, and `bsdtar` does not have it.** Apple's
+    build answers `Option --hdrcharset=CP866 is not supported` and exits 1, so a declared archive has
+    to be *listed and extracted* in-process — the reader that already exists for encrypted archives,
+    with one option set. The **repack deliberately stays on `bsdtar`**: by then the names are ordinary
+    UTF-8 on disk, and `bsdtar` is what preserves the container format, where the in-process writer
+    only produces zip. A declared archive therefore comes back with its names UTF-8-flagged and
+    readable everywhere — a real change to the user's file, so the gesture says so.
+  - **`archive_read_set_options` validates the charset up front** — `ARCHIVE_FATAL` (**-30**) for a
+    token it does not know, `ARCHIVE_OK` for every real one — which is what lets a typo fail as a typo
+    instead of as an archive nobody can open. That is worth a test per offered code page: the control
+    (one letter changed) fails them all with `archiveUnreadable`.
+  - **A code page that is real but *wrong* cannot be detected, and is sometimes invisibly wrong.** It
+    fails in one of two ways, and only the second is legible: an unmapped byte makes
+    `archive_entry_pathname_utf8` answer NULL (a definite no, and the basis for offering only the
+    candidates that *fit*), while a fitting-but-wrong one returns well-formed nonsense. CP1251 reads
+    the CP866 fixture as `Џ ­®а ¬ .txt` — whose separators are **U+00A0 no-break space and U+00AD
+    soft hyphen**, so it compares unequal to the same thing typed with ordinary spaces and cost a
+    test failure that read as a bug in the reader. Take such an expectation's code points from an
+    independent decoder (Python's `cp1251` here) and spell it in escapes; and never infer the code
+    page, because a wrong one can look very nearly right.
+  - **`hdrcharset` applies only to entries whose UTF-8 flag is *clear*, which is what makes a stale
+    declaration inert.** The declaration is stored per archive *path* and a rewrite replaces the file
+    at that path, so the natural worry — raised and tested during the live run — is that the next
+    listing decodes the new, UTF-8 archive through the old code page. It does not: `bsdtar` sets
+    general-purpose bit 11 on the rewritten non-ASCII name, and libarchive then ignores the option
+    entirely, so reading the rewritten fixture through **CP866 and through nothing** both answer
+    `Панорама.txt`. That is why the encoding store needs no ``ArchiveIdentity`` stamping where all
+    three archive *caches* do — a stale mount answers with the wrong contents, a stale declaration
+    answers with nothing at all. It is also the direct measurement that the rewrite **upgrades** the
+    archive, since an unflagged UTF-8 name read as CP437 would have come back as mojibake.
+    - The corollary for any probe here: a **pure-ASCII** surviving member can demonstrate none of
+      this — its bytes are identical under every code page and its flag is left clear either way. The
+      live run's own read-back looked like the flag was not being set, for exactly that reason.
+
+  - **Asked with no encoding, the sampler is also the detector** — `nil` back means the names are not
+    UTF-8 — so the app needs no separate probe for when to offer the choice. Its narrowness control is
+    the one that matters: a UTF-8 archive must *not* read as undeclarable, or the offer appears over
+    every archive anybody opens.
+
 - **`--options compression-level=N` must go in *unprefixed*.** A module prefix has to name the
   writer actually running (`zip:`, `gzip:`, `bzip2:`, `7zip:`), so one prefixed string breaks the
   moment the user picks another format — `bsdtar: Unknown module name: 'zip'`, exit 1, no archive.

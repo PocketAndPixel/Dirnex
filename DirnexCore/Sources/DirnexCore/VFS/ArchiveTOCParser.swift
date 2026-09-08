@@ -65,6 +65,55 @@ enum ArchiveTOCParser {
         return assembleTree(nodeByPath: nodeByPath, isDirectory: isDirectory)
     }
 
+    /// Build the same tree from headers libarchive read, for an archive being listed through
+    /// ``EncryptedArchiveReader`` rather than `bsdtar`.
+    ///
+    /// That happens for exactly one reason: the archive's names are in a code page the user has
+    /// declared (``ArchiveNameEncoding``), and `bsdtar` has no `--hdrcharset` — Apple's build
+    /// refuses the flag outright, measured — so the only reader that can apply the declaration is
+    /// the in-process one. Everything after this point is identical, which is the point: one tree
+    /// shape, one set of rules about synthesized ancestors, whichever engine read the headers.
+    ///
+    /// **Owner and group come back `nil` here where the text parser has them.** libarchive's entry
+    /// is read for its name, kind, size, mode and time, and a zip stores no owner *names* anyway —
+    /// `bsdtar` prints the bare numbers for one. A field with no answer is absent rather than
+    /// invented (``FileEntry/ownerName``), so those two columns draw their dash.
+    static func parse(entries: [EncryptedArchiveReader.Entry]) -> Result {
+        var nodeByPath: [String: ArchiveTOC.Entry] = [:]
+        var isDirectory: Set<String> = ["/"]
+
+        for entry in entries {
+            let components = pathComponents(of: entry.archivePath)
+            guard !components.isEmpty else { continue }
+            let innerPath = "/" + components.joined(separator: "/")
+            let kind: FileEntry.Kind
+            var symlinkDestination: String?
+            switch entry.kind {
+            case .directory:
+                kind = .directory
+            case let .symbolicLink(target):
+                kind = .symlink
+                symlinkDestination = target
+            case .regularFile:
+                kind = .file
+            }
+            if kind == .directory { isDirectory.insert(innerPath) }
+            nodeByPath[innerPath] = ArchiveTOC.Entry(
+                name: components[components.count - 1],
+                kind: kind,
+                byteSize: entry.byteSize,
+                modificationDate: entry.modificationDate,
+                permissions: entry.permissions & 0o7777,
+                ownerName: nil,
+                groupName: nil,
+                symlinkDestination: symlinkDestination
+            )
+            synthesizeAncestors(of: components, into: &nodeByPath, directories: &isDirectory)
+        }
+
+        return assembleTree(nodeByPath: nodeByPath, isDirectory: isDirectory)
+    }
+
     /// Ensure every ancestor directory of an entry exists as a (possibly synthesized)
     /// directory node, so a listing that names only `a/b/c.txt` still exposes `a` and `a/b`.
     private static func synthesizeAncestors(

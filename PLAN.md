@@ -131,12 +131,64 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 | M25 | What a remote write carries, and what a remote delete costs | 08-29 | **A Trash the protocols do not have** — taken at §7 on 08-29, and the one part of the milestone that closed by not being built; **owner and group in a remote Get Info**, because `chown`/`chgrp` take a numeric id while `sftp`'s own `ls -la` prints names, so a panel built on a listing has nothing to send; **comparing by timestamp on FTP and S3**, refused by construction and always will be — `LIST` is year-less and zone-less, and an S3 `LastModified` is when the object was *written*; and ACLs and xattrs again, which is a limit rather than a gap |
 | M26 | Move to Trash, wherever the file lives | 08-31 | **The remote backends**, which have no Trash at all and are already degraded to a confirmed permanent delete (§M5, and M25 §7's decision not to invent one); **chasing the refusal further into TCC and `fileproviderd`**, which is not observable from here past the three candidates already eliminated — the fix does not depend on knowing which policy denies; and **Put Back for an item *Finder* deleted out of a provider domain**, or for anything trashed before the store shipped, both of which keep the honest answer the restore flow already gives by name |
 
+### Open: M27 — Legacy code-page archive names (S)
+
+**Landed 2026-09-09** (HISTORY.md ▸ the follow-on log): a zip whose entry names are stored in an OEM
+code page can be *declared* (``ArchiveNameEncoding``, 19 of them), after which it lists, previews,
+extracts and **rewrites** like any other archive — the refusal M26-era work left in place, closed by
+asking the one question no reader can answer for itself. Three measurements shaped it and are worth
+not re-deriving: APFS refuses a non-UTF-8 file name outright (`EILSEQ`) and the rewrite stages on
+disk, so declaring is the *only* route rather than the tidiest; libarchive's `hdrcharset` read option
+is the lever and **Apple's `bsdtar` does not have it**, so a declared archive is read in-process
+while the repack stays on `bsdtar`, which is what preserves the container format; and a wrong code
+page cannot be detected — it returns well-formed nonsense — so the chooser previews real names and
+offers only the candidates that *fit*. A streaming entry-to-entry rewrite was costed and rejected: it
+preserves bytes nobody can read, still cannot extract that row out of the archive, and needs a third
+engine.
+
+Two slices are left, and neither is load-bearing for the gesture that was refused:
+
+- **A way in from the pane.** The chooser is reachable only when a gesture the user made hits the
+  refusal — F8, paste/F5/F6, F5 copy-out. Somebody who merely wants to *read* the names has no route
+  at all, which is the discoverability half and wants a registry command (enabled while the pane is
+  inside an archive whose names did not decode) rather than a prompt on navigation: entering such an
+  archive lists it wrongly but harmlessly, and a sheet raised by a *navigation* is the thing
+  docs/NOTES.md keeps warning about. Two traps come with it — the enable/disable validator is a
+  second copy of the predicate (PLAN.md's own most-repeated family), and an item carrying a submenu
+  never fires its own key equivalent.
+- **The thirteen translations.** The 19 `archive.nameEncoding.*` keys are in the catalog with their
+  English so a translator can see them; every other language falls back to readable English through
+  `L10n.string`. No `LocalizationCoverageTests` case was added, because one demanding all thirteen
+  would fail on the day it was written — so this is deliberately **untracked by CI** until the
+  translations land, and `ArchiveNameEncodingLocalizationTests` pins only what is true today (the
+  key exists in English, and the catalog agrees with the core about it).
+
+Unverified rather than undone — each is a path that was *threaded* and never run:
+
+- A **tar** or `.tar.gz` whose names are in a code page. `hdrcharset` should apply on read and the
+  repack should keep the container, and neither was measured; only zip has a charset *flag* to get
+  wrong, which is what made zip the whole of the reported case.
+- An archive that is **encrypted *and* legacy**. The passphrase and the code page compose in
+  `extractAll` by construction, and were never asked for together.
+- The **write-back batch** and **nested-archive entry** call sites, both threaded blind.
+- The chooser's cost on a **large** archive: up to 19 header reads on the main actor, bounded by
+  sampling stopping at the first few non-ASCII names, never timed on anything big.
+- `ArchivePreviewCache` entries minted *before* a declaration are keyed on the mojibake inner path.
+  They should be unreachable once the mount is dropped rather than stale-and-served, which is an
+  argument rather than a measurement.
+
+Left deliberately undone: **inferring** the code page (no reader can, and a wrong guess is a
+plausible name for the wrong file); **preserving an un-representable name byte-for-byte**, which is
+the rejected streaming rewrite; and **persisting the declaration** across sessions — it is a guess
+the user made about one archive, and a wrong one silently outliving the session is worse than being
+asked again.
+
 ### Still open
 
 Everything through M26 is shipped, and the record of it — the milestone checklists, the forty-six
 dated passes that landed outside a milestone of their own, and the reasoning behind every decision —
 is in **[docs/HISTORY.md](docs/HISTORY.md)**. What is still open, rather than merely imaginable, is
-the *undone* column in the table above, plus the list below. Everything that came off this list came
+the *undone* column in the table above, M27's two slices, plus the list below. Everything that came off this list came
 off in the eight days to **2026-09-01** (HISTORY.md ▸ the follow-on log): both of M25's own
 leftovers — *"A remote attribute change cannot be undone"* and *"Many remote write-backs do not
 coordinate"* — and the last parity cell, *"No multipart upload over SFTP or FTP"*, which closed by

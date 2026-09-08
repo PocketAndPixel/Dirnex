@@ -70,6 +70,7 @@ extension PanelViewController {
     private func runArchiveDelete(_ targets: [FileEntry], inArchiveAt archivePath: String) {
         let innerPaths = targets.map(\.path.path)
         let name = (archivePath as NSString).lastPathComponent
+        let encoding = declaredNameEncoding(forArchiveAt: archivePath)
         // An encrypted archive is rewritten through libarchive and needs the passphrase — asked for
         // once per archive per session by the shared funnel, which also owns the retry on a typo.
         withArchivePassphrase(forArchiveAt: archivePath) { passphrase in
@@ -79,7 +80,8 @@ extension PanelViewController {
                         innerPaths: innerPaths,
                         fromArchiveAt: archivePath,
                         passphrase: passphrase,
-                        undo: ArchiveUndoStorage.request()
+                        undo: ArchiveUndoStorage.request(),
+                        nameEncoding: encoding
                     )
                 }
             }.get()
@@ -92,11 +94,15 @@ extension PanelViewController {
             refreshArchiveDirectory()
             focusTable()
         } onFailure: { [weak self] error in
-            self?.presentOperationFailure(
+            guard let self else { return }
+            // A legacy archive refuses before anything has been altered, and the answer is a code
+            // page rather than an error message — so offer the chooser instead of reporting.
+            guard !offerNameEncoding(after: error, forArchiveAt: archivePath) else { return }
+            presentOperationFailure(
                 message: targets.count == 1
                     ? String(localized: "Couldn’t delete “\(targets[0].name)”")
                     : String(localized: "Couldn’t delete \(targets.count) items from “\(name)”"),
-                detail: self?.describe(error) ?? ""
+                detail: describe(error)
             )
         }
     }

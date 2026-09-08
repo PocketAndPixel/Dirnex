@@ -70,6 +70,14 @@ public struct ArchiveTOC: Sendable, Equatable {
         directoryPaths = parsed.directories
     }
 
+    /// Build from headers libarchive read — the route an archive takes when its names are in a
+    /// declared code page, which `bsdtar` cannot be told about (``ArchiveNameEncoding``).
+    public init(entries: [EncryptedArchiveReader.Entry]) {
+        let parsed = ArchiveTOCParser.parse(entries: entries)
+        childrenByDirectory = parsed.children
+        directoryPaths = parsed.directories
+    }
+
     /// Direct constructor for tests and callers that already have a tree.
     init(childrenByDirectory: [String: [Entry]], directoryPaths: Set<String>) {
         self.childrenByDirectory = childrenByDirectory

@@ -67,9 +67,15 @@ final class ArchivePreviewCache {
     /// ``EncryptedArchiveError/passphraseRequired`` rather than reaching `bsdtar`, whose interactive
     /// prompt cannot be answered from here at all (see `ArchiveExtractor.extract`). Throws too when
     /// extraction fails, and the caller then leaves the member unpreviewable.
+    ///
+    /// `nameEncoding` is the code page the caller has been told this archive's names are in, and is
+    /// threaded for the same reason as the passphrase: without it a declared archive's member is
+    /// looked for under a name `bsdtar` cannot read, so previewing or opening one would fail on an
+    /// archive whose listing is perfectly readable.
     func extractedURL(
         for member: ArchiveMember,
-        passphrase: ArchivePassphrase? = nil
+        passphrase: ArchivePassphrase? = nil,
+        nameEncoding: ArchiveNameEncoding? = nil
     ) async throws -> URL {
         dropExtractionsIfReplaced(archivePath: member.archivePath)
         if let url = extracted[member] { return url }
@@ -78,7 +84,8 @@ final class ArchivePreviewCache {
                 try ArchiveExtractor.extract(
                     innerPaths: [member.innerPath],
                     fromArchiveAt: member.archivePath,
-                    passphrase: passphrase
+                    passphrase: passphrase,
+                    nameEncoding: nameEncoding
                 )
             }
         }.get()

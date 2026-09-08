@@ -353,7 +353,11 @@ extension PanelViewController {
         let wanted = members[archivePath] ?? []
         withArchivePassphrase(forArchiveAt: archivePath) { passphrase in
             for member in wanted {
-                _ = try await cache.extractedURL(for: member, passphrase: passphrase)
+                _ = try await cache.extractedURL(
+                    for: member,
+                    passphrase: passphrase,
+                    nameEncoding: self.declaredNameEncoding(forArchiveAt: member.archivePath)
+                )
             }
         } onSuccess: { [weak self] in
             self?.extractNextArchive(

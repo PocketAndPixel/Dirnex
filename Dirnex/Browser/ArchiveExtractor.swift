@@ -35,8 +35,16 @@ enum ArchiveExtractor {
     /// Reads headers only — a zip's central directory is never encrypted — so it costs nothing worth
     /// caching: **3–4 ms for a 600 MB, 301-entry archive**, measured, against 0.1 ms for a small
     /// one. That is what lets every extraction ask unconditionally.
-    static func needsPassphrase(forArchiveAt archiveOnDiskPath: String) -> Bool {
-        (try? EncryptedArchiveReader.inspect(archiveAt: archiveOnDiskPath))?.needsPassphrase ?? false
+    static func needsPassphrase(
+        forArchiveAt archiveOnDiskPath: String,
+        nameEncoding: ArchiveNameEncoding? = nil
+    ) -> Bool {
+        // The encoding is passed through because without it an archive with code-page names throws
+        // here, the `try?` reads that as "no passphrase needed", and the extraction goes to `bsdtar`
+        // — which cannot place those names at all. A declared archive has to reach the branch below.
+        (try? EncryptedArchiveReader.inspect(
+            archiveAt: archiveOnDiskPath, nameEncoding: nameEncoding
+        ))?.needsPassphrase ?? false
     }
 
     /// Extract `innerPaths` of the archive at `archiveOnDiskPath` into a fresh temp directory and
@@ -69,7 +77,8 @@ enum ArchiveExtractor {
     static func extract(
         innerPaths: [String],
         fromArchiveAt archiveOnDiskPath: String,
-        passphrase: ArchivePassphrase? = nil
+        passphrase: ArchivePassphrase? = nil,
+        nameEncoding: ArchiveNameEncoding? = nil
     ) throws -> Extraction {
         let directory = temporaryRoot.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -79,7 +88,8 @@ enum ArchiveExtractor {
                 innerPaths: innerPaths,
                 fromArchiveAt: archiveOnDiskPath,
                 into: directory,
-                passphrase: passphrase
+                passphrase: passphrase,
+                nameEncoding: nameEncoding
             )
         } catch {
             try? FileManager.default.removeItem(at: directory)
@@ -97,19 +107,30 @@ enum ArchiveExtractor {
 
     /// Unpack into `directory` by whichever engine the archive's format needs. Leaves the directory
     /// in place; the caller owns it, including cleaning it up when this throws.
+    ///
+    /// **A declared code page takes the libarchive route whether or not the archive is encrypted**,
+    /// for the same reason the listing does: `bsdtar` cannot be told what the names are in, and
+    /// under any locale it fails to *create* them — measured, `Can't create '\217\240…':
+    /// Illegal byte sequence`, exit 1, because APFS refuses a file name that is not valid UTF-8.
+    /// So for these archives the in-process reader is not the faster route, it is the only one.
     private static func unpack(
         innerPaths: [String],
         fromArchiveAt archiveOnDiskPath: String,
         into directory: URL,
-        passphrase: ArchivePassphrase?
+        passphrase: ArchivePassphrase?,
+        nameEncoding: ArchiveNameEncoding? = nil
     ) throws {
-        if needsPassphrase(forArchiveAt: archiveOnDiskPath) {
-            guard let passphrase else { throw EncryptedArchiveError.passphraseRequired }
+        let isEncrypted = needsPassphrase(
+            forArchiveAt: archiveOnDiskPath, nameEncoding: nameEncoding
+        )
+        if isEncrypted || nameEncoding != nil {
+            if isEncrypted, passphrase == nil { throw EncryptedArchiveError.passphraseRequired }
             try EncryptedArchiveReader.extract(
                 archiveAt: archiveOnDiskPath,
                 into: directory.path,
                 passphrase: passphrase,
                 members: .members(innerPaths),
+                nameEncoding: nameEncoding,
                 // Asked for the wrapper by name, hand over the wrapper. Unwrapping is right for
                 // every other caller and is what makes an encrypted archive extract to the files
                 // the user packed; for the one row a hidden-names archive lists, it places the

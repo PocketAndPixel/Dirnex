@@ -83,6 +83,7 @@ extension PanelViewController {
         }
 
         let innerPath = origin.path
+        let encoding = declaredNameEncoding(forArchiveAt: outerArchivePath)
         // Enter is an explicit request for the member's bytes, so an encrypted outer archive asks
         // for its passphrase here — once per archive per session (PLAN.md §M19).
         withArchivePassphrase(forArchiveAt: outerArchivePath) { passphrase in
@@ -91,7 +92,8 @@ extension PanelViewController {
                     let extraction = try ArchiveExtractor.extract(
                         innerPaths: [innerPath],
                         fromArchiveAt: outerArchivePath,
-                        passphrase: passphrase
+                        passphrase: passphrase,
+                        nameEncoding: encoding
                     )
                     // A single member extracts to exactly one location; `ArchiveExtractor` already
                     // threw if nothing landed, so this file exists.

@@ -45,8 +45,12 @@ extension PanelViewController {
               cache.cachedURL(for: member) == nil else { return }
         let passphrase = rememberedPassphrase(forArchiveAt: member.archivePath)
         Task {
-            guard (try? await cache.extractedURL(for: member, passphrase: passphrase)) != nil,
-                  previewableArchiveMember == member else { return }
+            guard (try? await cache.extractedURL(
+                for: member,
+                passphrase: passphrase,
+                nameEncoding: self.declaredNameEncoding(forArchiveAt: member.archivePath)
+            )) != nil,
+                previewableArchiveMember == member else { return }
             onReady()
         }
     }
@@ -59,7 +63,11 @@ extension PanelViewController {
         guard let member = previewableArchiveMember, let cache = host?.archivePreviewCache,
               cache.cachedURL(for: member) == nil else { return }
         withArchivePassphrase(forArchiveAt: member.archivePath) { passphrase in
-            try await cache.extractedURL(for: member, passphrase: passphrase)
+            try await cache.extractedURL(
+                for: member,
+                passphrase: passphrase,
+                nameEncoding: self.declaredNameEncoding(forArchiveAt: member.archivePath)
+            )
         } onSuccess: { [weak self] _ in
             guard self?.previewableArchiveMember == member else { return }
             onReady()

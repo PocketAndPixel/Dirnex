@@ -23,6 +23,19 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     /// on detached tasks — two panes can mount the same archive concurrently.
     let lock = NSLock()
     private var mounted: [String: Mount] = [:]
+    /// The code page the user has declared for an archive whose entry names are not UTF-8, keyed by
+    /// the archive's on-disk path (``DirnexCore/ArchiveNameEncoding``).
+    ///
+    /// It lives here, beside `mounted` and under the same lock, because declaring one **invalidates
+    /// the mount**: the whole point is that the table of contents comes out different. Two
+    /// dictionaries in two places would make that a rule somebody has to remember, where here it is
+    /// one function that cannot do half the job.
+    ///
+    /// Memory only and never persisted, like `ArchivePassphraseStore` — with the opposite reason.
+    /// A passphrase is withheld from every store because it is a secret; this is withheld because it
+    /// is a *guess the user made about one archive*, and a wrong one silently outliving the session
+    /// would be worse than asking again.
+    private var nameEncodings: [String: ArchiveNameEncoding] = [:]
     /// Live SFTP connections keyed by the account descriptor (`sftp://user@host:port`). A connection
     /// is established by the Connect-to-Server flow (`connectSFTP`) before a pane navigates onto it;
     /// each holds a `Process`-driven transport, so listing an SFTP pane routes here (PLAN.md §M5
@@ -361,13 +374,40 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     /// have to agree about (`ArchivePreviewCache`, `NestedArchiveRegistry`). Reading it back
     /// costs nothing on the path that matters — a hit is still the single `stat` inside the helper,
     /// and only a re-mount pays the second, beside a subprocess that dwarfs it.
+    /// The code page declared for this archive, if any. Every read path asks, so a declaration
+    /// reaches the listing, the previews, an extraction and the rewrite alike.
+    func nameEncoding(forArchiveAt archivePath: String) -> ArchiveNameEncoding? {
+        lock.lock()
+        defer { lock.unlock() }
+        return nameEncodings[archivePath]
+    }
+
+    /// Declare — or, with `nil`, withdraw — the code page this archive's names are stored in, and
+    /// drop its mount so the next listing re-reads them.
+    ///
+    /// Dropping the mount is the whole reason this is one call: a declaration that left the cached
+    /// table of contents standing would change nothing on screen, which reads as the choice having
+    /// been ignored. The caller still has to refresh the pane; what it cannot get wrong is the
+    /// cache underneath.
+    func declareNameEncoding(_ encoding: ArchiveNameEncoding?, forArchiveAt archivePath: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        nameEncodings[archivePath] = encoding
+        mounted[archivePath] = nil
+    }
+
     private func mountedArchive(at archivePath: String) throws -> ArchiveBackend {
         lock.lock()
         defer { lock.unlock() }
         if let cached = mounted[archivePath], cached.identity.stillDescribesFile(at: archivePath) {
             return cached.backend
         }
-        let toc = try ArchiveMounter.readTableOfContents(ofArchiveAt: archivePath)
+        // Read directly rather than through `nameEncoding(forArchiveAt:)`: `lock` is an `NSLock`
+        // and is already held here, so going back through the accessor would deadlock.
+        let toc = try ArchiveMounter.readTableOfContents(
+            ofArchiveAt: archivePath,
+            nameEncoding: nameEncodings[archivePath]
+        )
         let backend = ArchiveBackend(archiveOnDiskPath: archivePath, toc: toc)
         // An archive that vanished between the read and here has no identity to stamp, and the read
         // above has already thrown; one that appears in that window is stamped on its next list.
@@ -376,47 +416,5 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
             mounted[archivePath] = Mount(identity: identity, backend: backend)
         }
         return backend
-    }
-}
-
-/// Reads an archive's table of contents by spawning `bsdtar -tvf` and handing the verbose
-/// listing to the pure `ArchiveTOC` parser. The non-hermetic subprocess I/O lives here in the
-/// app layer, mirroring `SpotlightSearchRunner`; all parsing stays tested in `DirnexCore`.
-enum ArchiveMounter {
-    static func readTableOfContents(ofArchiveAt archivePath: String) throws -> ArchiveTOC {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/bsdtar")
-        // The names the pane draws come out of this listing, and `bsdtar` renders them through
-        // `vis(3)`: with no locale set every non-ASCII byte arrives octal-escaped, so the row
-        // reads `\320\237…` and every verb built from it addresses a member that is not there
-        // (``ChildProcessLocale``).
-        process.environment = ChildProcessLocale.inherited()
-        process.arguments = ["-tvf", archivePath]
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        // Discard stderr so a libarchive warning neither pollutes the listing nor risks a
-        // second-pipe deadlock; a real failure shows up as a non-zero exit below.
-        process.standardError = FileHandle.nullDevice
-
-        let awaitExit = ProcessWaiting.exitWaiter(for: process)
-        do {
-            try process.run()
-        } catch {
-            throw VFSError.unsupported(.archiveToolUnavailableForRead)
-        }
-        // Read to EOF before waiting so a large table of contents can't deadlock a full pipe.
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        awaitExit()
-
-        // Decoded **leniently**: one member whose name is not valid UTF-8 — a zip written by a
-        // Windows tool with code-page names — used to make this whole guard fail, so the archive
-        // reported `archiveUnreadable` rather than listing the ninety-nine members that are fine
-        // (``SubprocessText``).
-        let text = SubprocessText.lossyUTF8(data)
-        guard process.terminationStatus == 0 else {
-            let name = (archivePath as NSString).lastPathComponent
-            throw VFSError.unsupported(.archiveUnreadable(archive: name))
-        }
-        return ArchiveTOC(verboseListing: text)
     }
 }

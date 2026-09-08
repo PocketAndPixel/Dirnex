@@ -68,6 +68,23 @@ struct archive *archive_read_new(void);
 int archive_read_support_format_all(struct archive *);
 int archive_read_support_filter_all(struct archive *);
 int archive_read_add_passphrase(struct archive *, const char *passphrase);
+
+// Read options, of which Dirnex sets exactly one: `hdrcharset=<code page>`, which tells the zip
+// reader what encoding the stored names are in. A zip written before UTF-8 was usual stores names in
+// an OEM code page with general-purpose bit 11 clear, and there is nothing in the file that says
+// which one — so this is the lever that turns those bytes into a name, and the *user* supplies the
+// code page (`ArchiveNameEncoding`) because no reader can infer it.
+//
+// It validates the charset up front rather than failing later at the first name: measured against
+// this Mac's libarchive, every real code page returns ARCHIVE_OK and `hdrcharset=BOGUSCHARSET`
+// returns **-30** (ARCHIVE_FATAL). That is what lets a bad token fail where it is set instead of
+// looking like an unreadable archive.
+//
+// A charset that is real but *wrong* for the archive does not fail here at all — it either yields a
+// plausible wrong name (CP1251 reads the CP866 fixture as `Џ ­®а ¬ .txt`) or makes
+// `archive_entry_pathname_utf8` answer NULL where a byte is unmapped in that code page. Neither is
+// detectable from inside; only somebody who can read the name can say.
+int archive_read_set_options(struct archive *, const char *options);
 int archive_read_open_filename(struct archive *, const char *filename, size_t blockSize);
 int archive_read_next_header(struct archive *, struct archive_entry **);
 ssize_t archive_read_data(struct archive *, void *buffer, size_t length);

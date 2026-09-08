@@ -42,7 +42,10 @@ extension PanelViewController {
         )
         // The encryption question costs one header read — measured at 3–4 ms for a 600 MB archive
         // (see `ArchiveExtractor.needsPassphrase`), which is what lets every gesture ask it outright.
-        guard ArchiveExtractor.needsPassphrase(forArchiveAt: archivePath) else {
+        guard ArchiveExtractor.needsPassphrase(
+            forArchiveAt: archivePath,
+            nameEncoding: declaredNameEncoding(forArchiveAt: archivePath)
+        ) else {
             run(attempt, with: nil)
             return
         }

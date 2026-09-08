@@ -176,7 +176,11 @@ struct EscapeToDismissTests {
             (["Retry", "Skip", "Abort"], nil, false),
             (["OK"], nil, false),
             (["Stop"], nil, true), // the progress sheets: one button + a real accessory
-            (["Остановить"], nil, true)
+            (["Остановить"], nil, true),
+            // The archive name-encoding chooser: two buttons *and* a real accessory, which is the
+            // one combination the shapes above did not cover between them.
+            (["Use", "Cancel"], .alertSecondButtonReturn, true),
+            (["Использовать", "Отмена"], .alertSecondButtonReturn, true)
         ]
     )
     func everyShapeAnswersBothKeys(

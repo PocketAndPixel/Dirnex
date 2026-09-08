@@ -141,6 +141,7 @@ extension PanelViewController {
     ) {
         let localPaths = sources.map(\.path.path)
         let name = (archivePath as NSString).lastPathComponent
+        let encoding = declaredNameEncoding(forArchiveAt: archivePath)
         // As with delete: an encrypted archive rewrites through libarchive, and the passphrase comes
         // from the one funnel that asks once per archive and retries on a typo.
         withArchivePassphrase(forArchiveAt: archivePath) { passphrase in
@@ -151,7 +152,8 @@ extension PanelViewController {
                         toInnerDirectory: innerDirectory,
                         ofArchiveAt: archivePath,
                         passphrase: passphrase,
-                        undo: ArchiveUndoStorage.request()
+                        undo: ArchiveUndoStorage.request(),
+                        nameEncoding: encoding
                     )
                 }
             }.get()
@@ -166,11 +168,13 @@ extension PanelViewController {
             // F6 move: the archive add is a copy, so remove the originals now that it succeeded.
             if kind == .move { sourcePane?.removeArchiveMoveOriginals(sources) }
         } onFailure: { [weak self] error in
-            self?.presentOperationFailure(
+            guard let self else { return }
+            guard !offerNameEncoding(after: error, forArchiveAt: archivePath) else { return }
+            presentOperationFailure(
                 message: sources.count == 1
                     ? String(localized: "Couldn’t add “\(sources[0].name)”")
                     : String(localized: "Couldn’t add \(sources.count) items to “\(name)”"),
-                detail: self?.describe(error) ?? ""
+                detail: describe(error)
             )
         }
     }

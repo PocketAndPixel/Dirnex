@@ -98,13 +98,15 @@ extension PanelViewController {
         let innerPaths = group.members.map(\.path.path)
         let archivePath = group.archivePath
         let backend = backend
+        let encoding = declaredNameEncoding(forArchiveAt: archivePath)
         withArchivePassphrase(forArchiveAt: archivePath) { passphrase in
             try await BlockingWork.run { () -> Result<[FileEntry], any Error> in
                 Result {
                     let extraction = try ArchiveExtractor.extract(
                         innerPaths: innerPaths,
                         fromArchiveAt: archivePath,
-                        passphrase: passphrase
+                        passphrase: passphrase,
+                        nameEncoding: encoding
                     )
                     // Stat each extracted file into a local source entry; a member that never
                     // landed — bsdtar couldn't find it, or the reader refused its name as a
@@ -119,9 +121,11 @@ extension PanelViewController {
                 remaining, extracted: extracted + localSources, then: continuation
             )
         } onFailure: { [weak self] error in
-            self?.presentOperationFailure(
+            guard let self else { return }
+            guard !offerNameEncoding(after: error, forArchiveAt: archivePath) else { return }
+            presentOperationFailure(
                 message: String(localized: "Couldn’t extract from the archive"),
-                detail: self?.describe(error) ?? ""
+                detail: describe(error)
             )
         }
     }

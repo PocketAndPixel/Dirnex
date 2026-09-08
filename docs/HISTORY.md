@@ -12701,6 +12701,35 @@ Cyrillic key and `S3WriteArgumentsTests` pins the copy-source encoding.
 The rewrite path still refuses an archive whose entry names are not UTF-8 (`entryNameNotUTF8`), and
 that stays: rewriting means writing every name back, and a name we cannot represent would be
 corrupted. Browsing such an archive now works, which is what the report would have been about.
+*(Superseded the same day — see below.)*
+
+**2026-09-09 (later still) — a legacy archive's code page can be declared, and then everything
+works.** Asked whether the rewrite could handle those names after all. Three measurements settled the
+design before any Swift. **APFS refuses a non-UTF-8 file name outright** (`EILSEQ`), and the rewrite
+stages on disk — `bsdtar -x` hits the same wall itself, `Can't create '\217\240…': Illegal byte
+sequence`, exit 1, under *either* locale — so the refusal was never conservatism, it was the only
+answer available. libarchive's **`hdrcharset` read option** turns the bytes into the real name
+(`CP866` → `Панорама.txt`), and **Apple's `bsdtar` has no `--hdrcharset`**, so the in-process reader
+is the only one that can apply it. A streaming entry-to-entry rewrite was considered and rejected: it
+preserves bytes nobody can read, still cannot extract that row *out* of the archive, and needs a
+third engine.
+
+So the user declares the code page (`ArchiveNameEncoding`, 19 of them) and everything downstream is
+unchanged — once a name decodes it is an ordinary `String` and a legal APFS name. `CompositeBackend`
+holds the declaration beside the mount cache it must invalidate; a declared archive lists and
+extracts through libarchive while the **repack stays `bsdtar`**, which is what keeps the container
+format. The chooser previews real sample names per candidate and offers only the code pages that
+*fit*, because a wrong one does not fail — it produces well-formed nonsense, and can be *invisibly*
+wrong: CP1251 reads that fixture's separators as no-break spaces and soft hyphens, which cost one
+test failure that read as a bug in the reader. Nothing asks unprompted; the offer arrives when a
+gesture hits the refusal, which happens before the archive is touched.
+
+Verified through the real `ArchiveWriter`: deleting either member of the CP866 fixture leaves the
+other one correct, and the rewritten archive reads back **with no declaration at all** — `bsdtar`
+writes UTF-8 names with the zip's flag set, so the archive is upgraded on the way through. Four
+negative controls fired (a typoed `hdrcharset` token, a neutered misfit detector, an extract that
+ignores the declaration, a catalog entry disagreeing with the core), each on exactly the tests named
+for it while the narrowness controls stayed green.
 
 **2026-09-09 — non-ASCII file names, on every protocol.** The SFTP fix the day before was one
 instance of a class, and the user's follow-up named the class: three screenshots — the NAS's own web

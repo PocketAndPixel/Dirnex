@@ -55,7 +55,11 @@ extension PanelViewController {
         let destination = editDestination(for: entry)
 
         withArchivePassphrase(forArchiveAt: archivePath) { passphrase in
-            try await cache.extractedURL(for: member, passphrase: passphrase)
+            try await cache.extractedURL(
+                for: member,
+                passphrase: passphrase,
+                nameEncoding: self.declaredNameEncoding(forArchiveAt: member.archivePath)
+            )
         } onSuccess: { [weak self] url in
             if let destination {
                 self?.host?.editedFiles.watch(EditedFile(

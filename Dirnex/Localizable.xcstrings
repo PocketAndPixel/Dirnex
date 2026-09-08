@@ -80347,95 +80347,6 @@
         }
       }
     },
-    "That key signed in, but it isn’t allowed to list the buckets on %@. Type a bucket name to connect to just that one.": {
-      "comment": "S3 connect failure detail when a 403 carried no S3 error code, so the missing permission cannot be named; %@ is the endpoint. Not a fault: a key scoped to one bucket is the ordinary way these are issued.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Der Schlüssel wurde akzeptiert, darf die Buckets auf %@ aber nicht auflisten. Geben Sie einen Bucket-Namen ein, um sich nur mit diesem zu verbinden."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "That key signed in, but it isn’t allowed to list the buckets on %@. Type a bucket name to connect to just that one."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La clave se autenticó, pero no tiene permiso para listar los buckets de %@. Escribe el nombre de un bucket para conectarte solo a ese."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La clé a été acceptée, mais elle n’a pas le droit de lister les compartiments de %@. Saisissez le nom d’un compartiment pour vous connecter à celui-ci uniquement."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La chiave è stata accettata, ma non può elencare i bucket su %@. Digita il nome di un bucket per connetterti solo a quello."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "キーは認証されましたが、%@ のバケット一覧を表示する権限がありません。バケット名を入力すると、そのバケットだけに接続できます。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "키는 인증되었지만 %@의 버킷 목록을 볼 권한이 없습니다. 버킷 이름을 입력하면 해당 버킷에만 연결됩니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "De sleutel is geaccepteerd, maar mag de buckets op %@ niet tonen. Typ een bucketnaam om alleen daarmee te verbinden."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Klucz został przyjęty, ale nie ma uprawnień do wyświetlenia zasobników na %@. Wpisz nazwę zasobnika, aby połączyć się tylko z nim."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A chave foi aceita, mas não tem permissão para listar os buckets em %@. Digite o nome de um bucket para conectar-se apenas a ele."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ключ принят, но у него нет прав на просмотр списка бакетов на %@. Введите имя бакета, чтобы подключиться только к нему."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ключ прийнято, але він не має прав на перегляд списку бакетів на %@. Введіть назву бакета, щоб під’єднатися лише до нього."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "密钥已通过验证，但无权列出 %@ 上的存储桶。输入存储桶名称即可仅连接该存储桶。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "金鑰已通過驗證，但無權列出 %@ 上的儲存桶。輸入儲存桶名稱即可僅連接該儲存桶。"
-          }
-        }
-      }
-    },
     "That key signed in, but it isn’t allowed to list the buckets on %@ — it doesn’t have the %@ permission. Type a bucket name to connect to just that one.": {
       "comment": "S3 connect failure detail when the key lacks that permission. %1$@ is the endpoint. %2$@ is an AWS IAM action name — always Latin script, e.g. s3:ListAllMyBuckets — so leave it exactly as it is: the user pastes it into a policy, and a translated or re-spelled token grants nothing. Do not put quotation marks around it either; it is an identifier to copy, not a name being referred to. Not a fault: a key scoped to one bucket is the ordinary way these are issued, so the sentence still names the way forward rather than reporting an error.",
       "localizations": {
@@ -80521,6 +80432,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "金鑰已通過驗證，但無權列出 %1$@ 上的儲存桶——它沒有 %2$@ 權限。輸入儲存桶名稱即可僅連接該儲存桶。"
+          }
+        }
+      }
+    },
+    "That key signed in, but it isn’t allowed to list the buckets on %@. Type a bucket name to connect to just that one.": {
+      "comment": "S3 connect failure detail when a 403 carried no S3 error code, so the missing permission cannot be named; %@ is the endpoint. Not a fault: a key scoped to one bucket is the ordinary way these are issued.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Schlüssel wurde akzeptiert, darf die Buckets auf %@ aber nicht auflisten. Geben Sie einen Bucket-Namen ein, um sich nur mit diesem zu verbinden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That key signed in, but it isn’t allowed to list the buckets on %@. Type a bucket name to connect to just that one."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La clave se autenticó, pero no tiene permiso para listar los buckets de %@. Escribe el nombre de un bucket para conectarte solo a ese."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La clé a été acceptée, mais elle n’a pas le droit de lister les compartiments de %@. Saisissez le nom d’un compartiment pour vous connecter à celui-ci uniquement."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La chiave è stata accettata, ma non può elencare i bucket su %@. Digita il nome di un bucket per connetterti solo a quello."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キーは認証されましたが、%@ のバケット一覧を表示する権限がありません。バケット名を入力すると、そのバケットだけに接続できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키는 인증되었지만 %@의 버킷 목록을 볼 권한이 없습니다. 버킷 이름을 입력하면 해당 버킷에만 연결됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De sleutel is geaccepteerd, maar mag de buckets op %@ niet tonen. Typ een bucketnaam om alleen daarmee te verbinden."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klucz został przyjęty, ale nie ma uprawnień do wyświetlenia zasobników na %@. Wpisz nazwę zasobnika, aby połączyć się tylko z nim."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A chave foi aceita, mas não tem permissão para listar os buckets em %@. Digite o nome de um bucket para conectar-se apenas a ele."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключ принят, но у него нет прав на просмотр списка бакетов на %@. Введите имя бакета, чтобы подключиться только к нему."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключ прийнято, але він не має прав на перегляд списку бакетів на %@. Введіть назву бакета, щоб під’єднатися лише до нього."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密钥已通过验证，但无权列出 %@ 上的存储桶。输入存储桶名称即可仅连接该存储桶。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "金鑰已通過驗證，但無權列出 %@ 上的儲存桶。輸入儲存桶名稱即可僅連接該儲存桶。"
           }
         }
       }
@@ -100130,6 +100130,215 @@
           "stringUnit": {
             "state": "translated",
             "value": "普通"
+          }
+        }
+      }
+    },
+    "archive.nameEncoding.cp1250": {
+      "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Central European (Windows, CP1250)"
+          }
+        }
+      }
+    },
+    "archive.nameEncoding.cp1251": {
+      "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cyrillic (Windows, CP1251)"
+          }
+        }
+      }
+    },
+    "archive.nameEncoding.cp1252": {
+      "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Western European (Windows, CP1252)"
+          }
+        }
+      }
+    },
+    "archive.nameEncoding.cp1253": {
+      "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Greek (Windows, CP1253)"
+          }
+        }
+      }
+    },
+    "archive.nameEncoding.cp1254": {
+      "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turkish (Windows, CP1254)"
+          }
+        }
+      }
+    },
+    "archive.nameEncoding.cp1255": {
+      "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hebrew (Windows, CP1255)"
+          }
+        }
+      }
+    },
+    "archive.nameEncoding.cp1256": {
+      "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arabic (Windows, CP1256)"
+          }
+        }
+      }
+    },
+    "archive.nameEncoding.cp1257": {
+      "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baltic (Windows, CP1257)"
+          }
+        }
+      }
+    },
+    "archive.nameEncoding.cp437": {
+      "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Western European (DOS, CP437)"
+          }
+        }
+      }
+    },
+    "archive.nameEncoding.cp850": {
+      "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Western European (DOS, CP850)"
+          }
+        }
+      }
+    },
+    "archive.nameEncoding.cp852": {
+      "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Central European (DOS, CP852)"
+          }
+        }
+      }
+    },
+    "archive.nameEncoding.cp866": {
+      "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cyrillic (DOS, CP866)"
+          }
+        }
+      }
+    },
+    "archive.nameEncoding.cp932": {
+      "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Japanese (Shift JIS, CP932)"
+          }
+        }
+      }
+    },
+    "archive.nameEncoding.cp936": {
+      "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simplified Chinese (GBK, CP936)"
+          }
+        }
+      }
+    },
+    "archive.nameEncoding.cp949": {
+      "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Korean (CP949)"
+          }
+        }
+      }
+    },
+    "archive.nameEncoding.cp950": {
+      "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traditional Chinese (Big5, CP950)"
+          }
+        }
+      }
+    },
+    "archive.nameEncoding.koi8r": {
+      "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cyrillic (KOI8-R)"
+          }
+        }
+      }
+    },
+    "archive.nameEncoding.macCyrillic": {
+      "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cyrillic (Mac OS)"
+          }
+        }
+      }
+    },
+    "archive.nameEncoding.macRoman": {
+      "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Western European (Mac OS Roman)"
           }
         }
       }

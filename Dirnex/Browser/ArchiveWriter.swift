@@ -46,10 +46,12 @@ enum ArchiveWriter {
         innerPaths: [String],
         fromArchiveAt archiveOnDiskPath: String,
         passphrase: ArchivePassphrase? = nil,
-        undo: ArchiveUndoStorage.Request
+        undo: ArchiveUndoStorage.Request,
+        nameEncoding: ArchiveNameEncoding? = nil
     ) throws -> ArchiveUndoSnapshot? {
         try rewrite(
-            archiveOnDiskPath: archiveOnDiskPath, passphrase: passphrase, undo: undo
+            archiveOnDiskPath: archiveOnDiskPath, passphrase: passphrase, undo: undo,
+            nameEncoding: nameEncoding
         ) { workingDirectory in
             // Remove each target by its exact extracted path. A member that isn't there (already
             // gone, or a stale selection) is not a failure — the rewrite still drops it.
@@ -79,7 +81,8 @@ enum ArchiveWriter {
         toInnerDirectory innerDirectory: String,
         ofArchiveAt archiveOnDiskPath: String,
         passphrase: ArchivePassphrase? = nil,
-        undo: ArchiveUndoStorage.Request
+        undo: ArchiveUndoStorage.Request,
+        nameEncoding: ArchiveNameEncoding? = nil
     ) throws -> ArchiveUndoSnapshot? {
         try add(
             localPaths.map {
@@ -87,7 +90,8 @@ enum ArchiveWriter {
             },
             ofArchiveAt: archiveOnDiskPath,
             passphrase: passphrase,
-            undo: undo
+            undo: undo,
+            nameEncoding: nameEncoding
         )
     }
 
@@ -109,11 +113,13 @@ enum ArchiveWriter {
         _ additions: [ArchiveMutation.Addition],
         ofArchiveAt archiveOnDiskPath: String,
         passphrase: ArchivePassphrase? = nil,
-        undo: ArchiveUndoStorage.Request
+        undo: ArchiveUndoStorage.Request,
+        nameEncoding: ArchiveNameEncoding? = nil
     ) throws -> ArchiveUndoSnapshot? {
         let name = (archiveOnDiskPath as NSString).lastPathComponent
         return try rewrite(
-            archiveOnDiskPath: archiveOnDiskPath, passphrase: passphrase, undo: undo
+            archiveOnDiskPath: archiveOnDiskPath, passphrase: passphrase, undo: undo,
+            nameEncoding: nameEncoding
         ) { workingDirectory in
             var prepared: Set<String> = []
             for addition in additions {
@@ -165,6 +171,7 @@ enum ArchiveWriter {
         archiveOnDiskPath: String,
         passphrase: ArchivePassphrase?,
         undo: ArchiveUndoStorage.Request,
+        nameEncoding: ArchiveNameEncoding? = nil,
         edit: (_ workingDirectory: String) throws -> Void
     ) throws -> ArchiveUndoSnapshot? {
         let archiveURL = URL(fileURLWithPath: archiveOnDiskPath)
@@ -173,7 +180,9 @@ enum ArchiveWriter {
         // Headers only — no passphrase needed to learn whether one is needed, which is what lets the
         // caller be asked before any work starts rather than after the extract has failed.
         let format = ArchiveRewriteFormat.inferred(
-            from: try EncryptedArchiveReader.inspect(archiveAt: archiveOnDiskPath)
+            from: try EncryptedArchiveReader.inspect(
+                archiveAt: archiveOnDiskPath, nameEncoding: nameEncoding
+            )
         )
         if format.needsPassphrase, passphrase == nil || passphrase?.isEmpty == true {
             throw EncryptedArchiveError.passphraseRequired
@@ -192,7 +201,8 @@ enum ArchiveWriter {
             into: workingDirectory.path,
             format: format,
             passphrase: passphrase,
-            name: name
+            name: name,
+            nameEncoding: nameEncoding
         )
 
         try edit(workingDirectory.path)
@@ -232,14 +242,22 @@ enum ArchiveWriter {
     /// A hidden-names archive unwraps here transparently — `EncryptedArchiveReader` undoes the
     /// wrapper — so `edit` always sees the real tree, and `repackAll` puts the wrapper back. That
     /// symmetry is what keeps every caller ignorant of name privacy.
+    ///
+    /// **A declared code page forces the libarchive route even for an unencrypted archive**, and
+    /// only the *extract* half needs it: once the names have been decoded they are ordinary UTF-8
+    /// on disk, so `repackAll` stays on `bsdtar` — which is what keeps the container format (a
+    /// `.tar.gz` stays a `.tar.gz`) rather than being rewritten as the one zip the in-process writer
+    /// can produce. The archive comes back with its names flagged UTF-8, readable everywhere; that
+    /// is a real change to the user's file and the gesture says so before it runs.
     private static func extractAll(
         archiveOnDiskPath: String,
         into workingDirectory: String,
         format: ArchiveRewriteFormat,
         passphrase: ArchivePassphrase?,
-        name: String
+        name: String,
+        nameEncoding: ArchiveNameEncoding? = nil
     ) throws {
-        guard format.needsPassphrase else {
+        guard format.needsPassphrase || nameEncoding != nil else {
             try run(
                 ArchiveMutation.extractAllArguments(
                     archiveOnDiskPath: archiveOnDiskPath,
@@ -252,7 +270,8 @@ enum ArchiveWriter {
         _ = try EncryptedArchiveReader.extract(
             archiveAt: archiveOnDiskPath,
             into: workingDirectory,
-            passphrase: passphrase
+            passphrase: passphrase,
+            nameEncoding: nameEncoding
         )
     }
 
