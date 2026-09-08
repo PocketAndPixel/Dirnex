@@ -39,6 +39,30 @@ struct SMBMounterTests {
         let location = SMBLocation(host: "host", username: "oleg")
         #expect(SMBMounter.mountURLString(for: location) == "smb://host")
     }
+
+    /// The share reaches `URL(string:)`, so the mount URL carries it **encoded** where the address
+    /// field carries it as typed.
+    ///
+    /// This is the assertion that would have caught it: on macOS 14 — the deployment target —
+    /// `URL(string:)` is the strict parser and answers nil for a space or a non-ASCII character
+    /// (measured through `CFURLCreateWithString`), so `mount` fails before it is attempted. On
+    /// macOS 26 the newer parser encodes it for us, which is exactly why nothing here noticed.
+    @Test("a share name with a space or non-ASCII is encoded into the mount URL")
+    func mountURLEncodesTheShare() {
+        let spaced = SMBLocation(host: "nas.local", share: "My Share")
+        #expect(SMBMounter.mountURLString(for: spaced) == "smb://nas.local/My%20Share")
+        let cyrillic = SMBLocation(host: "nas.local", share: "Панорама")
+        #expect(SMBMounter.mountURLString(for: cyrillic)
+            == "smb://nas.local/%D0%9F%D0%B0%D0%BD%D0%BE%D1%80%D0%B0%D0%BC%D0%B0")
+        // And the whole point of encoding it: the strict parser accepts the result.
+        #expect(URL(string: SMBMounter.mountURLString(for: spaced)) != nil)
+        #expect(
+            CFURLCreateWithString(nil, SMBMounter.mountURLString(for: spaced) as CFString, nil) != nil
+        )
+        #expect(
+            CFURLCreateWithString(nil, SMBMounter.mountURLString(for: cyrillic) as CFString, nil) != nil
+        )
+    }
 }
 
 /// The status mapping in `SMBMountError`. Assertions stay language-independent — the app test target

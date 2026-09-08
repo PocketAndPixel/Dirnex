@@ -12694,6 +12694,31 @@ right UTF-8 bytes with its **UTF-8 flag (bit 11) clear**, so Windows Explorer, I
 `zipfile` all read `╨ƒ╨░╨╜╨╛╤Ç╨░╨╝╨░.txt`. `SFTPChildEnvironment` became `ChildProcessLocale` and now
 arms the four `bsdtar` sites as well as the four `sftp`/`ssh` ones.
 
+**SMB and local were checked next, and SMB had a bug of its own — an *older-macOS* one.**
+`SMBMounter.mountURLString` built `smb://host/<share>` by concatenation and handed it to
+`URL(string:)`. Correct on macOS 26, whose RFC 3986 parser percent-encodes a space or a non-ASCII
+character by itself; Dirnex deploys to **macOS 14**, whose parser does not. Probed through
+`CFURLCreateWithString` — the strict parser, still reachable here — `smb://nas.local/My Share` and
+`smb://nas.local/Панорама` both return **nil**, and both percent-encoded spellings parse. So on
+macOS 14 a share called **"My Share"** cannot be mounted at all, which makes this reachable by a
+user with an entirely ASCII setup and invisible on the machine it was written on. Only the *mount*
+URL is encoded; `SMBLocation.url` stays the string the user typed, because it is what the address
+field shows, what the sidebar stores, and what has to round-trip through `SMBLocation(url:)`.
+
+**Everything else in the audit was already right**, which is worth recording so it is not re-probed:
+`git` (`-z`), `curl` and `mdfind` all emit raw UTF-8 with no locale set — mdfind checked in both
+directions against a real Spotlight index, output paths *and* a non-ASCII query term. **Local** is
+clean by construction, no subprocess rendering a name: `LocalBackend` lists, stats and operates on
+Cyrillic, Japanese, Korean, Hebrew and emoji names unchanged. **SMB browsing** inherits that —
+verified live against the NAS by driving `NetFSMountURLSync` itself, creating Cyrillic and Japanese
+files on the mounted share and reading them back through the real `LocalBackend`, exact and
+unescaped. And **S3** decodes its percent-encoded keys correctly.
+
+**The`-only-testing` trap cost a wrong conclusion on the way.** The SMB assertion was appended to the
+end of a file holding *two* suites, so it landed in the second one and the filtered run reported
+success **with the fix reverted** — which reads as "my test is inert" and invites weakening it. The
+tell was the count, which had not moved.
+
 **The two tools that were already right are the useful half of the audit.** `git` is exact because it
 is asked for **`-z`**, which turns off `core.quotePath` entirely — measured, raw UTF-8 with no locale
 set, where the same command without `-z` answers `"\320\237…"` — and `curl` escapes nothing. So the

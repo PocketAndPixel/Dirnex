@@ -688,6 +688,16 @@ at build time.
   - Same family as the fixture-identifier and stale-witness entries below: an assertion that was
     right about the world it was written in, with nothing in the compiler to notice the world moved.
 
+- **A test appended to the wrong `struct` in a shared file is that same failure with the test
+  *present*, and it makes a negative control read as inert.** Measured 2026-09-09: a new assertion
+  was added to the end of `SMBMounterTests.swift`, which holds **two** suites, so it landed in the
+  second one — and `-only-testing:DirnexTests/SMBMounterTests` then ran the four pre-existing tests
+  and reported success **with the fix deliberately reverted**. The conclusion that follows is the
+  dangerous one: not "my filter is wrong" but "my test is inert", which invites weakening the test
+  or abandoning the fix. The tell is the same as every other entry in this family — the **count**,
+  which had not moved — so read a filtered run's count against what you expect it to have added, and
+  check which type a test actually landed in when a file holds more than one.
+
 - **`-only-testing:` naming a single Swift Testing function can select nothing, and reports
   success.** Measured 2026-08-29: `-only-testing:Target/SuiteName/functionName` ran **0 tests in 1
   suite** and printed a tick — the same "green run that ran nothing" as the entry below, reached
@@ -3261,6 +3271,39 @@ do not share a resolver, and neither half of that is obvious from either call si
   hardware involved and nothing to lock anybody out of.
 
 ### SMB (`NetFSMountURLSync` and the share the account may not use)
+
+- **The mount URL is parsed by `URL(string:)`, and on the deployment target that is the *strict*
+  parser — so a share whose name contains a **space** cannot be mounted at all.** Found 2026-09-09
+  while auditing every protocol for non-ASCII names. `SMBMounter.mountURLString` built
+  `smb://host/<share>` by concatenation with no percent-encoding, which is fine on macOS 26: the
+  swift-foundation rewrite's RFC 3986 parser encodes a space or a non-ASCII character by itself
+  (measured — `smb://nas.local/My Share` comes back as `…/My%20Share`). Dirnex deploys to **macOS
+  14**, whose `URL(string:)` is the older parser. Probed through `CFURLCreateWithString`, which *is*
+  that parser on this Mac: `smb://nas.local/My Share` and `smb://nas.local/Панорама` both return
+  **nil**, while the percent-encoded spelling of each parses. A `nil` there is a mount that fails
+  before it is attempted.
+  - **The space is the case that matters**, and it is what makes this more than a localization
+    footnote: "My Share" and "Time Machine" are ordinary share names, so the bug is reachable by a
+    user with an entirely ASCII setup on an older macOS.
+  - **It is invisible on the machine you are developing on**, which is why nothing caught it — the
+    newer parser silently does the encoding, so the same code is correct here and broken there. Any
+    string handed to `URL(string:)` deserves the `CFURLCreateWithString` control while the
+    deployment target is below macOS 15.
+  - **Only the *mount* URL is encoded, never ``SMBLocation/url``.** That one is what the address
+    field shows and the sidebar stores, and it has to round-trip through `SMBLocation(url:)` — the
+    same identity-vs-display split ▸ Design lessons records for `ResultsPresentation`.
+  - The set is `urlPathAllowed` minus `/`, deliberately *less* strict than FTP's: it encodes what
+    would end or restructure the URL (`#`, `?`, `/`, `%`) plus everything outside ASCII, and leaves
+    the sub-delimiters alone so a Windows admin share (`C$`) and an ordinary `R&D` keep the spelling
+    NetFS already accepts. FTP needs the stricter rule because `;` there selects a transfer type;
+    SMB has no such suffix.
+
+- **What SMB does *not* need is any name handling of its own.** Verified live 2026-09-09 against the
+  NAS by driving `NetFSMountURLSync` directly (the app's own API, so the password stays out of
+  `argv`): a share mounts at `/Volumes/<share>`, files created there with Cyrillic and Japanese
+  names read back as exact UTF-8 (`d0 9f d0 b0 …`), and the real `LocalBackend` lists and stats them
+  unescaped. Once mounted, an SMB share *is* a local path, so it inherits the local backend's
+  correctness rather than needing its own.
 
 - **A share the account may not use and a share that is not there are the *same* status, so no
   mount error can tell them apart — and the sentence written for one of them is a confident wrong
@@ -6507,6 +6550,13 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     lists verbatim, measured), so `\320\237` in a name could genuinely be that name and an
     un-escaper would rename a file for real. What survives the pin is a name that is not valid UTF-8,
     which no un-escaping could turn into a `String` that addresses it either.
+  - **The audit finished 2026-09-09 and the clean half is worth writing down, so nobody re-probes
+    it.** `git` (`-z`), `curl` and `mdfind` all emit raw UTF-8 with no locale set — mdfind was
+    checked in *both* directions against a real Spotlight index, output paths and a non-ASCII query
+    term, and is locale-independent either way. **Local** is clean by construction: no subprocess
+    renders a name, so `LocalBackend` lists, stats and operates on Cyrillic, Japanese, Korean,
+    Hebrew and emoji names unchanged. **SMB** is local once mounted and inherits that (▸ SMB). What
+    was left was `sftp`, `bsdtar` and FTP's own encoding negotiation.
 
 - **When a policy needs an order, ask which component actually *has* it — a derived signal will be
   an approximation and can be a non-deterministic one.** The archive-undo store evicts snapshots

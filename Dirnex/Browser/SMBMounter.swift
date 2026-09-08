@@ -127,7 +127,11 @@ final class SMBMounter {
     nonisolated static func mountURLString(for location: SMBLocation) -> String {
         var result = "smb://\(location.host)"
         if location.port != SMBLocation.defaultPort { result += ":\(location.port)" }
-        if let share = location.share { result += "/\(share)" }
+        // Percent-encoded, unlike `SMBLocation.url`, which is the string the user typed and the
+        // sidebar stores. This one is parsed by `URL(string:)`, which on macOS 14 — the
+        // deployment target — is the strict parser and answers **nil** for a share name
+        // holding a space or a non-ASCII character (``SMBLocation/percentEncodedShare(_:)``).
+        if let share = location.share { result += "/\(SMBLocation.percentEncodedShare(share))" }
         return result
     }
 

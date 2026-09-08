@@ -58,6 +58,35 @@ public extension SMBLocation {
         return result
     }
 
+    /// A share name percent-encoded for the URL that is handed to `NetFSMountURLSync`.
+    ///
+    /// ``url`` is deliberately **not** encoded — it is what the address field shows and what the
+    /// sidebar stores, so it has to stay the string the user typed and has to round-trip through
+    /// ``init(url:)``. The *mount* URL is a different thing with a different reader, and that reader
+    /// is strict.
+    ///
+    /// Measured 2026-09-09: `URL(string:)` on macOS 26 percent-encodes a space or a non-ASCII
+    /// character by itself, so this is a no-op there — but that is the RFC 3986 parser the
+    /// swift-foundation rewrite brought, and Dirnex deploys to **macOS 14**, whose `URL(string:)` is
+    /// the older strict one. Probed through `CFURLCreateWithString`, which is that parser:
+    /// `smb://nas.local/My Share` and `smb://nas.local/Панорама` both return **nil**, while the
+    /// percent-encoded spellings of each parse fine. A `nil` there is a mount that fails before it
+    /// is attempted, so on macOS 14 a share whose name merely contains a **space** — "My Share",
+    /// "Time Machine" — cannot be mounted at all, which is a good deal more common than a
+    /// non-ASCII one.
+    ///
+    /// The set is `urlPathAllowed` minus `/`, which is deliberately *less* strict than
+    /// ``FTPProcessArguments/percentEncoded(_:)``: the characters that must be encoded here are the
+    /// ones that would end or restructure the URL (`#`, `?`, `/`, and `%` itself) plus everything
+    /// outside ASCII, while the sub-delimiters are left literal so a Windows admin share (`C$`) and
+    /// an ordinary `R&D` keep the spelling NetFS already accepts. FTP needs the stricter rule
+    /// because `;` there selects a transfer type; SMB has no such suffix.
+    static func percentEncodedShare(_ share: String) -> String {
+        var allowed = CharacterSet.urlPathAllowed
+        allowed.remove(charactersIn: "/")
+        return share.addingPercentEncoding(withAllowedCharacters: allowed) ?? share
+    }
+
     /// Parse a `smb://[user@]host[:port][/share]` URL — the Finder-⌘K form the address field takes
     /// (type or paste) — into editable coordinates, or `nil` when it isn't an SMB URL / is malformed.
     ///
