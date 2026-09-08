@@ -28,7 +28,7 @@ extension SFTPProcessTransport {
     ) throws -> SegmentedDownloadOutcome {
         guard !segments.isEmpty else { return .segments(bytes: 0) }
 
-        let environment = isPasswordAuthentication ? try passwordEnvironment() : nil
+        let environment = try childEnvironment()
         var children: [Child] = []
         // Built before anything is spawned, so the watch's baseline is read while every piece is
         // still empty — and torn down on every exit path, including the throwing ones.
@@ -88,7 +88,7 @@ extension SFTPProcessTransport {
     private func spawn(
         _ segment: DownloadSegment,
         of remotePath: String,
-        environment: [String: String]?
+        environment: [String: String]
     ) throws -> Child {
         let manager = FileManager.default
         let errorPath = segment.localPath + ".err"
@@ -107,7 +107,7 @@ extension SFTPProcessTransport {
         process.arguments = execArguments(
             command: SSHSegmentCommand.read(remotePath, range: segment.range)
         )
-        if let environment { process.environment = environment }
+        process.environment = environment
         process.standardInput = FileHandle.nullDevice
         process.standardOutput = output
         process.standardError = errors

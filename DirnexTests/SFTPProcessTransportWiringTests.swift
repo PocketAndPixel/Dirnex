@@ -38,6 +38,32 @@ struct SFTPProcessTransportWiringTests {
         // split for it. Without this the test above could be reading a constant nobody consults.
         #expect(!MinimalTransport().sendsPartsConcurrently)
     }
+
+    @Test("a key-auth child is armed with the locale, which is the path that used to inherit none")
+    func keyAuthChildrenCarryTheLocale() throws {
+        // Reported 2026-09-08 as an upload renaming files: `DSC_0697-Панорама.jpg` listed back as
+        // `DSC_0697-\320\237…`, and every verb built from that name then answered "not found" for a
+        // row in front of the user. The cause is this environment. Key auth used to leave it nil and
+        // inherit the app's own — and a LaunchServices-launched app has no locale at all, so `sftp`
+        // ran under `C` and octal-escaped every non-ASCII byte (``SFTPChildEnvironment``).
+        //
+        // Needs no server: what is asserted is that the funnel every spawn site goes through applies
+        // the rule. The rule's own edges are pinned in the core's `SFTPChildEnvironment` suite.
+        let environment = try Self.transport.childEnvironment()
+        #expect(environment["LC_CTYPE"] == "UTF-8")
+        #expect(environment["LC_TIME"] == "C")
+        #expect(environment["LC_ALL"] == nil)
+    }
+
+    @Test("and it amends the parent environment rather than replacing it")
+    func theChildKeepsWhatItInherits() throws {
+        // `ssh` finds `known_hosts` through `HOME`, and the password path layers `SSH_ASKPASS` onto
+        // this same dictionary — so a pin that built a fresh environment would take the host-key
+        // trust record and the password wiring with it, which is a much louder failure than the one
+        // being fixed and would land on a different path.
+        let environment = try Self.transport.childEnvironment()
+        #expect(environment["HOME"] == ProcessInfo.processInfo.environment["HOME"])
+    }
 }
 
 /// A transport that implements nothing beyond the protocol's requirements, so every default is what

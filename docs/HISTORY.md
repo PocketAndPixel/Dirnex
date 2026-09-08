@@ -12667,6 +12667,53 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
 
+**2026-09-08 — a file copied to a server is not renamed; `sftp` was reading its name back through
+the C locale.** Reported with two screenshots: `DSC_0697-Панорама.jpg` copied to a NAS, and a pane
+listing `DSC_0697-\320\237\320\260\320\275\320\276\321\200\320\260\320\274\320\260.jpg`
+beside it. The word in the report was *renamed*, and that turned out to be the one thing that had
+not happened.
+
+Probed before any Swift, against a throwaway `sshd` (OpenSSH 10.3). The file on the server carries
+the real UTF-8 bytes (`d0 9f` for `П`, confirmed by the server's own `ls`), so `put` had carried the
+name correctly; what escapes is the **client**, whose `ls -la` renders each name through `vis(3)`.
+One file, five environments: escaped under `LC_ALL=C` **and under no locale variables at all**,
+verbatim under `LC_CTYPE=UTF-8`, `LC_ALL=en_US.UTF-8` and `LC_ALL=ru_RU.UTF-8`. So nothing about the
+argv, the parser or the server decided it — a variable nobody had set did.
+
+**Not a display bug**, which is what made it worth a slice rather than a cosmetic fix: the pane draws
+the escaped name and every verb builds its path from it, where `SFTPCommands.quote` doubles each
+backslash — so the server is asked for a file literally called `DSC_0697-\320\237…` and answers
+**not found**. Measured: the download lands nothing and `sftp` still exits 0. Download, rename,
+delete and stat all failed on a file that was perfectly fine, which is the S3 `+`-for-space bug
+(NOTES ▸ curl for S3) reached through a different encoding.
+
+What hid it since M5 is **how the app is launched**. `launchctl getenv` answers empty for `LANG`,
+`LC_ALL` and `LC_CTYPE`, so a LaunchServices-launched Dirnex always handed `sftp` the `C` locale,
+while a build run from a shell inherits the terminal's UTF-8 and lists perfectly — every developer
+run and every `xcodebuild test` sat in the good half. The same shell-vs-LaunchServices split M26
+records for TCC, arriving on a locale. The **exec channel never had it** (the server's own `ls`
+writes raw bytes into a pipe, measured in the same run), so search, sync and the sizer had been
+showing the right names all along while the ordinary listing did not — the app contradicting itself,
+which is what the report was really describing.
+
+`SFTPChildEnvironment.pinningLocale` is the fix, applied at one funnel every `sftp` and `ssh` spawn
+site goes through. Three decisions inside it, each measured. `LC_ALL` is **removed rather than
+overridden**, because `LC_ALL=C LC_CTYPE=UTF-8` escapes exactly as the bare `C` locale does — setting
+`LC_CTYPE` alone is the fix that looks complete. `LC_TIME` is pinned to `C` precisely *because*
+`LC_ALL` was removed: `sftp` localizes character type alone today, so the date column was never at
+risk, and with `LC_ALL` gone the category would otherwise fall through to the user's `LANG`. And the
+parser is deliberately **not** taught to un-escape, since `sftp` leaves a literal backslash
+unescaped (`back\slash.txt` lists verbatim) — `\320\237` in a name could genuinely be that name, so
+an un-escaper would silently rename a file for real.
+
+The other half of the fix is that **every** child is armed. Key auth had been leaving `environment`
+nil and inheriting the app's own, while password auth built one for the askpass wiring; the two paths
+differing in exactly that dimension is what let the bug reach only some users. Covered by
+`SFTPChildEnvironmentTests` (the rule), `SFTPProcessTransportWiringTests` (that the funnel applies
+it), and a live `SFTPNonASCIINameLiveTests` that uploads the reporter's own name and then downloads
+it **through the path the listing produced** — re-typing the literal would put the probe on neither
+side of the disagreement and passes against the broken build.
+
 **2026-09-04 — a server can be reached by its bare LAN name, the way SMB already could.**
 Reported as a question: `smb://nas` works and the FTP connect sheet answers *"The server couldn't be
 reached. Check the host name and port."* for the same `nas`. Both halves were measured before any

@@ -145,7 +145,7 @@ extension SFTPProcessTransport {
         return captured.standardOutput
     }
 
-    /// Internal for the reason ``passwordEnvironment()`` is.
+    /// Internal for the reason ``childEnvironment()`` is.
     var isPasswordAuthentication: Bool {
         if case .password = authentication { return true }
         return false
@@ -171,9 +171,7 @@ extension SFTPProcessTransport {
         progress: (Int64) -> Void = { _ in },
         isCancelled: () -> Bool
     ) throws -> Captured {
-        if isPasswordAuthentication {
-            process.environment = try passwordEnvironment()
-        }
+        process.environment = try childEnvironment()
 
         // Built **before** the child is spawned: a resumed `get -a` continues into a file that
         // already holds bytes, and the watch's baseline has to be read while it is still standing
@@ -253,14 +251,23 @@ extension SFTPProcessTransport {
         )
     }
 
-    /// The `sftp` child's environment for password auth: the parent environment (so `HOME`, `PATH`,
-    /// and the rest survive — `ssh` needs `HOME` to find `known_hosts`) plus the `SSH_ASKPASS`
-    /// wiring that feeds the password without a TTY. `SSH_ASKPASS_REQUIRE=force` makes modern OpenSSH
-    /// use the helper even with no controlling terminal.
-    /// Internal rather than private so the segmented download can arm each of its children with it
-    /// — Swift's `private` does not cross files (docs/NOTES.md ▸ file splitting).
-    func passwordEnvironment() throws -> [String: String] {
-        var environment = ProcessInfo.processInfo.environment
+    /// The environment for every `sftp` and `ssh` child: the parent's (so `HOME`, `PATH` and the
+    /// rest survive — `ssh` needs `HOME` to find `known_hosts`) with the locale pinned, plus, for
+    /// password auth only, the `SSH_ASKPASS` wiring that feeds the password without a TTY.
+    /// `SSH_ASKPASS_REQUIRE=force` makes modern OpenSSH use the helper even with no controlling
+    /// terminal.
+    ///
+    /// **Every child is armed, not just the password ones**, which is what fixes a listing rather
+    /// than half of them: key auth used to leave `environment` nil and inherit the app's own, and a
+    /// LaunchServices-launched app has no locale at all — so `sftp` ran under `C` and octal-escaped
+    /// every non-ASCII byte of every name (``SFTPChildEnvironment``). The two paths differed in
+    /// exactly the way that hid it.
+    ///
+    /// Internal rather than private so the segmented download and upload can arm each of their
+    /// children with it — Swift's `private` does not cross files (docs/NOTES.md ▸ file splitting).
+    func childEnvironment() throws -> [String: String] {
+        var environment = SFTPChildEnvironment.pinningLocale(ProcessInfo.processInfo.environment)
+        guard isPasswordAuthentication else { return environment }
         environment["SSH_ASKPASS"] = try SFTPAskpassHelper.scriptPath()
         environment["SSH_ASKPASS_REQUIRE"] = "force"
         environment[SFTPAskpassHelper.passwordEnvironmentKey] = password ?? ""

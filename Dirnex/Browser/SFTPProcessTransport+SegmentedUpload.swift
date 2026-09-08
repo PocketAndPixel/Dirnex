@@ -115,14 +115,12 @@ extension SFTPProcessTransport {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/sftp")
         process.arguments = batchArguments
-        if isPasswordAuthentication {
-            do {
-                process.environment = try passwordEnvironment()
-            } catch {
-                output.closeFile()
-                errors.closeFile()
-                throw error
-            }
+        do {
+            process.environment = try childEnvironment()
+        } catch {
+            output.closeFile()
+            errors.closeFile()
+            throw error
         }
 
         // The batch is a few bytes, so this pipe is written and closed before the child can fill

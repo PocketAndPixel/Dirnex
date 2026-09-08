@@ -3457,6 +3457,52 @@ do not share a resolver, and neither half of that is obvious from either call si
     transfer that worked. The transfer's own `-p` cannot be `-`-prefixed (a failed `put` has to stay
     a failed copy), so that rule is what covers a `put -p` whose `setstat` the server refuses.
 
+- **`sftp`'s `ls -la` renders a name through `vis(3)`, so under the `C` locale every non-ASCII byte
+  comes back as a `\nnn` octal escape — and a LaunchServices-launched app has no locale at all.**
+  Reported 2026-09-08 as an upload **renaming** files: `DSC_0697-Панорама.jpg` copied to a server
+  listed back as `DSC_0697-\320\237\320\260\320\275\320\276\321\200\320\260\320\274\320\260.jpg`.
+  Nothing was renamed — `put` carries the name's real bytes and the server holds it correctly
+  (confirmed by the server's own `ls`); it is the **client** that escapes on the way back, and only
+  its own `LC_CTYPE` decides. Measured against a real `sshd` (OpenSSH 10.3), one file, five
+  environments: escaped under `C` and under **no locale variables at all**, verbatim under
+  `LC_CTYPE=UTF-8`, `LC_ALL=en_US.UTF-8` and `LC_ALL=ru_RU.UTF-8`.
+  - **It is not a display bug.** The pane draws the escaped name and every verb builds its path from
+    it, where `SFTPCommands.quote` doubles each backslash — so the server is asked for a file
+    literally called `DSC_0697-\320\237…` and answers **not found** for a row sitting in front of the
+    user. Measured: the download lands nothing, `sftp` exits 0, so download, rename, delete and stat
+    all fail on a file that is perfectly fine. Same shape as the S3 `+`-for-space bug (▸ curl for
+    S3): a *listing* that hands back an encoded name, and every byte-touching verb then addressing a
+    path that is not there.
+  - **What hid it for the life of the backend is how the app was launched**, which is the
+    shell-vs-LaunchServices split this file already records for TCC, arriving on a locale.
+    `launchctl getenv` answers empty for `LANG`, `LC_ALL` and `LC_CTYPE`, so a GUI-launched Dirnex
+    always handed `sftp` the `C` locale — while a build run from a shell inherits the terminal's
+    UTF-8 and lists perfectly. Every developer run and every `xcodebuild test` was in the good half.
+  - **`LC_ALL` must be *removed*, not overridden**: measured, `LC_ALL=C LC_CTYPE=UTF-8` escapes
+    exactly as the bare `C` locale does, so setting `LC_CTYPE` alone is the fix that looks complete
+    and is defeated by any shell-launched build carrying one. `LC_TIME` is then pinned to `C`
+    precisely *because* `LC_ALL` was removed — `sftp` localizes character type alone today (even
+    `LC_ALL=ru_RU.UTF-8` prints English month names), but with `LC_ALL` gone the category would fall
+    through to the user's `LANG` if that ever changed, handing `ColumnarListing`'s `en_US_POSIX`
+    formatters months it cannot read.
+  - **Do not un-escape after the fact**, which is the tempting parser-side fix and is ambiguous:
+    `sftp` leaves a **literal backslash unescaped** (measured — `back\slash.txt` lists verbatim, not
+    doubled), so `\320\237` in a name could genuinely be that name, and an un-escaper would silently
+    rename it. It does not escape a raw **tab** either. What survives the locale pin is a name that
+    is not valid UTF-8 — a Latin-1 name on a Linux server — which no un-escaping could turn into a
+    `String` that addresses it either.
+  - **The exec channel never had the bug, which is what made the app contradict itself.** `ls -ldn`
+    runs on the *server*, whose `ls` writes raw bytes into a pipe (measured, same file, same run) —
+    so search, sync and the sizer showed the right names the whole time while the ordinary listing
+    did not. When one surface spells a name differently from another, ask which of them is rendered
+    by a *local* tool.
+  - The general form is worth more than the case: **a subprocess's output format is part of its
+    environment, not just of its arguments.** Nothing in the argv, the parser or the server changed
+    between the working and broken renderings — only a variable nobody set. Any tool whose output is
+    parsed deserves the question "what does its locale do to this", and the honest place to answer it
+    is one environment funnel every spawn site goes through, since the two auth paths differing in
+    exactly that way is what let this reach only half the users.
+
 - **There is no way to create a file exclusively over `sftp`, and all three candidates fail
   differently.** Measured 2026-08-23 against a real `sshd` while building ⇧F4's remote route, because
   "create an empty file" reads as though one of them must work: `put` of an empty file **truncates**
