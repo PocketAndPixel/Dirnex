@@ -84,7 +84,11 @@ extension FTPCurlTransport {
             // `contentsOfFile` rather than an existence check followed by a read: a file that is
             // there and unreadable is as much "no answer" as one that was never written, and the two
             // must not be told apart here.
-            try? String(contentsOfFile: request.outputPath, encoding: .utf8)
+            // Lenient on the way in: a name the server sent in a code page must cost its own row,
+            // never the level (``SubprocessText``). A *missing* file still answers `nil`, which is
+            // what separates "listed, and empty" from "could not be listed".
+            (try? Data(contentsOf: URL(fileURLWithPath: request.outputPath)))
+                .map(SubprocessText.lossyUTF8)
         }
     }
 }

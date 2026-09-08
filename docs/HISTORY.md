@@ -12667,6 +12667,41 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
 
+**2026-09-09 (later) — archives and S3 audited; the locale pin had a cost nobody had looked for.**
+Asked to check the two remaining backends. S3 came back clean and the archive side turned up two
+more bugs, one of them introduced earlier the same day.
+
+**In-process libarchive had the `bsdtar` bug, and `ChildProcessLocale` cannot reach it.**
+`EncryptedArchiveWriter` calls libarchive inside this process, where there is no child to hand an
+environment to — and Dirnex never calls `setlocale`, so the process locale is `C`. Measured: an
+archive packed there, **encrypted or not**, stored `Панорама.txt` with the right UTF-8 bytes and the
+zip's UTF-8 flag **clear**, so it listed perfectly in Dirnex and as `╨ƒ╨░╨╜╨╛╤Ç╨░╨╝╨░.txt`
+everywhere else. `setlocale` is process-global on a threaded GUI app, so the fix is libarchive's own
+`hdrcharset=UTF-8` write option — measured to set bit 11 with no locale set. Zip-only, which is also
+the whole truth: a `pax` tar stores raw bytes and a `7zip` archive stores UTF-16, and both read back
+exactly under `C`. Only zip has a flag to get wrong.
+
+**And the locale pin moved a failure from *ugly* to *fatal*.** `String(bytes:encoding:.utf8)` is
+all-or-nothing, and every subprocess reader carried `?? ""` behind it. Under `C`, `bsdtar` escaped
+every non-ASCII byte, so its output was pure ASCII and always decoded; pinned to UTF-8 it escapes
+some bytes and passes others raw — invalid UTF-8. On a real legacy zip (CP866 names, flag clear, the
+shape WinRAR wrote for years) that took the archive from *"lists with `\217\240…` names"* to
+**`archiveUnreadable`**. The pin is still right; the decode was what had to go. `SubprocessText`
+now decodes leniently at the four listing readers — the archive table of contents, the SFTP capture,
+and FTP's single and batched listings — so a name that cannot be represented costs its own row
+rather than the directory. The same shape was latent on SFTP and FTP and is *silent* there: the
+listing decodes to `""` and the pane draws an empty folder, which reads as "the folder is empty".
+
+**S3 needed nothing.** `S3Key.encode` walks the UTF-8 bytes, so a Cyrillic key becomes `%D0%9F…` in
+the URL and in `x-amz-copy-source` alike, and the `DeleteObjects` body declares `encoding="UTF-8"`
+and escapes only the XML metacharacters. Verified on the wire against `Tooling/fake-s3-endpoint.py`,
+which logged the key it received as `Панорама.jpg`, and it was already covered — `S3KeyTests` pins a
+Cyrillic key and `S3WriteArgumentsTests` pins the copy-source encoding.
+
+The rewrite path still refuses an archive whose entry names are not UTF-8 (`entryNameNotUTF8`), and
+that stays: rewriting means writing every name back, and a name we cannot represent would be
+corrupted. Browsing such an archive now works, which is what the report would have been about.
+
 **2026-09-09 — non-ASCII file names, on every protocol.** The SFTP fix the day before was one
 instance of a class, and the user's follow-up named the class: three screenshots — the NAS's own web
 UI showing `DSC_0697-Панорама.jpg`, an SFTP pane showing it correctly, and an **FTP** pane showing

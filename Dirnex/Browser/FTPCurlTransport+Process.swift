@@ -196,13 +196,13 @@ extension FTPCurlTransport {
         // than from the live reader, which skips any chunk whose UTF-8 decode fails at a read
         // boundary — a cost an estimate can absorb and a diagnosis cannot.
         let standardError = CurlProgressMeter.prose(
-            in: String(bytes: drained.standardError, encoding: .utf8) ?? ""
+            in: SubprocessText.lossyUTF8(drained.standardError)
         )
         guard process.terminationStatus == 0 else {
             throw CurlExit(code: process.terminationStatus, standardError: standardError)
         }
         return RunResult(
-            standardOutput: String(bytes: drained.standardOutput, encoding: .utf8) ?? "",
+            standardOutput: SubprocessText.lossyUTF8(drained.standardOutput),
             standardError: standardError
         )
     }

@@ -408,7 +408,12 @@ enum ArchiveMounter {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         awaitExit()
 
-        guard process.terminationStatus == 0, let text = String(data: data, encoding: .utf8) else {
+        // Decoded **leniently**: one member whose name is not valid UTF-8 — a zip written by a
+        // Windows tool with code-page names — used to make this whole guard fail, so the archive
+        // reported `archiveUnreadable` rather than listing the ninety-nine members that are fine
+        // (``SubprocessText``).
+        let text = SubprocessText.lossyUTF8(data)
+        guard process.terminationStatus == 0 else {
             let name = (archivePath as NSString).lastPathComponent
             throw VFSError.unsupported(.archiveUnreadable(archive: name))
         }

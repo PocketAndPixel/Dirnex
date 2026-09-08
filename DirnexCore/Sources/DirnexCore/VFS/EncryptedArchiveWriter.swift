@@ -205,7 +205,25 @@ public enum EncryptedArchiveWriter {
     /// hoped over.
     private static func writeOptions(_ settings: Settings) -> String? {
         guard settings.container == .zip else { return nil }
-        var options: [String] = []
+        // **`hdrcharset` is what sets a zip's UTF-8 flag, and this writer cannot get it any other
+        // way.** libarchive decides general-purpose bit 11 from the charset it believes it is
+        // converting *from*, which is the process locale — and Dirnex never calls `setlocale`, so
+        // in-process that is `C`. Measured 2026-09-09: an encrypted archive packed here stored
+        // `Панорама.txt` with the right UTF-8 bytes and **bit 11 clear**, so Windows Explorer,
+        // Info-ZIP and Python all read `╨ƒ╨░╨╜╨╛╤Ç╨░╨╝╨░.txt` from an archive our own reader lists
+        // perfectly.
+        //
+        // ``ChildProcessLocale`` fixes the same bug for the `bsdtar` *subprocess* and cannot reach
+        // here: there is no child to hand an environment to, and `setlocale` is process-global on a
+        // threaded GUI app. This option is the targeted equivalent — verified to set the flag with
+        // no locale set at all — and the two are not a redundant pair, because the locale pin also
+        // buys the *reading* side (an unescaped table of contents) which no write option can.
+        //
+        // Zip-only, which the guard above already ensures and which is also the whole truth: only
+        // zip has such a flag. Measured on the other two containers Dirnex offers — a `pax` tar
+        // stores the raw bytes and a `7zip` archive stores UTF-16, and both read back exactly under
+        // the `C` locale.
+        var options: [String] = ["hdrcharset=UTF-8"]
         if let value = settings.level.optionValue { options.append("compression-level=\(value)") }
         if let option = settings.encryption.writeOption { options.append(option) }
         return options.isEmpty ? nil : options.joined(separator: ",")

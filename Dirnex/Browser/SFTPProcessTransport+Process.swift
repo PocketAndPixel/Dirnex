@@ -244,8 +244,8 @@ extension SFTPProcessTransport {
         group.wait() // terminate closed the pipes, so the readers finish promptly
 
         return Captured(
-            standardOutput: String(bytes: outputData, encoding: .utf8) ?? "",
-            standardError: String(bytes: errorData, encoding: .utf8) ?? "",
+            standardOutput: SubprocessText.lossyUTF8(outputData),
+            standardError: SubprocessText.lossyUTF8(errorData),
             terminationStatus: process.terminationStatus,
             timedOut: timedOut
         )

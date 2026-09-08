@@ -6550,13 +6550,41 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     lists verbatim, measured), so `\320\237` in a name could genuinely be that name and an
     un-escaper would rename a file for real. What survives the pin is a name that is not valid UTF-8,
     which no un-escaping could turn into a `String` that addresses it either.
+  - **Pinning the locale moved one failure from *ugly* to *fatal*, and the decode had to change with
+    it.** `String(bytes:encoding:.utf8)` is all-or-nothing, so a stream carrying **one** name that is
+    not valid UTF-8 answers `nil` for the whole thing — and every subprocess reader carried a
+    `?? ""` behind it. Under the `C` locale `bsdtar` escaped *every* non-ASCII byte, so its output
+    was pure ASCII and always decoded; pinned to UTF-8 it escapes some bytes and passes others raw,
+    which is **invalid UTF-8**. Measured 2026-09-09 on a real legacy zip (CP866 names, UTF-8 flag
+    clear — what Windows tools wrote for years): before, it listed with `\217\240…` names; after,
+    the whole archive reported **`archiveUnreadable`**. The locale pin is still right — it is what
+    makes every ordinary archive correct — and the all-or-nothing decode is what had to go
+    (``SubprocessText``). The same shape reaches SFTP and FTP, where it is *silent*: the listing
+    decodes to `""` and the pane draws an **empty directory**, which reads as "the folder is empty".
+    The rule to carry: **a listing is the worst possible place for an all-or-nothing decode**, and
+    the fix is to lose the row rather than the directory.
+  - **A subprocess is not the only thing with a locale — the *process* has one too, and it is `C`.**
+    Dirnex never calls `setlocale`, so in-process libarchive (`EncryptedArchiveWriter`) had exactly
+    the bug ``ChildProcessLocale`` fixes for `bsdtar` and could not be reached by it: an encrypted
+    archive packed here stored correct UTF-8 bytes with the zip's **flag clear**. `setlocale` is
+    process-global on a threaded GUI app, so the fix is libarchive's own `hdrcharset=UTF-8` write
+    option — measured to set bit 11 with no locale set at all. Two mechanisms for one guarantee is
+    usually a smell; these are not redundant, because the locale pin also buys the *reading* side
+    (an unescaped table of contents) which no write option can.
   - **The audit finished 2026-09-09 and the clean half is worth writing down, so nobody re-probes
     it.** `git` (`-z`), `curl` and `mdfind` all emit raw UTF-8 with no locale set — mdfind was
     checked in *both* directions against a real Spotlight index, output paths and a non-ASCII query
     term, and is locale-independent either way. **Local** is clean by construction: no subprocess
     renders a name, so `LocalBackend` lists, stats and operates on Cyrillic, Japanese, Korean,
-    Hebrew and emoji names unchanged. **SMB** is local once mounted and inherits that (▸ SMB). What
-    was left was `sftp`, `bsdtar` and FTP's own encoding negotiation.
+    Hebrew and emoji names unchanged. **SMB** is local once mounted and inherits that (▸ SMB), and
+    **S3** is clean by construction — `S3Key.encode` walks the **UTF-8 bytes**, so a Cyrillic key
+    becomes `%D0%9F…` in the URL and in `x-amz-copy-source` alike, and the `DeleteObjects` body
+    declares `encoding="UTF-8"` and escapes only the XML metacharacters (verified on the wire
+    against `Tooling/fake-s3-endpoint.py`, which logged the key it received as `Панорама.jpg`).
+    Of the archive containers, only **zip** needed anything: a `pax` tar stores the raw bytes and a
+    `7zip` archive stores UTF-16, and both read back exactly under the `C` locale — only zip has a
+    charset *flag* to get wrong. What was left was `sftp`, `bsdtar`, in-process libarchive, and
+    FTP's own encoding negotiation.
 
 - **When a policy needs an order, ask which component actually *has* it — a derived signal will be
   an approximation and can be a non-deterministic one.** The archive-undo store evicts snapshots

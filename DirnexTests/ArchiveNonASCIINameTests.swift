@@ -56,6 +56,95 @@ struct ArchiveNonASCIINameTests {
         #expect(!names.contains { $0.contains("\\") }, "an escaped name survived: \(names)")
     }
 
+    /// The **in-process** writer flags its names too — a separate mechanism from the subprocess
+    /// packer's, and one that no environment can fix.
+    ///
+    /// `EncryptedArchiveWriter` calls libarchive inside this process, so ``ChildProcessLocale``
+    /// cannot reach it: there is no child to hand an environment to, and Dirnex never calls
+    /// `setlocale` (it is process-global on a threaded GUI app). Measured 2026-09-09, an archive
+    /// packed here — encrypted *or* not — stored `Панорама.txt` with the right UTF-8 bytes and
+    /// **bit 11 clear**, so it read back perfectly in Dirnex and as `╨ƒ╨░╨╜╨╛╤Ç╨░╨╝╨░.txt`
+    /// everywhere else. `hdrcharset=UTF-8` is the targeted equivalent.
+    ///
+    /// Both encryptions are asserted because they take different libarchive paths and the option is
+    /// set once for both — a fix that reached only the plain one would be invisible on the archives
+    /// the encryption feature exists for.
+    @Test("the in-process writer flags its names as UTF-8, encrypted or not")
+    func inProcessWriterFlagsUTF8() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dirnex_inproc_utf8_\(UUID().uuidString)")
+        let source = directory.appendingPathComponent("source", isDirectory: true)
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        for name in [Self.cyrillic, Self.japanese] {
+            try Data("x".utf8).write(to: source.appendingPathComponent(name))
+        }
+
+        for (label, encryption) in [("plain", ArchiveEncryption.none), ("aes256", .aes256)] {
+            let archive = directory.appendingPathComponent("\(label).zip").path
+            try EncryptedArchiveWriter.write(
+                items: try ArchiveSourceEnumerator.items(
+                    inDirectory: source.path, names: [Self.cyrillic, Self.japanese]
+                ),
+                toArchiveAt: archive,
+                encryption: encryption,
+                passphrase: encryption.isEncrypted ? ArchivePassphrase("pw") : nil,
+                namePrivacy: .visible
+            )
+            let entries = try ZipCentralDirectory.entries(ofArchiveAt: archive)
+            let names = entries.map(\.name)
+            #expect(names.contains(Self.cyrillic), "\(label) stored \(names)")
+            for entry in entries where !entry.name.allSatisfy(\.isASCII) {
+                #expect(
+                    entry.declaresUTF8,
+                    "\(label): \(entry.name) is stored without the UTF-8 flag"
+                )
+            }
+        }
+    }
+
+    /// A zip whose names are in a **code page** with the UTF-8 flag clear — what Windows tools wrote
+    /// for years — must still open, losing the one row it cannot name rather than the archive.
+    ///
+    /// This is the regression ``ChildProcessLocale`` introduced and ``SubprocessText`` repairs.
+    /// Measured 2026-09-09: under the `C` locale `bsdtar` octal-escapes every non-ASCII byte, so its
+    /// output is pure ASCII and decodes; under the pinned UTF-8 locale it escapes *some* bytes and
+    /// passes others raw, so the whole stream failed `String(bytes:encoding:.utf8)` and the archive
+    /// reported **`archiveUnreadable`**. Pinning the locale is still right — it is what makes every
+    /// ordinary archive list correctly — and the all-or-nothing decode is what had to go.
+    @Test("a legacy code-page archive still opens, losing only the row it cannot name")
+    func legacyCodePageArchiveStillOpens() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dirnex_legacy_zip_\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let archive = directory.appendingPathComponent("legacy.zip")
+        try Data(base64Encoded: Self.legacyCodePageZip, options: .ignoreUnknownCharacters)
+            .map { try $0.write(to: archive) } ?? { throw ZipFixtureError.undecodable }()
+
+        let toc = try ArchiveMounter.readTableOfContents(ofArchiveAt: archive.path)
+        let names = toc.children(inDirectory: "/").map(\.name)
+        // The archive opens at all — this is the assertion that failed outright before.
+        #expect(names.count == 2, "listed \(names)")
+        // And the member whose name *is* representable is intact and untouched by its neighbour.
+        #expect(names.contains("plain.txt"), "listed \(names)")
+    }
+
+    /// A real legacy zip, 218 bytes: two stored entries, one named `Панорама.txt` in **CP866** with
+    /// general-purpose bit 11 **clear**, exactly as WinRAR and Explorer wrote them.
+    ///
+    /// Hand-minted rather than produced by anything in this repo, which is the point — what is under
+    /// test is the *reader*, so a fixture built by our own writer would prove the two agree rather
+    /// than that either is right (docs/NOTES.md ▸ Live verification).
+    private static let legacyCodePageZip = """
+    UEsDBBQAAAAAAAAAIQCDFtyMAQAAAAEAAAAMAAAAj6CtruCgrKAudHh0eFBLAwQUAAAAAAAAACEA
+    gxbcjAEAAAABAAAACQAAAHBsYWluLnR4dHhQSwECFAMUAAAAAAAAACEAgxbcjAEAAAABAAAADAAA
+    AAAAAAAAAAAAgAEAAAAAj6CtruCgrKAudHh0UEsBAhQDFAAAAAAAAAAhAIMW3IwBAAAAAQAAAAkA
+    AAAAAAAAAAAAAIABKwAAAHBsYWluLnR4dFBLBQYAAAAAAgACAHEAAABTAAAAAAA=
+    """
+
+    private enum ZipFixtureError: Error { case undecodable }
+
     /// A directory holding the two names, and the archive packed from it.
     private struct Fixture {
         let root: URL
