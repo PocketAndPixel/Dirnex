@@ -12667,6 +12667,50 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
 
+**2026-09-09 — non-ASCII file names, on every protocol.** The SFTP fix the day before was one
+instance of a class, and the user's follow-up named the class: three screenshots — the NAS's own web
+UI showing `DSC_0697-Панорама.jpg`, an SFTP pane showing it correctly, and an **FTP** pane showing
+`DSC_0697-.jpg` — with *"we need to support all languages for all protocols"*. Two more bugs, two
+different mechanisms, and two tools that turned out to be fine.
+
+**FTP had no encoding negotiation at all.** Probed against the NAS: the server converts the on-disk
+UTF-8 name into its code page for `LIST` and writes one **`0x7F` (DEL)** per unmappable character,
+which is *valid UTF-8* — so nothing fails to decode, `FTPListingParser` parses the row perfectly, and
+the DELs do not draw. A plausible shorter name, which is the quiet direction. The write half is
+worse and permanent: the server reads our UTF-8 bytes *as* CP1252 and stores the result, so an upload
+named `Панорама` landed as `ÐŸÐ°Ð½Ð¾Ñ€Ð°Ð¼Ð°` (`d0`→`Ð`, `9f`→`Ÿ`). `curl` never negotiates UTF-8 and
+offers no option for it — it does not even send `FEAT` — so RFC 2640's `OPTS UTF8 ON` is sent as a
+quote command, `*`-prefixed. That prefix is load-bearing: unprefixed, a server that refuses `OPTS`
+makes `curl` exit **21** printing `QUOT command failed with 501`, and that reply code is exactly what
+`FTPTransportError.classify` reads out of stderr — every operation would fail *and* be explained by
+the wrong number. Prefixed, exit 0 and stderr empty. It goes in `common()` and in every batched and
+segmented *section*, since `curl` reads one option set per transfer.
+
+**`bsdtar` had the SFTP bug**, which is what turned two fixes into one rule. It renders names through
+`vis(3)` exactly as `sftp` does, so a browsed archive listed
+`./\320\237\320\260\320\275\320\276\321\200\320\260\320\274\320\260.txt` — and the
+*write* direction is the one that outlives the session: packed under the `C` locale a zip carries the
+right UTF-8 bytes with its **UTF-8 flag (bit 11) clear**, so Windows Explorer, Info-ZIP and Python's
+`zipfile` all read `╨ƒ╨░╨╜╨╛╤Ç╨░╨╝╨░.txt`. `SFTPChildEnvironment` became `ChildProcessLocale` and now
+arms the four `bsdtar` sites as well as the four `sftp`/`ssh` ones.
+
+**The two tools that were already right are the useful half of the audit.** `git` is exact because it
+is asked for **`-z`**, which turns off `core.quotePath` entirely — measured, raw UTF-8 with no locale
+set, where the same command without `-z` answers `"\320\237…"` — and `curl` escapes nothing. So the
+rule is that a tool with a raw-output flag should be given it, and the locale pin is for the ones
+that have none; reaching for the pin where a flag exists would be a weaker second spelling of a
+guarantee already available.
+
+Guarded by `FTPUTF8NegotiationTests` (every builder and every section negotiates, and the `*` is
+asserted), `ChildProcessLocaleTests`, and `ArchiveNonASCIINameTests`, which packs a real archive and
+reads its central directory **by hand** rather than asking `bsdtar` what it wrote — the tool reads
+its own output back correctly under either locale, so only an independent reader can see the flag.
+Reverted, the control fails on both claims and captures the subtlety exactly:
+`name: "Панорама.txt", declaresUTF8: false` — right bytes, wrong flag. Verified live against the NAS
+in both directions with the exact shipped argv; the throwaway `pyftpdlib` server is UTF-8 by default
+and can see none of the FTP half, which is the disjoint-corpus trap this project has now met three
+times.
+
 **2026-09-08 — a file copied to a server is not renamed; `sftp` was reading its name back through
 the C locale.** Reported with two screenshots: `DSC_0697-Панорама.jpg` copied to a NAS, and a pane
 listing `DSC_0697-\320\237\320\260\320\275\320\276\321\200\320\260\320\274\320\260.jpg`

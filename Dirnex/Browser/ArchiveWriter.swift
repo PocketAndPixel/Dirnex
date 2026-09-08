@@ -314,6 +314,9 @@ enum ArchiveWriter {
     private static func run(_ arguments: [String], failure reason: VFSUnsupportedReason) throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/bsdtar")
+        // A rewrite re-packs every member, so it writes names as well as reading them — both
+        // halves of ``ChildProcessLocale``'s finding apply.
+        process.environment = ChildProcessLocale.inherited()
         process.arguments = arguments
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice

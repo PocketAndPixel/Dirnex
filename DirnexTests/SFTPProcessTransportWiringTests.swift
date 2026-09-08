@@ -45,10 +45,10 @@ struct SFTPProcessTransportWiringTests {
         // `DSC_0697-\320\237…`, and every verb built from that name then answered "not found" for a
         // row in front of the user. The cause is this environment. Key auth used to leave it nil and
         // inherit the app's own — and a LaunchServices-launched app has no locale at all, so `sftp`
-        // ran under `C` and octal-escaped every non-ASCII byte (``SFTPChildEnvironment``).
+        // ran under `C` and octal-escaped every non-ASCII byte (``ChildProcessLocale``).
         //
         // Needs no server: what is asserted is that the funnel every spawn site goes through applies
-        // the rule. The rule's own edges are pinned in the core's `SFTPChildEnvironment` suite.
+        // the rule. The rule's own edges are pinned in the core's `ChildProcessLocale` suite.
         let environment = try Self.transport.childEnvironment()
         #expect(environment["LC_CTYPE"] == "UTF-8")
         #expect(environment["LC_TIME"] == "C")

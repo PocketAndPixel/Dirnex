@@ -386,6 +386,11 @@ enum ArchiveMounter {
     static func readTableOfContents(ofArchiveAt archivePath: String) throws -> ArchiveTOC {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/bsdtar")
+        // The names the pane draws come out of this listing, and `bsdtar` renders them through
+        // `vis(3)`: with no locale set every non-ASCII byte arrives octal-escaped, so the row
+        // reads `\320\237…` and every verb built from it addresses a member that is not there
+        // (``ChildProcessLocale``).
+        process.environment = ChildProcessLocale.inherited()
         process.arguments = ["-tvf", archivePath]
         let pipe = Pipe()
         process.standardOutput = pipe

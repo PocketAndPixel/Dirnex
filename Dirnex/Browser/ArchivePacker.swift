@@ -30,6 +30,11 @@ struct ArchivePacker: PlainPackWriting {
     ) throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/bsdtar")
+        // A pack *writes* the names, and this is the direction that outlives the session: under
+        // the `C` locale libarchive stores the right UTF-8 bytes with the zip's UTF-8 flag
+        // (general-purpose bit 11) **clear**, so Windows Explorer, Info-ZIP and Python all read
+        // the member as CP437 mojibake (``ChildProcessLocale``).
+        process.environment = ChildProcessLocale.inherited()
         process.arguments = ArchivePacking.packingArguments(
             archiveOnDiskPath: request.archiveOnDiskPath,
             sources: request.sources,

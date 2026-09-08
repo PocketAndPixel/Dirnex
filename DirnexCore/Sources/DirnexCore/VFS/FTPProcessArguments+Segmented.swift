@@ -66,6 +66,7 @@ public extension FTPProcessArguments {
                 "connect-timeout = \(session.connectTimeout)\n",
                 "max-time = \(session.maxTime)\n",
                 addressFamilyConfiguration(session: session),
+                utf8Configuration(),
                 security,
                 "range = \(FTPConfigFile.quote(segment.headerValue))\n",
                 "output = \(FTPConfigFile.quote(segment.localPath))\n",
@@ -82,6 +83,18 @@ public extension FTPProcessArguments {
             ],
             configuration: sections.joined(separator: "next\n")
         )
+    }
+
+    /// The UTF-8 negotiation, in config spelling.
+    ///
+    /// Per **section** for the reason the address family and the TLS options are — `curl` reads one
+    /// option set per transfer, so a batch that put this in `argv` would be relying on an option
+    /// leaking across `next` boundaries. Dropping it from a section is not cosmetic here: a batched
+    /// listing would hand ``FTPListingParser`` code-page names for the whole level, and a segmented
+    /// download sends a *path* whose percent-encoded UTF-8 the server would read in its own code
+    /// page and answer "not found" for a file that is there.
+    static func utf8Configuration() -> String {
+        "quote = \(FTPConfigFile.quote(utf8Negotiation))\n"
     }
 
     /// The address-family half of a section, in config spelling.

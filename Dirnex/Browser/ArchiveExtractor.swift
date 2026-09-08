@@ -121,6 +121,9 @@ enum ArchiveExtractor {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/bsdtar")
+        // Member names go out as arguments and come back as files on disk, so both directions
+        // need the locale settled (``ChildProcessLocale``).
+        process.environment = ChildProcessLocale.inherited()
         process.arguments = ArchiveExtraction.extractionArguments(
             archiveOnDiskPath: archiveOnDiskPath,
             innerPaths: innerPaths,

@@ -3459,6 +3459,7 @@ do not share a resolver, and neither half of that is obvious from either call si
 
 - **`sftp`'s `ls -la` renders a name through `vis(3)`, so under the `C` locale every non-ASCII byte
   comes back as a `\nnn` octal escape — and a LaunchServices-launched app has no locale at all.**
+  (`bsdtar` is the same bug in a second tool ▸ *A subprocess's locale is part of its output format*.)
   Reported 2026-09-08 as an upload **renaming** files: `DSC_0697-Панорама.jpg` copied to a server
   listed back as `DSC_0697-\320\237\320\260\320\275\320\276\321\200\320\260\320\274\320\260.jpg`.
   Nothing was renamed — `put` carries the name's real bytes and the server holds it correctly
@@ -3983,6 +3984,35 @@ off a man page.
   - `%{http_code}` on an FTP invocation is the **last reply code**, not the transfer's — a plain
     upload carrying two quote commands reported `213` (MFMT's) rather than 226. Anything reading it
     as the transfer's status has to account for the quote commands changing it.
+
+- **FTP has no default encoding, so a server is free to answer in a code page — and one that does
+  corrupts names in *both* directions while every layer reports success.** Measured 2026-09-09
+  against a Synology DSM server holding `DSC_0697-Панорама.jpg`, after a user reported that FTP
+  showed `DSC_0697-.jpg` where SFTP showed the name correctly:
+  - **Reading**, the server converts the on-disk UTF-8 name into its code page for `LIST` and writes
+    one **`0x7F` (DEL)** per character it cannot map. That is *valid UTF-8*, so
+    `String(bytes:encoding:.utf8)` succeeds, `FTPListingParser` parses the row perfectly, and the
+    DELs simply do not draw — the pane shows a **plausible shorter name**, which is the quiet
+    direction, and every verb built from it addresses a file that is not there.
+  - **Writing**, the server reads our UTF-8 bytes *as* its code page and stores the result: an
+    upload named `Панорама` landed as `ÐŸÐ°Ð½Ð¾Ñ€Ð°Ð¼Ð°` (`d0`→`Ð`, `9f`→`Ÿ`, i.e. CP1252), which is
+    permanent corruption of somebody's file name rather than a display problem. The same reasoning
+    covers every **path** we send, since a URL carries percent-encoded UTF-8.
+  - **`curl` never negotiates it and offers no option for it** — probed, it does not even send
+    `FEAT` — so RFC 2640's `OPTS UTF8 ON` has to be sent as a quote command. The server advertises
+    `UTF8` in `FEAT`, answers `200 OK, UTF-8 enabled`, and the same `LIST` then returns
+    `d0 9f d0 b0 …` verbatim.
+  - **The `*` (allowed-to-fail) prefix is load-bearing, not defensive tidiness.** Measured against a
+    server that refuses `OPTS`: unprefixed, `curl` exits **21** printing `QUOT command failed with
+    501` — and that `501` is exactly what `FTPTransportError.classify` scans stderr for, so an
+    unsupported server would have every operation fail *and* be explained by the server's own reply
+    code. Prefixed, the same run exits **0** with stderr **empty**.
+  - It goes in `common()` **and** in every batched-listing and segmented-download *section*, for the
+    reason the TLS options already do: `curl` reads one option set per transfer.
+  - The tell that sent the first hour in the wrong place: the **local test server is UTF-8 by
+    default**, so a probe against `pyftpdlib` returns perfect UTF-8 and clears the whole chain. A
+    code page is a property of the *server*, so a fixture that cannot produce one cannot see this —
+    the same disjoint-corpus trap ▸ curl for S3 records for `encoding-type=url`.
 
 - **An FTPS data connection can return zero bytes and exit 18 on this `curl`** when TLS 1.3 is
   negotiated; `--tlsv1.2 --tls-max 1.2` fixes it, on both SSL backends. Apply it as a **retry after
@@ -6447,6 +6477,36 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   pipelines satisfy both gates automatically, so this is a local-verification problem only.
 
 ## Design lessons that generalize
+
+- **A subprocess's locale is part of its output format, and a GUI-launched app has none — so every
+  tool that renders a file name for us escapes non-ASCII until it is told not to.** `launchctl
+  getenv` answers empty for `LANG`, `LC_ALL` and `LC_CTYPE`, so a Dirnex started from the Dock hands
+  every child the `C` locale, while a build run from a shell inherits the terminal's UTF-8 and
+  behaves perfectly — which is why this reached users and never developers, and is the same
+  shell-vs-LaunchServices split ▸ The Trash records for TCC. Two tools were affected and the audit
+  is worth repeating whenever a new one is spawned:
+  - **`sftp`** escaped every non-ASCII byte of every listing row (2026-09-08), which is not cosmetic:
+    `SFTPCommands.quote` doubles each backslash, so the server was asked for a file literally called
+    `DSC_0697-\320\237…` and answered *not found* for a row in front of the user.
+  - **`bsdtar`** does the same to a browsed archive's table of contents (2026-09-09) — *and*, on the
+    way out, stores a packed zip's names as correct UTF-8 bytes with the **UTF-8 flag (general
+    purpose bit 11) clear**, so Windows Explorer, Info-ZIP and Python's `zipfile` all decode them as
+    CP437: `╨ƒ╨░╨╜╨╛╤Ç╨░╨╝╨░.txt`. The read half is a bad session; the write half is an archive
+    somebody sends to a colleague.
+  - **The two that are *not* affected are the instructive half.** `git` is already exact because it
+    is asked for **`-z`**, which turns off `core.quotePath` entirely — measured, raw UTF-8 with no
+    locale set, where the same command *without* `-z` answers `"\320\237…"`; and `curl` escapes
+    nothing. So the rule is: **a tool with a raw-output flag should be given it, and the locale pin
+    is for the ones that have none.** Reaching for the pin where a flag exists would be a second,
+    weaker spelling of a guarantee already available.
+  - `ChildProcessLocale` is the one funnel. `LC_ALL` is **removed** rather than set (measured,
+    `LC_ALL=C LC_CTYPE=UTF-8` escapes exactly as bare `C` does, so setting `LC_CTYPE` alone is the
+    fix that looks complete), and `LC_TIME` is pinned to `C` precisely *because* `LC_ALL` was
+    removed, so a Russian Mac's `LANG` can never reach `ColumnarListing`'s `en_US_POSIX` formatters.
+  - **Do not un-escape after the fact.** `sftp` leaves a literal backslash unescaped (`back\slash.txt`
+    lists verbatim, measured), so `\320\237` in a name could genuinely be that name and an
+    un-escaper would rename a file for real. What survives the pin is a name that is not valid UTF-8,
+    which no un-escaping could turn into a `String` that addresses it either.
 
 - **When a policy needs an order, ask which component actually *has* it — a derived signal will be
   an approximation and can be a non-deterministic one.** The archive-undo store evicts snapshots

@@ -30,7 +30,7 @@ struct SFTPNonASCIINameLiveTests {
     /// Nothing was renamed — `put` carries the real bytes of the name, and it is `sftp`'s own
     /// `ls -la` that escapes every byte its locale calls unprintable, which for a
     /// LaunchServices-launched app (no `LANG`, no `LC_CTYPE`, no `LC_ALL`) is every byte above
-    /// ASCII. See ``SFTPChildEnvironment``.
+    /// ASCII. See ``ChildProcessLocale``.
     ///
     /// **The download is addressed through the path the listing produced, never through the literal
     /// above**, and that is what makes this a test of the bug rather than of nothing: what failed

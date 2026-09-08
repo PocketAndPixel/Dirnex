@@ -11,11 +11,11 @@ import Testing
 /// byte its locale calls unprintable. Measured against a real `sshd` (OpenSSH 10.3) the same file
 /// lists verbatim under a UTF-8 `LC_CTYPE` and escaped under `C`, and a GUI-launched app has no
 /// locale at all, so it always got `C`.
-@Suite("SFTP child environment")
-struct SFTPChildEnvironmentTests {
+@Suite("Child process locale")
+struct ChildProcessLocaleTests {
     @Test("the character type is pinned to UTF-8, which is the whole of the fix")
     func characterTypeIsPinned() {
-        let pinned = SFTPChildEnvironment.pinningLocale([:])
+        let pinned = ChildProcessLocale.pinningLocale([:])
         #expect(pinned["LC_CTYPE"] == "UTF-8")
     }
 
@@ -24,7 +24,7 @@ struct SFTPChildEnvironmentTests {
         // Measured: `LC_ALL=C LC_CTYPE=UTF-8` escapes exactly as the bare `C` locale does, so a
         // build launched from a shell carrying one would defeat the pin entirely. Setting
         // `LC_CTYPE` without clearing this is the fix that looks complete and is not.
-        let pinned = SFTPChildEnvironment.pinningLocale(["LC_ALL": "C"])
+        let pinned = ChildProcessLocale.pinningLocale(["LC_ALL": "C"])
         #expect(pinned["LC_ALL"] == nil)
         #expect(pinned["LC_CTYPE"] == "UTF-8")
     }
@@ -35,7 +35,7 @@ struct SFTPChildEnvironmentTests {
         // English month names — so this is not what fixes the names. It is here because *removing*
         // `LC_ALL` above is what would otherwise let `LANG` govern the category on a Russian Mac,
         // handing `ColumnarListing`'s `en_US_POSIX` formatters months they cannot read.
-        let pinned = SFTPChildEnvironment.pinningLocale([
+        let pinned = ChildProcessLocale.pinningLocale([
             "LANG": "ru_RU.UTF-8", "LC_ALL": "ru_RU.UTF-8"
         ])
         #expect(pinned["LC_TIME"] == "C")
@@ -46,7 +46,7 @@ struct SFTPChildEnvironmentTests {
         // `ssh` needs `HOME` to find `known_hosts`, and the askpass wiring is layered on top of
         // this dictionary — a pin that rebuilt the environment instead of amending it would take
         // the password path's own keys with it.
-        let pinned = SFTPChildEnvironment.pinningLocale([
+        let pinned = ChildProcessLocale.pinningLocale([
             "HOME": "/Users/probe", "PATH": "/usr/bin", "LANG": "en_GB.UTF-8"
         ])
         #expect(pinned["HOME"] == "/Users/probe")

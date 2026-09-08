@@ -108,6 +108,7 @@ public extension FTPProcessArguments {
                 "connect-timeout = \(session.connectTimeout)\n",
                 "max-time = \(session.maxTime)\n",
                 addressFamilyConfiguration(session: session),
+                utf8Configuration(),
                 security,
                 "output = \(FTPConfigFile.quote(request.outputPath))\n",
                 "url = \(FTPConfigFile.quote(listingURL(session, request.remotePath)))\n"

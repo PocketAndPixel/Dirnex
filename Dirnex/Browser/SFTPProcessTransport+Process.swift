@@ -260,13 +260,13 @@ extension SFTPProcessTransport {
     /// **Every child is armed, not just the password ones**, which is what fixes a listing rather
     /// than half of them: key auth used to leave `environment` nil and inherit the app's own, and a
     /// LaunchServices-launched app has no locale at all — so `sftp` ran under `C` and octal-escaped
-    /// every non-ASCII byte of every name (``SFTPChildEnvironment``). The two paths differed in
+    /// every non-ASCII byte of every name (``ChildProcessLocale``). The two paths differed in
     /// exactly the way that hid it.
     ///
     /// Internal rather than private so the segmented download and upload can arm each of their
     /// children with it — Swift's `private` does not cross files (docs/NOTES.md ▸ file splitting).
     func childEnvironment() throws -> [String: String] {
-        var environment = SFTPChildEnvironment.pinningLocale(ProcessInfo.processInfo.environment)
+        var environment = ChildProcessLocale.inherited()
         guard isPasswordAuthentication else { return environment }
         environment["SSH_ASKPASS"] = try SFTPAskpassHelper.scriptPath()
         environment["SSH_ASKPASS_REQUIRE"] = "force"
