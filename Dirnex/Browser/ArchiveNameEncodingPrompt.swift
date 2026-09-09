@@ -22,7 +22,7 @@ import DirnexCore
 /// candidates down to a handful.
 enum ArchiveNameEncodingPrompt {
     /// One candidate and what the archive's names look like under it.
-    private struct Candidate {
+    private struct Candidate: Sendable {
         let encoding: ArchiveNameEncoding
         let samples: [String]
     }
@@ -30,23 +30,70 @@ enum ArchiveNameEncodingPrompt {
     /// Raise the chooser over `window`, calling `completion` with the chosen code page — or with
     /// `nil` when the user cancelled or when no offered code page fits this archive at all.
     ///
-    /// Reads headers, on the main actor, once per candidate. That is bounded by the fact that
-    /// sampling stops at the first few *non-ASCII* names, which an archive reaching this prompt has
-    /// by construction — measured at 3–4 ms for a header read of a 600 MB archive, so the whole list
-    /// costs well under a tenth of a second.
+    /// **The reads are off the main actor, and that is a measurement rather than caution.** This
+    /// opened the archive once per candidate on the main actor, on the stated ground that sampling
+    /// stops at the first few *non-ASCII* names — which an archive reaching this prompt has by
+    /// construction, so the walk really is short. Measured 2026-09-09 against real CP866 fixtures,
+    /// that bounds the wrong quantity: every candidate costs the same **~260 ms** on a
+    /// 50 000-entry zip whether it bails at the first entry or samples at the fifth, because what
+    /// it is paying for is the *open* — libarchive reading a five-megabyte central directory — and
+    /// not the walk.
+    ///
+    /// | entries | all 19 candidates |
+    /// |---|---|
+    /// | 2 | 5 ms |
+    /// | 1 000 | 81 ms |
+    /// | 20 000 | 1.4 s |
+    /// | 50 000 | 3.6 s (4.9 s with the non-ASCII names last) |
+    ///
+    /// On the main actor that is a beachball rather than a slow sheet. `BlockingWork.run` is the
+    /// house answer for a blocking body — never `Task.detached`, which is the cooperative pool and
+    /// would hold one of its workers for the whole read (docs/NOTES.md ▸ Swift 6 and concurrency).
+    ///
+    /// What is deliberately *not* done is the twenty-times-faster version: one open answers for
+    /// every code page, since with no `hdrcharset` set `archive_entry_pathname` hands back the raw
+    /// stored bytes verbatim while `archive_entry_pathname_utf8` answers NULL (probed against
+    /// libarchive 3.7.4 — `hdrcharset=BINARY` is *not* available, `iconv_open` refuses it). Those
+    /// bytes could then be decoded nineteen ways in-process. It is refused because it would
+    /// introduce a **second decoder**: the preview would come from CoreFoundation and the listing
+    /// from libarchive's iconv, and where the two disagree the sheet would show a name the archive
+    /// will not open under. A preview whose whole job is to be recognised has to be produced by the
+    /// reader that will do the reading.
     @MainActor
     static func ask(
         forArchiveAt archivePath: String,
         over window: NSWindow?,
         completion: @escaping (ArchiveNameEncoding?) -> Void
     ) {
-        let candidates = fittingCandidates(forArchiveAt: archivePath)
+        let name = (archivePath as NSString).lastPathComponent
+        Task { @MainActor in
+            let candidates = await BlockingWork.run { fittingCandidates(forArchiveAt: archivePath) }
+            present(candidates, archiveNamed: name, over: window, completion: completion)
+        }
+    }
+
+    /// Put the chooser on screen, or say that there is nothing to offer.
+    ///
+    /// Split from `ask` only because the reads now happen in between; everything here is the same
+    /// main-actor work it always was.
+    @MainActor
+    private static func present(
+        _ candidates: [Candidate],
+        archiveNamed name: String,
+        over window: NSWindow?,
+        completion: @escaping (ArchiveNameEncoding?) -> Void
+    ) {
         guard !candidates.isEmpty else {
+            // Somebody asked and there is nothing to offer, so saying nothing is not available: from
+            // the File menu that is a command that does nothing when clicked, and from a refusal it
+            // is a gesture that failed in silence, since `offerNameEncoding` has by then told its
+            // caller to report nothing further. Reported here rather than at either call site
+            // because both want the same sentence.
+            reportNothingFits(archiveNamed: name, over: window)
             completion(nil)
             return
         }
 
-        let name = (archivePath as NSString).lastPathComponent
         let alert = NSAlert()
         alert.messageText = String(
             localized: "The names in “\(name)” aren’t Unicode",
@@ -84,6 +131,37 @@ enum ArchiveNameEncodingPrompt {
             // A gesture somebody made and is waiting on, so the window-less fallback stays — see
             // docs/NOTES.md ▸ Testing, "who is waiting?".
             finish(alert.runModal())
+        }
+    }
+
+    /// Say that no offered code page can read this archive's names.
+    ///
+    /// Reachable in practice only when libarchive cannot read the archive **at all**, which is why
+    /// the sentence does not blame the encoding: CP437 and Mac OS Roman map all 256 byte values, so
+    /// a file whose headers can be read always has at least those two candidates. Both causes are
+    /// indistinguishable from here, so neither is asserted.
+    @MainActor
+    private static func reportNothingFits(archiveNamed name: String, over window: NSWindow?) {
+        let alert = NSAlert()
+        alert.messageText = String(
+            localized: "Dirnex couldn’t read the names in “\(name)”",
+            comment: """
+            Title of the alert shown when no offered code page can read an archive's file names; \
+            %@ is the archive's name.
+            """
+        )
+        alert.informativeText = String(
+            localized: """
+            None of the code pages Dirnex offers can represent them. The archive may be damaged, \
+            or its names may be stored in an encoding Dirnex doesn’t know.
+            """,
+            comment: "Body of the alert shown when no offered code page can read an archive's names."
+        )
+        alert.enableEscapeToCancel(safe: .alertFirstButtonReturn)
+        if let window {
+            alert.beginSheetModal(for: window)
+        } else {
+            alert.runModal()
         }
     }
 

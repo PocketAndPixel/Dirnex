@@ -2664,6 +2664,14 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
     why it cannot be a test). Two keys are legitimately absent and are named in its `ALLOWED` with
     the reason: the empty label of a `.labelsHidden()` control, and a `DisplayRepresentation`'s bare
     `%@` whose every argument is already localized.
+    - **And it earns its keep the day it is run rather than the day it is written.** Run 2026-09-09
+      after M27's chooser landed, it named **three** strings from that same day's work — the sheet's
+      title, its body, and its `Use` button — every one correctly `String(localized:)`-wrapped, so no
+      bare-literal sweep could see them, and every one absent from the catalog, so it compiled to
+      *itself* and rendered English inside all thirteen translated builds. Both suites and both
+      linters were green across the landing. The rule to carry is narrower than "add it to CI": a
+      pass that adds user-facing strings has to **run the script before it claims to be done**, since
+      the gap it finds is always same-day work and always invisible to everything else.
   - **The `allCases` enums need a test as well as the sweep**, because the sweep only fires once the
     key exists — a `RowDensity` case added in the same commit as its catalog entry passes it while
     still being untranslated in thirteen languages. `LocalizationEnglishKeyCoverageTests` pins those,
@@ -3447,6 +3455,38 @@ do not share a resolver, and neither half of that is obvious from either call si
     UTF-8 — so the app needs no separate probe for when to offer the choice. Its narrowness control is
     the one that matters: a UTF-8 archive must *not* read as undeclarable, or the offer appears over
     every archive anybody opens.
+    - **But it is the wrong detector for a *menu validator*, and its cost is bounded by the archive
+      rather than by the walk.** Sampling stops at the first few non-ASCII names, so the natural
+      reading is that an archive reaching the chooser pays almost nothing — measured 2026-09-09
+      against real CP866 fixtures, every one of the 19 candidates costs the **same ~260 ms** on a
+      50 000-entry zip whether it bails at the first entry (an unmapped byte) or fills its samples at
+      the fifth, because what it pays for is `archive_read_open_filename` reading a five-megabyte
+      central directory. All 19 together: **5 ms at 2 entries, 81 ms at 1 000, 1.4 s at 20 000,
+      3.6 s at 50 000** — 4.9 s with the non-ASCII names last. Linear in the entry count, ~0.07 ms an
+      entry, and on the main actor that is a beachball rather than a slow sheet. What a validator can
+      afford instead is ``ArchiveTOC/hasUnreadableNames``, computed once at mount from the U+FFFD
+      ``SubprocessText`` substitutes and peeked from the cached mount, so asking costs nothing and
+      never spawns anything.
+    - **One open really would answer for every code page, and taking it would make the preview able
+      to lie.** Probed against libarchive 3.7.4: with **no** `hdrcharset` set,
+      `archive_entry_pathname` hands back the raw stored bytes verbatim (`8f a0 ad ae …`) while
+      `archive_entry_pathname_utf8` answers NULL — so the bytes are there to be decoded nineteen ways
+      in-process, at roughly a twentieth of the cost. `hdrcharset=BINARY` is **not** the way to ask
+      for them: `archive_read_set_options` answers `ARCHIVE_FATAL` (-30), *`iconv_open failed :
+      Cannot handle ``BINARY''`*. It was refused anyway, and the reason generalizes past archives:
+      the decoding would then come from CoreFoundation while the **listing** still comes from
+      libarchive's iconv, and wherever the two disagree the sheet shows a name the archive will not
+      open under. **A preview whose whole job is to be recognised has to be produced by the reader
+      that will do the reading** — the same rule this file states for minting a probe's payload, met
+      from the other side.
+    - **A `.tar` and a `.tar.gz` behave identically to the zip**, which is worth stating because zip
+      is what made the reported case: only zip has a charset *flag* to get wrong, and a tar simply
+      stores the bytes its writer was handed with nothing recorded about them — so it arrives at the
+      reader in the same state a flag-less zip does, by a different route. `hdrcharset` reads it, and
+      the repack keeps the container because `ArchiveMutation.repackAllArguments` infers the format
+      from the new archive's **suffix**. Assert that on the gzip magic rather than on the members: a
+      repack that fell back to zip holds exactly the right entries and is invisible to every
+      assertion about them.
 
 - **`--options compression-level=N` must go in *unprefixed*.** A module prefix has to name the
   writer actually running (`zip:`, `gzip:`, `bzip2:`, `7zip:`), so one prefixed string breaks the

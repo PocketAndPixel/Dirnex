@@ -37397,6 +37397,95 @@
         }
       }
     },
+    "Dirnex couldn’t read the names in “%@”": {
+      "comment": "Title of the alert shown when no offered code page can read an archive’s file names; %@ is the archive’s name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Namen in „%@“ konnten nicht gelesen werden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex couldn’t read the names in “%@”"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex no pudo leer los nombres de «%@»"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex n’a pas pu lire les noms dans « %@ »"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex non è riuscito a leggere i nomi in «%@»"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」の名前を読み取れませんでした"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”의 이름을 읽을 수 없음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kon de namen in ‘%@’ niet lezen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można odczytać nazw w archiwum „%@”"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível ler os nomes em “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось прочитать имена в «%@»"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося прочитати імена в «%@»"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取“%@”中的名称"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法讀取「%@」中的名稱"
+          }
+        }
+      }
+    },
     "Dirnex doesn’t download a file automatically without knowing how large it is.": {
       "comment": "Quick View placeholder hint for a remote file whose size the server never reported.",
       "localizations": {
@@ -56007,6 +56096,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "無"
+          }
+        }
+      }
+    },
+    "None of the code pages Dirnex offers can represent them. The archive may be damaged, or its names may be stored in an encoding Dirnex doesn’t know.": {
+      "comment": "Body of the alert shown when no offered code page can read an archive’s names.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine der angebotenen Codepages kann sie darstellen. Das Archiv ist möglicherweise beschädigt, oder seine Namen sind in einer Kodierung gespeichert, die Dirnex nicht kennt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "None of the code pages Dirnex offers can represent them. The archive may be damaged, or its names may be stored in an encoding Dirnex doesn’t know."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguna de las páginas de códigos que ofrece Dirnex puede representarlos. Puede que el archivo comprimido esté dañado o que sus nombres estén guardados en una codificación que Dirnex no conoce."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune des pages de codes proposées par Dirnex ne peut les représenter. L’archive est peut-être endommagée, ou ses noms sont enregistrés dans un encodage que Dirnex ne connaît pas."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna delle tabelle codici offerte da Dirnex può rappresentarli. L’archivio potrebbe essere danneggiato, oppure i suoi nomi sono memorizzati in una codifica che Dirnex non conosce."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex が用意しているコードページでは表現できません。アーカイブが壊れているか、Dirnex が知らないエンコーディングで名前が保存されている可能性があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex가 제공하는 코드 페이지로는 표현할 수 없습니다. 아카이브가 손상되었거나, 이름이 Dirnex가 모르는 인코딩으로 저장되어 있을 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen van de codetabellen die Dirnex aanbiedt kan ze weergeven. Het archief is mogelijk beschadigd, of de namen zijn opgeslagen in een codering die Dirnex niet kent."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Żadna ze stron kodowych oferowanych przez Dirnex nie potrafi ich odwzorować. Archiwum może być uszkodzone albo jego nazwy zapisano w kodowaniu, którego Dirnex nie zna."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhuma das páginas de código oferecidas pelo Dirnex consegue representá-los. O arquivo compactado pode estar danificado ou seus nomes podem estar gravados em uma codificação que o Dirnex não conhece."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ни одна из предлагаемых кодовых страниц не может их представить. Возможно, архив повреждён или имена в нём записаны в неизвестной Dirnex кодировке."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Жодна із запропонованих кодових сторінок не може їх подати. Можливо, архів пошкоджено або імена в ньому записано в невідомому Dirnex кодуванні."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 提供的代码页都无法表示它们。该归档可能已损坏，或其名称使用了 Dirnex 不认识的编码。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 提供的代碼頁都無法表示它們。該壓縮檔可能已損毀，或其檔名使用了 Dirnex 不認識的編碼。"
           }
         }
       }
@@ -83730,6 +83908,95 @@
         }
       }
     },
+    "The names in “%@” aren’t Unicode": {
+      "comment": "Title of the archive name-encoding chooser; %@ is the archive’s name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Namen in „%@“ sind kein Unicode"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The names in “%@” aren’t Unicode"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los nombres de «%@» no son Unicode"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les noms dans « %@ » ne sont pas en Unicode"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I nomi in «%@» non sono Unicode"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」の名前は Unicode ではありません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”의 이름이 유니코드가 아님"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De namen in ‘%@’ zijn geen Unicode"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nazwy w archiwum „%@” nie są w Unicode"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Os nomes em “%@” não são Unicode"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имена в «%@» — не Unicode"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Імена в «%@» — не Unicode"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”中的名称不是 Unicode"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」中的檔名不是 Unicode"
+          }
+        }
+      }
+    },
     "The old host key couldn’t be removed automatically. Remove it from %@ and try connecting again.": {
       "comment": "Known-hosts update failure detail; %@ is the known_hosts file path.",
       "localizations": {
@@ -87909,6 +88176,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "此檔案夾（「%@」）"
+          }
+        }
+      }
+    },
+    "This archive stores its file names in a code page rather than Unicode, and doesn’t record which one. Choose the one that makes the names below readable.": {
+      "comment": "Body of the archive name-encoding chooser.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Archiv speichert seine Dateinamen in einer Codepage statt in Unicode und hält nicht fest, in welcher. Wählen Sie die, mit der die Namen unten lesbar werden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This archive stores its file names in a code page rather than Unicode, and doesn’t record which one. Choose the one that makes the names below readable."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este archivo comprimido guarda los nombres de sus archivos en una página de códigos en lugar de Unicode, y no indica en cuál. Elige la que haga legibles los nombres de abajo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette archive enregistre ses noms de fichiers dans une page de codes plutôt qu’en Unicode, sans indiquer laquelle. Choisissez celle qui rend les noms ci-dessous lisibles."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo archivio memorizza i nomi dei file in una tabella codici anziché in Unicode e non registra quale. Scegli quella che rende leggibili i nomi qui sotto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このアーカイブはファイル名を Unicode ではなくコードページで保存していますが、どれかは記録されていません。下の名前が読めるようになるものを選んでください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 아카이브는 파일 이름을 유니코드가 아닌 코드 페이지로 저장하며, 어떤 것인지는 기록하지 않습니다. 아래 이름을 읽을 수 있게 해주는 것을 선택하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dit archief slaat de bestandsnamen op in een codetabel in plaats van Unicode, en legt niet vast in welke. Kies de tabel waarmee de namen hieronder leesbaar worden."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To archiwum zapisuje nazwy plików w stronie kodowej zamiast w Unicode i nie zapisuje, w której. Wybierz tę, dzięki której nazwy poniżej staną się czytelne."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este arquivo compactado grava os nomes dos arquivos em uma página de código em vez de Unicode e não registra qual. Escolha a que torna os nomes abaixo legíveis."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот архив хранит имена файлов в кодовой странице, а не в Unicode, и не указывает, в какой именно. Выберите ту, с которой имена ниже станут читаемыми."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей архів зберігає імена файлів у кодовій сторінці, а не в Unicode, і не вказує, у якій саме. Виберіть ту, з якою імена нижче стануть читабельними."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此归档使用代码页而不是 Unicode 存储文件名，并且没有记录用的是哪一个。请选择能让下方名称可读的那一个。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此壓縮檔使用代碼頁而非 Unicode 儲存檔名，且未記錄用的是哪一個。請選擇能讓下方檔名可讀的那一個。"
           }
         }
       }
@@ -94462,6 +94818,95 @@
         }
       }
     },
+    "Use": {
+      "comment": "Button that accepts the chosen code page for an archive’s names.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verwenden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utiliser"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gebruik"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Użyj"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Применить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Застосувати"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用"
+          }
+        }
+      }
+    },
     "Use System Colors": {
       "localizations": {
         "de": {
@@ -100137,10 +100582,88 @@
     "archive.nameEncoding.cp1250": {
       "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mitteleuropäisch (Windows, CP1250)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Central European (Windows, CP1250)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Europeo central (Windows, CP1250)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Européen central (Windows, CP1250)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Europeo centrale (Windows, CP1250)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中央ヨーロッパ言語 (Windows, CP1250)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "중앙 유럽어 (Windows, CP1250)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Centraal-Europees (Windows, CP1250)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Środkowoeuropejskie (Windows, CP1250)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Europeu central (Windows, CP1250)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Центральноевропейская (Windows, CP1250)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Центральноєвропейська (Windows, CP1250)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中欧 (Windows, CP1250)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中歐 (Windows, CP1250)"
           }
         }
       }
@@ -100148,10 +100671,88 @@
     "archive.nameEncoding.cp1251": {
       "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kyrillisch (Windows, CP1251)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Cyrillic (Windows, CP1251)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cirílico (Windows, CP1251)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cyrillique (Windows, CP1251)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cirillico (Windows, CP1251)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キリル文字 (Windows, CP1251)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키릴 문자 (Windows, CP1251)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cyrillisch (Windows, CP1251)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cyrylica (Windows, CP1251)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cirílico (Windows, CP1251)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кириллица (Windows, CP1251)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кирилиця (Windows, CP1251)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西里尔文 (Windows, CP1251)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西里爾文 (Windows, CP1251)"
           }
         }
       }
@@ -100159,10 +100760,88 @@
     "archive.nameEncoding.cp1252": {
       "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Westeuropäisch (Windows, CP1252)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Western European (Windows, CP1252)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Europeo occidental (Windows, CP1252)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Européen occidental (Windows, CP1252)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Europeo occidentale (Windows, CP1252)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西ヨーロッパ言語 (Windows, CP1252)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서유럽어 (Windows, CP1252)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "West-Europees (Windows, CP1252)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zachodnioeuropejskie (Windows, CP1252)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Europeu ocidental (Windows, CP1252)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Западноевропейская (Windows, CP1252)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Західноєвропейська (Windows, CP1252)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西欧 (Windows, CP1252)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西歐 (Windows, CP1252)"
           }
         }
       }
@@ -100170,10 +100849,88 @@
     "archive.nameEncoding.cp1253": {
       "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Griechisch (Windows, CP1253)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Greek (Windows, CP1253)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Griego (Windows, CP1253)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grec (Windows, CP1253)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Greco (Windows, CP1253)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ギリシャ語 (Windows, CP1253)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그리스어 (Windows, CP1253)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grieks (Windows, CP1253)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Greckie (Windows, CP1253)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grego (Windows, CP1253)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Греческая (Windows, CP1253)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Грецька (Windows, CP1253)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "希腊文 (Windows, CP1253)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "希臘文 (Windows, CP1253)"
           }
         }
       }
@@ -100181,10 +100938,88 @@
     "archive.nameEncoding.cp1254": {
       "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Türkisch (Windows, CP1254)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Turkish (Windows, CP1254)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turco (Windows, CP1254)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turc (Windows, CP1254)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turco (Windows, CP1254)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "トルコ語 (Windows, CP1254)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "터키어 (Windows, CP1254)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turks (Windows, CP1254)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tureckie (Windows, CP1254)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turco (Windows, CP1254)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Турецкая (Windows, CP1254)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Турецька (Windows, CP1254)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "土耳其文 (Windows, CP1254)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "土耳其文 (Windows, CP1254)"
           }
         }
       }
@@ -100192,10 +101027,88 @@
     "archive.nameEncoding.cp1255": {
       "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hebräisch (Windows, CP1255)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Hebrew (Windows, CP1255)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hebreo (Windows, CP1255)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hébreu (Windows, CP1255)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ebraico (Windows, CP1255)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘブライ語 (Windows, CP1255)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "히브리어 (Windows, CP1255)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hebreeuws (Windows, CP1255)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hebrajskie (Windows, CP1255)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hebraico (Windows, CP1255)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Иврит (Windows, CP1255)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Іврит (Windows, CP1255)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "希伯来文 (Windows, CP1255)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "希伯來文 (Windows, CP1255)"
           }
         }
       }
@@ -100203,10 +101116,88 @@
     "archive.nameEncoding.cp1256": {
       "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arabisch (Windows, CP1256)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Arabic (Windows, CP1256)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Árabe (Windows, CP1256)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arabe (Windows, CP1256)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arabo (Windows, CP1256)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アラビア語 (Windows, CP1256)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아랍어 (Windows, CP1256)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arabisch (Windows, CP1256)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arabskie (Windows, CP1256)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Árabe (Windows, CP1256)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Арабская (Windows, CP1256)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Арабська (Windows, CP1256)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "阿拉伯文 (Windows, CP1256)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "阿拉伯文 (Windows, CP1256)"
           }
         }
       }
@@ -100214,10 +101205,88 @@
     "archive.nameEncoding.cp1257": {
       "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baltisch (Windows, CP1257)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Baltic (Windows, CP1257)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Báltico (Windows, CP1257)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balte (Windows, CP1257)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baltico (Windows, CP1257)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バルト言語 (Windows, CP1257)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "발트어 (Windows, CP1257)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baltisch (Windows, CP1257)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bałtyckie (Windows, CP1257)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Báltico (Windows, CP1257)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Балтийская (Windows, CP1257)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Балтійська (Windows, CP1257)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "波罗的海文 (Windows, CP1257)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "波羅的海文 (Windows, CP1257)"
           }
         }
       }
@@ -100225,10 +101294,88 @@
     "archive.nameEncoding.cp437": {
       "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Westeuropäisch (DOS, CP437)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Western European (DOS, CP437)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Europeo occidental (DOS, CP437)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Européen occidental (DOS, CP437)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Europeo occidentale (DOS, CP437)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西ヨーロッパ言語 (DOS, CP437)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서유럽어 (DOS, CP437)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "West-Europees (DOS, CP437)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zachodnioeuropejskie (DOS, CP437)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Europeu ocidental (DOS, CP437)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Западноевропейская (DOS, CP437)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Західноєвропейська (DOS, CP437)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西欧 (DOS, CP437)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西歐 (DOS, CP437)"
           }
         }
       }
@@ -100236,10 +101383,88 @@
     "archive.nameEncoding.cp850": {
       "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Westeuropäisch (DOS, CP850)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Western European (DOS, CP850)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Europeo occidental (DOS, CP850)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Européen occidental (DOS, CP850)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Europeo occidentale (DOS, CP850)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西ヨーロッパ言語 (DOS, CP850)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서유럽어 (DOS, CP850)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "West-Europees (DOS, CP850)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zachodnioeuropejskie (DOS, CP850)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Europeu ocidental (DOS, CP850)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Западноевропейская (DOS, CP850)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Західноєвропейська (DOS, CP850)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西欧 (DOS, CP850)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西歐 (DOS, CP850)"
           }
         }
       }
@@ -100247,10 +101472,88 @@
     "archive.nameEncoding.cp852": {
       "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mitteleuropäisch (DOS, CP852)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Central European (DOS, CP852)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Europeo central (DOS, CP852)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Européen central (DOS, CP852)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Europeo centrale (DOS, CP852)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中央ヨーロッパ言語 (DOS, CP852)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "중앙 유럽어 (DOS, CP852)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Centraal-Europees (DOS, CP852)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Środkowoeuropejskie (DOS, CP852)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Europeu central (DOS, CP852)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Центральноевропейская (DOS, CP852)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Центральноєвропейська (DOS, CP852)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中欧 (DOS, CP852)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中歐 (DOS, CP852)"
           }
         }
       }
@@ -100258,10 +101561,88 @@
     "archive.nameEncoding.cp866": {
       "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kyrillisch (DOS, CP866)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Cyrillic (DOS, CP866)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cirílico (DOS, CP866)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cyrillique (DOS, CP866)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cirillico (DOS, CP866)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キリル文字 (DOS, CP866)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키릴 문자 (DOS, CP866)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cyrillisch (DOS, CP866)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cyrylica (DOS, CP866)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cirílico (DOS, CP866)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кириллица (DOS, CP866)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кирилиця (DOS, CP866)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西里尔文 (DOS, CP866)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西里爾文 (DOS, CP866)"
           }
         }
       }
@@ -100269,10 +101650,88 @@
     "archive.nameEncoding.cp932": {
       "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Japanisch (Shift JIS, CP932)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Japanese (Shift JIS, CP932)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Japonés (Shift JIS, CP932)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Japonais (Shift JIS, CP932)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giapponese (Shift JIS, CP932)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日本語 (Shift JIS, CP932)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일본어 (Shift JIS, CP932)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Japans (Shift JIS, CP932)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Japońskie (Shift JIS, CP932)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Japonês (Shift JIS, CP932)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Японская (Shift JIS, CP932)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Японська (Shift JIS, CP932)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日文 (Shift JIS, CP932)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日文 (Shift JIS, CP932)"
           }
         }
       }
@@ -100280,10 +101739,88 @@
     "archive.nameEncoding.cp936": {
       "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vereinfachtes Chinesisch (GBK, CP936)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Simplified Chinese (GBK, CP936)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chino simplificado (GBK, CP936)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chinois simplifié (GBK, CP936)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cinese semplificato (GBK, CP936)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "簡体字中国語 (GBK, CP936)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "중국어 간체 (GBK, CP936)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vereenvoudigd Chinees (GBK, CP936)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chińskie uproszczone (GBK, CP936)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chinês simplificado (GBK, CP936)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Китайская упрощённая (GBK, CP936)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Китайська спрощена (GBK, CP936)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "简体中文 (GBK, CP936)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "簡體中文 (GBK, CP936)"
           }
         }
       }
@@ -100291,10 +101828,88 @@
     "archive.nameEncoding.cp949": {
       "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koreanisch (CP949)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Korean (CP949)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coreano (CP949)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coréen (CP949)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coreano (CP949)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "韓国語 (CP949)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한국어 (CP949)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koreaans (CP949)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koreańskie (CP949)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coreano (CP949)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Корейская (CP949)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Корейська (CP949)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "韩文 (CP949)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "韓文 (CP949)"
           }
         }
       }
@@ -100302,10 +101917,88 @@
     "archive.nameEncoding.cp950": {
       "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traditionelles Chinesisch (Big5, CP950)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Traditional Chinese (Big5, CP950)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chino tradicional (Big5, CP950)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chinois traditionnel (Big5, CP950)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cinese tradizionale (Big5, CP950)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "繁体字中国語 (Big5, CP950)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "중국어 번체 (Big5, CP950)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traditioneel Chinees (Big5, CP950)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chińskie tradycyjne (Big5, CP950)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chinês tradicional (Big5, CP950)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Китайская традиционная (Big5, CP950)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Китайська традиційна (Big5, CP950)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "繁体中文 (Big5, CP950)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "繁體中文 (Big5, CP950)"
           }
         }
       }
@@ -100313,10 +102006,88 @@
     "archive.nameEncoding.koi8r": {
       "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kyrillisch (KOI8-R)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Cyrillic (KOI8-R)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cirílico (KOI8-R)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cyrillique (KOI8-R)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cirillico (KOI8-R)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キリル文字 (KOI8-R)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키릴 문자 (KOI8-R)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cyrillisch (KOI8-R)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cyrylica (KOI8-R)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cirílico (KOI8-R)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кириллица (KOI8-R)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кирилиця (KOI8-R)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西里尔文 (KOI8-R)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西里爾文 (KOI8-R)"
           }
         }
       }
@@ -100324,10 +102095,88 @@
     "archive.nameEncoding.macCyrillic": {
       "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kyrillisch (Mac OS)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Cyrillic (Mac OS)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cirílico (Mac OS)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cyrillique (Mac OS)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cirillico (Mac OS)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キリル文字 (Mac OS)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키릴 문자 (Mac OS)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cyrillisch (Mac OS)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cyrylica (Mac OS)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cirílico (Mac OS)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кириллица (Mac OS)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кирилиця (Mac OS)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西里尔文 (Mac OS)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西里爾文 (Mac OS)"
           }
         }
       }
@@ -100335,10 +102184,88 @@
     "archive.nameEncoding.macRoman": {
       "comment": "Name of a legacy archive's character encoding, shown in the chooser that asks which code page a zip's file names are stored in. The script (\"Cyrillic\", \"Japanese\") is the part a user recognizes; the code-page number is what other archivers show and stays as it is.",
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Westeuropäisch (Mac OS Roman)"
+          }
+        },
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Western European (Mac OS Roman)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Europeo occidental (Mac OS Roman)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Européen occidental (Mac OS Roman)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Europeo occidentale (Mac OS Roman)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西ヨーロッパ言語 (Mac OS Roman)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서유럽어 (Mac OS Roman)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "West-Europees (Mac OS Roman)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zachodnioeuropejskie (Mac OS Roman)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Europeu ocidental (Mac OS Roman)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Западноевропейская (Mac OS Roman)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Західноєвропейська (Mac OS Roman)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西欧 (Mac OS Roman)"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西歐 (Mac OS Roman)"
           }
         }
       }
@@ -102940,6 +104867,186 @@
           "stringUnit": {
             "state": "translated",
             "value": "還原"
+          }
+        }
+      }
+    },
+    "command.file.archiveNameEncoding.keywords": {
+      "comment": "Extra command-palette search terms, comma-separated. Added to the English terms, not replacing them, so the English words keep working. Synonyms a user might type — not a translation of the title. The word for garbled text (“mojibake”, «кракозябры», 乱码) matters more than the technical one: what the user is looking at is a row of question marks.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kodierung, zeichensatz, zeichenkodierung, codepage, namen, unlesbar, kyrillisch, archiv, zip"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "encoding, charset, character set, code page, codepage, unicode, utf-8, cp866, cp1251, names, mojibake, garbled, unreadable, cyrillic, legacy, zip, archive"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "codificación, juego de caracteres, página de códigos, nombres, ilegible, cirílico, archivo comprimido, zip"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "encodage, jeu de caractères, page de codes, noms, illisible, cyrillique, archive, zip"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "codifica, set di caratteri, tabella codici, nomi, illeggibile, cirillico, archivio, zip"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エンコーディング, 文字コード, コードページ, 文字化け, ファイル名, キリル文字, アーカイブ, zip"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "인코딩, 문자 집합, 코드 페이지, 깨짐, 파일 이름, 키릴, 아카이브, zip"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "codering, tekenset, codetabel, namen, onleesbaar, cyrillisch, archief, zip"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kodowanie, zestaw znaków, strona kodowa, nazwy, nieczytelne, krzaki, cyrylica, archiwum, zip"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "codificação, conjunto de caracteres, página de código, nomes, ilegível, cirílico, arquivo compactado, zip"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "кодировка, кодовая страница, кракозябры, имена, нечитаемые, кириллица, архив, zip"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "кодування, кодова сторінка, імена, нечитабельні, кирилиця, архів, zip"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编码, 字符集, 代码页, 乱码, 文件名, 西里尔, 归档, zip"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編碼, 字元集, 代碼頁, 亂碼, 檔名, 西里爾, 壓縮檔, zip"
+          }
+        }
+      }
+    },
+    "command.file.archiveNameEncoding.title": {
+      "comment": "Menu and command-palette title for the “file.archiveNameEncoding” command.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kodierung der Archivnamen …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archive Name Encoding…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codificación de nombres del archivo comprimido…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Encodage des noms de l’archive…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codifica dei nomi dell’archivio…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アーカイブのファイル名エンコーディング…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아카이브 파일 이름 인코딩…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tekencodering van archiefnamen…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kodowanie nazw w archiwum…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codificação dos nomes no arquivo compactado…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кодировка имён в архиве…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кодування імен в архіві…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "归档文件名编码…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "壓縮檔檔名編碼…"
           }
         }
       }

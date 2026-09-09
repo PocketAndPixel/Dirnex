@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M26 shipped** (14 languages) · Created: 2026-07-05 ·
+Status: **M0–M27 shipped** (14 languages) · Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
 [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)
 
@@ -95,7 +95,7 @@ Dirnex/
 Sizes are relative (S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks of focused work).
 Each milestone ends in something runnable; no milestone depends on a later one.
 
-### Shipped: M0 → M26 (2026-07-05 → 2026-08-31)
+### Shipped: M0 → M27 (2026-07-05 → 2026-09-09)
 
 Every milestone is closed. The checklists and the full per-pass progress log — what was probed,
 decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source comments citing
@@ -130,10 +130,11 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 | M24 | Every local-only feature, on a file that is not local | 08-28 | **Content-grep and tag search on a server**, withheld at M22 for the reason that has not changed — no remote backend can answer either without reading every file; **ACLs and extended attributes remotely**, which SFTP and FTP do not carry at all; **Open in Terminal for an SFTP account**, which is an `ssh` session and a different feature; and a **folder that is not already here**, refused by every one of the seven hand-offs — a folder is an unknown number of objects in an unknown number of requests, and copying a tree out is F5's job |
 | M25 | What a remote write carries, and what a remote delete costs | 08-29 | **A Trash the protocols do not have** — taken at §7 on 08-29, and the one part of the milestone that closed by not being built; **owner and group in a remote Get Info**, because `chown`/`chgrp` take a numeric id while `sftp`'s own `ls -la` prints names, so a panel built on a listing has nothing to send; **comparing by timestamp on FTP and S3**, refused by construction and always will be — `LIST` is year-less and zone-less, and an S3 `LastModified` is when the object was *written*; and ACLs and xattrs again, which is a limit rather than a gap |
 | M26 | Move to Trash, wherever the file lives | 08-31 | **The remote backends**, which have no Trash at all and are already degraded to a confirmed permanent delete (§M5, and M25 §7's decision not to invent one); **chasing the refusal further into TCC and `fileproviderd`**, which is not observable from here past the three candidates already eliminated — the fix does not depend on knowing which policy denies; and **Put Back for an item *Finder* deleted out of a provider domain**, or for anything trashed before the store shipped, both of which keep the honest answer the restore flow already gives by name |
+| M27 | Legacy code-page archive names | 09-09 | **Inferring** the code page — no reader can, and a wrong guess is a plausible name for the wrong file, so it is a chooser over a preview and never a detector; **preserving an un-representable name byte-for-byte**, the rejected streaming rewrite, which keeps bytes nobody can read and still cannot extract that row *out* of the archive; and **persisting the declaration** across sessions, since it is a guess the user made about one archive and a wrong one silently outliving the session is worse than being asked again. Three paths are threaded and unmeasured — see the section below |
 
-### Open: M27 — Legacy code-page archive names (S)
+### M27 — Legacy code-page archive names (S)
 
-**Landed 2026-09-09** (HISTORY.md ▸ the follow-on log): a zip whose entry names are stored in an OEM
+**Closed 2026-09-09** (HISTORY.md ▸ the follow-on log): a zip whose entry names are stored in an OEM
 code page can be *declared* (``ArchiveNameEncoding``, 19 of them), after which it lists, previews,
 extracts and **rewrites** like any other archive — the refusal M26-era work left in place, closed by
 asking the one question no reader can answer for itself. Three measurements shaped it and are worth
@@ -146,36 +147,43 @@ offers only the candidates that *fit*. A streaming entry-to-entry rewrite was co
 preserves bytes nobody can read, still cannot extract that row out of the archive, and needs a third
 engine.
 
-Two slices are left, and neither is load-bearing for the gesture that was refused:
+Both remaining slices landed the same day:
 
-- **A way in from the pane.** The chooser is reachable only when a gesture the user made hits the
-  refusal — F8, paste/F5/F6, F5 copy-out. Somebody who merely wants to *read* the names has no route
-  at all, which is the discoverability half and wants a registry command (enabled while the pane is
-  inside an archive whose names did not decode) rather than a prompt on navigation: entering such an
-  archive lists it wrongly but harmlessly, and a sheet raised by a *navigation* is the thing
-  docs/NOTES.md keeps warning about. Two traps come with it — the enable/disable validator is a
-  second copy of the predicate (PLAN.md's own most-repeated family), and an item carrying a submenu
-  never fires its own key equivalent.
-- **The thirteen translations.** The 19 `archive.nameEncoding.*` keys are in the catalog with their
-  English so a translator can see them; every other language falls back to readable English through
-  `L10n.string`. No `LocalizationCoverageTests` case was added, because one demanding all thirteen
-  would fail on the day it was written — so this is deliberately **untracked by CI** until the
-  translations land, and `ArchiveNameEncodingLocalizationTests` pins only what is true today (the
-  key exists in English, and the catalog agrees with the core about it).
+- **A way in from the pane** is `file.archiveNameEncoding` ("Archive Name Encoding…"), a registry
+  command in the File menu beside Pack — so somebody who merely wants to *read* the names no longer
+  has to make a gesture **fail** to be offered the chooser. Enabled off one property both the action
+  and `validateMenuItem` read (``archiveAwaitingNameEncoding``), which is the trap this file's own
+  most-repeated family names; no submenu, so its key equivalent could fire if it ever gained one. The
+  predicate is a question about the *archive* — ``ArchiveTOC/hasUnreadableNames``, computed once at
+  mount and peeked from the cache so a validator never spawns `bsdtar` — and it stays true once a
+  code page has been declared, since a wrong pick raises no second refusal and changing your mind
+  would otherwise be impossible.
+- **The thirteen translations** are in, and `ArchiveNameEncodingLocalizationTests` now demands them
+  rather than pinning English-only. Adding the command also put `scripts/check_localization_keys.py`
+  to work: it named **three strings from the landing** — the chooser's title, body and Use button —
+  that were correctly wrapped and never added to the catalog, so they rendered English inside every
+  translated build.
 
-Unverified rather than undone — each is a path that was *threaded* and never run:
+Two of the five *unverified* paths were measured rather than argued, and one of them was wrong:
 
-- A **tar** or `.tar.gz` whose names are in a code page. `hdrcharset` should apply on read and the
-  repack should keep the container, and neither was measured; only zip has a charset *flag* to get
-  wrong, which is what made zip the whole of the reported case.
-- An archive that is **encrypted *and* legacy**. The passphrase and the code page compose in
-  `extractAll` by construction, and were never asked for together.
-- The **write-back batch** and **nested-archive entry** call sites, both threaded blind.
-- The chooser's cost on a **large** archive: up to 19 header reads on the main actor, bounded by
-  sampling stopping at the first few non-ASCII names, never timed on anything big.
-- `ArchivePreviewCache` entries minted *before* a declaration are keyed on the mojibake inner path.
-  They should be unreachable once the mount is dropped rather than stale-and-served, which is an
-  argument rather than a measurement.
+- A **`.tar.gz`** whose names are in a code page behaves identically to the zip, and the rewrite
+  keeps its container (asserted on the gzip magic — a repack that fell back to zip holds the right
+  members and is invisible to every assertion about them).
+- **The chooser's cost was bounded on the wrong quantity.** Not "sampling stops at the first few
+  non-ASCII names" but the archive *open*: measured, every one of the 19 candidates costs the same
+  ~260 ms on a 50 000-entry zip whichever way it exits, for **3.6 s** in total on the main actor
+  before the sheet (4.9 s with the non-ASCII names last; 5 ms at 2 entries, 81 ms at 1 000). The
+  reads moved to `BlockingWork.run`. The twenty-times-faster shape — one open, since
+  `archive_entry_pathname` hands back the raw bytes with no `hdrcharset` set — was refused because it
+  would decode with CoreFoundation while the listing decodes with libarchive's iconv, and a preview
+  whose job is to be recognised must come from the reader that will do the reading.
+
+Three remain unverified, each a path that was *threaded* and never run: an archive that is
+**encrypted *and* legacy** (the passphrase and the code page compose in `extractAll` by
+construction, and minting a fixture that is both needs an AES entry with a code-page name); the
+**write-back batch** and **nested-archive entry** call sites; and `ArchivePreviewCache` entries
+minted *before* a declaration, which are keyed on the mojibake inner path and should be unreachable
+once the mount is dropped rather than stale-and-served — an argument rather than a measurement.
 
 Left deliberately undone: **inferring** the code page (no reader can, and a wrong guess is a
 plausible name for the wrong file); **preserving an un-representable name byte-for-byte**, which is
@@ -188,7 +196,7 @@ asked again.
 Everything through M26 is shipped, and the record of it — the milestone checklists, the forty-six
 dated passes that landed outside a milestone of their own, and the reasoning behind every decision —
 is in **[docs/HISTORY.md](docs/HISTORY.md)**. What is still open, rather than merely imaginable, is
-the *undone* column in the table above, M27's two slices, plus the list below. Everything that came off this list came
+the *undone* column in the table above, M27's three unverified paths, plus the list below. Everything that came off this list came
 off in the eight days to **2026-09-01** (HISTORY.md ▸ the follow-on log): both of M25's own
 leftovers — *"A remote attribute change cannot be undone"* and *"Many remote write-backs do not
 coordinate"* — and the last parity cell, *"No multipart upload over SFTP or FTP"*, which closed by

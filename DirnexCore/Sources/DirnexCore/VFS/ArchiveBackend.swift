@@ -25,6 +25,11 @@ public struct ArchiveBackend: VFSBackend {
 
     public var id: VFSBackendID { .archive(forArchiveAt: archiveOnDiskPath) }
 
+    /// At least one row this backend lists carries a name that did not decode, so the archive's
+    /// names are stored in a code page nobody has declared yet
+    /// (``ArchiveTOC/hasUnreadableNames``, ``ArchiveNameEncoding``).
+    public var hasUnreadableNames: Bool { toc.hasUnreadableNames }
+
     /// Read-only for now — writing inside an archive (add/delete) is the next M4 item.
     public var capabilities: VFSCapabilities { .read }
 

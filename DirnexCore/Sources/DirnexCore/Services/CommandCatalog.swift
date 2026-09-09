@@ -89,6 +89,24 @@ public enum CommandCatalog {
             shortcut: CommandShortcut(key: "F5", modifiers: [.function, .option])
         ),
         Command(
+            id: "file.archiveNameEncoding",
+            title: "Archive Name Encoding…",
+            category: .file,
+            // The words somebody with this problem would reach for, and most of them are not
+            // "encoding": what they are looking at is a row of question marks, so the vocabulary
+            // for *that* — mojibake, garbled, unreadable — has to be here beside the technical
+            // spelling. The two most common code pages are named because a user who already knows
+            // the answer types the number rather than a description of the symptom.
+            keywords: [
+                "encoding", "charset", "character set", "code page", "codepage", "unicode",
+                "utf-8", "cp866", "cp1251", "names", "mojibake", "garbled", "unreadable",
+                "cyrillic", "legacy", "zip", "archive"
+            ]
+            // No shortcut. Every F-key is spoken for, and this is a once-per-archive answer to a
+            // question the app cannot work out for itself — the palette and the File menu are the
+            // whole of its surface.
+        ),
+        Command(
             id: "file.syncDirectories",
             title: "Synchronize Directories…",
             category: .file,

@@ -168,11 +168,17 @@ extension PanelViewController: NSMenuItemValidation {
         }
     }
 
-    /// Validate the archive operations (Pack). Kept out of the main switch so it stays under
-    /// SwiftLint's cyclomatic-complexity limit (a recurring gotcha). Returns `nil` for any other
-    /// selector so the main switch handles it.
+    /// Validate the archive operations (Pack, Archive Name Encoding). Kept out of the main switch
+    /// so it stays under SwiftLint's cyclomatic-complexity limit (a recurring gotcha). Returns `nil`
+    /// for any other selector so the main switch handles it.
     private func validateArchiveItem(_ menuItem: NSMenuItem) -> Bool? {
         switch menuItem.action {
+        case #selector(chooseArchiveNameEncoding(_:)):
+            // Read from `archiveAwaitingNameEncoding` rather than restating its rule, for the reason
+            // `canGoToParent` above exists: a validator carrying its own copy of a predicate is how
+            // a working command ends up grayed out, and the menu is the surface no headless test
+            // drives. The action itself guards on the same property, so the two cannot disagree.
+            return archiveAwaitingNameEncoding != nil
         case #selector(packSelection(_:)):
             // Pack a real local selection into a new archive in the other pane; the source must be
             // a real folder (not an archive or search-results view) and there must be a pane to

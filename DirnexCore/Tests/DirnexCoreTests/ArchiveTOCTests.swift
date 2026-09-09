@@ -159,4 +159,74 @@ struct ArchiveTOCTests {
         """)
         #expect(names(toc.children(inDirectory: "/")) == ["good.txt"])
     }
+
+    // MARK: - Names that did not decode
+
+    /// The **exact bytes** `/usr/bin/bsdtar -tvf` wrote for the CP866 fixture, captured 2026-09-09
+    /// under the pinned `LC_CTYPE=UTF-8` a LaunchServices-launched Dirnex hands every child
+    /// (``ChildProcessLocale``). Two members: `Панорама.txt` stored in CP866 with the zip's UTF-8
+    /// flag clear, and an ASCII `plain.txt` beside it.
+    ///
+    /// Kept as bytes rather than as a Swift string because the substitution is the whole subject: a
+    /// hand-typed `\u{FFFD}` would prove that `contains` works, where this proves what the real tool
+    /// really produces reaches the real decoder as one. Note the shape it comes back in — a *mix* of
+    /// `vis(3)` octal escapes and raw bytes (`\217`, `a0`, `\255`, `ae e0 a0 ac a0`), which is why
+    /// the row is invalid UTF-8 rather than merely ugly: under the bare `C` locale every byte is
+    /// escaped and the same listing decodes perfectly.
+    private static let legacyCodePageListing: [UInt8] = [
+        0x2d, 0x72, 0x77, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x20, 0x20, 0x30, 0x20, 0x30,
+        0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x30, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+        0x20, 0x20, 0x20, 0x31, 0x20, 0x4a, 0x61, 0x6e, 0x20, 0x20, 0x31, 0x20, 0x20, 0x31, 0x39,
+        0x38, 0x30, 0x20, 0x5c, 0x32, 0x31, 0x37, 0xa0, 0x5c, 0x32, 0x35, 0x35, 0xae, 0xe0, 0xa0,
+        0xac, 0xa0, 0x2e, 0x74, 0x78, 0x74, 0x0a,
+        0x2d, 0x72, 0x77, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x20, 0x20, 0x30, 0x20, 0x30,
+        0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x30, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+        0x20, 0x20, 0x20, 0x31, 0x20, 0x4a, 0x61, 0x6e, 0x20, 0x20, 0x31, 0x20, 0x20, 0x31, 0x39,
+        0x38, 0x30, 0x20, 0x70, 0x6c, 0x61, 0x69, 0x6e, 0x2e, 0x74, 0x78, 0x74, 0x0a
+    ]
+
+    @Test("a listing that lost a name to the decoder says so, and keeps the rows that survived")
+    func unreadableNamesAreReported() {
+        let toc = ArchiveTOC(
+            verboseListing: SubprocessText.lossyUTF8(Data(Self.legacyCodePageListing))
+        )
+        #expect(toc.hasUnreadableNames)
+        // The other half of ``SubprocessText``'s claim, and the reason this is not simply an
+        // unreadable archive: the ASCII row is still there and still addressable.
+        #expect(names(toc.children(inDirectory: "/")).contains("plain.txt"))
+    }
+
+    /// The narrowness control. Without it, "report unreadable names" would pass just as well
+    /// implemented as "always true", and the item it gates would be enabled in every archive.
+    @Test("an ordinary listing reports nothing, non-ASCII names and all")
+    func readableNamesAreNotReported() {
+        #expect(!ArchiveTOC(verboseListing: zipListing).hasUnreadableNames)
+        #expect(!ArchiveTOC(verboseListing: """
+        -rw-r--r--  0 501    20         11 Jul 10 16:19 Панорама.txt
+        -rw-r--r--  0 501    20         11 Jul 10 16:19 日本語.txt
+        """).hasUnreadableNames)
+        #expect(!ArchiveTOC(verboseListing: "").hasUnreadableNames)
+    }
+
+    /// The route a *declared* archive takes reports nothing, whatever its names look like.
+    ///
+    /// libarchive answers NULL for a byte the declared code page does not map, which the reader
+    /// turns into ``EncryptedArchiveError/entryNameNotUTF8`` rather than into a substituted
+    /// character — so there is nothing here for this to find, and a pane that has been told the
+    /// code page must not go on offering to be told it again.
+    @Test("the libarchive route never reports unreadable names")
+    func libarchiveRouteReportsNothing() {
+        let toc = ArchiveTOC(entries: [
+            EncryptedArchiveReader.Entry(
+                archivePath: "Панорама.txt",
+                kind: .regularFile,
+                byteSize: 1,
+                permissions: 0o644,
+                modificationDate: Date(timeIntervalSince1970: 0),
+                isEncrypted: false
+            )
+        ])
+        #expect(!toc.hasUnreadableNames)
+        #expect(names(toc.children(inDirectory: "/")) == ["Панорама.txt"])
+    }
 }

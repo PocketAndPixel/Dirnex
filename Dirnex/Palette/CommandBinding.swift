@@ -23,6 +23,8 @@ enum CommandBinding {
         "file.copy": #selector(PanelViewController.copyToOtherPane(_:)),
         "file.move": #selector(PanelViewController.moveToOtherPane(_:)),
         "file.pack": #selector(PanelViewController.packSelection(_:)),
+        "file.archiveNameEncoding":
+            #selector(PanelViewController.chooseArchiveNameEncoding(_:)),
         "file.syncDirectories": #selector(PanelViewController.synchronizeDirectories(_:)),
         "file.compareByContents": #selector(PanelViewController.compareByContents(_:)),
         "file.attributes": #selector(PanelViewController.showAttributes(_:)),

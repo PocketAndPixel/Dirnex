@@ -12731,6 +12731,52 @@ negative controls fired (a typoed `hdrcharset` token, a neutered misfit detector
 ignores the declaration, a catalog entry disagreeing with the core), each on exactly the tests named
 for it while the narrowness controls stayed green.
 
+**2026-09-09 (later still, closing M27) — a way in that is not a failure, thirteen translations,
+and a cost that was bounded on the wrong quantity.** The chooser above was reachable only when a
+gesture the user made hit the refusal — F8, a paste, an F5 copy-out — so somebody who merely wanted
+to **read** the names had no route at all. `file.archiveNameEncoding` ("Archive Name Encoding…") is
+that route: a registry command in the File menu beside Pack, enabled while the pane is inside an
+archive whose names did not decode. Both of the traps the plan named were paid: the enable/disable
+rule is one property (`archiveAwaitingNameEncoding`) the validator and the action both read, and the
+item carries no submenu, so its own key equivalent could fire if it ever gained one.
+
+The predicate is a question about the **archive**, not the folder: `ArchiveTOC.hasUnreadableNames`,
+computed once at mount from the U+FFFD `SubprocessText` substitutes, peeked from the cached mount so
+a menu validator never spawns `bsdtar`. It also stays true once a code page **is** declared, which
+is the half that is easy to leave out — a wrong pick produces well-formed nonsense and raises no
+second refusal, so gated on the unreadable half alone, changing your mind would be impossible.
+
+**The cost claim was wrong.** The plan said the reads were bounded by sampling stopping at the first
+few non-ASCII names. Measured against real CP866 fixtures, that bounds the wrong quantity: every
+candidate costs the same **~260 ms** on a 50 000-entry zip whether it bails at the first entry or
+samples at the fifth, because what it pays for is the *open* — libarchive reading a five-megabyte
+central directory. All 19 came to 5 ms at 2 entries, 81 ms at 1 000, 1.4 s at 20 000 and **3.6 s** at
+50 000 (4.9 s with the non-ASCII names last), on the main actor, before the sheet. That is a
+beachball, so the reads moved to `BlockingWork.run`. The twenty-times-faster version was costed and
+**refused**: one open really would answer for every code page — with no `hdrcharset` set,
+`archive_entry_pathname` hands back the raw stored bytes verbatim while `archive_entry_pathname_utf8`
+answers NULL (probed; `hdrcharset=BINARY` is *not* available, `iconv_open` refuses it) — but decoding
+those nineteen ways in-process introduces a **second decoder**, and a preview whose whole job is to
+be recognised has to come from the reader that will do the reading.
+
+Two more things fell out. A `.tar.gz` whose names are in a code page was listed as threaded and never
+run; measured, the whole chain is identical (only zip has a charset *flag* to get wrong, and a tar
+simply stores the bytes), and the rewrite keeps the container — asserted on the gzip magic, since a
+repack that fell back to zip is invisible in every assertion about the members. And
+`scripts/check_localization_keys.py` caught **three strings from the landing that never reached the
+catalog** — the chooser's own title, body and Use button — each correctly `String(localized:)`-wrapped
+and therefore invisible to every bare-literal sweep, rendering English inside all thirteen translated
+builds. The 19 code-page names have their thirteen translations now, and
+`ArchiveNameEncodingLocalizationTests` demands them rather than pinning English-only.
+
+Six negative controls fired, each on exactly the tests named for it: `hasUnreadableNames` forced
+false and forced true, the validator's case removed, the already-declared clause dropped, the menu
+entry removed (the item still well-formed in the builder and in **no menu**, which is the trap
+docs/NOTES.md records), and one translation copied in from the English. Verified live afterwards
+against a seeded archive tab: the guard passed, `ask` returned in **0.0 ms** on the main thread, the
+reads ran off it, 11 fitting candidates landed in 13.5 ms and the sheet attached — and in an ordinary
+UTF-8 archive the same command reached the pane and raised nothing.
+
 **2026-09-09 — non-ASCII file names, on every protocol.** The SFTP fix the day before was one
 instance of a class, and the user's follow-up named the class: three screenshots — the NAS's own web
 UI showing `DSC_0697-Панорама.jpg`, an SFTP pane showing it correctly, and an **FTP** pane showing

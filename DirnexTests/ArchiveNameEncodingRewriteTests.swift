@@ -4,6 +4,41 @@ import Testing
 @testable import Dirnex
 @testable import DirnexCore
 
+/// Which container a fixture is. Both hold the same two members — one named `Панорама.txt` in
+/// **CP866** and an ASCII `plain.txt` — and differ only in the thing under test: a zip records a
+/// UTF-8 *flag* and leaves it clear, while a tar records nothing about its names at all, which is
+/// why the two arrive at the reader in the same state by different routes.
+private enum LegacyArchive {
+    case zip, tarGz
+
+    var fileName: String {
+        switch self {
+        case .zip: "legacy.zip"
+        case .tarGz: "legacy.tar.gz"
+        }
+    }
+
+    /// 218 bytes for the zip: two stored entries, `Панорама.txt` in CP866 with general-purpose bit
+    /// 11 clear, as Windows tools wrote them for years. 135 for the tar, whose name field carries
+    /// the same bytes with no flag to clear — both verified by listing them under the app's own
+    /// pinned locale, which escapes some of those bytes and passes the rest through.
+    var base64: String {
+        switch self {
+        case .zip: """
+            UEsDBBQAAAAAAAAAIQCDFtyMAQAAAAEAAAAMAAAAj6CtruCgrKAudHh0eFBLAwQUAAAAAAAAACEA
+            gxbcjAEAAAABAAAACQAAAHBsYWluLnR4dHhQSwECFAMUAAAAAAAAACEAgxbcjAEAAAABAAAADAAA
+            AAAAAAAAAAAAgAEAAAAAj6CtruCgrKAudHh0UEsBAhQDFAAAAAAAAAAhAIMW3IwBAAAAAQAAAAkA
+            AAAAAAAAAAAAAIABKwAAAHBsYWluLnR4dFBLBQYAAAAAAgACAHEAAABTAAAAAAA=
+            """
+        case .tarGz: """
+            H4sIAAAAAAAC/+3Tyw1AQBRG4VuKCmQejHosJSLCSKhCC1MAalKKiaWlhEScb/Mnd3U3Zw7rtocl
+            pH708hAVuSw7N7pupEUZ42xu7HnX2lotiZIXDL0vu/iK/NMo+LO2Lqvmyfjv9K8KZwr6f8NEAgAA
+            AAAAAAAAAAAAAJ92AIY8vU8AKAAA
+            """
+        }
+    }
+}
+
 /// Rewriting an archive whose entry names are stored in a code page rather than UTF-8.
 ///
 /// This is the claim the whole feature exists for, driven through the **real** `ArchiveWriter` — the
@@ -157,30 +192,75 @@ struct ArchiveNameEncodingRewriteTests {
             == ["plain.txt", Self.cyrillic])
     }
 
+    // MARK: - A container that is not a zip
+
+    /// **A `.tar.gz` behaves the same way, and until now that was a hope rather than a
+    /// measurement** (PLAN.md §M27 listed it as threaded and never run).
+    ///
+    /// It was zip that made the reported case, because only zip has a charset *flag* to get wrong —
+    /// a tar simply stores the bytes it was given and says nothing about them, which is the same
+    /// state a zip with bit 11 clear is in. Measured 2026-09-09, the whole chain is identical: the
+    /// undeclared listing loses the name to `vis(3)` and the decoder in exactly the shape the zip
+    /// does, the declaration reads it back, and the rewrite keeps it.
+    ///
+    /// The **container** is the half worth asserting past that. `ArchiveMutation
+    /// .repackAllArguments` infers the format from the new archive's suffix, so a gzip'd tar has to
+    /// come back a gzip'd tar rather than the zip the other tests happen to produce — which is what
+    /// keeps a rewrite from silently changing the kind of file somebody has.
+    @Test("a legacy .tar.gz reads, rewrites and stays a gzip'd tar")
+    func legacyTarGzIsReadableAndKeepsItsContainer() throws {
+        let archive = try Fixture(kind: .tarGz)
+        defer { archive.cleanup() }
+
+        // Undeclared, the row is unusable — the same state the zip fixture is in.
+        let raw = try ArchiveMounter.readTableOfContents(ofArchiveAt: archive.path)
+        #expect(raw.hasUnreadableNames)
+        #expect(!raw.children(inDirectory: "/").map(\.name).contains(Self.cyrillic))
+
+        // Declared, `hdrcharset` reads it — so the option is not a zip-only lever.
+        let declared = try ArchiveMounter.readTableOfContents(
+            ofArchiveAt: archive.path, nameEncoding: .cp866
+        )
+        #expect(declared.children(inDirectory: "/").map(\.name).sorted()
+            == ["plain.txt", Self.cyrillic])
+
+        try ArchiveWriter.delete(
+            innerPaths: ["/plain.txt"],
+            fromArchiveAt: archive.path,
+            undo: .none,
+            nameEncoding: .cp866
+        )
+
+        // Still gzip, byte one and two — the suffix is what the repack infers from, so a rewrite
+        // that fell back to zip would be invisible in every assertion about the *members*.
+        let bytes = try Data(contentsOf: URL(fileURLWithPath: archive.path))
+        #expect(bytes.prefix(2) == Data([0x1f, 0x8b]), "no longer a gzip stream")
+
+        // And the name survives — read back with nothing declared, since a tar stores the raw
+        // UTF-8 bytes the extracted tree carried and needs no flag to be readable.
+        let reread = try ArchiveMounter.readTableOfContents(ofArchiveAt: archive.path)
+        #expect(reread.children(inDirectory: "/").map(\.name) == [Self.cyrillic])
+        #expect(!reread.hasUnreadableNames)
+    }
+
     // MARK: - Fixture
 
     private struct Fixture {
         let root: URL
-        var path: String { root.appendingPathComponent("legacy.zip").path }
+        let path: String
 
-        init() throws {
+        init(kind: LegacyArchive = .zip) throws {
             root = FileManager.default.temporaryDirectory
-                .appendingPathComponent("dirnex_legacy_zip_\(UUID().uuidString)")
+                .appendingPathComponent("dirnex_legacy_archive_\(UUID().uuidString)")
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            path = root.appendingPathComponent(kind.fileName).path
             let bytes = try #require(
-                Data(base64Encoded: Self.legacyCodePageZip, options: .ignoreUnknownCharacters)
+                Data(base64Encoded: kind.base64, options: .ignoreUnknownCharacters)
             )
             try bytes.write(to: URL(fileURLWithPath: path))
         }
 
         func cleanup() { try? FileManager.default.removeItem(at: root) }
-
-        private static let legacyCodePageZip = """
-        UEsDBBQAAAAAAAAAIQCDFtyMAQAAAAEAAAAMAAAAj6CtruCgrKAudHh0eFBLAwQUAAAAAAAAACEA
-        gxbcjAEAAAABAAAACQAAAHBsYWluLnR4dHhQSwECFAMUAAAAAAAAACEAgxbcjAEAAAABAAAADAAA
-        AAAAAAAAAAAAgAEAAAAAj6CtruCgrKAudHh0UEsBAhQDFAAAAAAAAAAhAIMW3IwBAAAAAQAAAAkA
-        AAAAAAAAAAAAAIABKwAAAHBsYWluLnR4dFBLBQYAAAAAAgACAHEAAABTAAAAAAA=
-        """
     }
 }
 
@@ -190,10 +270,6 @@ struct ArchiveNameEncodingRewriteTests {
 /// falls back to readable English rather than to a dotted key — which is the right failure and is
 /// also a silent one: the popup would look perfect in an English build forever. This is the check
 /// docs/NOTES.md asks for over any `allCases` enum whose labels are localized.
-///
-/// It asserts **presence in English**, not translation into all thirteen shipped languages. Those
-/// entries do not exist yet and inventing them would be worse than the fallback; the keys are in the
-/// catalog so a translator can see them, and that is the honest state to pin.
 @Suite("Archive name-encoding localization")
 struct ArchiveNameEncodingLocalizationTests {
     /// Read the **English** bundle by name rather than `Bundle.main`, because the app test target
@@ -208,6 +284,32 @@ struct ArchiveNameEncodingLocalizationTests {
             #expect(value == encoding.englishName, """
             \(encoding.localizationKey): the catalog and the core disagree about the English
             """)
+        }
+    }
+
+    /// And it is translated everywhere, which the test above deliberately did not demand while the
+    /// thirteen translations were still outstanding (PLAN.md §M27).
+    ///
+    /// The still-English half is what makes this more than a presence check: an entry copied in and
+    /// left alone renders perfectly and reads as a translation nobody wrote. It can be demanded of
+    /// every one of these, unlike a command title, because the **script name** is the part that
+    /// carries the meaning and no shipped language spells "Cyrillic" or "Japanese" the English way
+    /// — only the platform and the code-page token stay put, and neither is a whole label.
+    @Test("every offered code page is translated in every shipped language")
+    func everyEncodingIsTranslated() throws {
+        for language in LocalizedBundles.translated {
+            let bundle = try LocalizedBundles.bundle(for: language)
+            for encoding in ArchiveNameEncoding.allCases {
+                let key = encoding.localizationKey
+                let value = LocalizedBundles.translation(key, in: bundle)
+                #expect(value != nil, "\(language.code): no \(key)")
+                if let value {
+                    #expect(
+                        value != encoding.englishName,
+                        "\(language.code): \(key) is still English"
+                    )
+                }
+            }
         }
     }
 }

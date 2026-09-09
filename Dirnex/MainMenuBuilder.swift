@@ -71,6 +71,11 @@ enum MainMenuBuilder {
             .command("file.openWith"), .command("file.share"), .command("file.attributes"),
             .separator,
             .command("file.copy"), .command("file.move"), .command("file.pack"),
+            // Archive Name Encoding sits beside Pack because those two are the archive items:
+            // one makes an archive, the other says how to read the names in one. It is also the
+            // only route to the chooser that does not require a gesture to have *failed* first
+            // (PLAN.md §M27) — somebody who merely wants to read the names had none.
+            .command("file.archiveNameEncoding"),
             .command("file.syncDirectories"), .command("file.compareByContents"),
             // The checksum pair sits with Compare By Contents: all three answer "are these bytes
             // the ones I expect", differing only in what they are compared against.

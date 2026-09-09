@@ -361,25 +361,30 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         let backend: ArchiveBackend
     }
 
-    /// The backend for the archive at `archivePath`, mounting it on first use and re-mounting it
-    /// whenever the file there is no longer the one that was read.
-    ///
-    /// The identity check is what makes the mount a cache rather than a memory: an archive that is
-    /// deleted and repacked under the same name — the ordinary way to redo one — would otherwise go
-    /// on listing the members it held when the pane first entered it, for the life of the window.
-    /// One `stat` per list, against a `bsdtar` spawn saved, so it costs nothing worth measuring.
-    ///
-    /// ``ArchiveIdentity/stillDescribesFile(at:)`` rather than a comparison spelled out here: an
-    /// unreadable archive must be a *miss*, and that rule is the one thing all three archive caches
-    /// have to agree about (`ArchivePreviewCache`, `NestedArchiveRegistry`). Reading it back
-    /// costs nothing on the path that matters — a hit is still the single `stat` inside the helper,
-    /// and only a re-mount pays the second, beside a subprocess that dwarfs it.
     /// The code page declared for this archive, if any. Every read path asks, so a declaration
     /// reaches the listing, the previews, an extraction and the rewrite alike.
     func nameEncoding(forArchiveAt archivePath: String) -> ArchiveNameEncoding? {
         lock.lock()
         defer { lock.unlock() }
         return nameEncodings[archivePath]
+    }
+
+    /// Whether the table of contents this archive is **already listing from** holds a name that did
+    /// not decode (``DirnexCore/ArchiveTOC/hasUnreadableNames``).
+    ///
+    /// Deliberately a peek and never a mount. Its caller is a menu validator, which AppKit asks on
+    /// every menu open, and mounting there would spawn `bsdtar` — so an archive nobody has entered
+    /// answers `false`, which costs nothing: the item this gates is only reachable from a pane
+    /// standing inside the archive, which is the state that put the mount there.
+    ///
+    /// The identity check every other read of `mounted` makes is deliberately skipped for the same
+    /// reason. What the item exists to repair is the names **on screen**, and those came out of this
+    /// cached table of contents whether or not the file behind it has since moved; re-reading it to
+    /// find out would be the spawn this is avoiding.
+    func mountedArchiveHasUnreadableNames(forArchiveAt archivePath: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return mounted[archivePath]?.backend.hasUnreadableNames ?? false
     }
 
     /// Declare — or, with `nil`, withdraw — the code page this archive's names are stored in, and
@@ -396,6 +401,19 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         mounted[archivePath] = nil
     }
 
+    /// The backend for the archive at `archivePath`, mounting it on first use and re-mounting it
+    /// whenever the file there is no longer the one that was read.
+    ///
+    /// The identity check is what makes the mount a cache rather than a memory: an archive that is
+    /// deleted and repacked under the same name — the ordinary way to redo one — would otherwise go
+    /// on listing the members it held when the pane first entered it, for the life of the window.
+    /// One `stat` per list, against a `bsdtar` spawn saved, so it costs nothing worth measuring.
+    ///
+    /// ``ArchiveIdentity/stillDescribesFile(at:)`` rather than a comparison spelled out here: an
+    /// unreadable archive must be a *miss*, and that rule is the one thing all three archive caches
+    /// have to agree about (`ArchivePreviewCache`, `NestedArchiveRegistry`). Reading it back
+    /// costs nothing on the path that matters — a hit is still the single `stat` inside the helper,
+    /// and only a re-mount pays the second, beside a subprocess that dwarfs it.
     private func mountedArchive(at archivePath: String) throws -> ArchiveBackend {
         lock.lock()
         defer { lock.unlock() }
