@@ -588,6 +588,14 @@ at build time.
   - **Size the control to the rule, not to the function.** The claim was about a *short* set, so a
     control that also changes what a complete set does is measuring more than the rule and can reach
     a path the tests never intended to exercise.
+  - **When the control cannot avoid the dialog, silence the dialog as *scaffolding* and run it
+    anyway.** Measured 2026-09-09 on the nested-archive call site: dropping the declaration makes the
+    gesture fail, and a failed gesture is one somebody made, so `presentOperationFailure` keeps its
+    `runModal` fallback and the run wedged with no assertion. Two edits rather than one — the rule
+    under test, plus a `runModal` replaced by nothing — and the control then failed in **10.1 s** on
+    exactly its own test. The second edit changes no behaviour the assertions can see, which is what
+    keeps "size the control to the rule" intact: it removes the *reporting*, not the branch. Neither
+    edit is checked in, and the file is copied aside **after** the work is applied (▸ below).
   - **And check the control fires at all before believing it.** The first version of this one —
     deleting the "report the failure" branch outright — left the suite **green**, because the
     delivery's own completeness check already refused the short set; what the branch really changed
@@ -808,6 +816,33 @@ at build time.
         unprompted by this rule and were deliberately **left alone**: each is handed a window by
         construction, and each is marked as shown once presented — so dropping it would consume the
         one-shot in silence, which is a worse failure than the one being prevented.
+- **A test that loads a pane's *view* pays for every other suite's layout, and seeding the model
+  instead removes most of the wait it had to be sized for.** `ArchiveNameEncodingCallSiteTests` drives
+  a real ⏎ into a nested archive — a real extraction, a real mount, a real navigation — and takes
+  **0.05 s** run alone. With the pane's view loaded, the shape every reach test uses, it took
+  **17.4–22.1 s** in a full run (4 samples) against the house 30 s budget, and had already failed
+  outright at 10. That 400× is not the three `bsdtar` spawns: it is the main actor, which a full run's
+  live panes hold inside `CA::Transaction::flush` for 0.6–5.0 s at a time (▸ the stall recorded
+  below). A pane whose view is never loaded has no table to lay out and takes no part in it, and its
+  model can be seeded synchronously from the same `listDirectory` the pane would have run — which
+  also deletes the *first* wait outright, since there is nothing left to wait for. Re-measured on the
+  same tree over four full runs, **10.4–14.5 s**.
+  - **The rule is which half of the pane the flow touches, and `RenameReachTests`' lesson cuts both
+    ways.** There, an unloaded pane read the same whatever the code did, because the flow reads
+    `nameColumnDisplayIndex` — a *table* question, and a table with no columns answers it for the
+    wrong reason. Here the gesture reads `panel.path` and an entry it was handed, and every assertion
+    reads the model, so the view is cost with no coverage in it. Ask what the code under test reads
+    before reaching for `loadViewIfNeeded()`.
+  - **14 s of a 30 s budget is a measurement worth writing down rather than a margin to trust**: what
+    remains is the gesture's own main-actor hops (the encryption probe, the detached extraction, the
+    navigation's own `Task`), each of which can wait out a stall, and none of which can be removed
+    without no longer driving the gesture.
+  - **And the run that looked like it had cost a neighbour its stability had not**, which took a
+    baseline rather than a hunch: `ArchiveWatchReachTests`' repack test failed **1 run in 4** with the
+    new suites in and **1 run in 4 with the tree stashed back to HEAD**, same message, same test.
+    Four runs is a small sample and it is the right size for a 1-in-4 rate; the point is that it was
+    taken at all (▸ "run the baseline before believing your change caused a neighbour's failure").
+
 - **A test that measures *whether anything repainted* is measuring the whole process, and on a
   main-actor UI that is a much larger surface than the feature under test.** `PanelPassiveRefreshTests`
   pins the rule that a listing refresh finding nothing changed must not reload the table, and its
@@ -3409,6 +3444,21 @@ do not share a resolver, and neither half of that is obvious from either call si
     Keep only the tail of the stderr buffer — a long pack is asked thousands of times and only the
     newest sample is ever wanted — and cut it on a line boundary, since the parser's own rule is that
     a half-arrived line is not a sample.
+
+- **`bsdtar -x` on an encrypted zip writes a file of the right name and the right size, full of
+  zeros — and whether it ever returns depends on the app's stdin.** That an encrypted archive must
+  never reach `bsdtar` was already the rule (`ArchiveExtractor.extract` argues it); what was
+  unmeasured is what happens when one does, and it is worse than a failure. Measured 2026-09-09 on an
+  AES-256 zip whose member the argv matched: **6.10 s**, **170 144 bytes** of `Enter passphrase:` on
+  stderr, exit 1 — and an **8-byte file of zeros** left under the member's own name, whose plaintext
+  is 8 bytes. Nothing tells it from a successful extraction but its *contents*: the name is right,
+  the size is right, and a caller asking whether anything landed sees a file. So "did anything land"
+  is not a completeness check on this engine, and the guard in front of it is the whole protection.
+  - **That measurement is the `/dev/null` case, which is a LaunchServices-launched app.** With stdin
+    inherited from a terminal or from a pipe that never EOFs — a shell-launched build, or an
+    `xcodebuild` test host — it **never returns**, and `ProcessWaiting` waits with it. Both halves
+    were seen in one session, which is the shell-vs-LaunchServices split this file records for TCC
+    and for the child locale, arriving on a hang.
 
 - **A zip whose names are in a code page cannot be *rewritten* until somebody says which one, and
   the wall is APFS rather than any tool.** Measured 2026-09-09 on the CP866 fixture: a file name that
@@ -6671,6 +6721,29 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     `7zip` archive stores UTF-16, and both read back exactly under the `C` locale — only zip has a
     charset *flag* to get wrong. What was left was `sftp`, `bsdtar`, in-process libarchive, and
     FTP's own encoding negotiation.
+
+- **A `try?` in front of a question turns a throw into an answer, and the two "no"s it merges are
+  not the same fact.** `ArchiveExtractor.needsPassphrase` asked *is this archive encrypted?* by
+  inspecting the archive and reading `?.needsPassphrase ?? false` — and that inspection throws for an
+  archive whose **names** are not UTF-8, which is a fact about the names and says nothing about the
+  data. So an archive that is both encrypted and legacy answered **"not encrypted"**, no passphrase
+  was ever asked for, and the extraction fell through to `bsdtar`, which wrote a file of zeros under
+  the right name (▸ bsdtar). *"I read it and nothing is encrypted"* and *"I could not read it"* are
+  different answers and only the first is safe to act on.
+  - **The fix that holds is a primitive that cannot be asked the wrong question**, not a wider
+    `catch`: ``EncryptedArchiveReader.holdsEncryptedEntries`` reads `archive_entry_is_encrypted` off
+    the raw header, so no name has to be representable for it to answer — and `needsPassphrase`'s
+    `nameEncoding` parameter **went away with it**, because a parameter that exists to work around a
+    swallowed throw is one more thing to pass wrongly.
+  - **The tell that a fix is the wrong shape is a parameter threaded *to* the failing call rather
+    than the call being replaced.** An earlier pass had done exactly that — passed the declared code
+    page into `needsPassphrase` so a *declared* archive reached the right branch — which fixed every
+    archive somebody had already answered the chooser for and left the state every gesture is in
+    **before** it is answered. That is the half a caller never sees, because the parameter's presence
+    reads as the case having been thought about.
+  - It fails in the reassuring direction twice over: nothing logs, and the archives it is wrong about
+    are the ones with two things wrong at once — which no fixture in the repo could be, so no test
+    could have caught it either (▸ Testing, the disjoint-corpus trap).
 
 - **When a policy needs an order, ask which component actually *has* it — a derived signal will be
   an approximation and can be a non-deterministic one.** The archive-undo store evicts snapshots

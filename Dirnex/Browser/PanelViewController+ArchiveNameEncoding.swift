@@ -67,7 +67,11 @@ extension PanelViewController {
     /// Matched on the case rather than on a message: it travels as itself out of
     /// `EncryptedArchiveReader.inspect`, which every write path calls before it touches anything, so
     /// the refusal arrives before the archive has been altered in any way.
-    func isNameEncodingRefusal(_ error: Error) -> Bool {
+    ///
+    /// `nonisolated static` because it is a fact about the *error* and not about a pane — which is
+    /// what lets `ArchiveExtractor` ask it off the main actor, and what lets a test assert a refusal
+    /// through the app's own predicate rather than through a second copy of it.
+    nonisolated static func isNameEncodingRefusal(_ error: Error) -> Bool {
         if case .entryNameNotUTF8 = error as? EncryptedArchiveError { return true }
         return false
     }
@@ -83,7 +87,7 @@ extension PanelViewController {
     /// now see.
     @discardableResult
     func offerNameEncoding(after error: Error, forArchiveAt archivePath: String) -> Bool {
-        guard isNameEncodingRefusal(error) else { return false }
+        guard Self.isNameEncodingRefusal(error) else { return false }
         askForNameEncoding(forArchiveAt: archivePath)
         return true
     }

@@ -44,6 +44,41 @@ struct ArchiveNameEncodingTests {
         #expect(tokens.count == ArchiveNameEncoding.allCases.count)
     }
 
+    // MARK: - The encryption question, asked without the names
+
+    /// ``EncryptedArchiveReader/holdsEncryptedEntries(archiveAt:)`` exists because
+    /// ``EncryptedArchiveReader/Inspection/needsPassphrase`` cannot be asked of *this* archive at
+    /// all: `inspect` throws on the first name it cannot decode, so an archive that is both
+    /// encrypted and legacy answers nothing about its encryption through that route.
+    ///
+    /// The app read that throw as "no passphrase needed" and handed such an archive to `bsdtar`,
+    /// which wrote a file of zeros under the right name (PLAN.md §M27). The fixture that is *both*
+    /// things has to be minted rather than committed — an AES entry with a code-page name cannot be
+    /// packed by any tool on this Mac — so it lives in the app target beside the routing it is
+    /// about; what is pinned here is that the primitive needs no name to answer.
+    @Test("an undeclared legacy archive answers the encryption question anyway")
+    func encryptionIsAnsweredWithoutDecodingNames() throws {
+        let archive = try legacyArchive()
+        // The precondition: the route that used to answer this genuinely cannot.
+        #expect(throws: EncryptedArchiveError.self) {
+            _ = try EncryptedArchiveReader.inspect(archiveAt: archive)
+        }
+        let encrypted = try EncryptedArchiveReader.holdsEncryptedEntries(archiveAt: archive)
+        #expect(!encrypted, "this fixture is legacy, not encrypted")
+    }
+
+    /// And it agrees with the inspection wherever the inspection can be had — both directions, so
+    /// "answer without the names" cannot pass implemented as a constant.
+    @Test("it agrees with the inspection on archives the inspection can read")
+    func itAgreesWithTheInspection() throws {
+        for name in ["encrypted-aes256-bsdtar", "plain-bsdtar"] {
+            let archive = try EncryptedArchiveFixture.archive(name)
+            let expected = try EncryptedArchiveReader.inspect(archiveAt: archive).needsPassphrase
+            let actual = try EncryptedArchiveReader.holdsEncryptedEntries(archiveAt: archive)
+            #expect(actual == expected, "\(name): \(actual) against \(expected)")
+        }
+    }
+
     // MARK: - Reading
 
     /// The measurement the whole feature rests on.

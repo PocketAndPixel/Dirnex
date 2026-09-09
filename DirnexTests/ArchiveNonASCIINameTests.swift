@@ -187,8 +187,14 @@ struct ArchiveNonASCIINameTests {
 enum ZipCentralDirectory {
     struct Entry {
         let name: String
+        /// The name's bytes exactly as stored, before anything decides what they mean — the only
+        /// way to say what a *legacy* archive holds, since such a name has no `String` spelling
+        /// (`LegacyNameZipFixtureTests`).
+        let rawName: Data
         /// General-purpose bit 11, which tells a reader the name is UTF-8 rather than CP437.
         let declaresUTF8: Bool
+        /// General-purpose bit 0, set for an entry whose data is encrypted.
+        let isEncrypted: Bool
     }
 
     static func entries(ofArchiveAt path: String) throws -> [Entry] {
@@ -214,7 +220,9 @@ enum ZipCentralDirectory {
                 // distinguish "wrong bytes" from "right bytes, wrong flag".
                 name: (String(bytes: raw, encoding: .utf8) ?? "<undecodable>")
                     .split(separator: "/").last.map(String.init) ?? "",
-                declaresUTF8: flags & 0x800 != 0
+                rawName: Data(raw),
+                declaresUTF8: flags & 0x800 != 0,
+                isEncrypted: flags & 0x1 != 0
             ))
             index = nameStart + nameLength + extraLength + commentLength
         }

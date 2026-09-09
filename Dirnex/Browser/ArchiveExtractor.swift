@@ -35,16 +35,18 @@ enum ArchiveExtractor {
     /// Reads headers only — a zip's central directory is never encrypted — so it costs nothing worth
     /// caching: **3–4 ms for a 600 MB, 301-entry archive**, measured, against 0.1 ms for a small
     /// one. That is what lets every extraction ask unconditionally.
-    static func needsPassphrase(
-        forArchiveAt archiveOnDiskPath: String,
-        nameEncoding: ArchiveNameEncoding? = nil
-    ) -> Bool {
-        // The encoding is passed through because without it an archive with code-page names throws
-        // here, the `try?` reads that as "no passphrase needed", and the extraction goes to `bsdtar`
-        // — which cannot place those names at all. A declared archive has to reach the branch below.
-        (try? EncryptedArchiveReader.inspect(
-            archiveAt: archiveOnDiskPath, nameEncoding: nameEncoding
-        ))?.needsPassphrase ?? false
+    ///
+    /// **It takes no code page, and used to.** Derived from ``DirnexCore/EncryptedArchiveReader``'s
+    /// `inspect`, this could not answer for an archive that is *both* encrypted and legacy: the
+    /// inspection throws on the first name it cannot decode, and the `try?` in front of it read that
+    /// throw as "no passphrase needed". Threading the declaration through fixed the archives someone
+    /// had already declared and left the state every gesture is in *before* the chooser is answered
+    /// — where the wrong answer sent an AES-256 archive to `bsdtar`, which wrote a file of zeros
+    /// under the right name (PLAN.md §M27). ``DirnexCore/EncryptedArchiveReader/holdsEncryptedEntries(archiveAt:)``
+    /// reads the flag off the raw header instead, so no name has to be representable for the
+    /// question to have an answer, and there is no parameter left to pass wrongly.
+    static func needsPassphrase(forArchiveAt archiveOnDiskPath: String) -> Bool {
+        (try? EncryptedArchiveReader.holdsEncryptedEntries(archiveAt: archiveOnDiskPath)) ?? false
     }
 
     /// Extract `innerPaths` of the archive at `archiveOnDiskPath` into a fresh temp directory and
@@ -99,10 +101,32 @@ enum ArchiveExtractor {
         let extractedPaths = locations(of: innerPaths, in: directory)
         guard extractedPaths.contains(where: { FileManager.default.fileExists(atPath: $0) }) else {
             try? FileManager.default.removeItem(at: directory)
-            let name = (archiveOnDiskPath as NSString).lastPathComponent
-            throw VFSError.unsupported(.archiveExtractFailed(archive: name))
+            throw reasonNothingLanded(forArchiveAt: archiveOnDiskPath)
         }
         return Extraction(directory: directory, extractedPaths: extractedPaths)
+    }
+
+    /// Why an extraction placed nothing — a damaged archive, or one whose names nobody has declared
+    /// a code page for.
+    ///
+    /// `bsdtar` cannot be handed a member it could not decode: the pane drew that row as `���.txt`,
+    /// which is the name the extraction then asks for, and no entry is called that. So an extraction
+    /// that placed nothing out of a **legacy** archive is the name refusal rather than a damaged
+    /// archive, and reporting it as one is what puts the chooser in front of the user instead of an
+    /// error naming the wrong thing. HISTORY.md listed F5 copy-out as a route to that chooser from
+    /// the day it shipped; measured 2026-09-09, it was not one, because this branch reported
+    /// `archiveExtractFailed` and `offerNameEncoding` matches on the case.
+    ///
+    /// Asked only once nothing landed, so the ordinary failure — a member that is genuinely absent
+    /// from an ordinary archive — costs no extra read at all.
+    private static func reasonNothingLanded(forArchiveAt archiveOnDiskPath: String) -> Error {
+        let name = (archiveOnDiskPath as NSString).lastPathComponent
+        do {
+            _ = try EncryptedArchiveReader.inspect(archiveAt: archiveOnDiskPath)
+        } catch {
+            if PanelViewController.isNameEncodingRefusal(error) { return error }
+        }
+        return VFSError.unsupported(.archiveExtractFailed(archive: name))
     }
 
     /// Unpack into `directory` by whichever engine the archive's format needs. Leaves the directory
@@ -120,9 +144,7 @@ enum ArchiveExtractor {
         passphrase: ArchivePassphrase?,
         nameEncoding: ArchiveNameEncoding? = nil
     ) throws {
-        let isEncrypted = needsPassphrase(
-            forArchiveAt: archiveOnDiskPath, nameEncoding: nameEncoding
-        )
+        let isEncrypted = needsPassphrase(forArchiveAt: archiveOnDiskPath)
         if isEncrypted || nameEncoding != nil {
             if isEncrypted, passphrase == nil { throw EncryptedArchiveError.passphraseRequired }
             try EncryptedArchiveReader.extract(

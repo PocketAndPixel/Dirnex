@@ -1,4 +1,4 @@
-# Dirnex — build history (M0 → M26)
+# Dirnex — build history (M0 → M27)
 
 The shipped record of Dirnex's milestones: the milestone checklists as they were completed,
 plus the per-pass progress log — what was probed, what was decided, what was rejected and why.
@@ -14,7 +14,9 @@ local-only feature, on a file that is not local) opened 08-27 and closed 08-28, 
 remote write carries, and what a remote delete costs) opened alongside it and closed 08-29, taking
 the plan's last open question with it. **M26** (move to Trash, wherever the file lives) opened
 and closed 08-31, and is the only one that opened on a design fork rather than on an
-implementation. **After M19** carries the thirty-one dated
+implementation. **M27** (legacy code-page archive names) opened and closed 09-09, on a user's
+report, and is the only one whose *unverified* paths were run afterwards rather than at its close —
+which is how the bug in the last of them was found. **After M19** carries the thirty-one dated
 passes from 2026-08-07 → 08-25 that landed outside a milestone of their own — it sits at the end
 rather than in date order, because it is the file's catch-all rather than a numeric slot. Two
 sections frame them, both handed over by the plan on 2026-09-01 once it had nothing left to say
@@ -12654,9 +12656,84 @@ uses `removeItem` and consults no Trash, so it was never affected; and **chasing
 into TCC and `fileproviderd`**, which is not observable from here past the three candidates already
 eliminated, and which neither implementable route depended on.
 
+### M27 — Legacy code-page archive names (S)
+
+**Closed 2026-09-09** (▸ the follow-on log below): a zip whose entry names are stored in an OEM
+code page can be *declared* (``ArchiveNameEncoding``, 19 of them), after which it lists, previews,
+extracts and **rewrites** like any other archive — the refusal M26-era work left in place, closed by
+asking the one question no reader can answer for itself. Three measurements shaped it and are worth
+not re-deriving: APFS refuses a non-UTF-8 file name outright (`EILSEQ`) and the rewrite stages on
+disk, so declaring is the *only* route rather than the tidiest; libarchive's `hdrcharset` read option
+is the lever and **Apple's `bsdtar` does not have it**, so a declared archive is read in-process
+while the repack stays on `bsdtar`, which is what preserves the container format; and a wrong code
+page cannot be detected — it returns well-formed nonsense — so the chooser previews real names and
+offers only the candidates that *fit*. A streaming entry-to-entry rewrite was costed and rejected: it
+preserves bytes nobody can read, still cannot extract that row out of the archive, and needs a third
+engine.
+
+Both remaining slices landed the same day:
+
+- **A way in from the pane** is `file.archiveNameEncoding` ("Archive Name Encoding…"), a registry
+  command in the File menu beside Pack — so somebody who merely wants to *read* the names no longer
+  has to make a gesture **fail** to be offered the chooser. Enabled off one property both the action
+  and `validateMenuItem` read (``archiveAwaitingNameEncoding``), which is the trap this file's own
+  most-repeated family names; no submenu, so its key equivalent could fire if it ever gained one. The
+  predicate is a question about the *archive* — ``ArchiveTOC/hasUnreadableNames``, computed once at
+  mount and peeked from the cache so a validator never spawns `bsdtar` — and it stays true once a
+  code page has been declared, since a wrong pick raises no second refusal and changing your mind
+  would otherwise be impossible.
+- **The thirteen translations** are in, and `ArchiveNameEncodingLocalizationTests` now demands them
+  rather than pinning English-only. Adding the command also put `scripts/check_localization_keys.py`
+  to work: it named **three strings from the landing** — the chooser's title, body and Use button —
+  that were correctly wrapped and never added to the catalog, so they rendered English inside every
+  translated build.
+
+All five *unverified* paths were measured rather than argued, and two of them turned out to be
+wrong. Two on the day the milestone closed:
+
+- A **`.tar.gz`** whose names are in a code page behaves identically to the zip, and the rewrite
+  keeps its container (asserted on the gzip magic — a repack that fell back to zip holds the right
+  members and is invisible to every assertion about them).
+- **The chooser's cost was bounded on the wrong quantity.** Not "sampling stops at the first few
+  non-ASCII names" but the archive *open*: measured, every one of the 19 candidates costs the same
+  ~260 ms on a 50 000-entry zip whichever way it exits, for **3.6 s** in total on the main actor
+  before the sheet (4.9 s with the non-ASCII names last; 5 ms at 2 entries, 81 ms at 1 000). The
+  reads moved to `BlockingWork.run`. The twenty-times-faster shape — one open, since
+  `archive_entry_pathname` hands back the raw bytes with no `hdrcharset` set — was refused because it
+  would decode with CoreFoundation while the listing decodes with libarchive's iconv, and a preview
+  whose job is to be recognised must come from the reader that will do the reading.
+
+And the last three later the same day, where the first was hiding a bug (▸ the follow-on log
+below). An archive that is **encrypted *and* legacy** cannot be packed by anything on this
+Mac — APFS refuses a non-UTF-8 name and nothing but Dirnex writes AES-256 — so `LegacyNameZip` mints
+one by packing each non-ASCII member under an ASCII placeholder of the **same byte length** and
+rewriting its name bytes in both headers, nothing in zip checksumming a name. The reader composes the
+passphrase and the code page exactly as argued; the **routing in front of it** did not.
+`ArchiveExtractor.needsPassphrase` was derived from an inspection that a legacy archive makes throw,
+so the `try?` read that throw as *"not encrypted"*, no passphrase was asked for, and the extraction
+fell through to `bsdtar` — which spent **6.10 s** and **170 144 bytes** of `Enter passphrase:` and
+wrote an **8-byte file of zeros** under the right name, reported as a success by the guard that asks
+whether anything landed. ``EncryptedArchiveReader/holdsEncryptedEntries(archiveAt:)`` answers off the
+raw header instead, and `needsPassphrase`'s code-page parameter went away with it. The same routing
+had made **F5 copy-out** the one claimed way into the chooser that was not one: `bsdtar` cannot be
+handed a name it could not decode, so nothing landed and the refusal came back as a damaged archive.
+
+The other two paths were sound. ⏎ into a nested archive named in CP866 is driven end to end, and the
+preview cache's stale entry is better than unreachable — it cannot be **minted**, since the only row
+a cursor can rest on beforehand is named in U+FFFD substitutes and that extraction refuses rather
+than caching anything, while an ASCII member cached before a declaration stays correct because the
+file has not changed. The write-back batch's own sheet stays undrivable, so what runs is everything
+after the answer: `ArchiveWriter.add` under a declaration.
+
+Left deliberately undone: **inferring** the code page (no reader can, and a wrong guess is a
+plausible name for the wrong file); **preserving an un-representable name byte-for-byte**, which is
+the rejected streaming rewrite; and **persisting the declaration** across sessions — it is a guess
+the user made about one archive, and a wrong one silently outliving the session is worse than being
+asked again.
+
 ---
 
-### After M19 — the follow-on log (2026-08-07 → 2026-09-04)
+### After M19 — the follow-on log (2026-08-07 → 2026-09-09)
 
 Forty-six dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-04: user-reported bugs, three vault features, the tree crossing into S3,
@@ -12666,6 +12743,77 @@ sit here at the end rather than in a numeric slot — and they keep their **newe
 because several read as a chain and refer to the entry below. Moved out of [PLAN.md](../PLAN.md)
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there.
+
+**2026-09-09 (last of the day) — M27's three unverified paths, and the one that was hiding a file
+of zeros.** The milestone closed with three paths *threaded and never run*: an archive that is
+**encrypted *and* legacy**, the **write-back batch** and **nested-archive entry** call sites, and
+`ArchivePreviewCache` entries minted before a declaration. Two were arguments and one was a hope.
+Running all three cost one new fixture and turned up a real bug on the first of them.
+
+**The fixture is why none of it had been run.** APFS refuses a non-UTF-8 file name, so nothing on
+this disk can *be* named in a code page for a packer to read, and nothing on this Mac writes an
+AES-256 zip but Dirnex. `LegacyNameZip` mints one by packing each non-ASCII member under an ASCII
+placeholder **of the same byte length** and then rewriting its name bytes in the local header and the
+central directory — nothing in zip checksums a name, so no offset moves and no CRC needs repairing.
+The container is scaffolding through the type's own writer and the name bytes are written by hand,
+which is the split the reader-under-test rule asks for. `LegacyNameZipFixtureTests` is what makes it
+usable rather than plausible: it reproduces the committed 218-byte blob's answers exactly — `nil`
+undeclared, `Панорама.txt` under CP866, `Џ ­®а ¬ .txt` under CP1251, `nil` under CP1252 — with the
+CP1251 expectation taken from Python's decoder rather than from ours.
+
+**The reader composes and the routing in front of it did not.** `ArchiveExtractor.needsPassphrase`
+was derived from an inspection, and inspecting a legacy archive throws on the first name — so for an
+archive that is both things the `try?` in front of it read that throw as **"no passphrase needed"**,
+no passphrase was ever asked for, and the extraction fell through to `bsdtar`. Measured: `bsdtar`
+spent **6.10 s** and **170 144 bytes** of `Enter passphrase:` at a stream nobody reads and then wrote
+an **8-byte file of zeros** under the right name and the right size, which the extractor's own "did
+anything land" guard reported as a **success**. That is with stdin at `/dev/null`, which is a
+LaunchServices-launched app; the negative control, run in a test host whose stdin is not, never
+returned at all and had to be killed — the same shell-vs-LaunchServices split this file keeps
+meeting, arriving on a hang.
+
+So the encryption question stopped depending on the names.
+``EncryptedArchiveReader.holdsEncryptedEntries`` reads `archive_entry_is_encrypted` off the raw
+header, which needs no name to be representable, and `needsPassphrase`'s `nameEncoding` parameter
+**went away** rather than being threaded harder: with the right primitive there is nothing left to
+pass wrongly. An undeclared encrypted legacy archive now takes the in-process reader, refuses for the
+name, and the chooser is offered — nothing is guessed and nothing is written.
+
+**A second claim turned out to be false in the same place.** F5 copy-out has been named as a route to
+the chooser since the chooser shipped, and it was not one: `bsdtar` cannot be handed a name it could
+not decode — the pane drew `���.txt`, which is what the extraction then asks for — so nothing landed
+and the extractor reported `archiveExtractFailed`, which `offerNameEncoding` matches by *case*. The
+gesture said "couldn't extract from the archive" and offered nothing, on the archive whose whole
+problem is a question nobody had been asked. The empty-extraction branch now asks why, once, and only
+once nothing has landed, so the ordinary failure costs no extra read.
+
+**The other two paths were sound, and one is better than it was argued to be.** ⏎ into a nested
+archive named in CP866 was driven end to end through the shipped `beginNestedArchiveEntry` — the
+extraction, the temp mount, the navigation — landing on the inner archive's own member. And the
+preview cache's entries are not merely *unreachable* after a declaration: they cannot be **minted**,
+because the only row a cursor can rest on before one is named with U+FFFD substitutes and that
+extraction refuses rather than caching anything. The ASCII member cached beforehand stays correct,
+which is the half worth asserting — a declaration changes how names are read and changes nothing
+about the file, so the identity check correctly does not fire. The write-back batch's own sheet is
+still not drivable (`sheetAnswer(over:whenUnasked: .cancel)` answers *cancel* with no window, and
+with one it is a real sheet in front of a test host), so what runs is everything after the answer:
+`ArchiveWriter.add` under a declaration, which nothing had ever done.
+
+Four negative controls, each on exactly the tests named for it: the old `needsPassphrase` (two
+tests, one of them reproducing the zeros as `thrown → nil`), the old empty-extraction reason (two),
+the declaration dropped at the nested call site (one), and dropped on the way into the rewrite (one).
+The third of those wedged the run rather than failing it — `presentOperationFailure` keeps its
+`runModal` fallback for a gesture somebody made, correctly — and had to be re-run with that one
+dialog silenced as scaffolding, which is worth knowing as the *constructive* half of a warning this
+file has only ever stated as a hazard.
+
+Two things about the runs. The nested-archive test took **17–22 s** of the house 30 s budget with the
+pane's view loaded and **10.4–14.5 s** with its model seeded instead, which is not three `bsdtar`
+spawns but the main actor other suites' live panes hold (▸ docs/NOTES.md). And the neighbour that
+went red in one of those runs had not been pushed over by any of this: `ArchiveWatchReachTests`'
+repack test failed **1 run in 4** with the new suites in and **1 in 4 with the tree stashed back to
+HEAD** — the baseline that stops "it was green before" being read as evidence about the code rather
+than about the machine.
 
 **2026-09-09 (later) — archives and S3 audited; the locale pin had a cost nobody had looked for.**
 Asked to check the two remaining backends. S3 came back clean and the archive side turned up two

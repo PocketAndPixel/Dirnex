@@ -112,6 +112,37 @@ public enum EncryptedArchiveReader {
         return Inspection(entries: entries)
     }
 
+    /// Whether any entry's *data* is encrypted, answered **without decoding a single name**.
+    ///
+    /// ``Inspection/needsPassphrase`` answers the same question and cannot be asked of a *legacy*
+    /// archive at all: ``inspect(archiveAt:nameEncoding:)`` throws on the first name it cannot
+    /// decode, so a caller reaching for it learns nothing about the encryption of exactly the
+    /// archives that have two things wrong with them at once. Measured 2026-09-09, that gap was
+    /// silent and expensive — the app read the throw as "no passphrase needed" and handed an
+    /// AES-256 archive to `bsdtar`, which spent six seconds printing `Enter passphrase:` at a
+    /// stream nobody reads and then wrote a file of **zeros** under the right name and the right
+    /// size, which the caller's own "did anything land" guard reported as a success.
+    ///
+    /// Nothing here needs a name to be representable, because encryption is a property of the
+    /// entry's data and `archive_entry_is_encrypted` reads it straight off the raw header. It costs
+    /// headers rather than the archive, exactly as ``inspect(archiveAt:nameEncoding:)`` does, and it
+    /// stops at the first encrypted entry.
+    ///
+    /// It takes no code page **on purpose**: the answer cannot depend on one, and accepting the
+    /// parameter would invite a caller to pass `nil` and get the old wrong answer back.
+    public static func holdsEncryptedEntries(archiveAt path: String) throws -> Bool {
+        let handle = try openForReading(path, passphrase: nil, nameEncoding: nil)
+        while true {
+            var raw: OpaquePointer?
+            let status = archive_read_next_header(handle.raw, &raw)
+            if status == LibArchive.eof { return false }
+            guard status == LibArchive.ok || status == LibArchive.warn, let raw else {
+                throw failure(handle)
+            }
+            if archive_entry_is_encrypted(raw) != 0 { return true }
+        }
+    }
+
     /// Up to `limit` of the archive's *non-ASCII* entry names, as `encoding` reads them — what a
     /// chooser previews so somebody can recognize their own language and pick.
     ///
