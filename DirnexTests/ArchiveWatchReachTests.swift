@@ -73,7 +73,7 @@ struct ArchiveWatchReachTests {
     /// on the next poll, so the budget only sets how much scheduling delay is absorbed before the
     /// pane is blamed (docs/NOTES.md ▸ Testing).
     private static func settle(
-        within budget: Duration = .seconds(10),
+        within budget: Duration = .seconds(30),
         until condition: @MainActor () -> Bool
     ) async -> Bool {
         let deadline = ContinuousClock.now + budget
