@@ -90,6 +90,21 @@ extension PanelViewController {
         // silence).
         guard canRenameCursorRow else { return }
         guard !cursorOnParentRow, let entry = panel.currentEntry else { return }
+        // Before the field opens, not after it is committed: a member of an archive whose names did
+        // not decode has no sensible name to edit *from*, and the rewrite would refuse anyway —
+        // discarding whatever was typed in the meantime (reported 2026-09-10). The chooser answers
+        // the question, the pane comes back readable, and F2 then does the ordinary thing.
+        // The chooser puts the cursor back on this member under its decoded name and calls back,
+        // so F2 reads as one gesture that asked a question in the middle rather than as a key that
+        // did something else. Re-entering `beginRename` rather than opening the field here is what
+        // keeps one definition of what F2 does: by then the archive is declared, so this very guard
+        // answers `false` and the ordinary path runs.
+        if case let .archiveMember(archiveOnDiskPath) = renameRoute(for: entry.path),
+           offerNameEncodingBeforeTyping(forArchiveAt: archiveOnDiskPath, thenResume: { [weak self] _ in
+               self?.beginRename()
+           }) {
+            return
+        }
         guard let columnIndex = nameColumnDisplayIndex else { return }
 
         let row = row(forEntryIndex: panel.cursor)

@@ -3479,6 +3479,15 @@ do not share a resolver, and neither half of that is obvious from either call si
   pinned UTF-8 locale *and* under `C`. Every archive rewrite here stages on disk (extract → edit →
   repack), so such a member has nowhere to exist in between; `entryNameNotUTF8` is the only honest
   answer and removing the guard buys nothing but a worse message.
+  - **The damage is the *central directory* and nothing else — a zip never transcodes what it
+    stores.** Worth stating outright because it is the first thing a user asks and the reassuring
+    answer is the easy one to distrust. Measured 2026-09-10 on the fixture: the stored name is
+    `8f a0 ad ae e0 a0 ac a0 2e 74 78 74` with general-purpose bit 11 **clear** (CP866
+    `Панорама.txt`), while that member's *contents* are valid UTF-8 — `53 45 43 52 45 54 …`, with
+    `e2 80 94` for an em dash — and extract byte-identical whatever code page is declared. So the
+    whole exposure is the name, a declaration risks nothing in the payload, and a rewrite under the
+    right page is a **repair** rather than a re-encode: the same fixture repacks as
+    `'./Панорама.txt' utf8flag=True`.
   - **The lever is libarchive's `hdrcharset` read option, and `bsdtar` does not have it.** Apple's
     build answers `Option --hdrcharset=CP866 is not supported` and exits 1, so a declared archive has
     to be *listed and extracted* in-process — the reader that already exists for encrypted archives,
@@ -7896,6 +7905,49 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     **returning an undo snapshot** — the archive really was rewritten — where every other bad name
     (`..`, `""`, `sub/deep.txt`) is refused by the move anyway and would have made the test read as
     inert.
+  - **A gesture whose input the user *authors* has to resolve its preconditions before taking the
+    input, not after.** Every route into the code-page chooser is a refusal: the gesture runs, the
+    archive turns it away before altering anything, and the offer replaces the error — right where
+    the whole input is a row somebody pointed at, which costs one keystroke to make again. F2 is the
+    exception, because its input is a **name the user typed**, and the refusal arrives after they
+    have typed it. Reported 2026-09-10 as "it doesn't rename the file after the dialog", which is
+    exactly what the never-retried rule prescribes and is no comfort at all: the captured target is
+    spelled with the *undecoded* name, so it addresses nothing once the code page lands, and the only
+    alternatives after the fact are discarding their work or replaying it against a listing that has
+    changed underneath. Asking first is also the better *question* — renaming from `\217\240…` has
+    no sensible starting point, so the code page is not an obstacle in front of the rename, it is
+    what has to be true before the rename means anything. The same shape is worth checking for
+    wherever a gesture collects a value before it can fail: a name, a passphrase, a destination.
+    - **Its negative control crashes rather than fails, and the crash is the pre-existing rule
+      arriving from the other side.** With the guard removed `beginRename` proceeds, and a *live
+      field editor* in one of the suite's retained windows kills the test host — measured 2026-09-10,
+      the run restarts and the summary still says `passed` with the later tests silently never run
+      (9 tests against 2, same tree). `RenameReachTests` already records the reason it drives only
+      refusals; what is new is that with a window present it does not merely fail to focus, it takes
+      the runner down. Run the control with the field creation silenced as scaffolding — two edits,
+      the second changing nothing any assertion reads — and it fails on exactly its own test naming
+      the unreadable row.
+  - **A re-decode is a re-*identification*, so an anchor spelled as a path cannot survive it — and
+    the fallback is positional and silent.** Declaring a code page rewrites **every** name in the
+    archive at once, which is the one thing a `VFSPath` anchor cannot absorb: `Panel.restoreCursor`
+    finds nothing and falls back to `min(cursor, count - 1)` — correct for a row that was deleted,
+    and wrong here, where the row is still there under a new spelling. It is not merely off by a
+    name either, because **the code page decides the collation**: on the reporter's CP866 archive
+    the same member sorts elsewhere under the CP437 default, so the positional fallback lands on a
+    *different file* — and with the resume wired in, F2 would then open its box on it. Re-find the
+    row by what a decode cannot touch (kind, byte size, parent) and only when exactly one candidate
+    fits (`ArchiveMemberAnchor`); a tie is better answered by leaving the cursor alone than by
+    guessing. The shape generalizes past code pages to any operation that re-keys a whole listing.
+    - **A field two *engines* disagree about is not an identity field, and here that field is the
+      modification date.** The first version of the anchor compared it and never matched, which
+      surfaced as the cursor landing on the wrong row rather than as a bad predicate. Measured
+      2026-09-10: a declared archive is listed **in-process by libarchive** (`hdrcharset` is the
+      whole point, and `bsdtar` has not got it — ▸ bsdtar), which reports the real mtime, while an
+      undeclared one is listed by `bsdtar -tvf`, whose date column carries no seconds at all. So the
+      same untouched member has two different stamps depending on which engine read it, and a
+      declaration is exactly what switches engines. Same rule ▸ Parsing a year-less timestamp states
+      for comparing two *readings* of a remote file, arriving inside one machine with no network in
+      it: ask what a re-read can change for reasons that are not about the file.
   - **A gate two gestures share cannot be widened for one of them.** F2 and ⇧F2 both read
     `canRenameHere`, and the multi-rename tool renames each target with `backend.moveItem`, which an
     archive answers `.unsupported` to — so pointing both at the wider route would have enabled the

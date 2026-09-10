@@ -196,7 +196,13 @@ extension PanelViewController {
     /// so an archive pane needs its own re-list; it mirrors that method but touches no history and
     /// re-reads through the (just-invalidated) mount. If the current directory itself was removed —
     /// the whole archive emptied so its inner folder is gone — it falls back to the archive root.
-    func refreshArchiveDirectory() {
+    ///
+    /// `then` runs once the new listing is on screen — the seam the code-page chooser needs, since
+    /// everything it wants to do afterwards (put the cursor back on the member the gesture was
+    /// about, re-open a rename on it) is a question about rows that do not exist until the re-read
+    /// lands. It does **not** run on the paths that navigate away or bail out, which is what keeps
+    /// a caller from acting on a listing it never got.
+    func refreshArchiveDirectory(then resume: (@MainActor () -> Void)? = nil) {
         guard isArchive else { return }
         loadToken += 1
         let token = loadToken
@@ -215,6 +221,7 @@ extension PanelViewController {
             panel.setListing(listing)
             cursorOnParentRow = panel.isEmpty && parentRowCount > 0
             reloadEverything()
+            resume?()
         }
     }
 }

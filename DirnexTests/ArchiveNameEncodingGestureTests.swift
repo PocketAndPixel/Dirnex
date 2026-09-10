@@ -41,12 +41,16 @@ struct ArchiveNameEncodingGestureTests {
         let root: URL
         let path: String
 
-        init(nesting: Bool = false) throws {
+        init(
+            nesting: Bool = false,
+            siblingName: String = "plain.txt",
+            siblingContents: String = "readable contents"
+        ) throws {
             root = FileManager.default.temporaryDirectory
                 .appendingPathComponent("encoding_gesture_\(UUID().uuidString)")
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
             path = root.appendingPathComponent("outer.zip").path
-            var members: [LegacyNameZip.Member] = [.text("plain.txt", "readable contents")]
+            var members: [LegacyNameZip.Member] = [.text(siblingName, siblingContents)]
             if nesting {
                 members.append(
                     LegacyNameZip.Member(name: nestedArchiveName, contents: try Self.innerArchive())
@@ -237,6 +241,97 @@ struct ArchiveNameEncodingGestureTests {
         )
 
         #expect(try await Self.sheet(over: probe.window) == Sheet.chooser)
+    }
+
+    /// The half the failure-path test cannot see, and the one the user reported: F2 asks **before**
+    /// it opens the field, so nothing they typed can be discarded by the answer.
+    ///
+    /// `renamingEntryID` is the observable, because `beginRename` sets it the moment it commits to
+    /// the edit and before every view call — so `nil` here means the field never opened. The view is
+    /// loaded for the reason `RenameReachTests` records: an unloaded pane's table has no columns, so
+    /// a flow that wrongly got this far would return at `nameColumnDisplayIndex` instead and leave
+    /// the assertion green whatever the guard did.
+    @Test("F2 asks for the code page before opening the field, not after")
+    func renameAsksBeforeTakingATypedName() async throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanup() }
+        let probe = try Probe(insideArchiveAt: fixture.path)
+        probe.putCursor(on: try probe.unreadableRow())
+
+        probe.pane.beginRename()
+
+        #expect(try await Self.sheet(over: probe.window) == Sheet.chooser)
+        #expect(probe.pane.renamingEntryID == nil, "the field opened on a name nobody can read")
+    }
+
+    /// Its narrowness control, and the one that stops "ask first" becoming "always ask": an archive
+    /// whose names are perfectly readable is not asked about at all.
+    ///
+    /// It drives the **decision** rather than the key, and that is a measured constraint rather than
+    /// a preference. Driving `beginRename` to *success* opens a real field editor in a real window,
+    /// and this suite's windows are retained for the life of the process — measured 2026-09-10, that
+    /// **crashes the test host**: the run restarts, the summary still says `passed`, and the tests
+    /// after it silently never run (9 tests against 2, same tree, the only difference being this one
+    /// driven to success). `RenameReachTests` records the same rule for the same reason and drives
+    /// only refusals. What the pair still pins between them is both halves: the positive test above
+    /// drives the real `beginRename` and gets the sheet, so the key does consult this; and this one
+    /// says the answer is no where the names are readable.
+    @Test("an ordinary archive is not asked about at all")
+    func aReadableArchiveIsNotAsked() throws {
+        let (root, path) = try Self.ordinaryArchive()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let probe = try Probe(insideArchiveAt: path)
+
+        #expect(probe.pane.archiveNamesAreUnreadable(at: path) == false)
+        #expect(probe.pane.offerNameEncodingBeforeTyping(forArchiveAt: path) == false)
+        #expect(probe.window.attachedSheet == nil, "a readable archive raised the chooser")
+    }
+
+    /// Answering the chooser has to leave the cursor on the row the gesture was about — reported
+    /// 2026-09-10, it landed on a different file.
+    ///
+    /// **The sibling is named `a.txt` on purpose, and the suite is inert without it.** Declaring a
+    /// code page only strands the cursor when the re-decode *reorders* the rows, and measured
+    /// against `localizedStandardCompare`, the chooser's default CP437 reading of this fixture
+    /// (`Åá¡«…`) still sorts before `plain.txt` — which is exactly why a live run with CP437 looked
+    /// perfect while the report, made with CP866 (`Панорама.txt`, Cyrillic after Latin), did not.
+    /// Against `a.txt` the default pick reorders, so the bug is reachable without driving the popup.
+    ///
+    /// The contents differ in **length** for the same kind of reason: what survives a re-decode is
+    /// everything but the name, so two members of equal size and timestamp are an ambiguous match
+    /// that ``DirnexCore/ArchiveMemberAnchor`` deliberately refuses.
+    ///
+    /// Driven through the bare chooser rather than through F2, because the cursor half belongs to
+    /// every gesture that raises it — and because F2's resume opens a real field editor, which in a
+    /// suite whose windows outlive the tests takes the host down with it.
+    @Test("answering the chooser leaves the cursor on the row the gesture was about")
+    func theChooserKeepsItsRow() async throws {
+        let fixture = try Fixture(siblingName: "a.txt", siblingContents: "short")
+        defer { fixture.cleanup() }
+        let probe = try Probe(insideArchiveAt: fixture.path)
+        let row = try probe.unreadableRow()
+        probe.putCursor(on: row)
+
+        probe.pane.askForNameEncoding(forArchiveAt: fixture.path)
+        try await settleUntil { probe.window.attachedSheet != nil }
+        try Self.pressUse(on: probe.window)
+        try await settleUntil {
+            probe.pane.panel.displayedEntries.allSatisfy { !$0.name.contains("\u{FFFD}") }
+        }
+
+        let landed = try #require(probe.pane.panel.currentEntry)
+        #expect(landed.byteSize == row.byteSize, "the cursor moved to a different file")
+        #expect(!landed.name.contains("\u{FFFD}"), "the names did not re-decode")
+    }
+
+    /// The confirming button carries no `keyEquivalent` on macOS 26 — Return lives on the window's
+    /// `defaultButtonCell` — so a scan for `"\r"` finds nothing and reads as a sheet with no default
+    /// button (docs/NOTES.md ▸ Localization). Never a title match: this target inherits whatever
+    /// `AppleLanguages` Dirnex is pinned to.
+    private static func pressUse(on window: NSWindow) throws {
+        let sheet = try #require(window.attachedSheet)
+        let button = try #require(sheet.defaultButtonCell?.controlView as? NSButton)
+        button.performClick(nil)
     }
 
     // MARK: - Narrowness

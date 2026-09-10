@@ -171,6 +171,51 @@ numbers behind it. What remains here is M15's own cut, and one gap a bug report 
 
 ## 5. Cross-cutting: testing strategy
 
+Progress (2026-09-10, last): **the chooser puts the cursor back on the member it was asked about, and
+F2 re-opens its field there by itself.** Reported: F2 raises the chooser and answering it leaves no
+text box — correct as far as it went, since the pass below deliberately returns rather than open a
+field over a name that has not decoded, and it left the gesture half-finished. Two halves. The
+*cursor*: a declaration re-decodes **every** name, so the pane's anchor is a `VFSPath` that no longer
+exists and `Panel.restoreCursor` falls back to `min(cursor, count - 1)` — which on the reporter's
+CP866 archive is a different file, because the code page decides the collation and the ordinary
+default (CP437) sorts the same member elsewhere. `ArchiveMemberAnchor` (core) finds the row again by
+kind, byte size and parent, and only when exactly one candidate fits. It deliberately **does not
+compare the modification date**, which is the measurement worth keeping: the two listing engines'
+stamps are not comparable — `bsdtar -tvf`'s date column carries no seconds where libarchive reports
+the real mtime — so a re-decode that switches engines moves a field nothing touched. The *resume*:
+`askForNameEncoding` calls back with the member it landed on, so F2 re-enters `beginRename`, by which
+time the archive is declared and this very guard answers `false`. Also answered, since the report
+asked it outright: the damage is **name-only**. Measured on the fixture — the stored name is
+`8f a0 ad ae e0 a0 ac a0 2e 74 78 74` with the UTF-8 flag clear (CP866 `Панорама.txt`), while that
+member's *contents* are valid UTF-8 (`53 45 43 52 45 54 …`, `e2 80 94` for the em dash). An archive
+never transcodes what it stores, so nothing but the central directory is ever at stake, and a rewrite
+under the declared page writes `'./Панорама.txt' utf8flag=True` — repaired permanently, readable
+everywhere. Controls: the re-anchor block removed fails `theChooserKeepsItsRow` with
+`landed.byteSize → 5` against `17`, the reporter's own symptom; `ignoresTheModificationDate` pins the
+omission, since a date-comparing anchor passes every *other* test in the suite. Validation: 1,108 app
+tests, 3,250 core, both linters, and a live run — F2 on the unreadable row of `legacy-plain.zip`
+raises the chooser with no field, and answering it re-opens the rename box on that same row with the
+name selected, the fixture byte-identical afterwards (a declaration rewrites nothing). A
+background-driven run cannot open a popup button, so only CP437 is reachable there: the live half
+demonstrates the **resume** and the reorder stays covered headlessly.
+
+Progress (2026-09-10, later still): **F2 asks for the code page before it opens the field**, not
+after the rename is committed. Reported: answer the chooser and the rename does not happen — correct
+by the "a refusal is never retried" rule, and no consolation to somebody who has just lost the name
+they typed. Every other route into the chooser is a refusal whose whole input is a row somebody
+pointed at, costing one keystroke to make again; F2's input is *authored*, and the captured target is
+spelled with the undecoded name so it cannot be replayed once the code page lands. It is also the
+better question: renaming *from* `\217\240…` has no sensible starting point. `beginRename` now
+consults `offerNameEncodingBeforeTyping` before building the field. The general shape is in
+docs/NOTES.md — **a gesture whose input the user authors must resolve its preconditions before taking
+the input.** Its control crashed rather than failed (the field opens, and a live field editor in a
+retained window kills the test host — the same reason `RenameReachTests` drives only refusals), so it
+was run with the field creation silenced as scaffolding: it then failed on exactly its own test with
+`renamingEntryID → …/\217\255….txt`, the reported bug verbatim, while both narrowness controls
+stayed green. Validation: 1,107 app tests, 3,244 core, both linters, the CI scripts, and a live run —
+F2 raises the chooser with no field, Use re-lists readable, F2 again renames, and ⌘Z restored the
+fixture to its original 366 bytes and mtime.
+
 Progress (2026-09-10, later): **F2 renames a member of a browsed archive**, which had never been
 implemented — `ArchiveBackend` is `.read` and `ArchiveWriter` had `delete` and `add` and no rename,
 so the key was dead there for every archive and the chooser had nothing to attach to. It is

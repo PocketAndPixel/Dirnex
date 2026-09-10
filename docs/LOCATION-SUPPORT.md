@@ -283,9 +283,12 @@ with a `moveItem` where those have a `removeItem`. So it costs a full pass over 
 than the cheap in-place rename every other backend does, and it is undoable the same way they are:
 the copy taken on the way past is what ⌘Z swaps back. It is "limited" for two reasons. A **nested**
 archive is refused, because its own bytes are an extracted temp copy and the rewrite would land
-somewhere thrown away; and an archive whose names are in an undeclared code page refuses before
-anything is altered, offering the encoding chooser instead of an error (§1's *Legacy code-page
-names*).
+somewhere thrown away; and an archive whose names are in an undeclared code page asks for the code
+page **first**, before the inline field opens, since there is no sensible name to edit from and the
+rewrite would refuse anyway. Answering it re-lists the archive readable, puts the cursor back on that
+same member — by kind, size and folder, since a re-decode changes every name and can reorder the
+listing — and re-opens the field there by itself, so F2 reads as one gesture that asked a question in
+the middle (▸ <sup>ddd</sup>).
 
 **⇧F2 is a plain no there, and deliberately so.** The multi-rename tool renames each target with the
 backend's own `moveItem`, which an archive answers `.unsupported` to — so it keeps the narrower gate
@@ -337,11 +340,11 @@ are not reclaimed until the record leaves the journal.
 
 | Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Results | Trash |
 |---|---|---|---|---|---|---|---|---|---|
-| Quick View pane / full size (`⌃Q`) | yes | yes | yes, limited<sup>r</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes | yes |
-| Quick Look (`⌘Y`) | yes | yes | yes, limited<sup>r</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes | yes |
+| Quick View pane / full size (`⌃Q`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes | yes |
+| Quick Look (`⌘Y`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes | yes |
 | Syntax highlighting, Markdown, diagrams in preview | yes | yes | yes | yes | yes | yes | n/a | yes | yes |
-| Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes | yes |
-| Edit `F4`, with save written back | yes | yes | yes, limited<sup>v</sup> | yes | yes | yes | n/a | yes | yes |
+| Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t, ddd</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes | yes |
+| Edit `F4`, with save written back | yes | yes | yes, limited<sup>v, ddd</sup> | yes | yes | yes | n/a | yes | yes |
 | Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes | yes |
 | Send to a **Service** | yes | yes | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | n/a | yes | yes |
 | Compare By Contents (`⌥F3`) | yes | yes | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | n/a | yes | yes |
@@ -368,6 +371,19 @@ one job with one confirmation (▸ <sup>aaa</sup>).
 preserving encryption and hidden names. A nested archive's member cannot. Several members saved
 together are **one repack**, whatever folders they came from inside it (since 2026-09-01), with one
 question for the archive rather than one per file.
+
+<sup>ddd</sup> **An archive whose names are in a legacy code page asks which one, on the first
+gesture that wants a member's bytes** — `⌃Q`, `⌘Y`, `⏎`, `F4`, `F5` out, paste, `F8`, `F2` and
+entering a nested archive alike (M27; widened 2026-09-10 after a report that only the three *write*
+gestures asked, every other route reporting the refusal as an ordinary failure). Nothing can infer
+the page, so the sheet is a **chooser over a preview** rather than a detector: it offers only the
+pages every sampled name actually decodes under, and shows what those names become under the one
+selected. The declaration is per archive and lasts the session. The preview that follows the
+**cursor** inside `⌃Q`'s mode deliberately stays silent — a question asked because an arrow key
+moved is a question nobody asked. Only the names are ever at stake: a zip stores its members' bytes
+verbatim whatever the central directory says, so a declaration cannot change a byte of anything you
+extract, and the names on disk are untouched until something *rewrites* the archive (`F8`, `F2`,
+paste), which repacks them as UTF-8 and flagged — readable everywhere afterwards.
 
 <sup>w</sup> Both sides are brought down first, as one queued job with a determinate bar and a Stop
 (PLAN.md §M24 Slice 4) — `ByteComparator` still only ever sees real local paths, and the diff tool is

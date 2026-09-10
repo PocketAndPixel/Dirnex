@@ -79,6 +79,46 @@ extension PanelViewController {
         askForNameEncoding(forArchiveAt: archivePath)
     }
 
+    /// Whether this archive's names could not be read at all — the state the chooser exists for.
+    ///
+    /// A peek at the table of contents the pane is *already listing from*, so it costs nothing and
+    /// never spawns anything; `false` once a code page has been declared, since the declaration
+    /// drops the mount and the re-read decodes the names properly.
+    func archiveNamesAreUnreadable(at archivePath: String) -> Bool {
+        (backend as? CompositeBackend)?
+            .mountedArchiveHasUnreadableNames(forArchiveAt: archivePath) ?? false
+    }
+
+    /// Ask **before** a gesture collects something the user authors, rather than discarding it
+    /// afterwards. Returns `true` when it has taken the gesture over.
+    ///
+    /// Every other route into the chooser is a *refusal* — the gesture runs, the archive turns it
+    /// away before altering anything, and the offer replaces the error. That is right where the
+    /// gesture's whole input is a row somebody pointed at: it costs one keystroke to make again.
+    /// **F2 is the exception, because its input is a name the user typed**, and the refusal arrives
+    /// after they have typed it. Reported 2026-09-10: answer the chooser and the rename simply does
+    /// not happen — correct by the "never retried" rule, which exists because the captured target is
+    /// spelled with the *undecoded* name and no longer addresses anything once the code page lands,
+    /// and no consolation at all to somebody who has just lost what they wrote.
+    ///
+    /// It is also the better question to ask. Renaming *from* a name nobody can read is a gesture
+    /// with no sensible starting point — the field would open on `\217\240…` for the user to edit —
+    /// so the code page is not an obstacle in front of the rename, it is the thing that has to be
+    /// true before the rename means anything.
+    ///
+    /// The general shape is worth more than the case: **a gesture whose input the user authors has
+    /// to resolve its preconditions before taking the input.** Ask afterwards and the only choices
+    /// are to discard their work or to replay it against a listing that has changed underneath.
+    @discardableResult
+    func offerNameEncodingBeforeTyping(
+        forArchiveAt archivePath: String,
+        thenResume resume: (@MainActor (FileEntry) -> Void)? = nil
+    ) -> Bool {
+        guard archiveNamesAreUnreadable(at: archivePath) else { return false }
+        askForNameEncoding(forArchiveAt: archivePath, thenResume: resume)
+        return true
+    }
+
     /// Whether `error` is an archive refusing to be read because its names are not UTF-8.
     ///
     /// Matched on the case rather than on a message: it travels as itself out of
@@ -111,10 +151,32 @@ extension PanelViewController {
 
     /// Raise the chooser and, on an answer, declare the code page and re-list the pane.
     ///
-    /// One funnel for both ways in, so the answer can only ever be acted on one way. The selection
-    /// is cleared first because the marks were made against names that are about to change; keeping
-    /// them would hand the next gesture a set the user never chose.
-    private func askForNameEncoding(forArchiveAt archivePath: String) {
+    /// One funnel for every way in, so the answer can only ever be acted on one way. The selection
+    /// is cleared because the marks were made against names that are about to change; keeping them
+    /// would hand the next gesture a set the user never chose.
+    ///
+    /// **The cursor is put back on the row the gesture was about, and that is not automatic.**
+    /// Declaring a code page re-spells every non-ASCII name, so `Panel.setListing` cannot re-anchor
+    /// by `VFSPath` — the identity it uses *is* the thing that changed — and it falls through to
+    /// keeping the row **index**, which re-sorting has since given to a different file. Reported
+    /// 2026-09-10: answering the chooser over `Панорама.txt` left the cursor on `plain.txt`, one
+    /// keystroke away from renaming the wrong one. ``DirnexCore/ArchiveMemberAnchor`` finds the row
+    /// again by what a re-decode cannot change, and refuses when more than one row fits.
+    ///
+    /// `resume` is what the gesture wanted to do to that row all along, run once the re-listed pane
+    /// is on screen — F2 re-opens its field there, so the whole thing reads as one gesture that
+    /// asked a question in the middle. It is skipped when the row cannot be found again, which is
+    /// the honest ending: the names are readable either way, and the user picks the row.
+    /// Internal rather than `private` because `beginRename` asks before it opens the inline field —
+    /// Swift's `private` does not cross files.
+    func askForNameEncoding(
+        forArchiveAt archivePath: String,
+        thenResume resume: (@MainActor (FileEntry) -> Void)? = nil
+    ) {
+        // Captured before anything changes, and deliberately the *cursor's* row rather than the
+        // gesture's own target: every caller here was acting on the row under the cursor, and it is
+        // the one the pane has to come back to whether or not anything resumes.
+        let anchor = cursorOnParentRow ? nil : panel.currentEntry
         ArchiveNameEncodingPrompt.ask(
             forArchiveAt: archivePath, over: view.window
         ) { [weak self] encoding in
@@ -123,8 +185,19 @@ extension PanelViewController {
                 encoding, forArchiveAt: archivePath
             )
             panel.clearSelection()
-            refreshArchiveDirectory()
+            // Synchronously, so the sheet closing always hands focus back — the re-list below can
+            // bail out (the pane navigated away under it) and must not be what focus depends on.
             focusTable()
+            refreshArchiveDirectory { [weak self] in
+                guard let self else { return }
+                guard let anchor,
+                      let found = ArchiveMemberAnchor.match(anchor, in: panel.displayedEntries),
+                      let index = panel.displayedIndex(ofID: found.path)
+                else { return }
+                panel.moveCursor(to: index)
+                syncCursorToTable()
+                resume?(found)
+            }
         }
     }
 }
