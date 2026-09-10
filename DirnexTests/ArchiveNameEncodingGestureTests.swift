@@ -222,6 +222,23 @@ struct ArchiveNameEncodingGestureTests {
         #expect(try await Self.sheet(over: probe.window) == Sheet.chooser)
     }
 
+    /// F2 rewrites the container, so it meets the same refusal the other rewrites do — and it is
+    /// the gesture a user reaches for *because* the name is unreadable, which makes reporting it as
+    /// an ordinary failure the least helpful answer available.
+    @Test("F2 on a row nobody can name offers the chooser")
+    func renamingAnUnnameableMemberOffersTheChooser() async throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanup() }
+        let probe = try Probe(insideArchiveAt: fixture.path)
+        let row = try probe.unreadableRow()
+
+        probe.pane.renameArchiveMember(
+            row.path, to: "readable.txt", oldName: row.name, inArchiveAt: fixture.path
+        )
+
+        #expect(try await Self.sheet(over: probe.window) == Sheet.chooser)
+    }
+
     // MARK: - Narrowness
 
     /// Without this, "offer the chooser" passes implemented as "offer it whatever went wrong" —

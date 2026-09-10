@@ -76,6 +76,36 @@ public enum ArchiveMutation {
         return (workingDirectory as NSString).appendingPathComponent(relative)
     }
 
+    /// The inner path a member takes when renamed **in place** to `newName` — `/docs/a.txt` with
+    /// `b.txt` is `/docs/b.txt`, and a member at the root keeps the leading slash. The rename-side
+    /// mirror of `workingLocation` and `additionDirectory`: the app asks for both locations inside
+    /// the extracted tree and moves one to the other, so the edit is a real filesystem move by exact
+    /// path with none of `--exclude`'s trailing-subpath ambiguity.
+    ///
+    /// `nil` for a name that cannot be a member's own name, which is the whole of the validation
+    /// this operation needs and is *not* the same list a local rename refuses. A **`/`** would move
+    /// the member somewhere else in the tree rather than rename it — the local flow refuses that
+    /// too, for the same reason — while **`.` and `..`** are refused here and never come up there:
+    /// a local rename builds its destination by appending to a `VFSPath`, where `..` is a component
+    /// nothing resolves, and this one hands the name to `FileManager.moveItem` inside the staged
+    /// tree, where `..` really would climb out of the directory the member was in.
+    ///
+    /// The *collision* is deliberately not checked here, and the reason is a measured difference
+    /// between the two renames rather than an omission. A local rename must `stat` first because it
+    /// ends in `rename(2)`, which silently overwrites; this one ends in `FileManager.moveItem`,
+    /// which refuses an occupied destination itself (`NSFileWriteFileExistsError`, the destination's
+    /// bytes untouched) *and* still performs a case-only change on case-insensitive APFS — both
+    /// measured 2026-09-10. So the move is its own guard, and a second one here could only disagree
+    /// with it.
+    public static func renamedInnerPath(ofInnerPath innerPath: String, to newName: String) -> String? {
+        guard !newName.isEmpty, !newName.contains("/"), newName != ".", newName != ".." else {
+            return nil
+        }
+        let parent = (innerPath as NSString).deletingLastPathComponent
+        guard !parent.isEmpty else { return newName }
+        return (parent as NSString).appendingPathComponent(newName)
+    }
+
     /// One on-disk item to copy into an archive, and the inner directory it lands in
     /// (PLAN.md §4 ▸ *Still open*, taken 2026-09-01).
     ///

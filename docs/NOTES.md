@@ -7872,6 +7872,36 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   - **The deliberate silence is what stops the fix becoming "ask everywhere"**, and it needs its own
     test or it is only a comment: the preview that follows the **cursor** meets the identical refusal
     on every arrow key and must go on saying nothing (▸ Design lessons, the credential-shaped split).
+- **A refusal that has never been implemented reads exactly like one that was decided, and the tell
+  is which layer says no.** F2 was dead inside *every* archive — `ArchiveBackend.capabilities` is
+  `.read`, so `canRenameHere` refused and File ▸ Rename… was gray — while `ArchiveWriter` had
+  `delete` and `add` and simply no rename. So the honest answer to "why won't it offer the code-page
+  chooser here" was that the gesture did not exist, not that the chooser had missed a site. Ask
+  whether the *verb* is there before hunting the gate: a capability that reads as a policy is
+  sometimes a feature nobody wrote (▸ the archive-member edit lesson, which is this shape from the
+  other side — there a guard's own comment named the missing mechanism, and here nothing did).
+  - **`FileManager.moveItem` is its own collision guard and the local rename's `stat` is not
+    redundant — the two ends differ.** Measured 2026-09-10 on APFS: `moveItem` **refuses** an
+    occupied destination (`NSFileWriteFileExistsError`, the destination's bytes untouched) and
+    **still performs a case-only change** (`foo.txt` → `Foo.txt`) on a case-insensitive volume. A
+    local rename ends in `rename(2)`, which silently overwrites, so it has to `stat` first and
+    special-case the case-only change; a rename inside a staged archive tree needs neither, and a
+    second check there could only disagree with the move that follows it. Worth measuring before
+    copying the local flow's shape across, which is the natural thing to do.
+  - **What the staged tree *does* need is a name check the local flow never wanted.** A local rename
+    builds its destination by appending to a `VFSPath`, where `..` is a component nothing resolves;
+    a staged one hands the name to `moveItem` on a real filesystem, where `../escape.txt` climbs out
+    of the directory the member was in and the rewrite then publishes it somewhere nobody asked for.
+    The control is sharp and was worth running: with the guard neutered the traversal test failed by
+    **returning an undo snapshot** — the archive really was rewritten — where every other bad name
+    (`..`, `""`, `sub/deep.txt`) is refused by the move anyway and would have made the test read as
+    inert.
+  - **A gate two gestures share cannot be widened for one of them.** F2 and ⇧F2 both read
+    `canRenameHere`, and the multi-rename tool renames each target with `backend.moveItem`, which an
+    archive answers `.unsupported` to — so pointing both at the wider route would have enabled the
+    batch tool over a flow that fails once per item. F2 got its own `renameRoute`; ⇧F2 kept the
+    narrow property and stays gray. The asymmetry has to be **pinned in the table that used to
+    assert they agree**, or it reads as an oversight somebody tidies away.
 - **A "can this apply here" gate can be testing the wrong *subject* entirely, and it then reads as a
   considered restriction rather than as a bug.** `canUseTreeMode` was `panel.path.backend == .local`,
   under a doc comment explaining that a per-level lazy listing "needs a real directory to read" —

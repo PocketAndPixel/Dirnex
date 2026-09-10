@@ -31,128 +31,6 @@ enum ArchiveWriter {
             .appendingPathComponent("DirnexArchiveWrite", isDirectory: true)
     }
 
-    /// Delete `innerPaths` (VFS inner paths like `/docs/api/x.md`, a directory removing its whole
-    /// subtree) from the archive at `archiveOnDiskPath`, rewriting it in place. Throws — leaving the
-    /// original untouched — when the archive can't be read, the repack fails, or the swap fails.
-    /// Blocks, so call it off-main.
-    ///
-    /// `passphrase` is required for an encrypted archive and ignored otherwise, so a caller holding
-    /// one may pass it speculatively.
-    ///
-    /// Returns the copy of the archive taken on the way past, for the caller to journal — or `nil`
-    /// when the rewrite is not undoable (see ``rewrite(archiveOnDiskPath:passphrase:undo:edit:)``).
-    @discardableResult
-    static func delete(
-        innerPaths: [String],
-        fromArchiveAt archiveOnDiskPath: String,
-        passphrase: ArchivePassphrase? = nil,
-        undo: ArchiveUndoStorage.Request,
-        nameEncoding: ArchiveNameEncoding? = nil
-    ) throws -> ArchiveUndoSnapshot? {
-        try rewrite(
-            archiveOnDiskPath: archiveOnDiskPath, passphrase: passphrase, undo: undo,
-            nameEncoding: nameEncoding
-        ) { workingDirectory in
-            // Remove each target by its exact extracted path. A member that isn't there (already
-            // gone, or a stale selection) is not a failure — the rewrite still drops it.
-            for innerPath in innerPaths {
-                let location = ArchiveMutation.workingLocation(
-                    ofInnerPath: innerPath,
-                    inWorkingDirectory: workingDirectory
-                )
-                try? FileManager.default.removeItem(atPath: location)
-            }
-        }
-    }
-
-    /// Add the on-disk items at `localPaths` into the archive's inner directory `innerDirectory`
-    /// (`/` = the archive root), rewriting the archive at `archiveOnDiskPath` in place. Each item is
-    /// copied under its own last path component; a same-named member already there is replaced (the
-    /// app confirms that overwrite first). Throws — leaving the original untouched — when the archive
-    /// can't be read, a copy fails, the repack fails, or the swap fails. Blocks and does file copies,
-    /// so call it off-main.
-    ///
-    /// `passphrase` is required for an encrypted archive and ignored otherwise. This is also the
-    /// primitive behind editing a member in place: writing one edited file back is an add of that
-    /// file into the directory it came from, replacing the member of the same name.
-    @discardableResult
-    static func add(
-        localPaths: [String],
-        toInnerDirectory innerDirectory: String,
-        ofArchiveAt archiveOnDiskPath: String,
-        passphrase: ArchivePassphrase? = nil,
-        undo: ArchiveUndoStorage.Request,
-        nameEncoding: ArchiveNameEncoding? = nil
-    ) throws -> ArchiveUndoSnapshot? {
-        try add(
-            localPaths.map {
-                ArchiveMutation.Addition(localPath: $0, innerDirectory: innerDirectory)
-            },
-            ofArchiveAt: archiveOnDiskPath,
-            passphrase: passphrase,
-            undo: undo,
-            nameEncoding: nameEncoding
-        )
-    }
-
-    /// Add items that land in **different inner directories**, in one rewrite
-    /// (PLAN.md §4 ▸ *Still open*, taken 2026-09-01).
-    ///
-    /// The general form, and the single-directory spelling above is now one call into it. The
-    /// reason it exists is that a rewrite is per **archive**, not per directory: extracting and
-    /// repacking the container is the whole cost, so N edited members saved together belong in one
-    /// pass whatever folders they came from — where before, a script that rewrote forty members
-    /// repacked the archive forty times, each pass extracting and re-compressing everything the
-    /// previous one had just written.
-    ///
-    /// Each directory is created once rather than per item, which matters for the same reason: the
-    /// grouping is what makes this a single pass and not a loop that happens to share a scratch
-    /// tree.
-    @discardableResult
-    static func add(
-        _ additions: [ArchiveMutation.Addition],
-        ofArchiveAt archiveOnDiskPath: String,
-        passphrase: ArchivePassphrase? = nil,
-        undo: ArchiveUndoStorage.Request,
-        nameEncoding: ArchiveNameEncoding? = nil
-    ) throws -> ArchiveUndoSnapshot? {
-        let name = (archiveOnDiskPath as NSString).lastPathComponent
-        return try rewrite(
-            archiveOnDiskPath: archiveOnDiskPath, passphrase: passphrase, undo: undo,
-            nameEncoding: nameEncoding
-        ) { workingDirectory in
-            var prepared: Set<String> = []
-            for addition in additions {
-                // The destination directory exists already when adding into a browsed folder, but
-                // make sure — the archive could have been emptied, or the add could target a fresh
-                // path. Once per directory, not once per item.
-                let destinationDirectory = ArchiveMutation.additionDirectory(
-                    forInnerDirectory: addition.innerDirectory,
-                    inWorkingDirectory: workingDirectory
-                )
-                if prepared.insert(destinationDirectory).inserted {
-                    try FileManager.default.createDirectory(
-                        atPath: destinationDirectory,
-                        withIntermediateDirectories: true
-                    )
-                }
-                let sourceURL = URL(fileURLWithPath: addition.localPath)
-                let destinationURL = URL(fileURLWithPath: destinationDirectory)
-                    .appendingPathComponent(sourceURL.lastPathComponent)
-                // Replace a same-named member (the overwrite was confirmed) — `copyItem` would
-                // otherwise fail if the destination already exists.
-                try? FileManager.default.removeItem(at: destinationURL)
-                do {
-                    try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
-                } catch {
-                    throw VFSError.unsupported(
-                        .archiveAddFailed(item: sourceURL.lastPathComponent, archive: name)
-                    )
-                }
-            }
-        }
-    }
-
     /// The shared rewrite: make a scratch directory, extract the whole archive into it, let `edit`
     /// mutate the extracted tree by real filesystem paths, then repack + atomically swap. Both
     /// `delete` and `add` are just different `edit` closures over this one flow (see the type doc).
@@ -167,7 +45,9 @@ enum ArchiveWriter {
     /// `nil` back means the rewrite happened and is not undoable: the archive is larger than the
     /// whole budget, or the copy could not be made. The gesture has already told the user which it
     /// will be, from `ArchiveUndoStorage.willBeUndoable(archiveAt:)`.
-    private static func rewrite(
+    /// Internal rather than `private` because the three edits that ride it live in
+    /// `ArchiveWriter+Edits.swift`, and Swift's `private` does not cross files.
+    static func rewrite(
         archiveOnDiskPath: String,
         passphrase: ArchivePassphrase?,
         undo: ArchiveUndoStorage.Request,

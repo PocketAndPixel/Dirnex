@@ -155,8 +155,8 @@ the file it was mounted from is gone by the next launch.
 | Drag **in** from Finder and other apps | yes | yes | **no**<sup>j</sup> | yes | yes | yes | no<sup>h</sup> | no<sup>k</sup> | no<sup>k</sup> |
 | New Folder `F7` | yes | yes | no | yes | yes | yes | yes, limited<sup>l</sup> | no | no |
 | New / Edit File `⇧F4` | yes | yes | no | yes | yes | yes | n/a | no | no |
-| Rename `F2` | yes | yes | no | yes | yes | yes, limited<sup>i</sup> | no | yes | no<sup>m</sup> |
-| Multi-rename `⇧F2` | yes | yes | no | yes | yes | yes, limited<sup>i</sup> | no | yes | no<sup>m</sup> |
+| Rename `F2` | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes, limited<sup>i</sup> | no | yes | no<sup>m</sup> |
+| Multi-rename `⇧F2` | yes | yes | no<sup>ccc</sup> | yes | yes | yes, limited<sup>i</sup> | no | yes | no<sup>m</sup> |
 | Delete `F8` → Trash | yes | yes, limited<sup>o</sup> | n/a | n/a | n/a | n/a | n/a | yes | n/a |
 | Delete `F8` → permanent (confirmed) | yes | yes | yes, limited<sup>n</sup> | yes | yes | yes | yes, limited<sup>l</sup> | yes | yes |
 | Put Back (restore from Trash) | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes, limited<sup>o</sup> |
@@ -276,6 +276,22 @@ accumulator spans its whole life, so reporting that would name the previous tran
 routine case is why it is not modal: a duplicate **inside one SFTP account** takes the server-side
 `cp` route, which carries no timestamp at all, so every such copy drops the modification time by
 construction and says so. A local copy carries everything and says nothing.
+
+<sup>ccc</sup> Renaming a member of a browsed archive rewrites the **container** — the same
+extract → edit the staged tree → repack → atomic swap that F8 delete and paste-into already use,
+with a `moveItem` where those have a `removeItem`. So it costs a full pass over the archive rather
+than the cheap in-place rename every other backend does, and it is undoable the same way they are:
+the copy taken on the way past is what ⌘Z swaps back. It is "limited" for two reasons. A **nested**
+archive is refused, because its own bytes are an extracted temp copy and the rewrite would land
+somewhere thrown away; and an archive whose names are in an undeclared code page refuses before
+anything is altered, offering the encoding chooser instead of an error (§1's *Legacy code-page
+names*).
+
+**⇧F2 is a plain no there, and deliberately so.** The multi-rename tool renames each target with the
+backend's own `moveItem`, which an archive answers `.unsupported` to — so it keeps the narrower gate
+rather than being pointed at F2's, which would have enabled it over a flow that fails once per item.
+Batching N renames into the one rewrite the container actually wants is its own slice; nothing about
+the rewrite is in the way of it (PLAN.md §4 ▸ *Still open*, 2026-09-10).
 
 <sup>bbb</sup> A duplicate within one SFTP account is the **server's** work: OpenSSH's `copy-data`
 extension gives `sftp` a real `cp` — measured against a real `sshd`, 64 MiB in **0.09 s** for the

@@ -32,8 +32,15 @@ import Testing
 /// regression it is. What covers it instead is that the two flows now share the *same* guard
 /// expression, plus `menuItemsAgree` over ⇧F2's own validator.
 ///
-/// The panes are otherwise headless — `canRenameHere` reads only the model and the backend — with the
+/// The panes are otherwise headless — both predicates read only the model and the backend — with the
 /// one deliberate exception documented on `theKeyRefusesWhereTheItemIsGray`.
+///
+/// **The two keys stopped answering the same question on 2026-09-10**, which is why `Case` carries
+/// two booleans. F2 gained a second route — a member of a writable archive renames by rewriting the
+/// container — while ⇧F2's apply loop still renames each target with `backend.moveItem`, which an
+/// archive answers `.unsupported` to. Pointing both at the wider gate would have enabled the batch
+/// tool over a flow that fails once per item, so the asymmetry is deliberate and is pinned here:
+/// this table is the only thing that would notice it being "tidied" back into one answer.
 
 /// At file scope so the parameterized `arguments:` can read them: the suite is `@MainActor`, and a
 /// static on it is main-actor-isolated where the argument list is evaluated.
@@ -53,7 +60,14 @@ private enum Remote {
 private struct Case {
     let name: String
     let path: VFSPath
+    /// Whether **F2** can rename the cursor row — `canRenameCursorRow`, and the item File ▸ Rename…
+    /// grays itself off.
     let canRename: Bool
+    /// Whether **⇧F2** can, which is no longer the same question: a member of a writable archive is
+    /// renamed by rewriting the container, and the batch tool still renames each target with
+    /// `backend.moveItem`, which an archive refuses. Defaults to `canRename`, so only the row where
+    /// the two genuinely differ has to say so.
+    let canMultiRename: Bool
     /// Applied to the routing backend before the pane is built — `nil` for a location that needs no
     /// connection (local, virtual) or is deliberately left unconnected.
     let connect: ((CompositeBackend) -> Void)?
@@ -65,9 +79,11 @@ private struct Case {
         _ name: String,
         _ path: VFSPath,
         canRename: Bool,
+        canMultiRename: Bool? = nil,
         connect: ((CompositeBackend) -> Void)? = nil,
         row: FileEntry? = nil
     ) {
+        self.canMultiRename = canMultiRename ?? canRename
         self.name = name
         self.path = path
         self.canRename = canRename
@@ -253,10 +269,15 @@ struct RenameReachTests {
             canRename: false,
             row: trashedFile
         ),
+        // F2 renames a member by rewriting the container (`ArchiveWriter.rename`), which is why
+        // this row moved; ⇧F2 renames each target with `backend.moveItem`, which an archive
+        // refuses, so it stays gray. The one place the two answers differ, and it is deliberate —
+        // see `renameRoute(for:)`.
         Case(
             "a browsed archive",
             VFSPath(backend: .archive(forArchiveAt: "/Users/tester/pkg.zip"), path: "/inner"),
-            canRename: false
+            canRename: true,
+            canMultiRename: false
         )
     ]
 
@@ -266,7 +287,10 @@ struct RenameReachTests {
     func reach() {
         for testCase in Self.cases {
             let pane = Self.pane(for: testCase)
-            #expect(pane.canRenameHere == testCase.canRename, "\(testCase.name)")
+            #expect(pane.canRenameCursorRow == testCase.canRename, "F2 in \(testCase.name)")
+            #expect(
+                pane.canRenameHere == testCase.canMultiRename, "⇧F2 in \(testCase.name)"
+            )
         }
     }
 
@@ -286,7 +310,7 @@ struct RenameReachTests {
                 Self.menuItem(#selector(PanelViewController.multiRenameSelection(_:)))
             )
             #expect(rename == testCase.canRename, "File ▸ Rename… in \(testCase.name)")
-            #expect(multi == testCase.canRename, "Multi-Rename in \(testCase.name)")
+            #expect(multi == testCase.canMultiRename, "Multi-Rename in \(testCase.name)")
         }
     }
 

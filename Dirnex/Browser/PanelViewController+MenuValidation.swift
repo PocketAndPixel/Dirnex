@@ -128,9 +128,12 @@ extension PanelViewController: NSMenuItemValidation {
                 && !(view.window?.firstResponder is NSText)
         case #selector(renameSelection(_:)):
             // Rename is single-item on the cursor (not the marked set) and never `..`.
-            return canRenameHere && !cursorOnParentRow && panel.currentEntry != nil
+            return canRenameCursorRow && !cursorOnParentRow && panel.currentEntry != nil
         case #selector(multiRenameSelection(_:)):
-            // The batch tool operates on the marked set (else the cursor entry).
+            // The batch tool operates on the marked set (else the cursor entry), and deliberately
+            // keeps the narrower `canRenameHere`: it renames each target with `backend.moveItem`,
+            // which an archive refuses, so it is gray inside one until that loop becomes the single
+            // rewrite the container wants (see `renameRoute`).
             return canRenameHere && !selectionTargets().isEmpty
         case #selector(synchronizeDirectories(_:)):
             // Compares the two panes' folders — needs two distinct real local directories.
@@ -237,12 +240,28 @@ extension PanelViewController: NSMenuItemValidation {
         cursorRowCarriesItsOwnName && backend.capabilities(for: renameDirectory).contains(.rename)
     }
 
+    /// Whether **F2** can rename the row under the cursor — the one answer its menu validator and
+    /// the key's own `beginRename` both read.
+    ///
+    /// Two independent halves, and collapsing them loses one: the route says *how* the rename would
+    /// happen (a backend `moveItem`, or a rewrite of the archive the row is a member of), and
+    /// `cursorRowCarriesItsOwnName` says whether the name on screen is the file's own — false for
+    /// the merged iCloud listing's app-library rows, where editing "Pages" would rename the
+    /// `com~apple~Pages` container underneath it. A gate that asked only the route would rename the
+    /// wrong thing there; one that asked only the name would still refuse every archive member.
+    ///
+    /// It is deliberately **wider** than `canRenameHere`, which ⇧F2 keeps — see `renameRoute(for:)`
+    /// for why the multi-rename tool is not simply pointed at this.
+    var canRenameCursorRow: Bool {
+        cursorRowCarriesItsOwnName && renameRoute(for: renameRow) != .unavailable
+    }
+
     /// Whether the row under the cursor shows its file's real name.
     ///
     /// `true` with no row under the cursor, which keeps this a question about a *location* for the
     /// callers that ask it that way: F2's validator adds `panel.currentEntry != nil` and ⇧F2's a
     /// non-empty selection, so an empty pane is refused there rather than here.
-    private var cursorRowCarriesItsOwnName: Bool {
+    var cursorRowCarriesItsOwnName: Bool {
         guard !cursorOnParentRow, let entry = panel.currentEntry else { return true }
         return entry.nameMatchesPath
     }

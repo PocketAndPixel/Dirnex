@@ -171,6 +171,27 @@ numbers behind it. What remains here is M15's own cut, and one gap a bug report 
 
 ## 5. Cross-cutting: testing strategy
 
+Progress (2026-09-10, later): **F2 renames a member of a browsed archive**, which had never been
+implemented — `ArchiveBackend` is `.read` and `ArchiveWriter` had `delete` and `add` and no rename,
+so the key was dead there for every archive and the chooser had nothing to attach to. It is
+`delete`'s twin one verb over: `ArchiveMutation.renamedInnerPath` derives the new inner path,
+`ArchiveWriter.rename` does one `moveItem` inside the same extract → repack → atomic swap, and the
+container's copy makes it undoable. Measured rather than assumed: `FileManager.moveItem` refuses an
+occupied destination itself (bytes untouched) *and* still performs a case-only change on APFS, so
+the staged move is its own collision guard where the local rename needs a `stat` — `rename(2)`
+overwrites. `renameRoute(for:)` is the one answer the key, its validator and the commit read;
+**⇧F2 deliberately keeps the narrower `canRenameHere`**, because its apply loop renames each target
+with `backend.moveItem`, which an archive refuses — batching N renames into the one rewrite the
+container wants is its own slice. `ArchiveWriter` split by concept at the lint ceiling: the engine
+stays, the three edits move to `ArchiveWriter+Edits.swift`. Controls: the route's archive branch
+removed fails the reach table, the validator and the nested-route test; the chooser offer removed
+fails only F2's; the writer's name guard removed lets `../escape.txt` **rewrite the archive and move
+the member out of its folder**, which its test caught by the returned snapshot. Validation: 1,105
+app tests, 3,244 core tests, both linters, all three CI scripts, and a live run — F2 inside
+`legacy-encrypted.zip` reaches the passphrase prompt (the local route never would), and inside an
+ordinary zip `bsdtar` confirms the member renamed with its bytes intact and ⌘Z put the container
+back byte for byte.
+
 Progress (2026-09-10): the code-page chooser reaches every gesture that asks for a member's
 bytes, not only the three writes it shipped with. Reported by a user: ⏎, F4, ⌘Y, ⌃Q, ⏎ into a
 nested archive and every hand-off that stages members first each met the same

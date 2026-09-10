@@ -9,12 +9,67 @@ import DirnexCore
 ///
 /// The edit is a real editable `NSTextField` swapped into the name cell (see
 /// `FileCellView.beginNameEditing`); this file drives its lifecycle and performs the
-/// rename through `DirnexCore`'s `moveItem` primitive off the main thread.
+/// rename through `DirnexCore`'s `moveItem` primitive off the main thread — or, inside a writable
+/// archive, by rewriting the container (`ArchiveWriter.rename`).
+
+/// How the row under the cursor would be renamed, and so which of the two mechanisms F2 uses.
+/// See `PanelViewController.renameRoute(for:)`.
+enum RenameRoute: Equatable {
+    /// The backend renames in place: one `moveItem` in the row's own directory.
+    case backend
+    /// The row is a member of a writable archive, renamed by rewriting the container at this path.
+    case archiveMember(archiveOnDiskPath: String)
+    /// Nothing here can be renamed — a read-only location, a trash (where a rename orphans the
+    /// Put Back record), an S3 account's buckets, or a **nested** archive, whose own bytes are an
+    /// extracted temp copy so a rewrite would land somewhere thrown away.
+    case unavailable
+}
+
 extension PanelViewController {
     // MARK: - Menu action (dispatched to the focused pane via the responder chain)
 
     @objc func renameSelection(_ sender: Any?) {
         beginRename()
+    }
+
+    /// How `path` would be renamed, or `.unavailable`.
+    ///
+    /// `nil` — the `..` row, or an empty pane — asks about the *location* rather than about a row,
+    /// which is what lets the menu validators add their own "is there something to act on" half
+    /// rather than duplicating it here.
+    ///
+    /// **An archive member is answered before the capability**, because a browsed archive is
+    /// read-only *through the VFS primitives* by design: its writes go through the app's own
+    /// rewrite path, gated by `isWritableArchiveMember` rather than by the caps
+    /// (`CompositeBackend.capabilities(for:)` says so in as many words). Asked of the **row** and
+    /// not of the pane, so a search hit inside a `.zip` renames exactly as a browsed row does — the
+    /// distinction four other properties in this app had to be corrected for (PLAN.md §M22 Slice 5).
+    ///
+    /// **⇧F2 deliberately does not read this**, and that is a refusal with its own reason rather
+    /// than an oversight: `applyMultiRename` renames each target with `backend.moveItem`, which an
+    /// archive answers `.unsupported` to, so widening the gate they *share* would have enabled the
+    /// multi-rename tool over a flow that fails once per item. Batching N renames into the one
+    /// rewrite the container actually wants is its own slice; until it exists ⇧F2 stays on
+    /// `canRenameHere` and stays gray inside an archive.
+    func renameRoute(for path: VFSPath?) -> RenameRoute {
+        if let archiveOnDiskPath = path?.backend.archivePath {
+            return host?.nestedArchiveRegistry.isNestedMount(archiveOnDiskPath) ?? false
+                ? .unavailable
+                : .archiveMember(archiveOnDiskPath: archiveOnDiskPath)
+        }
+        // The directory whose backend decides is the **row's own**, not the pane's. In a tree they
+        // are different directories and can be different backends: an S3 account pane's own rows are
+        // buckets, which nothing renames, so asking the pane refused F2 three levels inside an
+        // expanded bucket (reported 2026-08-22). A synthesized container — `search:`, `icloud:` —
+        // has no capabilities to speak of, and its rows are ordinary files in ordinary directories.
+        let directory = path?.parent ?? panel.path
+        return backend.capabilities(for: directory).contains(.rename) ? .backend : .unavailable
+    }
+
+    /// The row F2 would act on: `nil` on the `..` row, which stands for the pane's own parent rather
+    /// than for anything renameable.
+    var renameRow: VFSPath? {
+        cursorOnParentRow ? nil : panel.currentEntry?.path
     }
 
     // MARK: - Begin
@@ -28,11 +83,12 @@ extension PanelViewController {
         // runloop pass later. In a tree a stale cursor is a different **directory**, hence a
         // different backend, not merely a different row (docs/NOTES.md ▸ `creationDirectory`).
         reconcileCursorFromTable()
-        // `canRenameHere` — the same property File ▸ Rename… grays itself off, rather than a second
-        // spelling of it. The two had drifted, and a menu item's own key equivalent is dispatched
-        // through the item, so a mismatch is a key that works where the menu says it cannot (or the
-        // reverse, which is worse: an enabled item over a flow that returns here in silence).
-        guard canRenameHere else { return }
+        // `canRenameCursorRow` — the same property File ▸ Rename… grays itself off, rather than a
+        // second spelling of it. The two had drifted, and a menu item's own key equivalent is
+        // dispatched through the item, so a mismatch is a key that works where the menu says it
+        // cannot (or the reverse, which is worse: an enabled item over a flow that returns here in
+        // silence).
+        guard canRenameCursorRow else { return }
         guard !cursorOnParentRow, let entry = panel.currentEntry else { return }
         guard let columnIndex = nameColumnDisplayIndex else { return }
 
@@ -106,6 +162,25 @@ extension PanelViewController {
             )
             focusTable()
             return
+        }
+
+        // The third reader of the route, and the one whose omission is this family's own recorded
+        // failure: a decision extracted for a key and a validator, with the *act* below still
+        // calling the local-only verb (docs/NOTES.md ▸ Design lessons, the ninth axis).
+        switch renameRoute(for: source) {
+        case let .archiveMember(archiveOnDiskPath):
+            renameArchiveMember(
+                source, to: newName, oldName: oldName, inArchiveAt: archiveOnDiskPath
+            )
+            return
+        case .unavailable:
+            // Reachable only if the location stopped accepting renames between the key press and
+            // the commit — the pane navigated away under an open field editor. Silent, because the
+            // gesture was already answered by the field closing.
+            focusTable()
+            return
+        case .backend:
+            break
         }
 
         // The new name lands in the entry's *own* directory, not the pane's. In tree mode the

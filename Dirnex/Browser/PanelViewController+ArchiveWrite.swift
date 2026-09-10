@@ -107,6 +107,74 @@ extension PanelViewController {
         }
     }
 
+    // MARK: - Rename (F2)
+
+    /// Rename an archive member by rewriting the container — F2's `.archiveMember` route.
+    ///
+    /// **It does not confirm, where F8 does**, and the asymmetry is the point rather than an
+    /// omission: a delete is destructive and its sheet exists to say so *and* whether Undo will be
+    /// able to put it back. A rename destroys nothing — the same keystroke reverses it — so a modal
+    /// after an inline edit would interrupt the one gesture in this app that is deliberately not a
+    /// dialog. It is still journaled, so ⌘Z swaps the whole container back exactly as it does for a
+    /// delete or an add.
+    ///
+    /// A **collision is refused rather than offered as a replace**, matching the local rename
+    /// (`performRename` `stat`s first) rather than the add-into flow, which does confirm an
+    /// overwrite. Renaming onto an existing member is a mistake nobody makes on purpose; pasting
+    /// over one is a thing people mean.
+    func renameArchiveMember(
+        _ source: VFSPath,
+        to newName: String,
+        oldName: String,
+        inArchiveAt archiveOnDiskPath: String
+    ) {
+        let innerPath = source.path
+        let encoding = declaredNameEncoding(forArchiveAt: archiveOnDiskPath)
+        // An encrypted archive is rewritten through libarchive and needs the passphrase — asked for
+        // once per archive per session by the shared funnel, which also owns the retry on a typo.
+        withArchivePassphrase(forArchiveAt: archiveOnDiskPath) { passphrase in
+            try await BlockingWork.run {
+                Result {
+                    try ArchiveWriter.rename(
+                        innerPath: innerPath,
+                        to: newName,
+                        inArchiveAt: archiveOnDiskPath,
+                        passphrase: passphrase,
+                        undo: ArchiveUndoStorage.request(),
+                        nameEncoding: encoding
+                    )
+                }
+            }.get()
+        } onSuccess: { [weak self] snapshot in
+            guard let self else { return }
+            // The mounted TOC is now stale — drop it so the re-list re-reads the rewritten archive.
+            (backend as? CompositeBackend)?.invalidateMountedArchive(at: archiveOnDiskPath)
+            journalArchiveRewrite(snapshot)
+            // A search snapshot cannot re-list itself, so the row it is still drawing has to be put
+            // back under the new name by hand — the same substitution the backend route makes, and
+            // the reason F2 works on a hit inside a `.zip` at all.
+            substituteSearchHit(source, renamedTo: newName)
+            refreshArchiveDirectory()
+            focusTable()
+        } onFailure: { [weak self] error in
+            guard let self else { return }
+            // A legacy archive refuses before anything has been altered, and the answer is a code
+            // page rather than an error message — so offer the chooser instead of reporting.
+            guard !offerNameEncoding(after: error, forArchiveAt: archiveOnDiskPath) else {
+                focusTable()
+                return
+            }
+            presentOperationFailure(
+                message: String(
+                    localized: "Can’t rename “\(oldName)”",
+                    comment: "Rename failure title; %@ is the current name."
+                ),
+                detail: describe(error)
+            )
+            focusTable()
+        }
+    }
+
     /// Journal a finished archive rewrite so ⌘Z can swap the container back.
     ///
     /// One funnel for all three gestures that rewrite an archive — F8 delete, ⌘V/F5/F6 add, and an
