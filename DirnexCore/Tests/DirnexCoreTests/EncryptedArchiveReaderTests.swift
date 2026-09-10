@@ -207,4 +207,63 @@ struct EncryptedArchiveReaderTests {
         // where an off-by-one costs you a corrupted file rather than an error.
         #expect(try contents(of: destination + "/tree/inner/big.txt") == body)
     }
+
+    // MARK: - Modification times
+
+    /// The staged tree is what a rewrite repacks, so a time lost here is a time lost in the user's
+    /// archive: renaming one member restamped **every** entry with the moment of the rewrite until
+    /// 2026-09-10. `bsdtar -x` — the engine the other rewrite route uses — restores times, so this
+    /// is the assertion that keeps the two routes saying the same thing.
+    @Test("every placed item carries the modification time the archive recorded for it")
+    func extractionRestoresRecordedModificationTimes() throws {
+        let archive = try fixture("encrypted-aes256-bsdtar")
+        let inspection = try EncryptedArchiveReader.inspect(archiveAt: archive)
+        let destination = try scratchDirectory()
+        defer { remove(destination) }
+
+        try EncryptedArchiveReader.extract(
+            archiveAt: archive, into: destination,
+            passphrase: ArchivePassphrase(Self.passphrase)
+        )
+
+        // Checked against the archive's *own* headers rather than a date written into this test:
+        // the fixture's stamps are whatever `bsdtar` recorded the day it was committed, and a
+        // literal here would be a second copy of them for somebody to keep in step. It covers all
+        // three kinds in one pass — the two files, the two directories, and the symlink, whose own
+        // time is the one wanted rather than its target's.
+        for entry in inspection.entries {
+            var status = stat()
+            let placed = destination + "/" + entry.archivePath
+            let found = lstat(placed, &status) == 0
+            #expect(found, "not placed: \(entry.archivePath)")
+            guard found else { continue }
+            let recorded = time_t(entry.modificationDate.timeIntervalSince1970)
+            #expect(
+                status.st_mtimespec.tv_sec == recorded,
+                "\(entry.archivePath): placed \(status.st_mtimespec.tv_sec), archive \(recorded)"
+            )
+        }
+    }
+
+    /// The half a fix that stamped each directory where it created it would fail while passing
+    /// everything else here — `notes/` is made first and then written into twice, and creating an
+    /// entry inside a directory moves that directory's own mtime (measured 2026-09-10).
+    @Test("a directory keeps its recorded time even though its children are written after it")
+    func directoryTimeSurvivesItsOwnChildren() throws {
+        let archive = try fixture("encrypted-aes256-bsdtar")
+        let inspection = try EncryptedArchiveReader.inspect(archiveAt: archive)
+        let destination = try scratchDirectory()
+        defer { remove(destination) }
+
+        try EncryptedArchiveReader.extract(
+            archiveAt: archive, into: destination,
+            passphrase: ArchivePassphrase(Self.passphrase)
+        )
+
+        let notes = try #require(inspection.entries.first { $0.archivePath == "notes/" })
+        var status = stat()
+        let found = lstat(destination + "/notes", &status) == 0
+        #expect(found)
+        #expect(status.st_mtimespec.tv_sec == time_t(notes.modificationDate.timeIntervalSince1970))
+    }
 }

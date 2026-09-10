@@ -152,6 +152,50 @@ struct ArchiveRenameTests {
         #expect(unprotected.isEmpty)
     }
 
+    /// A rewrite is extract → edit → repack, so **every** member is written again — and until
+    /// 2026-09-10 the libarchive route came back with all of them stamped at the moment of the
+    /// rewrite, `two.txt` included. Found by renaming a member live and reading the dates back: two
+    /// members that had said `09.09.2026 23:40` both said `10.09.2026 16:55` afterwards.
+    ///
+    /// `two.txt` is the assertion that matters, because nobody named it: changing one member's name
+    /// is not a reason to restamp the container. The renamed member is checked beside it for the
+    /// same reason — a new name is not a new file.
+    @Test("an encrypted rewrite leaves every member's modification date alone")
+    func renameKeepsModificationDatesThroughTheLibarchiveRoute() throws {
+        // Even seconds: a zip's DOS timestamp has two-second granularity, so an odd value would
+        // fail this by one second for reasons that have nothing to do with the code under test.
+        let stamp = Date(timeIntervalSince1970: 1_700_000_000)
+        let fixture = try Fixture(encryption: .aes256, stampedAt: stamp)
+
+        try ArchiveWriter.rename(
+            innerPath: "/one.txt", to: "renamed.txt",
+            inArchiveAt: fixture.archive,
+            passphrase: Fixture.passphrase, undo: fixture.undo
+        )
+
+        let dates = try fixture.modificationDates()
+        #expect(dates["two.txt"] == stamp)
+        #expect(dates["renamed.txt"] == stamp)
+    }
+
+    /// The narrowness half: the `bsdtar` route has always preserved times (it restores them on
+    /// extract), so this passes before and after the fix and is what says the two routes now agree
+    /// rather than that one of them was taught a new trick.
+    @Test("a plain rewrite leaves them alone too, as it always has")
+    func renameKeepsModificationDatesThroughTheBsdtarRoute() throws {
+        let stamp = Date(timeIntervalSince1970: 1_700_000_000)
+        let fixture = try Fixture(stampedAt: stamp)
+
+        try ArchiveWriter.rename(
+            innerPath: "/one.txt", to: "renamed.txt",
+            inArchiveAt: fixture.archive, undo: fixture.undo
+        )
+
+        let dates = try fixture.modificationDates()
+        #expect(dates["two.txt"] == stamp)
+        #expect(dates["renamed.txt"] == stamp)
+    }
+
     /// ⌘Z has to be able to put the container back, exactly as it can after a delete or an add —
     /// which is what makes a rename affordable without the confirmation F8 raises.
     @Test("a rename is undoable")
@@ -233,7 +277,14 @@ struct ArchiveRenameTests {
         /// for why `undo:` has no default.
         let undo: ArchiveUndoStorage.Request
 
-        init(encryption: ArchiveEncryption = .none, nesting: Bool = false) throws {
+        /// `stampedAt` back-dates the source files before they are packed, which is the only way to
+        /// tell a preserved modification time from a freshly written one — a fixture built "now"
+        /// looks identical whether the rewrite carried the date or invented it.
+        init(
+            encryption: ArchiveEncryption = .none,
+            nesting: Bool = false,
+            stampedAt: Date? = nil
+        ) throws {
             directory = FileManager.default.temporaryDirectory
                 .appendingPathComponent("ArchiveRename-\(UUID().uuidString)")
             let source = directory.appendingPathComponent("source", isDirectory: true)
@@ -252,6 +303,15 @@ struct ArchiveRenameTests {
                     to: docs.appendingPathComponent("deep.txt"), atomically: true, encoding: .utf8
                 )
                 names.append("docs")
+            }
+
+            if let stampedAt {
+                for name in names {
+                    try FileManager.default.setAttributes(
+                        [.modificationDate: stampedAt],
+                        ofItemAtPath: source.appendingPathComponent(name).path
+                    )
+                }
             }
 
             undo = ArchiveUndoStorage.Request(
@@ -290,6 +350,19 @@ struct ArchiveRenameTests {
                 .map { $0.hasPrefix("./") ? String($0.dropFirst(2)) : $0 }
                 .filter { !$0.isEmpty && !$0.hasSuffix("/") }
                 .sorted()
+        }
+
+        /// Each member's recorded modification time, keyed the way ``members()`` keys its names.
+        func modificationDates() throws -> [String: Date] {
+            var dates: [String: Date] = [:]
+            for entry in try EncryptedArchiveReader.inspect(archiveAt: archive).entries {
+                let name = entry.archivePath.hasPrefix("./")
+                    ? String(entry.archivePath.dropFirst(2))
+                    : entry.archivePath
+                guard !name.isEmpty, !name.hasSuffix("/") else { continue }
+                dates[name] = entry.modificationDate
+            }
+            return dates
         }
 
         /// The member's bytes, extracted whole rather than by member filter — the filter matches the

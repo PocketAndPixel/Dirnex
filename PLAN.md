@@ -171,6 +171,29 @@ numbers behind it. What remains here is M15's own cut, and one gap a bug report 
 
 ## 5. Cross-cutting: testing strategy
 
+Progress (2026-09-10, after the live run): **an archive rewrite keeps every member's modification
+date.** Found by checking the archive after the CP866 rename above rather than by any test: both
+members had moved from `09.09.2026 23:40` to `10.09.2026 16:55`, including the one nothing had
+touched. The rewrite is extract → edit → repack and the *extract* half has two engines —
+`bsdtar -x`, which restores times by default (measured, a 2024 stamp comes back to the second), and
+`EncryptedArchiveReader`, which writes each file itself and read `archive_entry_mtime` only to build
+a listing. So the staged tree was stamped "now" and the repack baked it in, on every rewrite of an
+**encrypted** archive or one with a **declared code page** — F8, F2 and paste alike, with the plain
+route unaffected. That asymmetry is also why nothing caught it: every rewrite fixture in the suite
+goes through `bsdtar`. Fixed at placement with `futimens`/`utimensat`; directories are collected and
+stamped **after** the walk, because creating an entry inside a directory moves that directory's own
+mtime (measured, along with the fact that stamping a child leaves its parent alone — so the deferred
+pass needs no ordering) and `UTIME_OMIT` leaves the access time alone. `EncryptedArchiveReader` hit
+the `type_body_length` ceiling on the way, so its own `// MARK: - Extraction` section became
+`EncryptedArchiveReader+Extracting.swift` — split by concept, which is what the three MARKs were
+already saying. Controls, both halves: neutered, the core suite fails on exactly the two new tests
+(all five fixture entries plus the directory, reading *now* against the archive's own stamp) and the
+app suite fails **only** the encrypted rename while the `bsdtar` twin beside it stays green, which
+is what says the two tests measure the two routes. Validation: 3,252 core tests, 1,110 app, both
+linters, all three CI scripts, and a live re-run — the same CP866 rename now leaves both members at
+`09.09.2026 23:40`, the renamed one still UTF-8-flagged, and ⌘Z restores the container byte for
+byte.
+
 Progress (2026-09-10, last): **the chooser puts the cursor back on the member it was asked about, and
 F2 re-opens its field there by itself.** Reported: F2 raises the chooser and answering it leaves no
 text box — correct as far as it went, since the pass below deliberately returns rather than open a

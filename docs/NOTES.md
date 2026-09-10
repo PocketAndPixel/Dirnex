@@ -7427,6 +7427,31 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     original's headers and passed to the repack. Forgetting the second is the expensive one: the
     contents would be perfectly correct while every file name of an archive whose whole purpose was
     hiding them became public, with nothing on screen to say so.
+  - **The two routes have to agree about what they *preserve*, not only about what they produce —
+    and the in-process one preserved nothing.** `bsdtar -x` restores an entry's modification time by
+    default (measured 2026-09-10: a 2024 stamp comes back to the second), while
+    `EncryptedArchiveReader` writes each file itself and read `archive_entry_mtime` only to build a
+    listing. So the staged tree was stamped *now* and the repack baked that in: renaming one member
+    of an encrypted archive — or of one with a declared code page, which takes the same route —
+    restamped **every** entry in the container, the ones nobody named included. Found by reading the
+    archive after a live rename, and invisible to the suite because every rewrite fixture in it goes
+    through `bsdtar`; the tell was two members that had said `09.09.2026 23:40` both saying
+    `10.09.2026 16:55` afterwards.
+    - **A directory cannot be stamped where it is created**, which is what decides the shape.
+      Measured: creating an entry inside a directory moves that directory's own mtime, so a time
+      applied at creation is destroyed by the first child placed in it — while stamping a *child*
+      leaves its parent untouched, so the deferred pass that fixes it needs no ordering at all.
+    - **Only the modification time is written.** `UTIME_OMIT` leaves the access time alone: no format
+      here round-trips an atime, and a repack has no business inventing one. The precision is the
+      second, since ``EncryptedArchiveReader/Entry/modificationDate`` is built from
+      `archive_entry_mtime` — a zip stores no more than that, and a **pax tar's sub-second part is
+      therefore dropped**, which is the one place the two routes still differ.
+    - The shape worth carrying past archives: **when one operation has two engines — a spawned tool
+      and code of your own — the tool's *defaults* are part of the contract you are replacing.**
+      `bsdtar -x` restores times because that is what tar extraction means; a hand-written placer
+      starts from nothing and has to be told each thing separately. Only the timestamp was audited
+      here, so what else `bsdtar -x` restores for free (ACLs, extended attributes, flags) is an open
+      question rather than a settled one.
   - **libarchive's reader does not report a zip's cipher strength**, so an AES-128 archive made
     elsewhere comes back AES-256. Stated rather than guessed — the alternative is inferring a weaker
     cipher from no evidence.

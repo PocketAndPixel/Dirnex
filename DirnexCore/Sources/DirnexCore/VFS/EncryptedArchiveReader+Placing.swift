@@ -17,12 +17,22 @@ extension EncryptedArchiveReader {
         let reporting: Reporting
     }
 
+    /// What placing one entry left behind, beyond the bytes it wrote.
+    struct Placement {
+        /// The running byte total, so the progress denominator keeps its meaning across entries.
+        let bytesWritten: Int64
+        /// A directory that was created and still needs its modification time — see
+        /// ``EncryptedArchiveReader/place(_:at:alreadyWritten:in:)`` for why it cannot be stamped
+        /// where it is made.
+        let directoryNeedingTime: String?
+    }
+
     static func place(
         _ entry: Entry,
         at relativePath: String,
         alreadyWritten: Int64,
         in session: Session
-    ) throws -> Int64 {
+    ) throws -> Placement {
         let root = session.root
         var components = relativePath.split(separator: "/").map(String.init)
         let leaf = components.removeLast()
@@ -32,23 +42,31 @@ extension EncryptedArchiveReader {
         switch entry.kind {
         case .directory:
             try makeDirectory(at: destination)
-            return alreadyWritten
+            // Handed back rather than stamped here, and that is measured rather than cautious:
+            // creating an entry inside a directory moves that directory's own mtime, so a time
+            // applied now is undone by the very next file placed in it. Stamping a *child* leaves
+            // its parent alone, which is why the caller's deferred pass needs no ordering.
+            return Placement(bytesWritten: alreadyWritten, directoryNeedingTime: destination)
 
         case let .symbolicLink(target):
             guard ArchiveEntryPath.isSafeSymlinkTarget(target, forLinkAt: relativePath) else {
                 // Not reported as a refusal: the entry's *name* was fine, so this is a different
                 // failure — an archive trying to plant a way out of the destination. Dropping it is
                 // the whole mitigation; nothing else in the archive needs to be abandoned for it.
-                return alreadyWritten
+                return Placement(bytesWritten: alreadyWritten, directoryNeedingTime: nil)
             }
             try? FileManager.default.removeItem(atPath: destination)
             guard symlink(target, destination) == 0 else {
                 throw VFSError.fromErrno(errno, path: .local(destination))
             }
-            return alreadyWritten
+            applyModificationTime(entry.modificationDate, toItemAt: destination)
+            return Placement(bytesWritten: alreadyWritten, directoryNeedingTime: nil)
 
         case .regularFile:
-            return try writeFile(entry, to: destination, alreadyWritten: alreadyWritten, in: session)
+            let written = try writeFile(
+                entry, to: destination, alreadyWritten: alreadyWritten, in: session
+            )
+            return Placement(bytesWritten: written, directoryNeedingTime: nil)
         }
     }
 
@@ -98,7 +116,60 @@ extension EncryptedArchiveReader {
                 currentName: entry.archivePath
             ))
         }
+        // Through the descriptor that is still open rather than by path: nothing can have been
+        // swapped underneath it, which is the same reasoning as the `O_NOFOLLOW` above.
+        applyModificationTime(entry.modificationDate, to: descriptor)
         return written
+    }
+
+    // MARK: - Modification times
+
+    /// Give the file behind `descriptor` the modification time the archive recorded for it.
+    ///
+    /// Without this the staged tree carries the moment it was extracted — and because an archive
+    /// rewrite is extract → edit → repack, renaming one member restamped **every** entry in the
+    /// container with the time of the rewrite (found 2026-09-10 while verifying a rename inside a
+    /// declared archive: two members went from `09.09.2026 23:40` to `10.09.2026 16:55`, including
+    /// the one nothing had touched). `bsdtar -x`, the engine the *other* rewrite route uses,
+    /// restores times by default — measured, a 2024 stamp comes back to the second — so this is
+    /// what keeps the two routes answering the same thing rather than a behaviour of its own.
+    ///
+    /// Only the modification time is written. `UTIME_OMIT` leaves the access time alone, which is
+    /// the field no format here round-trips and the one a repack has no business inventing.
+    ///
+    /// A failure is deliberately ignored: the name and the bytes are already correct by this point,
+    /// and a filesystem that will not take a timestamp is not a reason to abandon an extraction.
+    static func applyModificationTime(_ date: Date, to descriptor: Int32) {
+        var times = modificationTimes(date)
+        _ = futimens(descriptor, &times)
+    }
+
+    /// The same for an item with no open descriptor — a **symlink**, whose own time is wanted and
+    /// never its target's, and a directory being stamped after the walk. `AT_SYMLINK_NOFOLLOW` is
+    /// what makes the first of those true.
+    static func applyModificationTime(_ date: Date, toItemAt path: String) {
+        var times = modificationTimes(date)
+        _ = utimensat(AT_FDCWD, path, &times, AT_SYMLINK_NOFOLLOW)
+    }
+
+    /// `(access, modification)` for `utimensat`, with the access half omitted.
+    ///
+    /// The seconds are **clamped**, because this converts back a value the archive supplied and an
+    /// archive is hostile input (see the type doc): `time_t(aDouble)` traps outside its range, and
+    /// a crafted header can name a year no `Double` round-trips into one. The bound is far past any
+    /// real date, so nothing legitimate is altered by it.
+    ///
+    /// The precision is the second, since ``EncryptedArchiveReader/Entry/modificationDate`` is built
+    /// from `archive_entry_mtime`. A zip stores no more than that; a pax tar can, and its
+    /// sub-second part is therefore lost across a rewrite.
+    private static func modificationTimes(_ date: Date) -> [timespec] {
+        let limit = 4e18
+        let raw = date.timeIntervalSince1970
+        let bounded = raw.isFinite ? max(-limit, min(limit, raw)) : 0
+        return [
+            timespec(tv_sec: 0, tv_nsec: Int(UTIME_OMIT)),
+            timespec(tv_sec: time_t(bounded), tv_nsec: 0)
+        ]
     }
 
     // MARK: - Safe directory walk
