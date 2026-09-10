@@ -209,9 +209,15 @@ extension PanelViewController {
                     then: proceed
                 )
             }
-        } onFailure: { [weak self] error in
+        } onFailure: { [weak self] error, archivePath in
             guard let self else { return }
-            presentOperationFailure(message: failureMessage(), detail: describe(error))
+            // A refused code page is a question, not a failure, so it replaces the alert rather
+            // than following it. `onAbandon` runs either way: the gesture's targets were named
+            // from a listing nobody could read, so it is over in both endings and the user
+            // presses the key again once the names are readable.
+            if !offerNameEncoding(after: error, forArchiveAt: archivePath) {
+                presentOperationFailure(message: failureMessage(), detail: describe(error))
+            }
             onAbandon?()
         }
     }
@@ -325,10 +331,15 @@ extension PanelViewController {
     /// Grouped by archive rather than run per member because the passphrase belongs to the archive:
     /// six members of one encrypted `.zip` is one prompt, and the retry that a typo needs already
     /// lives in `withArchivePassphrase` rather than being written out here.
+    ///
+    /// `onFailure` carries the **archive that refused** beside the error, which the caller cannot
+    /// otherwise recover: a legacy archive's names refusal is answerable — by declaring its code
+    /// page — and the chooser has to be told which file it is being asked about. With several
+    /// archives in one gesture, only the loop below knows which of them got that far.
     private func extractMembers(
         _ entries: [FileEntry],
         onSuccess: @escaping @MainActor () -> Void,
-        onFailure: @escaping @MainActor (any Error) -> Void
+        onFailure: @escaping @MainActor (any Error, String) -> Void
     ) {
         var order: [String] = []
         var byArchive: [String: [ArchiveMember]] = [:]
@@ -344,7 +355,7 @@ extension PanelViewController {
         _ remaining: [String],
         members: [String: [ArchiveMember]],
         onSuccess: @escaping @MainActor () -> Void,
-        onFailure: @escaping @MainActor (any Error) -> Void
+        onFailure: @escaping @MainActor (any Error, String) -> Void
     ) {
         guard let archivePath = remaining.first, let cache = host?.archivePreviewCache else {
             onSuccess()
@@ -366,7 +377,7 @@ extension PanelViewController {
                 onSuccess: onSuccess,
                 onFailure: onFailure
             )
-        } onFailure: { onFailure($0) }
+        } onFailure: { onFailure($0, archivePath) }
     }
 
     // MARK: - Naming what it will cost

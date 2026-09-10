@@ -72,7 +72,9 @@ extension PanelViewController {
             guard self?.previewableArchiveMember == member else { return }
             onReady()
         } onFailure: { [weak self] error in
-            self?.presentOperationFailure(
+            guard let self else { return }
+            guard !offerNameEncoding(after: error, forArchiveAt: member.archivePath) else { return }
+            presentOperationFailure(
                 message: String(
                     localized: "Couldn’t preview this item",
                     comment: """
@@ -80,7 +82,7 @@ extension PanelViewController {
                     Quick View.
                     """
                 ),
-                detail: self?.describe(error) ?? ""
+                detail: describe(error)
             )
         }
     }

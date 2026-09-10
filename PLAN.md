@@ -171,6 +171,20 @@ numbers behind it. What remains here is M15's own cut, and one gap a bug report 
 
 ## 5. Cross-cutting: testing strategy
 
+Progress (2026-09-10): the code-page chooser reaches every gesture that asks for a member's
+bytes, not only the three writes it shipped with. Reported by a user: ⏎, F4, ⌘Y, ⌃Q, ⏎ into a
+nested archive and every hand-off that stages members first each met the same
+`entryNameNotUTF8` refusal and reported it as an ordinary failure — *"Couldn't open this item"*,
+true and useless, naming an archive that is fine. Four handlers now consult `offerNameEncoding`
+before reporting; `Materialize` had to carry the **failing archive** out beside the error, since
+with several archives in one gesture only its own loop knows which got that far. The
+cursor-following preview stays silent on purpose. `ArchiveNameEncodingGestureTests` drives all
+five in a windowed pane and asserts *which* sheet is up by button count — the chooser's popup and
+two buttons against a report's lone OK — because the branch it replaces also ends in a sheet.
+Control: the four guards removed fails all five and leaves both narrowness tests green.
+Validation: 1,093 app tests, 3,241 core tests, both linters, and a live run against
+`legacy-plain.zip` — ⏎ and ⌃Q both raise the chooser where the shipped build raised the alert.
+
 Progress (2026-09-04): fixed the shared gesture wait used by `ChecksumMaterializeTests`.
 It checks completion before the deadline, allows 30 seconds for main-actor delays in full runs,
 and reports a timeout at the calling test. Regression tests cover completed and missing work at

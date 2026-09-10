@@ -75,6 +75,18 @@ at build time.
     `run operation "file.trash"` over the `.sdef` verbs runs the whole shipped path per item. Read
     the preference before assuming a delete is unreachable; ⇧F8 and every *permanent* delete do
     confirm, and are not drivable this way.
+- **A second copy of the app with the same bundle id is the stale-binary trap wearing different
+  clothes, and it fails as a *confident false negative*.** Measured 2026-09-10: with the DerivedData
+  build correctly quit and rebuilt, launching by **name** (`open -a Dirnex`, or a computer-use
+  `open_application`) started **`/Applications/Dirnex.app`** — an older *release* build LaunchServices
+  resolves the name to — which then reproduced the exact bug under test, on the exact fixture, with
+  the exact pre-fix alert. Every automated signal was green and the screen said the fix did not work.
+  The two tells were both on screen before anything was checked: the alert's **wording** named the
+  wrong error (`archiveExtractFailed`, "Couldn't extract from the archive", where the fix routes on
+  `entryNameNotUTF8`), and the pane drew the legacy row as **pure octal escapes** where the current
+  build draws escapes mixed with U+FFFD — i.e. it predated ``ChildProcessLocale`` and ``SubprocessText``
+  entirely. `pgrep -lf "Dirnex.app/Contents/MacOS/Dirnex"` answers it in one line. **Launch by path**,
+  and read the path back rather than trusting that a quit-and-relaunch settled which binary is up.
 - **Fully quit a running Dirnex before relaunching.** `open` re-focuses the stale process, so
   new menu items and behavior silently don't appear. A Debug build's code lives in
   `Dirnex.debug.dylib`, not the thin executable — grep the dylib to confirm new code actually
@@ -7838,6 +7850,28 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     *is* the pane's own path by construction, and the **archive** write-back keys on
     `backend.archivePath`, which every row in a browsed archive shares. Only the site whose
     destination can be a directory the pane merely *draws* needed the wider question.
+- **The eleventh axis is the *failure handler*, and it is the quietest of the family, because every
+  copy of the rule is correct and only some of them know the error is a question.** An archive whose
+  names are not UTF-8 refuses every extraction with `entryNameNotUTF8` — answerable, by declaring a
+  code page — and the chooser shipped wired into three handlers (F8, paste, F5 copy-out) out of
+  seven. The other four each reported it as an ordinary failure: ⏎ and F4 said *"Couldn't open this
+  item"*, ⌘Y and ⌃Q *"Couldn't preview this item"*, ⏎ into a nested archive and every hand-off that
+  stages members first their own. Reported by a user 2026-09-10. Nothing is wrong in any of them —
+  each sentence is **true** — and that is the whole difficulty: a gate that drifts draws a gray menu
+  item somebody notices, where a handler that drifts prints a correct sentence and closes the door.
+  - **The tell is an error case some caller `catch`es *by name*.** That makes it API (the rule this
+    file already states for `.alreadyExists`), so the audit is to grep for the predicate — here
+    `offerNameEncoding` — and then to grep for every handler that can receive the error and does
+    **not** mention it. Six extraction call sites, one deliberate silence, four holes.
+  - **A funnel that reports on somebody else's behalf has to be handed *which* subject refused.**
+    `Materialize.run` reports for a loop that may span several archives, so the error alone cannot
+    say which one to ask about; the loop carries the archive path out beside it. A vocabulary is not
+    enough — ``EncryptedArchiveError/entryNameNotUTF8`` carries the archive's **display name**, which
+    is right for a sentence and useless as a key, and widening it to a path would put one inside
+    localized prose.
+  - **The deliberate silence is what stops the fix becoming "ask everywhere"**, and it needs its own
+    test or it is only a comment: the preview that follows the **cursor** meets the identical refusal
+    on every arrow key and must go on saying nothing (▸ Design lessons, the credential-shaped split).
 - **A "can this apply here" gate can be testing the wrong *subject* entirely, and it then reads as a
   considered restriction rather than as a bug.** `canUseTreeMode` was `panel.path.backend == .local`,
   under a doc comment explaining that a per-level lazy listing "needs a real directory to read" —

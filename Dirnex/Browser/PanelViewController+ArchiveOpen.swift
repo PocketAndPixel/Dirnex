@@ -72,12 +72,14 @@ extension PanelViewController {
             }
             launch(url)
         } onFailure: { [weak self] error in
-            self?.presentOperationFailure(
+            guard let self else { return }
+            guard !offerNameEncoding(after: error, forArchiveAt: archivePath) else { return }
+            presentOperationFailure(
                 message: String(
                     localized: "Couldn’t open this item",
                     comment: "Alert title when a file inside a browsed archive can't be extracted."
                 ),
-                detail: self?.describe(error) ?? ""
+                detail: describe(error)
             )
         }
     }

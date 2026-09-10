@@ -105,9 +105,13 @@ extension PanelViewController {
             host?.nestedArchiveRegistry.record(mountOnDiskPath: mountPath, origin: origin)
             navigate(to: stagedArchiveRoot(atOnDiskPath: mountPath))
         } onFailure: { [weak self] error in
-            self?.presentOperationFailure(
+            guard let self else { return }
+            // The refusal names the *outer* archive, which is the file whose code page is in
+            // question: the inner one's own names cannot be read until its bytes are out.
+            guard !offerNameEncoding(after: error, forArchiveAt: outerArchivePath) else { return }
+            presentOperationFailure(
                 message: String(localized: "Couldn’t open the nested archive"),
-                detail: self?.describe(error) ?? ""
+                detail: describe(error)
             )
         }
     }

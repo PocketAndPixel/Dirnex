@@ -17,10 +17,27 @@ import DirnexCore
 /// raise this sheet.
 ///
 /// The menu item is what the refusal alone could not offer: until it existed the chooser was
-/// reachable only by *failing* at something (F8, paste, F5 copy-out), so somebody who merely wanted
-/// to **read** the names had no route at all (PLAN.md §M27). A prompt on navigation would have been
-/// the other way to close that, and is the thing docs/NOTES.md keeps warning about — a sheet raised
-/// by a gesture nobody made.
+/// reachable only by *failing* at something, so somebody who merely wanted to **read** the names had
+/// no route at all (PLAN.md §M27). A prompt on navigation would have been the other way to close
+/// that, and is the thing docs/NOTES.md keeps warning about — a sheet raised by a gesture nobody
+/// made.
+///
+/// **Every gesture that asks for a member's bytes offers it, not only the three writes that shipped
+/// with it.** A member of an undeclared legacy archive is looked for under the name the pane drew —
+/// `\217\255…`, which no entry is called — so `bsdtar` places nothing, `ArchiveExtractor` asks why,
+/// and the refusal reaches whoever asked. That is one funnel per gesture and there are seven of
+/// them: ⏎ and F4 (`+ArchiveOpen`), ⏎ into a nested archive (`+NestedArchive`), ⌘Y and ⌃Q
+/// (`+ArchivePreview`), the hand-offs that stage members first — Open With, Share, checksum,
+/// compare, ⌥F5 pack (`+Materialize`) — and the three writes, F5 copy-out (`+ArchiveExtract`), F8
+/// delete (`+ArchiveWrite`) and paste (`+ArchiveAdd`). Reported by a user 2026-09-10: the chooser
+/// existed and only a copy could reach it, so opening or previewing a row said *"Couldn't open this
+/// item"* — true, useless, and naming the wrong thing, since the archive is fine and only its code
+/// page is unknown.
+///
+/// The one deliberate silence is `prepareArchivePreview`, the preview that follows the **cursor**.
+/// It reaches the identical refusal on every arrow key and must go on saying nothing: a sheet raised
+/// because the cursor came to rest somewhere is the question nobody asked (docs/NOTES.md ▸ Design
+/// lessons, the credential-shaped split). ⌃Q turning the mode *on* is the gesture, and it asks.
 extension PanelViewController {
     /// The code page declared for `archivePath` this session, if any. Every read of a browsed
     /// archive passes this along, so one answer reaches the listing, the previews, an extraction and
