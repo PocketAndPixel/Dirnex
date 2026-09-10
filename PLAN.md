@@ -134,7 +134,7 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 
 ### Still open
 
-Everything through M27 is shipped, and the record of it — the milestone checklists, the forty-six
+Everything through M27 is shipped, and the record of it — the milestone checklists, the fifty-eight
 dated passes that landed outside a milestone of their own, and the reasoning behind every decision —
 is in **[docs/HISTORY.md](docs/HISTORY.md)**. What is still open, rather than merely imaginable, is
 the *undone* column in the table above, plus the list below. Everything that came off this list came
@@ -171,114 +171,9 @@ numbers behind it. What remains here is M15's own cut, and one gap a bug report 
 
 ## 5. Cross-cutting: testing strategy
 
-Progress (2026-09-10, after the live run): **an archive rewrite keeps every member's modification
-date.** Found by checking the archive after the CP866 rename above rather than by any test: both
-members had moved from `09.09.2026 23:40` to `10.09.2026 16:55`, including the one nothing had
-touched. The rewrite is extract → edit → repack and the *extract* half has two engines —
-`bsdtar -x`, which restores times by default (measured, a 2024 stamp comes back to the second), and
-`EncryptedArchiveReader`, which writes each file itself and read `archive_entry_mtime` only to build
-a listing. So the staged tree was stamped "now" and the repack baked it in, on every rewrite of an
-**encrypted** archive or one with a **declared code page** — F8, F2 and paste alike, with the plain
-route unaffected. That asymmetry is also why nothing caught it: every rewrite fixture in the suite
-goes through `bsdtar`. Fixed at placement with `futimens`/`utimensat`; directories are collected and
-stamped **after** the walk, because creating an entry inside a directory moves that directory's own
-mtime (measured, along with the fact that stamping a child leaves its parent alone — so the deferred
-pass needs no ordering) and `UTIME_OMIT` leaves the access time alone. `EncryptedArchiveReader` hit
-the `type_body_length` ceiling on the way, so its own `// MARK: - Extraction` section became
-`EncryptedArchiveReader+Extracting.swift` — split by concept, which is what the three MARKs were
-already saying. Controls, both halves: neutered, the core suite fails on exactly the two new tests
-(all five fixture entries plus the directory, reading *now* against the archive's own stamp) and the
-app suite fails **only** the encrypted rename while the `bsdtar` twin beside it stays green, which
-is what says the two tests measure the two routes. Validation: 3,252 core tests, 1,110 app, both
-linters, all three CI scripts, and a live re-run — the same CP866 rename now leaves both members at
-`09.09.2026 23:40`, the renamed one still UTF-8-flagged, and ⌘Z restores the container byte for
-byte.
-
-Progress (2026-09-10, last): **the chooser puts the cursor back on the member it was asked about, and
-F2 re-opens its field there by itself.** Reported: F2 raises the chooser and answering it leaves no
-text box — correct as far as it went, since the pass below deliberately returns rather than open a
-field over a name that has not decoded, and it left the gesture half-finished. Two halves. The
-*cursor*: a declaration re-decodes **every** name, so the pane's anchor is a `VFSPath` that no longer
-exists and `Panel.restoreCursor` falls back to `min(cursor, count - 1)` — which on the reporter's
-CP866 archive is a different file, because the code page decides the collation and the ordinary
-default (CP437) sorts the same member elsewhere. `ArchiveMemberAnchor` (core) finds the row again by
-kind, byte size and parent, and only when exactly one candidate fits. It deliberately **does not
-compare the modification date**, which is the measurement worth keeping: the two listing engines'
-stamps are not comparable — `bsdtar -tvf`'s date column carries no seconds where libarchive reports
-the real mtime — so a re-decode that switches engines moves a field nothing touched. The *resume*:
-`askForNameEncoding` calls back with the member it landed on, so F2 re-enters `beginRename`, by which
-time the archive is declared and this very guard answers `false`. Also answered, since the report
-asked it outright: the damage is **name-only**. Measured on the fixture — the stored name is
-`8f a0 ad ae e0 a0 ac a0 2e 74 78 74` with the UTF-8 flag clear (CP866 `Панорама.txt`), while that
-member's *contents* are valid UTF-8 (`53 45 43 52 45 54 …`, `e2 80 94` for the em dash). An archive
-never transcodes what it stores, so nothing but the central directory is ever at stake, and a rewrite
-under the declared page writes `'./Панорама.txt' utf8flag=True` — repaired permanently, readable
-everywhere. Controls: the re-anchor block removed fails `theChooserKeepsItsRow` with
-`landed.byteSize → 5` against `17`, the reporter's own symptom; `ignoresTheModificationDate` pins the
-omission, since a date-comparing anchor passes every *other* test in the suite. Validation: 1,108 app
-tests, 3,250 core, both linters, and a live run — F2 on the unreadable row of `legacy-plain.zip`
-raises the chooser with no field, and answering it re-opens the rename box on that same row with the
-name selected, the fixture byte-identical afterwards (a declaration rewrites nothing). A
-background-driven run cannot open a popup button, so only CP437 is reachable there: the live half
-demonstrates the **resume** and the reorder stays covered headlessly.
-
-Progress (2026-09-10, later still): **F2 asks for the code page before it opens the field**, not
-after the rename is committed. Reported: answer the chooser and the rename does not happen — correct
-by the "a refusal is never retried" rule, and no consolation to somebody who has just lost the name
-they typed. Every other route into the chooser is a refusal whose whole input is a row somebody
-pointed at, costing one keystroke to make again; F2's input is *authored*, and the captured target is
-spelled with the undecoded name so it cannot be replayed once the code page lands. It is also the
-better question: renaming *from* `\217\240…` has no sensible starting point. `beginRename` now
-consults `offerNameEncodingBeforeTyping` before building the field. The general shape is in
-docs/NOTES.md — **a gesture whose input the user authors must resolve its preconditions before taking
-the input.** Its control crashed rather than failed (the field opens, and a live field editor in a
-retained window kills the test host — the same reason `RenameReachTests` drives only refusals), so it
-was run with the field creation silenced as scaffolding: it then failed on exactly its own test with
-`renamingEntryID → …/\217\255….txt`, the reported bug verbatim, while both narrowness controls
-stayed green. Validation: 1,107 app tests, 3,244 core, both linters, the CI scripts, and a live run —
-F2 raises the chooser with no field, Use re-lists readable, F2 again renames, and ⌘Z restored the
-fixture to its original 366 bytes and mtime.
-
-Progress (2026-09-10, later): **F2 renames a member of a browsed archive**, which had never been
-implemented — `ArchiveBackend` is `.read` and `ArchiveWriter` had `delete` and `add` and no rename,
-so the key was dead there for every archive and the chooser had nothing to attach to. It is
-`delete`'s twin one verb over: `ArchiveMutation.renamedInnerPath` derives the new inner path,
-`ArchiveWriter.rename` does one `moveItem` inside the same extract → repack → atomic swap, and the
-container's copy makes it undoable. Measured rather than assumed: `FileManager.moveItem` refuses an
-occupied destination itself (bytes untouched) *and* still performs a case-only change on APFS, so
-the staged move is its own collision guard where the local rename needs a `stat` — `rename(2)`
-overwrites. `renameRoute(for:)` is the one answer the key, its validator and the commit read;
-**⇧F2 deliberately keeps the narrower `canRenameHere`**, because its apply loop renames each target
-with `backend.moveItem`, which an archive refuses — batching N renames into the one rewrite the
-container wants is its own slice. `ArchiveWriter` split by concept at the lint ceiling: the engine
-stays, the three edits move to `ArchiveWriter+Edits.swift`. Controls: the route's archive branch
-removed fails the reach table, the validator and the nested-route test; the chooser offer removed
-fails only F2's; the writer's name guard removed lets `../escape.txt` **rewrite the archive and move
-the member out of its folder**, which its test caught by the returned snapshot. Validation: 1,105
-app tests, 3,244 core tests, both linters, all three CI scripts, and a live run — F2 inside
-`legacy-encrypted.zip` reaches the passphrase prompt (the local route never would), and inside an
-ordinary zip `bsdtar` confirms the member renamed with its bytes intact and ⌘Z put the container
-back byte for byte.
-
-Progress (2026-09-10): the code-page chooser reaches every gesture that asks for a member's
-bytes, not only the three writes it shipped with. Reported by a user: ⏎, F4, ⌘Y, ⌃Q, ⏎ into a
-nested archive and every hand-off that stages members first each met the same
-`entryNameNotUTF8` refusal and reported it as an ordinary failure — *"Couldn't open this item"*,
-true and useless, naming an archive that is fine. Four handlers now consult `offerNameEncoding`
-before reporting; `Materialize` had to carry the **failing archive** out beside the error, since
-with several archives in one gesture only its own loop knows which got that far. The
-cursor-following preview stays silent on purpose. `ArchiveNameEncodingGestureTests` drives all
-five in a windowed pane and asserts *which* sheet is up by button count — the chooser's popup and
-two buttons against a report's lone OK — because the branch it replaces also ends in a sheet.
-Control: the four guards removed fails all five and leaves both narrowness tests green.
-Validation: 1,093 app tests, 3,241 core tests, both linters, and a live run against
-`legacy-plain.zip` — ⏎ and ⌃Q both raise the chooser where the shipped build raised the alert.
-
-Progress (2026-09-04): fixed the shared gesture wait used by `ChecksumMaterializeTests`.
-It checks completion before the deadline, allows 30 seconds for main-actor delays in full runs,
-and reports a timeout at the calling test. Regression tests cover completed and missing work at
-the deadline; the completed-work test fails with the old helper. Validation: 1,040 app tests
-(including the expected timeout check), 3,209 core tests, and both linters passed.
+What each pass *found* lives in [docs/HISTORY.md](docs/HISTORY.md) ▸ *the follow-on log*; the six
+dated notes that used to sit here moved there on 2026-09-10, the way §4's did on 2026-08-23. The
+plan keeps the strategy, which is a rule that outlives any one pass.
 
 | Layer | Approach |
 |---|---|
