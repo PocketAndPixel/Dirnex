@@ -1267,8 +1267,8 @@ at build time.
   not read through the app's defaults search list. What *is* reachable: those controls already
   answer `acceptsFirstResponder == true` and only `canBecomeKeyView` says no, so answering it the way
   the switch would puts them in the loop. `KeyboardReachableControls` does that on `NSButton` and
-  `NSSegmentedControl` and `NSSwitch` for every window except the browser window, where Tab is a pane
-  key. Verified live: the focus ring draws, Space opens a popup or flips a switch, and ↓ then Return
+  `NSSegmentedControl`, `NSSwitch`, `NSColorWell` and `NSStepper` for every window except the browser
+  window, where Tab is a pane key. Verified live: the focus ring draws, Space opens a popup or flips a switch, and ↓ then Return
   picks an item without firing the sheet's default button.
   - **Patch the AppKit class and SwiftUI's controls come with it, and the class to patch is not the
     one the control looks like.** A `Toggle` inside a `Form` is SwiftUI's private `PlatformSwitch`,
@@ -1276,8 +1276,15 @@ at build time.
     got recorded here at first as "SwiftUI overrides `canBecomeKeyView`", which was wrong. Walking
     the class chains settles it: no SwiftUI control class overrides `canBecomeKeyView` (menu
     `Picker` → `NSPopUpButton`, segmented `Picker` → `NSSegmentedControl`, `Stepper` → `NSStepper`,
-    `Slider` → `NSSlider`). The one that stays out is the *checkbox*-style `Toggle`
+    `ColorPicker` → `NSColorWell`, `Slider` → `NSSlider`). The one that stays out is the *checkbox*-style `Toggle`
     (`FocusRingNSButton`), which answers `acceptsFirstResponder == false` itself. Settings draws none.
+  - **A focused color well draws no focus ring with the system switch off, so Tab onto one is
+    invisible.** Measured live on the Settings wells on 2026-09-13. The well really is first
+    responder: `becomeFirstResponder` returns `true`, and Space opens the Colors panel. It reports
+    `focusRingType == .default` and a full-bounds mask. Calling `setKeyboardFocusRingNeedsDisplay` and
+    `noteFocusRingMaskChanged` on focus changed nothing. Beside it, a stepper whose mask is *empty*
+    draws its ring fine, so the mask is not what gates drawing. Whatever decides it is inside
+    `NSColorWell`.
   - **The loop is built once, from where each control sits, and a row shown or hidden later leaves
     it wrong.** Connect to Server computes it from the SMB layout; switching to SFTP then tabbed
     Protocol → Password → Save as → Cancel → Connect → Host. Text fields had this problem all along,

@@ -29,6 +29,8 @@ struct KeyboardReachableControlsTests {
         let checkbox: NSButton
         let segments: NSSegmentedControl
         let toggle: NSSwitch
+        let well: NSColorWell
+        let stepper: NSStepper
         let push: NSButton
         /// Held here because a window does not retain its controller.
         let controller: NSWindowController?
@@ -55,8 +57,12 @@ struct KeyboardReachableControlsTests {
             action: nil
         )
         let toggle = NSSwitch()
+        let well = NSColorWell(frame: NSRect(x: 0, y: 0, width: 44, height: 24))
+        let stepper = NSStepper()
         let push = NSButton(title: "Connect", target: nil, action: nil)
-        let stack = NSStackView(views: [first, popup, checkbox, segments, toggle, push])
+        let stack = NSStackView(
+            views: [first, popup, checkbox, segments, toggle, well, stepper, push]
+        )
         stack.orientation = .vertical
         window.contentView = stack
         if let controller { controller.window = window }
@@ -69,6 +75,8 @@ struct KeyboardReachableControlsTests {
             checkbox: checkbox,
             segments: segments,
             toggle: toggle,
+            well: well,
+            stepper: stepper,
             push: push,
             controller: controller
         )
@@ -78,7 +86,7 @@ struct KeyboardReachableControlsTests {
     private func tabStops(in window: NSWindow, from start: NSView) -> [NSView] {
         var stops: [NSView] = []
         var current = start
-        for _ in 0..<12 {
+        for _ in 0..<16 {
             window.selectKeyView(following: current)
             guard var next = window.firstResponder as? NSView else { break }
             if let editor = next as? NSTextView, editor.isFieldEditor, let field = editor.delegate as? NSView {
@@ -91,7 +99,9 @@ struct KeyboardReachableControlsTests {
         return stops
     }
 
-    @Test("Tab from a field reaches the popup, checkbox, segmented control, switch and button")
+    @Test(
+        "Tab from a field reaches every control kind: popup, checkbox, segments, switch, well, stepper, button"
+    )
     func tabReachesEveryControl() {
         let form = form()
         let stops = tabStops(in: form.window, from: form.first)
@@ -99,6 +109,8 @@ struct KeyboardReachableControlsTests {
         #expect(stops.contains { $0 === form.checkbox })
         #expect(stops.contains { $0 === form.segments })
         #expect(stops.contains { $0 === form.toggle })
+        #expect(stops.contains { $0 === form.well })
+        #expect(stops.contains { $0 === form.stepper })
         #expect(stops.contains { $0 === form.push })
     }
 
@@ -138,15 +150,19 @@ struct KeyboardReachableControlsTests {
         #expect(!stops.contains { $0 === form.checkbox })
         #expect(!stops.contains { $0 === form.push })
         #expect(!stops.contains { $0 === form.toggle })
+        #expect(!stops.contains { $0 === form.well })
+        #expect(!stops.contains { $0 === form.stepper })
         #expect(!form.segments.canBecomeKeyView)
     }
 
-    /// The Settings window's shapes: a `Toggle` in a grouped `Form` draws as a switch, and each
-    /// picker style is its own AppKit class. All of them are private SwiftUI subclasses, so this is
-    /// the check that the patch still reaches what SwiftUI builds.
+    /// The Settings window's shapes: a `Toggle` in a grouped `Form` draws as a switch, each picker
+    /// style is its own AppKit class, and `ColorPicker` and `Stepper` are a color well and a stepper.
+    /// All of them are private SwiftUI subclasses, so this is the check that the patch still reaches
+    /// what SwiftUI builds.
     private struct SettingsShapes: View {
         @State private var isOn = true
         @State private var choice = 0
+        @State private var color = Color.red
 
         var body: some View {
             Form {
@@ -160,12 +176,14 @@ struct KeyboardReachableControlsTests {
                     Text("Two").tag(1)
                 }
                 .pickerStyle(.segmented)
+                ColorPicker("Color", selection: $color, supportsOpacity: false)
+                Stepper("Count", value: $choice)
             }
             .formStyle(.grouped)
         }
     }
 
-    @Test("SwiftUI's switch, menu picker and segmented picker join the Tab loop in Settings")
+    @Test("SwiftUI's switch, pickers, color picker and stepper join the Tab loop in Settings")
     func swiftUIControlsAreReachable() async throws {
         KeyboardReachableControls.install()
         let window = NSWindow(
@@ -181,16 +199,28 @@ struct KeyboardReachableControlsTests {
             return window.contentView.map(all)?.compactMap { $0 as? NSControl } ?? []
         }
         let deadline = Date().addingTimeInterval(10)
-        while Date() < deadline, !controls().contains(where: { $0 is NSSegmentedControl }) {
+        let kinds: [NSControl.Type] = [
+            NSSwitch.self, NSPopUpButton.self, NSSegmentedControl.self, NSColorWell.self,
+            NSStepper.self
+        ]
+        func built() -> Bool {
+            let present = controls()
+            return kinds.allSatisfy { kind in present.contains { type(of: $0).isSubclass(of: kind) } }
+        }
+        while Date() < deadline, !built() {
             window.contentView?.layoutSubtreeIfNeeded()
             try await Task.sleep(for: .milliseconds(50))
         }
         let toggle = try #require(controls().first { $0 is NSSwitch })
         let popup = try #require(controls().first { $0 is NSPopUpButton })
         let segments = try #require(controls().first { $0 is NSSegmentedControl })
+        let well = try #require(controls().first { $0 is NSColorWell })
+        let stepper = try #require(controls().first { $0 is NSStepper })
         #expect(toggle.canBecomeKeyView)
         #expect(popup.canBecomeKeyView)
         #expect(segments.canBecomeKeyView)
+        #expect(well.canBecomeKeyView)
+        #expect(stepper.canBecomeKeyView)
     }
 
     @Test("a disabled or hidden control is not a Tab stop")

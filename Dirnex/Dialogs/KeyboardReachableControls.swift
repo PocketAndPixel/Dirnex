@@ -1,8 +1,9 @@
 import AppKit
 import ObjectiveC
 
-/// Lets Tab reach a dialog's popups, checkboxes, radio and push buttons, switches and segmented
-/// controls, whatever System Settings ▸ Keyboard ▸ Keyboard navigation says.
+/// Lets Tab reach a dialog's popups, checkboxes, radio and push buttons, switches, segmented
+/// controls, color wells and steppers, whatever System Settings ▸ Keyboard ▸ Keyboard navigation
+/// says.
 ///
 /// With that switch off — the macOS default — AppKit keeps every one of those controls out of the
 /// key view loop, so Tab walks a form's text fields and skips the Protocol popup between them. The
@@ -22,7 +23,8 @@ import ObjectiveC
 /// come from dozens of construction sites and from frameworks — `NSAlert`'s own buttons, and the
 /// Settings window's SwiftUI controls, which are private subclasses nobody here constructs. Probed
 /// 2026-09-13, none of those overrides `canBecomeKeyView`: a `Toggle` in a `Form` is an `NSSwitch`
-/// subclass, a `Picker` an `NSPopUpButton` or `NSSegmentedControl` subclass, so patching the AppKit
+/// subclass, a `Picker` an `NSPopUpButton` or `NSSegmentedControl` subclass, a `ColorPicker` an
+/// `NSColorWell` subclass and a `Stepper` an `NSStepper` subclass, so patching the AppKit
 /// class reaches them. The one exception is SwiftUI's *checkbox*-style `Toggle`, whose button answers
 /// `acceptsFirstResponder == false` outright; Dirnex's Settings draws none. `NSPopUpButton` has no
 /// override of its own either (adding one to it succeeds), so patching `NSButton` covers it —
@@ -42,7 +44,10 @@ enum KeyboardReachableControls {
     }
 
     private static let installation: Void = {
-        for controlClass in [NSButton.self, NSSegmentedControl.self, NSSwitch.self] {
+        let controlClasses: [AnyClass] = [
+            NSButton.self, NSSegmentedControl.self, NSSwitch.self, NSColorWell.self, NSStepper.self
+        ]
+        for controlClass in controlClasses {
             patch(controlClass)
         }
     }()
