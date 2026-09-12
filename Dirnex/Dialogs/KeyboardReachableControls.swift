@@ -1,8 +1,8 @@
 import AppKit
 import ObjectiveC
 
-/// Lets Tab reach a dialog's popups, checkboxes, radio and push buttons and segmented controls,
-/// whatever System Settings ▸ Keyboard ▸ Keyboard navigation says.
+/// Lets Tab reach a dialog's popups, checkboxes, radio and push buttons, switches and segmented
+/// controls, whatever System Settings ▸ Keyboard ▸ Keyboard navigation says.
 ///
 /// With that switch off — the macOS default — AppKit keeps every one of those controls out of the
 /// key view loop, so Tab walks a form's text fields and skips the Protocol popup between them. The
@@ -19,11 +19,14 @@ import ObjectiveC
 /// `NSAlert` field → popup → Cancel → Pack.
 ///
 /// **It is installed on the classes rather than on a subclass at each site**, because the controls
-/// come from dozens of construction sites and from AppKit itself — `NSAlert`'s own buttons, and SwiftUI's
-/// `Picker`, whose backing view is an `NSPopUpButton` subclass the probe saw reached. SwiftUI's
-/// `Toggle` is not: its checkbox class answers `canBecomeKeyView` itself, so it never inherits this.
-/// `NSPopUpButton` has no override of its own (probed — adding one to it succeeds), so patching
-/// `NSButton` covers it; `KeyboardReachableControlsTests` fails if a later macOS gives it one.
+/// come from dozens of construction sites and from frameworks — `NSAlert`'s own buttons, and the
+/// Settings window's SwiftUI controls, which are private subclasses nobody here constructs. Probed
+/// 2026-09-13, none of those overrides `canBecomeKeyView`: a `Toggle` in a `Form` is an `NSSwitch`
+/// subclass, a `Picker` an `NSPopUpButton` or `NSSegmentedControl` subclass, so patching the AppKit
+/// class reaches them. The one exception is SwiftUI's *checkbox*-style `Toggle`, whose button answers
+/// `acceptsFirstResponder == false` outright; Dirnex's Settings draws none. `NSPopUpButton` has no
+/// override of its own either (adding one to it succeeds), so patching `NSButton` covers it —
+/// `KeyboardReachableControlsTests` fails if a later macOS gives either of them one.
 ///
 /// **The browser window is deliberately left out** — any window whose controller is a
 /// ``PaneKeyWindowController``. Tab there is a pane key that only fires while a
@@ -39,7 +42,7 @@ enum KeyboardReachableControls {
     }
 
     private static let installation: Void = {
-        for controlClass in [NSButton.self, NSSegmentedControl.self] {
+        for controlClass in [NSButton.self, NSSegmentedControl.self, NSSwitch.self] {
             patch(controlClass)
         }
     }()

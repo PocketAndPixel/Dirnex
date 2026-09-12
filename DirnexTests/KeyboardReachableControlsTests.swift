@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import Testing
 
 @testable import Dirnex
@@ -21,19 +22,20 @@ import Testing
 struct KeyboardReachableControlsTests {
     private final class PaneKeyController: NSWindowController, PaneKeyWindowController {}
 
-    private struct Form {
+    private struct Fixture {
         let window: NSWindow
         let first: NSTextField
         let popup: NSPopUpButton
         let checkbox: NSButton
         let segments: NSSegmentedControl
+        let toggle: NSSwitch
         let push: NSButton
         /// Held here because a window does not retain its controller.
         let controller: NSWindowController?
     }
 
     /// A field followed by one of each control, stacked in a window of its own.
-    private func form(controller: NSWindowController? = nil) -> Form {
+    private func form(controller: NSWindowController? = nil) -> Fixture {
         KeyboardReachableControls.install()
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
@@ -52,19 +54,21 @@ struct KeyboardReachableControlsTests {
             target: nil,
             action: nil
         )
+        let toggle = NSSwitch()
         let push = NSButton(title: "Connect", target: nil, action: nil)
-        let stack = NSStackView(views: [first, popup, checkbox, segments, push])
+        let stack = NSStackView(views: [first, popup, checkbox, segments, toggle, push])
         stack.orientation = .vertical
         window.contentView = stack
         if let controller { controller.window = window }
         window.layoutIfNeeded()
         window.recalculateKeyViewLoop()
-        return Form(
+        return Fixture(
             window: window,
             first: first,
             popup: popup,
             checkbox: checkbox,
             segments: segments,
+            toggle: toggle,
             push: push,
             controller: controller
         )
@@ -87,13 +91,14 @@ struct KeyboardReachableControlsTests {
         return stops
     }
 
-    @Test("Tab from a field reaches the popup, checkbox, segmented control and button in a dialog")
+    @Test("Tab from a field reaches the popup, checkbox, segmented control, switch and button")
     func tabReachesEveryControl() {
         let form = form()
         let stops = tabStops(in: form.window, from: form.first)
         #expect(stops.contains { $0 === form.popup })
         #expect(stops.contains { $0 === form.checkbox })
         #expect(stops.contains { $0 === form.segments })
+        #expect(stops.contains { $0 === form.toggle })
         #expect(stops.contains { $0 === form.push })
     }
 
@@ -132,7 +137,60 @@ struct KeyboardReachableControlsTests {
         #expect(!stops.contains { $0 === form.popup })
         #expect(!stops.contains { $0 === form.checkbox })
         #expect(!stops.contains { $0 === form.push })
+        #expect(!stops.contains { $0 === form.toggle })
         #expect(!form.segments.canBecomeKeyView)
+    }
+
+    /// The Settings window's shapes: a `Toggle` in a grouped `Form` draws as a switch, and each
+    /// picker style is its own AppKit class. All of them are private SwiftUI subclasses, so this is
+    /// the check that the patch still reaches what SwiftUI builds.
+    private struct SettingsShapes: View {
+        @State private var isOn = true
+        @State private var choice = 0
+
+        var body: some View {
+            Form {
+                Toggle("Switch", isOn: $isOn)
+                Picker("Menu", selection: $choice) {
+                    Text("One").tag(0)
+                    Text("Two").tag(1)
+                }
+                Picker("Segments", selection: $choice) {
+                    Text("One").tag(0)
+                    Text("Two").tag(1)
+                }
+                .pickerStyle(.segmented)
+            }
+            .formStyle(.grouped)
+        }
+    }
+
+    @Test("SwiftUI's switch, menu picker and segmented picker join the Tab loop in Settings")
+    func swiftUIControlsAreReachable() async throws {
+        KeyboardReachableControls.install()
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: SettingsShapes())
+        func controls() -> [NSControl] {
+            func all(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(all) }
+            return window.contentView.map(all)?.compactMap { $0 as? NSControl } ?? []
+        }
+        let deadline = Date().addingTimeInterval(10)
+        while Date() < deadline, !controls().contains(where: { $0 is NSSegmentedControl }) {
+            window.contentView?.layoutSubtreeIfNeeded()
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        let toggle = try #require(controls().first { $0 is NSSwitch })
+        let popup = try #require(controls().first { $0 is NSPopUpButton })
+        let segments = try #require(controls().first { $0 is NSSegmentedControl })
+        #expect(toggle.canBecomeKeyView)
+        #expect(popup.canBecomeKeyView)
+        #expect(segments.canBecomeKeyView)
     }
 
     @Test("a disabled or hidden control is not a Tab stop")

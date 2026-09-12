@@ -31,7 +31,7 @@ final class ConnectServerForm: NSObject {
 
     // SFTP auth toggle: a Tab-reachable switch flanked by its two mode labels. Off = password
     // (the default), on = private key; the active label is emphasized and the inactive one dimmed.
-    private let authSwitch = KeyNavigableSwitch()
+    private let authSwitch = NSSwitch()
     private let authKeyLabel = ConnectFormFactory.label(ConnectText.privateKey)
     private let authPasswordLabel = ConnectFormFactory.label(ConnectText.authPassword)
     private lazy var authControlView = ConnectFormFactory.authToggle(
@@ -406,12 +406,4 @@ enum ConnectFormFactory {
         stack.translatesAutoresizingMaskIntoConstraints = false
         return stack
     }
-}
-
-/// An `NSSwitch` that always joins the window's key-view loop, so Tab reaches it even when the
-/// system's "Full Keyboard Access" setting is off — AppKit otherwise keeps non-text controls out of
-/// the loop. Returning `acceptsFirstResponder` (true while enabled) is what the base class does, but
-/// only under Full Keyboard Access; overriding makes it unconditional.
-private final class KeyNavigableSwitch: NSSwitch {
-    override var canBecomeKeyView: Bool { acceptsFirstResponder }
 }
