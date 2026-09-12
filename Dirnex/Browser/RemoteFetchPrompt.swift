@@ -62,7 +62,10 @@ final class RemoteFetchPrompt {
         switch RemoteFetchPolicy.decision(
             forByteSize: prompt.hasKnownSize ? entry.byteSize : nil,
             purpose: purpose,
-            previewLimit: AppPreferences.shared.quickViewFetchLimit
+            previewLimit: AppPreferences.shared.quickViewFetchLimit,
+            // Read by the preview row only: a file about the size the user already agreed to on this
+            // connection needs no second question. Every other purpose ignores it.
+            sessionAllowance: context.cache.previewAllowance.ceiling(for: entry.path.backend)
         ) {
         case .fetch:
             prompt.start()

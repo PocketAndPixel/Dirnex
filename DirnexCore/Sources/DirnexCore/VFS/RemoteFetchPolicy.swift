@@ -155,11 +155,24 @@ public enum RemoteFetchPolicy {
         min(max(bytes, previewLimitRange.lowerBound), previewLimitRange.upperBound)
     }
 
-    /// The size at or below which `purpose` fetches without asking, given the user's preview limit.
-    public static func threshold(for purpose: RemoteFetchPurpose, previewLimit: Int64) -> Int64 {
+    /// The size at or below which `purpose` fetches without asking, given the user's preview limit
+    /// and whatever ``RemotePreviewAllowance`` this session has learned for the connection.
+    ///
+    /// `sessionAllowance` is read by the two preview rows **and nothing else**. Every other row is
+    /// expressed against the Settings limit, and that is the reason the allowance is a parameter of
+    /// its own rather than something a caller folds into `previewLimit`: folded in, one Download on a
+    /// 300 MB photograph would stop ⌥F5, a checksum run and ⏎ from confirming up to 600 MB, which is
+    /// an answer about previewing leaking into gestures that never asked the question.
+    public static func threshold(
+        for purpose: RemoteFetchPurpose,
+        previewLimit: Int64,
+        sessionAllowance: Int64 = 0
+    ) -> Int64 {
         let limit = clampedPreviewLimit(previewLimit)
         return switch purpose {
-        case .cursorPreview, .preview: limit
+        // Zero outranks anything learned: it is "download nothing unasked", a statement about every
+        // file, and an allowance only ever widens a limit that is on.
+        case .cursorPreview, .preview: limit == 0 ? 0 : max(limit, sessionAllowance)
         // Never below the preview limit: a user who has said a 300 MB preview is fine has answered
         // the smaller question too, and confirming an *open* they would not be asked about for a
         // mere look is the ordering this table exists to keep straight.
@@ -178,14 +191,22 @@ public enum RemoteFetchPolicy {
     /// What a refusal *is* comes from the gesture, not from the size — `.confirm` where somebody is
     /// standing at a key waiting for the file, `.decline` where the fetch is the preview following
     /// the cursor and there is nobody to put a question to.
+    ///
+    /// `sessionAllowance` is the connection's ``RemotePreviewAllowance/ceiling(for:)``. Defaulted so
+    /// the rows that must never read it need not mention it; the two callers that decide a preview
+    /// fetch — the cursor-following one and the explicit prompt — pass it.
     public static func decision(
         forByteSize byteSize: Int64?,
         purpose: RemoteFetchPurpose,
-        previewLimit: Int64
+        previewLimit: Int64,
+        sessionAllowance: Int64 = 0
     ) -> RemoteFetchDecision {
         let refusal: RemoteFetchDecision = purpose.isAutomatic ? .decline : .confirm
         guard let byteSize, byteSize >= 0 else { return refusal }
-        return byteSize <= threshold(for: purpose, previewLimit: previewLimit) ? .fetch : refusal
+        let threshold = threshold(
+            for: purpose, previewLimit: previewLimit, sessionAllowance: sessionAllowance
+        )
+        return byteSize <= threshold ? .fetch : refusal
     }
 
     // MARK: - A set of files rather than one

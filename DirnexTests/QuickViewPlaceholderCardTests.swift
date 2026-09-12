@@ -30,7 +30,7 @@ struct QuickViewPlaceholderCardTests {
         let preview = Self.surface()
         var asked = false
         preview.placeholderActions = RemotePreviewActions(
-            download: { asked = true }, stop: {}, progress: { nil }
+            download: { asked = true }, stop: {}, progress: { nil }, downloadShortcut: nil
         )
         preview.show(
             nil,
@@ -55,7 +55,7 @@ struct QuickViewPlaceholderCardTests {
         let preview = Self.surface()
         var stopped = false
         preview.placeholderActions = RemotePreviewActions(
-            download: {}, stop: { stopped = true }, progress: { nil }
+            download: {}, stop: { stopped = true }, progress: { nil }, downloadShortcut: nil
         )
         preview.show(nil, style: .default, placeholder: Self.placeholder(.downloading))
         let card = try #require(preview.placeholderCard)
@@ -74,7 +74,7 @@ struct QuickViewPlaceholderCardTests {
     func cardBodyIsStillSwallowed() throws {
         let preview = Self.surface()
         preview.placeholderActions = RemotePreviewActions(
-            download: {}, stop: {}, progress: { nil }
+            download: {}, stop: {}, progress: { nil }, downloadShortcut: nil
         )
         preview.show(
             nil,
@@ -113,7 +113,7 @@ struct QuickViewPlaceholderCardTests {
         let moved = ByteCounter()
         moved.value = 29_000_000
         preview.placeholderActions = RemotePreviewActions(
-            download: {}, stop: {}, progress: { moved.value }
+            download: {}, stop: {}, progress: { moved.value }, downloadShortcut: nil
         )
         preview.show(nil, style: .default, placeholder: Self.placeholder(.downloading))
         let card = try #require(preview.placeholderCard)

@@ -126,28 +126,6 @@ extension BrowserWindowController {
         updateQuickView()
     }
 
-    /// Subscribe to `quickViewFetchLimitDidChange`, so raising the limit resolves the card the user
-    /// is *looking at* rather than the one they would see after the next cursor step.
-    ///
-    /// `updateQuickView()` rather than a re-delivery, because what has changed is the answer to
-    /// "may this be fetched" — which is asked by `prepareRemotePreview` on the way in, not by the
-    /// surface on the way out. Lowering the limit mid-transfer deliberately does *not* stop it: the
-    /// bytes are already being spent, and abandoning them would leave the user with nothing to show
-    /// for a download they had already paid for.
-    func observeQuickViewFetchLimit() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(quickViewFetchLimitDidChange),
-            name: AppPreferences.quickViewFetchLimitDidChange,
-            object: nil
-        )
-    }
-
-    @objc func quickViewFetchLimitDidChange(_ notification: Notification) {
-        guard isQuickViewEnabled else { return }
-        updateQuickView()
-    }
-
     /// Subscribe to `quickViewJavaScriptDidChange`, so a rendered page already on screen is drawn
     /// again under the new answer. Torn down by the blanket `removeObserver(self)` in `deinit`.
     func observeQuickViewJavaScript() {
@@ -306,7 +284,11 @@ extension BrowserWindowController {
     /// into the bar that reports the download — the reason no progress sheet goes up over it. Stop
     /// calls off whichever fetch that bar is drawing, which is otherwise only reachable by moving
     /// the cursor away from the file you are waiting for.
-    private func previewActions(for active: PanelViewController) -> RemotePreviewActions {
+    ///
+    /// Internal rather than private because ⌘D runs this very Download
+    /// (`BrowserWindowController+RemotePreview`), and it carries that command's live shortcut so the
+    /// card can draw it on the button.
+    func previewActions(for active: PanelViewController) -> RemotePreviewActions {
         let redraw: @MainActor () -> Void = { [weak self, weak active] in
             guard let self, let active, isQuickViewEnabled, active === focusedPanel else { return }
             deliverPreview(from: active)
@@ -321,7 +303,8 @@ extension BrowserWindowController {
                 active?.stopRemotePreviewFetch()
                 redraw()
             },
-            progress: { [weak active] in active?.remotePreviewProgress }
+            progress: { [weak active] in active?.remotePreviewProgress },
+            downloadShortcut: KeyBindingStore.shared.shortcut(for: "view.downloadPreview")
         )
     }
 

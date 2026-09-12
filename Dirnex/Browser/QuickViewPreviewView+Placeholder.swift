@@ -1,4 +1,5 @@
 import AppKit
+import DirnexCore
 
 /// The card a preview surface draws in place of a remote file whose bytes are not here
 /// (PLAN.md §M21 Slice 10).
@@ -36,6 +37,7 @@ extension QuickViewPreviewView {
         card.onDownload = placeholderActions?.download
         card.onStop = placeholderActions?.stop
         card.progressSource = placeholderActions?.progress
+        card.downloadShortcut = placeholderActions?.downloadShortcut
         card.show(placeholder)
     }
 
@@ -72,6 +74,9 @@ final class QuickViewPlaceholderCard: NSView {
     /// repaint of the whole preview — the shape `RemoteFetchPrompt.followProgress` already uses,
     /// and for the same reason.
     var progressSource: (() -> Int64?)?
+    /// The Download Preview command's shortcut, drawn on the Download button. Handed over by the
+    /// surface on every show, like the actions, so a rebinding reaches the card on the next delivery.
+    var downloadShortcut: CommandShortcut?
 
     private let glyph = NSImageView()
     private let nameLabel = NSTextField(labelWithString: "")
@@ -119,6 +124,7 @@ final class QuickViewPlaceholderCard: NSView {
             comment: "Quick View placeholder subtitle when a remote file's size is unknown."
         )
         expectedBytes = placeholder.byteSize
+        downloadButton.title = Self.downloadTitle(shortcut: downloadShortcut)
         apply(placeholder.state)
     }
 
@@ -139,7 +145,7 @@ final class QuickViewPlaceholderCard: NSView {
         // it (docs/NOTES.md ▸ AppKit), which is exactly the trap this card would fall into: the bar
         // sits in the same stack as the buttons. `isHidden` is the property that takes a view out of
         // hit-testing, and it is what all of these use.
-        downloadButton.isHidden = isDownloading || onDownload == nil
+        downloadButton.isHidden = !state.offersDownload || onDownload == nil
         stopButton.isHidden = !isDownloading || onStop == nil
         // Always bumped, so a poll left over from the previous row stops whatever this state is.
         pollGeneration += 1
@@ -282,6 +288,22 @@ final class QuickViewPlaceholderCard: NSView {
         )
     }
 
+    /// The Download button's title, with the Download Preview shortcut after it when one is bound.
+    ///
+    /// The same key *and the same comment* as the confirmation sheet's button, deliberately:
+    /// `String(localized:comment:)` takes a `StaticString`, so a shared comment has to be repeated
+    /// verbatim, and two sites keying one string with different comments hand the translator
+    /// whichever one `xcstringstool` kept (docs/NOTES.md ▸ Localization). The shortcut is glyphs
+    /// rather than words, so it is appended rather than translated, the way a menu draws it.
+    static func downloadTitle(shortcut: CommandShortcut?) -> String {
+        let title = String(
+            localized: "Download",
+            comment: "Button that starts downloading a remote file."
+        )
+        guard let shortcut else { return title }
+        return "\(title)  \(shortcut.display)"
+    }
+
     private static func symbol(_ name: String) -> NSImage? {
         NSImage(systemSymbolName: name, accessibilityDescription: nil)?
             .withSymbolConfiguration(.init(pointSize: 40, weight: .regular))
@@ -325,14 +347,7 @@ final class QuickViewPlaceholderCard: NSView {
         hintLabel.maximumNumberOfLines = 0
 
         downloadButton.bezelStyle = .rounded
-        // The same key *and the same comment* as the confirmation sheet's button, deliberately:
-        // `String(localized:comment:)` takes a `StaticString`, so a shared comment has to be
-        // repeated verbatim, and two sites keying one string with different comments hand the
-        // translator whichever one `xcstringstool` kept (docs/NOTES.md ▸ Localization).
-        downloadButton.title = String(
-            localized: "Download",
-            comment: "Button that starts downloading a remote file."
-        )
+        downloadButton.title = Self.downloadTitle(shortcut: nil)
         downloadButton.target = self
         downloadButton.action = #selector(download)
 

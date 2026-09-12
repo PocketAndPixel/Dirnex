@@ -85,6 +85,9 @@ enum CommandBinding {
         "view.quickViewSource": #selector(BrowserWindowController.showQuickViewSource(_:)),
         "view.quickViewRenderedPage":
             #selector(BrowserWindowController.showQuickViewRenderedPage(_:)),
+        // The window controller, which builds the placeholder card's actions: the key has to run
+        // the very closure the card's Download button runs, not a second spelling of it.
+        "view.downloadPreview": #selector(BrowserWindowController.downloadQuickViewPreview(_:)),
         // The window controller, not a pane: the drawer spans both panes, and this is the one
         // command that must also fire while the *terminal* holds focus — where no pane is in the
         // responder chain, but the window controller still is.

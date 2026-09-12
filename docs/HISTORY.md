@@ -12733,10 +12733,10 @@ asked again.
 
 ---
 
-### After M19 — the follow-on log (2026-08-07 → 2026-09-10)
+### After M19 — the follow-on log (2026-08-07 → 2026-09-12)
 
-Fifty-eight dated passes that landed outside a milestone of their own, between M18's close on
-2026-08-07 and 2026-09-10: user-reported bugs, three vault features, the tree crossing into S3,
+Fifty-nine dated passes that landed outside a milestone of their own, between M18's close on
+2026-08-07 and 2026-09-12: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
 sit here at the end rather than in a numeric slot — and they keep their **newest-first** order,
@@ -12744,6 +12744,54 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-12 — a Download the user already agreed to widens the preview for the session, and ⌘D
+presses it.** Reported with two screenshots: Quick View over an S3 bucket of 23–36 MB camera RAW
+files, one of them downloaded after agreeing to it, and the next one back on the placeholder card
+with a Download button only the mouse could reach — the surface refuses first responder so the
+arrows keep driving the list. The limit behind the card is Settings ▸ Panels' 10 MB, a standing
+statement about every server; the click was a statement about *these* files, and nothing kept it.
+The user proposed remembering the last size plus 20 %. What shipped is that idea with three changes,
+argued from their own folder.
+
+- **`RemotePreviewAllowance` (core)** keeps, per connection and in memory only, **twice** the largest
+  file agreed to beyond the Settings limit. Twice rather than +20 %: after the 23.1 MB CR2, +20 %
+  gives 27.7 MB and leaves the 28.5 MB NEF and the 36.1 MB RW2 each needing a click, where 46.2 MB
+  covers the folder — and headroom is cheap, because the automatic fetch's settle delay and
+  abandonment already bound what it can spend. An agreement the limit already covered teaches
+  nothing (a ⌃Q on a 9 MB file must not double a 10 MB limit), a limit of 0 ignores all of it, and a
+  change to the limit clears everything. **Stop** on a download larger than the limit forgets that
+  connection's allowance outright rather than lowering it below the stopped file, which would leave
+  every 1.9 GB video downloading after one mistaken click on a 2 GB one.
+- **Only the two preview rows of `RemoteFetchPolicy` read it**, through a parameter of its own rather
+  than folded into `previewLimit`: every other row is expressed against that limit, so folding it in
+  would let one click on a 300 MB photograph stop ⌥F5 and checksums confirming up to 600 MB. What
+  counts as agreeing is decided by where it is recorded — `openRemotePreview`'s `onStart`, i.e. the
+  card, ⌘D and the ⌘Y / ⌃Q confirmation answered yes. ⏎, F4 and a drag out never reach it, and
+  leaving a row is browsing rather than a refusal, so it withdraws nothing.
+- **View ▸ Download Preview (⌘D)** runs the card's own action (`previewActions(for:)`), is enabled by
+  the one state the button's visibility reads (`RemotePreviewPlaceholder.State.offersDownload`), and
+  the card draws the live binding on its button. ⌘D rather than ⌃D, because a menu key equivalent is
+  searched before the field editor and ⌃D would take delete-forward out of every text field.
+- **The live run found the one bug the suite could not see.** The card drew a bare "Download":
+  `previewActions` never passed the shortcut, `RemotePreviewActions.downloadShortcut` defaulted to
+  `nil`, and the card's test sets the card's shortcut directly. The field is now required, so every
+  construction site has to say what it means — docs/NOTES.md's "remove the default" rule, met from
+  the display side.
+
+`BrowserWindowController+QuickView` was at 498 of 500 lines, so the fetch-limit observer moved with
+the new command into `BrowserWindowController+RemotePreview`, and the pane's half into
+`PanelViewController+RemotePreviewAllowance`. Controls, in three builds so none masked another:
+dropping the recorded agreement, the prompt's allowance, the cursor-following decision's allowance,
+the card Stop's record, the transfer-ended Stop's record, `offersDownload` and the title's shortcut
+each failed exactly its own tests and left the rest green. Validation: 3,265 core tests, 1,118 app
+(1,061 executed), both linters, all three CI scripts, and a live run with the Debug build on the
+reported bucket — ⌘D on MG_3010.CR2 (23.1 MB) downloaded it; MG_3186.CR2 (22.9 MB),
+P1011960.RW2 (36.1 MB) and DSC_0004.NEF (28.5 MB) then started on their own; Stop on P1060804.dng
+left "Download stopped.", after which DSC_0697-Панорама.jpg (14.5 MB) was back on the card. **Not
+verified live, and pinned by no test:** a change to the Settings limit clearing the allowance — one
+line in the observer, left unexercised because changing the limit writes the developer's own
+preference domain.
 
 **2026-09-10 (last of the day) — an archive rewrite keeps every member's modification date.**
 Found by checking the archive after the CP866 rename below rather than by any test: both

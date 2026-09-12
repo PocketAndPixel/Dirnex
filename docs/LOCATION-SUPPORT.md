@@ -355,10 +355,14 @@ are not reclaimed until the record leaves the journal.
 extracted, never a marked set (a subprocess per row). With M19's member filter this is
 0.001 s for a small member of a 600 MB encrypted archive, against 1.53 s before it.
 
-<sup>s</sup> The bytes are downloaded first. A preview renders on *cursor movement*, so an arrow
-key never spends a billed request: the surface draws a placeholder card with the name, the size
-and a Download button, and the key you press is what starts the transfer. Only the cursor row
-is ever fetched.
+<sup>s</sup> The bytes are downloaded first, and only ever for the cursor row. A file up to the
+Settings ▸ Panels limit (10 MB by default) downloads on its own once the cursor has rested on it
+for 400 ms, and leaving the row abandons the transfer, so a sweep through a folder spends nothing.
+A larger file draws a placeholder card with the name, the size and a Download button, also on
+**⌘D** (View ▸ Download Preview) since 2026-09-12. Agreeing to one — the button, ⌘D, or the
+⌘Y / ⌃Q confirmation — lets files up to **twice its size on the same connection** arrive on their
+own for the rest of the session; Stop on such a download withdraws that, and changing the limit
+clears it.
 
 <sup>t</sup> Opens the extracted copy. Read-only — `⏎` writes nothing back (that is `F4`'s job).
 

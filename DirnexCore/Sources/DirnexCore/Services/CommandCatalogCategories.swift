@@ -157,6 +157,22 @@ extension CommandCatalog {
             shortcut: nil
         ),
         Command(
+            id: "view.downloadPreview",
+            title: "Download Preview",
+            category: .view,
+            keywords: [
+                "quick view", "download", "fetch", "remote", "server", "s3", "sftp", "ftp", "large",
+                "placeholder"
+            ],
+            // The placeholder card's Download button, from the keyboard — the preview surface refuses
+            // first responder so the arrows keep driving the list, which left the mouse as the only
+            // way to press it. ⌘D rather than the ⌃-letter layer ⌃Q lives on: a menu key equivalent
+            // is searched before the field editor's `keyDown:`, so ⌃D would take delete-forward out
+            // of every text field in the app, enabled or not (docs/NOTES.md ▸ AppKit). ⌘D has no
+            // text-system meaning to lose.
+            shortcut: CommandShortcut(key: "d", modifiers: .command)
+        ),
+        Command(
             id: "view.terminal",
             title: "Terminal Drawer",
             category: .view,

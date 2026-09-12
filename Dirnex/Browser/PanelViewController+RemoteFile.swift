@@ -108,7 +108,14 @@ extension PanelViewController {
     /// schedule the download again for anything under the limit. The partial goes either way —
     /// `RemoteFileCache` drops what a cancelled fetch left, since a truncated file renders as damage
     /// rather than as an error.
+    ///
+    /// A Stop is also an answer about size, so it reaches the session's allowance first — while the
+    /// fetch is still recorded as running, which is what says the press stopped something.
     func stopRemotePreviewFetch() {
+        if let entry = remoteFileUnderCursor,
+           host?.remoteFileCache.previewFetchState(for: entry) == .running {
+            recordPreviewStop(of: entry)
+        }
         host?.remoteFileCache.stopPreviewFetch()
     }
 
@@ -137,7 +144,8 @@ extension PanelViewController {
               RemoteFetchPolicy.decision(
                   forByteSize: entry.byteSize,
                   purpose: .cursorPreview,
-                  previewLimit: AppPreferences.shared.quickViewFetchLimit
+                  previewLimit: AppPreferences.shared.quickViewFetchLimit,
+                  sessionAllowance: cache.previewAllowance.ceiling(for: entry.path.backend)
               ) == .fetch
         else {
             cache.cancelAutomaticFetch()
@@ -191,11 +199,23 @@ extension PanelViewController {
         // and this is also the path that clears a failed attempt, so pressing the button after one
         // tries again instead of finding the row already spoken for.
         host?.remoteFileCache.cancelAutomaticFetch()
+        // The transfer starting is the user's yes — after the confirmation, or at once for the card
+        // and ⌘D — and a Stop is their no. Both teach the session's allowance; Cancel in the dialog
+        // starts nothing and so teaches nothing.
+        let agreed: @MainActor () -> Void = { [weak self] in
+            self?.recordPreviewAgreement(to: entry)
+            onStarted()
+        }
+        let ended: @MainActor ((any Error)?) -> Void = { [weak self] error in
+            guard error is CancellationError else { return }
+            self?.recordPreviewStop(of: entry)
+        }
         fetchRemoteFile(
             entry,
             for: .preview,
             alreadyConfirmed: alreadyConfirmed,
-            onStart: onStarted
+            onStart: agreed,
+            onEnded: ended
         ) { [weak self] _ in
             // The cursor may have moved on during the transfer; showing what it has left behind
             // would put a stranger's file on screen under the current row's name.
@@ -402,6 +422,11 @@ struct RemotePreviewPlaceholder: Equatable {
         /// the file and nothing is wrong with its size: saying "files this large aren't downloaded
         /// automatically" about a small one somebody just stopped would be plainly false.
         case stopped
+
+        /// Whether a card in this state offers its Download button — every state but a running
+        /// download. One definition, read by the card for the button and by the pane for ⌘D, so the
+        /// key cannot be enabled over a card with nothing to press.
+        var offersDownload: Bool { self != .downloading }
     }
 
     /// Why nothing is being fetched. Each is a fact about a different thing — the size, the server,
@@ -440,4 +465,12 @@ struct RemotePreviewActions {
     let download: () -> Void
     let stop: () -> Void
     let progress: () -> Int64?
+    /// The Download Preview command's shortcut, so the card can draw it on the button and make the
+    /// keyboard route as visible as the mouse one. `nil` when the command is unbound.
+    ///
+    /// **No default, deliberately.** The first version defaulted to `nil`, the window never passed
+    /// it, and the running app drew a bare "Download" while every test stayed green — each of them
+    /// sets the card's shortcut directly. A required field makes every construction site say what it
+    /// means.
+    let downloadShortcut: CommandShortcut?
 }

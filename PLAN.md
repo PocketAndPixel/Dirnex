@@ -134,7 +134,7 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 
 ### Still open
 
-Everything through M27 is shipped, and the record of it — the milestone checklists, the fifty-eight
+Everything through M27 is shipped, and the record of it — the milestone checklists, the fifty-nine
 dated passes that landed outside a milestone of their own, and the reasoning behind every decision —
 is in **[docs/HISTORY.md](docs/HISTORY.md)**. What is still open, rather than merely imaginable, is
 the *undone* column in the table above, plus the list below. Everything that came off this list came

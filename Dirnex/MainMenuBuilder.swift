@@ -107,6 +107,7 @@ enum MainMenuBuilder {
             .command("view.quickLook"), .command("view.quickView"),
             .subcommand("view.quickViewFullWindow"), .subcommand("view.quickViewFullScreen"),
             .subcommand("view.quickViewSource"), .subcommand("view.quickViewRenderedPage"),
+            .subcommand("view.downloadPreview"),
             .separator,
             .command("view.terminal")
         ]),

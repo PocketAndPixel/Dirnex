@@ -47,7 +47,7 @@ struct QuickViewFetchLimitSection: View {
                 """
                 How much Quick View may download by itself as the cursor moves over a file on a \
                 server. Anything larger still previews — the card names the file and its size and \
-                waits for you to press Download, or ⌘Y. Set it to 0 to download nothing unasked. \
+                waits for you to press Download (⌘D) or ⌘Y. Set it to 0 to download nothing unasked. \
                 Files on this Mac are never affected.
                 """
             )

@@ -300,6 +300,10 @@ extension BrowserWindowController: NSMenuItemValidation {
             return vaultImageUnderCursor != nil
         case #selector(lockVault(_:)):
             return vaultContainingFocusedPane != nil
+        // The placeholder card's Download button, from the keyboard — enabled exactly when the card
+        // is offering the button, by the one predicate the action itself checks.
+        case #selector(downloadQuickViewPreview(_:)):
+            return canDownloadQuickViewPreview
         default:
             break
         }

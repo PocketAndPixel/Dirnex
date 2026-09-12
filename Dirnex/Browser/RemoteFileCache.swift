@@ -32,6 +32,15 @@ final class RemoteFileCache {
 
     private var fetched: [VFSPath: Entry] = [:]
 
+    /// How large a file this window's previews may fetch unasked on each connection beyond the
+    /// Settings limit, because the user has already agreed to one about that size
+    /// (`RemotePreviewAllowance`).
+    ///
+    /// Held here because this is where the copies it governs are kept, and scoped the same way: to
+    /// the window, in memory, gone at quit. A test builds a fresh cache, so each starts with no
+    /// allowance and none can leak one into another.
+    var previewAllowance = RemotePreviewAllowance()
+
     /// The shared temp root every remote fetch writes beneath.
     static var temporaryRoot: URL {
         FileManager.default.temporaryDirectory
