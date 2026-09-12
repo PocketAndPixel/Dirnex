@@ -69,7 +69,10 @@ enum MainMenuBuilder {
             // Get Info sits with Open With and Share: all three are about the item under the
             // cursor rather than about moving bytes around.
             .command("file.openWith"), .command("file.share"), .command("file.attributes"),
-            .separator,
+            .command("file.showInFinder"), .separator,
+            // The cloud pair gets a group of its own: it is about where an item's bytes are, which
+            // is neither the item itself nor moving it anywhere.
+            .command("file.downloadNow"), .command("file.removeDownload"), .separator,
             .command("file.copy"), .command("file.move"), .command("file.pack"),
             // Archive Name Encoding sits beside Pack because those two are the archive items:
             // one makes an archive, the other says how to read the names in one. It is also the

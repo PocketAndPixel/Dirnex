@@ -5714,7 +5714,9 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     ("Always Available on This Device") with children `lazy`; all 186 files were materialized,
     `st_flags 0x40` (`UF_TRACKED`), not one `SF_DATALESS`. A fully pinned account is therefore a
     legitimate state in which the placeholder badge never appears.
-  - **Eviction is not scriptable from outside the provider.**
+  - **Eviction is not scriptable through the provider's API from outside the provider** — it is
+    through `FileManager`'s, measured 2026-09-12 (▸ *Download Now and Remove Download on any provider*,
+    below).
     `NSFileProviderManager.getIdentifierForUserVisibleFile(at:)` happily answers for someone else's
     domain (`item=226 domain=OneDrive`), but `evictItem` on the manager built from it fails
     `NSFileProviderErrorDomain -2001` *"The application cannot be used right now"* (underlying
@@ -5780,9 +5782,11 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   - **`NotDownloaded` is finally measured, and it took a human's right-click.** Dropbox's content
     policy is `lazy` (its dump) and its own `make_online_only` action evaluates **YES** on a
     materialized file — unlike OneDrive's fully pinned account, where the state cannot exist at all —
-    but the route to it from a probe is the same dead end as OneDrive's: `evictItem` on a hand-built
-    manager for someone else's domain fails `NSFileProviderErrorDomain -2001` (underlying `-2014`)
-    from an ad-hoc-signed binary, and `fileproviderctl` still has no evict verb. Made online-only in
+    but the route to it through `NSFileProviderManager` is the same dead end as OneDrive's (the
+    `FileManager` route is open — ▸ *Download Now and Remove Download on any provider*, below):
+    `evictItem` on a hand-built manager for someone else's domain fails `NSFileProviderErrorDomain
+    -2001` (underlying `-2014`) from an ad-hoc-signed binary, and `fileproviderctl` still has no
+    evict verb. Made online-only in
     Finder instead (2026-08-18), the file reads exactly as the iCloud shape this file has recorded
     since M6: `st_flags` **`0x40000060`** — `SF_DATALESS` plus `UF_COMPRESSED|UF_TRACKED`, which is
     why the test is a mask and never an equality — `st_blocks` 0, and the **real** `st_size` under
@@ -5918,6 +5922,47 @@ what made the milestone affordable and the rest inverted rules borrowed from the
       one byte read would have downloaded 13.8 MB — and it is the half a badge screenshot cannot show.
     - The file's name was Cyrillic, so the non-ASCII path travelled the listing, the resource-value
       read and the badge unchanged. Incidental, and free.
+
+- **Download Now and Remove Download on any provider are two public calls, and three entries above
+  this one read as though they were not.** Measured 2026-09-12 while answering whether Dirnex could
+  offer the provider actions Finder shows. `FileManager.evictUbiquitousItem` and
+  `startDownloadingUbiquitousItem` work on **third-party** File Provider domains, not only iCloud: a
+  OneDrive PNG, a Box JPG, a Dropbox JPG and an iCloud PDF each went to `SF_DATALESS`
+  (`0x40000060`, `st_blocks` 0) and came back. The dead end the OneDrive, Dropbox and Box entries
+  record was `NSFileProviderManager.evictItem` on a manager built for somebody else's domain — the
+  *provider's* API. The `FileManager` pair is the host's.
+  - **Launch context decides it again, and this time the grant is visible.** The same probe packaged
+    as an app and started with `open` answered `NSCocoaErrorDomain` 257 to both calls; run as a
+    **child of the Dirnex Debug build** (a user script, so Dirnex is the TCC responsible process) it
+    worked. The difference is `kTCCServiceFileProviderDomain`: the user's `TCC.db` holds one row per
+    domain, and `com.dirnex.Dirnex` is allowed for all six on this Mac. A probe that is not a child of
+    the app is measuring some other process's grant — the `trashItem` split (▸ The Trash) with the
+    cause, this time, in plain sight.
+  - **A folder is asymmetric.** `evictUbiquitousItem` on a folder evicts every file inside it
+    (seventeen PNGs, returning success with a never-uploaded `.DS_Store` among them), while
+    `startDownloadingUbiquitousItem` on a folder answers success and downloads **nothing** — the
+    seventeen were still placeholders thirty seconds later, and asking for each file brought them
+    back. So Download Now walks and Remove Download does not (`CloudLocalCopyAction`).
+  - **The refusals are distinct, and all of them sit underneath a generic wrapper.** An ordinary file
+    — evict: `NSCocoaErrorDomain` 3328 over `ENOTSUP`; download: 512 over
+    `NSFileProviderInternalErrorDomain` 0, "No valid file provider found" — and a mirror-mode Google
+    Drive file answers the same, being outside every domain. A file not uploaded yet (OneDrive's
+    `.DS_Store`): 512 over `NSFileProviderErrorDomain` −2008, *non-evictable*. A file some process
+    holds open, by descriptor or by mapping alike: 255 over `EBUSY`, whose text is Finder's own
+    "Unable to Remove Download". Since 512 wraps two of those, `CloudLocalCopyRefusal` reads the chain
+    and never the wrapper. Evicting a placeholder and downloading a downloaded file are silent no-ops
+    of 1–4 ms; the first eviction in a domain took 548 ms and later ones 7–170 ms, so neither call
+    belongs on the main thread — and neither does the menu validator's question, which is why a row
+    qualifies from facts the pane already holds (`CloudLocalCopyTarget`).
+  - **What Finder shows beyond these two cannot be had, and the reason is structural.** Each provider
+    declares its actions under `NSExtensionFileProviderActions` in its File Provider extension's
+    `Info.plist` (Dropbox 25, Box 26, Google Drive 22, OneDrive 14). Finder shows one when an
+    `NSPredicate` over `fileproviderItems[…].userInfo` and `domainUserInfo` matches — provider-private
+    metadata that `fileproviderctl evaluate <path>` prints and no public API returns — and runs it
+    through `FPItemManager scheduleAction:`, which is private. The one public host-side door,
+    `FileManager.getFileProviderServicesForItem`, hands back only undocumented XPC protocols (Office
+    co-authoring on a Dropbox file, OneDrive's `MacboxSearchService` and `MacboxConfigService`). Show
+    in Finder is the honest route to the rest.
 
 ### Keeping a file's previous bytes (APFS clones, and swapping two files)
 

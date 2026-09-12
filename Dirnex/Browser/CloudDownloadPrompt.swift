@@ -233,7 +233,7 @@ final class CloudDownloadPrompt {
         let alert = NSAlert()
         alert.messageText = String(
             localized: "Couldn’t download “\(entry.name)”",
-            comment: "iCloud download failure title; %@ is the file name."
+            comment: "Cloud download failure title; %@ is the file name."
         )
         alert.informativeText = detail
         alert.alertStyle = .warning

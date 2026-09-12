@@ -13,7 +13,8 @@ public enum CommandCatalog {
     /// Every command, grouped by category in presentation order. The app filters by category
     /// to build each menu and searches the whole list for the palette.
     public static let all: [Command] =
-        file + edit + selection + view + navigation + workspace + window + application
+        file + fileLocation + edit + selection + view + navigation + workspace + window
+            + application
 
     /// The command with `id`, or `nil` if unknown — the app's menu builder and palette look
     /// commands up by id to join them with AppKit selectors.

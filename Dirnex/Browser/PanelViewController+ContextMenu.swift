@@ -88,6 +88,7 @@ extension PanelViewController {
         menu.addItem(open)
         menu.addItem(openWithMenuItem())
         add(["view.quickLook"], to: menu)
+        add(whereItLivesCommandIDs(), to: menu)
         menu.addSeparator()
         addShareItem(to: menu)
         add(["file.copy", "file.move"], to: menu)
@@ -102,6 +103,22 @@ extension PanelViewController {
         menu.addSeparator()
         add(["file.trash"], to: menu)
         return menu
+    }
+
+    /// The registry commands about where the selection *lives*, which sit with Quick Look above the
+    /// first rule: Show in Finder, and — over a cloud item — Download Now and Remove Download.
+    ///
+    /// Each is left out rather than grayed where it cannot mean anything, the way Share changes shape
+    /// for a row that is not on this disk: there is no Finder window for a server's file, and two gray
+    /// cloud items on every ordinary file would be noise on the most common right-click there is.
+    /// Over a cloud item the pair validates like everything else here, so a downloaded file shows
+    /// Download Now grayed beside a live Remove Download. Not in a Trash listing, where evicting a
+    /// thrown-away file is nobody's errand.
+    func whereItLivesCommandIDs() -> [String] {
+        var ids: [String] = []
+        if canShowInFinder { ids.append("file.showInFinder") }
+        if offersCloudLocalCopy, !isTrashListing { ids += ["file.downloadNow", "file.removeDownload"] }
+        return ids
     }
 
     /// The menu over a trashed file. Same spine as `entryMenu` — look at it, move it somewhere,
@@ -125,6 +142,7 @@ extension PanelViewController {
         menu.addItem(open)
         menu.addItem(openWithMenuItem())
         add(["view.quickLook"], to: menu)
+        add(whereItLivesCommandIDs(), to: menu)
         menu.addSeparator()
         addShareItem(to: menu)
         add(["file.copy", "file.move"], to: menu)

@@ -93,7 +93,9 @@ extension PanelViewController {
             // cyclomatic-complexity ceiling. The answer itself lives in `+Edit`.
             return validateEditItem(menuItem)
         default:
-            return nil
+            // Show in Finder and the cloud pair are handoffs of a kind too — to Finder, and to the
+            // provider — and ride here for the same ceiling. The answers live in `+CloudLocalCopy`.
+            return validateCloudLocalCopyItem(menuItem)
         }
     }
 

@@ -346,6 +346,7 @@ are not reclaimed until the record leaves the journal.
 | Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t, ddd</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes | yes |
 | Edit `F4`, with save written back | yes | yes | yes, limited<sup>v, ddd</sup> | yes | yes | yes | n/a | yes | yes |
 | Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes | yes |
+| Show in Finder | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
 | Send to a **Service** | yes | yes | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | n/a | yes | yes |
 | Compare By Contents (`⌥F3`) | yes | yes | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | n/a | yes | yes |
 | Synchronize Directories | yes | yes | **no**<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | n/a | n/a<sup>x</sup> | n/a<sup>x</sup> |
@@ -507,6 +508,7 @@ this Mac does, so the fast path would have shipped unverified.
 | Privilege escalation for a root-only change | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
 | Finder tags (`⌃T`, tag dots) | yes | yes | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
 | Cloud sync badges | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
+| Download Now / Remove Download | n/a | yes, limited<sup>eee</sup> | n/a | n/a | n/a | n/a | n/a | yes<sup>eee</sup> | yes<sup>eee</sup> |
 | Create / verify checksum files | yes | yes | verify only<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | n/a | no<sup>xx</sup> | no<sup>xx</sup> |
 | Open in Terminal | yes | yes | n/a | **no**<sup>gg</sup> | n/a | n/a | n/a | no | no |
 | Run a user script | yes | yes | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | no<sup>aaa</sup> | yes, limited<sup>aaa</sup> | yes, limited<sup>aaa</sup> |
@@ -521,6 +523,19 @@ carries a mode, an ACL and tags like any other; a search hit is whatever it happ
 M22 it can be on a server — `AttributesRoute` then opens the *remote* panel for that row and the tag
 and ACL rows are absent, exactly as they would be in the pane the hit lives in. Asking the pane
 instead of the row would offer a control from the wrong account.
+
+<sup>eee</sup> The two actions every provider shares, and the only two anybody but Finder can run:
+`FileManager.startDownloadingUbiquitousItem` and `evictUbiquitousItem`, measured on iCloud, Dropbox,
+Box, OneDrive and a streaming Google Drive (docs/NOTES.md ▸ *Download Now and Remove Download on any
+provider*). **Limited** because what Finder's menu shows beyond them — Copy Dropbox link, View on
+Box.com, Version History, Lock File, "Always Keep on This Device" — is declared by each provider for
+Finder alone, gated on metadata only `fileproviderd` can read, and run through a private API; **Show
+in Finder** is the route to those. Download Now on a folder asks for every placeholder inside it,
+because the system call does not recurse, and Remove Download on a folder is one request, because it
+does. A file the provider will not let go of — not uploaded yet, set to stay on this Mac, or open in
+an app — is named with its reason. A mirror-mode Google Drive holds ordinary local files, so there is
+nothing to remove there. In the Trash the right-click leaves the pair out; the File menu still acts on
+a trashed cloud item.
 
 <sup>ff</sup> Neither `sftp` nor `curl` can hash server-side, so a remote checksum is a full
 download of everything in scope — the marked-set fetch note <sup>rr</sup> describes, with
@@ -724,6 +739,10 @@ rows, and the app is already as close as the technology permits:
 - Upload progress over SFTP: `sftp` prints no meter to a spawned process, in any configuration.
 - Per-item download percentages from macOS's cloud providers, and sync status in Google Drive's
   mirror mode: neither is exposed to anyone but Finder.
+- A cloud provider's **own** Finder menu actions — Copy Dropbox link, View on Box.com, Version
+  History and the rest: each is declared for Finder, gated on provider-private metadata and run
+  through a private API. Download Now, Remove Download and Show in Finder are what is public
+  (<sup>eee</sup>).
 - Put Back for an item **Finder** deleted out of a provider domain — the iCloud trash keeps no
   `.DS_Store` at all, and on Box such a delete does not land on this Mac. The origin is an opaque
   provider reference with no path in it. Dirnex's *own* deletes there are covered (M26 Slices 4–5,

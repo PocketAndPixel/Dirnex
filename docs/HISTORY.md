@@ -12735,7 +12735,7 @@ asked again.
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-12)
 
-Fifty-nine dated passes that landed outside a milestone of their own, between M18's close on
+Sixty dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-12: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12744,6 +12744,55 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-12 (later) — Download Now, Remove Download and Show in Finder, on every cloud provider.**
+Asked as a question: each cloud adds its own actions to Finder's menu, so can Dirnex have them too?
+Mostly no, and the probe is what says why. Copy Dropbox link, View on Box.com, Version History and
+the rest are declared in each provider's File Provider extension (Dropbox 25, Box 26, Google Drive
+22, OneDrive 14), shown when a predicate over metadata only `fileproviderd` can read matches, and
+run through the private `FPItemManager`. The two actions every provider shares turned out to be
+public `FileManager` calls that work on **third-party** domains, which three NOTES entries had read
+as impossible — they had tried the provider's `NSFileProviderManager` route instead (docs/NOTES.md
+▸ *Download Now and Remove Download on any provider*). So the pass ships those two, plus Show in
+Finder as the route to everything else.
+
+- **`CloudLocalCopy` (core)** holds the decisions. `CloudLocalCopyAction` says what a folder means:
+  Download Now **walks** it and asks for each placeholder, because the system call on a folder
+  answers success and downloads nothing (measured: seventeen placeholders still placeholders thirty
+  seconds later), while Remove Download on a folder is **one** request, because eviction recurses.
+  `CloudLocalCopyTarget` qualifies a row from facts the pane already holds, never from a resource read
+  a menu validator would wait on: a placeholder, a path under `~/Library/CloudStorage` or
+  `~/Library/Mobile Documents`, or something the pane already knows (a sync badge, or the directory
+  read as a cloud directory off the main thread). A symlink never qualifies, since mirror-mode `My
+  Drive` is one. `CloudLocalCopyRefusal` reads the whole error chain, because the outer Cocoa 512
+  wraps two different refusals; not-a-cloud-item is **counted** rather than reported, since the path
+  rule over-approximates on purpose.
+- **The app half** is `PanelViewController+CloudLocalCopy`. File ▸ Show in Finder sits with Get Info,
+  and the cloud pair gets its own group below it. The right-click adds all three beside Quick View,
+  and *leaves them out* rather than graying them where they cannot mean anything: no Show in Finder
+  for a server's file, no cloud pair on an ordinary file or in a Trash listing. Both calls run through
+  `BlockingWork`, then the pane refreshes; the status line counts what was asked for, and a refusal
+  alert names the item with its reason, listing up to six before counting the rest. There is no
+  confirmation for either: the provider refuses to evict anything it has not uploaded (measured), and
+  Finder asks for neither. `PanelTab.cloudDirectoryReading` is read ahead of the badge-visibility
+  gate in `updateSyncStatus`, so switching the badges off does not quietly switch Remove Download
+  off in iCloud's Desktop and Documents, the one place only that read can say "cloud".
+- The three commands went into `CommandCatalogLocation.swift`, since `CommandCatalog` sits at
+  SwiftLint's `type_body_length`; the palette finds them by each provider's own phrasing ("make
+  online-only", "free up space", "dropbox").
+
+Controls: six on the core rules each failed exactly their own tests, and four on the app rules were
+run against the reach suite, which went back to 10/10 green with the file restored. Validation:
+3,279 core tests, 1,128 app (1,081 executed, the live-server suites skipped: nothing remote changed),
+both linters, all three CI scripts, and live runs in the Debug build. Remove Download and then
+Download Now on a single cloud file went to `SF_DATALESS` and back in under 4 s, and on a 17-file
+folder both ways in 1.5 s. On a Dropbox JPG held open by another process, Remove Download raised
+*"Couldn’t remove the download of “DSCF8562.JPG”"* / *"It’s open in an app. Close it there and try
+again."* and left the file downloaded (`st_flags` `0x40`, 6144 blocks). Show in Finder, driven through
+`run operation "file.showInFinder"`, opened Dropbox ▸ Home Team Folder with that file selected.
+**Not verified live, and pinned only by tests:** the right-click menu itself (a context menu cannot
+be opened headlessly); a directory *read* as cloud, i.e. iCloud's Desktop and Documents; and the
+multi-refusal list.
 
 **2026-09-12 — a Download the user already agreed to widens the preview for the session, and ⌘D
 presses it.** Reported with two screenshots: Quick View over an S3 bucket of 23–36 MB camera RAW

@@ -81,6 +81,9 @@ extension PanelViewController {
     /// Re-derive the active tab's sync status for the directory now on screen. Called on navigation,
     /// on a tab switch, on every live refresh, and when the preference flips.
     func updateSyncStatus() {
+        // Ahead of the visibility gate: the cloud commands read this, and they must not switch off
+        // with the badges.
+        noteCloudDirectory()
         guard isSyncStatusVisible else {
             clearSyncStatus()
             return

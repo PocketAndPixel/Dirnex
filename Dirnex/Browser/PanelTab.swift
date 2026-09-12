@@ -87,6 +87,11 @@ final class PanelTab {
     /// scan lands — and empty, not `nil`, in the ordinary folder the scan skipped. UI-only and
     /// session-scoped like the pairs above. Managed by `PanelViewController+SyncStatus`.
     var syncSnapshot: CloudSyncSnapshot?
+    /// Whether this tab's directory is a cloud directory, read once per directory off the main thread
+    /// — `isCloud` is `nil` while the read is in flight. Kept apart from `syncSnapshot` because the
+    /// badges can be switched off and Download Now / Remove Download must not go with them. UI-only
+    /// and session-scoped like the snapshots above. Managed by `PanelViewController+CloudLocalCopy`.
+    var cloudDirectoryReading: (path: VFSPath, isCloud: Bool?)?
     /// Whether this tab shows ncdu-style size bars, and the projection they are drawn from (PLAN.md
     /// §M6). Per tab rather than app-wide because the mode *spends* something to be on — measured,
     /// ~16 s of background walking for one `~` — so it belongs to the tab you pointed at a tree, not
