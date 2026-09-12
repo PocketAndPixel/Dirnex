@@ -157,6 +157,11 @@ final class ConnectServerPrompt: NSObject {
         guard let content = sheet.contentView else { return }
         content.layoutSubtreeIfNeeded()
         sheet.setContentSize(content.fittingSize)
+        // AppKit orders Tab by where each control sits and builds that order once, so a row shown or
+        // hidden leaves every row below it in the wrong place: switching SMB to SFTP tabbed Protocol →
+        // Password → … → Host. Rebuild it from the settled layout.
+        content.layoutSubtreeIfNeeded()
+        sheet.recalculateKeyViewLoop()
     }
 
     // MARK: - Actions

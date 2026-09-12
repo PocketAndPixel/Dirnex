@@ -198,6 +198,7 @@ final class ConnectServerForm: NSObject {
 
     @objc private func authChanged() {
         updateVisibility()
+        onLayoutChanged?()
     }
 
     /// Show only the rows relevant to the current protocol and, for SFTP, the current auth method:
@@ -220,8 +221,9 @@ final class ConnectServerForm: NSObject {
         }
     }
 
-    /// Raised when a toggle changes the layout's height, so the sheet can re-fit around it — the
-    /// plain-FTP note appears and disappears with the security picker.
+    /// Raised when a toggle changes which rows are showing, so the sheet can re-fit around them and
+    /// rebuild its Tab order — the plain-FTP note appears and disappears with the security picker, and
+    /// the SFTP auth switch trades the password row for the key-file row at the same height.
     var onLayoutChanged: (() -> Void)?
 
     private func setRows(_ rows: [NSGridRow], hidden: Bool) {

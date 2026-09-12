@@ -1258,6 +1258,25 @@ at build time.
   it catches every collapse; capture whether the sidebar held focus *before* `super` (deterministic —
   a post-hoc KVO observer races the first-responder move) and hand focus to a pane after. Only
   reachable once the sidebar itself can hold focus, which it could not before M8.
+- **Tab skips a dialog's popups, checkboxes and buttons because of one system switch an app cannot
+  flip for itself, and the lever that remains is `canBecomeKeyView`.** With System Settings ▸
+  Keyboard ▸ Keyboard navigation off (the default, and `AppleKeyboardUIMode = 0` on this Mac), AppKit
+  leaves every non-text control out of the key view loop. Probed 2026-09-13: writing
+  `AppleKeyboardUIMode = 2` into the app's own domain, the argument domain, a volatile domain or the
+  registration domain left `NSApp.isFullKeyboardAccessEnabled` `false` every time, so the switch is
+  not read through the app's defaults search list. What *is* reachable: those controls already
+  answer `acceptsFirstResponder == true` and only `canBecomeKeyView` says no, so answering it the way
+  the switch would puts them in the loop. `KeyboardReachableControls` does that on `NSButton` and
+  `NSSegmentedControl` for every window except the browser window, where Tab is a pane key. Verified
+  live: the focus ring draws, Space opens a popup, and ↓ then Return picks an item without firing the
+  sheet's default button. **SwiftUI's `Toggle` stays out**, because its backing checkbox class
+  overrides `canBecomeKeyView` itself, while SwiftUI's `Picker` (an `NSPopUpButton` subclass) is
+  reached.
+  - **The loop is built once, from where each control sits, and a row shown or hidden later leaves
+    it wrong.** Connect to Server computes it from the SMB layout; switching to SFTP then tabbed
+    Protocol → Password → Save as → Cancel → Connect → Host. Text fields had this problem all along,
+    and it only became visible once the popup at the top was a stop. `recalculateKeyViewLoop()` after
+    the layout settles fixes it. Any form that hides rows owes the same call wherever it re-fits.
 - **A synthesized row's cell comes out of the *same* reuse pool as the real ones, so everything the
   real rows set has to be cleared on it — and the compiler cannot tell you what "everything" is.**
   `makeView(withIdentifier:)` keys on the **column**, so the `..` row's name cell is a recycled file

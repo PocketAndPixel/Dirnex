@@ -5,7 +5,7 @@ import DirnexCore
 /// one of them active at a time. Owns focus routing (Tab switches panes) and the
 /// active-pane bookkeeping the panes themselves stay ignorant of.
 @MainActor
-final class BrowserWindowController: NSWindowController, PanelHost {
+final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindowController {
     let leftPanel: PanelViewController
     let rightPanel: PanelViewController
     // Internal for `BrowserWindowController+Sidebar` (⌥⌘S focus reveals then focuses); both set in `loadView`.
