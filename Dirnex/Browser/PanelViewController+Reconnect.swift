@@ -110,6 +110,20 @@ extension PanelViewController {
         return .connect(endpoint)
     }
 
+    /// Drop the reason a tab gave for being empty, now that a listing of its own path has come back.
+    ///
+    /// A navigation's success already does this; a **re-list** has to as well, because it is how a
+    /// restored tab recovers with nobody asking. Found live 2026-09-13 (PLAN.md §M28 Slice 3): a
+    /// Photos tab restored before the rebuilt app had its grant failed its first listing, the pane's
+    /// timer re-listed it once access was allowed, and the status line went on saying the library
+    /// could not be read under the rows it had just read. A server that was down at launch and came
+    /// back later reaches the same state.
+    func clearOfflineReasonAnsweredByListing() {
+        guard tabs[activeTabIndex].offlineReason != nil else { return }
+        tabs[activeTabIndex].offlineReason = nil
+        updateChrome()
+    }
+
     /// Record why a restored tab's *listing* failed, in place of the alert a gesture would get.
     ///
     /// Same rule as `standDown`, one outcome later: the connection registered and the server did not

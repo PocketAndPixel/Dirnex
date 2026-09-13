@@ -29,6 +29,25 @@ private struct StubPhotosLibrary: PhotosLibraryTransport {
         ]]
     }
 
+    /// An album holding the Live Photo, titled with a slash the way Photos stores one.
+    static let album = PhotosCollection(
+        identifier: "0830E290-1636-4C88-AFD7-3777C4F50025/L0/040",
+        kind: .album,
+        title: "Summer/Beach",
+        oldestCapture: livePhoto.captureDate,
+        newestCapture: livePhoto.captureDate
+    )
+
+    func collections(inFolder identifier: String?) throws -> [PhotosCollection] {
+        guard identifier == nil else { throw PhotosLibraryError.itemGone }
+        return [Self.album]
+    }
+
+    func assets(inAlbum identifier: String) throws -> [PhotosAsset] {
+        guard identifier == Self.album.identifier else { throw PhotosLibraryError.itemGone }
+        return [Self.livePhoto]
+    }
+
     func changeToken() -> Data? {
         nil
     }
@@ -44,7 +63,7 @@ private struct StubPhotosLibrary: PhotosLibraryTransport {
     }
 }
 
-/// The Photos library wired into the app (PLAN.md §M28 Slice 2): the pane's backend reaching it,
+/// The Photos library wired into the app (PLAN.md §M28 Slices 2–3): the pane's backend reaching it,
 /// the writes it refuses, the sentence a refused grant gets, the names people read, and a tab that
 /// comes back after a relaunch. What PhotoKit itself answers is verified live, not here.
 @Suite("Photos library in the app")
@@ -54,7 +73,8 @@ struct PhotosLibraryAppTests {
         photos: PhotosBackend(
             transport: StubPhotosLibrary(),
             timeZone: TimeZone(secondsFromGMT: 0) ?? .current,
-            undatedTitle: PhotosPresentation.undatedTitle
+            undatedTitle: PhotosPresentation.undatedTitle,
+            albumsTitle: PhotosPresentation.albumsTitle
         )
     )
 
@@ -62,9 +82,17 @@ struct PhotosLibraryAppTests {
         VFSPath(backend: .photos, path: raw)
     }
 
-    @Test("the pane's backend routes a Photos path to the library")
+    @Test("the pane's backend routes a Photos path to the library, its albums included")
     func routing() throws {
-        #expect(try backend.listDirectory(at: path("/")).map(\.name) == ["2023"])
+        #expect(
+            try backend.listDirectory(at: path("/")).map(\.name)
+                == ["2023", PhotosPresentation.albumsTitle]
+        )
+        #expect(try backend.listDirectory(at: path("/Albums")).map(\.name) == ["Summer:Beach"])
+        #expect(
+            try backend.listDirectory(at: path("/Albums/Summer:Beach")).map(\.name)
+                == ["IMG_0089.HEIC", "IMG_0089.MOV"]
+        )
         #expect(
             try backend.listDirectory(at: path("/2023/2023-04")).map(\.name)
                 == ["IMG_0089.HEIC", "IMG_0089.MOV"]
@@ -96,11 +124,15 @@ struct PhotosLibraryAppTests {
         #expect(photos != local)
     }
 
-    @Test("the root, the undated folder and a month are named where a person reads them")
+    @Test(
+        "the root, the undated and albums folders, a month and an album are named where a person reads them"
+    )
     func names() {
         #expect(path("/").backendRootTitle == PhotosPresentation.libraryTitle)
         #expect(path("/").displayName == PhotosPresentation.libraryTitle)
         #expect(path("/Undated").displayName == PhotosPresentation.undatedTitle)
+        #expect(path("/Albums").displayName == PhotosPresentation.albumsTitle)
+        #expect(path("/Albums/Summer:Beach").displayName == "Summer:Beach")
         #expect(path("/2026/2026-08").displayName == "2026-08")
     }
 

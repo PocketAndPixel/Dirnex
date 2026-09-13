@@ -38,12 +38,25 @@ struct PhotosLayoutTests {
         )
     }
 
+    @Test(
+        "everything below Albums is handed over as names, since only the library can say what they are"
+    )
+    func albumLocations() {
+        #expect(layout.location(of: path("/Albums")) == .albums)
+        #expect(layout.location(of: path("/Albums/Trips")) == .inAlbums(["Trips"]))
+        #expect(
+            layout.location(of: path("/Albums/Trips/2025/Summer:Beach/IMG_0226.MOV"))
+                == .inAlbums(["Trips", "2025", "Summer:Beach", "IMG_0226.MOV"])
+        )
+        #expect(layout.albumsPath == path("/Albums"))
+    }
+
     /// A path that reads back as a *different* folder than the one typed is a wrong answer rather
     /// than a missing one, so everything the layout never produces must address nothing.
     @Test(
         "a path the layout never produces addresses nothing",
         arguments: [
-            "/26", "/20266", "/undated", "/Albums", "/2026/08", "/2026/2026-8", "/2026/2025-08",
+            "/26", "/20266", "/undated", "/albums", "/2026/08", "/2026/2026-8", "/2026/2025-08",
             "/2026/2026-00", "/2026/2026-13", "/2026/IMG_0089.HEIC", "/2026/2026-08/a/b",
             "/Undated/a/b", "/0000",
         ]
@@ -196,5 +209,39 @@ struct PhotosLayoutTests {
             layout.location(of: layout.path(of: august).appending("a:b.jpg"))
                 == .original(name: "a:b.jpg", in: august)
         )
+    }
+
+    private func album(_ title: String, _ identifier: String = UUID().uuidString) -> PhotosCollection {
+        PhotosCollection(identifier: identifier, kind: .album, title: title)
+    }
+
+    @Test("a title a sibling already has is numbered in the order given, albums and folders alike")
+    func collectionCollisions() {
+        let named = layout.named([
+            album("Trips"),
+            PhotosCollection(identifier: "folder", kind: .folder, title: "Trips"),
+            album("trips"),
+            album("Rainbow")
+        ])
+        #expect(named.map(\.name) == ["Trips", "Trips (2)", "trips (3)", "Rainbow"])
+        #expect(named[1].collection.identifier == "folder")
+    }
+
+    /// A title is not a file name, so nothing in it is an extension: numbering `Mr. Smith` as if it
+    /// were would give `Mr (2). Smith`.
+    @Test("a title's number goes at the end, whatever dots it holds")
+    func titlesHaveNoExtension() {
+        let named = layout.named(
+            [album("Mr. Smith"), album("Mr. Smith"), album("v1.2"), album("V1.2")]
+        )
+        #expect(named.map(\.name) == ["Mr. Smith", "Mr. Smith (2)", "v1.2", "V1.2 (2)"])
+    }
+
+    @Test("a title that is not a usable path component is made into one, and still collides")
+    func unusableTitles() {
+        let named = layout.named(
+            [album("Summer/Beach"), album("Summer:Beach"), album(""), album("..")]
+        )
+        #expect(named.map(\.name) == ["Summer:Beach", "Summer:Beach (2)", "Untitled", "_.."])
     }
 }

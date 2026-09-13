@@ -33,7 +33,7 @@ closed simply reads differently — it is not explained here.
 | **FTP** | FTP and FTPS. |
 | **S3** | A connected **bucket** (`s3:`) — Amazon S3 and every S3-compatible service. |
 | **S3 acct** | An **account** pane (`s3account:`) whose rows are buckets, not files. |
-| **Photos** | The system Photos library (`photos:`), browsed through PhotoKit as years, months and each asset's **original** files — a Live Photo is two rows. Read-only.<sup>4</sup> |
+| **Photos** | The system Photos library (`photos:`), browsed through PhotoKit as years, months and each asset's **original** files — a Live Photo is two rows — and as `Albums`, the albums and folders a person made. Read-only.<sup>4</sup> |
 | **Results** | A virtual results listing: ⌥F7 hits, a saved search, Recents, and the merged **iCloud Drive** sidebar row.<sup>3</sup> |
 | **Trash** | The merged Trash — `~/.Trash` plus every volume's and every file provider's, presented as one place (PLAN.md §M8). |
 
@@ -53,6 +53,12 @@ watched live. It is still a virtual container: no size bars, no pack, no Open in
 <sup>4</sup> Verified live on 2026-09-13 against this Mac's library: the sidebar row and the Photos
 permission prompt it raised, browsing, the path bar, restore after a relaunch, Quick View, and an
 `F5` copy out that arrived byte-identical.
+`Albums` lists albums and the folders they sit in, nested as deep as Photos nests them, with each
+album holding the same originals a month does; a title a sibling already has is numbered in the
+order Photos' sidebar lists them, so `Trips` beside `Trips` reads `Trips (2)`, and a `/` in a title
+reads `:`. Two things are not there and cannot be: a **smart album a person made**, which PhotoKit
+returns from no fetch at all, and the **system smart albums** (Favorites, Videos, …), which are views
+over the library rather than places. Shared albums are left out, as the Library view leaves them out.
 The rest of the Photos column follows from the library answering `isRemoteConnection` with read-only
 capabilities and has not been exercised against it — least of all the download of an original that
 is only in iCloud, since the library held none that day (PLAN.md §M28 Slice 2).

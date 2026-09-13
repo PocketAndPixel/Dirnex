@@ -2,8 +2,8 @@ import DirnexCore
 import Foundation
 import Photos
 
-/// The app's PhotoKit adapter beneath `PhotosBackend` (PLAN.md §M28 Slice 2): the four things the
-/// core asks of the system Photos library, answered through the only public route to it.
+/// The app's PhotoKit adapter beneath `PhotosBackend` (PLAN.md §M28 Slices 2–3): what the core asks
+/// of the system Photos library, answered through the only public route to it.
 ///
 /// It lives in the app for the reason every other transport does: PhotoKit is I/O against a system
 /// daemon behind a privacy grant, which no test can stand up, while every rule above it belongs to
@@ -53,6 +53,72 @@ struct PhotoKitLibrary: PhotosLibraryTransport {
             )
         }
         return answer
+    }
+
+    // MARK: - Albums
+
+    func collections(inFolder identifier: String?) throws -> [PhotosCollection] {
+        try Self.requireAccess()
+        let children: PHFetchResult<PHCollection>
+        if let identifier {
+            guard let folder = PHCollectionList.fetchCollectionLists(
+                withLocalIdentifiers: [identifier],
+                options: nil
+            ).firstObject else { throw PhotosLibraryError.itemGone }
+            children = PHCollection.fetchCollections(in: folder, options: nil)
+        } else {
+            children = PHCollectionList.fetchTopLevelUserCollections(with: nil)
+        }
+        var answer: [PhotosCollection] = []
+        children.enumerateObjects { collection, _, _ in
+            if let described = Self.describe(collection) { answer.append(described) }
+        }
+        return answer
+    }
+
+    func assets(inAlbum identifier: String) throws -> [PhotosAsset] {
+        try Self.requireAccess()
+        guard let album = PHAssetCollection.fetchAssetCollections(
+            withLocalIdentifiers: [identifier],
+            options: nil
+        ).firstObject else { throw PhotosLibraryError.itemGone }
+        let fetched = PHAsset.fetchAssets(in: album, options: Self.libraryOptions())
+        var assets: [PhotosAsset] = []
+        assets.reserveCapacity(fetched.count)
+        fetched.enumerateObjects { asset, _, _ in
+            assets.append(
+                PhotosAsset(identifier: asset.localIdentifier, captureDate: asset.creationDate)
+            )
+        }
+        return assets
+    }
+
+    /// A folder, or an album a person made or kept, in the core's vocabulary — and `nil` for the rest.
+    ///
+    /// Only the shared kinds are left out, as the Library view leaves them out. A smart album a person
+    /// made in Photos never gets here: PhotoKit does not return one from any fetch (measured
+    /// 2026-09-13), and the smart albums Photos makes are views rather than places. An album's dates
+    /// are PhotoKit's own, which follow its visible members — hiding a photo moved them (measured).
+    private static func describe(_ collection: PHCollection) -> PhotosCollection? {
+        if let folder = collection as? PHCollectionList, folder.collectionListType == .folder {
+            return PhotosCollection(
+                identifier: folder.localIdentifier,
+                kind: .folder,
+                title: folder.localizedTitle ?? ""
+            )
+        }
+        guard let album = collection as? PHAssetCollection,
+              album.assetCollectionType == .album,
+              album.assetCollectionSubtype != .albumCloudShared,
+              album.assetCollectionSubtype != .albumMyPhotoStream
+        else { return nil }
+        return PhotosCollection(
+            identifier: album.localIdentifier,
+            kind: .album,
+            title: album.localizedTitle ?? "",
+            oldestCapture: album.startDate,
+            newestCapture: album.endDate
+        )
     }
 
     func changeToken() -> Data? {

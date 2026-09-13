@@ -27,15 +27,28 @@ enum PhotosPresentation {
         )
     }
 
+    /// The folder of the albums and folders a person made.
+    ///
+    /// A title drawn over a path that stays `/Albums`, for the same reason as ``undatedTitle``
+    /// (``PhotosLayout/albumsFolderName``). An album's own name is never translated: it is what the
+    /// person typed.
+    static var albumsTitle: String {
+        String(
+            localized: "Albums",
+            comment: "Photos library folder holding the user's albums and album folders. Use the Photos app's word."
+        )
+    }
+
     /// The glyph the sidebar row and the path bar share.
     static let symbolName = "photo.on.rectangle.angled"
 
     /// What a location inside the library is called where a person reads it: the library's name at
-    /// the root, the translated title for the undated folder, and the path component — a year or a
-    /// month, which read the same in every language — everywhere else.
+    /// the root, the translated titles for the undated and albums folders, and the path component — a
+    /// year, a month or an album's own name, which read the same in every language — everywhere else.
     static func title(for path: VFSPath) -> String {
         if path.isRoot { return libraryTitle }
         if path.path == "/" + PhotosLayout.undatedFolderName { return undatedTitle }
+        if path.path == "/" + PhotosLayout.albumsFolderName { return albumsTitle }
         return path.lastComponent
     }
 }

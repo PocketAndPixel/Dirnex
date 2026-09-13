@@ -186,6 +186,7 @@ extension PanelViewController {
         ) else { return }
         guard token == loadToken, panel.path == watchedPath else { return }
         if deferRefreshIfRenaming() { return }
+        clearOfflineReasonAnsweredByListing()
         // **Only when the listing actually moved.** The stream is recursive, so the great
         // majority of events are about something far below this directory and change nothing the
         // pane draws: measured on `/Users/oleg` with nothing touched, ~5 events a second, every

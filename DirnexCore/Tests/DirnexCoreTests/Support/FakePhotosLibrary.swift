@@ -26,9 +26,16 @@ final class FakePhotosLibrary: PhotosLibraryTransport, @unchecked Sendable {
     /// The bytes an export writes, keyed by original file name; a name with none writes an empty file.
     var bytes: [String: Data] = [:]
 
+    /// Each folder's children in sidebar order, keyed by the folder's identifier — `nil` for the top.
+    var levels: [String?: [PhotosCollection]] = [:]
+    /// Each album's members, by asset identifier.
+    var albumMembers: [String: [String]] = [:]
+
     private(set) var intervalsAsked: [DateInterval?] = []
     private(set) var resourceRequests: [[String]] = []
     private(set) var exports: [Export] = []
+    private(set) var levelRequests: [String?] = []
+    private(set) var albumRequests: [String] = []
 
     init(_ stored: [Stored]) {
         self.stored = stored
@@ -56,6 +63,47 @@ final class FakePhotosLibrary: PhotosLibraryTransport, @unchecked Sendable {
             answer[item.asset.identifier] = item.resources
         }
         return answer
+    }
+
+    func collections(inFolder identifier: String?) throws -> [PhotosCollection] {
+        levelRequests.append(identifier)
+        if let failure { throw failure }
+        if let identifier, !levels.values.joined().contains(where: {
+            $0.identifier == identifier && $0.kind == .folder
+        }) {
+            throw PhotosLibraryError.itemGone
+        }
+        return levels[identifier] ?? []
+    }
+
+    func assets(inAlbum identifier: String) throws -> [PhotosAsset] {
+        albumRequests.append(identifier)
+        if let failure { throw failure }
+        guard let members = albumMembers[identifier] else { throw PhotosLibraryError.itemGone }
+        return members.compactMap { member in stored.first { $0.asset.identifier == member }?.asset }
+    }
+
+    /// Put `albums` and `folders` into the library, the way ``PhotosProbeLibrary/albums`` describes
+    /// them, with each album's dates the capture range of its members — which is what PhotoKit
+    /// reported for every album the probe read.
+    func install(_ level: [PhotosProbeLibrary.Node], inFolder parent: String? = nil) {
+        levels[parent] = level.map { node in
+            switch node {
+            case let .album(identifier, title, members):
+                albumMembers[identifier] = members.map(\.asset.identifier)
+                let dates = members.compactMap(\.asset.captureDate)
+                return PhotosCollection(
+                    identifier: identifier,
+                    kind: .album,
+                    title: title,
+                    oldestCapture: dates.min(),
+                    newestCapture: dates.max()
+                )
+            case let .folder(identifier, title, children):
+                install(children, inFolder: identifier)
+                return PhotosCollection(identifier: identifier, kind: .folder, title: title)
+            }
+        }
     }
 
     func changeToken() -> Data? {
@@ -191,5 +239,74 @@ enum PhotosProbeLibrary {
 
     static var all: [FakePhotosLibrary.Stored] {
         [editedEarlier, editedLater, livePhoto, jpeg, liveAugust, longVideo]
+    }
+
+    /// An album or a folder in ``albums``.
+    indirect enum Node {
+        case album(identifier: String, title: String, members: [FakePhotosLibrary.Stored])
+        case folder(identifier: String, title: String, children: [Node])
+    }
+
+    /// The albums and folders the probe library held once a fixture had been made in Photos on
+    /// 2026-09-13 (docs/NOTES.md ▸ iCloud Photos): the real identifiers and titles, the nesting, and
+    /// the top level in the order PhotoKit returned it — the Photos sidebar's, newest first, which is
+    /// why the empty album `Trips` made last stands ahead of the folder `Trips`. `Nature` holds its real
+    /// members; the other albums held photos this fake does not carry, so they hold ones it does, with
+    /// the one photo that sat in both `Lisbon`s still shared.
+    static var albums: [Node] {
+        [
+            .album(
+                identifier: "CDC3A82B-47C4-412E-9933-67EE5F1546B7/L0/040",
+                title: "Trips",
+                members: []
+            ),
+            .album(
+                identifier: "B222BDF6-354E-47C9-81EA-B4F1764A1A2E/L0/040",
+                title: "Rainbow",
+                members: []
+            ),
+            .album(
+                identifier: "E5A802C5-B326-4AAA-86A2-B821E7B80B45/L0/040",
+                title: "Empty",
+                members: []
+            ),
+            .album(
+                identifier: "0026901F-DC06-49F0-857A-198DD9714C46/L0/040",
+                title: "Lisbon",
+                members: [jpeg, livePhoto]
+            ),
+            .folder(
+                identifier: "795A9045-9D8D-4090-B94F-A03D9AA47B6E/L0/020",
+                title: "Trips",
+                children: [
+                    .folder(
+                        identifier: "E74E444A-6CE3-44F2-8C99-9DB4CE7D2457/L0/020",
+                        title: "2025",
+                        children: [
+                            .album(
+                                identifier: "0830E290-1636-4C88-AFD7-3777C4F50025/L0/040",
+                                title: "Summer/Beach",
+                                members: [longVideo]
+                            )
+                        ]
+                    ),
+                    .album(
+                        identifier: "41F65BBC-4F30-417B-A373-5126916C3115/L0/040",
+                        title: "Lisbon",
+                        members: [livePhoto, liveAugust]
+                    )
+                ]
+            ),
+            .album(
+                identifier: "2A8783B7-5A37-40EE-A48B-5870950158D2/L0/040",
+                title: "Rainbow",
+                members: [liveAugust]
+            ),
+            .album(
+                identifier: "4173237A-16DA-4109-BAE5-3F76301E921E/L0/040",
+                title: "Nature",
+                members: [editedEarlier, editedLater]
+            )
+        ]
     }
 }

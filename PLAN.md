@@ -216,6 +216,39 @@ front of a user:
    entitlement lives in `Packaging/Dirnex.entitlements`.
 3. **Albums.** `/Albums/…`: user albums and the folders they sit in. The probe library has none, so
    the slice opens by probing one that does.
+   **Landed 2026-09-13.** The probe had to make its library first: Oleg made two albums and the rest
+   was built in Photos.app through its own menus — nested folders, an album titled `Summer/Beach`,
+   one photo in two `Lisbon`s, an empty album, a second `Rainbow`, an album `Trips` beside the folder
+   `Trips`, a hidden member and a smart album (docs/NOTES.md ▸ iCloud Photos). What it settled, each
+   now a rule in the core:
+   - **`/Albums` sits beside the years**, under a translated title over an English path, and exists
+     only while the library holds an album or a folder. An empty *album* does exist.
+   - **Albums and folders share one set of names per level, numbered in the sidebar's order**, which
+     PhotoKit returns and Photos puts newest first — so the empty `Trips` made last keeps the name and
+     the real folder reads `Trips (2)`. A title's number goes at the end (`Mr. Smith (2)`), and a `/`
+     reads `:`.
+   - **A path is resolved by walking**, since `/Albums/Trips/Lisbon` cannot say whether `Lisbon` is an
+     album or a photo. Each level and each album's rows are cached against the change token.
+   - **An album holds the month's rows**, named by the same capture-order rule, because PhotoKit's own
+     order is the album's sort setting and moves when a person re-sorts it.
+   - **Not there, and cannot be**: a smart album a person made, which PhotoKit returns from no fetch
+     at all; the system smart albums, which are views; and a hidden photo, absent from albums even with
+     `includeHiddenAssets` on.
+   The same run measured Slice 4's premise: a `PHPhotoLibraryChangeObserver` in another process
+   heard all 51 changes Photos.app made, on a background thread.
+   Core: `PhotosLayout+Names`, `PhotosBackend+Albums` and two transport verbs, 3337 tests with 20 new,
+   and five negative controls — four failing their own tests, and one (walking an album as a folder)
+   inert for a stated reason: the library refuses an album's id as a folder, so both builds answer
+   `notFound`; it was replaced by resolving on the raw title, which failed five tests. App: the two
+   verbs in `PhotoKitLibrary`, `PhotosPresentation.albumsTitle` translated in all 14 languages, and the
+   stub and names tests; 1166 app tests green. Verified live on this Mac's library: the root listed
+   `Albums` beside five years, it listed all seven names with the numbering above, the crumbs read
+   `Photos › Albums › Trips (2) › 2025 › Summer:Beach`, `Lisbon` left out its hidden photo, and F5 of
+   `IMG_0207.HEIC` out of the nested album arrived SHA-256-identical as a clone with its own inode.
+   **One bug came out of the live run, and it was Slice 2's**: the tab restored before the rebuild's
+   grant kept its status line saying the library could not be read after the timer had re-listed it,
+   because only a navigation cleared a restored tab's reason. A re-list clears it now
+   (`clearOfflineReasonAnsweredByListing`), with a control that fails without it.
 4. **Freshness and fidelity.** A refresh driven by the change token; and an exported original stamped
    with its capture date and cleared of `com.apple.cpl.*`, measured first against what Photos' own
    **Export Unmodified Original** writes, so the result matches what a user compares it with.

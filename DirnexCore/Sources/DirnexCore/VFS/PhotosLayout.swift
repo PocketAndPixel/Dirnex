@@ -45,6 +45,12 @@ public struct PhotosLayout: Sendable {
         case folder(Folder)
         /// One original, by the row name it is listed under, in a folder that holds originals.
         case original(name: String, in: Folder)
+        /// `/Albums`, listing the albums and folders at the top of the library.
+        case albums
+        /// Something below `/Albums`, by the names it is listed under — an album, a folder, or an
+        /// original in an album. Which of the three is the library's to say: a name alone cannot tell
+        /// an album called `Lisbon` from a photo called `Lisbon`, so ``PhotosBackend`` walks.
+        case inAlbums([String])
     }
 
     /// The root folder holding assets with no capture date.
@@ -52,6 +58,10 @@ public struct PhotosLayout: Sendable {
     /// Not localized: it is a path component, and a path is an identity. ``PhotosBackend`` is handed a
     /// translated title for the row, and the app draws the same title over the crumb.
     public static let undatedFolderName = "Undated"
+
+    /// The root folder holding the albums and folders a person made. Not localized, for the same
+    /// reason as ``undatedFolderName``; a year is four digits, so no year can be called this.
+    public static let albumsFolderName = "Albums"
 
     /// Gregorian, in the time zone the layout was made with.
     ///
@@ -74,6 +84,9 @@ public struct PhotosLayout: Sendable {
     /// rather than a missing one.
     public func location(of path: VFSPath) -> Location? {
         let components = path.path.split(separator: "/").map(String.init)
+        if components.first == Self.albumsFolderName {
+            return components.count == 1 ? .albums : .inAlbums(Array(components.dropFirst()))
+        }
         switch components.count {
         case 0:
             return .root
@@ -99,6 +112,11 @@ public struct PhotosLayout: Sendable {
         case let .month(year, _):
             VFSPath(backend: .photos, path: "/" + name(of: .year(year)) + "/" + name(of: folder))
         }
+    }
+
+    /// The path that lists the albums and folders at the top of the library.
+    public var albumsPath: VFSPath {
+        VFSPath(backend: .photos, path: "/" + Self.albumsFolderName)
     }
 
     /// The folder's own name: `2026`, `2026-08`, `Undated`.
@@ -227,42 +245,5 @@ public struct PhotosLayout: Sendable {
             }
         }
         return rows
-    }
-
-    /// An original file name made into a usable path component.
-    ///
-    /// The name came from whatever imported the file, so nothing promises it is one: a `/` would split
-    /// the path, and `..` would climb out of it. A slash becomes `:`, which is how Finder spells a
-    /// slash on disk.
-    static func rowName(for originalFilename: String) -> String {
-        let name = originalFilename.replacingOccurrences(of: "/", with: ":")
-        switch name {
-        case "": return "Untitled"
-        case ".", "..": return "_" + name
-        default: return name
-        }
-    }
-
-    /// `name`, or the first `name (2)`, `name (3)`, … not already in `taken`, which it then joins.
-    ///
-    /// Compared case- and normalization-insensitively, as APFS compares names: two rows a copy out
-    /// would land on one file are two rows with one name.
-    static func numbered(_ name: String, avoiding taken: inout Set<String>) -> String {
-        let extensionPart = (name as NSString).pathExtension
-        let stem = (name as NSString).deletingPathExtension
-        var candidate = name
-        var counter = 2
-        while taken.contains(collisionKey(candidate)) {
-            candidate = extensionPart.isEmpty
-                ? "\(stem) (\(counter))"
-                : "\(stem) (\(counter)).\(extensionPart)"
-            counter += 1
-        }
-        taken.insert(collisionKey(candidate))
-        return candidate
-    }
-
-    private static func collisionKey(_ name: String) -> String {
-        name.precomposedStringWithCanonicalMapping.lowercased()
     }
 }

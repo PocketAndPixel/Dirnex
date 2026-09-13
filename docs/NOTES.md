@@ -6152,15 +6152,51 @@ during the session. This is the ground the Photos backend stands on (PLAN.md §M
   256 MiB completed **0.61 ms** later with `PHPhotosErrorDomain` **3072** (`userCancelled`) and **no**
   chunk after the cancel. `writeData` returns nothing to cancel, so Stop needs the streaming form.
 
-- **Albums are unmeasured, because this library has none.** `.album` answered 0 and
-  `fetchTopLevelUserCollections` nothing, so folders and nested collections still need a library that
-  has them. `.smartAlbum` answered 22 in 0.5 ms, including "Hidden" and two private subtypes
-  (`1000000218` "Recently Saved", `1000000219` "Recovered"); "Recently Deleted" is not among them, and
-  `estimatedAssetCount` is `NSNotFound` for every smart album, so a count costs a fetch.
+- **The system smart albums are views, not places.** `.smartAlbum` answered 22 in 0.5 ms, including
+  "Hidden" and two private subtypes (`1000000218` "Recently Saved", `1000000219` "Recovered");
+  "Recently Deleted" is not among them, and `estimatedAssetCount` is `NSNotFound` for every smart
+  album, so a count costs a fetch.
+
+- **Albums, measured 2026-09-13 against a fixture made in Photos.app for M28 Slice 3.** The library had
+  none at the first probe, so two were made by hand and the rest through Photos' own menus: a folder
+  `Trips` holding a folder `2025` (holding an album titled `Summer/Beach`) and an album `Lisbon`; a
+  second `Lisbon` at the top level sharing one photo with the first; an empty album; a second top-level
+  `Rainbow`; an album `Trips` beside the folder `Trips`; one album member hidden; and a smart album.
+  - **A smart album a person makes is invisible to PhotoKit.** "Live" (rule: is Live Photo, 16 items
+    in Photos) was in the sidebar and in no fetch at all: not among `fetchTopLevelUserCollections`
+    (still 5, then 7), not among `.smartAlbum` (still 22), not among `.album`. So there is nothing to
+    list, and a sentence saying so is the whole of the support.
+  - **Photos stores duplicates and slashes as typed.** Two top-level `Rainbow`s, and an album and a
+    folder both called `Trips` at one level, were accepted without a rename; `Summer/Beach` came back
+    with its `2f` byte. So a folder view has to number siblings and replace the slash itself.
+  - **`fetchTopLevelUserCollections` and `fetchCollections(in:)` return the sidebar's order**, which
+    puts the newest first — an album made after the folder `Trips` stands ahead of it. Top level
+    1.0–1.4 ms, a nested level 0.52–0.71 ms, `fetchAssets(in:)` on an album ~1 ms, and
+    `fetchAssetCollections(withLocalIdentifiers:)` 0.45–0.56 ms for six.
+  - **The default order of `fetchAssets(in: album)` is the album's own sort setting.** An album switched
+    to View ▸ Sort ▸ Keep Sorted By Newest First fetched newest first; every other album fetched oldest
+    first. So nothing that names rows may lean on fetch order — capture order is the only stable one.
+  - **A hidden photo is gone from albums even with `includeHiddenAssets = true`.** After hiding one of
+    `Lisbon`'s three, the album fetched 2 under both options and the library 24 of 25 — on a Mac whose
+    Hidden album is locked, which is the default. The album's `startDate` moved to the remaining
+    members, so an album's dates follow what a third party can see.
+  - Folders report `nil` for `startDate` and `endDate`; an album reports its members' capture range,
+    and `nil` when empty. User albums are `subtype 2` (`.albumRegular`) with ids ending `/L0/040`,
+    folders `subtype 100` ending `/L0/020`, and `estimatedAssetCount` is exact for a user album.
 
 - **The change token is cheap enough to poll.** `currentChangeToken` took 0.17 ms and
-  `fetchPersistentChanges(since:)` 0.56 ms with nothing changed. `PHPhotoLibraryChangeObserver`
-  delivery is unmeasured, since provoking it needs a write.
+  `fetchPersistentChanges(since:)` 0.56 ms with nothing changed.
+  - **`PHPhotoLibraryChangeObserver` hears Photos.app from another process.** Measured 2026-09-13 with
+    a read-only observer under Terminal's grant while the album fixture above was built in Photos: 51
+    deliveries in twelve minutes, every one on a background thread, for every album made, renamed,
+    filled, re-sorted and hidden, including each committed keystroke of a rename. So a refresh can be
+    driven by the notification rather than by a timer, which is PLAN.md §M28 Slice 4.
+  - **One gesture usually arrives as two or three deliveries** 0.3 s apart, and adding a photo to an
+    album reports the *photo* as changed in a held asset fetch as well as the album. Hiding one reports
+    it removed from that fetch and, in the persistent-change history, as updated rather than deleted.
+  - A fetch result made by `fetchAssetCollections(with: .album, …)` while the library held no albums
+    got no `changeDetails` at all when albums arrived; one from `fetchTopLevelUserCollections` did. The
+    token changed on every delivery, and reading the history since the last one took 10–21 ms.
   - **Archived, it is byte-stable, which is what lets a cache key on it.** Two reads are `isEqual`
     without being the same object, and 1000 reads archived with `NSKeyedArchiver` (secure coding)
     produced **one** distinct 606-byte value, at 93 µs a read plus archive. So

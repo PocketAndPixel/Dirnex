@@ -428,6 +428,7 @@ extension PanelViewController {
                 backend, at: path, sort: sort, showHidden: showHidden, directorySizes: sizes
             ) else { return }
             guard token == loadToken, panel.path == path, activeTabIndex == tabIndex else { return }
+            clearOfflineReasonAnsweredByListing()
             reconcileCursorFromTable()
             installSortedModel(model)
             if let target, let index = panel.displayedIndex(ofID: target) {

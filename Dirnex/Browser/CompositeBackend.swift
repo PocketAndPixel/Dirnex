@@ -81,7 +81,8 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         local: LocalBackend,
         photos: PhotosBackend = PhotosBackend(
             transport: PhotoKitLibrary(),
-            undatedTitle: PhotosPresentation.undatedTitle
+            undatedTitle: PhotosPresentation.undatedTitle,
+            albumsTitle: PhotosPresentation.albumsTitle
         )
     ) {
         self.local = local
