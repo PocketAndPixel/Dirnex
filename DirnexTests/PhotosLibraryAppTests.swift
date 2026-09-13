@@ -165,4 +165,44 @@ struct PhotosLibraryAppTests {
         #expect(PhotoKitLibrary.kind(of: .fullSizePhoto) == .derived(rawValue: 5))
         #expect(PhotoKitLibrary.kind(of: .adjustmentData) == .derived(rawValue: 7))
     }
+
+    /// Nothing else can see this regression: without the handler every export of an original already
+    /// on this Mac still works, and only an iCloud download stops honouring Stop (docs/NOTES.md ▸
+    /// iCloud Photos).
+    @Test("an iCloud download always carries a progress handler, which is what lets Stop cancel it")
+    func iCloudRequestCarriesProgressHandler() {
+        let options = PhotoKitLibrary.iCloudRequestOptions { _ in }
+        #expect(options.isNetworkAccessAllowed)
+        #expect(options.progressHandler != nil)
+    }
+
+    @Test(
+        "a download's progress counts its bytes once, through the iCloud phase and the stream after it"
+    )
+    func downloadProgressCountsOnce() {
+        let size: Int64 = 1_000_000
+        // Downloading into the library, with nothing handed over yet.
+        #expect(
+            PhotoKitLibrary.bytesSoFar(written: 0, downloadedFraction: 0.25, expectedSize: size) == 250_000
+        )
+        // Streaming from disk once the download is done: the same bytes, not a second file's worth.
+        #expect(
+            PhotoKitLibrary.bytesSoFar(written: 300_000, downloadedFraction: 1, expectedSize: size) == size
+        )
+        // No download phase at all.
+        #expect(
+            PhotoKitLibrary.bytesSoFar(written: 400_000, downloadedFraction: 0, expectedSize: size) == 400_000
+        )
+        // A size the library did not report leaves only what was written.
+        #expect(
+            PhotoKitLibrary.bytesSoFar(written: 400_000, downloadedFraction: 0.5, expectedSize: nil) == 400_000
+        )
+        // A fraction outside 0…1 is clamped rather than trusted.
+        #expect(
+            PhotoKitLibrary.bytesSoFar(written: 0, downloadedFraction: 1.5, expectedSize: size) == size
+        )
+        #expect(
+            PhotoKitLibrary.bytesSoFar(written: 0, downloadedFraction: -1, expectedSize: size) == 0
+        )
+    }
 }

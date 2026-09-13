@@ -12746,10 +12746,20 @@ Unmodified Original sets a birth time equal to the capture date and keeps everyt
 `com.apple.cpl.*` markers included, which overturned the last slice's plan to clear them and move
 the modification time.
 
-Some paths were never exercised, and are recorded rather than argued. The **streamed download of
-an original that is only in iCloud** rests on the probe's measurements alone (a 3164 refusal in
-milliseconds with the network off, 1 MiB chunks, Stop landing 0.61 ms after it was asked), because
-the library held no evicted original on the day: the probe had downloaded all six back. Neither a
+Some paths were not exercised by the close, and are recorded rather than argued. The **download of
+an original that is only in iCloud** had only the probe's measurements behind it, because the
+library held no evicted original on the day, until later that evening, when clips recorded on an
+iPhone for the purpose were run through Dirnex. It had two bugs, one cause: the request carried no
+progress handler. PhotoKit downloads the whole original into the library before handing over a
+byte, so the bar sat at "Zero KB" for the whole download; and without a handler
+`cancelDataRequest` does not stop that download, so Stop on a 1.1 GB clip took effect about 75 s
+later, once it had finished. `PhotoKitLibrary` now always sets one and reports the larger of the
+bytes written and the download's fraction of the size. A 219 MB clip then showed a moving bar and
+arrived SHA-256-identical to the library's stored original, born at its capture time. An A/B in a
+probe showed the cancel stopping the download within 1 ms with a handler, and being ignored without
+one. Through Dirnex, Stop on a 276 MB clip then ended the request with `userCancelled`, the CloudKit
+download finished at the same instant, the partial file was gone within 0.1 s, and the original was
+still not in the library 105 s later (docs/NOTES.md ▸ iCloud Photos). Neither a
 **refused grant's sentence** nor the **`Undated` folder** was seen live. And whether a Developer ID
 build's certificate-based requirement carries the Photos grant across updates, as Full Disk
 Access's does, is unmeasured (docs/NOTES.md ▸ iCloud Photos).
@@ -12904,8 +12914,8 @@ front of a user:
      other pane; an album renamed by a separate PhotoKit process showed the new name within 6 s and
      the old one again after it was renamed back; and F5 of `IMG_0089.HEIC` and `IMG_0089.MOV`
      arrived SHA-256-identical to Photos' own export, born at 14:04:12.274Z, with the same mtime and
-     `cpl` markers. The download of an original that is only in iCloud is still unexercised: the
-     library held none that day either.
+     `cpl` markers. The download of an original that is only in iCloud was still unexercised here:
+     the library held none. It was run later that evening, and the close above records what it found.
    - Core 3347 tests (10 new) and app 1170 (4 new), both linters clean, and all 1015 extracted
      strings in the catalogs. Five negative controls each failed their own tests and were restored
      byte-identical: Photos on a timer, no settle floor, no stamp, stamping the modification time

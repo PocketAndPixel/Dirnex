@@ -94,6 +94,13 @@ at build time.
   the field. The `.sdef` route worked first time: `reveal` a file *inside* the folder (an empty
   folder needs a marker), which points the active pane there. Reach for the AppleScript verbs before
   a synthetic key whenever a field has to be committed.
+- **An accessibility element index goes stale as soon as the tree changes, and the click then lands
+  somewhere else.** Measured 2026-09-13 while pressing Stop on a running copy: `app_ax_find` named the
+  queue bar's "Cancel all" as element 37, and a click on element 37 seconds later landed on a sidebar
+  row instead, because the window's tree had changed in between. The copy ran to the end and spent the
+  iCloud-only clip it was there to test. The same button clicked by window coordinate went through as
+  an `AXPress` on "Cancel all". Click anything that is updating by coordinate, and read the tool's own
+  report of what it pressed before trusting the result.
 - **Fully quit a running Dirnex before relaunching.** `open` re-focuses the stale process, so
   new menu items and behavior silently don't appear. A Debug build's code lives in
   `Dirnex.debug.dylib`, not the thin executable — grep the dylib to confirm new code actually
@@ -6166,11 +6173,45 @@ during the session. This is the ground the Photos backend stands on (PLAN.md §M
     - **The lowercase `.mov` is not followed.** A row's name is part of its path, and on the
       case-insensitive default volume the two spellings are the same file.
 
-- **Streaming arrives in 1 MiB chunks, and cancellation is immediate.**
+- **An original on this Mac streams in 1 MiB chunks, and cancellation is immediate.**
   `requestData(for:options:dataReceivedHandler:completionHandler:)` delivered an 8 MB original in
   8 chunks in 1.0 ms and the 2.66 GB one at ~10 GiB/s from local storage; `cancelDataRequest` at
   256 MiB completed **0.61 ms** later with `PHPhotosErrorDomain` **3072** (`userCancelled`) and **no**
   chunk after the cancel. `writeData` returns nothing to cancel, so Stop needs the streaming form.
+  Neither half holds for an original that is only in iCloud (below).
+
+- **An original only in iCloud is not streamed: PhotoKit downloads all of it into the library first,
+  and only a progress handler makes that download cancellable.** Measured 2026-09-13 on four clips
+  recorded for it on an iPhone, each refused with 3164 before the networked request. `requestData`
+  with the network on starts photolibraryd's "make resource available", a CloudKit download of the
+  whole original into `originals/`. The data handler gets nothing until that finishes, and then the
+  bytes arrive from disk at once: 219 MB in 0.1 s after a 22.4 s download, 1.1 GB after 144.6 s.
+  - **So a bar fed by chunks sits at zero for the whole download.** Dirnex's did, reading "Zero KB of
+    1,11 GB" for 2½ minutes, until the request carried a progress handler. The handler fires about
+    three times a second through the download (0.005 → 0.165 over 7.4 s on 217 MB). The two phases
+    count the same bytes, so `PhotoKitLibrary.bytesSoFar` reports the larger of written bytes and
+    fraction × size rather than their sum.
+  - **Without a progress handler, `cancelDataRequest` does not stop the download.** One clip, cancelled
+    8 s in, both ways. With a handler the request completed within 1 ms with `userCancelled`, cloudd's
+    received bytes stopped, and the original was still absent from the library a minute later. Without
+    one the cancel was ignored: cloudd kept receiving, and the request completed 7.6 s later, also with
+    3072, once all 217,610,785 bytes were stored. **The error code is the same either way**, so only
+    the library or the network can tell the two apart. Dirnex shipped with no handler, and Stop on a
+    1.1 GB clip took effect about 75 s after it was pressed, when the download had finished. With the
+    handler in, Stop through Dirnex on a 276 MB clip ended the request with 3072 at the instant the
+    CloudKit download finished, the partial file was gone within 0.1 s, and the original was still
+    absent from the library 105 s later.
+  - **`nettop -l` hands its samples over in batches**, so a timestamp stamped on a line when it is
+    read can trail the sample by several seconds, and a download stopped by a cancel looks as if it
+    ran on. Read the plateau: the same byte count repeating is the stop, whatever the times beside it.
+  - The photolibraryd log names both options on each request (`Starting request to make resource
+    available with network access: Y, progress: Y`), and `replying to client with success: …,
+    duration:` gives the download's length. That is the quickest way to see which request an app made.
+  - **Making an iCloud-only original costs a recording, not a wait.** Photos' prefetch and prune runs
+    once a day (logged `Starting automatic prefetch/prune`) and evicted nothing here with 482 GB free,
+    and nothing public evicts one. A clip recorded on an iPhone and never opened on the Mac arrived
+    within minutes as a record without its original, and stayed that way until something asked for it.
+    Each test that downloads spends one, so record several.
 
 - **The system smart albums are views, not places.** `.smartAlbum` answered 22 in 0.5 ms, including
   "Hidden" and two private subtypes (`1000000218` "Recently Saved", `1000000219` "Recovered");

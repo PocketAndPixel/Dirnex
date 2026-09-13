@@ -61,9 +61,10 @@ returns from no fetch at all, and the **system smart albums** (Favorites, Videos
 over the library rather than places. Shared albums are left out, as the Library view leaves them out.
 Verified live the same day for PLAN.md §M28 Slice 4: a pane refreshing when the library changed
 elsewhere, with the refresh floor at 0, and an `F5` export of a Live Photo carrying what Photos' own
-export carries. The rest of the Photos column follows from the library answering
-`isRemoteConnection` with read-only capabilities and has not been exercised against it — least of all
-the download of an original that is only in iCloud, since the library held none on either day.
+export carries. The download of an original that is only in iCloud was run that evening on clips
+recorded for it, and needed a fix before its progress and Stop cells were true (<sup>qqq</sup>). The
+rest of the Photos column follows from the library answering `isRemoteConnection` with read-only
+capabilities and has not been exercised against it.
 
 ---
 
@@ -722,12 +723,12 @@ local one.
 
 | Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Photos |
 |---|---|---|---|---|---|---|---|---|
-| Determinate byte progress, downloading | yes | yes | n/a | yes | yes | yes | n/a | yes |
+| Determinate byte progress, downloading | yes | yes | n/a | yes | yes | yes | n/a | yes<sup>qqq</sup> |
 | Determinate byte progress, uploading | yes | yes | n/a | **yes, limited**<sup>jj</sup> | yes | yes | n/a | n/a |
 | Resume an interrupted transfer | n/a | n/a | n/a | yes | yes | yes | n/a | no |
 | Split one file over several connections | n/a | n/a | n/a | yes | yes | yes | n/a | n/a |
 | Multipart upload for very large files | n/a | n/a | n/a | **yes**<sup>vv</sup> | **no**<sup>ww</sup> | yes | n/a | n/a |
-| Stop actually stops the bytes | yes | yes | yes | yes | yes | yes | n/a | yes |
+| Stop actually stops the bytes | yes | yes | yes | yes | yes | yes | n/a | yes<sup>qqq</sup> |
 | Server-side copy (bytes never touch this Mac) | yes<sup>kk</sup> | yes<sup>kk</sup> | n/a | yes, limited<sup>ll</sup> | **no**<sup>ll</sup> | yes | n/a | n/a |
 | Duplicate a file inside one account | yes | yes | n/a | yes, limited<sup>ll</sup> | yes, limited<sup>ll</sup> | yes | n/a | n/a |
 | Conditional write (nobody overwrote it meanwhile) | n/a | n/a | n/a | yes, limited<sup>mm</sup> | yes, limited<sup>mm</sup> | yes | n/a | n/a |
@@ -780,6 +781,15 @@ bytes: `ALLO` is advisory (`202 No storage allocation necessary`) and there is n
 Two concurrent `APPE`s to one file interleave arbitrarily, with nothing naming which half is which.
 So the only route sends the file twice, which is worse than sending it once — see *Where remote still
 feels unlike local*.
+
+<sup>qqq</sup> True only since a fix on the evening of 2026-09-13 for an original that is only in
+iCloud. PhotoKit downloads such an original into the library in full before it hands over a byte, and
+`cancelDataRequest` stops that download only when the request carries a progress handler. Without one,
+Dirnex's bar read zero for the whole download and Stop took effect only after it had finished. The
+transport now always sets one and reports the download's fraction of the size until the bytes arrive.
+Seen live through Dirnex after the fix: a moving bar, a byte-identical copy, and Stop ending the
+download at once with nothing stored. A probe measured the difference the handler makes: with one the
+download ends within 1 ms of the cancel, without one it runs to the end (docs/NOTES.md ▸ iCloud Photos).
 
 ---
 

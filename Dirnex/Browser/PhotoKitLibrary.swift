@@ -150,6 +150,7 @@ struct PhotoKitLibrary: PhotosLibraryTransport {
             guard Self.isNetworkRequired(refusal) else { throw Self.libraryError(for: refusal) }
             try Self.download(
                 original,
+                expectedSize: resource.byteSize,
                 to: destination,
                 progress: progress,
                 isCancelled: isCancelled
@@ -162,12 +163,15 @@ struct PhotoKitLibrary: PhotosLibraryTransport {
     /// Stream an original down from iCloud into `destination`.
     ///
     /// `requestData` rather than a networked `writeData`, because only the streaming form hands back
-    /// something to cancel: Stop reached the request **0.61 ms** after it was asked for, with no chunk
-    /// after it (measured 2026-09-13). The callbacks cannot call the caller's non-escaping `progress`
-    /// and `isCancelled`, so the waiting thread polls both between slices, the shape
-    /// `ProcessWaiting` has for a subprocess.
+    /// something to cancel. It does not stream from the network, though: PhotoKit first downloads the
+    /// whole original into the library, and the data handler sees nothing until that is done — a
+    /// 1.1 GB clip took 144.6 s with no chunk (measured 2026-09-13). What moves the bar and what lets
+    /// Stop end that download is the progress handler (``iCloudRequestOptions(onProgress:)``). The
+    /// callbacks cannot call the caller's non-escaping `progress` and `isCancelled`, so the waiting
+    /// thread polls both between slices, the shape `ProcessWaiting` has for a subprocess.
     private static func download(
         _ resource: PHAssetResource,
+        expectedSize: Int64?,
         to destination: URL,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
@@ -176,9 +180,8 @@ struct PhotoKitLibrary: PhotosLibraryTransport {
               let handle = try? FileHandle(forWritingTo: destination)
         else { throw PhotosLibraryError.failed(code: Int(EIO)) }
 
-        let stream = PhotoKitStream(writingTo: handle)
-        let options = PHAssetResourceRequestOptions()
-        options.isNetworkAccessAllowed = true
+        let stream = PhotoKitStream(writingTo: handle, expectedSize: expectedSize)
+        let options = iCloudRequestOptions { fraction in stream.noteDownloaded(fraction: fraction) }
         let manager = PHAssetResourceManager.default()
         let request = manager.requestData(
             for: resource,
@@ -207,6 +210,36 @@ struct PhotoKitLibrary: PhotosLibraryTransport {
         if let writeFailure { throw PhotosLibraryError.failed(code: (writeFailure as NSError).code) }
         if stopped { throw CancellationError() }
         if let requestFailure { throw libraryError(for: requestFailure) }
+    }
+
+    /// The options for fetching an original from iCloud: the network allowed, and a progress handler
+    /// **always**, because without one `cancelDataRequest` does not stop the download.
+    ///
+    /// Measured 2026-09-13 on one iCloud-only clip, cancelled 8 s in both ways (docs/NOTES.md ▸ iCloud
+    /// Photos). With a handler the request ended within 1 ms with `userCancelled`, the download stopped
+    /// and nothing was stored. Without one it ended 7.6 s later with the same error, once the whole
+    /// 218 MB original had downloaded into the library. So the handler is what makes Stop work, as well
+    /// as what moves the bar.
+    static func iCloudRequestOptions(
+        onProgress: @escaping @Sendable (Double) -> Void
+    ) -> PHAssetResourceRequestOptions {
+        let options = PHAssetResourceRequestOptions()
+        options.isNetworkAccessAllowed = true
+        options.progressHandler = onProgress
+        return options
+    }
+
+    /// How much of an original to report as done: the larger of what has been written and how far the
+    /// download from iCloud has got.
+    ///
+    /// The two phases count the same bytes. PhotoKit downloads the whole original into the library
+    /// before its data handler sees anything, then streams it from disk in moments, so adding them would
+    /// count the file twice and taking only what was written would leave the bar at zero for the whole
+    /// download. With no size reported, only written bytes count.
+    static func bytesSoFar(written: Int64, downloadedFraction: Double, expectedSize: Int64?) -> Int64 {
+        guard let expectedSize, expectedSize > 0 else { return written }
+        let fraction = min(max(downloadedFraction, 0), 1)
+        return max(written, Int64(Double(expectedSize) * fraction))
     }
 
     private static func writeLocally(_ resource: PHAssetResource, to destination: URL) -> (any Error)? {
@@ -335,12 +368,20 @@ private final class PhotoKitStream: @unchecked Sendable {
     private let lock = NSLock()
     private let completed = DispatchSemaphore(value: 0)
     private let handle: FileHandle
+    private let expectedSize: Int64?
     private var written: Int64 = 0
+    private var downloadedFraction = 0.0
     private var writeError: (any Error)?
     private var completionError: (any Error)?
 
-    init(writingTo handle: FileHandle) {
+    init(writingTo handle: FileHandle, expectedSize: Int64?) {
         self.handle = handle
+        self.expectedSize = expectedSize
+    }
+
+    /// How far PhotoKit's download into the library has got, from its progress handler.
+    func noteDownloaded(fraction: Double) {
+        lock.withLock { downloadedFraction = max(downloadedFraction, fraction) }
     }
 
     func append(_ data: Data) {
@@ -366,7 +407,13 @@ private final class PhotoKitStream: @unchecked Sendable {
 
     /// Report what has arrived since `reported`, returning the new total.
     func report(since reported: Int64, to progress: (Int64) -> Void) -> Int64 {
-        let current = lock.withLock { written }
+        let current = lock.withLock {
+            PhotoKitLibrary.bytesSoFar(
+                written: written,
+                downloadedFraction: downloadedFraction,
+                expectedSize: expectedSize
+            )
+        }
         guard current > reported else { return reported }
         progress(current - reported)
         return current
