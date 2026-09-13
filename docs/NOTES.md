@@ -1296,6 +1296,24 @@ at build time.
     Protocol → Password → Save as → Cancel → Connect → Host. Text fields had this problem all along,
     and it only became visible once the popup at the top was a stop. `recalculateKeyViewLoop()` after
     the layout settles fixes it. Any form that hides rows owes the same call wherever it re-fits.
+    - **That debt belongs to a form in a plain window, not to one inside an `NSAlert`.** Checked
+      live 2026-09-13. The pack sheet collapses and expands its passphrase block by moving frames by
+      hand and calling `alert.layout()`, with no Tab-order call of its own. It came out right in both
+      directions: expanded, Encryption → Passphrase → Repeat → Hide file names → Cancel → Pack →
+      Name; collapsed, Encryption → Cancel → Pack → Name. So `NSAlert.layout()` rebuilds the loop as
+      part of re-fitting. Connect to Server is a plain `NSWindow`, and there nothing did until
+      `resizeToFit` was taught to. Its S3 and FTP fields came out right too, checked in both
+      directions: Amazon ↔ S3-compatible with Endpoint and Path-style in place, FTPS ↔ plain FTP
+      with the note row, and Anonymous on and off with User and Password. Every one of those shows
+      or hides already reaches `onLayoutChanged`. SMB has no show/hide of its own, so the only way
+      its order could go stale is switching back to it from another protocol. SMB → S3 → SMB and
+      SMB → SFTP → SMB both came back Address → Host → Share → User → Password → Save as.
+    - **Two changes that look like they would go stale do not.** Switching an `NSTabView` tab brings
+      the new tab's controls into the order in place: all four Get Info tabs checked, Permissions
+      running Group → the access grid column by column → special bits → flags → Apply → Cancel. And
+      a control that is *disabled* when the order is built is still in it once enabled: the ACL
+      editor's Who popup, Allow/Deny and 15 checkboxes join the order the moment a row is selected.
+      A stack view hiding and showing a button is fine too (the tour's Back button, page 1 → 2).
 - **A synthesized row's cell comes out of the *same* reuse pool as the real ones, so everything the
   real rows set has to be cleared on it — and the compiler cannot tell you what "everything" is.**
   `makeView(withIdentifier:)` keys on the **column**, so the `..` row's name cell is a recycled file
@@ -2340,6 +2358,21 @@ at build time.
     did. And a document under Auto Layout is not positioned by the scroll view: constrain its top and
     leading to `scrollView.contentView`, or it keeps whatever frame it was born with. Both failures
     look identical from outside (an empty pane), so check the flip before hunting the constraints.
+  - **The scroll view that fixes compression has no height of its own, so outside a container that
+    gives it one it collapses instead.** The local panel's tabs have a minimum height; the remote
+    Get Info put the same pane in a plain stack, which laid its body out at **0 pt** (29–32 pt in a
+    real window) over content 229–399 pt tall. It shipped that way: the panel was a header, an empty
+    band and the buttons, and every suite passed because they ask which rows exist rather than
+    whether any can be seen. Fixed 2026-09-13 by tying the scroll view's height to its document's at
+    `required - 1`, with a required maximum on the whole panel so a long translation scrolls.
+    - **Reading `fittingSize` to set that height is the fix that looks right and is 14–56 pt short**,
+      because wrapping notes measure fewer lines before layout than they take at their real width,
+      so the last note stayed hidden. The same happened to the header and footer, which measured
+      14 pt taller in `loadView` than they laid out. Constrain to the document instead of copying a
+      number out of it, and put a cap on the container rather than working one out.
+    - The instrument that found it without guessing was the window's accessibility tree:
+      `app_screenshot` listed the checkboxes at y 233–293 inside a window 168 pt tall, which says
+      "laid out, scrolled out of sight" where a screenshot only says "blank".
 - **A filtered-out row must be omitted, not zeroed.** Rendering an excluded folder as its
   filtered total gives "Zero KB · 0.0 %", which reads as *"measured, and empty"* — a claim about
   the folder where the truth is a claim about the question. Drop such rows from the projection

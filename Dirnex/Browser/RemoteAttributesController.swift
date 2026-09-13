@@ -104,11 +104,47 @@ final class RemoteAttributesController: NSViewController {
         let container = EscapeDismissingView()
         container.onEscape = { [weak self] in self?.close(nil) }
 
-        DialogLayout.fill(container, with: [makeHeader(), makeBody(), makeFooter()])
+        let body = makeBody()
+        DialogLayout.fill(container, with: [makeHeader(), body, makeFooter()])
         container.widthAnchor.constraint(
             equalToConstant: AttributesControllerLayout.sheetWidth
         ).isActive = true
+        fitBody(body, in: container)
         view = container
+    }
+
+    /// Give the scrolling body the height of what it holds, up to what keeps this panel no taller
+    /// than the local one.
+    ///
+    /// **A scroll view has no height of its own**, and this panel is the one place the shared pane
+    /// sits in a plain stack rather than under a tab view with a minimum height — so the stack
+    /// squeezed it to nothing. Measured 2026-09-13: every shape of the panel laid out its body at
+    /// **0 pt** (29–32 pt once in a real window) over content 229–399 pt tall, and on screen it was a
+    /// header, an empty band and the buttons, with every row and checkbox scrolled out of sight. It
+    /// had been that way since the panel shipped; a test that only asks what rows exist cannot see it.
+    ///
+    /// **The height is a constraint to the content, not a number read from it.** Reading
+    /// `fittingSize` here came out 14–56 pt short on every shape, because the notes wrap to more
+    /// lines once laid out at their real width than they measure as beforehand — the body stopped
+    /// collapsing and still hid its last note. Tied to the document, the body follows whatever the
+    /// content settles at, in any language and after the rebuild a save triggers.
+    ///
+    /// The cap is the local Get Info's own height (``AttributesControllerLayout/sheetHeight``), put
+    /// on the whole panel rather than worked out for the body, and it wins over the fit. Working it
+    /// out was 14 pt wrong for the same reason as the content — the header and footer measure taller
+    /// here than they lay out — while a maximum on the panel needs no arithmetic at all. Every English
+    /// shape fits well inside it; a longer translation scrolls rather than growing the window, which
+    /// is the reason the pane scrolls at all.
+    private func fitBody(_ body: NSView, in container: NSView) {
+        guard let content = (body as? NSScrollView)?.documentView else { return }
+        let fit = body.heightAnchor.constraint(equalTo: content.heightAnchor)
+        fit.priority = .required - 1
+        NSLayoutConstraint.activate([
+            fit,
+            container.heightAnchor.constraint(
+                lessThanOrEqualToConstant: AttributesControllerLayout.sheetHeight
+            )
+        ])
     }
 
     @objc func close(_ sender: Any?) { dismiss(sender) }
