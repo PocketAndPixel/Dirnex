@@ -114,7 +114,8 @@ enum AttributeRow {
             document.widthAnchor.constraint(equalToConstant: width)
         ])
 
-        let scrollView = NSScrollView()
+        // Following focus, so Tab onto a row below the fold brings it into sight.
+        let scrollView = FocusFollowingScrollView()
         scrollView.hasVerticalScroller = true
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder

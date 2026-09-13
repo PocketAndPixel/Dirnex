@@ -1314,6 +1314,15 @@ at build time.
       a control that is *disabled* when the order is built is still in it once enabled: the ACL
       editor's Who popup, Allow/Deny and 15 checkboxes join the order the moment a row is selected.
       A stack view hiding and showing a button is fine too (the tour's Back button, page 1 → 2).
+  - **A key-view change does not scroll an `NSScrollView` to the control it focuses.** Measured in
+    Get Info ▸ Sharing: Tab walked onto the second row of inheritance checkboxes below the pane's
+    fold and the pane stayed put, so two presses landed on controls nobody could see. The order was
+    right and the focus was invisible. SwiftUI's Settings does scroll to a focused control, which is
+    what makes the AppKit panes look broken beside it. `FocusFollowingScrollView` (used by
+    `AttributeRow.pane`, so every Get Info tab and the remote panel) watches its window's
+    `firstResponder` and calls `scrollToVisible` with an 8 pt margin for the focus ring. It traces a
+    field editor back to its field, because the editor lives outside the document. Tables already
+    scroll to their own selection and need none of this.
 - **A synthesized row's cell comes out of the *same* reuse pool as the real ones, so everything the
   real rows set has to be cleared on it — and the compiler cannot tell you what "everything" is.**
   `makeView(withIdentifier:)` keys on the **column**, so the `..` row's name cell is a recycled file
