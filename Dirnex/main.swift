@@ -20,6 +20,8 @@ UserDefaults.standard.set(false, forKey: "NSSplitViewItemSidebarDefaultsToFloati
 KeyboardReachableControls.install()
 
 let application = NSApplication.shared
+// ⌘1–⌘9 pick a dialog's tabs, and holding ⌘ shows the numbers.
+TabShortcuts.install()
 let delegate = AppDelegate()
 application.delegate = delegate
 application.run()

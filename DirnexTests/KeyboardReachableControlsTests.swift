@@ -135,6 +135,47 @@ struct KeyboardReachableControlsTests {
         #expect(stops.contains { $0 === alert.buttons[0] })
     }
 
+    /// Get Info's and Settings' tab selectors. Measured live: Tab goes Cancel → the selector → the
+    /// selected tab's first control, arrows move the highlight and Space selects, as they do with the
+    /// system switch on. The assertion is the order around the selector, since a selector that joins
+    /// the loop after its own content would read as Tab skipping into the page first.
+    @Test("a tab view's selector is a Tab stop, before the controls of the tab it shows")
+    func tabViewSelectorIsReachable() throws {
+        KeyboardReachableControls.install()
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        let above = NSTextField(string: "above")
+        let tabs = NSTabView()
+        let inner = NSTextField(string: "inner")
+        for label in ["General", "Permissions"] {
+            let item = NSTabViewItem()
+            item.label = label
+            let page = NSStackView(
+                views: label == "General" ? [inner] : [NSTextField(string: label)]
+            )
+            item.view = page
+            tabs.addTabViewItem(item)
+        }
+        tabs.heightAnchor.constraint(equalToConstant: 160).isActive = true
+        tabs.widthAnchor.constraint(equalToConstant: 300).isActive = true
+        let stack = NSStackView(views: [above, tabs])
+        stack.orientation = .vertical
+        window.contentView = stack
+        window.layoutIfNeeded()
+        window.recalculateKeyViewLoop()
+
+        #expect(tabs.canBecomeKeyView)
+        let stops = tabStops(in: window, from: above)
+        let selector = try #require(stops.firstIndex { $0 === tabs })
+        let content = try #require(stops.firstIndex { $0 === inner })
+        #expect(selector < content)
+    }
+
     @Test("NSPopUpButton inherits the opt-in rather than overriding canBecomeKeyView itself")
     func popupInheritsFromButton() {
         let form = form()

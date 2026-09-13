@@ -1,9 +1,12 @@
 import AppKit
-import ObjectiveC
 
 /// Lets Tab reach a dialog's popups, checkboxes, radio and push buttons, switches, segmented
-/// controls, color wells and steppers, whatever System Settings ▸ Keyboard ▸ Keyboard navigation
-/// says.
+/// controls, color wells, steppers and tab selectors, whatever System Settings ▸ Keyboard ▸
+/// Keyboard navigation says.
+///
+/// A tab view joins as the system switch would have it: Tab goes from the control before it to the
+/// selector and on into the selected tab's first control, the arrows move the highlight and Space
+/// selects. Measured live in Get Info and in Settings, whose SwiftUI `TabView` is a real `NSTabView`.
 ///
 /// With that switch off — the macOS default — AppKit keeps every one of those controls out of the
 /// key view loop, so Tab walks a form's text fields and skips the Protocol popup between them. The
@@ -45,55 +48,24 @@ enum KeyboardReachableControls {
 
     private static let installation: Void = {
         let controlClasses: [AnyClass] = [
-            NSButton.self, NSSegmentedControl.self, NSSwitch.self, NSColorWell.self, NSStepper.self
+            NSButton.self, NSSegmentedControl.self, NSSwitch.self, NSColorWell.self, NSStepper.self,
+            NSTabView.self
         ]
         for controlClass in controlClasses {
-            wrap(#selector(getter: NSView.canBecomeKeyView), on: controlClass) { view, original in
-                original || onMainActor(view, else: false) { joinsKeyViewLoop($0) }
+            ObjCMethodPatch.wrapBool(#selector(getter: NSView.canBecomeKeyView), on: controlClass) { view, original in
+                original() || ObjCMethodPatch.onMainActor(view, else: false) { joinsKeyViewLoop($0) }
             }
         }
         // A color well that took focus this way draws no ring, so it is handed one of ours.
-        wrap(#selector(NSResponder.becomeFirstResponder), on: NSColorWell.self) { view, accepted in
-            if accepted { onMainActor(view, else: ()) { ColorWellFocusRing.attach(to: $0) } }
+        ObjCMethodPatch.wrapBool(#selector(NSResponder.becomeFirstResponder), on: NSColorWell.self) { view, original in
+            let accepted = original()
+            if accepted {
+                ObjCMethodPatch.onMainActor(view, else: ()) { ColorWellFocusRing.attach(to: $0) }
+            }
             return accepted
         }
+        TabSelectorFocusRing.install()
     }()
-
-    /// Wrap an argument-less `BOOL` method of `controlClass` so `body` receives the original answer
-    /// and returns the final one.
-    private static func wrap(
-        _ selector: Selector,
-        on controlClass: AnyClass,
-        body: @escaping (NSView, Bool) -> Bool
-    ) {
-        guard let inherited = class_getInstanceMethod(controlClass, selector) else { return }
-        typealias Method = @convention(c) (NSView, Selector) -> Bool
-        let original = unsafeBitCast(method_getImplementation(inherited), to: Method.self)
-        let replacement: @convention(block) (NSView) -> Bool = { view in
-            body(view, original(view, selector))
-        }
-        let implementation = imp_implementationWithBlock(replacement)
-        // Add to the class when it inherits the method, so its superclasses keep theirs; replace in
-        // place only if the class defines its own.
-        if !class_addMethod(
-            controlClass,
-            selector,
-            implementation,
-            method_getTypeEncoding(inherited)
-        ) {
-            method_setImplementation(inherited, implementation)
-        }
-    }
-
-    /// The runtime asks from the main thread; anything else gets `fallback`, AppKit's own behavior.
-    private static func onMainActor<Result: Sendable>(
-        _ view: NSView,
-        else fallback: Result,
-        _ body: @MainActor (NSView) -> Result
-    ) -> Result {
-        guard Thread.isMainThread else { return fallback }
-        return MainActor.assumeIsolated { body(view) }
-    }
 
     /// Whether `view` joins its window's Tab loop although the system switch is off: it can hold
     /// focus, it is visible and enabled, and its window's Tab is not a pane key.

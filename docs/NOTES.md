@@ -1267,9 +1267,34 @@ at build time.
   not read through the app's defaults search list. What *is* reachable: those controls already
   answer `acceptsFirstResponder == true` and only `canBecomeKeyView` says no, so answering it the way
   the switch would puts them in the loop. `KeyboardReachableControls` does that on `NSButton` and
-  `NSSegmentedControl`, `NSSwitch`, `NSColorWell` and `NSStepper` for every window except the browser
-  window, where Tab is a pane key. Verified live: the focus ring draws, Space opens a popup or flips a switch, and ↓ then Return
+  `NSSegmentedControl`, `NSSwitch`, `NSColorWell`, `NSStepper` and `NSTabView` for every window except
+  the browser window, where Tab is a pane key. A tab view joins before its selected page's controls,
+  and its arrows and Space behave as they do with the system switch on. Verified live: the focus ring draws, Space opens a popup or flips a switch, and ↓ then Return
   picks an item without firing the sheet's default button.
+  - **A tab selector's focus ring vanishes on the selected tab, because it is the same accent drawn
+    flush against an accent fill.** Plainly visible around an unselected tab, next to nothing around
+    the selected one, which is where focus lands first. `NSTabView` draws the ring around
+    `focusRingMaskBounds`, which measured as the focused tab's own rectangle in tab-view coordinates
+    and moves with the arrows. So `TabSelectorFocusRing` widens that rectangle by 3 pt and fills it as
+    a rounded rect: the ring is still AppKit's, and a band of the tab bar's grey now separates it
+    from the tab.
+  - **⌘1–⌘9 in a window with tabs have to be claimed all nine, not just up to the tab count.** With
+    four tabs, ⌘7 fell through to the focused `NSDatePicker` in Get Info, which ignores ⌘ and took
+    the 7 as the day. `TabShortcuts` swallows a number past the last tab and beeps.
+  - **A tab's rectangle is private on the segmented control and public through accessibility.** The
+    control's cell answers one `NSAccessibilitySegment` per tab with its screen frame. Read it through
+    `NSObject`: the segment class adopts no protocol that exposes `accessibilityFrame()`, and casting
+    to `NSAccessibilityElementProtocol` silently drops every one of them.
+  - **In Settings the tab bar sits under the title bar, and neither `bounds` nor `visibleRect` knows.**
+    SwiftUI places the tab view 6 pt above the content area, so a badge straddling a tab's top edge
+    was drawn where the title bar paints over the content: only its lower half showed. Clamping to
+    the tab view's bounds didn't help, and clamping to `visibleRect` made it worse (that rect
+    includes the title bar, since the window frame is what clips). `window.contentLayoutRect`,
+    converted into the view's coordinates, is the area the title bar leaves alone.
+  - **Holding a modifier cannot be screenshotted with computer-use**, because `hold_key` releases
+    before the next action runs. Proving a hold-to-reveal path needs a witness that outlives the
+    hold. A count of reveals in the log going up across one hold, and the badges being gone
+    afterwards, measured both halves.
   - **Patch the AppKit class and SwiftUI's controls come with it, and the class to patch is not the
     one the control looks like.** A `Toggle` inside a `Form` is SwiftUI's private `PlatformSwitch`,
     an `NSSwitch` subclass, so patching `NSButton` left every Settings switch out of the loop. That
