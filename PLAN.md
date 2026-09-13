@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M27 shipped** (14 languages) · Created: 2026-07-05 ·
+Status: **M0–M27 shipped**, **M28 open** (14 languages) · Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
 [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)
 
@@ -28,7 +28,9 @@ Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
 - App Store distribution (sandbox is incompatible with a real file manager).
 - An open binary plugin API (revisit post-1.0; automation hooks cover most needs).
 - Cloud-provider integrations beyond what the filesystem already exposes
-  (iCloud/Dropbox folders work as folders; no proprietary APIs).
+  (iCloud/Dropbox folders work as folders; no proprietary APIs). **One exception, taken
+  2026-09-13: iCloud Photos through Apple's PhotoKit (§M28)**, because the Photos library exposes no
+  browsable filesystem at all — without the API there is nothing to show.
 
 ## 2. Architecture decisions (locked unless proven wrong)
 
@@ -131,6 +133,75 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 | M25 | What a remote write carries, and what a remote delete costs | 08-29 | **A Trash the protocols do not have** — taken at §7 on 08-29, and the one part of the milestone that closed by not being built; **owner and group in a remote Get Info**, because `chown`/`chgrp` take a numeric id while `sftp`'s own `ls -la` prints names, so a panel built on a listing has nothing to send; **comparing by timestamp on FTP and S3**, refused by construction and always will be — `LIST` is year-less and zone-less, and an S3 `LastModified` is when the object was *written*; and ACLs and xattrs again, which is a limit rather than a gap |
 | M26 | Move to Trash, wherever the file lives | 08-31 | **The remote backends**, which have no Trash at all and are already degraded to a confirmed permanent delete (§M5, and M25 §7's decision not to invent one); **chasing the refusal further into TCC and `fileproviderd`**, which is not observable from here past the three candidates already eliminated — the fix does not depend on knowing which policy denies; and **Put Back for an item *Finder* deleted out of a provider domain**, or for anything trashed before the store shipped, both of which keep the honest answer the restore flow already gives by name |
 | M27 | Legacy code-page archive names | 09-09 | **Inferring** the code page — no reader can, and a wrong guess is a plausible name for the wrong file, so it is a chooser over a preview and never a detector; **preserving an un-representable name byte-for-byte**, the rejected streaming rewrite, which keeps bytes nobody can read and still cannot extract that row *out* of the archive; and **persisting the declaration** across sessions, since it is a guess the user made about one archive and a wrong one silently outliving the session is worse than being asked again |
+
+### M28 — iCloud Photos, as folders of originals (M)
+
+**Opened 2026-09-13**, on the probe recorded in docs/NOTES.md ▸ iCloud Photos (PhotoKit). The
+system Photos library is not a place the filesystem exposes: its originals sit inside
+`Photos Library.photoslibrary` named by asset UUID, and an evicted one is *absent* rather than a
+placeholder. So it cannot follow iCloud Drive (§M9), and it is a backend of its own over **PhotoKit**
+— the exception §1's non-goal now names.
+
+Decided before Slice 1. Each is a recommendation that is cheap to overturn until Slice 2 puts it in
+front of a user:
+
+- **Originals are rows** (2026-09-13). A Live Photo is two rows, `IMG_0089.HEIC` and
+  `IMG_0089.MOV`. An edit's `FullSizeRender.heic`, `Adjustments.plist` and the undocumented type-16
+  `.aae` are not rows, and neither is any other resource PhotoKit does not name as an original.
+- **Years, then months.** The root lists `2026`, `2025`, … plus an `Undated` folder when an asset has
+  no capture date; a year lists `2026-08` and its siblings; a month lists originals. The month folder
+  carries its year so a folder copied out still says what it is. Grouping is in the Mac's time zone,
+  since PhotoKit exposes none per asset, so a photo taken near midnight elsewhere can sit in the
+  neighbouring month. The structure is forced by a measurement rather than chosen for tidiness: a
+  name costs ~1.1 ms per asset and does not parallelize, so a flat 30 000-asset "All Photos" would be
+  ~35 s of names.
+- **A row's date is its capture date**, in both columns. PhotoKit's `modificationDate` moves whenever
+  Photos touches metadata — every asset in the probe library read `2026-04-09 10:07:29`, a
+  migration — so it would sort a library by nothing.
+- **A colliding name is numbered**, `IMG_0001 (2).JPG`, case- and normalization-insensitively, in
+  capture order; two cameras both counting from `IMG_0001` is ordinary. Finder's keep-both "copy" is
+  the wrong word for two different photographs. The number is part of the path, so importing an
+  older duplicate later can renumber a row — stated rather than engineered around, while M28 is
+  read-only.
+- **What Photos hides by default stays hidden**: hidden assets, a burst's unpicked frames, shared
+  albums and the Shared Library.
+- **Read-only.** F5 out, Quick View, ⌘Y, Open With and the other M24 hand-offs, all through the
+  materialize path the remote backends already use. Import, delete and album edits are each a
+  Photos-mediated write with its own system confirmation, and none of them is in this milestone.
+
+#### Slices
+
+1. **The core** (additive, app untouched). `VFSBackendID.photos`; `PhotosLibraryTransport`, the four
+   things the app's PhotoKit adapter answers (a cheap dated fetch, the expensive resource read, a
+   change token, an export); `PhotosLayout`, the pure path ⇄ folder ⇄ row rules above; and
+   `PhotosBackend`, read-only. It caches each month's rows against the change token, because
+   resolving a path back to an asset costs the whole month's names: without the cache, F5 of 300
+   photos from a month of 300 would pay ~99 s of them. Tested against a fake fed the probe library's
+   real names, identifiers, sizes and dates.
+   **Landed 2026-09-13**: 32 tests in three suites, and four negative controls that each failed their
+   own tests before being restored byte-identical — a cache that never hits, every resource counted
+   as an original, the backend skipping its membership filter, and no numbering. One claim needed a
+   test the first draft lacked: a transport answering *wide* cannot put a row in the wrong month,
+   since a fake that filters exactly passes with the backend's own filter deleted. The core suite is
+   green at 3311. The app suite, untouched, was green on its second run; the first failed one
+   nested-archive chooser test after a 57 s wait while a filtered core run overlapped it, and that
+   suite passed alone in 0.85 s.
+2. **The app.** The PhotoKit transport: a dated fetch with hidden assets excluded; names through
+   `PHAssetResource`; the size through the `fileSize` KVC key, guarded, since it is undocumented and
+   the only source; and export as `writeData` with the network off (a clone, or error 3164 in
+   milliseconds) followed by `requestData` with it on, streamed to the file so Stop cancels. The
+   entitlement and `NSPhotoLibraryUsageDescription` **in the same change**, since a missing usage
+   string kills the app on its first call. Routing in `CompositeBackend`; a sidebar row; the
+   authorization flow (not determined → ask; denied → a sentence naming Privacy ▸ Photos, never Full
+   Disk Access). An audit of every `isRemoteConnection`-shaped predicate, deciding per site whether
+   `.photos` belongs (docs/NOTES.md ▸ AppKit: a new backend has to be named at every site that lists
+   the old ones). Verified live against this Mac's library, an evicted original included, and the
+   docs/LOCATION-SUPPORT.md column.
+3. **Albums.** `/Albums/…`: user albums and the folders they sit in. The probe library has none, so
+   the slice opens by probing one that does.
+4. **Freshness and fidelity.** A refresh driven by the change token; and an exported original stamped
+   with its capture date and cleared of `com.apple.cpl.*`, measured first against what Photos' own
+   **Export Unmodified Original** writes, so the result matches what a user compares it with.
 
 ### Still open
 

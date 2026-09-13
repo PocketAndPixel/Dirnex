@@ -6069,6 +6069,114 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     co-authoring on a Dropbox file, OneDrive's `MacboxSearchService` and `MacboxConfigService`). Show
     in Finder is the honest route to the rest.
 
+### iCloud Photos (PhotoKit)
+
+Probed 2026-09-13 on macOS 26.6.2 against the system library — 25 assets: 17 Live Photos, 2 edited
+photos, 4 JPEGs and 2 videos, one of them 2.66 GB — with "Optimize Mac Storage" evicting originals
+during the session. This is the ground the Photos backend stands on (PLAN.md §M28).
+
+- **There is no filesystem to browse, so none of the iCloud Drive machinery applies.**
+  `~/Pictures/Photos Library.photoslibrary/originals/<0–F>/` holds files named by asset UUID
+  (`94B65897-….heic`, and `…_3.mov` for a Live Photo's video). The name the camera gave, the albums,
+  the dates and the hidden and trashed state live only in `database/Photos.sqlite`. An evicted
+  original is simply **absent** — no `SF_DATALESS` placeholder, no ubiquity keys — so nothing under
+  ▸ iCloud Drive or ▸ Google Drive transfers.
+  - **The database is private, versioned and not self-consistent, so it is an oracle and never a
+    source.** `DataModelVersion.plist` says `LibrarySchemaVersion 5001`, and
+    `ZINTERNALRESOURCE.ZLOCALAVAILABILITY` marked 41 of 51 originals not local while 40 original
+    files sat on disk with their blocks. What it *is* good for is checking a probe:
+    `ZADDITIONALASSETATTRIBUTES.ZORIGINALFILENAME` / `ZORIGINALFILESIZE` and `ZASSET.ZDATECREATED`
+    (seconds since 2001) are the fields that matter.
+  - **The library changes under a probe.** Between two copies of the database an hour apart the
+    asset count went 32 → 25, and six originals were evicted and later restored by the probe's own
+    downloads. Copy the database with its `-wal` and `-shm` at the moment of the measurement it is
+    checking, not once at the start.
+
+- **PhotoKit agrees with that oracle exactly.** 25 of 25 assets, **0 mismatches** between
+  `PHAssetResource.originalFilename` and `ZORIGINALFILENAME`, `fileSize` and `ZORIGINALFILESIZE`, and
+  `creationDate` / `modificationDate` and the database to the second. The originals are the resource
+  types `photo`, `video`, `pairedVideo`, `alternatePhoto` and `audio`; a Live Photo is
+  `IMG_0089.HEIC` plus `IMG_0089.MOV`, so "an original is a row" gives two rows with distinct names
+  (42 rows for 25 assets here). A Live Photo with Live switched off (`playbackStyle` image) still has
+  its `pairedVideo`.
+  - **An edited photo adds three resources that are not originals**: `adjustmentData`
+    (`Adjustments.plist`), an undocumented raw type **16** (`IMG_0043O.aae`,
+    `com.apple.photos.apple-adjustment-envelope`) and `fullSizePhoto` (`FullSizeRender.heic`). Filter
+    on the known original types rather than excluding the known derived ones, or type 16 slips in.
+  - `fileSize` is a KVC key rather than API, and answers. `locallyAvailable` **does not exist**
+    (`responds(to:)` is false), so nothing says whether an original is on this Mac before a request.
+
+- **The file name is the expensive part, and it does not parallelize.** Everything else about an
+  asset comes from the fetch: a whole-library fetch was 114 ms cold (that is the XPC connection), a
+  year's date-range fetch 0.88 ms, a sorted fetch plus every `creationDate` 1.4 ms, and
+  `fetchAssets(withLocalIdentifiers:)` 0.66 ms for 25 ids. The name needs
+  `PHAssetResource.assetResources(for:)`: **2.18 ms per asset cold, 1.14 ms warm**, and 1.15 / 1.09 ms
+  with 4 and 8 calls running at once — a serialized round trip. The private `PHAsset.originalFilename`
+  key answers in 0.001 ms.
+  - At the public rate a 30 000-asset flat listing is about 35 s of names, while a year/month
+    structure keeps each directory to the hundreds. Whether the per-call cost *grows* with library
+    size is **unmeasured** — 25 assets cannot say.
+
+- **Exporting an original is an APFS clone, and it refuses an existing destination.**
+  `PHAssetResourceManager.writeData(for:toFile:options:)` wrote the 2.66 GB video in **0.70 ms**, and
+  every export has its **own inode with a link count of 1** (checked on all 42), so an editor
+  changing the copy cannot reach the library. 42 of 42 original rows came out byte-identical to the
+  library's files by SHA-256. A destination that already exists fails at once with
+  `PHPhotosErrorDomain` **−1**, so staging always needs a fresh path.
+  - **A cloud-only original is refused without the network in 2–8 ms** with `PHPhotosErrorDomain`
+    **3164** (`networkAccessRequired`), leaving no partial file — the cheapest "is it here" answer
+    available. With `isNetworkAccessAllowed` the same ten resources downloaded in 0.47–2.03 s for
+    1–4.7 MB, the progress handler firing only 2–4 times; for a local resource it fired once or never.
+  - **A download is written back into the library, not only to the destination.** The ten
+    reappeared under `originals/` with new inodes (plus `_5.aae` sidecars for the two edited photos),
+    so fetching an evicted original costs the user's disk the way viewing it in Photos does.
+  - **The export keeps the library copy's mtime, which is not the capture date.** `IMG_0089.HEIC` was
+    captured at 14:04:12Z and exported with an mtime of 14:25:55Z, when Photos stored it; a downloaded
+    original gets the download time. What Photos' own "Export Unmodified Original" stamps is
+    unmeasured.
+  - **It carries some of the library file's extended attributes and not others.** The library file
+    holds ~25 `com.apple.assetsd.*` attributes plus `com.apple.cpl.original`, `com.apple.cpl.delete`
+    and a `com.apple.quarantine` whose agent is `com.apple.cloudd`; the export drops the `assetsd`
+    set and keeps the other three.
+
+- **Streaming arrives in 1 MiB chunks, and cancellation is immediate.**
+  `requestData(for:options:dataReceivedHandler:completionHandler:)` delivered an 8 MB original in
+  8 chunks in 1.0 ms and the 2.66 GB one at ~10 GiB/s from local storage; `cancelDataRequest` at
+  256 MiB completed **0.61 ms** later with `PHPhotosErrorDomain` **3072** (`userCancelled`) and **no**
+  chunk after the cancel. `writeData` returns nothing to cancel, so Stop needs the streaming form.
+
+- **Albums are unmeasured, because this library has none.** `.album` answered 0 and
+  `fetchTopLevelUserCollections` nothing, so folders and nested collections still need a library that
+  has them. `.smartAlbum` answered 22 in 0.5 ms, including "Hidden" and two private subtypes
+  (`1000000218` "Recently Saved", `1000000219` "Recovered"); "Recently Deleted" is not among them, and
+  `estimatedAssetCount` is `NSNotFound` for every smart album, so a count costs a fetch.
+
+- **The change token is cheap enough to poll.** `currentChangeToken` took 0.17 ms and
+  `fetchPersistentChanges(since:)` 0.56 ms with nothing changed. `PHPhotoLibraryChangeObserver`
+  delivery is unmeasured, since provoking it needs a write.
+
+- **Under the hardened runtime, access needs an entitlement *and* a usage description, and each one
+  missing fails differently.** Three throwaway bundles around the same binary, each ad-hoc signed
+  with `--options runtime` and launched with `open` so each was its own TCC responsible process:
+
+  | Variant | `…personal-information.photos-library` | `NSPhotoLibraryUsageDescription` | Result |
+  |---|---|---|---|
+  | A | — | yes | `.denied` in 3.5 ms — **no prompt, no TCC record** |
+  | D | yes | — | **process killed**: `EXC_CRASH`, termination namespace `TCC`, "attempted to access privacy-sensitive data without a usage description" |
+  | B | yes | yes | tccd: "Prompting policy for hardened runtime; allow prompt: Allow"; answered in 5.1 s, 25 assets read |
+
+  - Dirnex has **no entitlements file** and generates its Info.plist, so both halves are new
+    (`CODE_SIGN_ENTITLEMENTS`, `INFOPLIST_KEY_NSPhotoLibraryUsageDescription`), and
+    `scripts/build_app.sh` signs them through `xcodebuild archive` with no change of its own. A
+    missing usage string is a crash on the first call, so both have to land in the same change as the
+    first PhotoKit call.
+  - Whether Dirnex's existing `kTCCServicePhotos` grant (2026-07-19, most likely from a pane browsing
+    into the library bundle) satisfies PhotoKit for the Developer ID build is **unmeasured**.
+  - **A probe run from an agent's shell measures the wrong process.** Its responsible process is the
+    host app, which holds no Photos grant. Terminal does, so a CLI started with
+    `open -a Terminal probe.command` borrows that grant with no prompt — the shell-vs-LaunchServices
+    split ▸ The Trash records, used on purpose.
+
 ### Keeping a file's previous bytes (APFS clones, and swapping two files)
 
 M26-era work on making an archive rewrite undoable. All measured 2026-09-01 on macOS 26, APFS,
