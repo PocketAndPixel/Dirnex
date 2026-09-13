@@ -177,9 +177,7 @@ struct PanelPaletteTests {
 
     @Test("the preferences default to Follow System and round-trip through UserDefaults")
     func preferenceRoundTrips() throws {
-        let suiteName = "PanelPaletteTests.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let defaults = ScratchDefaults.fresh()
 
         #expect(AppPreferences(defaults: defaults).palette.isFollowingSystem)
 
@@ -200,9 +198,7 @@ struct PanelPaletteTests {
 
     @Test("changing a color posts the notification open panes restyle on")
     func changePostsNotification() throws {
-        let suiteName = "PanelPaletteTests.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let defaults = ScratchDefaults.fresh()
 
         let preferences = AppPreferences(defaults: defaults)
         var posts = 0
@@ -226,9 +222,7 @@ struct PanelPaletteTests {
     /// notifications would drive three full re-renders of every open pane.
     @Test("resetting all three posts exactly once, and is inert when nothing is custom")
     func resetPostsOnce() throws {
-        let suiteName = "PanelPaletteTests.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let defaults = ScratchDefaults.fresh()
 
         let preferences = AppPreferences(defaults: defaults)
         preferences.accentColorHex = "#FF0000"

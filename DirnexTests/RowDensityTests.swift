@@ -87,9 +87,7 @@ struct RowDensityTests {
 
     @Test("the preference defaults to regular and round-trips through UserDefaults")
     func preferenceRoundTrips() throws {
-        let suiteName = "RowDensityTests.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let defaults = ScratchDefaults.fresh()
 
         // A fresh install is the shipped 22 pt row.
         #expect(AppPreferences(defaults: defaults).rowDensity == .regular)
@@ -105,9 +103,7 @@ struct RowDensityTests {
 
     @Test("changing the density posts the notification open panes re-render on")
     func changePostsNotification() throws {
-        let suiteName = "RowDensityTests.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let defaults = ScratchDefaults.fresh()
 
         let preferences = AppPreferences(defaults: defaults)
         var posts = 0

@@ -76,3 +76,8 @@ jobs:
       # screenshot taken with a short name, and green in both suites.
       - name: Every entry field scrolls instead of wrapping
         run: python3 scripts/check_single_line_fields.py
+      # Also a pure source scan. A defaults suite named with a fresh UUID leaves a plist in
+      # ~/Library/Preferences on every test run, even after `removePersistentDomain` — 19,046 of
+      # them had built up by 2026-09-13, with nothing in the repo or either suite to show it.
+      - name: Test defaults suites have fixed names
+        run: python3 scripts/check_test_defaults_suites.py

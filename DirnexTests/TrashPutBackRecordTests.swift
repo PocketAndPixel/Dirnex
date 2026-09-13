@@ -20,14 +20,13 @@ import Testing
 @Suite("Trash put-back records", .serialized)
 struct TrashPutBackRecordTests {
     /// A scratch defaults domain, so a test never reads or writes the real store — which on the
-    /// developer's own Mac holds their actual deletes.
+    /// developer's own Mac holds their actual deletes. Named for the calling test, which is passed
+    /// through so each test gets its own.
     private static func store(
-        isInVault: @escaping @MainActor (VFSPath) -> Bool = { _ in false }
+        isInVault: @escaping @MainActor (VFSPath) -> Bool = { _ in false },
+        function: String = #function
     ) throws -> TrashOriginStore {
-        let suite = try #require(
-            UserDefaults(suiteName: "com.dirnex.tests.putback.\(UUID().uuidString)")
-        )
-        return TrashOriginStore(defaults: suite, isInVault: isInVault)
+        TrashOriginStore(defaults: ScratchDefaults.fresh(function: function), isInVault: isInVault)
     }
 
     private static func trashed(_ original: VFSPath, in trash: VFSPath) -> DeletePass.Restoration {
@@ -53,9 +52,7 @@ struct TrashPutBackRecordTests {
     /// lived as long as the process would be worth nothing.
     @Test("records survive a relaunch")
     func recordsPersist() throws {
-        let suite = try #require(
-            UserDefaults(suiteName: "com.dirnex.tests.putback.\(UUID().uuidString)")
-        )
+        let suite = ScratchDefaults.fresh()
         let trash = VFSPath.local("/Users/x/.Trash")
         TrashOriginStore(defaults: suite, isInVault: { _ in false })
             .record([Self.trashed(.local("/Users/x/Desktop/a.txt"), in: trash)])

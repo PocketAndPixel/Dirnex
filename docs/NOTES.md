@@ -1075,6 +1075,15 @@ at build time.
     similar files, every one from a test that minted a suite per run, most of them with the cleanup
     call in place. Control: two runs with the fix left the real domain at 932 while the scratch
     domain held the same 8 keys each time.
+    - **Those tests now get `ScratchDefaults.fresh()`**: one domain per test, named from `#fileID`
+      and `#function` and emptied when the test *starts*. A helper that wraps it has to pass its
+      caller's `#function` through, or every test behind the helper shares one name. Measured
+      2026-09-14: a full run left 19 fixed-name files and no UUID-named ones, and a second run
+      changed no file name or size. The control needs nothing extra: those files still held the
+      first run's values (beta updates on, a `chartreuse` accent), and the tests that begin by
+      asserting a fresh domain's defaults passed over them. `scripts/check_test_defaults_suites.py`
+      runs in CI and refuses any `suiteName:` that is not a fixed literal; against the suites as
+      they were before the fix it reports exactly the 10 sites that leaked.
   - **A control that fires too *widely* is a finding, not noise.** The vault control for that slice
     failed three tests where it should have failed one, and the two extras were the suite's own: two
     tests swap the shared store, which is one piece of process state, and Swift Testing runs a suite

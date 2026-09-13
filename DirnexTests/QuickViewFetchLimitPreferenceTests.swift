@@ -15,9 +15,9 @@ import Testing
 struct QuickViewFetchLimitPreferenceTests {
     /// A defaults domain of its own per test, so nothing here reads or writes the settings of
     /// whoever is running the suite — the app test target runs *inside* the app (docs/NOTES.md).
-    private func isolatedDefaults() -> UserDefaults {
-        let suite = "Dirnex.tests.fetchLimit.\(UUID().uuidString)"
-        return UserDefaults(suiteName: suite)!
+    /// The calling test's name is passed through, or every test here would share this helper's.
+    private func isolatedDefaults(_ variant: String? = nil, function: String = #function) -> UserDefaults {
+        ScratchDefaults.fresh(variant, function: function)
     }
 
     /// The trap this setting is built around: `UserDefaults.integer(forKey:)` answers **0** for a key
@@ -62,7 +62,7 @@ struct QuickViewFetchLimitPreferenceTests {
 
         #expect(AppPreferences(defaults: defaults).quickViewFetchLimit == range.upperBound)
 
-        let preferences = AppPreferences(defaults: isolatedDefaults())
+        let preferences = AppPreferences(defaults: isolatedDefaults("below"))
         preferences.quickViewFetchLimit = -5
         #expect(preferences.quickViewFetchLimit == range.lowerBound)
     }

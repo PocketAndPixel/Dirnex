@@ -92,9 +92,7 @@ struct QuickViewHTMLPreviewTests {
     /// rendering as itself.
     @Test("scripts are refused by default")
     func javaScriptDefaultsOff() throws {
-        let suite = "dirnex.tests.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let defaults = ScratchDefaults.fresh()
         #expect(!AppPreferences(defaults: defaults).quickViewJavaScriptEnabled)
     }
 
