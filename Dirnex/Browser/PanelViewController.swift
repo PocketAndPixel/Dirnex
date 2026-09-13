@@ -160,6 +160,10 @@ final class PanelViewController: NSViewController {
     /// Stable identifier ("left"/"right") under which this pane's tabs are persisted
     /// across launches; `nil` disables persistence.
     var restorationKey: String?
+    /// The defaults domain `restorationKey` is written in. A test that gives a pane a key points
+    /// this at a scratch domain too, because `persistState()` also runs on its own after a
+    /// navigation lands, later than any cleanup the test could do.
+    var tabStateDefaults: UserDefaults = .standard
     weak var host: PanelHost?
 
     var isActivePanel = false {

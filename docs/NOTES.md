@@ -1062,6 +1062,19 @@ at build time.
     let` funnel still relies on every future test going through it. Positive control both ways — a
     snapshot present in the real store after a full run before, the directory absent after one
     since.
+  - **Removing a key at the end of a test does not stop a pane leaking one, and a UUID-named
+    scratch suite trades the leaked key for a leaked *file*.** Measured 2026-09-13: the developer's
+    domain held **930** `Dirnex.tabs.reconnect-test-<UUID>` keys, two more per run, from the
+    workspace tests in `RemoteTabPersistenceTests`. `restore(workspacePane:)` persists, and a pane
+    that navigates persists again when the listing lands, which can be after the test returns, so no
+    `defer` can catch it. The pane now takes its domain (`tabStateDefaults`) and `TabPersistence`
+    requires one. The scratch domain is one fixed suite, `TabStateScratch`, cleared once per test
+    host, because **`removePersistentDomain(forName:)` empties a domain and leaves its plist on
+    disk**: `~/Library/Preferences` held about **19 000** empty or near-empty
+    `PanelPaletteTests.<UUID>`, `RowDensityTests.<UUID>`, `Dirnex.tests.fetchLimit.<UUID>` and
+    similar files, every one from a test that minted a suite per run, most of them with the cleanup
+    call in place. Control: two runs with the fix left the real domain at 932 while the scratch
+    domain held the same 8 keys each time.
   - **A control that fires too *widely* is a finding, not noise.** The vault control for that slice
     failed three tests where it should have failed one, and the two extras were the suite's own: two
     tests swap the shared store, which is one piece of process state, and Swift Testing runs a suite

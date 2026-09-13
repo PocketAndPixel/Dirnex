@@ -46,7 +46,8 @@ extension PanelViewController {
         }
         TabPersistence.save(
             PersistedPane(tabs: persisted, activeIndex: activeIndex),
-            paneKey: restorationKey
+            paneKey: restorationKey,
+            to: tabStateDefaults
         )
     }
 

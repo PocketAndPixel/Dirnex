@@ -108,18 +108,22 @@ struct PersistedPane: Codable {
 }
 
 /// Load/save per-pane tab state keyed by a stable pane identifier ("left"/"right").
+///
+/// The domain is an argument with no default, so every caller says where a pane's tabs go. The app
+/// test target runs inside the app, where `.standard` is the developer's own `com.dirnex.Dirnex`,
+/// and a test that wrote there by default left a key behind on every run (docs/NOTES.md ▸ Testing).
 enum TabPersistence {
     private static let keyPrefix = "Dirnex.tabs."
     private static let activePaneKey = "Dirnex.activePane"
 
-    static func load(paneKey: String) -> PersistedPane? {
-        guard let data = UserDefaults.standard.data(forKey: keyPrefix + paneKey) else { return nil }
+    static func load(paneKey: String, from defaults: UserDefaults) -> PersistedPane? {
+        guard let data = defaults.data(forKey: keyPrefix + paneKey) else { return nil }
         return try? JSONDecoder().decode(PersistedPane.self, from: data)
     }
 
-    static func save(_ pane: PersistedPane, paneKey: String) {
+    static func save(_ pane: PersistedPane, paneKey: String, to defaults: UserDefaults) {
         guard let data = try? JSONEncoder().encode(pane) else { return }
-        UserDefaults.standard.set(data, forKey: keyPrefix + paneKey)
+        defaults.set(data, forKey: keyPrefix + paneKey)
     }
 
     /// The pane identifier ("left"/"right") that held focus when the session was last saved, so a

@@ -195,13 +195,13 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
         let restoreSession = AppPreferences.shared.restoreSession
         leftPanel = PanelViewController(
             backend: backend,
-            restoration: restoreSession ? TabPersistence.load(paneKey: "left") : nil,
+            restoration: restoreSession ? TabPersistence.load(paneKey: "left", from: .standard) : nil,
             defaultPath: home,
             restorationKey: "left"
         )
         rightPanel = PanelViewController(
             backend: backend,
-            restoration: restoreSession ? TabPersistence.load(paneKey: "right") : nil,
+            restoration: restoreSession ? TabPersistence.load(paneKey: "right", from: .standard) : nil,
             defaultPath: home,
             restorationKey: "right"
         )

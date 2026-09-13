@@ -26,9 +26,10 @@ struct RemoteTabPersistenceTests {
     )
     private static var remotePath: VFSPath { VFSPath(backend: .sftp(location), path: "/var/log") }
 
-    /// A pane keyed under a name of its own, so writing its state cannot touch the "left"/"right"
-    /// panes of the developer running the tests — the app test target runs *inside the app* and
-    /// shares its defaults domain (docs/NOTES.md ▸ Testing).
+    /// A pane keyed under a name of its own, writing into ``TabStateScratch`` rather than the
+    /// developer's own domain. The app test target runs *inside the app*, so `.standard` is the real
+    /// `com.dirnex.Dirnex` (docs/NOTES.md ▸ Testing), and the workspace tests persist again after
+    /// their listing lands, later than any cleanup a test could run.
     private static func pane(at path: VFSPath) -> (PanelViewController, String) {
         let key = "reconnect-test-\(UUID().uuidString)"
         let vc = PanelViewController(
@@ -37,6 +38,7 @@ struct RemoteTabPersistenceTests {
             defaultPath: path,
             restorationKey: key
         )
+        vc.tabStateDefaults = TabStateScratch.defaults
         vc.panel = Panel(path: path)
         return (vc, key)
     }
@@ -57,8 +59,7 @@ struct RemoteTabPersistenceTests {
     }
 
     private static func read(_ key: String) -> PersistedPane? {
-        defer { UserDefaults.standard.removeObject(forKey: "Dirnex.tabs." + key) }
-        return TabPersistence.load(paneKey: key)
+        TabPersistence.load(paneKey: key, from: TabStateScratch.defaults)
     }
 
     // MARK: - Session restore

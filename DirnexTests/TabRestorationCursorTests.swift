@@ -192,7 +192,7 @@ struct TabRestorationCursorTests {
         let vc = Self.treePane()
         let key = "TabRestorationCursorTests-\(UUID().uuidString)"
         vc.restorationKey = key
-        defer { UserDefaults.standard.removeObject(forKey: "Dirnex.tabs." + key) }
+        vc.tabStateDefaults = TabStateScratch.defaults
         Self.landSubListing(in: vc)
         let nested = try #require(vc.panel.displayedIndex(ofID: .local("/dir/sub/nested.txt")))
         vc.panel.moveCursor(to: nested)
@@ -200,7 +200,7 @@ struct TabRestorationCursorTests {
 
         vc.persistState()
 
-        let pane = try #require(TabPersistence.load(paneKey: key))
+        let pane = try #require(TabPersistence.load(paneKey: key, from: TabStateScratch.defaults))
         #expect(pane.tabs.first?.cursorPath == "sub/nested.txt")
         #expect(pane.tabs.first?.markedPaths == ["a.txt", "sub/nested.txt"])
         #expect(pane.tabs.first?.expandedPaths == ["sub"])
@@ -211,12 +211,12 @@ struct TabRestorationCursorTests {
         let vc = Self.pane(listing: ["a.txt", "b.txt"])
         let key = "TabRestorationCursorTests-\(UUID().uuidString)"
         vc.restorationKey = key
-        defer { UserDefaults.standard.removeObject(forKey: "Dirnex.tabs." + key) }
+        vc.tabStateDefaults = TabStateScratch.defaults
         vc.panel.moveCursor(to: 1)
 
         vc.persistState()
 
-        let pane = try #require(TabPersistence.load(paneKey: key))
+        let pane = try #require(TabPersistence.load(paneKey: key, from: TabStateScratch.defaults))
         #expect(pane.tabs.first?.cursorPath == "b.txt")
     }
 
