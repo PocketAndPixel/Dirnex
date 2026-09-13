@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M27 shipped**, **M28 open** (14 languages) · Created: 2026-07-05 ·
+Status: **M0–M28 shipped** (14 languages) · Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
 [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)
 
@@ -97,7 +97,7 @@ Dirnex/
 Sizes are relative (S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks of focused work).
 Each milestone ends in something runnable; no milestone depends on a later one.
 
-### Shipped: M0 → M27 (2026-07-05 → 2026-09-09)
+### Shipped: M0 → M28 (2026-07-05 → 2026-09-13)
 
 Every milestone is closed. The checklists and the full per-pass progress log — what was probed,
 decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source comments citing
@@ -133,129 +133,11 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 | M25 | What a remote write carries, and what a remote delete costs | 08-29 | **A Trash the protocols do not have** — taken at §7 on 08-29, and the one part of the milestone that closed by not being built; **owner and group in a remote Get Info**, because `chown`/`chgrp` take a numeric id while `sftp`'s own `ls -la` prints names, so a panel built on a listing has nothing to send; **comparing by timestamp on FTP and S3**, refused by construction and always will be — `LIST` is year-less and zone-less, and an S3 `LastModified` is when the object was *written*; and ACLs and xattrs again, which is a limit rather than a gap |
 | M26 | Move to Trash, wherever the file lives | 08-31 | **The remote backends**, which have no Trash at all and are already degraded to a confirmed permanent delete (§M5, and M25 §7's decision not to invent one); **chasing the refusal further into TCC and `fileproviderd`**, which is not observable from here past the three candidates already eliminated — the fix does not depend on knowing which policy denies; and **Put Back for an item *Finder* deleted out of a provider domain**, or for anything trashed before the store shipped, both of which keep the honest answer the restore flow already gives by name |
 | M27 | Legacy code-page archive names | 09-09 | **Inferring** the code page — no reader can, and a wrong guess is a plausible name for the wrong file, so it is a chooser over a preview and never a detector; **preserving an un-representable name byte-for-byte**, the rejected streaming rewrite, which keeps bytes nobody can read and still cannot extract that row *out* of the archive; and **persisting the declaration** across sessions, since it is a guess the user made about one archive and a wrong one silently outliving the session is worse than being asked again |
-
-### M28 — iCloud Photos, as folders of originals (M)
-
-**Opened 2026-09-13**, on the probe recorded in docs/NOTES.md ▸ iCloud Photos (PhotoKit). The
-system Photos library is not a place the filesystem exposes: its originals sit inside
-`Photos Library.photoslibrary` named by asset UUID, and an evicted one is *absent* rather than a
-placeholder. So it cannot follow iCloud Drive (§M9), and it is a backend of its own over **PhotoKit**
-— the exception §1's non-goal now names.
-
-Decided before Slice 1. Each is a recommendation that is cheap to overturn until Slice 2 puts it in
-front of a user:
-
-- **Originals are rows** (2026-09-13). A Live Photo is two rows, `IMG_0089.HEIC` and
-  `IMG_0089.MOV`. An edit's `FullSizeRender.heic`, `Adjustments.plist` and the undocumented type-16
-  `.aae` are not rows, and neither is any other resource PhotoKit does not name as an original.
-- **Years, then months.** The root lists `2026`, `2025`, … plus an `Undated` folder when an asset has
-  no capture date; a year lists `2026-08` and its siblings; a month lists originals. The month folder
-  carries its year so a folder copied out still says what it is. Grouping is in the Mac's time zone,
-  since PhotoKit exposes none per asset, so a photo taken near midnight elsewhere can sit in the
-  neighbouring month. The structure is forced by a measurement rather than chosen for tidiness: a
-  name costs ~1.1 ms per asset and does not parallelize, so a flat 30 000-asset "All Photos" would be
-  ~35 s of names.
-- **A row's date is its capture date**, in both columns. PhotoKit's `modificationDate` moves whenever
-  Photos touches metadata — every asset in the probe library read `2026-04-09 10:07:29`, a
-  migration — so it would sort a library by nothing.
-- **A colliding name is numbered**, `IMG_0001 (2).JPG`, case- and normalization-insensitively, in
-  capture order; two cameras both counting from `IMG_0001` is ordinary. Finder's keep-both "copy" is
-  the wrong word for two different photographs. The number is part of the path, so importing an
-  older duplicate later can renumber a row — stated rather than engineered around, while M28 is
-  read-only.
-- **What Photos hides by default stays hidden**: hidden assets, a burst's unpicked frames, shared
-  albums and the Shared Library.
-- **Read-only.** F5 out, Quick View, ⌘Y, Open With and the other M24 hand-offs, all through the
-  materialize path the remote backends already use. Import, delete and album edits are each a
-  Photos-mediated write with its own system confirmation, and none of them is in this milestone.
-
-#### Slices
-
-1. **The core** (additive, app untouched). `VFSBackendID.photos`; `PhotosLibraryTransport`, the four
-   things the app's PhotoKit adapter answers (a cheap dated fetch, the expensive resource read, a
-   change token, an export); `PhotosLayout`, the pure path ⇄ folder ⇄ row rules above; and
-   `PhotosBackend`, read-only. It caches each month's rows against the change token, because
-   resolving a path back to an asset costs the whole month's names: without the cache, F5 of 300
-   photos from a month of 300 would pay ~99 s of them. Tested against a fake fed the probe library's
-   real names, identifiers, sizes and dates.
-   **Landed 2026-09-13**: 32 tests in three suites, and four negative controls that each failed their
-   own tests before being restored byte-identical — a cache that never hits, every resource counted
-   as an original, the backend skipping its membership filter, and no numbering. One claim needed a
-   test the first draft lacked: a transport answering *wide* cannot put a row in the wrong month,
-   since a fake that filters exactly passes with the backend's own filter deleted. The core suite is
-   green at 3311. The app suite, untouched, was green on its second run; the first failed one
-   nested-archive chooser test after a 57 s wait while a filtered core run overlapped it, and that
-   suite passed alone in 0.85 s.
-2. **The app.** The PhotoKit transport: a dated fetch with hidden assets excluded; names through
-   `PHAssetResource`; the size through the `fileSize` KVC key, guarded, since it is undocumented and
-   the only source; and export as `writeData` with the network off (a clone, or error 3164 in
-   milliseconds) followed by `requestData` with it on, streamed to the file so Stop cancels. The
-   entitlement and `NSPhotoLibraryUsageDescription` **in the same change**, since a missing usage
-   string kills the app on its first call. Routing in `CompositeBackend`; a sidebar row; the
-   authorization flow (not determined → ask; denied → a sentence naming Privacy ▸ Photos, never Full
-   Disk Access). An audit of every `isRemoteConnection`-shaped predicate, deciding per site whether
-   `.photos` belongs (docs/NOTES.md ▸ AppKit: a new backend has to be named at every site that lists
-   the old ones). Verified live against this Mac's library, an evicted original included, and the
-   docs/LOCATION-SUPPORT.md column.
-   **Landed 2026-09-13, with one path unexercised**: the evicted original. The library had none that
-   day, because the probe had downloaded all six back, so the streamed iCloud download has only the
-   probe's measurements behind it, and neither a refused grant's sentence nor the `Undated` folder
-   was seen live either. What held against this Mac's library: the sidebar row raised macOS's Photos
-   prompt, because an ad-hoc rebuild matches no earlier grant (docs/NOTES.md ▸ iCloud Photos), and
-   Allow let the listing through; the root listed five years, a year its months, and `2026-08` its
-   ten originals with Live Photo pairs, sizes and capture dates; the crumbs read `Photos › 2026 ›
-   2026-08`; Quick View rendered a HEIC through the remote fetch; F5 copied `IMG_0222.HEIC` out
-   byte-identical as a clone with its own inode; and a relaunch brought the tab back with its
-   cursor. The audit put `.photos` into `isRemoteConnection` — re-listable, not on this disk — and
-   named it ahead of that test at the sites that meant a server: the permission sentence, the path
-   bar, `TabRestorePolicy` (a new `photosLibrary` requirement) and the router. Nothing registers a
-   write-back, because `canEditRemoteFile` needs `acceptsUploads`. An archived change token was
-   measured byte-stable, one distinct value over 1000 reads, which is what lets the month cache hit.
-   The core suite is green at 3317 and the app suite at 1164; all 1014 extracted strings are in the
-   catalogs, the usage description is translated through a new `InfoPlist.xcstrings`, and the
-   entitlement lives in `Packaging/Dirnex.entitlements`.
-3. **Albums.** `/Albums/…`: user albums and the folders they sit in. The probe library has none, so
-   the slice opens by probing one that does.
-   **Landed 2026-09-13.** The probe had to make its library first: Oleg made two albums and the rest
-   was built in Photos.app through its own menus — nested folders, an album titled `Summer/Beach`,
-   one photo in two `Lisbon`s, an empty album, a second `Rainbow`, an album `Trips` beside the folder
-   `Trips`, a hidden member and a smart album (docs/NOTES.md ▸ iCloud Photos). What it settled, each
-   now a rule in the core:
-   - **`/Albums` sits beside the years**, under a translated title over an English path, and exists
-     only while the library holds an album or a folder. An empty *album* does exist.
-   - **Albums and folders share one set of names per level, numbered in the sidebar's order**, which
-     PhotoKit returns and Photos puts newest first — so the empty `Trips` made last keeps the name and
-     the real folder reads `Trips (2)`. A title's number goes at the end (`Mr. Smith (2)`), and a `/`
-     reads `:`.
-   - **A path is resolved by walking**, since `/Albums/Trips/Lisbon` cannot say whether `Lisbon` is an
-     album or a photo. Each level and each album's rows are cached against the change token.
-   - **An album holds the month's rows**, named by the same capture-order rule, because PhotoKit's own
-     order is the album's sort setting and moves when a person re-sorts it.
-   - **Not there, and cannot be**: a smart album a person made, which PhotoKit returns from no fetch
-     at all; the system smart albums, which are views; and a hidden photo, absent from albums even with
-     `includeHiddenAssets` on.
-   The same run measured Slice 4's premise: a `PHPhotoLibraryChangeObserver` in another process
-   heard all 51 changes Photos.app made, on a background thread.
-   Core: `PhotosLayout+Names`, `PhotosBackend+Albums` and two transport verbs, 3337 tests with 20 new,
-   and five negative controls — four failing their own tests, and one (walking an album as a folder)
-   inert for a stated reason: the library refuses an album's id as a folder, so both builds answer
-   `notFound`; it was replaced by resolving on the raw title, which failed five tests. App: the two
-   verbs in `PhotoKitLibrary`, `PhotosPresentation.albumsTitle` translated in all 14 languages, and the
-   stub and names tests; 1166 app tests green. Verified live on this Mac's library: the root listed
-   `Albums` beside five years, it listed all seven names with the numbering above, the crumbs read
-   `Photos › Albums › Trips (2) › 2025 › Summer:Beach`, `Lisbon` left out its hidden photo, and F5 of
-   `IMG_0207.HEIC` out of the nested album arrived SHA-256-identical as a clone with its own inode.
-   **One bug came out of the live run, and it was Slice 2's**: the tab restored before the rebuild's
-   grant kept its status line saying the library could not be read after the timer had re-listed it,
-   because only a navigation cleared a restored tab's reason. A re-list clears it now
-   (`clearOfflineReasonAnsweredByListing`), with a control that fails without it.
-4. **Freshness and fidelity.** A refresh driven by the change token; and an exported original stamped
-   with its capture date and cleared of `com.apple.cpl.*`, measured first against what Photos' own
-   **Export Unmodified Original** writes, so the result matches what a user compares it with.
+| M28 | iCloud Photos, as folders of originals | 09-13 | **Import, delete and album edits**, each a write Photos mediates with its own confirmation; **smart albums** — one a person made is returned by no PhotoKit fetch, and the system ones are views over the library rather than places; **shared albums, the Shared Library and hidden photos**, left out as Photos' own Library view leaves them out; **a per-asset time zone**, which PhotoKit does not expose, so months are cut in the Mac's; **⌘L inside the library**, which has no real directory to start from; and **Photos' lowercase `.mov`** for a Live Photo's movie, since a row's name is part of its path. **Never exercised**: the download of an original that is only in iCloud, because the library held none on the day |
 
 ### Still open
 
-Everything through M27 is shipped, and the record of it — the milestone checklists, the sixty
+Everything through M28 is shipped, and the record of it — the milestone checklists, the sixty
 dated passes that landed outside a milestone of their own, and the reasoning behind every decision —
 is in **[docs/HISTORY.md](docs/HISTORY.md)**. What is still open, rather than merely imaginable, is
 the *undone* column in the table above, plus the list below. Everything that came off this list came

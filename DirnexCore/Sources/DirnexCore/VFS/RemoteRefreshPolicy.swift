@@ -72,13 +72,21 @@ public enum RemoteRefreshPolicy {
         return min(max(seconds, floorRange.lowerBound), floorRange.upperBound)
     }
 
-    /// Whether a pane showing `backend` re-lists on a timer at all.
+    /// What wakes a pane showing `backend` to re-list it without anybody asking, or `nil` when
+    /// nothing should.
     ///
     /// Keyed on ``VFSBackendID/isRemoteConnection`` rather than on a list of cases, which is this
     /// project's most repeated bug — one question with several spellings, and a backend added later
     /// inheriting the wrong answer in silence. It is also precisely the right question: that
     /// property means *re-listable and not on this disk*, and re-listable is the whole precondition
-    /// for a poll.
+    /// for a refresh nobody asked for.
+    ///
+    /// **One connection can say when it changed, and that is the only case named.** The Photos
+    /// library delivers `PHPhotoLibraryChangeObserver` callbacks to any process holding the grant —
+    /// measured 2026-09-13, an observer in another process heard all 51 changes Photos.app made —
+    /// so a pane on it is woken by the library, the way a local pane is woken by FSEvents (PLAN.md
+    /// §M28 Slice 4). No server protocol here has anything like it, which is why every other
+    /// connection is still asked again on a clock.
     ///
     /// Everything else is excluded for a reason of its own rather than by omission. A `.local`
     /// directory is told by FSEvents. An **archive** is a cached `bsdtar -tvf` of a file on this
@@ -86,8 +94,15 @@ public enum RemoteRefreshPolicy {
     /// polling it would spend a subprocess to learn what a `stat` already knows. A `.search`
     /// snapshot is the answer to a question somebody asked once, and re-running it silently is a
     /// different feature with a different cost.
+    public static func trigger(for backend: VFSBackendID) -> RefreshTrigger? {
+        guard backend.isRemoteConnection else { return nil }
+        return backend.isPhotos ? .libraryChange : .timer
+    }
+
+    /// Whether a pane showing `backend` re-lists on a **timer** — every connection that cannot say
+    /// when it changed (``trigger(for:)``).
     public static func polls(_ backend: VFSBackendID) -> Bool {
-        backend.isRemoteConnection
+        trigger(for: backend) == .timer
     }
 
     /// Whether a pane should be asking its server for a fresh listing **right now**.
@@ -108,13 +123,23 @@ public enum RemoteRefreshPolicy {
     /// It answers the backend-and-floor half by asking ``interval(afterRefreshTaking:floor:backend:)``
     /// rather than restating it, so "this pane polls at all" has one definition and the two cannot
     /// drift into two spellings of one question.
+    ///
+    /// **A library pane listens whatever the floor, zero included.** The floor's promise is *never
+    /// contact a server unasked*, and a library change contacts nothing: the notification arrives
+    /// by itself, and the re-list it prompts reads this Mac's own library, the names included. So
+    /// the one gate a library pane keeps is the first one — nobody reads a pane that is not on
+    /// screen, and it catches up when it is uncovered.
     public static func shouldPoll(
         backend: VFSBackendID,
         floor: TimeInterval,
         isOnScreen: Bool
     ) -> Bool {
         guard isOnScreen else { return false }
-        return interval(afterRefreshTaking: nil, floor: floor, backend: backend) != nil
+        switch trigger(for: backend) {
+        case .timer?: return interval(afterRefreshTaking: nil, floor: floor, backend: backend) != nil
+        case .libraryChange?: return true
+        case nil: return false
+        }
     }
 
     /// How long to wait before re-listing again, given how long the refresh that just finished took
@@ -174,4 +199,52 @@ public enum RemoteRefreshPolicy {
         guard let elapsed, elapsed.isFinite, elapsed > 0 else { return interval }
         return max(0, interval - elapsed)
     }
+
+    // MARK: - Woken by the library
+
+    /// The least a library change waits before the pane re-lists.
+    ///
+    /// One gesture in Photos arrives as two or three deliveries about 0.3 s apart — an album made
+    /// and then filled delivered at +0 and +0.315 s (measured 2026-09-13) — so half a second lets a
+    /// burst land as one refresh rather than two, and is still quicker than anyone switches windows
+    /// to look.
+    public static let librarySettleDelay: TimeInterval = 0.5
+
+    /// How long a pane on the library waits, from the moment it learns of a change, before
+    /// re-listing.
+    ///
+    /// The duty cycle applies here for the reason it applies to a server, though the cost is a
+    /// different one: every change moves the library's change token, and the token is what each
+    /// month's cached names are held against, so each refresh after a change pays for names again —
+    /// ~1.1 ms an asset. A library that changes continuously, as one does while iCloud brings in a
+    /// large import, would otherwise re-read a big album every half second. The elapsed time is
+    /// subtracted as ``delay(afterRefreshTaking:finishedSecondsAgo:floor:backend:)`` subtracts it,
+    /// so a pane uncovered long after the change catches up at once — but never below
+    /// ``librarySettleDelay``, which is about the burst rather than the cost.
+    ///
+    /// A duration or an elapsed time that is missing, negative or not finite is ignored, for the
+    /// reason given at ``interval(afterRefreshTaking:floor:backend:)``: not measuring is not
+    /// evidence of expense.
+    public static func delayAfterLibraryChange(
+        afterRefreshTaking duration: TimeInterval?,
+        finishedSecondsAgo elapsed: TimeInterval?
+    ) -> TimeInterval {
+        var spacing = librarySettleDelay
+        if let duration, duration.isFinite, duration > 0 {
+            spacing = max(spacing, duration / dutyCycle)
+        }
+        if let elapsed, elapsed.isFinite, elapsed > 0 {
+            spacing -= elapsed
+        }
+        return max(librarySettleDelay, spacing)
+    }
+}
+
+/// What wakes a pane to re-list without anybody asking (``RemoteRefreshPolicy/trigger(for:)``).
+public enum RefreshTrigger: Sendable, Equatable {
+    /// Asked again on a clock, spaced by what the previous refresh cost — every server, since none
+    /// of their protocols can say that something changed.
+    case timer
+    /// Woken by the library's own change notification — the Photos library, which can.
+    case libraryChange
 }

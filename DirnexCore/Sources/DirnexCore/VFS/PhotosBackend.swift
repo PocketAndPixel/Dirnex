@@ -146,6 +146,27 @@ public struct PhotosBackend: ConnectionScopedBackend {
                 isCancelled: isCancelled
             )
         }
+        stampCaptureDate(of: row, on: destination)
+    }
+
+    /// Give an exported original its capture date as its **birth time** — what Photos' own Export
+    /// Unmodified Original does, measured 2026-09-13 against the same assets exported both ways
+    /// (docs/NOTES.md ▸ iCloud Photos).
+    ///
+    /// The same measurement decided what this leaves alone, and it overturned the plan. Photos keeps
+    /// the library file's modification time, to the nanosecond, because its export is a clone too;
+    /// it keeps `com.apple.cpl.original` and `com.apple.cpl.delete`; and it stamps a Live Photo's
+    /// movie with the capture date as well as its photo. Moving the modification time or clearing
+    /// the `cpl` markers, both of which PLAN.md §M28 Slice 4 had assumed, would have made a Dirnex
+    /// export differ from the file a person compares it with. Photos also rewrites the quarantine
+    /// with its own name as the agent, which is not imitated: the flag is left as the export wrote it.
+    ///
+    /// Best-effort, and deliberately so: the bytes are already where they were asked to go, and a
+    /// volume that keeps no birth time is no reason to report a finished copy as failed. An original
+    /// with no capture date keeps the birth time the export gave it.
+    private func stampCaptureDate(of row: PhotosRow, on destination: VFSPath) {
+        guard let captureDate = row.captureDate else { return }
+        try? FileAttributeIO.setCreationDate(captureDate, at: destination)
     }
 
     // MARK: - Rows

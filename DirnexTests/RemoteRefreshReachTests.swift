@@ -147,9 +147,13 @@ struct RemoteRefreshReachTests {
     /// The one point on which the two wake sources differ, and the reason the refresh takes a wake
     /// rather than sharing one body blindly: an FSEvents ping is itself evidence that something
     /// under this directory changed, where a poll knows only what two listings disagree about.
+    ///
+    /// A library change is a poll in this respect: it says the *library* moved, and face analysis on
+    /// a photo from another year delivers the same callback as a photo added to this month.
     @Test("only a filesystem event is proof that the subtree changed")
     func onlyEventsProveTheSubtreeChanged() {
         #expect(RefreshWake.filesystemEvent.provesSubtreeChanged)
         #expect(!RefreshWake.poll.provesSubtreeChanged)
+        #expect(!RefreshWake.libraryChange.provesSubtreeChanged)
     }
 }

@@ -6137,14 +6137,34 @@ during the session. This is the ground the Photos backend stands on (PLAN.md §M
   - **A download is written back into the library, not only to the destination.** The ten
     reappeared under `originals/` with new inodes (plus `_5.aae` sidecars for the two edited photos),
     so fetching an evicted original costs the user's disk the way viewing it in Photos does.
-  - **The export keeps the library copy's mtime, which is not the capture date.** `IMG_0089.HEIC` was
-    captured at 14:04:12Z and exported with an mtime of 14:25:55Z, when Photos stored it; a downloaded
-    original gets the download time. What Photos' own "Export Unmodified Original" stamps is
-    unmeasured.
-  - **It carries some of the library file's extended attributes and not others.** The library file
-    holds ~25 `com.apple.assetsd.*` attributes plus `com.apple.cpl.original`, `com.apple.cpl.delete`
-    and a `com.apple.quarantine` whose agent is `com.apple.cloudd`; the export drops the `assetsd`
-    set and keeps the other three.
+  - **Photos' own Export Unmodified Original stamps the birth time and nothing else, and keeps the
+    `cpl` markers.** Measured 2026-09-13 by exporting the same assets both ways: `IMG_0089`, a Live
+    Photo local since 2023, and `IMG_0207`, downloaded back that day, from Photos.app's menu with its
+    defaults and through `writeData` as the backend does. The bytes were SHA-256-identical, and
+    neither route carried the library file's ~25 `com.apple.assetsd.*` attributes. The rest:
+
+    | | `writeData` (Dirnex before Slice 4) | Photos' menu export |
+    |---|---|---|
+    | modification time | the library file's, to the nanosecond (`IMG_0089`: 14:25:55Z, when Photos stored it) | **the same**, since its export is a clone too |
+    | birth time | the library file's | **the capture date**, 14:04:12.274Z, on the photo *and* its movie |
+    | `com.apple.cpl.original`, `cpl.delete` | kept, where the library file has them | **kept** |
+    | `com.apple.quarantine` | the library file's: agent `com.apple.cloudd`, flags `0086` | rewritten: agent `Photos`, flags `0082` |
+    | `com.apple.lastuseddate#PS` | absent | added, at the export time |
+    | `com.apple.provenance` | added for the exporting process | absent |
+    | mode | `0600` | `0600` |
+    | the Live Photo's movie | `IMG_0089.MOV`, PhotoKit's `originalFilename` | **`IMG_0089.mov`** |
+
+    So Slice 4 stamps only the birth time (`PhotosBackend.stampCaptureDate`), and that overturned
+    the plan, which said to stamp the capture date as the *modification* time and clear the `cpl`
+    markers. Either would have made a Dirnex export differ from Photos' export of the same photo.
+    - **The `cpl` markers are only on originals that have been on this Mac a while.** `IMG_0207`,
+      downloaded that morning, carried none in either export, so an export of a single recent photo
+      cannot show whether an exporter keeps them. It took the 2023 one.
+    - **`setattrlist(ATTR_CMN_CRTIME)` sets the birth time exactly, earlier or later than the mtime**
+      (probed both ways on APFS, with the mtime unmoved), so a capture date after the storage date
+      needs no special case.
+    - **The lowercase `.mov` is not followed.** A row's name is part of its path, and on the
+      case-insensitive default volume the two spellings are the same file.
 
 - **Streaming arrives in 1 MiB chunks, and cancellation is immediate.**
   `requestData(for:options:dataReceivedHandler:completionHandler:)` delivered an 8 MB original in
@@ -6190,7 +6210,12 @@ during the session. This is the ground the Photos backend stands on (PLAN.md §M
     a read-only observer under Terminal's grant while the album fixture above was built in Photos: 51
     deliveries in twelve minutes, every one on a background thread, for every album made, renamed,
     filled, re-sorted and hidden, including each committed keystroke of a rename. So a refresh can be
-    driven by the notification rather than by a timer, which is PLAN.md §M28 Slice 4.
+    driven by the notification rather than by a timer, and since PLAN.md §M28 Slice 4 it is.
+  - **An idle library says almost nothing.** The same observer left running for 17 minutes with
+    nobody editing heard **one** delivery, and that one came from opening a photo in Photos.app: viewing
+    an asset changes it. Two menu exports during the same run changed nothing. How often the library
+    changes while iCloud brings in a large import is **unmeasured**, which is why a library refresh is
+    still spaced by the duty cycle (`RemoteRefreshPolicy.delayAfterLibraryChange`).
   - **One gesture usually arrives as two or three deliveries** 0.3 s apart, and adding a photo to an
     album reports the *photo* as changed in a held asset fetch as well as the album. Hiding one reports
     it removed from that fetch and, in the persistent-change history, as updated rather than deleted.

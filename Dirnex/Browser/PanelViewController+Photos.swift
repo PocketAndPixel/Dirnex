@@ -19,11 +19,15 @@ extension PanelViewController {
     /// the same sentence a revoked grant gets later in the session.
     func showPhotosLibrary() {
         guard PHPhotoLibrary.authorizationStatus(for: .readWrite) == .notDetermined else {
+            PhotosLibraryChangeMonitor.shared.startIfPermitted()
             navigate(to: Self.photosLibraryRoot)
             return
         }
         Task { @MainActor [weak self] in
             _ = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+            // Before the navigation, so the grant just given reaches every pane already on the
+            // library — a tab restored before it — and not only this one.
+            PhotosLibraryChangeMonitor.shared.startIfPermitted()
             self?.navigate(to: Self.photosLibraryRoot)
             self?.focusTable()
         }

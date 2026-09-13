@@ -25,6 +25,10 @@ final class FakePhotosLibrary: PhotosLibraryTransport, @unchecked Sendable {
     var exportFailure: (any Error)?
     /// The bytes an export writes, keyed by original file name; a name with none writes an empty file.
     var bytes: [String: Data] = [:]
+    /// What the library's own file carries onto every export, the way `writeData`'s clone carries
+    /// it: the modification date Photos stored the original at, and its extended attributes.
+    var libraryFileDate: Date?
+    var libraryFileAttributes: [String: Data] = [:]
 
     /// Each folder's children in sidebar order, keyed by the folder's identifier — `nil` for the top.
     var levels: [String?: [PhotosCollection]] = [:]
@@ -123,6 +127,15 @@ final class FakePhotosLibrary: PhotosLibraryTransport, @unchecked Sendable {
         let data = bytes[resource.originalFilename] ?? Data()
         guard FileManager.default.createFile(atPath: localPath, contents: data) else {
             throw PhotosLibraryError.failed(code: -1)
+        }
+        if let libraryFileDate {
+            try FileManager.default.setAttributes(
+                [.modificationDate: libraryFileDate],
+                ofItemAtPath: localPath
+            )
+        }
+        for (name, value) in libraryFileAttributes {
+            try ExtendedAttributeIO.set(name, to: value, at: .local(localPath))
         }
         progress(Int64(data.count))
     }

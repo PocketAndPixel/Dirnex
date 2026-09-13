@@ -80,6 +80,17 @@ public enum FileAttributeIO {
         }
     }
 
+    /// Set only an item's birth time, the one date `utimes` cannot reach, and leave the rest alone.
+    ///
+    /// For a caller with one date to write rather than a diff to plan: the Photos export stamps an
+    /// original's capture date here (PLAN.md §M28 Slice 4). Probed 2026-09-13 on APFS: it lands to
+    /// the millisecond whether it is earlier or later than the modification time, and the
+    /// modification time does not move. Acts on the item itself, never through a symlink.
+    public static func setCreationDate(_ date: Date, at path: VFSPath) throws {
+        try requireLocal(path)
+        try setCreationDate(date, at: path.path, actsOnLink: false, path: path)
+    }
+
     /// `setattrlist(ATTR_CMN_CRTIME)` — the birth time `utimes` cannot reach.
     private static func setCreationDate(
         _ date: Date,

@@ -1,7 +1,7 @@
 # What works where
 
 Every user-facing capability against every kind of location Dirnex can open, as of
-**2026-09-13** (M0–M27 shipped, M28 open). The purpose is the parity question:
+**2026-09-13** (M0–M28 shipped). The purpose is the parity question:
 *where does working on a server still feel unlike working on the disk, and which of those gaps are
 ours to close?*
 
@@ -59,9 +59,11 @@ order Photos' sidebar lists them, so `Trips` beside `Trips` reads `Trips (2)`, a
 reads `:`. Two things are not there and cannot be: a **smart album a person made**, which PhotoKit
 returns from no fetch at all, and the **system smart albums** (Favorites, Videos, …), which are views
 over the library rather than places. Shared albums are left out, as the Library view leaves them out.
-The rest of the Photos column follows from the library answering `isRemoteConnection` with read-only
-capabilities and has not been exercised against it — least of all the download of an original that
-is only in iCloud, since the library held none that day (PLAN.md §M28 Slice 2).
+Verified live the same day for PLAN.md §M28 Slice 4: a pane refreshing when the library changed
+elsewhere, with the refresh floor at 0, and an `F5` export of a Live Photo carrying what Photos' own
+export carries. The rest of the Photos column follows from the library answering
+`isRemoteConnection` with read-only capabilities and has not been exercised against it — least of all
+the download of an original that is only in iCloud, since the library held none on either day.
 
 ---
 
@@ -78,7 +80,7 @@ is only in iCloud, since the library held none that day (PLAN.md §M28 Slice 2).
 | Sort, column layout, hidden files | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Type-to-filter, marks, `⌘A`, invert | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Tree view (`→` to expand) | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Live auto-refresh when it changes elsewhere | yes | yes | yes<sup>d</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, partially<sup>ggg</sup> | n/a | yes |
+| Live auto-refresh when it changes elsewhere | yes | yes | yes<sup>d</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes<sup>ggg</sup> | n/a | yes |
 | Folder size on `Space` / `⌥⇧⏎` | yes | yes | yes | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | n/a | yes<sup>hhh</sup> | yes | yes |
 | Size visualization bars (`⌃B`) | yes | yes | yes | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>hhh</sup> | n/a<sup>nn</sup> | n/a<sup>nn</sup> |
 | Git status column, `.gitignore`-aware sizes | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
@@ -159,10 +161,14 @@ whose path stays `/Undated` (PLAN.md §M28). What is missing is typing a locatio
 `PathBarView.editBase` has no real directory to start from inside the library, the same as a results
 listing.
 
-<sup>ggg</sup> The library answers `isRemoteConnection`, so a pane on it re-lists on the same
-on-screen timer a server gets (<sup>f</sup>). It costs little here: each month's rows are cached
-against PhotoKit's change token, one 93 µs read, so an unchanged library re-lists from memory. A
-refresh driven by the token itself, rather than by the timer, is PLAN.md §M28 Slice 4.
+<sup>ggg</sup> The library says when it changed, so a pane on it is woken by the library rather
+than by the timer a server gets (<sup>f</sup>): PhotoKit's change observer hears Photos.app and
+iCloud alike, and the pane re-lists half a second after a change, once its burst has settled (PLAN.md
+§M28 Slice 4). Two of the server's rules still apply — a pane nobody can see waits and catches up
+when it is uncovered, and an expensive refresh spaces out the next one — and the floor does not,
+since a change that arrives by itself contacts nothing: a Photos pane refreshes even with Settings ▸
+Panels at 0. Each month's rows are cached against PhotoKit's change token, so after a change only
+what is re-listed pays for names again.
 
 <sup>hhh</sup> A folder's total is the sum of its originals' sizes, so measuring a year reads every
 month's names — about 1.1 ms an asset, since a name is the one thing PhotoKit answers per asset
@@ -192,7 +198,7 @@ rather than per fetch (docs/NOTES.md ▸ iCloud Photos). It rides the remote siz
 | Undo `⌘Z` | yes | yes | yes, limited<sup>qq</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially | n/a | yes | no |
 | Background queue, progress bar, Stop | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Per-file conflict dialog | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
-| Preserve permissions / dates / xattrs on copy | yes | yes | yes, limited | yes, limited<sup>q</sup> | yes, limited<sup>q</sup> | n/a<sup>q</sup> | n/a | yes, partially<sup>lll</sup> | yes | yes |
+| Preserve permissions / dates / xattrs on copy | yes | yes | yes, limited | yes, limited<sup>q</sup> | yes, limited<sup>q</sup> | n/a<sup>q</sup> | n/a | yes, limited<sup>lll</sup> | yes | yes |
 | Copy a symlink as a symlink | yes | yes | yes | yes, limited<sup>pp</sup> | n/a<sup>pp</sup> | n/a | n/a | n/a | yes | yes |
 | APFS clone fast path | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes | yes |
 
@@ -374,11 +380,13 @@ out, dragging it out, handing it to an app — works.
 changes it. A row's name is that name, numbered `IMG_0001 (2).JPG` when two originals in one month
 share it.
 
-<sup>lll</sup> An export is a clone of the library's own file, so it keeps that file's mode and its
-modification time — which is when Photos stored the original, not when it was captured — and the
-`com.apple.cpl.*` markers and a quarantine flag ride along. Stamping the capture date and clearing
-those is PLAN.md §M28 Slice 4, measured first against what Photos' own Export Unmodified Original
-writes.
+<sup>lll</sup> An export carries what Photos' own **Export Unmodified Original** carries, measured
+against the same photos exported both ways (PLAN.md §M28 Slice 4). It is a clone of the library's
+file, so it keeps that file's mode, its modification time (when Photos stored the original, not when
+it was taken) and its `com.apple.cpl.*` markers, and it is **born at the capture date**, a Live
+Photo's movie included. Two differences remain: Photos rewrites the quarantine flag with itself as
+the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` where the row says
+`.MOV`.
 
 ## 3. Preview, open and edit
 

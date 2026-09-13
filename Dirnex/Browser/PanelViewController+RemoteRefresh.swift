@@ -16,6 +16,12 @@ enum RefreshWake {
     /// The remote poll's timer came round on a server that can notify nobody. The listing diff is
     /// the whole of the evidence, and it says nothing about what lies below these rows.
     case poll
+    /// The Photos library said it changed (`PhotosLibraryChangeMonitor`, PLAN.md §M28 Slice 4). What
+    /// that proves is that something *in the library* moved, not that anything under this folder
+    /// did — face analysis on a photo from another year delivers the same callback — so for the
+    /// cached sizes it counts for no more than a poll: the listing diff is the evidence about these
+    /// rows.
+    case libraryChange
 
     /// Whether this wake is proof that the subtree changed, independently of the listing diff.
     var provesSubtreeChanged: Bool { self == .filesystemEvent }
@@ -28,6 +34,9 @@ struct RemoteRefreshMeasurement {
     let path: VFSPath
     let duration: TimeInterval
     let finished: Date
+    /// For a pane on the Photos library, the library generation this refresh brought it up to
+    /// (`PhotosLibraryChangeMonitor`); `nil` for a server, which has no such thing to count.
+    var libraryGeneration: Int?
 }
 
 /// Live refresh for a pane on a **connected server**, where no protocol will tell it anything
@@ -125,26 +134,49 @@ extension PanelViewController {
     /// is what makes the duty cycle mean what it says: the gap is measured from the end of one
     /// round to the start of the next, so two rounds can never overlap and a slow server cannot
     /// queue requests behind itself.
+    ///
+    /// A pane on the Photos library takes the other loop, which waits for the library to say it
+    /// changed instead of sleeping (`runLibraryChangeLoop`) — the one place the two differ.
     private func runRemoteRefreshLoop(for path: VFSPath) async {
+        if RemoteRefreshPolicy.trigger(for: path.backend) == .libraryChange {
+            await runLibraryChangeLoop(for: path)
+            return
+        }
         while !Task.isCancelled {
             guard let delay = remoteRefreshDelay(for: path) else { return }
             try? await Task.sleep(for: .seconds(delay))
             guard !Task.isCancelled, panel.path == path, isRemoteRefreshWanted else { return }
-            let started = Date()
-            // The plans are built here, synchronously, for the same reason the FSEvents callers
-            // build theirs: they *are* the staleness guards, and this loop has just woken from a
-            // sleep during which anything could have happened to the pane.
-            if panel.isTree {
-                guard let plan = treeRefreshPlan() else { return }
-                await performTreeRefresh(plan, selecting: nil, wake: .poll)
-            } else {
-                guard let plan = listRefreshPlan(for: path) else { return }
-                await performListRefresh(plan, wake: .poll)
-            }
-            remoteRefreshLastPoll = RemoteRefreshMeasurement(
-                path: path, duration: Date().timeIntervalSince(started), finished: Date()
-            )
+            guard await refreshUnasked(path, wake: .poll) else { return }
         }
+    }
+
+    /// One refresh nobody asked for, and what it cost — the body both loops share, so a poll and a
+    /// library change cannot drift into two definitions of a passive re-list.
+    ///
+    /// The plans are built here, synchronously, for the same reason the FSEvents callers build
+    /// theirs: they *are* the staleness guards, and a loop calling this has just woken from a wait
+    /// during which anything could have happened to the pane. `false` when the pane no longer has
+    /// a plan to run, which ends the loop.
+    func refreshUnasked(
+        _ path: VFSPath,
+        wake: RefreshWake,
+        libraryGeneration: Int? = nil
+    ) async -> Bool {
+        let started = Date()
+        if panel.isTree {
+            guard let plan = treeRefreshPlan() else { return false }
+            await performTreeRefresh(plan, selecting: nil, wake: wake)
+        } else {
+            guard let plan = listRefreshPlan(for: path) else { return false }
+            await performListRefresh(plan, wake: wake)
+        }
+        remoteRefreshLastPoll = RemoteRefreshMeasurement(
+            path: path,
+            duration: Date().timeIntervalSince(started),
+            finished: Date(),
+            libraryGeneration: libraryGeneration
+        )
+        return true
     }
 
     /// How long to wait before the next round. Gathers what the last poll of *this* directory cost
