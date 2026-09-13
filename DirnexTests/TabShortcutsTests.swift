@@ -1,4 +1,5 @@
 import AppKit
+import DirnexCore
 import Testing
 
 @testable import Dirnex
@@ -119,6 +120,68 @@ struct TabShortcutsTests {
         plain.isReleasedWhenClosed = false
         plain.contentView = NSView()
         #expect(!TabShortcuts.perform(try key("2", code: 19), in: plain))
+    }
+
+    @Test(
+        "a tabless dialog that claims the numbers refuses ⌘1–⌘9 instead of passing them to its fields"
+    )
+    func tablessClaimingDialogRefuses() throws {
+        final class Claiming: NSViewController, ClaimsTabNumberKeys {
+            override func loadView() { view = NSView(
+                frame: NSRect(x: 0, y: 0, width: 200, height: 100)
+            ) }
+        }
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 100),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        window.contentViewController = Claiming()
+
+        var refused = 0
+        let saved = TabShortcuts.refuse
+        defer { TabShortcuts.refuse = saved }
+        TabShortcuts.refuse = { refused += 1 }
+
+        #expect(TabShortcuts.perform(try key("7", code: 26), in: window))
+        #expect(TabShortcuts.perform(try key("1", code: 18), in: window))
+        #expect(refused == 2)
+        // A key that is not a tab number is still the panel's.
+        #expect(!TabShortcuts.perform(try key("c", code: 8), in: window))
+
+        let unclaimed = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 100),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        unclaimed.isReleasedWhenClosed = false
+        unclaimed.contentViewController = NSViewController()
+        unclaimed.contentViewController?.view = NSView()
+        #expect(!TabShortcuts.perform(try key("7", code: 26), in: unclaimed))
+    }
+
+    @Test("the remote Get Info claims the numbers")
+    func remotePanelClaims() {
+        let sftp = VFSBackendID.sftp(SFTPLocation(host: "srv", username: "oleg"))
+        let entry = FileEntry(
+            path: VFSPath(backend: sftp, path: "/home/oleg/a.txt"),
+            name: "a.txt",
+            kind: .file,
+            byteSize: 1,
+            modificationDate: Date(timeIntervalSince1970: 1_000_000),
+            creationDate: Date(timeIntervalSince1970: 1_000_000),
+            isHidden: false,
+            permissions: 0o644,
+            inode: 0
+        )
+        let controller: NSViewController = RemoteAttributesController(
+            entry: entry,
+            backend: LocalBackend()
+        )
+        #expect(controller is ClaimsTabNumberKeys)
     }
 
     // MARK: - The numbers

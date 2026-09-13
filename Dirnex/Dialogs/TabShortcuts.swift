@@ -95,10 +95,17 @@ enum TabShortcuts {
     ///
     /// **Every ⌘1–⌘9 is claimed in a window with tabs, including a number past the last tab**, which
     /// beeps. Letting those through was measured to be worse than inconsistent: with four tabs, ⌘7
-    /// reached the focused date picker in Get Info, which ignores ⌘ and took the 7 as the day.
+    /// reached the focused date picker in Get Info, which ignores ⌘ and took the 7 as the day. A
+    /// tabless dialog whose controller is ``ClaimsTabNumberKeys`` is refused the same way, for the
+    /// same date picker.
     static func perform(_ event: NSEvent, in window: NSWindow) -> Bool {
-        guard let number = tabNumber(for: event), let tabs = tabView(in: window) else { return false }
-        pick(number, in: tabs)
+        guard let number = tabNumber(for: event) else { return false }
+        if let tabs = tabView(in: window) {
+            pick(number, in: tabs)
+            return true
+        }
+        guard window.contentViewController is ClaimsTabNumberKeys else { return false }
+        refuse()
         return true
     }
 
@@ -172,3 +179,15 @@ enum TabShortcuts {
         shownOn = nil
     }
 }
+
+/// A dialog with no tabs that still claims ⌘1–⌘9, refusing them with a beep rather than letting them
+/// reach whatever holds focus.
+///
+/// The remote Get Info is the one that needs it: it is a single page where the local panel has four
+/// tabs, and over FTP it offers an `NSDatePicker` for the modification time — which ignores ⌘ and
+/// takes a digit as part of the date, the fall-through ``TabShortcuts`` already stops in the tabbed
+/// panels. Adopted by the window's content view controller, which is where a presented dialog lives
+/// (probed: `presentAsModalWindow` makes the presented controller its window's
+/// `contentViewController`).
+@MainActor
+protocol ClaimsTabNumberKeys: NSViewController {}

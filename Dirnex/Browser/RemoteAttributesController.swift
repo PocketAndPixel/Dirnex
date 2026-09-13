@@ -27,7 +27,7 @@ import DirnexCore
 /// sent, because a clean answer from the server is not proof the write landed
 /// (``RemoteAttributeVerdict``).
 @MainActor
-final class RemoteAttributesController: NSViewController {
+final class RemoteAttributesController: NSViewController, ClaimsTabNumberKeys {
     /// Internal rather than private: Swift's `private` does not cross files, and the notes and
     /// footer live in `RemoteAttributesController+Notes` to keep both files under SwiftLint's
     /// `file_length` and `type_body_length` ceilings (docs/NOTES.md ▸ Lint ceilings).
