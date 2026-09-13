@@ -48,20 +48,32 @@ enum KeyboardReachableControls {
             NSButton.self, NSSegmentedControl.self, NSSwitch.self, NSColorWell.self, NSStepper.self
         ]
         for controlClass in controlClasses {
-            patch(controlClass)
+            wrap(#selector(getter: NSView.canBecomeKeyView), on: controlClass) { view, original in
+                original || onMainActor(view, else: false) { joinsKeyViewLoop($0) }
+            }
+        }
+        // A color well that took focus this way draws no ring, so it is handed one of ours.
+        wrap(#selector(NSResponder.becomeFirstResponder), on: NSColorWell.self) { view, accepted in
+            if accepted { onMainActor(view, else: ()) { ColorWellFocusRing.attach(to: $0) } }
+            return accepted
         }
     }()
 
-    private static func patch(_ controlClass: AnyClass) {
-        let selector = #selector(getter: NSView.canBecomeKeyView)
+    /// Wrap an argument-less `BOOL` method of `controlClass` so `body` receives the original answer
+    /// and returns the final one.
+    private static func wrap(
+        _ selector: Selector,
+        on controlClass: AnyClass,
+        body: @escaping (NSView, Bool) -> Bool
+    ) {
         guard let inherited = class_getInstanceMethod(controlClass, selector) else { return }
-        typealias Getter = @convention(c) (NSView, Selector) -> Bool
-        let original = unsafeBitCast(method_getImplementation(inherited), to: Getter.self)
+        typealias Method = @convention(c) (NSView, Selector) -> Bool
+        let original = unsafeBitCast(method_getImplementation(inherited), to: Method.self)
         let replacement: @convention(block) (NSView) -> Bool = { view in
-            original(view, selector) || opensToTab(view)
+            body(view, original(view, selector))
         }
         let implementation = imp_implementationWithBlock(replacement)
-        // Add to the class when it inherits the getter, so its superclasses keep theirs; replace in
+        // Add to the class when it inherits the method, so its superclasses keep theirs; replace in
         // place only if the class defines its own.
         if !class_addMethod(
             controlClass,
@@ -73,10 +85,14 @@ enum KeyboardReachableControls {
         }
     }
 
-    /// The runtime asks from the main thread; anything else keeps AppKit's own answer.
-    private static func opensToTab(_ view: NSView) -> Bool {
-        guard Thread.isMainThread else { return false }
-        return MainActor.assumeIsolated { joinsKeyViewLoop(view) }
+    /// The runtime asks from the main thread; anything else gets `fallback`, AppKit's own behavior.
+    private static func onMainActor<Result: Sendable>(
+        _ view: NSView,
+        else fallback: Result,
+        _ body: @MainActor (NSView) -> Result
+    ) -> Result {
+        guard Thread.isMainThread else { return fallback }
+        return MainActor.assumeIsolated { body(view) }
     }
 
     /// Whether `view` joins its window's Tab loop although the system switch is off: it can hold

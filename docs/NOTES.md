@@ -1278,13 +1278,19 @@ at build time.
     `Picker` → `NSPopUpButton`, segmented `Picker` → `NSSegmentedControl`, `Stepper` → `NSStepper`,
     `ColorPicker` → `NSColorWell`, `Slider` → `NSSlider`). The one that stays out is the *checkbox*-style `Toggle`
     (`FocusRingNSButton`), which answers `acceptsFirstResponder == false` itself. Settings draws none.
-  - **A focused color well draws no focus ring with the system switch off, so Tab onto one is
-    invisible.** Measured live on the Settings wells on 2026-09-13. The well really is first
-    responder: `becomeFirstResponder` returns `true`, and Space opens the Colors panel. It reports
+  - **A focused color well draws no focus ring with the system switch off, so Dirnex draws one.**
+    Measured live on the Settings wells on 2026-09-13. The well really is first responder:
+    `becomeFirstResponder` returns `true`, and Space opens the Colors panel. It reports
     `focusRingType == .default` and a full-bounds mask. Calling `setKeyboardFocusRingNeedsDisplay` and
     `noteFocusRingMaskChanged` on focus changed nothing. Beside it, a stepper whose mask is *empty*
-    draws its ring fine, so the mask is not what gates drawing. Whatever decides it is inside
-    `NSColorWell`.
+    draws its ring fine, so the mask is not what gates drawing. The well's drawing is AppKit's own
+    `_NSCoreHostingView<AppKitColorWell>`, and the decision is somewhere inside that.
+    `ColorWellFocusRing` is a click-through subview the well gets the first time it takes focus. It
+    keeps itself current from KVO on the window's `firstResponder` plus the key/resign-key
+    notifications, because a SwiftUI tab switch removes the well without a `resignFirstResponder`. It
+    draws only while the system switch is off. At a 3 pt outset in `keyboardFocusIndicatorColor` it
+    matched the system rings on the neighbouring stepper and switch. Nothing between a Settings well
+    and its grouped row clips that close: the row leaves 10 pt around it.
   - **The loop is built once, from where each control sits, and a row shown or hidden later leaves
     it wrong.** Connect to Server computes it from the SMB layout; switching to SFTP then tabbed
     Protocol → Password → Save as → Cancel → Connect → Host. Text fields had this problem all along,
