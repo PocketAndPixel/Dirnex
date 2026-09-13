@@ -22,17 +22,21 @@ extension SidebarViewController {
     /// `~/Library/Mobile Documents/com~apple~CloudDocs`, which carries the user's home directory
     /// into a stored order and would lose the row's position on a Mac where that differs.
     private static let iCloudOrderIdentity = "icloud"
+    /// The identity the Photos row is remembered by — a literal, for the same reason.
+    private static let photosOrderIdentity = "photos"
 
     /// The section's places in the user's order — or, until they have dragged anything, the natural
-    /// one: iCloud Drive first (Apple's own, and the row a Mac is likeliest to have) then the
-    /// provider mounts by name.
+    /// one: iCloud Drive and then Photos (Apple's own, and the rows a Mac is likeliest to have), then
+    /// the provider mounts by name.
     ///
     /// The order is applied *here* rather than in `SidebarPlaces`, which takes this list already
     /// sorted: it is the user's arrangement, held in a `UserDefaults` store, and the core assembly
     /// reads no stores at all (PLAN.md §M20).
     func cloudPlaces() -> [SidebarPlace] {
         let iCloud = SidebarLocations.iCloudDrive().map { [SidebarPlace.iCloudDrive($0)] } ?? []
-        let discovered = iCloud + CloudStorageMounts.mounts().map(SidebarPlace.cloudMount)
+        let discovered = iCloud + [SidebarPlace.photos] + CloudStorageMounts.mounts().map(
+            SidebarPlace.cloudMount
+        )
         // Everything here is a Cloud place by construction, so the fallback is unreachable rather
         // than a stand-in identity anything could be stored under.
         return CloudSectionOrderStore.load().apply(to: discovered) { Self.orderIdentity(of: $0) ?? "" }
@@ -48,6 +52,7 @@ extension SidebarViewController {
     static func orderIdentity(of place: SidebarPlace) -> String? {
         switch place {
         case .iCloudDrive: return iCloudOrderIdentity
+        case .photos: return photosOrderIdentity
         case let .cloudMount(mount): return "mount:\(mount.directoryName)"
         default: return nil
         }
@@ -96,6 +101,14 @@ extension SidebarViewController {
             symbolName: SidebarPlacePresentation.symbolName(for: .iCloudDrive(path)) ?? "icloud",
             tooltip: path.path
         )
+    }
+
+    /// Build (or reuse) the Photos library's cell (PLAN.md §M28). The tooltip repeats the name: where
+    /// the library's file lives is PhotoKit's business and need not be the default, so there is no
+    /// path worth revealing, and guessing one would name a file nobody is browsing.
+    func photosCell() -> NSView {
+        let title = SidebarPlacePresentation.title(for: .photos)
+        return cloudCell(name: title, symbolName: PhotosPresentation.symbolName, tooltip: title)
     }
 
     /// Build (or reuse) a provider mount's cell — "Google Drive", or "Google Drive

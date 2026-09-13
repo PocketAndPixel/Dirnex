@@ -87,6 +87,13 @@ at build time.
   build draws escapes mixed with U+FFFD — i.e. it predated ``ChildProcessLocale`` and ``SubprocessText``
   entirely. `pgrep -lf "Dirnex.app/Contents/MacOS/Dirnex"` answers it in one line. **Launch by path**,
   and read the path back rather than trusting that a quit-and-relaunch settled which binary is up.
+- **Background computer-use cannot press Return in a text field; it sets the field's selected text
+  to a newline, which commits nothing.** Measured 2026-09-13 in Go ▸ Go to Location… while verifying
+  M28 Slice 2: `app_key return`, aimed at the focused element and then at the field's own coordinate,
+  both reported `set AXSelectedText="\n"`, and the pane stayed where it was with the path still in
+  the field. The `.sdef` route worked first time: `reveal` a file *inside* the folder (an empty
+  folder needs a marker), which points the active pane there. Reach for the AppleScript verbs before
+  a synthetic key whenever a field has to be committed.
 - **Fully quit a running Dirnex before relaunching.** `open` re-focuses the stale process, so
   new menu items and behavior silently don't appear. A Debug build's code lives in
   `Dirnex.debug.dylib`, not the thin executable — grep the dylib to confirm new code actually
@@ -6154,6 +6161,13 @@ during the session. This is the ground the Photos backend stands on (PLAN.md §M
 - **The change token is cheap enough to poll.** `currentChangeToken` took 0.17 ms and
   `fetchPersistentChanges(since:)` 0.56 ms with nothing changed. `PHPhotoLibraryChangeObserver`
   delivery is unmeasured, since provoking it needs a write.
+  - **Archived, it is byte-stable, which is what lets a cache key on it.** Two reads are `isEqual`
+    without being the same object, and 1000 reads archived with `NSKeyedArchiver` (secure coding)
+    produced **one** distinct 606-byte value, at 93 µs a read plus archive. So
+    `PhotoKitLibrary.changeToken()` hands the core plain `Data`, and a month's cached rows survive
+    until the library really changes rather than until the next read. Measured 2026-09-13; were it
+    not stable, the cache would never hit and would say nothing about it, since a miss is also a
+    correct answer.
 
 - **Under the hardened runtime, access needs an entitlement *and* a usage description, and each one
   missing fails differently.** Three throwaway bundles around the same binary, each ad-hoc signed
@@ -6170,8 +6184,19 @@ during the session. This is the ground the Photos backend stands on (PLAN.md §M
     `scripts/build_app.sh` signs them through `xcodebuild archive` with no change of its own. A
     missing usage string is a crash on the first call, so both have to land in the same change as the
     first PhotoKit call.
-  - Whether Dirnex's existing `kTCCServicePhotos` grant (2026-07-19, most likely from a pane browsing
-    into the library bundle) satisfies PhotoKit for the Developer ID build is **unmeasured**.
+  - **A rebuilt Debug build is asked again, and the first write-up of the live run said it was not.**
+    Measured 2026-09-13 on M28 Slice 2: the first listing raised the Photos prompt, and answering it
+    rewrote Dirnex's `kTCCServicePhotos` record (the 2026-07-19 grant), which now carries the Debug
+    build's own `cdhash H"ec55…"` as its requirement, written 12 ms after the dialog's button fired.
+    An ad-hoc build's designated requirement *is* its cdhash, so no earlier record can match one.
+    Once Allow is clicked, the pane looks the same whether or not a dialog was shown, which is how
+    "the sidebar row asked nothing" got into PLAN.md before this was checked. Whether the
+    **Developer ID** build's certificate-based requirement carries the grant across updates, as Full
+    Disk Access's does (▸ The Trash), is still **unmeasured**.
+    - **`tccd`'s log named neither the service nor the client here; the dialog's own process does.**
+      `log show --predicate 'process == "UserNotificationCenter"'` shows the consent dialog coming up
+      and its button's `sendAction:`. The record's `last_modified`, plus its `csreq` decoded with
+      `csreq -r <blob> -t`, says when the answer was stored and which binary it was bound to.
   - **A probe run from an agent's shell measures the wrong process.** Its responsible process is the
     host app, which holds no Photos grant. Terminal does, so a CLI started with
     `open -a Terminal probe.command` borrows that grant with no prompt — the shell-vs-LaunchServices

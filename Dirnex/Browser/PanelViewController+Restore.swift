@@ -274,6 +274,10 @@ extension PanelViewController {
             return exists && !isDirectory.boolValue
         case .connection:
             return true
+        // Nothing on disk to check and nothing to connect; whether access is still granted is the
+        // listing's question (PLAN.md §M28).
+        case .photosLibrary:
+            return true
         }
     }
 }

@@ -287,6 +287,10 @@ final class SidebarViewController: NSViewController {
             // the merge of that container with the app libraries beside it, which is a listing to
             // assemble rather than a directory to list (PLAN.md §M9).
             delegate?.sidebarDidActivateICloud(self)
+        case .photos:
+            // Dispatched for a reason of its own: the first click is where macOS is asked for access
+            // to the library, which a bare navigation would never do (PLAN.md §M28).
+            delegate?.sidebarDidActivatePhotos(self)
         case let .favorite(entry):
             delegate?.sidebar(self, didActivateFavorite: entry)
         case .cloudMount, .volume:
@@ -363,7 +367,7 @@ extension SidebarViewController: NSTableViewDelegate {
     }
 
     /// One destination's cell. Split from `viewFor` so the row's chrome and the place it carries are
-    /// answered separately, and so `SidebarPlace`'s ten cases are switched over in exactly one place
+    /// answered separately, and so `SidebarPlace`'s eleven cases are switched over in exactly one place
     /// on the drawing side — the mirror of `activate(_:)` on the dispatch side.
     private func cell(for place: SidebarPlace) -> NSView? {
         switch place {
@@ -371,6 +375,7 @@ extension SidebarViewController: NSTableViewDelegate {
         case .trash: trashCell()
         case let .favorite(entry): favoriteCell(for: entry)
         case let .iCloudDrive(path): iCloudCell(for: path)
+        case .photos: photosCell()
         case let .cloudMount(mount): cloudMountCell(for: mount)
         case let .volume(volume): volumeCell(for: volume)
         case let .savedSearch(search): savedSearchCell(for: search)

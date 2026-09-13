@@ -23,7 +23,7 @@ extension BrowserWindowController {
     /// the place has to open in whichever one is in front.
     ///
     /// It hands straight over to the sidebar's own `activate(_:)` — the one definition of what a
-    /// place *does* — rather than repeating the ten-way switch. The sidebar being collapsed changes
+    /// place *does* — rather than repeating the eleven-way switch. The sidebar being collapsed changes
     /// nothing: the view controller is alive either way, and it is the delegate callbacks (which are
     /// this file) that do the work.
     @objc func openPlace(_ sender: Any?) {
@@ -81,6 +81,14 @@ extension BrowserWindowController: SidebarViewControllerDelegate {
     func sidebarDidActivateICloud(_ sidebar: SidebarViewController) {
         let target = activePanel ?? leftPanel
         target.showICloudDrive()
+        target.focusTable()
+    }
+
+    /// The Photos library opens in the active pane as years, months and originals (PLAN.md §M28),
+    /// asking macOS for access on the first click; focus goes back to the pane either way.
+    func sidebarDidActivatePhotos(_ sidebar: SidebarViewController) {
+        let target = activePanel ?? leftPanel
+        target.showPhotosLibrary()
         target.focusTable()
     }
 

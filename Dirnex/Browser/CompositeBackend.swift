@@ -17,6 +17,10 @@ import Foundation
 /// name — is caught by the `ArchiveIdentity` each mount is stamped with.
 final class CompositeBackend: VFSBackend, @unchecked Sendable {
     let local: LocalBackend
+    /// The system Photos library (PLAN.md §M28). One backend for the life of the window rather than a
+    /// connection to register: there is only one library, and nothing about reaching it can change
+    /// except the privacy grant, which `PhotoKitLibrary` reads on every call.
+    let photos: PhotosBackend
     /// Mounted archives keyed by their on-disk path, each stamped with the identity of the file it
     /// was read from so a path that has since been given a *different* archive re-reads instead of
     /// answering from the old one's table of contents. Guarded by `lock` because listing runs
@@ -73,8 +77,15 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     /// connection the pane never saw a form for. One memory, filled where the registration happens.
     var endpoints: [String: ServerEndpoint] = [:]
 
-    init(local: LocalBackend) {
+    init(
+        local: LocalBackend,
+        photos: PhotosBackend = PhotosBackend(
+            transport: PhotoKitLibrary(),
+            undatedTitle: PhotosPresentation.undatedTitle
+        )
+    ) {
         self.local = local
+        self.photos = photos
     }
 
     /// Drop the cached mount for the archive at `archivePath`, so its next list/stat re-reads it
@@ -136,6 +147,8 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         if path.backend.isS3Account {
             return s3AccountBackend(for: path.backend)?.capabilities ?? .read
         }
+        // Read-only whatever the grant says: M28 imports, deletes and edits nothing.
+        if path.backend.isPhotos { return photos.capabilities }
         // The merged Trash listing is writable-but-Trash-less for the same reason, one level up:
         // its entries are real files that can only be deleted for good. Everything else virtual (an
         // archive browse, a search-results listing) is read-only.
@@ -338,6 +351,7 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         if path.backend.isFTP { return try connectedFTP(for: path.backend) }
         if path.backend.isS3 { return try connectedS3(for: path.backend) }
         if path.backend.isS3Account { return try connectedS3Account(for: path.backend) }
+        if path.backend.isPhotos { return photos }
         throw VFSError.unsupported(.noBackendForPath(path: "\(path)"))
     }
 

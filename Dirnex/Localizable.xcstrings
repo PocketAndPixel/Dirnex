@@ -38469,6 +38469,95 @@
         }
       }
     },
+    "Dirnex isn’t allowed to read your Photos library. You can allow it in System Settings under Privacy & Security ▸ Photos.": {
+      "comment": "Error sentence: Photos access denied. Names the privacy setting that controls it — not Full Disk Access, which cannot open the Photos library, and not a server.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex darf Ihre Fotomediathek nicht lesen. Sie können den Zugriff in den Systemeinstellungen unter „Datenschutz & Sicherheit“ ▸ „Fotos“ erlauben."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex isn’t allowed to read your Photos library. You can allow it in System Settings under Privacy & Security ▸ Photos."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex no tiene permiso para leer tu fototeca. Puedes permitirlo en Ajustes del Sistema, en Privacidad y seguridad ▸ Fotos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex n’est pas autorisé à lire votre photothèque. Vous pouvez l’autoriser dans Réglages Système, sous Confidentialité et sécurité ▸ Photos."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex non ha il permesso di leggere la libreria di Foto. Puoi consentirlo in Impostazioni di Sistema, in Privacy e sicurezza ▸ Foto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnexには写真ライブラリを読み取る権限がありません。“システム設定”の“プライバシーとセキュリティ”▸“写真”で許可できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex에 사진 보관함을 읽을 권한이 없습니다. 시스템 설정의 개인정보 보호 및 보안 ▸ 사진에서 허용할 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex mag je fotobibliotheek niet lezen. Je kunt dit toestaan in Systeeminstellingen, onder Privacy en beveiliging ▸ Foto's."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex nie ma dostępu do biblioteki Zdjęć. Możesz go przyznać w Ustawieniach systemowych, w sekcji Prywatność i ochrona ▸ Zdjęcia."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex não tem permissão para ler sua fototeca. Você pode permitir isso em Ajustes do Sistema, em Privacidade e Segurança ▸ Fotos."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У Dirnex нет доступа к медиатеке «Фото». Его можно разрешить в Системных настройках: «Конфиденциальность и безопасность» ▸ «Фото»."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex не має доступу до медіатеки «Фото». Його можна дозволити в Системних параметрах: «Приватність і безпека» ▸ «Фото»."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 无权读取你的照片图库。你可以在“系统设置”的“隐私与安全性”▸“照片”中允许访问。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 沒有權限讀取你的照片圖庫。你可以在「系統設定」的「隱私權與安全性」▸「照片」中允許取用。"
+          }
+        }
+      }
+    },
     "Dirnex needs Full Disk Access to show the Trash": {
       "comment": "FDA (Trash) sheet title.",
       "localizations": {
@@ -64586,6 +64675,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "權限："
+          }
+        }
+      }
+    },
+    "Photos": {
+      "comment": "Photos library name (sidebar row, tab title, path bar root). Use the Photos app's own name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fotos"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Photos"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fotos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Photos"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "写真"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사진"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foto's"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zdjęcia"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fotos"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Фото"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Фото"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "照片"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "照片"
           }
         }
       }
@@ -93969,6 +94147,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "大寫"
+          }
+        }
+      }
+    },
+    "Undated": {
+      "comment": "Folder in the Photos library holding the photos and videos that have no capture date.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ohne Datum"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undated"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin fecha"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sans date"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Senza data"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日付なし"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "날짜 없음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zonder datum"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bez daty"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sem data"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Без даты"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Без дати"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无日期"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無日期"
           }
         }
       }

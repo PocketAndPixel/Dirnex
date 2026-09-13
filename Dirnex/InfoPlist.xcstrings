@@ -1,0 +1,96 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSPhotoLibraryUsageDescription": {
+      "comment": "macOS privacy prompt shown the first time Dirnex asks to read the Photos library. Say what Dirnex does with it.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex zeigt Ihre Fotomediathek als Ordner mit Originaldateien an, damit Sie diese durchsuchen, in der Vorschau ansehen und kopieren können."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex shows your Photos library as folders of original files, so you can browse, preview and copy them."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex muestra tu fototeca como carpetas de archivos originales para que puedas explorarlos, previsualizarlos y copiarlos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex affiche votre photothèque sous forme de dossiers de fichiers originaux, pour que vous puissiez les parcourir, les prévisualiser et les copier."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex mostra la tua libreria di Foto come cartelle di file originali, così puoi sfogliarli, visualizzarne l’anteprima e copiarli."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnexは写真ライブラリをオリジナルファイルのフォルダとして表示し、ブラウズ、プレビュー、コピーできるようにします。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex는 사진 보관함을 원본 파일 폴더로 보여 주어 탐색, 미리 보기 및 복사할 수 있게 합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex toont je fotobibliotheek als mappen met originele bestanden, zodat je ze kunt doorbladeren, bekijken en kopiëren."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex pokazuje bibliotekę Zdjęć jako foldery oryginalnych plików, aby można je było przeglądać, podglądać i kopiować."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex mostra sua fototeca como pastas de arquivos originais para que você possa navegar, pré-visualizar e copiá-los."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex показывает медиатеку «Фото» как папки с оригинальными файлами, чтобы их можно было просматривать, открывать для предпросмотра и копировать."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex показує медіатеку «Фото» як папки з оригінальними файлами, щоб їх можна було переглядати, відкривати для попереднього перегляду й копіювати."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 将你的照片图库显示为原始文件的文件夹，以便浏览、预览和拷贝。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 會將你的照片圖庫顯示為原始檔案的檔案夾，方便瀏覽、預覽和拷貝。"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

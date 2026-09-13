@@ -49,8 +49,8 @@ public struct PhotosLayout: Sendable {
 
     /// The root folder holding assets with no capture date.
     ///
-    /// Not localized: it is a path component, and a path is an identity. The app draws a translated
-    /// title over it, the way it does for Recents.
+    /// Not localized: it is a path component, and a path is an identity. ``PhotosBackend`` is handed a
+    /// translated title for the row, and the app draws the same title over the crumb.
     public static let undatedFolderName = "Undated"
 
     /// Gregorian, in the time zone the layout was made with.

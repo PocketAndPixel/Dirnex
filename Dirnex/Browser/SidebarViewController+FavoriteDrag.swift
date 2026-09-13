@@ -54,7 +54,7 @@ extension SidebarViewController {
         case .place(.vault): return .vaults
         // Both kinds of Cloud row are peers within one section: iCloud Drive is a row the user can
         // put below a Google Drive mount, not a fixed first entry.
-        case .place(.iCloudDrive), .place(.cloudMount): return .icloud
+        case .place(.iCloudDrive), .place(.photos), .place(.cloudMount): return .icloud
         default: return nil
         }
     }

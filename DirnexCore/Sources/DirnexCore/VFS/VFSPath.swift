@@ -87,7 +87,12 @@ public struct VFSBackendID: RawRepresentable, Sendable, Hashable, CustomStringCo
     /// dead-end "results" label — and ⌘C is refused, because these entries have no local URL to
     /// put on the pasteboard. It says nothing about whether the account can be **written** to; that
     /// is ``acceptsUploads``, which is a different question with a different answer.
-    public var isRemoteConnection: Bool { isSFTP || isFTP || isS3 || isS3Account }
+    ///
+    /// **The Photos library is a member, though no server is involved** (PLAN.md §M28). Its originals
+    /// are listed through PhotoKit and fetched to a temp copy before anything can open them, which is
+    /// every property this name promises — re-listable, not on this disk, no local URL. It is
+    /// read-only, so ``acceptsUploads`` leaves it out.
+    public var isRemoteConnection: Bool { isSFTP || isFTP || isS3 || isS3Account || isPhotos }
 
     /// Whether a copy *into* this backend has an upload primitive behind it.
     ///

@@ -27,6 +27,10 @@ public enum TabRestoreRequirement: Sendable, Equatable {
     /// A connected account: this endpoint has to be registered on the pane's backend before the
     /// listing can be asked for.
     case connection(ServerEndpoint)
+    /// The system Photos library (PLAN.md §M28): nothing on disk to check and no server to connect.
+    /// Whether access is still granted is the listing's question, and a refusal then reads as the
+    /// ordinary load failure naming Privacy & Security ▸ Photos.
+    case photosLibrary
 }
 
 /// Which persisted tabs can be brought back, and whether a restore may open a connection nobody
@@ -53,6 +57,9 @@ public enum TabRestorePolicy {
     ) -> TabRestoreRequirement? {
         if path.backend == .local { return .directoryOnDisk }
         if let archivePath = path.backend.archivePath { return .archiveOnDisk(path: archivePath) }
+        // Ahead of the remote test, which the library answers: there is no endpoint to weigh, so a
+        // stored one is ignored rather than trusted.
+        if path.backend.isPhotos { return .photosLibrary }
         guard path.backend.isRemoteConnection else { return nil }
         guard let endpoint, endpoint.backendID == path.backend else { return nil }
         return .connection(endpoint)

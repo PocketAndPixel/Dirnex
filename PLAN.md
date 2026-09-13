@@ -197,6 +197,23 @@ front of a user:
    `.photos` belongs (docs/NOTES.md ▸ AppKit: a new backend has to be named at every site that lists
    the old ones). Verified live against this Mac's library, an evicted original included, and the
    docs/LOCATION-SUPPORT.md column.
+   **Landed 2026-09-13, with one path unexercised**: the evicted original. The library had none that
+   day, because the probe had downloaded all six back, so the streamed iCloud download has only the
+   probe's measurements behind it, and neither a refused grant's sentence nor the `Undated` folder
+   was seen live either. What held against this Mac's library: the sidebar row raised macOS's Photos
+   prompt, because an ad-hoc rebuild matches no earlier grant (docs/NOTES.md ▸ iCloud Photos), and
+   Allow let the listing through; the root listed five years, a year its months, and `2026-08` its
+   ten originals with Live Photo pairs, sizes and capture dates; the crumbs read `Photos › 2026 ›
+   2026-08`; Quick View rendered a HEIC through the remote fetch; F5 copied `IMG_0222.HEIC` out
+   byte-identical as a clone with its own inode; and a relaunch brought the tab back with its
+   cursor. The audit put `.photos` into `isRemoteConnection` — re-listable, not on this disk — and
+   named it ahead of that test at the sites that meant a server: the permission sentence, the path
+   bar, `TabRestorePolicy` (a new `photosLibrary` requirement) and the router. Nothing registers a
+   write-back, because `canEditRemoteFile` needs `acceptsUploads`. An archived change token was
+   measured byte-stable, one distinct value over 1000 reads, which is what lets the month cache hit.
+   The core suite is green at 3317 and the app suite at 1164; all 1014 extracted strings are in the
+   catalogs, the usage description is translated through a new `InfoPlist.xcstrings`, and the
+   entitlement lives in `Packaging/Dirnex.entitlements`.
 3. **Albums.** `/Albums/…`: user albums and the folders they sit in. The probe library has none, so
    the slice opens by probing one that does.
 4. **Freshness and fidelity.** A refresh driven by the change token; and an exported original stamped

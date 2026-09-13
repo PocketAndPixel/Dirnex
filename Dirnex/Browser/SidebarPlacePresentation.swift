@@ -22,6 +22,8 @@ enum SidebarPlacePresentation {
             String(localized: "Recents", comment: "Sidebar row: recently used files.")
         case .trash:
             String(localized: "Trash", comment: "Sidebar row and section for deleted items.")
+        case .photos:
+            PhotosPresentation.libraryTitle
         case .iCloudDrive:
             String(
                 localized: "iCloud Drive",
@@ -52,6 +54,7 @@ enum SidebarPlacePresentation {
         case .recents: "clock"
         case .trash: "trash"
         case .iCloudDrive: "icloud"
+        case .photos: PhotosPresentation.symbolName
         case .savedSearch: "magnifyingglass"
         case let .favorite(entry): favoriteSymbolName(for: entry.path)
         case let .cloudMount(mount): mount.symbolName

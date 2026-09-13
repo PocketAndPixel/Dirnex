@@ -33,6 +33,17 @@ extension PathBarView {
             rebuildICloudCrumbs([])
         } else if path.backend.isArchive {
             rebuildArchiveLabel(for: path, ancestry: archiveAncestry)
+        } else if path.backend.isPhotos {
+            // Crumbs, like any re-listable location — but not all of them are path components: the
+            // root is the library's name, and `Undated` is a translated title over a path that stays
+            // English (PLAN.md §M28). So it is named ahead of the remote branch it would fall into.
+            installCrumbs(
+                path.ancestorsFromRoot.map { Crumb(
+                    title: PhotosPresentation.title(for: $0),
+                    target: $0
+                ) },
+                leadingSymbol: Self.rootSymbolName(for: path)
+            )
         } else if path.backend.isRemoteConnection, let rootTitle = path.backendRootTitle {
             // A connected account is re-listable, so it gets clickable breadcrumbs rooted at
             // whatever names it (`oleg@mac › Users › oleg › Dev`), like a local path — not the
@@ -184,6 +195,7 @@ extension PathBarView {
     /// crumb "Macintosh HD" for every local path, `/Volumes/…` included, so the glyph marks the
     /// trail's own root and matches the crumb beside it.
     static func rootSymbolName(for path: VFSPath) -> String {
+        if path.backend.isPhotos { return PhotosPresentation.symbolName }
         if path.backend.isSFTP { return SidebarPlacePresentation.serverSymbolName(for: .sftp) }
         if path.backend.isFTP { return SidebarPlacePresentation.serverSymbolName(for: .ftp) }
         // An account and a bucket are one service, so they wear one glyph — the same one their

@@ -19,10 +19,21 @@ public struct PhotosBackend: ConnectionScopedBackend {
     public let layout: PhotosLayout
     let cache = PhotosFolderCache()
 
-    /// - Parameter timeZone: what months are cut in. The app passes the Mac's own.
-    public init(transport: any PhotosLibraryTransport, timeZone: TimeZone = .current) {
+    /// What the undated folder's row is called. Its path stays `/Undated` whatever this says.
+    public let undatedTitle: String
+
+    /// - Parameters:
+    ///   - timeZone: what months are cut in. The app passes the Mac's own.
+    ///   - undatedTitle: the undated folder's name in the running language, drawn over a path that
+    ///     stays English because a path is an identity.
+    public init(
+        transport: any PhotosLibraryTransport,
+        timeZone: TimeZone = .current,
+        undatedTitle: String = PhotosLayout.undatedFolderName
+    ) {
         self.transport = transport
         layout = PhotosLayout(timeZone: timeZone)
+        self.undatedTitle = undatedTitle
     }
 
     public var id: VFSBackendID { .photos }
@@ -165,7 +176,8 @@ public struct PhotosBackend: ConnectionScopedBackend {
     // MARK: - Entries
 
     private func folderEntry(_ folder: PhotosLayout.Folder, span: DateSpan) -> FileEntry {
-        directoryEntry(at: layout.path(of: folder), name: layout.name(of: folder), span: span)
+        let name = folder == .undated ? undatedTitle : layout.name(of: folder)
+        return directoryEntry(at: layout.path(of: folder), name: name, span: span)
     }
 
     /// A folder's dates are its newest and oldest captures, so sorting by date orders years and

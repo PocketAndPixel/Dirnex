@@ -46,6 +46,16 @@ enum VFSErrorText {
             // System Settings pane that cannot affect the file, and had done since those backends
             // shipped. The path carries its backend, so the split costs nothing and needs no change
             // to `VFSError` (found 2026-08-18 by an archived S3 object, PLAN.md §M21).
+            // **Photos is the one place where System Settings *is* the remedy** (PLAN.md §M28). The
+            // library is read through PhotoKit behind a privacy grant of its own — not Full Disk
+            // Access, which cannot open it, and not a server, which is not involved — so it is named
+            // ahead of the remote test the library answers.
+            if path.backend.isPhotos {
+                return String(localized: """
+                Dirnex isn’t allowed to read your Photos library. You can allow it in System Settings \
+                under Privacy & Security ▸ Photos.
+                """)
+            }
             if path.backend.isRemoteConnection {
                 return String(localized: """
                 The server refused that. This account may not have permission for it.

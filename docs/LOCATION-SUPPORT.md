@@ -1,7 +1,7 @@
 # What works where
 
 Every user-facing capability against every kind of location Dirnex can open, as of
-**2026-08-31** (M0–M26 shipped). The purpose is the parity question:
+**2026-09-13** (M0–M27 shipped, M28 open). The purpose is the parity question:
 *where does working on a server still feel unlike working on the disk, and which of those gaps are
 ours to close?*
 
@@ -33,6 +33,7 @@ closed simply reads differently — it is not explained here.
 | **FTP** | FTP and FTPS. |
 | **S3** | A connected **bucket** (`s3:`) — Amazon S3 and every S3-compatible service. |
 | **S3 acct** | An **account** pane (`s3account:`) whose rows are buckets, not files. |
+| **Photos** | The system Photos library (`photos:`), browsed through PhotoKit as years, months and each asset's **original** files — a Live Photo is two rows. Read-only.<sup>4</sup> |
 | **Results** | A virtual results listing: ⌥F7 hits, a saved search, Recents, and the merged **iCloud Drive** sidebar row.<sup>3</sup> |
 | **Trash** | The merged Trash — `~/.Trash` plus every volume's and every file provider's, presented as one place (PLAN.md §M8). |
 
@@ -49,27 +50,34 @@ have nowhere to land.
 place, accepts creates and pastes (they land in the CloudDocs container underneath), and is
 watched live. It is still a virtual container: no size bars, no pack, no Open in Terminal.
 
+<sup>4</sup> Verified live on 2026-09-13 against this Mac's library: the sidebar row and the Photos
+permission prompt it raised, browsing, the path bar, restore after a relaunch, Quick View, and an
+`F5` copy out that arrived byte-identical.
+The rest of the Photos column follows from the library answering `isRemoteConnection` with read-only
+capabilities and has not been exercised against it — least of all the download of an original that
+is only in iCloud, since the library held none that day (PLAN.md §M28 Slice 2).
+
 ---
 
 ## 1. Browsing and navigation
 
-| Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Results | Trash |
-|---|---|---|---|---|---|---|---|---|---|
-| List a folder | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Enter a folder (`⏎`, double-click) | yes | yes | yes | yes | yes | yes | yes, limited<sup>a</sup> | yes | yes |
-| `..` row and Go Up (`⌫`) | yes | yes | yes | yes | yes | yes | n/a | n/a | n/a |
-| Path bar, breadcrumbs, `⌘L` | yes | yes | yes | yes | yes | yes | yes | yes, limited<sup>b</sup> | yes, limited<sup>b</sup> |
-| Back / forward, history (`⌥↓`) | yes | yes | yes | yes | yes | yes | yes | yes, limited<sup>c</sup> | yes, limited<sup>c</sup> |
-| Tabs, split panes, `Tab` focus | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Sort, column layout, hidden files | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Type-to-filter, marks, `⌘A`, invert | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Tree view (`→` to expand) | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Live auto-refresh when it changes elsewhere | yes | yes | yes<sup>d</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | n/a | yes |
-| Folder size on `Space` / `⌥⇧⏎` | yes | yes | yes | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | n/a | yes | yes |
-| Size visualization bars (`⌃B`) | yes | yes | yes | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | n/a<sup>nn</sup> | n/a<sup>nn</sup> |
-| Git status column, `.gitignore`-aware sizes | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
-| Appears in Recents | yes | yes | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a | n/a |
-| Reopens at launch / in a saved workspace | yes | yes | yes | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | n/a | n/a |
+| Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Photos | Results | Trash |
+|---|---|---|---|---|---|---|---|---|---|---|
+| List a folder | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Enter a folder (`⏎`, double-click) | yes | yes | yes | yes | yes | yes | yes, limited<sup>a</sup> | yes | yes | yes |
+| `..` row and Go Up (`⌫`) | yes | yes | yes | yes | yes | yes | n/a | yes | n/a | n/a |
+| Path bar, breadcrumbs, `⌘L` | yes | yes | yes | yes | yes | yes | yes | yes, partially<sup>fff</sup> | yes, limited<sup>b</sup> | yes, limited<sup>b</sup> |
+| Back / forward, history (`⌥↓`) | yes | yes | yes | yes | yes | yes | yes | yes | yes, limited<sup>c</sup> | yes, limited<sup>c</sup> |
+| Tabs, split panes, `Tab` focus | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Sort, column layout, hidden files | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Type-to-filter, marks, `⌘A`, invert | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Tree view (`→` to expand) | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Live auto-refresh when it changes elsewhere | yes | yes | yes<sup>d</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, partially<sup>ggg</sup> | n/a | yes |
+| Folder size on `Space` / `⌥⇧⏎` | yes | yes | yes | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | n/a | yes<sup>hhh</sup> | yes | yes |
+| Size visualization bars (`⌃B`) | yes | yes | yes | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>hhh</sup> | n/a<sup>nn</sup> | n/a<sup>nn</sup> |
+| Git status column, `.gitignore`-aware sizes | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| Appears in Recents | yes | yes | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a | n/a |
+| Reopens at launch / in a saved workspace | yes | yes | yes | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes | n/a | n/a |
 
 <sup>a</sup> Entering a bucket row is a **connect**, not a listing: `S3AccountBackend` is depth 0
 by design (everything below a bucket is the bucket backend). It carries the region-301 correction
@@ -140,32 +148,47 @@ are all there and the first gesture connects them. A *nested* archive is the one
 cannot come back at all: its bytes are a temp extraction of a member of the enclosing archive, so
 the file it was mounted from is gone by the next launch.
 
+<sup>fff</sup> The crumbs name the library and draw a translated title over the undated folder,
+whose path stays `/Undated` (PLAN.md §M28). What is missing is typing a location with `⌘L`:
+`PathBarView.editBase` has no real directory to start from inside the library, the same as a results
+listing.
+
+<sup>ggg</sup> The library answers `isRemoteConnection`, so a pane on it re-lists on the same
+on-screen timer a server gets (<sup>f</sup>). It costs little here: each month's rows are cached
+against PhotoKit's change token, one 93 µs read, so an unchanged library re-lists from memory. A
+refresh driven by the token itself, rather than by the timer, is PLAN.md §M28 Slice 4.
+
+<sup>hhh</sup> A folder's total is the sum of its originals' sizes, so measuring a year reads every
+month's names — about 1.1 ms an asset, since a name is the one thing PhotoKit answers per asset
+rather than per fetch (docs/NOTES.md ▸ iCloud Photos). It rides the remote size budget
+(<sup>e</sup>), so a very large library gives up rather than stalling.
+
 ## 2. File operations
 
-| Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Results | Trash |
-|---|---|---|---|---|---|---|---|---|---|
-| Copy `F5` (source) | yes | yes | yes, limited<sup>g</sup> | yes | yes | yes | no<sup>h</sup> | yes | yes |
-| Copy `F5` (destination) | yes | yes | yes, limited<sup>g</sup> | yes | yes | yes | no<sup>h</sup> | n/a | n/a |
-| Move `F6` | yes | yes | no<sup>g</sup> | yes | yes | yes, limited<sup>i</sup> | no<sup>h</sup> | yes | yes |
-| Copy between two different accounts | yes | yes | — | yes | yes | yes | — | — | — |
-| Copy **inside one account**, without the bytes crossing this Mac | n/a | n/a | n/a | yes, limited<sup>bbb</sup> | **no**<sup>bbb</sup> | yes | — | — | — |
-| Copy / paste `⌘C` `⌘V` | yes | yes | yes<sup>j</sup> | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
-| Drag and drop, inside Dirnex | yes | yes | yes, partially<sup>j</sup> | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
-| Drag **out** to Finder and other apps | yes | yes | **no**<sup>j</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | no<sup>h</sup> | yes, partially<sup>k</sup> | yes |
-| Drag **in** from Finder and other apps | yes | yes | **no**<sup>j</sup> | yes | yes | yes | no<sup>h</sup> | no<sup>k</sup> | no<sup>k</sup> |
-| New Folder `F7` | yes | yes | no | yes | yes | yes | yes, limited<sup>l</sup> | no | no |
-| New / Edit File `⇧F4` | yes | yes | no | yes | yes | yes | n/a | no | no |
-| Rename `F2` | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes, limited<sup>i</sup> | no | yes | no<sup>m</sup> |
-| Multi-rename `⇧F2` | yes | yes | no<sup>ccc</sup> | yes | yes | yes, limited<sup>i</sup> | no | yes | no<sup>m</sup> |
-| Delete `F8` → Trash | yes | yes, limited<sup>o</sup> | n/a | n/a | n/a | n/a | n/a | yes | n/a |
-| Delete `F8` → permanent (confirmed) | yes | yes | yes, limited<sup>n</sup> | yes | yes | yes | yes, limited<sup>l</sup> | yes | yes |
-| Put Back (restore from Trash) | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes, limited<sup>o</sup> |
-| Undo `⌘Z` | yes | yes | yes, limited<sup>qq</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially | yes | no |
-| Background queue, progress bar, Stop | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Per-file conflict dialog | yes | yes | yes | yes | yes | yes | n/a | yes | yes |
-| Preserve permissions / dates / xattrs on copy | yes | yes | yes, limited | yes, limited<sup>q</sup> | yes, limited<sup>q</sup> | n/a<sup>q</sup> | n/a | yes | yes |
-| Copy a symlink as a symlink | yes | yes | yes | yes, limited<sup>pp</sup> | n/a<sup>pp</sup> | n/a | n/a | yes | yes |
-| APFS clone fast path | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
+| Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Photos | Results | Trash |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Copy `F5` (source) | yes | yes | yes, limited<sup>g</sup> | yes | yes | yes | no<sup>h</sup> | yes | yes | yes |
+| Copy `F5` (destination) | yes | yes | yes, limited<sup>g</sup> | yes | yes | yes | no<sup>h</sup> | no<sup>jjj</sup> | n/a | n/a |
+| Move `F6` | yes | yes | no<sup>g</sup> | yes | yes | yes, limited<sup>i</sup> | no<sup>h</sup> | no<sup>jjj</sup> | yes | yes |
+| Copy between two different accounts | yes | yes | — | yes | yes | yes | — | yes | — | — |
+| Copy **inside one account**, without the bytes crossing this Mac | n/a | n/a | n/a | yes, limited<sup>bbb</sup> | **no**<sup>bbb</sup> | yes | — | n/a | — | — |
+| Copy / paste `⌘C` `⌘V` | yes | yes | yes<sup>j</sup> | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>jjj</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
+| Drag and drop, inside Dirnex | yes | yes | yes, partially<sup>j</sup> | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>jjj</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
+| Drag **out** to Finder and other apps | yes | yes | **no**<sup>j</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | no<sup>h</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes |
+| Drag **in** from Finder and other apps | yes | yes | **no**<sup>j</sup> | yes | yes | yes | no<sup>h</sup> | no<sup>jjj</sup> | no<sup>k</sup> | no<sup>k</sup> |
+| New Folder `F7` | yes | yes | no | yes | yes | yes | yes, limited<sup>l</sup> | no<sup>jjj</sup> | no | no |
+| New / Edit File `⇧F4` | yes | yes | no | yes | yes | yes | n/a | no<sup>jjj</sup> | no | no |
+| Rename `F2` | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
+| Multi-rename `⇧F2` | yes | yes | no<sup>ccc</sup> | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
+| Delete `F8` → Trash | yes | yes, limited<sup>o</sup> | n/a | n/a | n/a | n/a | n/a | no<sup>jjj</sup> | yes | n/a |
+| Delete `F8` → permanent (confirmed) | yes | yes | yes, limited<sup>n</sup> | yes | yes | yes | yes, limited<sup>l</sup> | n/a | yes | yes |
+| Put Back (restore from Trash) | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes, limited<sup>o</sup> |
+| Undo `⌘Z` | yes | yes | yes, limited<sup>qq</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially | n/a | yes | no |
+| Background queue, progress bar, Stop | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Per-file conflict dialog | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| Preserve permissions / dates / xattrs on copy | yes | yes | yes, limited | yes, limited<sup>q</sup> | yes, limited<sup>q</sup> | n/a<sup>q</sup> | n/a | yes, partially<sup>lll</sup> | yes | yes |
+| Copy a symlink as a symlink | yes | yes | yes | yes, limited<sup>pp</sup> | n/a<sup>pp</sup> | n/a | n/a | n/a | yes | yes |
+| APFS clone fast path | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes | yes |
 
 <sup>g</sup> `F5` **out of** an archive extracts the marked members into the other pane (which
 must be a real folder); `F5`/`F6` **into** a top-level archive adds files to it by repacking.
@@ -336,21 +359,36 @@ since been given up, or if anything else has changed the archive in the meantime
 the copy is a `clonefile` and consumes nothing: what it really costs is that the archive's old bytes
 are not reclaimed until the record leaves the journal.
 
+<sup>jjj</sup> Read-only by decision for PLAN.md §M28: an import, a delete (which would land in
+Photos' Recently Deleted) and an album edit are each a write Photos mediates with its own
+confirmation, and none is in the milestone. Everything that only *reads* an original — copying it
+out, dragging it out, handing it to an app — works.
+
+<sup>kkk</sup> An original keeps the name it was imported with, and PhotoKit has no verb that
+changes it. A row's name is that name, numbered `IMG_0001 (2).JPG` when two originals in one month
+share it.
+
+<sup>lll</sup> An export is a clone of the library's own file, so it keeps that file's mode and its
+modification time — which is when Photos stored the original, not when it was captured — and the
+`com.apple.cpl.*` markers and a quarantine flag ride along. Stamping the capture date and clearing
+those is PLAN.md §M28 Slice 4, measured first against what Photos' own Export Unmodified Original
+writes.
+
 ## 3. Preview, open and edit
 
-| Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Results | Trash |
-|---|---|---|---|---|---|---|---|---|---|
-| Quick View pane / full size (`⌃Q`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes | yes |
-| Quick Look (`⌘Y`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes | yes |
-| Syntax highlighting, Markdown, diagrams in preview | yes | yes | yes | yes | yes | yes | n/a | yes | yes |
-| Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t, ddd</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes | yes |
-| Edit `F4`, with save written back | yes | yes | yes, limited<sup>v, ddd</sup> | yes | yes | yes | n/a | yes | yes |
-| Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes | yes |
-| Show in Finder | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
-| Send to a **Service** | yes | yes | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | n/a | yes | yes |
-| Compare By Contents (`⌥F3`) | yes | yes | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | n/a | yes | yes |
-| Synchronize Directories | yes | yes | **no**<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | n/a | n/a<sup>x</sup> | n/a<sup>x</sup> |
-| Browse *into* an archive file | yes | yes | yes | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | n/a | yes | yes |
+| Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Photos | Results | Trash |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Quick View pane / full size (`⌃Q`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes, limited<sup>s</sup> | yes | yes |
+| Quick Look (`⌘Y`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes, limited<sup>s</sup> | yes | yes |
+| Syntax highlighting, Markdown, diagrams in preview | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t, ddd</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes, limited<sup>mmm</sup> | yes | yes |
+| Edit `F4`, with save written back | yes | yes | yes, limited<sup>v, ddd</sup> | yes | yes | yes | n/a | no<sup>jjj</sup> | yes | yes |
+| Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes, limited<sup>yy</sup> | yes | yes |
+| Show in Finder | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes |
+| Send to a **Service** | yes | yes | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | n/a | **no**<sup>zz</sup> | yes | yes |
+| Compare By Contents (`⌥F3`) | yes | yes | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | n/a | yes, limited<sup>w</sup> | yes | yes |
+| Synchronize Directories | yes | yes | **no**<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | n/a | yes, limited<sup>x</sup> | n/a<sup>x</sup> | n/a<sup>x</sup> |
+| Browse *into* an archive file | yes | yes | yes | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | n/a | n/a | yes | yes |
 
 <sup>r</sup> The member is extracted to a temp file first; only the **cursor's** member is ever
 extracted, never a marked set (a subprocess per row). With M19's member filter this is
@@ -457,19 +495,23 @@ opens, and there is nowhere in it to put a download — blocking the main thread
 M24 exists to prevent. A limit rather than a gap: the Services menu simply does not offer this pane
 until its rows are files on this disk.
 
+<sup>mmm</sup> Works on a temp copy of the original, as a server row does (<sup>u</sup>), with one
+difference that follows from <sup>jjj</sup>: nothing is watched for a save, so an edit made in
+another app — or a script that rewrites its argument — stays in the copy.
+
 ## 4. Find Files (`⌥F7`)
 
-| Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Results | Trash |
-|---|---|---|---|---|---|---|---|---|---|
-| Search at all | yes | yes | yes | yes | yes | yes | **no**<sup>z</sup> | yes, limited<sup>aa</sup> | yes, limited<sup>aa</sup> |
-| by **name** | yes | yes | yes | yes | yes | yes | n/a | yes | yes |
-| by **kind / size / modified** | yes | yes | yes | yes | yes | yes | n/a | yes | yes |
-| by **file contents** | yes | yes | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | n/a | yes | yes |
-| by **Finder tag** | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
-| Runs off an index (instant) | yes | yes | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | n/a | yes | yes |
-| Server-side walk (one request, not one per folder) | n/a | n/a | n/a | yes, limited<sup>dd</sup> | n/a<sup>ss</sup> | yes | n/a | — | — |
-| Live progress + Stop | yes | yes | yes | yes | yes | yes | n/a | yes | yes |
-| Save the search to the sidebar, re-run later | yes | yes | yes | yes | yes | yes | n/a | yes | yes |
+| Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Photos | Results | Trash |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Search at all | yes | yes | yes | yes | yes | yes | **no**<sup>z</sup> | yes | yes, limited<sup>aa</sup> | yes, limited<sup>aa</sup> |
+| by **name** | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| by **kind / size / modified** | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| by **file contents** | yes | yes | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | n/a | **n/a**<sup>bb</sup> | yes | yes |
+| by **Finder tag** | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes |
+| Runs off an index (instant) | yes | yes | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | n/a | no<sup>cc</sup> | yes | yes |
+| Server-side walk (one request, not one per folder) | n/a | n/a | n/a | yes, limited<sup>dd</sup> | n/a<sup>ss</sup> | yes | n/a | no<sup>nnn</sup> | — | — |
+| Live progress + Stop | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| Save the search to the sidebar, re-run later | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
 
 <sup>z</sup> Deliberate: the rows are buckets, and "search every bucket" is a different and far
 more expensive question than the one ⌥F7 asks (PLAN.md §M22).
@@ -499,24 +541,28 @@ entries and identical results either way: **160 invocations and 159 logins again
 probe — `curl` sends it, but the servers that honour it are the minority and none reachable from
 this Mac does, so the fast path would have shipped unverified.
 
+<sup>nnn</sup> Not yet. One PhotoKit fetch could answer every capture date in the library at once,
+but names still cost ~1.1 ms an asset, so a search walks month by month like any backend without a
+shortcut (<sup>cc</sup>).
+
 ## 5. Metadata and macOS integration
 
-| Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Results | Trash |
-|---|---|---|---|---|---|---|---|---|---|
-| Get Info: permissions, flags, dates | yes | yes | read-only<sup>tt</sup> | mode editable<sup>tt</sup> | mode + date editable<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | yes<sup>ee</sup> | yes<sup>ee</sup> |
-| Get Info: ACLs, extended attributes | yes | yes | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
-| Privilege escalation for a root-only change | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
-| Finder tags (`⌃T`, tag dots) | yes | yes | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
-| Cloud sync badges | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes |
-| Download Now / Remove Download | n/a | yes, limited<sup>eee</sup> | n/a | n/a | n/a | n/a | n/a | yes<sup>eee</sup> | yes<sup>eee</sup> |
-| Create / verify checksum files | yes | yes | verify only<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | n/a | no<sup>xx</sup> | no<sup>xx</sup> |
-| Open in Terminal | yes | yes | n/a | **no**<sup>gg</sup> | n/a | n/a | n/a | no | no |
-| Run a user script | yes | yes | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | no<sup>aaa</sup> | yes, limited<sup>aaa</sup> | yes, limited<sup>aaa</sup> |
-| Pack `⌥F5` (create an archive) | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes |
-| Encrypted archives / hidden member names | yes | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes |
-| Create / unlock an encrypted vault | yes | yes | n/a | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a | no | n/a |
-| Saved connection in the sidebar | n/a | n/a | n/a | yes | yes | yes | yes | n/a | n/a |
-| Pin to Favorites / Places menu | yes | yes | no | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially | no | n/a |
+| Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Photos | Results | Trash |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Get Info: permissions, flags, dates | yes | yes | read-only<sup>tt</sup> | mode editable<sup>tt</sup> | mode + date editable<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | yes<sup>ee</sup> | yes<sup>ee</sup> |
+| Get Info: ACLs, extended attributes | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
+| Privilege escalation for a root-only change | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes |
+| Finder tags (`⌃T`, tag dots) | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
+| Cloud sync badges | yes | yes | n/a | n/a | n/a | n/a | n/a | no<sup>ooo</sup> | yes | yes |
+| Download Now / Remove Download | n/a | yes, limited<sup>eee</sup> | n/a | n/a | n/a | n/a | n/a | no<sup>ooo</sup> | yes<sup>eee</sup> | yes<sup>eee</sup> |
+| Create / verify checksum files | yes | yes | verify only<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | n/a | n/a<sup>ppp</sup> | no<sup>xx</sup> | no<sup>xx</sup> |
+| Open in Terminal | yes | yes | n/a | **no**<sup>gg</sup> | n/a | n/a | n/a | n/a | no | no |
+| Run a user script | yes | yes | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | no<sup>aaa</sup> | yes, limited<sup>mmm</sup> | yes, limited<sup>aaa</sup> | yes, limited<sup>aaa</sup> |
+| Pack `⌥F5` (create an archive) | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes<sup>hh</sup> | yes |
+| Encrypted archives / hidden member names | yes | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes<sup>hh</sup> | yes |
+| Create / unlock an encrypted vault | yes | yes | n/a | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a | n/a<sup>uu</sup> | no | n/a |
+| Saved connection in the sidebar | n/a | n/a | n/a | yes | yes | yes | yes | yes | n/a | n/a |
+| Pin to Favorites / Places menu | yes | yes | no | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially | yes | no | n/a |
 
 <sup>ee</sup> Gated per **row**, not per pane. A trashed file is an ordinary local file, so it
 carries a mode, an ACL and tags like any other; a search hit is whatever it happens to be, and since
@@ -644,24 +690,35 @@ are buckets and a bucket is a folder. Anything the script *creates* is not carri
 files it was handed are watched. And a member of a **nested** archive is handed over but not watched,
 for the reason F4 gives it — its own bytes are already a temp copy, so a repack has nowhere to land.
 
+<sup>ooo</sup> PhotoKit does not say whether an original is on this Mac before it is asked for — the
+`locallyAvailable` key does not exist — so a badge would cost a probe export per row (refused in 2–8
+ms when the original is only in iCloud), and evicting one has no public verb. Downloading one is
+simply what opening, previewing or copying it does.
+
+<sup>ppp</sup> Both halves need a file the library cannot hold. A manifest is written beside the
+files it covers, which here would be an import (<sup>jjj</sup>), and verifying reads a manifest that
+sits among the files, where the library holds only photographs and videos. So Create greys out on
+`.write` and Verify never finds a manifest under the cursor. Copy the originals out with `F5` and
+checksum the copies.
+
 ## 6. Transfer behaviour
 
 Where the local disk has no equivalent, the row is about how close a remote transfer feels to a
 local one.
 
-| Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct |
-|---|---|---|---|---|---|---|---|
-| Determinate byte progress, downloading | yes | yes | n/a | yes | yes | yes | n/a |
-| Determinate byte progress, uploading | yes | yes | n/a | **yes, limited**<sup>jj</sup> | yes | yes | n/a |
-| Resume an interrupted transfer | n/a | n/a | n/a | yes | yes | yes | n/a |
-| Split one file over several connections | n/a | n/a | n/a | yes | yes | yes | n/a |
-| Multipart upload for very large files | n/a | n/a | n/a | **yes**<sup>vv</sup> | **no**<sup>ww</sup> | yes | n/a |
-| Stop actually stops the bytes | yes | yes | yes | yes | yes | yes | n/a |
-| Server-side copy (bytes never touch this Mac) | yes<sup>kk</sup> | yes<sup>kk</sup> | n/a | yes, limited<sup>ll</sup> | **no**<sup>ll</sup> | yes | n/a |
-| Duplicate a file inside one account | yes | yes | n/a | yes, limited<sup>ll</sup> | yes, limited<sup>ll</sup> | yes | n/a |
-| Conditional write (nobody overwrote it meanwhile) | n/a | n/a | n/a | yes, limited<sup>mm</sup> | yes, limited<sup>mm</sup> | yes | n/a |
-| Certificate / host-key trust prompt, saved | n/a | n/a | n/a | yes | yes | yes | yes |
-| Credentials in the Keychain, never in `argv` | n/a | n/a | n/a | yes | yes | yes | yes |
+| Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Photos |
+|---|---|---|---|---|---|---|---|---|
+| Determinate byte progress, downloading | yes | yes | n/a | yes | yes | yes | n/a | yes |
+| Determinate byte progress, uploading | yes | yes | n/a | **yes, limited**<sup>jj</sup> | yes | yes | n/a | n/a |
+| Resume an interrupted transfer | n/a | n/a | n/a | yes | yes | yes | n/a | no |
+| Split one file over several connections | n/a | n/a | n/a | yes | yes | yes | n/a | n/a |
+| Multipart upload for very large files | n/a | n/a | n/a | **yes**<sup>vv</sup> | **no**<sup>ww</sup> | yes | n/a | n/a |
+| Stop actually stops the bytes | yes | yes | yes | yes | yes | yes | n/a | yes |
+| Server-side copy (bytes never touch this Mac) | yes<sup>kk</sup> | yes<sup>kk</sup> | n/a | yes, limited<sup>ll</sup> | **no**<sup>ll</sup> | yes | n/a | n/a |
+| Duplicate a file inside one account | yes | yes | n/a | yes, limited<sup>ll</sup> | yes, limited<sup>ll</sup> | yes | n/a | n/a |
+| Conditional write (nobody overwrote it meanwhile) | n/a | n/a | n/a | yes, limited<sup>mm</sup> | yes, limited<sup>mm</sup> | yes | n/a | n/a |
+| Certificate / host-key trust prompt, saved | n/a | n/a | n/a | yes | yes | yes | yes | n/a |
+| Credentials in the Keychain, never in `argv` | n/a | n/a | n/a | yes | yes | yes | yes | n/a |
 
 <sup>jj</sup> `sftp` prints no progress meter to a spawned process, and no flag changes that
 (measured in six configurations over a 1 GiB transfer). A **download** watches its own destination

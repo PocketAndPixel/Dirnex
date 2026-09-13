@@ -25,6 +25,9 @@ public enum SidebarPlace: Equatable, Sendable {
     /// a *merge* of that container with the app libraries beside it (PLAN.md §M9) rather than a
     /// listing of the path itself.
     case iCloudDrive(VFSPath)
+    /// The system Photos library, browsed as folders of originals (PLAN.md §M28). No payload: there is
+    /// only ever one.
+    case photos
     /// One cloud provider's File Provider mount under `~/Library/CloudStorage` (PLAN.md §M10).
     case cloudMount(CloudStorageMount)
     case volume(MountedVolume)
@@ -46,6 +49,7 @@ public enum SidebarPlace: Equatable, Sendable {
         case .recents, .trash, .savedSearch, .server, .tag, .vault: nil
         case let .favorite(entry): entry.path
         case let .iCloudDrive(path): path
+        case .photos: VFSPath(backend: .photos, path: "/")
         case let .cloudMount(mount): mount.entryDirectory
         case let .volume(volume): volume.path
         }
@@ -80,7 +84,7 @@ public struct SidebarPlaceSources: Equatable, Sendable {
     public var favorites: [FavoriteEntry]
     /// The Cloud section, **already in the user's order**: those rows are draggable and
     /// `CloudSectionOrderStore` remembers where they were put, which is app state this layer has no
-    /// business reading. Carries `.iCloudDrive` and `.cloudMount` places.
+    /// business reading. Carries `.iCloudDrive`, `.photos` and `.cloudMount` places.
     public var cloud: [SidebarPlace]
     public var volumes: [MountedVolume]
     public var vaults: [VaultLocation]

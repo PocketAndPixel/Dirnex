@@ -23,6 +23,7 @@ extension VFSPath {
     /// it, not what it is called. The endpoint rides along because two buckets of the same name on
     /// two providers are a real thing — and an account, which has no bucket, is the endpoint alone.
     var backendRootTitle: String? {
+        if backend.isPhotos { return PhotosPresentation.libraryTitle }
         if let archivePath = backend.archivePath {
             // For a nested mount this is the extracted member's file name — the inner archive's own.
             return (archivePath as NSString).lastPathComponent
@@ -76,6 +77,8 @@ extension VFSPath {
     /// name through ``backendRootTitle``. Everything else keeps `lastComponent`, which is already
     /// right.
     var displayName: String {
+        // The undated folder is the one non-root place whose name is not its path component.
+        if backend.isPhotos { return PhotosPresentation.title(for: self) }
         guard isRoot else { return lastComponent }
         return backendRootTitle ?? lastComponent
     }

@@ -34,6 +34,9 @@ protocol SidebarViewControllerDelegate: AnyObject {
     /// carries no payload for the same reason the Trash doesn't: what it opens is a merge, not the
     /// single directory the row's own path names.
     func sidebarDidActivateICloud(_ sidebar: SidebarViewController)
+    /// The Photos row was picked — ask for access if nobody has yet, then browse the library as
+    /// folders of originals (PLAN.md §M28). No payload: there is one library.
+    func sidebarDidActivatePhotos(_ sidebar: SidebarViewController)
     /// "Empty Trash…" was chosen on the Trash row — permanently erase every volume's trash, after
     /// a confirmation naming what will go (PLAN.md §M8).
     func sidebarDidRequestEmptyTrash(_ sidebar: SidebarViewController)
