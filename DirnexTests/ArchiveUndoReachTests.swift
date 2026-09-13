@@ -138,16 +138,12 @@ struct ArchiveUndoReachTests {
 
     // MARK: - What the store is pruned against
 
+    /// Written into a scratch domain, never the real one: this used to swap the developer's own
+    /// journal out and back in a `defer`, which a killed run or a running Dirnex saving in between
+    /// would have lost (docs/NOTES.md ▸ Testing).
     @Test("the persisted journal names its snapshots, furthest from the next ⌘Z first")
     func liveSetIsOrdered() throws {
-        let key = "Dirnex.undoJournal"
-        let defaults = UserDefaults.standard
-        let saved = defaults.data(forKey: key)
-        defer {
-            if let saved { defaults.set(saved, forKey: key) } else { defaults.removeObject(
-                forKey: key
-            ) }
-        }
+        let defaults = ScratchDefaults.fresh()
 
         let witness = ArchiveUndoWitness(byteSize: 1, modified: Date(timeIntervalSince1970: 1))
         func record(_ snapshot: String) -> UndoRecord {
@@ -163,11 +159,12 @@ struct ArchiveUndoReachTests {
             "undo": [record("/s/old"), record("/s/new")],
             "redo": [record("/s/redone")]
         ])
-        defaults.set(blob, forKey: key)
+        defaults.set(blob, forKey: "Dirnex.undoJournal")
 
         // The undo stack's bottom is the furthest thing from any key the user can press, so it is
         // the first to be given up; a redo entry is one ⇧⌘Z away and goes last.
-        #expect(UndoController.persistedArchiveSnapshots() == ["/s/old", "/s/new", "/s/redone"])
+        let live = UndoController.persistedArchiveSnapshots(in: defaults)
+        #expect(live == ["/s/old", "/s/new", "/s/redone"])
     }
 
     @Test("a journal that names no archive prunes the store empty")

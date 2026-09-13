@@ -83,6 +83,15 @@ final class StubPanelHost: PanelHost {
     func flipQuickView(steps: Int) {}
     func panelCursorDidChange(_ panel: PanelViewController) {}
     func panelDidNavigate(_ panel: PanelViewController) {}
+
+    /// Every visit a pane reported, in order.
+    ///
+    /// A recorder rather than a no-op for the reason `recordedUndo` is. A pane that stopped
+    /// reporting visits would pass every other test while the fuzzy jump stopped learning, and
+    /// before these went through the host they went straight into the developer's own index.
+    private(set) var frecencyVisits: [VFSPath] = []
+
+    func recordFrecencyVisit(_ path: VFSPath) { frecencyVisits.append(path) }
     func panelRequestsVaultOpen(_ vault: VaultLocation, showingIn pane: PanelViewController) {}
 
     /// The one requirement that records rather than shrugging, because it is the seam a whole

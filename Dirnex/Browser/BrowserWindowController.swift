@@ -186,7 +186,7 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
         // through `LocalBackend` unchanged — including the shared queue and undo journal.
         let backend = CompositeBackend(local: LocalBackend())
         queue = FileOperationQueue(backend: backend, plainPackWriter: ArchivePacker())
-        undoController = UndoController(backend: backend)
+        undoController = UndoController(backend: backend, defaults: .standard)
         let home = VFSPath.local(NSHomeDirectory())
         // Each pane restores its own tabs from the last session, keyed by side — unless the
         // user has turned session restore off (General settings), in which case both panes
@@ -434,6 +434,10 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
         // The drawer follows the *active* pane; the other one moving (a background refresh, a
         // completed copy re-listing it) is none of the shell's business.
         if panel === focusedPanel { syncTerminalToActivePanel() }
+    }
+
+    func recordFrecencyVisit(_ path: VFSPath) {
+        FrecencyStore.shared.recordVisit(path)
     }
 
     /// The other pane — the one a copy/move lands in, and the one Quick View previews into.

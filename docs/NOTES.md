@@ -1084,6 +1084,28 @@ at build time.
       asserting a fresh domain's defaults passed over them. `scripts/check_test_defaults_suites.py`
       runs in CI and refuses any `suiteName:` that is not a fixed literal; against the suites as
       they were before the fix it reports exactly the 10 sites that leaked.
+  - **A process-wide singleton needs a funnel, and the pane's `host` is one.** Every test that
+    navigated a pane wrote the folder into `FrecencyStore.shared`: 280 of the developer's 378
+    frecency entries on 2026-09-14 were fixtures under `$TMPDIR`, and each one counted toward the
+    rank budget that ages real visits out. No test builds a `BrowserWindowController`, so the pane
+    now reports visits through `PanelHost.recordFrecencyVisit` and a test's pane (no host, or
+    `StubPanelHost`, which records them) cannot reach the real index. A full run afterwards added
+    no entries. Controls, each silencing one reporting site with a no-op rather than restoring the
+    shared-store write, failed exactly the test aimed at it.
+    - **The test host is still the app, and in some runs its launch builds the real window.** The
+      same full run bumped one real entry: the developer's restored left tab, at the second the
+      test host process started, with the separately running Debug build logging nothing then. That
+      is `applicationDidFinishLaunching` restoring the session through the real host, which ▸ AppKit
+      records as finishing in only about half of test-host launches. It records paths the
+      developer really has open rather than fixtures, and stopping it means the app behaving
+      differently under tests, so it is left as it is.
+  - **Saving a real key and putting it back in a `defer` is not isolation.** `ArchiveUndoReachTests`
+    swapped the developer's own `Dirnex.undoJournal` for a fixture and restored it afterwards, so a
+    killed run would have lost the journal and a running Dirnex saving in between would have had
+    its newer journal overwritten. `UndoController` now takes its domain (`defaults:`, no default,
+    and `persistedArchiveSnapshots(in:)`), and the test uses `ScratchDefaults.fresh()`. Measured
+    2026-09-14: the real journal was byte-identical after three full runs, and pointing the reader
+    back at `.standard` failed exactly that test.
   - **A control that fires too *widely* is a finding, not noise.** The vault control for that slice
     failed three tests where it should have failed one, and the two extras were the suite's own: two
     tests swap the shared store, which is one piece of process state, and Swift Testing runs a suite

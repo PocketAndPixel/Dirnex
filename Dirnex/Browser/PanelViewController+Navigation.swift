@@ -304,7 +304,7 @@ extension PanelViewController {
                     // the synthetic `.search` path can't be re-listed, so it must never enter the
                     // back/forward history. Frecency still records the real destination.
                     tabs[tabIndex].history = NavigationHistory(initialPath: path)
-                    FrecencyStore.shared.recordVisit(path)
+                    recordVisit(path, tab: tabIndex, recordHistory: false)
                 } else {
                     recordVisit(path, tab: tabIndex, recordHistory: recordHistory)
                 }

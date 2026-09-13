@@ -25,10 +25,15 @@ final class UndoController {
 
     private var journal: UndoJournal
     private let backend: any VFSBackend
+    private let defaults: UserDefaults
 
-    init(backend: any VFSBackend) {
+    /// `defaults` is the domain the journal is persisted in, with no default so every caller names
+    /// it. The app test target runs inside the app, where `.standard` is the developer's own journal
+    /// (docs/NOTES.md ▸ Testing).
+    init(backend: any VFSBackend, defaults: UserDefaults) {
         self.backend = backend
-        journal = Self.load()
+        self.defaults = defaults
+        journal = Self.load(from: defaults)
     }
 
     /// Whether Cmd+Z has anything to reverse right now.
@@ -109,7 +114,7 @@ final class UndoController {
             redo: journal.redoRecords.compactMap(\.fileOperation)
         )
         guard let data = try? JSONEncoder().encode(blob) else { return }
-        UserDefaults.standard.set(data, forKey: Self.persistenceKey)
+        defaults.set(data, forKey: Self.persistenceKey)
     }
 
     /// Every archive snapshot the *persisted* stacks still name, **furthest from the next ⌘Z
@@ -123,15 +128,15 @@ final class UndoController {
     /// Read from the file rather than from a live journal: this runs at launch, before any window
     /// exists. A journal that fails to decode answers empty, which prunes the store empty — right
     /// rather than merely convenient, since a journal nothing can read reverses nothing.
-    nonisolated static func persistedArchiveSnapshots() -> [String] {
-        let journal = load()
+    nonisolated static func persistedArchiveSnapshots(in defaults: UserDefaults) -> [String] {
+        let journal = load(from: defaults)
         let records = (journal.records + journal.redoRecords).compactMap(\.fileOperation)
         var seen: Set<String> = []
         return records.flatMap { $0.archiveSnapshotPaths.sorted() }.filter { seen.insert($0).inserted }
     }
 
-    private nonisolated static func load() -> UndoJournal {
-        guard let data = UserDefaults.standard.data(forKey: persistenceKey),
+    private nonisolated static func load(from defaults: UserDefaults) -> UndoJournal {
+        guard let data = defaults.data(forKey: persistenceKey),
               let blob = try? JSONDecoder().decode(Persisted.self, from: data)
         else { return UndoJournal() }
         return UndoJournal(

@@ -68,7 +68,7 @@ enum ArchiveUndoStorage {
     /// because the controller writes them on every change — and is what lets a capture run off the
     /// main actor, where a rewrite already is.
     nonisolated static func liveSnapshots() -> [String] {
-        UndoController.persistedArchiveSnapshots()
+        UndoController.persistedArchiveSnapshots(in: .standard)
     }
 
     /// Drop every snapshot the persisted journal no longer names. Called once at launch, beside the
@@ -79,6 +79,6 @@ enum ArchiveUndoStorage {
     /// outlives its record exactly when the record fell off the bottom of the stack between
     /// launches, which is what the file records.
     static func purgeUnreferenced() {
-        shared?.prune(live: Set(UndoController.persistedArchiveSnapshots()))
+        shared?.prune(live: Set(UndoController.persistedArchiveSnapshots(in: .standard)))
     }
 }
