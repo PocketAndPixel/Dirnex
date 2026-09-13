@@ -21,7 +21,7 @@ struct TrashRefusalTests {
     /// every ordinary Trash delete on every volume would end in a permanent-delete confirmation —
     /// which is the one way this fix could be worse than the bug.
     @Test("an empty refusal list raises nothing")
-    func emptyRefusalRaisesNothing() async {
+    func emptyRefusalRaisesNothing() {
         let window = TrashlessProbe.window()
         defer { window.close() }
         let backend = RefusingBackend()
@@ -29,7 +29,8 @@ struct TrashRefusalTests {
 
         pane.offerPermanentDelete(forVolumeWithoutTrash: []) { _ in }
 
-        await hold(until: { window.attachedSheet != nil })
+        // No wait needed: the offer is presented with `beginSheetModal`, which attaches the sheet
+        // before it returns, so a sheet this call raised would already be here.
         #expect(window.attachedSheet == nil)
         #expect(backend.removedPaths.isEmpty)
     }
@@ -70,7 +71,7 @@ struct TrashRefusalTests {
     /// "offer it whenever anything goes wrong". A permission failure is a real failure: it keeps
     /// its own report, and nothing is deleted.
     @Test("a genuine failure is not turned into an offer to delete for good")
-    func realFailureIsNotAnOffer() async {
+    func realFailureIsNotAnOffer() async throws {
         let window = TrashlessProbe.window()
         defer { window.close() }
         let backend = RefusingBackend(refusal: .permissionDenied)
@@ -81,10 +82,12 @@ struct TrashRefusalTests {
         await settle { window.attachedSheet != nil }
         // The failure alert is what appears here; whichever sheet it is, pressing its default
         // button must not delete anything.
-        if let sheet = window.attachedSheet, let button = TrashlessProbe.defaultButton(in: sheet) {
-            button.performClick(nil)
-        }
-        await hold(until: { !backend.removedPaths.isEmpty })
+        let sheet = try #require(window.attachedSheet, "the failure was never reported")
+        try #require(TrashlessProbe.defaultButton(in: sheet)).performClick(nil)
+        // Once that sheet has ended its answer has run, so any delete the answer started is
+        // ahead of the barrier.
+        await settle { window.attachedSheet !== sheet }
+        try await holdOutTheDeletePasses()
         #expect(backend.removedPaths.isEmpty)
     }
 }

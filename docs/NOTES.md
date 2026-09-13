@@ -500,6 +500,26 @@ at build time.
     scheduling race. Fixed 2026-09-04, with a second test proving missing work still reports a
     timeout at the caller. The default is now 30 s, matching the remote-fetch waits; the checksum
     suite took 8.3 s in the baseline full run, close to the old 10 s limit.
+  - **A second copy of the helper kept the old 10 s, and a 25 ms poll is the cheapest stall meter
+    there is.** `TrashlessVolumeHarness`'s own `settle` failed the F6 decline test one full run in
+    eight (2026-09-14). Timestamps in the flow, plus the largest gap between two of the poll's own
+    wake-ups, showed a sheet that always came, just late: the flow's `Task` waited 4.6 s to start,
+    a trivial blocking step took 6.9 s to resume, one poll woke 7.2 s late, and the sheet went up
+    11.8 s after the gesture. Raised to 30 s. Amplification made it a measurement: at 2 s the three
+    suites on that helper passed 20 of 20 alone and failed 6 tests in a full run; at 30 s, three
+    full runs passed.
+    - The same meter showed the fixed 2.5 s `hold` after declining barely watching in a full run:
+      it woke **once** in its whole window. All five holds on that harness are gone, each replaced
+      by something ordering-based. Where the call attaches its sheet before returning, the test
+      asserts at once. Where the pass leaves a record just before its sheet decision (the undo
+      entry `noteTrashed` hands the host), the test waits for the record. Everywhere else it calls
+      `holdOutTheDeletePasses()`, which starts one more delete pass on a window of its own and
+      waits for that pass's sheet; earlier work is already done by then, because the main actor
+      is what stalls and the barrier needs two more turns of it. Three product controls (decline
+      also deletes, the empty-refusal guard removed, a real failure offered as a delete) failed all
+      five tests on their own assertions, alone and in two full runs. With the tests unchanged, the
+      same controls had also failed all five in one full run, so the old holds were unreliable
+      rather than always blind.
   - **That split is right and both of its numbers were still wrong, because a third clock was
     hiding behind them: the *fixture's*.** Same suite, same message, 2026-08-27 — `attachedSheet →
     nil → nil` about **1 full run in 8–16**, passing alone every time, and this entry's own fix

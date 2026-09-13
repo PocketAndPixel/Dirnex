@@ -67,8 +67,9 @@ struct TrashlessVolumeFlowTests {
 
         await settle { pane.transientStatus != nil }
         #expect(pane.transientStatus != nil, "the move ended as a copy and nothing said so")
-        // Declining must leave the files exactly where they are.
-        await hold(until: { !backend.removedPaths.isEmpty })
+        // Declining must leave the files exactly where they are. The status line is set by the
+        // answer's handler, so any delete that handler started is already ahead of the barrier.
+        try await holdOutTheDeletePasses()
         #expect(backend.removedPaths.isEmpty)
     }
 
@@ -138,7 +139,9 @@ struct TrashlessVolumeFlowTests {
         await settle { backend.removedPaths.count == paths.count }
 
         #expect(backend.removedPaths == paths)
-        await hold(until: { window.attachedSheet != nil })
+        // The permanent re-run decides about a second sheet after its removals land, on the main
+        // actor, so wait until that decision has been made before asserting there was none.
+        try await holdOutTheDeletePasses()
         #expect(window.attachedSheet == nil, "the run asked a second time")
     }
 
@@ -170,10 +173,17 @@ struct TrashlessVolumeFlowTests {
         let window = TrashlessProbe.window()
         let backend = RefusingBackend(refusal: .trashesNormally)
         let pane = TrashlessProbe.pane(with: backend, in: window)
+        // Held here because the pane holds its host weakly.
+        let host = StubPanelHost()
+        pane.host = host
 
         pane.runSyncDeletes(SyncDeletePlan(toTrash: [TrashlessProbe.file("stale.txt").path]))
 
-        await hold(until: { window.attachedSheet != nil })
+        // The pass journals its Trash move and then, in the same main-actor turn, decides whether
+        // to offer a permanent delete; `beginSheetModal` attaches before it returns. So once the
+        // undo record is here, any sheet this pass was going to raise is already attached.
+        await settle { !host.recordedUndo.isEmpty }
+        #expect(!host.recordedUndo.isEmpty, "the pass never finished")
         #expect(window.attachedSheet == nil)
         #expect(backend.removedPaths.isEmpty)
         #expect(backend.trashAttempts == 1)

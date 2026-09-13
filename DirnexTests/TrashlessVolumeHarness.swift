@@ -125,9 +125,16 @@ enum TrashlessProbe {
 /// and a spin never suspends them (docs/NOTES.md ▸ Testing). Generous on purpose: a satisfied
 /// predicate returns on the next poll, so the budget only sets how much scheduling delay is
 /// absorbed before the code is blamed.
+///
+/// 30 s, the same as `settleUntil`. At 10 s the F6 decline test failed one full run in eight while
+/// passing alone every time. Measured 2026-09-14 with timestamps in the flow: alone the sheet
+/// is up within a second, while in a full run the flow's `Task` waited 4.6 s for the main actor to
+/// start it, its trivial blocking step took 6.9 s to come back, one 25 ms poll here returned 7.2 s
+/// late, and the sheet went up 11.8 s after the gesture. The sheet always arrived; the budget was
+/// shorter than the main actor's stalls.
 @MainActor
 @discardableResult
-func settle(within seconds: Double = 10, until isDone: () -> Bool) async -> Bool {
+func settle(within seconds: Double = 30, until isDone: () -> Bool) async -> Bool {
     let deadline = Date().addingTimeInterval(seconds)
     while Date() < deadline {
         if isDone() { return true }
@@ -136,11 +143,32 @@ func settle(within seconds: Double = 10, until isDone: () -> Bool) async -> Bool
     return isDone()
 }
 
-/// Wait long enough to show something does *not* happen. Fixed, unlike ``settle``: here the length
-/// is the claim itself, so it cannot be widened to suit a slow machine.
+/// Return once every delete pass a gesture has already started has run to its end, so a test can
+/// then assert that something did *not* happen.
+///
+/// This replaces a fixed 2.5 s wait. In a full run the main actor stalls for up to 7 s at a time,
+/// and that wait was measured waking only once in its whole window (2026-09-14), so a delete or a
+/// sheet arriving late could pass unseen. Instead, this starts one more pass on a window of its
+/// own and waits for that pass's sheet. Every flow here has the same shape: a `Task` hands the
+/// backend calls to `BlockingWork`, then decides about sheets back on the main actor. A pass the
+/// gesture started earlier was handed to `BlockingWork` before this one's `Task` could run, and
+/// this one's sheet needs two more main-actor turns after that. The main actor is what stalls,
+/// while the fake backend's calls take microseconds on their own thread, so an earlier pass has
+/// finished by the time this sheet is up.
 @MainActor
-func hold(until isHappening: () -> Bool = { false }) async {
-    _ = await settle(within: 2.5, until: isHappening)
+func holdOutTheDeletePasses(sourceLocation: SourceLocation = #_sourceLocation) async throws {
+    let window = TrashlessProbe.window()
+    let pane = TrashlessProbe.pane(with: RefusingBackend(), in: window)
+    pane.runDelete([TrashlessProbe.file("barrier").path], permanent: false)
+    await settle { window.attachedSheet != nil }
+    let sheet = try #require(
+        window.attachedSheet,
+        "the barrier delete pass never finished",
+        sourceLocation: sourceLocation
+    )
+    // Cancel declines the offer, which for F8 does nothing, so the barrier leaves no trace.
+    try #require(TrashlessProbe.cancelButton(in: sheet), sourceLocation: sourceLocation)
+        .performClick(nil)
 }
 
 /// A backend whose `trashItem` refuses the way a volume with no Trash does, and which records the
