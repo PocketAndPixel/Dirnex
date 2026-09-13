@@ -76,15 +76,16 @@ enum TabShortcuts {
     static func tabView(in window: NSWindow) -> NSTabView? {
         guard !(window.windowController is PaneKeyWindowController),
               let content = window.contentView else { return nil }
-        return firstTabView(in: content)
+        return tabView(within: content)
     }
 
-    private static func firstTabView(in view: NSView) -> NSTabView? {
+    /// The first visible tab view with more than one tab at or under `view`.
+    static func tabView(within view: NSView) -> NSTabView? {
         if let tabs = view as? NSTabView, !tabs.isHiddenOrHasHiddenAncestor, tabs.numberOfTabViewItems > 1 {
             return tabs
         }
         for subview in view.subviews {
-            if let found = firstTabView(in: subview) { return found }
+            if let found = tabView(within: subview) { return found }
         }
         return nil
     }
@@ -97,12 +98,17 @@ enum TabShortcuts {
     /// reached the focused date picker in Get Info, which ignores ⌘ and took the 7 as the day.
     static func perform(_ event: NSEvent, in window: NSWindow) -> Bool {
         guard let number = tabNumber(for: event), let tabs = tabView(in: window) else { return false }
+        pick(number, in: tabs)
+        return true
+    }
+
+    /// Select tab `number` of `tabs`, counting from 1, or refuse a number past the last tab.
+    static func pick(_ number: Int, in tabs: NSTabView) {
         if number <= tabs.numberOfTabViewItems {
             tabs.selectTabViewItem(at: number - 1)
         } else {
             refuse()
         }
-        return true
     }
 
     // MARK: - Monitors
