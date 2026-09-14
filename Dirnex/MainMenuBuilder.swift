@@ -44,6 +44,9 @@ enum MainMenuBuilder {
         /// The Places submenu — live data rather than a registry command, so it fills itself when
         /// opened; see `PlacesMenu`.
         case placesSubmenu
+        /// A hidden second key equivalent for the command, when its binding has another spelling a
+        /// menu item cannot match; see `keyAliasItem(for:bindings:)`.
+        case keyAlias(String)
         case separator
     }
 
@@ -111,6 +114,8 @@ enum MainMenuBuilder {
             .subcommand("view.quickViewFullWindow"), .subcommand("view.quickViewFullScreen"),
             .subcommand("view.quickViewSource"), .subcommand("view.quickViewRenderedPage"),
             .subcommand("view.downloadPreview"),
+            .subcommand("view.quickViewZoomIn"), .keyAlias("view.quickViewZoomIn"),
+            .subcommand("view.quickViewZoomOut"), .subcommand("view.quickViewResetZoom"),
             .separator,
             .command("view.terminal")
         ]),
@@ -165,6 +170,8 @@ enum MainMenuBuilder {
                 }
             case .cut:
                 submenu.addItem(cutItem())
+            case let .keyAlias(id):
+                if let alias = keyAliasItem(for: id, bindings: bindings) { submenu.addItem(alias) }
             case .placesSubmenu:
                 submenu.addItem(places.menuItem(title: String(
                     localized: "Places",
@@ -196,6 +203,36 @@ enum MainMenuBuilder {
         item.keyEquivalentModifierMask = shortcut?.modifierMask ?? []
         return item
     }
+
+    /// A hidden item carrying the unshifted spelling of `id`'s binding, when it has one — or `nil`.
+    ///
+    /// ⌘+ is the zoom key every Mac app draws, and on a US layout it is typed as ⌘= — without Shift.
+    /// Measured against `NSMenu.performKeyEquivalent`: an item bound to "+" fires for ⇧⌘= and keypad +
+    /// and **not** for a plain ⌘=, while one bound to "=" is the mirror image, so no single item
+    /// covers the key as people press it. The visible item keeps the binding the user sees and can
+    /// change; this one adds the other spelling, and only while the binding is still ⌘+ and nothing
+    /// else claims ⌘= — a user's rebinding must not leave a key behind that answers the old one. It is
+    /// hidden, and a hidden item's key equivalent still fires (measured; `allowsKeyEquivalentWhenHidden`
+    /// is set anyway, since the menu bar's own dispatch is what matters here).
+    static func keyAliasItem(for id: String, bindings: KeyBindingStore = .shared) -> NSMenuItem? {
+        guard let shortcut = bindings.shortcut(for: id),
+              let alias = unshiftedAliases[shortcut],
+              !CommandCatalog.all.contains(where: { bindings.shortcut(for: $0.id) == alias }),
+              let item = commandItem(for: id, bindings: bindings) else { return nil }
+        item.keyEquivalent = alias.keyEquivalent
+        item.keyEquivalentModifierMask = alias.modifierMask
+        item.isHidden = true
+        item.allowsKeyEquivalentWhenHidden = true
+        return item
+    }
+
+    /// The bindings whose key is typed without Shift on a US layout, and the spelling that matches it.
+    private static let unshiftedAliases: [CommandShortcut: CommandShortcut] = [
+        CommandShortcut(key: "+", modifiers: .command): CommandShortcut(
+            key: "=",
+            modifiers: .command
+        )
+    ]
 
     /// The standard text Cut item (⌘X), hand-built rather than drawn from the registry — like the
     /// app menu's About/Hide, it is AppKit's item and not a command a user searches for. It has no

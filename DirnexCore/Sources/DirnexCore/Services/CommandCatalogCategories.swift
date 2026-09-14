@@ -172,6 +172,53 @@ extension CommandCatalog {
             // text-system meaning to lose.
             shortcut: CommandShortcut(key: "d", modifiers: .command)
         ),
+        // The preview's zoom, on the keys every Mac browser and viewer uses. A menu key equivalent
+        // with ⌘ has no text-system meaning to take away, and the three are disabled whenever the
+        // preview on screen cannot zoom (a photograph, Quick Look's own view, no preview at all).
+        // ⌘+ is the binding a user sees and can change; a plain ⌘= press is caught by a hidden
+        // alias in the menu, because an item bound to "+" measurably does not match it
+        // (`MainMenuBuilder`).
+        Command(
+            id: "view.quickViewZoomIn",
+            title: "Zoom In",
+            category: .view,
+            keywords: [
+                "quick view",
+                "preview",
+                "zoom",
+                "larger",
+                "bigger",
+                "magnify",
+                "enlarge",
+                "cmd +"
+            ],
+            shortcut: CommandShortcut(key: "+", modifiers: .command)
+        ),
+        Command(
+            id: "view.quickViewZoomOut",
+            title: "Zoom Out",
+            category: .view,
+            keywords: ["quick view", "preview", "zoom", "smaller", "shrink", "reduce", "cmd -"],
+            shortcut: CommandShortcut(key: "-", modifiers: .command)
+        ),
+        Command(
+            id: "view.quickViewResetZoom",
+            title: "Reset Zoom",
+            category: .view,
+            keywords: [
+                "quick view",
+                "preview",
+                "zoom",
+                "actual size",
+                "fit",
+                "original",
+                "100",
+                "cmd 0"
+            ],
+            // "Reset" rather than Safari's "Actual Size": a Word page opens fitted to the surface and
+            // a sheet at its own size, and ⌘0 goes back to whichever it was — not to an absolute 100 %.
+            shortcut: CommandShortcut(key: "0", modifiers: .command)
+        ),
         Command(
             id: "view.terminal",
             title: "Terminal Drawer",

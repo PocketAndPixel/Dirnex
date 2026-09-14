@@ -304,6 +304,11 @@ extension BrowserWindowController: NSMenuItemValidation {
         // is offering the button, by the one predicate the action itself checks.
         case #selector(downloadQuickViewPreview(_:)):
             return canDownloadQuickViewPreview
+        // Zoom, by the same predicate the actions reach the surface through — and one case for all
+        // three, because each extra case here counts against cyclomatic complexity (docs/NOTES.md).
+        case #selector(zoomInQuickView(_:)), #selector(zoomOutQuickView(_:)),
+             #selector(resetQuickViewZoom(_:)):
+            return canPerformQuickViewZoom(menuItem.action)
         default:
             break
         }

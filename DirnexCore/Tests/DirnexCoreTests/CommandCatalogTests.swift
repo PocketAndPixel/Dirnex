@@ -224,6 +224,25 @@ struct CommandCatalogTests {
         #expect(fullWindow?.shortcut != byID["view.quickView"]?.shortcut)
     }
 
+    @Test("Quick View zoom is three conflict-free View commands on ⌘+, ⌘− and ⌘0")
+    func coversQuickViewZoom() {
+        let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
+        let expected: [(String, CommandShortcut)] = [
+            ("view.quickViewZoomIn", CommandShortcut(key: "+", modifiers: .command)),
+            ("view.quickViewZoomOut", CommandShortcut(key: "-", modifiers: .command)),
+            ("view.quickViewResetZoom", CommandShortcut(key: "0", modifiers: .command))
+        ]
+        for (id, shortcut) in expected {
+            #expect(byID[id]?.category == .view, "\(id)")
+            #expect(byID[id]?.shortcut == shortcut, "\(id)")
+            #expect(KeyBindings().conflicts(for: id).isEmpty, "\(id)")
+        }
+        // The hidden ⌘= alias for Zoom In is only safe while nothing else is bound to ⌘=.
+        let equals = CommandShortcut(key: "=", modifiers: .command)
+        #expect(!CommandCatalog.all.contains { $0.shortcut == equals })
+        #expect(CommandShortcut(key: "+", modifiers: .command).display == "⌘+")
+    }
+
     @Test("the M6 terminal drawer is a conflict-free View command on ⌃`")
     func coversTerminalDrawer() {
         let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })

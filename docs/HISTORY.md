@@ -12923,10 +12923,10 @@ front of a user:
 
 ---
 
-### After M19 — the follow-on log (2026-08-07 → 2026-09-14)
+### After M19 — the follow-on log (2026-08-07 → 2026-09-15)
 
 Sixty dated passes that landed outside a milestone of their own, between M18's close on
-2026-08-07 and 2026-09-14: user-reported bugs, three vault features, the tree crossing into S3,
+2026-08-07 and 2026-09-15: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
 sit here at the end rather than in a numeric slot — and they keep their **newest-first** order,
@@ -12934,6 +12934,34 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-15 — ⌘+, ⌘− and ⌘0 zoom the Quick View preview.** Asked for right after the document
+previews landed. The preview surface refuses first responder so the arrows keep driving the file list,
+so the keys had to be the window's: three registry commands (View ▸ Zoom In, Zoom Out, Reset Zoom)
+bound to ⌘+, ⌘− and ⌘0, rebindable, in the palette, and translated into the 13 other languages.
+
+- **`QuickViewZoom` (core)** is one ladder for every backend that zooms (25 % to 500 %, fine steps
+  near 100 %), always *relative to how the file opened*. A Word page opens fitted, a sheet at its own
+  size, and ⌘0 goes back to whichever it was, which is why the item is Reset Zoom rather than Safari's
+  Actual Size. A level left off the ladder by a pinch steps to the next level past it.
+- **The backends.** A web page (HTML, Markdown, a converted office page) zooms by `pageZoom`
+  multiplied onto its fit width, so ⌘+ on a Word page fitted at 177 % goes to 195 % rather than 110 %.
+  A PDF zooms relative to its fitted or 100 % scale and is handed back to `autoScales` at 1. Text uses
+  the scroll view's magnification, which a pinch also moves, stepped about the visible centre. A new
+  file starts back at its opening size in all three. A photograph, Quick Look's own view and the
+  remote placeholder card have no zoom, and the items are disabled there.
+- **⌘+ needed a hidden ⌘= alias.** Measured with `NSMenu.performKeyEquivalent`: an item bound to `+`
+  does not fire for a plain ⌘=, which is how ⌘+ is typed on a US keyboard (docs/NOTES.md ▸ AppKit).
+  `MainMenuBuilder` adds the alias only while Zoom In is on ⌘+ and nothing else claims ⌘=.
+
+Controls: four reverts (no alias; the zoom replacing the fit instead of multiplying it; no reset on a
+new page; a PDF zoomed from 100 % instead of from its fit) each failed only their own tests, five in
+all. Live, in the Debug build: View ▸ Zoom In three times enlarged the Word page and Reset Zoom
+returned it to its fit. Key presses of ⌘= (twice), ⌘− and ⌘0 did the same on the Word page, and ⌘=
+zoomed the Pages PDF. The screen tool sends `=` and `−` as keypad keys (logged), which carry the same
+characters as the main-row keys and match the same items. **Not verified with a real key press:** a
+main-row ⇧⌘= and keypad +. The tool cannot type `+` (docs/NOTES.md ▸ Live verification); both are
+covered by the `NSMenu` probe and AppKit's documented handling of Shift.
 
 **2026-09-14 — Quick View shows Word, Excel, PowerPoint, Pages, Numbers and Keynote files in-process,
 with every page, zoom and selection, plus RTF and OpenDocument text.** Reported with two screenshots:

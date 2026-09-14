@@ -27,6 +27,7 @@ extension QuickViewPreviewView {
         // A view built a moment ago has no frame yet, and a scale worked out against a zero frame is
         // what the position below would then be relative to.
         content.layoutSubtreeIfNeeded()
+        pdfFitsWidth = fitsWidth
         pdfView.document = document
         pdfView.autoScales = fitsWidth
         if !fitsWidth { pdfView.scaleFactor = 1 }
@@ -45,6 +46,34 @@ extension QuickViewPreviewView {
         // reproducible on every flip into a PDF. Paid here it costs the same 3–8 ms while nothing
         // is moving. The thumbnail itself is discarded; warming the page cache is the point.
         _ = document?.page(at: 0)?.thumbnail(of: bounds.size, for: .mediaBox)
+    }
+
+    /// ⌘+ / ⌘−'s level for the PDF on screen, relative to how it opened: fitted to the surface, or at
+    /// its own size for a sheet. Read back from the view's real scale rather than remembered, so a
+    /// pinch in between is where the next step starts from.
+    var pdfZoomLevel: Double {
+        guard let pdfView else { return 1 }
+        let start = pdfStartingScale(of: pdfView)
+        return start > 0 ? Double(pdfView.scaleFactor / start) : 1
+    }
+
+    /// Show the PDF at `level` times its starting scale. Back at 1, a fitted document is handed back
+    /// to `autoScales`, so it goes on refitting when the surface changes size — exactly as it opened.
+    func setPDFZoomLevel(_ level: Double) {
+        guard let pdfView else { return }
+        if abs(level - 1) < 0.001 {
+            pdfView.autoScales = pdfFitsWidth
+            if !pdfFitsWidth { pdfView.scaleFactor = 1 }
+            return
+        }
+        let start = pdfStartingScale(of: pdfView)
+        pdfView.autoScales = false
+        pdfView.scaleFactor = start * CGFloat(level)
+    }
+
+    /// The scale a document opened at: the fit for the view's current size, or 1.
+    private func pdfStartingScale(of pdfView: PDFView) -> CGFloat {
+        pdfFitsWidth ? pdfView.scaleFactorForSizeToFit : 1
     }
 
     func standDownPDF() {

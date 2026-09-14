@@ -180,6 +180,7 @@ final class QuickViewWebView: NSView {
     /// Render `url`. The read access is scoped to the file's own directory, so a page reaches the
     /// sibling stylesheet and images that make it a saved page, and nothing above it.
     func show(_ url: URL) {
+        startNewPage()
         load(.file(url.standardizedFileURL))
     }
 
@@ -194,11 +195,13 @@ final class QuickViewWebView: NSView {
     /// gives the page a real URL, so a `#anchor` click resolves against something `isPermitted` can
     /// compare exactly and a link to a sibling file resolves to a path it can refuse by name.
     func showMarkdown(_ scan: QuickViewPreviewView.MarkdownScan, source: URL) {
+        startNewPage()
         load(.generated(scan, directory: source.deletingLastPathComponent().standardizedFileURL))
     }
 
     /// Render a page Quick Look's generator wrote for an office document, from inside its bundle.
     func showConverted(page: URL, bundle: URL, allowsJavaScript: Bool, fitWidth: Double?) {
+        startNewPage()
         load(.converted(
             page: page.standardizedFileURL,
             bundle: bundle.standardizedFileURL,
@@ -207,21 +210,54 @@ final class QuickViewWebView: NSView {
         ))
     }
 
-    /// Scale a converted page to the surface's width, the way Quick Look's own view draws a Word
-    /// page or a slide across its panel — within bounds, so a phone-width pane still gets a readable
-    /// page and a full-screen one does not get letters an inch high. `pageZoom` rather than
-    /// magnification: it lays the page out again at the new size, so text stays sharp and the user's
-    /// own pinch still zooms on top of it. Every other page is drawn at 100 %, so a document's zoom
-    /// cannot carry over into the next HTML file.
-    private func applyFit() {
-        guard case let .converted(_, _, _, fitWidth?) = page, bounds.width > 0 else {
-            if webView.pageZoom != 1 { webView.pageZoom = 1 }
-            return
+    // MARK: - Zoom
+
+    /// ⌘+ / ⌘−'s level, relative to how the page first drew (``DirnexCore/QuickViewZoom``). A new
+    /// file starts back at 1, the way the text and PDF backends reset theirs — arriving on the next
+    /// file at the zoom somebody wanted for the last one is nobody's idea of a preview. A reload of
+    /// the *same* page (a changed JavaScript preference) keeps it.
+    private(set) var zoomLevel = 1.0
+
+    /// Whether the page is exactly as it opened: no ⌘+ / ⌘− step, and no pinch either.
+    var isAtStartingZoom: Bool {
+        abs(zoomLevel - 1) < 0.001 && abs(webView.magnification - 1) < 0.001
+    }
+
+    /// Show the page at `level` times its starting size.
+    func setZoomLevel(_ level: Double) {
+        zoomLevel = level
+        applyZoom()
+    }
+
+    /// Back to how the page opened — the ⌘+ / ⌘− level *and* a pinch, since ⌘0 is the one key that
+    /// promises "as it was".
+    func resetZoom() {
+        webView.magnification = 1
+        setZoomLevel(1)
+    }
+
+    private func startNewPage() {
+        zoomLevel = 1
+        webView.magnification = 1
+    }
+
+    /// Apply the page's starting size times ``zoomLevel`` as `pageZoom`.
+    ///
+    /// The starting size is 100 % for an HTML file or a Markdown page, and for a converted office page
+    /// that allows it, the surface's width over the generator's — the way Quick Look's own view draws
+    /// a Word page or a slide across its panel, within bounds, so a phone-width pane still gets a
+    /// readable page and a full-screen one does not get letters an inch high. `pageZoom` rather than
+    /// magnification because it lays the page out again at the new size: text stays sharp, a page
+    /// reflows like a browser's ⌘+, and the user's own pinch still magnifies on top of it.
+    private func applyZoom() {
+        var start: CGFloat = 1
+        if case let .converted(_, _, _, fitWidth?) = page, bounds.width > 0 {
+            start = min(
+                max(bounds.width / fitWidth, Self.fitZoomRange.lowerBound),
+                Self.fitZoomRange.upperBound
+            )
         }
-        let zoom = min(
-            max(bounds.width / fitWidth, Self.fitZoomRange.lowerBound),
-            Self.fitZoomRange.upperBound
-        )
+        let zoom = start * zoomLevel
         if abs(webView.pageZoom - zoom) > 0.001 { webView.pageZoom = zoom }
     }
 
@@ -229,7 +265,7 @@ final class QuickViewWebView: NSView {
 
     override func layout() {
         super.layout()
-        applyFit()
+        applyZoom()
     }
 
     /// Load the current page again — what a changed JavaScript preference needs, since the answer
@@ -254,12 +290,11 @@ final class QuickViewWebView: NSView {
 
     private func load(_ page: Page) {
         self.page = page
-        applyFit()
+        applyZoom()
         switch page {
         case let .file(url):
             webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         case let .converted(page, bundle, _, _):
-            webView.magnification = 1
             webView.loadFileURL(page, allowingReadAccessTo: bundle)
         case let .generated(scan, directory):
             webView.loadHTMLString(

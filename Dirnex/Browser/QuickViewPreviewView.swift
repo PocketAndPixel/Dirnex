@@ -64,6 +64,9 @@ final class QuickViewPreviewView: NSView {
     /// Internal, not private: built and driven from `QuickViewPreviewView+PDF`, and Swift's `private`
     /// does not cross files.
     var pdfView: PDFView?
+    /// Whether the PDF on screen opened fitted to the surface or at its own size — what ⌘0 goes back
+    /// to. Internal, from `QuickViewPreviewView+PDF`.
+    var pdfFitsWidth = true
     /// Internal, not private: built and driven from `QuickViewPreviewView+Image`, and Swift's
     /// `private` does not cross files.
     var imageView: NSImageView?

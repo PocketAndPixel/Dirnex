@@ -94,6 +94,15 @@ at build time.
     afterwards was of the release build. A timed-out event, or a window that looks like the
     pre-change app, is the moment to run the `pgrep` above and to check
     `~/Library/Logs/DiagnosticReports` for a crash report before believing anything on screen.
+- **computer-use's `=` and `-` are the *keypad* keys, so it cannot type ⇧⌘= as a keyboard does.**
+  Logged 2026-09-15 with a temporary local key monitor while verifying the zoom keys: `cmd+=` arrived
+  as keyCode **81** (keypad `=`) and `cmd+-` as **78** (keypad `-`), both with the numeric-pad flag.
+  `cmd+shift+=` arrived as keypad `=` with Shift set and characters still `=`, where a real ⇧⌘=
+  (keyCode 24) carries `+`, so a test of the shifted spelling through the tool measures nothing.
+  Two ways around it did not work either. `CGEvent.postToPid` from a shell was dropped without a
+  trace (0 events reached the monitor), and System Events keystrokes need assistive access the shell
+  lacks (`-1719`). Log the event before believing a key test, and settle what a real key
+  would send with `NSMenu.performKeyEquivalent` on a hand-built event.
 - **Background computer-use cannot press Return in a text field; it sets the field's selected text
   to a newline, which commits nothing.** Measured 2026-09-13 in Go ▸ Go to Location… while verifying
   M28 Slice 2: `app_key return`, aimed at the focused element and then at the field's own coordinate,
@@ -1571,6 +1580,18 @@ at build time.
     and driving the window's directly undid nothing.
   - The tell that this class of bug is present is a *comment* claiming a fall-through, and it fails
     in the quiet direction: nothing logs, every menu builds, and the key just does nothing.
+- **A menu item bound to ⌘+ does not fire for ⌘=, which is how ⌘+ is typed on a US keyboard, and
+  one bound to ⌘= misses ⇧⌘= and keypad +.** Measured 2026-09-15 with `NSMenu.performKeyEquivalent`
+  while adding Quick View's zoom keys: key equivalent `+` matched ⇧⌘= (characters `+`) and keypad +,
+  and **not** a plain ⌘= (characters `=`). Key equivalent `=` was the mirror image. `-` and `0`
+  have no shifted spelling and match both their main and keypad keys. So no single item covers the
+  key as people press it, and a Zoom In drawn as "⌘+" is dead for most US users with nothing
+  logged. The fix is a second, **hidden** item carrying `=` beside the visible `+` one; a hidden
+  item's key equivalent still fires (measured, with and without `allowsKeyEquivalentWhenHidden`).
+  - **The alias has to follow the binding.** It is added only while the command is still on ⌘+ and
+    no other command claims ⌘=. Otherwise a user's rebinding would leave a second key answering the
+    old one, and Settings' conflict check, which only knows the registry, could not see it
+    (`MainMenuBuilder.keyAliasItem`).
 - **An `NSMenuItem` that carries a submenu never fires its own key equivalent** — and it goes on
   reporting `isEnabled == true`, so the item looks armed and the chord does nothing. Measured
   directly: `NSMenu.performKeyEquivalent(with:)` returns **`false`** for a ⌃G item with a submenu and

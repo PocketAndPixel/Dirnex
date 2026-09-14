@@ -81,6 +81,20 @@ final class QuickViewTextView: NSView {
         textView.scroll(.zero)
     }
 
+    /// ⌘+ / ⌘−'s level — the scroll view's magnification, which a pinch moves too, so the two stay
+    /// one zoom rather than two stacked ones.
+    var zoomLevel: Double { Double(scrollView.magnification) }
+
+    /// Magnify to `level`, keeping the middle of what is on screen in the middle: a step that threw
+    /// the reader back to the top of a long log would make the key useless for the files it is for.
+    func setZoomLevel(_ level: Double) {
+        let visible = scrollView.documentVisibleRect
+        scrollView.setMagnification(
+            CGFloat(level),
+            centeredAt: NSPoint(x: visible.midX, y: visible.midY)
+        )
+    }
+
     /// Source text is read by column, close to the edge; a document wants the margin a page has.
     private static let sourceInset = NSSize(width: 8, height: 8)
     private static let documentInset = NSSize(width: 24, height: 20)
@@ -156,8 +170,9 @@ final class QuickViewTextView: NSView {
         // view's width, so zooming in re-wraps larger text to the visible width rather than running
         // lines off the edge.
         scrollView.allowsMagnification = true
-        scrollView.minMagnification = 0.5
-        scrollView.maxMagnification = 4
+        // The keyboard ladder's own ends, so ⌘+ and a pinch reach exactly the same range.
+        scrollView.minMagnification = CGFloat(QuickViewZoom.levels.first ?? 1)
+        scrollView.maxMagnification = CGFloat(QuickViewZoom.levels.last ?? 1)
         scrollView.documentView = textView
         addSubview(scrollView)
         NSLayoutConstraint.activate([
