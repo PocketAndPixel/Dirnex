@@ -89,11 +89,13 @@ extension QuickViewPreviewView {
     /// belongs to it — panning — rather than to the swipe that turns to the next file. Preview's own
     /// rule: the swipe only flips pages that fit.
     ///
-    /// An image and a PDF can say so. Text never runs wider than the surface (it re-wraps as it
-    /// zooms), and a web page scrolls inside WebKit, where the width is not ours to read without a
-    /// script — so a page keeps the swipe it always had.
+    /// An image and a PDF can say so, and so can a table, which has no zoom but is often wider than
+    /// the surface as it opens. Text never runs wider than the surface (it re-wraps as it zooms), and
+    /// a web page scrolls inside WebKit, where the width is not ours to read without a script — so a
+    /// page keeps the swipe it always had.
     var consumesHorizontalScroll: Bool {
-        switch zoomTarget {
+        if let tableSurface, !tableSurface.isHidden { return tableSurface.pansHorizontally }
+        return switch zoomTarget {
         case let .image(scrollView): scrollView.pansHorizontally
         case .pdf:
             if let scrollView = pdfView?.documentView?.enclosingScrollView,

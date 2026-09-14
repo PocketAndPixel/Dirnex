@@ -288,12 +288,13 @@ extension BrowserWindowController: NSMenuItemValidation {
             menuItem.state = quickViewMode == .fullWindow ? .on : .off
         case #selector(toggleQuickViewFullScreen(_:)):
             menuItem.state = quickViewMode == .fullScreen ? .on : .off
-        case #selector(showQuickViewSource(_:)):
-            menuItem.state = AppPreferences.shared.quickViewRenderStyle == .source ? .on : .off
-            return previewedFileOffersBothStyles
-        case #selector(showQuickViewRenderedPage(_:)):
-            menuItem.state = AppPreferences.shared.quickViewRenderStyle == .rendered ? .on : .off
-            return previewedFileOffersBothStyles
+        case #selector(showQuickViewSource(_:)), #selector(showQuickViewRenderedPage(_:)):
+            let style: QuickViewRenderStyle = menuItem.action == #selector(showQuickViewSource(_:))
+                ? .source : .rendered
+            let kind = previewedDualStyleKind
+            let current = AppPreferences.shared.quickViewRenderStyle(for: kind ?? .page)
+            menuItem.state = current == style ? .on : .off
+            return kind != nil
         // The vault commands each name a target that may not be there. Each validator *calls* the
         // predicate the command itself uses rather than restating it — a hand-copied twin is how a
         // shipped feature ends up permanently grayed with every test green (docs/NOTES.md).

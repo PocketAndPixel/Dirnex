@@ -52,9 +52,11 @@ final class QuickViewTextView: NSView {
 
     /// Show a decoded file, colored by `tokens` — which is empty for a file no grammar claims, and
     /// that case is not special: an empty loop leaves the document in the view's own `.textColor`,
-    /// exactly as it rendered before M17 existed.
-    func show(_ preview: TextPreview, tokens: [SyntaxToken]) {
-        present(attributed(preview.text, tokens: tokens), asDocument: false)
+    /// exactly as it rendered before M17 existed. A CSV or TSV file is colored by `columns` instead.
+    func show(_ preview: TextPreview, tokens: [SyntaxToken], columns: [DelimitedFieldSpan] = []) {
+        let text = attributed(preview.text, tokens: tokens)
+        colorColumns(columns, in: text)
+        present(text, asDocument: false)
         truncationNotice.isHidden = !preview.isTruncated
     }
 
@@ -129,6 +131,21 @@ final class QuickViewTextView: NSView {
             )
         }
         return attributed
+    }
+
+    /// A foreground color per field, by its column (`DelimitedColumnTheme`), with the same guard the
+    /// token loop has: a span past the end fails as a missing color rather than raising.
+    private func colorColumns(_ columns: [DelimitedFieldSpan], in text: NSMutableAttributedString) {
+        let length = text.length
+        for span in columns {
+            guard span.offset + span.length <= length else { break }
+            guard let color = DelimitedColumnTheme.color(forColumn: span.column) else { continue }
+            text.addAttribute(
+                .foregroundColor,
+                value: color,
+                range: NSRange(location: span.offset, length: span.length)
+            )
+        }
     }
 
     func clearText() {

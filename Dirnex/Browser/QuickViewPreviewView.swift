@@ -78,6 +78,8 @@ final class QuickViewPreviewView: NSView {
     var textSurface: QuickViewTextView?
     /// Internal for the same reason, from `QuickViewPreviewView+HTML`.
     var webSurface: QuickViewWebView?
+    /// Internal for the same reason, from `QuickViewPreviewView+Table`.
+    var tableSurface: QuickViewTableView?
     /// Internal for the same reason, from `QuickViewPreviewView+Placeholder`.
     var placeholderCard: QuickViewPlaceholderCard?
     /// The office-document conversion in flight, so the next one — or putting the surface away —
@@ -163,6 +165,11 @@ final class QuickViewPreviewView: NSView {
         loadedStyle = style
         loadedPlaceholder = placeholder
         hasLoaded = true
+        // The table is put away here rather than by every other backend, for the reason the card below
+        // is: a sixth hand-written list is six chances to forget one. It stays up when the next file is
+        // a table too, so stepping between two CSVs keeps the old one on screen until the new one lands.
+        let showsTable = style == .rendered && url.map(Self.isDelimitedTable) == true
+        if !showsTable { standDownTable() }
         // The one funnel every render goes through, which is why the card is raised and lowered here
         // rather than at each backend: a fifth stand-down in four hand-written lists is four chances
         // to forget one, and the one forgotten leaves the card drawn over a real preview.
@@ -178,6 +185,8 @@ final class QuickViewPreviewView: NSView {
             showPDF(url)
         } else if let url, Self.isImage(url) {
             showImage(url)
+        } else if let url, showsTable {
+            showTable(url)
         } else if let url, Self.isRenderableHTML(url), style == .rendered {
             showRenderedHTML(url)
         } else if let url, Self.isRenderableMarkdown(url), style == .rendered {
@@ -206,7 +215,14 @@ final class QuickViewPreviewView: NSView {
     /// different shape. The failure available here is quiet: `2` doing nothing on a `.md` while the
     /// header says it should, or the digit being swallowed on a file that has one rendering.
     static func offersBothStyles(_ url: URL) -> Bool {
-        isRenderableHTML(url) || isRenderableMarkdown(url)
+        dualStyleKind(of: url) != nil
+    }
+
+    /// Which family of dual-style file `url` is, which names its rendered style and decides which
+    /// remembered choice it follows — `nil` for a file with one rendering.
+    static func dualStyleKind(of url: URL) -> QuickViewDualStyleKind? {
+        if isDelimitedTable(url) { return .table }
+        return isRenderableHTML(url) || isRenderableMarkdown(url) ? .page : nil
     }
 
     /// Release both backends' loaded documents so nothing lingers in memory while the mode is off.
@@ -232,6 +248,7 @@ final class QuickViewPreviewView: NSView {
         imageScrollView?.show(nil)
         textSurface?.clearText()
         webSurface?.clearPage()
+        tableSurface?.clearTable()
     }
 
     /// The file the header names. Ignored when this surface has no header.
@@ -303,6 +320,7 @@ final class QuickViewPreviewView: NSView {
                 imageScrollView,
                 textSurface?.interactiveSubtree,
                 webSurface?.interactiveSubtree,
+                tableSurface,
                 headerView,
                 placeholderCard?.downloadButton,
                 placeholderCard?.stopButton

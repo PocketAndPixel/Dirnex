@@ -17,6 +17,7 @@ extension AppPreferences {
         static let rowDensity = "Dirnex.pref.rowDensity"
         static let sizeVizDisplayMode = "Dirnex.pref.sizeVizDisplayMode"
         static let quickViewRenderStyle = "Dirnex.pref.quickViewRenderStyle"
+        static let quickViewTableStyle = "Dirnex.pref.quickViewTableStyle"
         static let quickViewJavaScriptEnabled = "Dirnex.pref.quickViewJavaScriptEnabled"
         static let quickViewFetchLimit = "Dirnex.pref.quickViewFetchLimit"
         static let remoteRefreshFloor = "Dirnex.pref.remoteRefreshFloor"

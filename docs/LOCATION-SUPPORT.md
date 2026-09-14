@@ -397,6 +397,7 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | Quick Look (`⌘Y`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes, limited<sup>s</sup> | yes | yes |
 | Syntax highlighting, Markdown, diagrams in preview | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | Office, iWork and rich-text documents in preview, zoomable and selectable<sup>rrr</sup> | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| CSV and TSV as a table in preview, with the selected row in full<sup>sss</sup> | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t, ddd</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes, limited<sup>mmm</sup> | yes | yes |
 | Edit `F4`, with save written back | yes | yes | yes, limited<sup>v, ddd</sup> | yes | yes | yes | n/a | no<sup>jjj</sup> | yes | yes |
 | Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes, limited<sup>yy</sup> | yes | yes |
@@ -522,6 +523,11 @@ row, through the local copy Quick View already works from (<sup>s</sup> for a se
 come from the generator, not from a location: a spreadsheet shows at most **4 096 rows** of each
 sheet, with nothing on the page to say so, and a file the generator declines (corrupt,
 password-protected) falls back to Quick Look's own view. Rich text above 32 MB does too.
+
+<sup>sss</sup> Parsed in-process from the same decoded text the source view shows, so every location
+reaches it through the local copy Quick View already works from (<sup>s</sup> for a server). The hard
+limits are the text preview's: the first **4 MB** of a file, with the notice saying so, and a table of
+more than 1 024 columns, or a file whose quote never closes, is shown as text instead.
 
 ## 4. Find Files (`⌥F7`)
 

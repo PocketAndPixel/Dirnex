@@ -125,7 +125,8 @@ final class AppPreferences: ObservableObject {
     static let sizeVizDisplayModeDidChange = Notification.Name("Dirnex.sizeVizDisplayModeDidChange")
 
     /// How Quick View draws a file that can be shown two ways — its source, or the page it
-    /// describes (PLAN.md §M16). Only HTML offers both today; every other file ignores it.
+    /// describes (PLAN.md §M16). HTML and Markdown follow it; CSV and TSV follow
+    /// `quickViewTableStyle`, and every other file ignores both.
     ///
     /// App-wide like `rowDensity`, not per tab: it is a reading preference, not a question you ask
     /// of one directory — and a per-file choice would reset on every cursor step, which is the
@@ -139,8 +140,35 @@ final class AppPreferences: ObservableObject {
         }
     }
 
-    /// Posted (on the main actor) when `quickViewRenderStyle` changes, so every open Quick View
-    /// re-delivers its current file in the new style. `object` is the `AppPreferences` that changed.
+    /// How Quick View draws a CSV or TSV file — its source, or a table (2026-09-15). A preference of
+    /// its own rather than `quickViewRenderStyle`, because the two families default to opposite
+    /// styles (`QuickViewDualStyleKind`). Changing it posts the same notification.
+    @Published var quickViewTableStyle: QuickViewRenderStyle {
+        didSet {
+            guard quickViewTableStyle != oldValue else { return }
+            defaults.set(quickViewTableStyle.rawValue, forKey: Keys.quickViewTableStyle)
+            NotificationCenter.default.post(name: Self.quickViewRenderStyleDidChange, object: self)
+        }
+    }
+
+    /// The remembered style for a family of dual-style file.
+    func quickViewRenderStyle(for kind: QuickViewDualStyleKind) -> QuickViewRenderStyle {
+        switch kind {
+        case .page: quickViewRenderStyle
+        case .table: quickViewTableStyle
+        }
+    }
+
+    func setQuickViewRenderStyle(_ style: QuickViewRenderStyle, for kind: QuickViewDualStyleKind) {
+        switch kind {
+        case .page: quickViewRenderStyle = style
+        case .table: quickViewTableStyle = style
+        }
+    }
+
+    /// Posted (on the main actor) when `quickViewRenderStyle` or `quickViewTableStyle` changes, so
+    /// every open Quick View re-delivers its current file in the new style. `object` is the
+    /// `AppPreferences` that changed.
     static let quickViewRenderStyleDidChange = Notification.Name(
         "Dirnex.quickViewRenderStyleDidChange"
     )
@@ -431,7 +459,11 @@ final class AppPreferences: ObservableObject {
         // older/newer build can't parse.
         quickViewRenderStyle = QuickViewRenderStyle(
             rawValue: defaults.string(forKey: Keys.quickViewRenderStyle) ?? ""
-        ) ?? .default
+        ) ?? QuickViewDualStyleKind.page.defaultStyle
+        // Empty (never written) = the table.
+        quickViewTableStyle = QuickViewRenderStyle(
+            rawValue: defaults.string(forKey: Keys.quickViewTableStyle) ?? ""
+        ) ?? QuickViewDualStyleKind.table.defaultStyle
         // Empty (never written) = Follow System, and so is anything `PanelPalette` can't parse.
         accentColorHex = defaults.string(forKey: Keys.accentColorHex) ?? ""
         cursorColorHex = defaults.string(forKey: Keys.cursorColorHex) ?? ""

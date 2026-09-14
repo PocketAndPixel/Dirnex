@@ -78,54 +78,6 @@ extension BrowserWindowController {
         splitViewController.isDividerLocked = mode == .fullScreen
     }
 
-    // MARK: - Source or page
-
-    /// View ▸ Quick View ▸ View Source / View Rendered Page, and the `1` / `2` keys behind them.
-    @objc func showQuickViewSource(_ sender: Any?) {
-        setQuickViewRenderStyle(.source)
-    }
-
-    @objc func showQuickViewRenderedPage(_ sender: Any?) {
-        setQuickViewRenderStyle(.rendered)
-    }
-
-    /// Switch the app-wide style and re-render what is on screen.
-    ///
-    /// The preference is the single source of truth and every open window follows it, so this
-    /// writes it and lets `quickViewRenderStyleDidChange` drive the re-delivery — including this
-    /// window's. Setting the value and re-delivering by hand here would give the window the user
-    /// pressed the key in a different path from every other one, which is how two windows end up
-    /// disagreeing about the same preference.
-    private func setQuickViewRenderStyle(_ style: QuickViewRenderStyle) {
-        AppPreferences.shared.quickViewRenderStyle = style
-    }
-
-    /// Whether the file currently previewed is one the two keys mean anything for. Everything else
-    /// has a single honest rendering, and a digit there must stay an ordinary keystroke rather than
-    /// being quietly eaten by a mode it does not apply to.
-    var previewedFileOffersBothStyles: Bool {
-        guard isQuickViewEnabled, let url = focusedPanel.quickViewSourceURL else { return false }
-        return QuickViewPreviewView.offersBothStyles(url)
-    }
-
-    /// Subscribe to `quickViewRenderStyleDidChange`, so a window re-renders the file it is already
-    /// showing when the style changes — including the window whose key press changed it. A
-    /// selector-based observer, torn down by the blanket `removeObserver(self)` in `deinit`
-    /// (docs/NOTES.md: a token-based one cannot be removed from a `nonisolated deinit`).
-    func observeQuickViewRenderStyle() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(quickViewRenderStyleDidChange),
-            name: AppPreferences.quickViewRenderStyleDidChange,
-            object: nil
-        )
-    }
-
-    @objc func quickViewRenderStyleDidChange(_ notification: Notification) {
-        guard isQuickViewEnabled else { return }
-        updateQuickView()
-    }
-
     /// Subscribe to `quickViewJavaScriptDidChange`, so a rendered page already on screen is drawn
     /// again under the new answer. Torn down by the blanket `removeObserver(self)` in `deinit`.
     func observeQuickViewJavaScript() {
@@ -165,7 +117,7 @@ extension BrowserWindowController {
         let active = focusedPanel
         preview.setCaption(quickViewCaption(
             for: active.quickViewSourceURL,
-            style: AppPreferences.shared.quickViewRenderStyle,
+            style: quickViewRenderStyle(for: active.quickViewSourceURL),
             from: active
         ))
     }
@@ -240,11 +192,11 @@ extension BrowserWindowController {
     }
 
     /// Load `active`'s cursor file into whichever surface the current mode uses, in the style the
-    /// user last chose (PLAN.md §M16). Read here, once per delivery, so every surface a window
+    /// user last chose for that kind of file (PLAN.md §M16). Read here, once per delivery, so every surface a window
     /// drives agrees — and so `1` / `2` need only change the preference and re-deliver.
     private func deliverPreview(from active: PanelViewController) {
         let url = active.quickViewSourceURL
-        let style = AppPreferences.shared.quickViewRenderStyle
+        let style = quickViewRenderStyle(for: url)
         // What to draw when there is no file to draw: a remote row whose bytes are not here gets a
         // card naming it rather than a blank surface, which would read as an empty file or a broken
         // preview (PLAN.md §M21 Slice 10). `nil` everywhere else, and the surface then blanks.
@@ -352,11 +304,12 @@ extension BrowserWindowController {
         from active: PanelViewController
     ) -> QuickViewCaption? {
         var caption = active.quickViewCaption
-        guard let url, QuickViewPreviewView.offersBothStyles(url) else {
+        guard let url, let kind = QuickViewPreviewView.dualStyleKind(of: url) else {
             caption?.style = nil
             return caption
         }
         caption?.style = style
+        caption?.styleKind = kind
         caption?.javaScriptDisabled = !AppPreferences.shared.quickViewJavaScriptEnabled
             && QuickViewPreviewView.isRenderableHTML(url)
         return caption

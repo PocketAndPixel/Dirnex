@@ -33,7 +33,7 @@ struct QuickViewDocumentPreviewTests {
         }
     }
 
-    /// The Office generator claims CSV too, and a CSV is text — the text backend keeps it.
+    /// The Office generator claims CSV too, and a CSV is text — the table and text backends keep it.
     @Test("CSV, text, PDFs, images and rich text do not")
     func leavesOtherFilesAlone() throws {
         let tree = try TempDirectory()

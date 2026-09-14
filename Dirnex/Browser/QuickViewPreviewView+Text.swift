@@ -28,9 +28,15 @@ extension QuickViewPreviewView {
         surface.isHidden = false
         loadToken += 1
         let token = loadToken
+        // Asked here, on the main actor, and handed to the read: a delimited file is colored by
+        // column rather than by a grammar.
+        let isDelimited = Self.isDelimitedTable(url)
+        let delimited = isDelimited ? Self.delimiterHint(for: url) : nil
         Task { [weak self] in
             let scan = await BlockingWork.run {
-                TextScan.read(url)
+                isDelimited
+                    ? TextScan.readDelimited(url, delimiterHint: delimited)
+                    : TextScan.read(url)
             }
             guard let self, token == loadToken else { return }
             guard let scan else {
@@ -38,7 +44,7 @@ extension QuickViewPreviewView {
                 showQuickLook(url)
                 return
             }
-            surface.show(scan.preview, tokens: scan.tokens)
+            surface.show(scan.preview, tokens: scan.tokens, columns: scan.columns)
         }
     }
 
@@ -57,6 +63,16 @@ extension QuickViewPreviewView {
     struct TextScan: Sendable {
         let preview: TextPreview
         let tokens: [SyntaxToken]
+        /// Where each field of a CSV or TSV file sits, for coloring by column. Empty for any other
+        /// file.
+        var columns: [DelimitedFieldSpan] = []
+
+        /// The most fields a source view colors. Each is an attribute run built and installed on the
+        /// main actor, and a 4 MB file of short values is a million of them: measured (release),
+        /// coloring all 1.13 million costs 129 ms to build and 93 ms to install, and this many 23 +
+        /// 17 ms. Past it the rest of the file is drawn in the text color, as it was before columns
+        /// were colored. A 3 MB, 18 800-row matrix is 131 000 fields and is colored whole.
+        static let columnSpanLimit = 200_000
 
         /// Blocking; call it off the main thread. `nil` for a file that is not text after all,
         /// which is `TextPreview`'s own answer and sends the caller back to Quick Look.
@@ -71,6 +87,25 @@ extension QuickViewPreviewView {
             return TextScan(
                 preview: preview,
                 tokens: SyntaxHighlighter.tokens(in: preview.text, language: language)
+            )
+        }
+
+        /// Read a CSV or TSV file and find its fields. A file that does not parse as a table is
+        /// shown in one color, exactly as a file no grammar claims is.
+        static func readDelimited(
+            _ url: URL,
+            delimiterHint: DelimitedTable.Delimiter?
+        ) -> TextScan? {
+            guard let preview = TextPreview.read(contentsOf: url) else { return nil }
+            let table = DelimitedTable.parse(
+                preview.text,
+                isTruncated: preview.isTruncated,
+                delimiterHint: delimiterHint
+            )
+            return TextScan(
+                preview: preview,
+                tokens: [],
+                columns: table?.fieldSpans(limit: columnSpanLimit) ?? []
             )
         }
     }

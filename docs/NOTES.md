@@ -1326,6 +1326,19 @@ at build time.
     (a blanket `false`, or a guard keyed on `XCTestConfigurationFilePath`): with no window built all
     three answer `false`. Both were run by hand against the suite, and the live app was checked to
     still quit when its window is closed.
+- **`scroll(.zero)` on a table in the browser window hides row 1 under its own column header, and a
+  test window that is not `.fullSizeContentView` cannot see it.** Found live 2026-09-15 on Quick View's
+  CSV table, which opened one row down with its selected first row invisible. A probe in the running
+  app read the clip view at origin 0 with `contentInsets.top` 0 and a visible rect as tall as the whole
+  scroll view: the header floats over the rows, and the resting origin is *above* the document's
+  origin by the header's height (in a fixture window with `.fullSizeContentView`, by the title bar's as
+  well: origin −60 for a 28 pt header and 32 pt of title bar). `scroll(.zero)` pins it to 0 anyway.
+  `scrollRowToVisible(0)` and `scrollColumnToVisible(0)` land where AppKit would.
+  - **The plain test window measured the other layout.** With `styleMask: [.titled]` the header takes a
+    strip of its own and the clip starts below it, so origin 0 is right and the test passed against the
+    bug. It took `.fullSizeContentView` (the browser window's) *and* a surface laid out before the table
+    landed to fail the way the app did.
+
 - **`NSAlert.runModal()` centers on the *display*, not on the window that raised it** — measured, a
   260 pt alert lands at x=734 on a 1728 pt screen whatever the app window's frame is. So every
   `runModal` alert reads as detached from the app, and on a large display it can be nowhere near the

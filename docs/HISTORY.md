@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-15)
 
-Sixty-three dated passes that landed outside a milestone of their own, between M18's close on
+Sixty-four dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-15: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12934,6 +12934,76 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-15 (evening) — a CSV or TSV file previews as a table, with the selected row in full
+underneath.** Asked for with a screenshot of `prod result.csv` in the text preview: every record one
+~350-character line, wrapped into a pane with nothing lined up. The user picked the design from two
+options (a table by default, with the strip).
+
+- **The probe settled what "column" means before any Swift.** A naive split on commas gives 13 to 18
+  fields per line of that file; parsed with quotes honoured, all 5 441 records have exactly 3 (cells
+  full of commas and doubled quotes, since the file is an export of .NET dictionaries). Python's own
+  `csv.Sniffer` failed to pick a delimiter for it for the same reason. The 17 CSVs on this Mac were the
+  corpus: 12 benchmark matrices of ~18 800 rows × 7 columns (3 MB), two 3 001-row load-test logs, one
+  pipe-separated file with no header row, one 4-row licence list. Quick Look's own CSV preview is an
+  HTML table of every row (2 MB of page for this file) with no header row.
+- **`DelimitedTable` (core)** scans the UTF-8 bytes once and keeps, per field, its byte range and how
+  to read it (12 bytes a field); a cell is decoded when it is shown. Release build: 6 ms for a 4 MB
+  file of a million short cells, 1 ms for the 3 MB matrices (Debug: 70 ms and 13 ms), with row and
+  column counts matching Python's `csv` on every corpus file. RFC 4180 plus Python's leniency: text
+  after a closing quote joins the field, CR, LF and CRLF all end a record, blank lines are no record.
+  An unclosed quote in a whole file is refused (the text is shown instead); in a file cut at the 4 MB
+  read limit the incomplete last record is dropped, unless the open quote has run past 64 KiB.
+  - **Three guesses, from a sample.** The delimiter (`,` `;` tab `|`) is the one whose most common
+    field count is shared by the most records, then the larger count, with a `.tsv` breaking ties. The
+    header row is `csv.Sniffer.has_header`'s vote (numeric columns and fixed-length columns vote on
+    whether the first row is unlike them), except that no evidence reads as a header, since most files
+    have one; that took the corpus's header-less pipe file and its 12 headed matrices both right. A
+    column is right-aligned when every sampled value reads as a number.
+  - 33 tests; six controls (quotes ignored, share ignored in detection, header fallback off, a
+    truncated record kept, spans counted in bytes, doubled quotes not undoubled) each failed only
+    their own tests.
+- **The app half.** `QuickViewPreviewView+Table` routes `.csv`, `.tsv` and `.tab` to
+  `QuickViewTableView`: an `NSTableView` with a row-number column, columns sized from their title and
+  up to 2 000 sampled values (44–320 pt), cells cut with an ellipsis that float their value on hover,
+  and ⌘C putting the selected rows on the pasteboard as tab-separated text. Under it,
+  `QuickViewRecordStrip` shows every value of the selected row under its column name, wrapped and
+  selectable, taking up to two fifths of the surface. The first row is selected as a file opens, so
+  the strip is filled before anything is clicked. More than 1 024 columns, or a file that is not a
+  table after all, shows as text. A table wider than the surface pans sideways instead of turning
+  the page; it has no zoom, so ⌘+ is disabled over it.
+- **A table opens as a table and a page as its source, and each remembers its own choice.**
+  `QuickViewDualStyleKind` (`.page` for HTML and Markdown, `.table` for CSV and TSV) names the rendered
+  style in the header ("1 Source · 2 Table") and selects the preference: `quickViewTableStyle` beside
+  the existing `quickViewRenderStyle`, so `1` on a CSV does not turn every web page into source. The
+  window's style handling moved to `BrowserWindowController+QuickViewStyle`, since
+  `BrowserWindowController+QuickView` was near the length ceiling.
+- **The source style colors the columns**, with five of `SyntaxTheme`'s already contrast-tested
+  colors, the first column in the text color. It stops after 200 000 fields: measured on the
+  million-field file, coloring everything costs 129 ms to build the attributed string and 93 ms to
+  install it on the main actor, and the cap brings that to 23 + 17 ms. The 3 MB matrices (131 000
+  fields) are colored whole.
+- **One bug only looking found.** The table opened scrolled one row down, the selected first row
+  hidden under the column header. `tableView.scroll(.zero)` pins the clip view to the document's
+  origin, but in the browser window's full-size content view the header floats over the rows and the
+  resting origin is above zero (docs/NOTES.md ▸ AppKit). The suite could not see it until its window
+  had `.fullSizeContentView` and a laid-out surface; with both, the new test failed the way the app
+  did, and `scrollRowToVisible(0)` fixed both.
+
+Controls: seven app reverts (a table opening as source; one shared style; no stand-down in the
+`show` funnel; the table left out of the surface's hit-test exemptions; a wide table not panning;
+columns not colored; the strip ignoring the selection) each failed only their own test. Validation:
+both linters, all four CI scripts (the localization check found every new key translated — one, the
+header's "Table", in all 14 languages), 3,413 core tests, and the app suite (1,212 tests, 1,130
+executed with the live-server suites skipped, one pre-existing known issue). Live, in the Debug build launched by path,
+on `prod result.csv`: the pane and full-window table with row 1 selected and the strip showing it, a
+click on row 5 moving the strip, View Source coloring the three columns and View Rendered Page going
+back, the header reading "1 Source · 2 Table", and stepping to the next file (a `.docx`) and back.
+**Not verified live:** a real trackpad pan across a wide table (a synthetic scroll is not a trackpad,
+docs/NOTES.md ▸ AppKit), ⌘C from a real key press, a CSV on a server or in an archive (both reach the
+same `show(url)` through the local copy Quick View already uses), and a semicolon or TSV file from
+another app. **Left undone:** sorting by a column, zoom on the table, and retitling View ▸ View
+Rendered Page for a table (the header says "Table"; the menu keeps its one title in every language).
 
 **2026-09-15 (later) — images zoom too.** Asked for straight after the keys below landed. The image
 was a bare `NSImageView` pinned to the surface with `scaleProportionallyDown`, which fits a large
