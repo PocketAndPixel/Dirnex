@@ -396,6 +396,7 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | Quick View pane / full size (`⌃Q`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes, limited<sup>s</sup> | yes | yes |
 | Quick Look (`⌘Y`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes, limited<sup>s</sup> | yes | yes |
 | Syntax highlighting, Markdown, diagrams in preview | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| Office, iWork and rich-text documents in preview, zoomable and selectable<sup>rrr</sup> | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t, ddd</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes, limited<sup>mmm</sup> | yes | yes |
 | Edit `F4`, with save written back | yes | yes | yes, limited<sup>v, ddd</sup> | yes | yes | yes | n/a | no<sup>jjj</sup> | yes | yes |
 | Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes, limited<sup>yy</sup> | yes | yes |
@@ -513,6 +514,14 @@ until its rows are files on this disk.
 <sup>mmm</sup> Works on a temp copy of the original, as a server row does (<sup>u</sup>), with one
 difference that follows from <sup>jjj</sup>: nothing is watched for a save, so an edit made in
 another app — or a script that rewrites its argument — stays in the copy.
+
+<sup>rrr</sup> Word, Excel, PowerPoint, Pages, Numbers and Keynote files are converted by macOS's own
+Quick Look generators (`qlmanage -p -o`) and shown in Dirnex's web view or PDF view; RTF, RTFD and
+OpenDocument text are read in-process. Every location reaches it the way it reaches the Markdown
+row, through the local copy Quick View already works from (<sup>s</sup> for a server). Two hard limits
+come from the generator, not from a location: a spreadsheet shows at most **4 096 rows** of each
+sheet, with nothing on the page to say so, and a file the generator declines (corrupt,
+password-protected) falls back to Quick Look's own view. Rich text above 32 MB does too.
 
 ## 4. Find Files (`⌥F7`)
 

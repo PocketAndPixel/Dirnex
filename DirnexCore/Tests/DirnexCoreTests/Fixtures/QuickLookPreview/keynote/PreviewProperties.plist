@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>AllowFullFileAccess</key>
+	<true/>
+	<key>AllowJavascript</key>
+	<true/>
+	<key>Attachments</key>
+	<dict>
+		<key>1AABB817-7378-4A95-96D1-4B2910F6FA58/preview0.pdf</key>
+		<dict>
+			<key>DumpedAttachmentFileName</key>
+			<string>Attachment2.pdf</string>
+			<key>MimeType</key>
+			<string>application/pdf</string>
+			<key>TextEncoding</key>
+			<string>UTF-8</string>
+		</dict>
+		<key>E5A11853-0F13-4247-A502-09047481EA46/preview1.pdf</key>
+		<dict>
+			<key>DumpedAttachmentFileName</key>
+			<string>Attachment3.pdf</string>
+			<key>MimeType</key>
+			<string>application/pdf</string>
+			<key>TextEncoding</key>
+			<string>UTF-8</string>
+		</dict>
+		<key>F02F1C6E-3FC4-4339-BB84-457361170EDA/A454FB83-6BDF-4AE1-A72C-0F27BBE32D68-index.css</key>
+		<dict>
+			<key>DumpedAttachmentFileName</key>
+			<string>Attachment1.css</string>
+			<key>TextEncoding</key>
+			<string>UTF-8</string>
+		</dict>
+	</dict>
+	<key>BaseBundlePath</key>
+	<string>/System/Library/QuickLook/iWork.qlgenerator</string>
+	<key>CanHavePages</key>
+	<true/>
+	<key>Height</key>
+	<real>1096.0</real>
+	<key>MimeType</key>
+	<string>text/html</string>
+	<key>TextEncoding</key>
+	<string>UTF-8</string>
+	<key>Width</key>
+	<real>1935.0</real>
+</dict>
+</plist>

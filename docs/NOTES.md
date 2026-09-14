@@ -87,6 +87,13 @@ at build time.
   build draws escapes mixed with U+FFFD — i.e. it predated ``ChildProcessLocale`` and ``SubprocessText``
   entirely. `pgrep -lf "Dirnex.app/Contents/MacOS/Dirnex"` answers it in one line. **Launch by path**,
   and read the path back rather than trusting that a quit-and-relaunch settled which binary is up.
+  - **An AppleEvent addressed by bundle id will *launch* that copy if the Debug build has died,
+    and the event itself does not say so.** Measured 2026-09-14: the Debug build crashed while
+    showing a preview, the next `tell application id "com.dirnex.Dirnex" to reveal …` timed out
+    (`-1712`) and left `/Applications/Dirnex.app` running in its place, and a screenshot taken
+    afterwards was of the release build. A timed-out event, or a window that looks like the
+    pre-change app, is the moment to run the `pgrep` above and to check
+    `~/Library/Logs/DiagnosticReports` for a crash report before believing anything on screen.
 - **Background computer-use cannot press Return in a text field; it sets the field's selected text
   to a newline, which commits nothing.** Measured 2026-09-13 in Go ▸ Go to Location… while verifying
   M28 Slice 2: `app_key return`, aimed at the focused element and then at the field's own coordinate,
@@ -589,6 +596,20 @@ at build time.
     timer fires no earlier, is what says when to look. Reverted, it now fails 3/3. The two other
     waits in the suite were put under the same treatment and each still failed 3/3, which is what
     bounds the audit: they are settled by work already in flight, not by a timer nobody has armed.
+- **An Objective-C exception raised inside a Swift Testing body does not fail the test — it wedges
+  the test host, and `xcodebuild` sits there until something kills it.** Measured 2026-09-14: a test
+  read `textStorage.attribute(_:at:6:)` before an asynchronous RTF read had landed, the storage was
+  empty, AppKit raised `NSRangeException`, and the host then idled at **0 % CPU for ten minutes**
+  with nothing printed. Swift has no way to catch the exception, HIServices swallows it (the log
+  carries `[com.apple.hiservices:HIExceptions] FAULT: NSRangeException …` and a thread named
+  `SOME_OTHER_THREAD_SWALLOWED_AT_LEAST_ONE_EXCEPTION`), and the run never reaches its summary.
+  - **The tell is a host that is alive and idle**, which reads as a hang in the code under test.
+    `sample <pid>` shows a main thread waiting for events, and
+    `log show --predicate 'processID == <pid>'` names the exception and the test function in one line.
+  - **Guard any AppKit call that raises on a bad index with a `#require` on the length first**, and
+    wait on the content a load produces (the text itself) rather than on the surface that shows it:
+    `QuickViewTextPreviewTests.loaded` returns once the text surface is visible, which a backend makes
+    visible *before* its read finishes.
 - **A test helper that waits by racing a sleeper against `withCheckedContinuation` in a task group
   *hangs* on the timeout path instead of returning, and it only shows the day something finally
   fails.** `withTaskGroup` waits for every child on the way out, and a continuation carries no
@@ -1838,7 +1859,31 @@ at build time.
       (no controller, no preview items) never reports `isVisible == false` afterwards however long
       it is polled. So the close is not assertable there; what a test can pin is that the guard
       never brings a panel into existence.
-- **`NSView.clipsToBounds` is `false` by default, and `draw(_:)`'s `dirtyRect` can be larger than
+- **A page inserted into another `PDFDocument` does not keep its own document alive, and once that
+  document is gone the next accessibility walk aborts the process.** Found 2026-09-14 by crashing:
+  Quick View merges an iWork document's per-page PDFs into one, the preview drew, scrolled and
+  selected perfectly, and the app died the moment an accessibility client read the window —
+  `CGPDFPageCopyRootTaggedNode` → `_os_unfair_lock_recursive_abort` ("Trying to recursively lock an
+  os_unfair_lock"), `EXC_BREAKPOINT` / `SIGKILL`. The client was computer-use building its element
+  summary, and VoiceOver is the same kind of client, so this is a real user's crash.
+  - **A 60-line harness settled the cause with controls**: merging and releasing the part documents
+    was killed **3 of 3**; keeping the parts alive, inserting `page.copy()`, or redrawing every page
+    into one new PDF all walked 410 elements **0 of 3** failing. Pages drawn with Core Graphics and
+    Core Text reproduce it exactly as the generator's do, so a regression test needs no fixture.
+  - **`MergedPDFDocument` holds its parts**, which makes their lifetime the document's by
+    construction rather than something the view has to remember. Reverted, its test kills the test
+    host with the same abort, inside the test's own walk — which is the evidence and also the cost:
+    a regression here is a crashed run, not a red test.
+  - Invisible to every other signal: both suites, both linters and a screenshot all pass, because
+    only an accessibility read touches the page's tagged structure.
+- **`PDFView` opens a document below the top of its first page when `autoScales` rescales it.**
+  Measured 2026-09-14 in a harness: a plain six-page PDF and a merged iWork document both landed with
+  the current destination at y ≈ 675 of an 842-point page, and live, a Pages preview opened partway
+  down page one. It hid because a PDF shown on a view that already has the right scale looks fine.
+  Calling `layoutDocumentView()` and then `go(to: PDFDestination(page:, at: top))` after assigning the
+  document lands at 841.7. A view built in the same turn also needs its container laid out first, or
+  the scale is worked out against a zero frame.
+
   the view's bounds.** A backing fill of `dirtyRect` therefore paints over the view's *siblings*:
   the full-window Quick View overlay blacked out the sidebar and the function-key bar while its own
   frame was provably correct. The frame is what a screenshot shows, so eyeballing one points at the
@@ -7059,6 +7104,58 @@ probed live (2026-08-01/02) before any Swift; several results decided the shape.
   before someone "fixes" it into a type-checking loop.
 - **`sips -Z 1200 "$1"` overwrites the original.** `--out "${1%.*}-1200.${1##*.}"` writes beside it
   instead, which is what any one-click example acting on someone's photographs should do.
+
+### qlmanage (Quick Look's generators, as a converter)
+
+Quick View's office-document backend (docs/HISTORY.md ▸ 2026-09-14). Everything here was measured on
+macOS 26.6 before any Swift was written.
+
+- **Quick Look's Office and iWork previews are generated data, and `qlmanage -p -o <dir>` writes it
+  out.** `/System/Library/QuickLook/Office.qlgenerator` turns Word, Excel and PowerPoint files (old
+  binary formats included) into HTML with images as sibling files, and `iWork.qlgenerator` turns
+  Pages, Numbers and Keynote into one vector PDF per page or sheet with real text in it. Each
+  conversion took **50–740 ms**. `-o` is documented in `qlmanage -h` ("Output result in dir"), not
+  in the man page. The same data is reachable in-process through the `QLPreview*` C functions in
+  `QuickLook.tbd`, which have no header, so they are private.
+- **The exit status says nothing.** A corrupt `.docx` exits **0** with "did not produce any preview"
+  and writes no bundle, so the bundle's existence is the only answer. The bundle is
+  `<dir>/<document name>.qlpreview/`, with `Preview.html`, `PreviewProperties.plist` and
+  `AttachmentN.*`. Find it by its extension: the name is the document's own. A Cyrillic file name
+  with no locale variables set converted fine.
+- **`PreviewProperties.plist` says how to show the page.** Every Office bundle measured carried
+  `AllowJavascript` true and `AllowNetworkAccess` false. Word bundles add `CenterContent` true, which
+  asks whoever shows the page to centre its fixed-width block. `CanHavePages` is set for Word as well
+  as iWork, so it cannot tell the two routes apart; `BaseBundlePath` names the generator and can.
+  The attachments are also embedded as data in the plist, so the plist of a photo-heavy document is
+  megabytes.
+  - **`Width` plus `ShouldNotScale` is how Quick Look decides whether to fit a page to its panel.**
+    Every workbook bundle, Excel and Numbers alike, carries `ShouldNotScale` true: a sheet is read at
+    its own size and scrolls sideways. A Word document (`Width` 620) and a deck (753) do not, so they
+    are drawn across the panel. Honouring it matters in both directions. Fitted into a narrow pane, a
+    1 110-point Numbers sheet came out at half size, the thumbnail complaint again. Left at natural
+    size, a Word page in a full-window preview is a narrow column with small text.
+- **A workbook's sheet tabs need JavaScript.** With more than one sheet, Office draws a tab strip
+  whose script points an iframe at `AttachmentN.html`. With scripts off the tabs draw and do nothing.
+  The script is the generator's, and cell text is escaped (`<script>` in a cell came out as
+  `&lt;script>`), so the page can run it without running anything from the document.
+- **iWork's page is a column of `<img src="AttachmentN.pdf">`**, in document order and not
+  attachment-number order (a 12-page Pages document listed 7, 8, 10, 12, 11, 9, 1, 13, 2, 6, 3, 4).
+  Numbers wraps each sheet in its own page, listed as `SelectSheet(n, 'AttachmentK.html')` in the
+  tab strip. Its iframe names whichever sheet was selected, so the strip is the order. The same
+  script also calls `SelectSheet(0, sheetURL)` with a variable, so only a quoted argument is a page.
+  As a web page every word is a picture; merged into one PDF it selects and searches.
+- **The Office generator shows at most 4 096 rows of a sheet, and says nothing about it.** A
+  50 000-row workbook and a 6 000-row, 2-column one both came back with exactly 4 096 `<tr>`; a
+  300-row, 26-column one kept all 300 rows. Quick Look's own view has the same cap.
+- **Not everything a generator claims is worth taking.** The Office generator claims CSV, which stays
+  a text file in Dirnex. RTF previews as a URL rather than data ("produced a preview with a URL of
+  type public.rtf"), and no generator claims OpenDocument text at all; `NSAttributedString` reads
+  both in-process. `NSAttributedString` reads `.docx` too, but a 1 MB `.docx` came back as 744
+  characters with every image gone, so Word stays with the generator.
+- **An RTF parse is about 41 ms per megabyte** (248 ms for a 6 MB file), and `NSAttributedString` is
+  non-`Sendable` under Swift 6. So the read happens off the main actor behind an `@unchecked
+  Sendable` box, with the document type always given explicitly: left to detect, AppKit reads
+  anything that looks like HTML through WebKit, on the main thread, loading what the page names.
 
 ### git
 

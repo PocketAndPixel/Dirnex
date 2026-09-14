@@ -49,7 +49,8 @@ final class QuickViewPreviewView: NSView {
     /// The solid color behind a preview that doesn't fill the view — a small image, a failed
     /// preview. Dynamic colors are honored: this is re-resolved at draw time, where a captured
     /// `cgColor` would freeze at whichever appearance was current when it was taken.
-    private let backingColor: NSColor
+    /// Internal, not private: the PDF backend paints behind its pages with it, from its own file.
+    let backingColor: NSColor
     private let headerStyle: Header
     private let headerView: QuickViewHeaderView?
 
@@ -60,7 +61,9 @@ final class QuickViewPreviewView: NSView {
     let content = NSView()
 
     private var previewView: QLPreviewView?
-    private var pdfView: PDFView?
+    /// Internal, not private: built and driven from `QuickViewPreviewView+PDF`, and Swift's `private`
+    /// does not cross files.
+    var pdfView: PDFView?
     /// Internal, not private: built and driven from `QuickViewPreviewView+Image`, and Swift's
     /// `private` does not cross files.
     var imageView: NSImageView?
@@ -71,6 +74,10 @@ final class QuickViewPreviewView: NSView {
     var webSurface: QuickViewWebView?
     /// Internal for the same reason, from `QuickViewPreviewView+Placeholder`.
     var placeholderCard: QuickViewPlaceholderCard?
+    /// The office-document conversion in flight, so the next one — or putting the surface away —
+    /// stops the `qlmanage` it spawned rather than letting it finish for nobody. Internal, from
+    /// `QuickViewPreviewView+Document`.
+    var documentConversion: CancellationFlag?
     /// What the placeholder card's controls do, set just before each `show`. Deliberately not part
     /// of `RemotePreviewPlaceholder`, which is half of what "already showing this" means
     /// (`loadedPlaceholder`) and so has to stay `Equatable`.
@@ -158,6 +165,9 @@ final class QuickViewPreviewView: NSView {
             return
         }
         standDownPlaceholder()
+        // Here for the same reason: whichever backend takes the surface next, a document still being
+        // converted for the previous file is converting for nobody.
+        cancelDocumentConversion()
         if let url, Self.isPDF(url) {
             showPDF(url)
         } else if let url, Self.isImage(url) {
@@ -172,6 +182,10 @@ final class QuickViewPreviewView: NSView {
             // needs no such exception: `isText` takes it already, which is what made `1` work on a
             // `.md` before this milestone existed.
             showText(url)
+        } else if let url, Self.isConvertibleDocument(url) {
+            showConvertedDocument(url)
+        } else if let url, Self.isRichTextDocument(url) {
+            showRichText(url)
         } else {
             showQuickLook(url)
         }
@@ -197,6 +211,7 @@ final class QuickViewPreviewView: NSView {
         loadedPlaceholder = nil
         hasLoaded = false
         standDownPlaceholder()
+        cancelDocumentConversion()
         previewView?.previewItem = nil
         pdfView?.document = nil
         // Retire any pending fade-out: the surface is going away, and a stray one landing on the
@@ -323,40 +338,6 @@ final class QuickViewPreviewView: NSView {
         previewView?.previewItem = nil
     }
 
-    func standDownPDF() {
-        pdfView?.isHidden = true
-        pdfView?.document = nil
-    }
-
-    /// Show `url` in the PDFKit backend, standing down the Quick Look one. `autoScales` refits the
-    /// page to the surface for each new document; the user can then pinch to zoom in or out.
-    private func showPDF(_ url: URL) {
-        let pdfView = ensurePDFView()
-        standDownQuickLook()
-        standDownImage()
-        standDownText()
-        standDownWeb()
-        pdfView.isHidden = false
-        let document = PDFDocument(url: url)
-        pdfView.document = document
-        pdfView.autoScales = true
-        // Rasterize page one *now* rather than letting PDFKit do it lazily. Parsing a PDF is
-        // nearly free (measured 0.2 ms) but the first page render is not, and lazily it landed
-        // ~30 ms into the swipe's flip animation and cost four frames of it — the judder was
-        // reproducible on every flip into a PDF. Paid here it costs the same 3–8 ms while nothing
-        // is moving. The thumbnail itself is discarded; warming the page cache is the point.
-        _ = document?.page(at: 0)?.thumbnail(of: bounds.size, for: .mediaBox)
-    }
-
-    /// Whether `url` is a PDF, so it routes to `PDFView`. Prefers the file's real content type
-    /// (catches an odd extension) and falls back to the extension when that can't be read.
-    private static func isPDF(_ url: URL) -> Bool {
-        if let type = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType {
-            return type.conforms(to: .pdf)
-        }
-        return url.pathExtension.caseInsensitiveCompare("pdf") == .orderedSame
-    }
-
     /// Build the Quick Look backend on first use. `.compact` style drops Quick Look's
     /// title/controls chrome, which suits an always-on embedded preview. `init(frame:style:)` is
     /// failable, so this returns `nil` on the rare miss and the caller shows nothing.
@@ -369,22 +350,6 @@ final class QuickViewPreviewView: NSView {
         pin(preview, inside: content)
         previewView = preview
         return preview
-    }
-
-    /// Build the PDFKit backend on first use. Continuous single-page layout scrolls a multi-page
-    /// document naturally, and `PDFView` handles pinch-to-zoom itself.
-    private func ensurePDFView() -> PDFView {
-        if let pdfView { return pdfView }
-        let view = PDFView()
-        view.autoScales = true
-        view.displayMode = .singlePageContinuous
-        view.displaysPageBreaks = true
-        // The full-screen surface is deliberately black behind the page; the others follow the
-        // window. Reusing this view's own backing keeps the two consistent for free.
-        view.backgroundColor = backingColor
-        pin(view, inside: content)
-        pdfView = view
-        return view
     }
 
     // MARK: - Layout

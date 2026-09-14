@@ -12923,10 +12923,10 @@ front of a user:
 
 ---
 
-### After M19 — the follow-on log (2026-08-07 → 2026-09-12)
+### After M19 — the follow-on log (2026-08-07 → 2026-09-14)
 
 Sixty dated passes that landed outside a milestone of their own, between M18's close on
-2026-08-07 and 2026-09-12: user-reported bugs, three vault features, the tree crossing into S3,
+2026-08-07 and 2026-09-14: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
 sit here at the end rather than in a numeric slot — and they keep their **newest-first** order,
@@ -12934,6 +12934,63 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-14 — Quick View shows Word, Excel, PowerPoint, Pages, Numbers and Keynote files in-process,
+with every page, zoom and selection, plus RTF and OpenDocument text.** Reported with two screenshots:
+a `.docx` showed one page whose page arrows could not be clicked, an `.xlsx` was a thumbnail too small
+to read, and nothing in either could be zoomed or selected. None of it was fixable in the view those
+files reached. `QLPreviewView` renders out of process, and the surface has to swallow the mouse for it
+(docs/NOTES.md ▸ AppKit), which is why the arrows were dead. The route taken is the generator's
+*output* instead of its view.
+
+- **The probe decided the design.** `qlmanage -p -o <dir>` writes what Quick Look's generators produce:
+  real HTML for every Office format (tables, images as files, a script-driven tab strip for a
+  workbook's sheets) and one vector PDF per page or sheet for iWork, with real text. That took
+  50–740 ms across the formats. The same data is reachable in-process only through header-less
+  `QLPreview*` functions, which are private. Our own OOXML parsers would have covered none of `.xls`,
+  `.doc`, `.ppt` or iWork, and `NSAttributedString` drops a `.docx`'s images (1 MB came back as 744
+  characters). docs/NOTES.md ▸ *qlmanage* has the measurements.
+- **`QuickLookPreviewBundle` (core)** reads a bundle: whether to show the page (with the generator's
+  own JavaScript answer, its `CenterContent`, and a fit width unless `ShouldNotScale`) or to merge PDFs,
+  in reading order. For Numbers that order comes from the tab strip, not the iframe, which names
+  whichever sheet was selected. Only plain file names inside the bundle are returned. The routed
+  types are read from the two generators' own `Info.plist`, so a later macOS without a generator
+  falls back to Quick Look rather than to a tool that answers nothing. 21 tests over captured
+  bundles; four controls each failed only their own test.
+- **The app half.** `QuickLookDocumentConverter` spawns the tool with both streams to the null device
+  (its exit status is 0 even when it produced nothing) and caches the last eight conversions keyed by
+  `ArchiveIdentity`, purging its temp root at launch. `QuickViewPreviewView+Document` shows Office
+  pages in the existing network-blocked web view. There the generator's scripts may run, sheet
+  iframes may load from inside the bundle, and the page zooms to the surface width (0.5–2×) unless
+  it is a sheet. iWork pages go to the existing PDF view, fitted unless the bundle says it is a
+  sheet. `QuickViewPreviewView+RichText` reads RTF, RTFD and `.odt` off the main actor (about 41 ms
+  per megabyte, capped at 32 MB) into the text view with dark-appearance colour mapping. The text
+  view also gained pinch zoom. The PDF backend moved to its own file, since `QuickViewPreviewView`
+  sat near `file_length`.
+- **It crashed once, live, and the crash is the finding worth keeping.** The first screenshot of a
+  Pages preview killed the app. The screenshot tool's element summary walked the PDF view's
+  accessibility tree, and pages inserted into another `PDFDocument` had outlived the documents they
+  came from: `CGPDFPageCopyRootTaggedNode` aborted on a recursively locked `os_unfair_lock`. A harness
+  reproduced it 3 of 3, and 0 of 3 with the parts retained. `MergedPDFDocument` owns its parts, and a
+  test walks the tree; reverted, that test kills the host with the same abort. VoiceOver is the same
+  kind of client, so this was a real user's crash (docs/NOTES.md ▸ AppKit).
+- **Two more things only looking found.** `PDFView` opened the document below the top of page one
+  (y ≈ 675 of 842, for plain PDFs too; fixed in the shared funnel, with a test whose control fails on
+  the old position). And a Numbers sheet fitted into a pane was half size until `ShouldNotScale` was
+  honoured on the PDF route as well.
+
+Validation: 3,372 core tests; the app suite (1,184 tests, 1,103 executed with the live-server suites skipped, one pre-existing known issue) with the new
+suite serialized over the converter's shared temp root; both linters; all four CI scripts. Live, in
+the Debug build launched by path, pane and full-window: the `.docx` (fitted, centred, every image, a
+selection drag), a one-sheet `.xlsx` at full size, a two-sheet `.xls` whose second tab switched the
+sheet, a `.pptx` fitted to the pane, a 12-page `.pages` (opened at the top, selection highlighted,
+survived the accessibility walk), a `.numbers` sheet at 100 % with scrollbars, a `.key`, an `.rtf`
+and a styled `.odt` (bold, italic, red, Cyrillic, legible in dark mode), and a corrupt `.docx`
+falling back to Quick Look's icon with no conversion directory left behind. **Not verified live:**
+pinch zoom itself (a synthetic scroll is not a trackpad, docs/NOTES.md ▸ AppKit), rapid cursor
+stepping through many documents, an archive member or a server file (both reach the same
+`show(url)` through the local copy Quick View already uses), and the 4 096-row cap, which is
+measured in the generator but has no marker on screen.
 
 **2026-09-12 (later) — Download Now, Remove Download and Show in Finder, on every cloud provider.**
 Asked as a question: each cloud adds its own actions to Finder's menu, so can Dirnex have them too?

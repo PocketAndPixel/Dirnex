@@ -60,6 +60,13 @@ final class QuickViewWebView: NSView {
         /// fragment is wrapped afresh on every load, so the stylesheet is the one the current
         /// appearance calls for.
         case generated(QuickViewPreviewView.MarkdownScan, directory: URL)
+        /// An office document converted by macOS's own Quick Look generator
+        /// (`QuickViewPreviewView+Document`): `page` inside the bundle directory `bundle`, which is
+        /// also the read access, since a workbook's sheets and a document's images are its siblings.
+        /// `allowsJavaScript` is the **generator's** answer, not the user's preference — the only
+        /// scripts such a page carries are the generator's own tab strip (``DirnexCore/QuickLookPreviewBundle/Content``).
+        /// `fitWidth` is the width to scale the page to the surface from, when the generator allows it.
+        case converted(page: URL, bundle: URL, allowsJavaScript: Bool, fitWidth: Double?)
 
         /// The one navigation `decidePolicyFor` allows, fragments aside. For a generated page that
         /// is the base URL, because that is what the page's own links resolve against — measured:
@@ -68,7 +75,25 @@ final class QuickViewWebView: NSView {
             switch self {
             case let .file(url): url
             case let .generated(_, directory): directory
+            case let .converted(page, _, _, _): page
             }
+        }
+
+        /// Whether scripts run on this page: the user's switch for a file somebody wrote, the
+        /// generator's own request for a page it wrote.
+        @MainActor var allowsJavaScript: Bool {
+            switch self {
+            case .file, .generated: AppPreferences.quickViewJavaScriptValue
+            case let .converted(_, _, allowsJavaScript, _): allowsJavaScript
+            }
+        }
+
+        /// The directory an *embedded frame* may load from — a converted workbook shows each sheet
+        /// in an iframe the tab strip re-points. `nil` for everything else, which keeps the rule a
+        /// file-backed page has always had: nothing but the page itself.
+        var frameDirectory: URL? {
+            if case let .converted(_, bundle, _, _) = self { return bundle }
+            return nil
         }
     }
 
@@ -172,6 +197,41 @@ final class QuickViewWebView: NSView {
         load(.generated(scan, directory: source.deletingLastPathComponent().standardizedFileURL))
     }
 
+    /// Render a page Quick Look's generator wrote for an office document, from inside its bundle.
+    func showConverted(page: URL, bundle: URL, allowsJavaScript: Bool, fitWidth: Double?) {
+        load(.converted(
+            page: page.standardizedFileURL,
+            bundle: bundle.standardizedFileURL,
+            allowsJavaScript: allowsJavaScript,
+            fitWidth: fitWidth
+        ))
+    }
+
+    /// Scale a converted page to the surface's width, the way Quick Look's own view draws a Word
+    /// page or a slide across its panel — within bounds, so a phone-width pane still gets a readable
+    /// page and a full-screen one does not get letters an inch high. `pageZoom` rather than
+    /// magnification: it lays the page out again at the new size, so text stays sharp and the user's
+    /// own pinch still zooms on top of it. Every other page is drawn at 100 %, so a document's zoom
+    /// cannot carry over into the next HTML file.
+    private func applyFit() {
+        guard case let .converted(_, _, _, fitWidth?) = page, bounds.width > 0 else {
+            if webView.pageZoom != 1 { webView.pageZoom = 1 }
+            return
+        }
+        let zoom = min(
+            max(bounds.width / fitWidth, Self.fitZoomRange.lowerBound),
+            Self.fitZoomRange.upperBound
+        )
+        if abs(webView.pageZoom - zoom) > 0.001 { webView.pageZoom = zoom }
+    }
+
+    private static let fitZoomRange: ClosedRange<CGFloat> = 0.5...2
+
+    override func layout() {
+        super.layout()
+        applyFit()
+    }
+
     /// Load the current page again — what a changed JavaScript preference needs, since the answer
     /// is given per navigation and an already-rendered page has had its. A no-op when nothing is
     /// loaded.
@@ -194,9 +254,13 @@ final class QuickViewWebView: NSView {
 
     private func load(_ page: Page) {
         self.page = page
+        applyFit()
         switch page {
         case let .file(url):
             webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+        case let .converted(page, bundle, _, _):
+            webView.magnification = 1
+            webView.loadFileURL(page, allowingReadAccessTo: bundle)
         case let .generated(scan, directory):
             webView.loadHTMLString(
                 QuickViewMarkdownStyle.document(body: scan.html, isTruncated: scan.isTruncated),
@@ -243,9 +307,11 @@ extension QuickViewWebView: WKNavigationDelegate {
         decidePolicyFor navigationAction: WKNavigationAction,
         preferences: WKWebpagePreferences
     ) async -> (WKNavigationActionPolicy, WKWebpagePreferences) {
-        preferences.allowsContentJavaScript = AppPreferences.quickViewJavaScriptValue
+        preferences.allowsContentJavaScript = page?.allowsJavaScript
+            ?? AppPreferences.quickViewJavaScriptValue
         guard let url = navigationAction.request.url else { return (.cancel, preferences) }
-        return (isPermitted(url) ? .allow : .cancel, preferences)
+        let inFrame = navigationAction.targetFrame.map { !$0.isMainFrame } ?? false
+        return (isPermitted(url, inFrame: inFrame) ? .allow : .cancel, preferences)
     }
 
     /// The empty document `clearPage` loads, and the page this preview is showing — compared
@@ -259,9 +325,17 @@ extension QuickViewWebView: WKNavigationDelegate {
     /// admitted only fragments was written and measured to change nothing else, so it was dropped
     /// rather than carried: it would have had to carve out the initial load and the reload, both of
     /// which arrive here too.
-    private func isPermitted(_ url: URL) -> Bool {
+    ///
+    /// An embedded frame is the one other thing a *converted* page may load: a sheet page from inside
+    /// its own bundle, and nothing outside it — a link in a workbook cell must no more replace a sheet
+    /// with a web page than it may replace the document.
+    private func isPermitted(_ url: URL, inFrame: Bool) -> Bool {
         if url.absoluteString.hasPrefix("about:") { return true }
         guard let page else { return false }
+        if inFrame, let directory = page.frameDirectory, url.isFileURL {
+            let candidate = url.standardizedFileURL.deletingFragment
+            return candidate.deletingLastPathComponent().path == directory.path
+        }
         return url.standardizedFileURL.deletingFragment == page.permittedURL
     }
 }

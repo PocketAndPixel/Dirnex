@@ -44,6 +44,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ArchiveWriter.purgeTemporaries()
         RemoteFileCache.purgeTemporaries()
         CompositeBackend.purgeTemporaries()
+        // Quick View's converted office documents: copies of the user's documents as HTML and PDF.
+        QuickLookDocumentConverter.purgeTemporaries()
         // And the copies that make an archive rewrite undoable — pruned rather than purged, since
         // the journal that names them survives relaunch too. Here for the same reason as the
         // others: nothing is rewriting yet, and the persisted journal *is* the live set until a

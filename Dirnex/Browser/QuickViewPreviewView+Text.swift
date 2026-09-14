@@ -104,7 +104,8 @@ extension QuickViewPreviewView {
     }
 
     /// Build the text backend on first use and pin it over the surface, alongside the other two.
-    private func ensureTextSurface() -> QuickViewTextView {
+    /// Internal, not private: the rich-text backend draws into the same surface from its own file.
+    func ensureTextSurface() -> QuickViewTextView {
         if let textSurface { return textSurface }
         let surface = QuickViewTextView()
         pin(surface, inside: content)
