@@ -47,6 +47,11 @@ for Settings and dialogs).
 - **Verify live before claiming done** — and fully quit any running instance first; `open`
   just re-focuses the stale binary. `xcodebuild` writes to
   `~/Library/Developer/Xcode/DerivedData/`, not the repo's `build/`.
+  - **A live run that reads a saved secret raises a macOS Keychain password prompt you cannot see.**
+    Secrets live in the login Keychain, and the Debug build is signed differently from the
+    `/Applications` build that saved them, so macOS asks Oleg for his login password. Computer-use
+    screenshots filter that window out, so it looks like an empty screen or a connect that stalls.
+    Tell Oleg before such a run, and never try to answer the prompt yourself.
 - **Ask before a fork in the road.** Big design choices get a recommendation, not a survey.
 - **Leave changes uncommitted.** Oleg commits, in terse one-liners.
 

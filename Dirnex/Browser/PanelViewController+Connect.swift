@@ -201,6 +201,11 @@ extension PanelViewController {
         let password: String?
         let saveName: String?
         let activityName: String?
+        /// Whether a changed host key has already been put to the user in this attempt. The branch
+        /// retries once the stale pin is removed, so a refusal that outlives the removal — a pin the
+        /// repair could not reach — would otherwise raise the same question for as long as the user
+        /// kept accepting it. The FTPS twin is `FTPConnectRequest.hasWeighedCertificate`.
+        var hasWeighedHostKey = false
     }
 
     private func connectSFTP(_ request: SFTPConnectRequest) async -> ConnectServerPrompt.Attempt {
@@ -255,13 +260,20 @@ extension PanelViewController {
             // A changed host key isn't a dead end — offer to re-trust the new key and reconnect,
             // preserving the auth and save name so the retry behaves exactly like the first try.
             if case let .hostKeyChanged(change)? = error as? SFTPTransportError {
+                // One question per connect: a refusal that survives the repair is reported, since
+                // asking again could only loop.
+                guard !request.hasWeighedHostKey else {
+                    return .failed(Self.knownHostsRepairFailed(file: change.knownHostsFile))
+                }
                 guard await confirmHostKeyChange(location: location, change: change) else {
                     return .failed(Self.connectFailureDetail(error))
                 }
                 guard await repairKnownHosts(location: location, change: change) else {
                     return .failed(Self.knownHostsRepairFailed(file: change.knownHostsFile))
                 }
-                return await connectSFTP(request)
+                var retry = request
+                retry.hasWeighedHostKey = true
+                return await connectSFTP(retry)
             }
             return .failed(Self.connectFailureDetail(error))
         }
@@ -386,7 +398,13 @@ extension PanelViewController {
     /// Drop the stale `known_hosts` pin (via `ssh-keygen -R`) so the reconnect pins the server's
     /// current key as if it were a fresh host. Returns `false` when the old key couldn't be removed.
     private func repairKnownHosts(location: SFTPLocation, change: SFTPHostKeyChange) async -> Bool {
-        let target = SFTPKnownHosts.removalTarget(host: location.host, port: location.port)
+        // The name OpenSSH refused on, not the location's: a saved `nas` is dialed as `nas.local`, and
+        // removing `nas` removes nothing while `ssh-keygen` still exits 0.
+        let target = SFTPKnownHosts.removalTarget(
+            for: change,
+            host: location.host,
+            port: location.port
+        )
         let file = change.knownHostsFile
         return await BlockingWork.run {
             SFTPKnownHostsRepair.removeKey(target: target, knownHostsFile: file)

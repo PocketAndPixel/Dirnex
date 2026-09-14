@@ -3503,6 +3503,30 @@ do not share a resolver, and neither half of that is obvious from either call si
   restored tab unable to match its own endpoint (`TabRestorePolicy` joins on exactly that string).
   `known_hosts` follows the *dialed* name instead, which is stable rather than a hazard because the
   fallback is deterministic.
+  - **Every consumer of a pin has to follow the dialed name too, and the changed-key repair did not.**
+    Reported 2026-09-14 after a NAS reinstall: the saved server `nas` raised "The identity of “nas” has
+    changed" again every time the user pressed Trust, while the same NAS saved by IP re-trusted fine.
+    `repairKnownHosts` ran `ssh-keygen -R` on `location.host` — `nas` — and the stale pins were
+    three hashed `nas.local` lines, so it removed nothing. It also *reported* success, because
+    **`ssh-keygen -R` exits 0 for a host it did not find** ("Host nas not found in …", measured,
+    OpenSSH 10.3), and the retry met the same pin. So it failed quietly twice: nothing wrong was
+    removed, and the dialog came back with no error.
+  - **OpenSSH names the host it refused on, already in the form `-R` takes**: `Host key for nas.local
+    has changed` on port 22, and `Host key for [localhost]:2224 has changed` on a throwaway `sshd`
+    dialed as `LocalHost` — lowercased and bracketed. `SFTPHostKeyChange.host` had parsed that name
+    all along, and nothing had read it. `SFTPKnownHosts.removalTarget(for:host:port:)` uses it only
+    when it is a name *this* connection could have dialed (the typed host or a `HostNameFallback`
+    candidate, on this port), so a refusal naming anything else cannot remove another server's pin.
+  - **A retry after a repair needs a one-shot guard, or a repair that misses becomes a loop.** The
+    FTPS flow already had `hasWeighedCertificate`; SFTP had nothing. `SFTPConnectRequest
+    .hasWeighedHostKey` now turns a refusal that survives the repair into the existing "couldn't be
+    removed automatically" sentence. Verified A/B on the live NAS: the guard alone (old target) ended
+    in that alert with `known_hosts` byte-identical; with the new target, Trust connected and the
+    three `nas.local` pins were replaced by the new `r7SfFlj…` key.
+  - The test fixture for this has to be a *changed* key on a *completed* name, which no loopback
+    `sshd` reaches through the fallback on its own. The real refusal's bytes were captured instead,
+    with `ssh -o UserKnownHostsFile=<copy of known_hosts> -o BatchMode=yes …`: host-key checking
+    fails before authentication, so no login is attempted and DSM's lockout counter never moves.
 - **This Mac's own Bonjour name is a free live fixture**, and a better one than the NAS: `scutil
   --get LocalHostName` here is `Mac4`, `Mac4` resolves nowhere and `Mac4.local` resolves — the exact
   reported shape, reproducible against a throwaway `pyftpdlib` server bound to `0.0.0.0` with no

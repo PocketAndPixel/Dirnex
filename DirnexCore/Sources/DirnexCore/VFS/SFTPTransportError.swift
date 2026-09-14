@@ -114,7 +114,10 @@ public enum SFTPTransportError: Error, Sendable, Equatable {
 /// file. Every field is best-effort — a missing one is left empty/zero rather than failing the whole
 /// parse — so the app still reaches the re-trust path even if OpenSSH's wording drifts.
 public struct SFTPHostKeyChange: Sendable, Equatable {
-    /// The host whose key changed, as OpenSSH names it (usually the address the user connected to).
+    /// The host whose key changed, as OpenSSH names it: the name it actually *dialed*, lowercased and
+    /// bracketed with the port off 22 (`[nas.local]:2222`). Not necessarily what the user typed — a
+    /// bare `nas` is dialed as `nas.local` (``HostNameFallback``) — which is why the repair reads its
+    /// target through ``SFTPKnownHosts/removalTarget(for:host:port:)`` rather than the location.
     public let host: String
     /// The key algorithm, e.g. `ED25519` or `RSA`; empty if the message didn't name it.
     public let keyType: String
@@ -209,5 +212,30 @@ public struct SFTPHostKeyChange: Sendable, Equatable {
 public enum SFTPKnownHosts {
     public static func removalTarget(host: String, port: Int) -> String {
         port == SFTPLocation.defaultPort ? host : "[\(host)]:\(port)"
+    }
+
+    /// The `ssh-keygen -R` target for a changed-key refusal on a connection to `host`:`port` — the
+    /// name OpenSSH *refused on*, which is not always the name the user typed.
+    ///
+    /// **Why the typed name is not enough.** A bare LAN label is dialed through ``HostNameFallback``,
+    /// so a server saved as `nas` is contacted as `nas.local`, and that is the name `known_hosts`
+    /// pins. Removing `nas` removes nothing — and `ssh-keygen -R` exits **0** for a host it did not
+    /// find (measured 2026-09-14, OpenSSH 10.3) — so the repair reported success, the retry met the
+    /// same stale pin, and the trust dialog came back for as long as the user kept accepting it.
+    ///
+    /// **Why OpenSSH's name can be used as it stands.** The refusal ends "Host key for <name> has
+    /// changed", and `<name>` is already the form `known_hosts` keys on: lowercased, bare on the
+    /// default port and `[name]:port` otherwise (measured against a NAS on 22 and a throwaway `sshd`
+    /// on 2224). It is honoured only when it is a name *this* connection could have dialed — the host
+    /// as typed or one of its fallback candidates, on this port — so a refusal naming anything else
+    /// can never aim the removal at another server's pin. That case, and a refusal that named
+    /// nothing, keep the typed name.
+    public static func removalTarget(for change: SFTPHostKeyChange, host: String, port: Int) -> String {
+        let dialable = ([host] + HostNameFallback.candidates(for: host)).map {
+            removalTarget(host: $0, port: port).lowercased()
+        }
+        return dialable.contains(change.host.lowercased())
+            ? change.host
+            : removalTarget(host: host, port: port)
     }
 }
