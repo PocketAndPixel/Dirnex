@@ -139,6 +139,25 @@ public struct DelimitedTable: Sendable, Equatable {
         (0..<columnCount).map { cell(row: row, column: $0) }
     }
 
+    /// How many UTF-8 bytes the longest value in column `column` takes, over every data row, its
+    /// quotes not counted — found from the cells' ranges, with nothing decoded.
+    ///
+    /// What sizes a column of numbers: a width sampled from the first rows cuts off a larger value
+    /// further down, which a sort then brings to the top as `1374…`, and a number cut short reads as a
+    /// different number. Digits are one byte each, so for such a column this is its character count.
+    public func longestValueByteCount(inColumn column: Int) -> Int {
+        guard column >= 0 else { return 0 }
+        var longest = 0
+        for record in (hasHeaderRow ? 1 : 0)..<recordCount {
+            let index = recordStarts[record] + column
+            guard index < recordStarts[record + 1] else { continue }
+            let cell = cells[index]
+            let length = Int(cell.end - cell.start)
+            longest = max(longest, cell.form == .verbatim ? length : max(length - 2, 0))
+        }
+        return longest
+    }
+
     /// What column `column` is called: the header row's text when there is one and it is not blank,
     /// and otherwise the column's spreadsheet letter.
     public func title(ofColumn column: Int) -> String {

@@ -723,6 +723,13 @@ at build time.
     language-independent, and the control then failed on demand. The neutered build was telling
     somebody with a bad secret that their key had **signed in**, which the first version could not
     see.
+- **A fixture on which the right rule and the wrong one agree tests neither, and `localizedStandardCompare`
+  agrees with a numeric sort on plain integers.** Measured 2026-09-15: sorting a numeric CSV column as
+  text instead of by value left `["-2.5", "0.75", "9", "10", "100"]` green, because Finder's comparison
+  reads digit runs as numbers. It parts company on fractions and negatives (`1.5` before `1.25`, `-2`
+  before `-10`), and a fixture holding those failed the control. When a test pins a choice between two
+  rules, take the fixture from where they disagree.
+
 - **A `git checkout` is not available to revert a control here, because the work is uncommitted** —
   Oleg commits, so a control's cleanup has to copy the file aside and copy it back. Done anyway
   2026-08-29, and what made it recoverable is worth the sentence: the copy taken aside was of the
@@ -1338,6 +1345,14 @@ at build time.
     strip of its own and the clip starts below it, so origin 0 is right and the test passed against the
     bug. It took `.fullSizeContentView` (the browser window's) *and* a surface laid out before the table
     landed to fail the way the app did.
+
+- **Removing a sorted `NSTableColumn` clears the table's `sortDescriptors` and calls
+  `tableView(_:sortDescriptorsDidChange:)` as it does.** Measured 2026-09-15 while adding header sorting
+  to Quick View's CSV table: descriptors `["1"]` became `[]` on `removeTableColumn`, and the handler
+  ran. A table that rebuilds its columns for each new file therefore runs its sort handler in the
+  middle of the rebuild, against whatever model is set at that moment. Clear the descriptors first
+  under a flag the handler ignores. A control that removes the clearing line cannot fail, since AppKit
+  clears them anyway, so the flag is the part that matters.
 
 - **`NSAlert.runModal()` centers on the *display*, not on the window that raised it** — measured, a
   260 pt alert lands at x=734 on a 1728 pt screen whatever the app window's frame is. So every

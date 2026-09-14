@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-15)
 
-Sixty-four dated passes that landed outside a milestone of their own, between M18's close on
+Sixty-five dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-15: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12934,6 +12934,51 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-15 (night) — the CSV table sorts by a click on a column header.** Asked for straight after
+the table below landed.
+
+- **`DelimitedTable.rowOrder(sortedByColumn:ascending:)` (core)** returns a permutation rather than
+  moving rows. A numeric column sorts by value, reading `1,5` and `1.5` the way the column writes them
+  (the first value with a decisive separator settles it; a column of nothing but `1,234` is read by
+  the delimiter). Any other column sorts with `localizedStandardCompare`, as Finder sorts names.
+  Blanks go last in both directions, a non-number in a numeric column after every number, and ties
+  keep file order in both directions. Release: 165 ms for 283 000 numbers, 663 ms for 173 000
+  distinct names, 56 ms for the widest text column of the 3 MB matrices, under 30 ms on the reported
+  export. 10 tests; four controls (numbers sorted as text, blanks grouped with text, ties reversed
+  with the direction, decimal commas ignored) each failed their own tests.
+  - **The first numeric fixture could not tell a value sort from a name sort.** `localizedStandardCompare`
+    already puts `9` before `10`, so sorting the column as text left the test green. The fixture now
+    holds `1.25`/`1.5` and `-2`/`-10`, where the two orders disagree.
+- **The app half (`QuickViewTableView+Sorting`).** Every column carries a sort-descriptor prototype,
+  and `#` sorts by row number, which is the way back to the file's order (a second click reverses
+  it). The sort runs off the main actor behind a generation counter, so one still running for a
+  replaced table is dropped. A row keeps its number from the file whatever the order. Where the view
+  lands depends on the selection: the row selected as the table opened is nobody's choice, so a sort
+  goes to the top of the new order and the strip shows that row; rows somebody selected stay selected
+  and in view. ⌘C copies the selected rows in the order they are shown.
+- **Removing a sorted column clears the table's sort descriptors and calls the delegate** (measured),
+  so rebuilding the columns for a new file would run a sort mid-rebuild. `resetSort` clears them
+  first, under a flag the handler ignores.
+- **Two width faults only a sort exposed, both found live on a 3 001-row load-test log.** The sort
+  arrow cut short a header sized for its bare title (`ela…`), and sorting `bytes` brought values from
+  past the width sample to the top drawn as `1374…`. A header's width is now AppKit's own, asked with
+  an arrow in it (`sizeToFit` with the indicator set), and a numeric column is wide enough for its
+  longest value in the whole file (`DelimitedTable.longestValueByteCount(inColumn:)`, read from the
+  cells' byte ranges with nothing decoded). The width test first held too few rows to reach past the
+  sample and passed with the rule removed; its fixture now puts the long value at row 1 201.
+
+Controls: seven app reverts. Six failed only their own test: rows numbered by position, a stale sort
+not dropped, `#` ignored, the opening selection kept through a sort, a chosen selection dropped, and
+⌘C copying by displayed index. The seventh, not clearing the indicators for a new file, cannot fail,
+because AppKit clears them when the column goes. The stale-sort test first waited a fixed 200 ms and
+passed with its guard removed, twice; it now awaits the sort's own task and fails on demand, drawing
+`["", "yankee"]` from the old table's order. Validation: both linters, the four CI scripts, 3 423
+core tests (11 new), and the app suite (1 220 tests, 1 139 executed with the live-server suites
+skipped, one pre-existing known issue; 8 new). Live, in the Debug build launched by path, on the
+load-test log: `elapsed` ascending (86, 87, 91…) with each row keeping its file number, descending
+(4458, 3288…), `#` back to file order, and `bytes` descending shown in full under an uncut header.
+**Not verified live:** ⌘C after a sort from a real key press, and the 663 ms sort on a real file.
 
 **2026-09-15 (evening) — a CSV or TSV file previews as a table, with the selected row in full
 underneath.** Asked for with a screenshot of `prod result.csv` in the text preview: every record one
@@ -13004,6 +13049,7 @@ docs/NOTES.md ▸ AppKit), ⌘C from a real key press, a CSV on a server or in a
 same `show(url)` through the local copy Quick View already uses), and a semicolon or TSV file from
 another app. **Left undone:** sorting by a column, zoom on the table, and retitling View ▸ View
 Rendered Page for a table (the header says "Table"; the menu keeps its one title in every language).
+Sorting was taken up the same night (above).
 
 **2026-09-15 (later) — images zoom too.** Asked for straight after the keys below landed. The image
 was a bare `NSImageView` pinned to the surface with `scaleProportionallyDown`, which fits a large
