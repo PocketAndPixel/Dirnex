@@ -47,6 +47,17 @@ struct QuickViewZoomTests {
         #expect(QuickViewZoom.step(from: 1.3, .smaller) == 1.25)
     }
 
+    @Test("a photograph fitted below the ladder steps up to it, and has no step smaller")
+    func photoFittedBelowTheLadder() {
+        // An 8000-point panorama fitted into a 1000-point surface opens at 0.125.
+        #expect(QuickViewZoom.step(from: 0.125, .larger) == 0.25)
+        #expect(QuickViewZoom.step(from: 0.125, .smaller) == nil)
+        // And one fitted at 0.39 reaches actual size in three steps.
+        #expect(QuickViewZoom.step(from: 0.39, .larger) == 0.5)
+        #expect(QuickViewZoom.step(from: 0.5, .larger) == 0.67)
+        #expect(QuickViewZoom.step(from: 0.67, .larger) == 0.75)
+    }
+
     @Test("a view's own rounding of a level does not count as being short of it")
     func rounding() {
         // A scale read back as 1.2499 or 1.2501 is 1.25: the next step up is 1.5, down is 1.1.

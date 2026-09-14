@@ -110,7 +110,10 @@ extension BrowserWindowController {
             let preview = activeFullSizePreview,
             // Over the preview itself: in full-window mode the sidebar is still there beside it,
             // and scrolling *it* is the sidebar's business.
-            preview.bounds.contains(preview.convert(event.locationInWindow, from: nil))
+            preview.bounds.contains(preview.convert(event.locationInWindow, from: nil)),
+            // A photograph or a PDF zoomed wider than the surface pans instead, as Preview's does:
+            // the swipe only turns to the next file once what is on screen fits.
+            !preview.consumesHorizontalScroll
         else { return false }
 
         trackQuickViewSwipe(event, on: preview)

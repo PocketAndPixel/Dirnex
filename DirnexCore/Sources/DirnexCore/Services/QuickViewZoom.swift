@@ -7,10 +7,16 @@ import Foundation
 /// people learned these keys: fine steps near 100 %, where a small change is what reading needs,
 /// and wide ones far from it, where the point is to get somewhere.
 ///
-/// A zoom here is always *relative to how the preview first drew the file*. A Word page fitted to
-/// the surface is already scaled, and a sheet is at its own size; 1 is that starting point in both
-/// cases, so ⌘0 means "as it opened" and a step means "a bit larger than that" rather than jumping to
-/// an absolute 100 % the user never saw.
+/// For a page, a PDF or text a zoom is *relative to how the preview first drew the file*. A Word page
+/// fitted to the surface is already scaled, and a sheet is at its own size; 1 is that starting point in
+/// both cases, so ⌘0 means "as it opened" and a step means "a bit larger than that" rather than jumping
+/// to an absolute 100 % the user never saw.
+///
+/// An image is the exception, and uses the ladder as **absolute** scales: a photograph opens fitted at
+/// some arbitrary fraction (0.39 for a measured panorama), and stepping from there lands on 50 %, 67 %,
+/// 100 %, so its actual size is a step away. ⌘0 still goes back to the fit. That is why `step` accepts
+/// a starting point that is not on the ladder, and why a photo fitted below its smallest level has no
+/// step smaller.
 public enum QuickViewZoom {
     /// Which way a step goes.
     public enum Direction: Sendable {

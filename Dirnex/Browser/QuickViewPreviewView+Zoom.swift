@@ -5,18 +5,18 @@ import DirnexCore
 /// how a step reaches it. The keys themselves are the window's (`BrowserWindowController+QuickViewZoom`),
 /// since the surface refuses first responder so the arrows keep driving the file list.
 ///
-/// Three backends zoom and three do not, and the split is not arbitrary. A web page (HTML, Markdown,
-/// a converted office document), a PDF (including a converted iWork document) and text (source or
-/// rich) each already had a zoom a pinch could reach, and the keys drive that same zoom. A photograph,
-/// Quick Look's own out-of-process view and the remote placeholder card have none — the image view
-/// fits a photo to the surface with no scroll view to pan a larger one in — so the commands are
-/// disabled there rather than doing something the pinch cannot.
+/// Four backends zoom and two do not. A web page (HTML, Markdown, a converted office document), a PDF
+/// (including a converted iWork document) and text (source or rich) each already had a zoom a pinch
+/// could reach, and the keys drive that same zoom; an image gained one of its own
+/// (`QuickViewImageScrollView`). Quick Look's out-of-process view and the remote placeholder card have
+/// nothing to zoom, so the commands are disabled there.
 extension QuickViewPreviewView {
     /// The zooming backend on screen, if any.
     private enum ZoomTarget {
         case web(QuickViewWebView)
         case pdf
         case text(QuickViewTextView)
+        case image(QuickViewImageScrollView)
     }
 
     private var zoomTarget: ZoomTarget? {
@@ -24,6 +24,9 @@ extension QuickViewPreviewView {
         if let webSurface, !webSurface.isHidden { return .web(webSurface) }
         if let pdfView, !pdfView.isHidden, pdfView.document != nil { return .pdf }
         if let textSurface, !textSurface.isHidden { return .text(textSurface) }
+        if let imageScrollView, !imageScrollView.isHidden, imageScrollView.imageView.image != nil {
+            return .image(imageScrollView)
+        }
         return nil
     }
 
@@ -33,6 +36,7 @@ extension QuickViewPreviewView {
         case let .web(surface): surface.zoomLevel
         case .pdf: pdfZoomLevel
         case let .text(surface): surface.zoomLevel
+        case let .image(scrollView): scrollView.zoomLevel
         case nil: nil
         }
     }
@@ -49,6 +53,7 @@ extension QuickViewPreviewView {
         case let .web(surface): !surface.isAtStartingZoom
         case .pdf: abs(pdfZoomLevel - 1) > 0.005 || pdfView?.autoScales != pdfFitsWidth
         case let .text(surface): abs(surface.zoomLevel - 1) > 0.005
+        case let .image(scrollView): !scrollView.isAtStartingZoom
         case nil: false
         }
     }
@@ -65,6 +70,7 @@ extension QuickViewPreviewView {
         case let .web(surface): surface.resetZoom()
         case .pdf: setPDFZoomLevel(1)
         case let .text(surface): surface.setZoomLevel(1)
+        case let .image(scrollView): scrollView.resetZoom()
         case nil: break
         }
     }
@@ -74,7 +80,29 @@ extension QuickViewPreviewView {
         case let .web(surface): surface.setZoomLevel(level)
         case .pdf: setPDFZoomLevel(level)
         case let .text(surface): surface.setZoomLevel(level)
+        case let .image(scrollView): scrollView.setZoomLevel(level)
         case nil: break
+        }
+    }
+
+    /// Whether the content on screen is zoomed wider than the surface, so a sideways two-finger scroll
+    /// belongs to it — panning — rather than to the swipe that turns to the next file. Preview's own
+    /// rule: the swipe only flips pages that fit.
+    ///
+    /// An image and a PDF can say so. Text never runs wider than the surface (it re-wraps as it
+    /// zooms), and a web page scrolls inside WebKit, where the width is not ours to read without a
+    /// script — so a page keeps the swipe it always had.
+    var consumesHorizontalScroll: Bool {
+        switch zoomTarget {
+        case let .image(scrollView): scrollView.pansHorizontally
+        case .pdf:
+            if let scrollView = pdfView?.documentView?.enclosingScrollView,
+               let document = scrollView.documentView {
+                document.frame.width > scrollView.contentView.bounds.width + 0.5
+            } else {
+                false
+            }
+        case .web, .text, nil: false
         }
     }
 }

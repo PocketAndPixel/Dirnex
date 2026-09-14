@@ -70,6 +70,9 @@ final class QuickViewPreviewView: NSView {
     /// Internal, not private: built and driven from `QuickViewPreviewView+Image`, and Swift's
     /// `private` does not cross files.
     var imageView: NSImageView?
+    /// The scroll view `imageView` sits in, so a zoomed image can be panned. Internal for the same
+    /// reason as the image view.
+    var imageScrollView: QuickViewImageScrollView?
     /// Internal, not private: built and driven from `QuickViewPreviewView+Text`, and Swift's
     /// `private` does not cross files.
     var textSurface: QuickViewTextView?
@@ -226,7 +229,7 @@ final class QuickViewPreviewView: NSView {
         // surface is no longer showing.
         cancelPendingFlip()
         resetSwipe()
-        imageView?.image = nil
+        imageScrollView?.show(nil)
         textSurface?.clearText()
         webSurface?.clearPage()
     }
@@ -285,8 +288,10 @@ final class QuickViewPreviewView: NSView {
     /// The in-process backends are the deliberate exceptions, each because the mouse is the whole
     /// reason it exists: `PDFView` scrolls and pinch-zooms a document, the text view is where a drag
     /// *selects* — the thing Quick Look's preview cannot offer — and the web view is where a page
-    /// taller than the surface **scrolls at all**, which is the whole of §M16. All three consume
-    /// what they handle, which is what separates them from the remote view. The header keeps the
+    /// taller than the surface **scrolls at all**, which is the whole of §M16. An image's scroll view
+    /// joined them with zoom (2026-09-15): a zoomed photograph has to be panned and pinched, and a
+    /// click it does not use travels up its responder chain to this view's own swallowing handlers.
+    /// All of them consume what they handle, which is what separates them from the remote view. The header keeps the
     /// mouse too — as do the placeholder card's Download and Stop buttons, which are the only way to
     /// ask for a large remote file or call one off. The *buttons* are exempt and not the card, so the
     /// exemption is exactly as large as the affordance.
@@ -295,6 +300,7 @@ final class QuickViewPreviewView: NSView {
         if let hit = super.hitTest(point), hit.isInteractiveQuickViewBackend(
             among: [
                 pdfView,
+                imageScrollView,
                 textSurface?.interactiveSubtree,
                 webSurface?.interactiveSubtree,
                 headerView,

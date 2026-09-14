@@ -90,7 +90,7 @@ extension QuickViewPreviewView {
     /// The bytes are read off the main actor so a large photo does not stall the flip; `Data` is
     /// `Sendable` where `NSImage` is not, which is why the image itself is built back here.
     func showImage(_ url: URL) {
-        let view = ensureImageView()
+        let view = ensureImageScrollView()
         standDownPDF()
         standDownQuickLook()
         standDownText()
@@ -103,7 +103,7 @@ extension QuickViewPreviewView {
         Task { [weak self] in
             let image = await Self.loadImage(at: url, isRAW: isRAW)
             guard let self, token == loadToken else { return }
-            view.image = image
+            view.show(image)
             // Announce even when `image` is nil: a file that fails to decode has still finished
             // loading, and a page turn waiting on it would otherwise sit out its whole bound.
             contentDidLoad()
@@ -131,8 +131,8 @@ extension QuickViewPreviewView {
     }
 
     func standDownImage() {
-        imageView?.isHidden = true
-        imageView?.image = nil
+        imageScrollView?.isHidden = true
+        imageScrollView?.show(nil)
     }
 
     /// Whether `url` is an image, so it routes to the in-process `NSImageView`. Content type first
@@ -161,24 +161,15 @@ extension QuickViewPreviewView {
         return UTType(filenameExtension: url.pathExtension)?.conforms(to: .rawImage) ?? false
     }
 
-    /// Build the image backend on first use. `scaleProportionallyDown` matches Quick Look: fit a
-    /// large photo to the surface, but never blow a small one up past its own size.
-    func ensureImageView() -> NSImageView {
-        if let imageView { return imageView }
-        let view = NSImageView()
-        view.imageScaling = .scaleProportionallyDown
-        view.animates = true
-        // An `NSImageView`'s intrinsic content size is its *image*, and it defends that size at
-        // priority 750 — so a wide photo pushes the whole constraint chain outwards and resizes the
-        // **window**. A 8629 px panorama grew it past the edge of the display, cutting off the
-        // function bar, with every frame in the preview itself still provably correct. The surface
-        // is sized by its anchors alone; the image inside is a passenger.
-        for axis in [NSLayoutConstraint.Orientation.horizontal, .vertical] {
-            view.setContentCompressionResistancePriority(.init(1), for: axis)
-            view.setContentHuggingPriority(.init(1), for: axis)
-        }
+    /// Build the image backend on first use: a scroll view the image can be zoomed and panned in
+    /// (`QuickViewImageScrollView`), which opens every image the way Quick Look does — a large photo
+    /// fitted to the surface, a small one never blown up past its own size.
+    func ensureImageScrollView() -> QuickViewImageScrollView {
+        if let imageScrollView { return imageScrollView }
+        let view = QuickViewImageScrollView()
         pin(view, inside: content)
-        imageView = view
+        imageScrollView = view
+        imageView = view.imageView
         return view
     }
 }

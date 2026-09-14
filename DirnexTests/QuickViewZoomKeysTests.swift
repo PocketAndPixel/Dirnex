@@ -25,7 +25,7 @@ struct QuickViewZoomKeysTests {
         #expect(CommandBinding.selector(for: "view.quickViewResetZoom") == Self.reset)
 
         // A store of our own, so the developer's rebindings cannot change what is being asserted.
-        let items = Self.flatten(
+        let items = QuickViewZoomFixtures.flatten(
             MainMenuBuilder.build(bindings: KeyBindingStore(defaults: ScratchDefaults.fresh()))
         )
         let zoomInItems = items.filter { $0.action == Self.zoomIn }
@@ -42,7 +42,7 @@ struct QuickViewZoomKeysTests {
     /// how ⌘+ is typed on a US keyboard. The hidden alias is what makes the key work as pressed.
     @Test("Zoom In also carries a hidden ⌘= alias, so the unshifted key works")
     func zoomInHasAnUnshiftedAlias() throws {
-        let items = Self.flatten(
+        let items = QuickViewZoomFixtures.flatten(
             MainMenuBuilder.build(bindings: KeyBindingStore(defaults: ScratchDefaults.fresh()))
         )
         let alias = try #require(items.first { $0.action == Self.zoomIn && $0.isHidden })
@@ -84,7 +84,7 @@ struct QuickViewZoomKeysTests {
         let preview = try await QuickViewTextPreviewTests.loaded(
             tree.write("notes.txt", contents: "plain\n")
         )
-        let scrollView = try #require(Self.textScrollView(in: preview))
+        let scrollView = try #require(QuickViewZoomFixtures.textScrollView(in: preview))
         #expect(!preview.canResetZoom)
 
         preview.zoom(.larger)
@@ -107,8 +107,8 @@ struct QuickViewZoomKeysTests {
 
     @Test("a fitted PDF zooms relative to its fit, and ⌘0 hands it back to fitting")
     func fittedPDFZooms() throws {
-        let preview = try Self.surface(width: 900, height: 600)
-        preview.showPDFDocument(Self.document(), fitsWidth: true)
+        let preview = try QuickViewZoomFixtures.surface(width: 900, height: 600)
+        preview.showPDFDocument(QuickViewZoomFixtures.document(), fitsWidth: true)
         let pdfView = try #require(preview.pdfView)
         let fit = pdfView.scaleFactorForSizeToFit
 
@@ -124,8 +124,8 @@ struct QuickViewZoomKeysTests {
 
     @Test("a sheet's PDF zooms from its own size, and ⌘0 goes back to it")
     func unfittedPDFZooms() throws {
-        let preview = try Self.surface(width: 900, height: 600)
-        preview.showPDFDocument(Self.document(), fitsWidth: false)
+        let preview = try QuickViewZoomFixtures.surface(width: 900, height: 600)
+        preview.showPDFDocument(QuickViewZoomFixtures.document(), fitsWidth: false)
         let pdfView = try #require(preview.pdfView)
 
         preview.zoom(.smaller)
@@ -141,9 +141,9 @@ struct QuickViewZoomKeysTests {
     func renderedPageZooms() async throws {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
-        let preview = try Self.surface(width: 400, height: 400)
+        let preview = try QuickViewZoomFixtures.surface(width: 400, height: 400)
         preview.show(try tree.write("page.html", contents: "<p>hello</p>"), style: .rendered)
-        let webView = try await Self.webView(in: preview)
+        let webView = try await QuickViewZoomFixtures.webView(in: preview)
 
         preview.zoom(.larger)
         #expect(abs(webView.pageZoom - 1.1) < 0.001)
@@ -152,7 +152,7 @@ struct QuickViewZoomKeysTests {
 
         preview.zoom(.larger)
         preview.show(try tree.write("other.html", contents: "<p>next</p>"), style: .rendered)
-        try await Self.settle { abs(webView.pageZoom - 1) < 0.001 }
+        try await QuickViewZoomFixtures.settle { abs(webView.pageZoom - 1) < 0.001 }
     }
 
     /// The level multiplies the page's starting size rather than replacing it, or ⌘+ on a Word page
@@ -161,9 +161,9 @@ struct QuickViewZoomKeysTests {
     func convertedPageZoomsFromItsFit() async throws {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
-        let preview = try Self.surface(width: 400, height: 400)
+        let preview = try QuickViewZoomFixtures.surface(width: 400, height: 400)
         preview.show(try tree.write("page.html", contents: "<p>hello</p>"), style: .rendered)
-        let webView = try await Self.webView(in: preview)
+        let webView = try await QuickViewZoomFixtures.webView(in: preview)
         let surface = try #require(preview.webSurface)
         let bundle = tree.root.appendingPathComponent("doc.qlpreview", isDirectory: true)
         try FileManager.default.createDirectory(at: bundle, withIntermediateDirectories: true)
@@ -180,96 +180,16 @@ struct QuickViewZoomKeysTests {
 
     // MARK: - What does not zoom
 
-    @Test("a photograph offers no zoom, so the keys are disabled")
-    func imageDoesNotZoom() async throws {
+    @Test("Quick Look's own view offers no zoom, so the keys are disabled")
+    func quickLookDoesNotZoom() async throws {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
-        let url = tree.root.appendingPathComponent("dot.png")
-        let rep = try #require(NSBitmapImageRep(
-            bitmapDataPlanes: nil, pixelsWide: 4, pixelsHigh: 4, bitsPerSample: 8,
-            samplesPerPixel: 4,
-            hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0,
-            bitsPerPixel: 0
-        ))
-        try #require(rep.representation(using: .png, properties: [:])).write(to: url)
-        let preview = try Self.surface(width: 400, height: 400)
-        preview.show(url, style: .source)
-        try await Self.settle { preview.imageView?.image != nil }
+        let preview = try QuickViewZoomFixtures.surface(width: 400, height: 400)
+        preview.show(try tree.write("clip.mp4", contents: "not really a movie"), style: .source)
 
         #expect(!preview.canZoom(.larger))
         #expect(!preview.canZoom(.smaller))
         #expect(!preview.canResetZoom)
-    }
-
-    // MARK: - Helpers
-
-    private static var retained: [NSWindow] = []
-
-    private static func surface(width: CGFloat, height: CGFloat) throws -> QuickViewPreviewView {
-        let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: width, height: height),
-            styleMask: [.titled],
-            backing: .buffered,
-            defer: false
-        )
-        retained.append(window)
-        let content = try #require(window.contentView)
-        content.addSubview(preview)
-        NSLayoutConstraint.activate([
-            preview.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-            preview.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            preview.topAnchor.constraint(equalTo: content.topAnchor),
-            preview.bottomAnchor.constraint(equalTo: content.bottomAnchor)
-        ])
-        content.layoutSubtreeIfNeeded()
-        return preview
-    }
-
-    private static func webView(in preview: QuickViewPreviewView) async throws -> WKWebView {
-        try await settle { preview.webSurface?.isHidden == false }
-        preview.webSurface?.layoutSubtreeIfNeeded()
-        return try #require(preview.webSurface?.interactiveSubtree as? WKWebView)
-    }
-
-    private static func textScrollView(in preview: QuickViewPreviewView) -> NSScrollView? {
-        guard let hit = preview.hitTest(NSPoint(x: 200, y: 200)) else { return nil }
-        return QuickViewTextPreviewTests.enclosingTextView(of: hit)?.enclosingScrollView
-    }
-
-    private static func settle(_ condition: () -> Bool) async throws {
-        let deadline = Date().addingTimeInterval(30)
-        while !condition() {
-            try #require(Date() < deadline, "timed out waiting for the preview")
-            try await Task.sleep(for: .milliseconds(10))
-        }
-    }
-
-    private static func flatten(_ menu: NSMenu) -> [NSMenuItem] {
-        menu.items.flatMap { [$0] + ($0.submenu.map(flatten) ?? []) }
-    }
-
-    /// A three-page PDF with real glyphs on each page.
-    private static func document() -> PDFDocument? {
-        let pages = (1...3).map { number -> Data in
-            let data = NSMutableData()
-            var box = CGRect(x: 0, y: 0, width: 400, height: 300)
-            guard let consumer = CGDataConsumer(data: data as CFMutableData),
-                  let context = CGContext(consumer: consumer, mediaBox: &box, nil) else { return Data(
-            ) }
-            context.beginPDFPage(nil)
-            let line = CTLineCreateWithAttributedString(
-                NSAttributedString(
-                    string: "Page \(number)",
-                    attributes: [.font: NSFont.systemFont(ofSize: 24)]
-                )
-            )
-            context.textPosition = CGPoint(x: 40, y: 150)
-            CTLineDraw(line, context)
-            context.endPDFPage()
-            context.closePDF()
-            return data as Data
-        }
-        return QuickViewPreviewView.mergedDocument(pages)
+        #expect(!preview.consumesHorizontalScroll)
     }
 }

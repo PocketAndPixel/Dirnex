@@ -103,6 +103,12 @@ at build time.
   trace (0 events reached the monitor), and System Events keystrokes need assistive access the shell
   lacks (`-1719`). Log the event before believing a key test, and settle what a real key
   would send with `NSMenu.performKeyEquivalent` on a hand-built event.
+- **`sips -s dpiWidth 72` on a JPEG exits 0 and leaves the old resolution.** Measured 2026-09-15 while
+  making image-zoom fixtures: a 3000 px copy of a 240 dpi photo read back `dpiWidth: 240` after the
+  call, in place and with `--out` alike, while the same call on a PNG took. An image preview sizes by
+  `NSImage.size`, which is in points from that resolution, so the "large" fixture was 900 pt and
+  opened at its own size rather than fitted, which looks like a broken fit. Read `sips -g dpiWidth`
+  back after setting it, or make the fixture a PNG.
 - **Background computer-use cannot press Return in a text field; it sets the field's selected text
   to a newline, which commits nothing.** Measured 2026-09-13 in Go ▸ Go to Location… while verifying
   M28 Slice 2: `app_key return`, aimed at the focused element and then at the field's own coordinate,
@@ -489,6 +495,12 @@ at build time.
     did not match the file it was aimed at**, because swiftformat had rewrapped exactly those lines.
     A `replace` whose target never occurs reverts nothing and reports a pass, so assert the match
     rather than trusting the edit you meant to make.
+  - **Its twins, both from the image-zoom controls (2026-09-15).** A restore that asserts a target
+    occurring *twice* stops on the first control and leaves the rest applied, so a line as short as
+    `fit()` needs its surrounding context in the match. And controls run together can hide one
+    another: an unconditional refit in `layout()` put the next image back at its fit on its own, so
+    `show` no longer resetting the zoom failed nothing until it was run alone (two issues). Run a
+    control that shares an observable with another one by itself.
 
 - **An assertion inside `offCooperativePool` is filed under `Test «unknown»` while the test it came
   from still prints a tick — so a live suite's ✔ is not evidence.** The helper runs its body on a

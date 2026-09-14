@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-15)
 
-Sixty dated passes that landed outside a milestone of their own, between M18's close on
+Sixty-three dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-15: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12934,6 +12934,38 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-15 (later) — images zoom too.** Asked for straight after the keys below landed. The image
+was a bare `NSImageView` pinned to the surface with `scaleProportionallyDown`, which fits a large
+photo, never enlarges a small one, and has nowhere to put an image bigger than the surface.
+
+- **`QuickViewImageScrollView`** makes the image view the document of an `NSScrollView`, sized to the
+  image in points, and the zoom is the scroll view's magnification. The starting magnification is the
+  old rule as a number, the fit but never above 1, so nothing looks different until a key is pressed.
+  Sizing by `NSImage.size` keeps a Retina screenshot at its natural size: live, a 3000 px JPEG at
+  240 dpi opened at 900 pt.
+- **An image's levels are absolute scales**, unlike the other three backends'. A photograph opens at
+  an arbitrary fraction (0.39 for the 8629 × 3026 panorama), and stepping from there lands on 50 %,
+  67 %, 100 %, so actual size is a step away. ⌘0 goes back to the fit. A photo fitted below 25 % has
+  no smaller step, and the pinch floor drops to its fit so a pinch can get back there.
+- **Measured first:** a step on the panorama costs 0.1–0.4 ms and the enlarged crop draws sharp,
+  since the view redraws at the magnified scale. Resident memory was 201 MB with the old view and
+  202 MB with the new one, the same at magnification 1, 3 and 5.
+- **A zoomed image keeps the sideways two-finger scroll.** `consumesHorizontalScroll` stands the
+  page-turn swipe aside while an image or a PDF is wider than the surface, which is Preview's rule. A
+  web page and text keep the swipe as before.
+- A window resize refits an image nobody has zoomed and leaves a zoomed one alone. The next image
+  opens at its fit.
+
+Controls: four reverts (no image zoom target; the scroll view missing from the surface's hit-test
+exemptions; an unconditional refit in `layout()`; `show` not resetting the zoom). Run together they
+failed three tests, and the refit hid the missing reset, which failed its own test (two issues) only
+when run alone (docs/NOTES.md ▸ Testing). Live, in the Debug build: five View ▸ Zoom In steps on the
+panorama enlarged it about its centre and brought up scrollbars, a scroll moved it to its bottom edge,
+and Reset Zoom put it back exactly at the opening fit. A 320 px PNG stepped from 1 to 1.75 in four
+steps, and the next image opened at its own starting size. **Not verified live:** a real pinch, and
+the swipe standing aside for a zoomed image, since a synthetic scroll is not a trackpad (docs/NOTES.md
+▸ AppKit). The keys ride the same menu items as the page zoom's, verified below.
 
 **2026-09-15 — ⌘+, ⌘− and ⌘0 zoom the Quick View preview.** Asked for right after the document
 previews landed. The preview surface refuses first responder so the arrows keep driving the file list,
@@ -12948,8 +12980,8 @@ bound to ⌘+, ⌘− and ⌘0, rebindable, in the palette, and translated into 
   multiplied onto its fit width, so ⌘+ on a Word page fitted at 177 % goes to 195 % rather than 110 %.
   A PDF zooms relative to its fitted or 100 % scale and is handed back to `autoScales` at 1. Text uses
   the scroll view's magnification, which a pinch also moves, stepped about the visible centre. A new
-  file starts back at its opening size in all three. A photograph, Quick Look's own view and the
-  remote placeholder card have no zoom, and the items are disabled there.
+  file starts back at its opening size in all three. A photograph (until the entry above), Quick
+  Look's own view and the remote placeholder card have no zoom, and the items are disabled there.
 - **⌘+ needed a hidden ⌘= alias.** Measured with `NSMenu.performKeyEquivalent`: an item bound to `+`
   does not fire for a plain ⌘=, which is how ⌘+ is typed on a US keyboard (docs/NOTES.md ▸ AppKit).
   `MainMenuBuilder` adds the alias only while Zoom In is on ⌘+ and nothing else claims ⌘=.
