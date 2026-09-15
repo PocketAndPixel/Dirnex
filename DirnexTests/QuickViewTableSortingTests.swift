@@ -110,7 +110,7 @@ struct QuickViewTableSortingTests {
         #expect(surface.tableView.sortDescriptors.isEmpty)
         await stale.value
         #expect(Self.column(surface, 1) == ["zulu", "yankee"])
-        #expect(surface.rowOrder == nil)
+        #expect(surface.sortOrder == nil)
     }
 
     /// Found live on a load-test log: `bytes` was sized from its first hundred values, and sorting it

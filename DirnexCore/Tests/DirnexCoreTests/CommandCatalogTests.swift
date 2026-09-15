@@ -243,6 +243,16 @@ struct CommandCatalogTests {
         #expect(CommandShortcut(key: "+", modifiers: .command).display == "⌘+")
     }
 
+    @Test("Quick View's table filter is a conflict-free View command on ⌥⌘F, beside Favorites' ⌘F")
+    func coversQuickViewTableFilter() {
+        let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
+        let filter = byID["view.quickViewFilterTable"]
+        #expect(filter?.category == .view)
+        #expect(filter?.shortcut == CommandShortcut(key: "f", modifiers: [.command, .option]))
+        #expect(KeyBindings().conflicts(for: "view.quickViewFilterTable").isEmpty)
+        #expect(byID["go.favorites"]?.shortcut == CommandShortcut(key: "f", modifiers: .command))
+    }
+
     @Test("the M6 terminal drawer is a conflict-free View command on ⌃`")
     func coversTerminalDrawer() {
         let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })

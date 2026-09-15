@@ -324,8 +324,15 @@ extension BrowserWindowController {
 
     /// Hand first responder back to `panel`'s file table unless it already has it — an
     /// unconditional `makeFirstResponder` on every cursor step is churn the table doesn't need.
+    ///
+    /// Nor while somebody is typing into the table filter. A delivery runs on every render of the
+    /// pane (`updateChrome`), a background refresh included, so without this the keyboard left the
+    /// filter's text mid-word whenever the folder changed. A preview that really does change file
+    /// puts the filter away, and hands the keyboard back itself (`QuickViewTableView.resetFilter`).
     private func restoreTableFocus(to panel: PanelViewController) {
-        guard window?.firstResponder !== panel.tableView else { return }
+        guard window?.firstResponder !== panel.tableView,
+              !QuickViewPreviewView.isTypingInField(window?.firstResponder, among: quickViewSurfaces)
+        else { return }
         panel.focusTable()
     }
 
@@ -421,14 +428,24 @@ extension BrowserWindowController {
     ///
     /// Bare arrows only, per the modifier guard above: ⇧← still extends the selection in the text
     /// the user is in the middle of selecting.
+    ///
+    /// Not out of the table filter's text, where ← / → move the caret and ↑ / ↓ step through the rows
+    /// (`QuickViewTableView+Filter`) — and a bare arrow is what anyone editing a word presses first.
     private func reclaimArrowsFromPreview() {
-        let surfaces = [
+        let responder = window?.firstResponder
+        guard QuickViewPreviewView.hasFocus(responder, among: quickViewSurfaces),
+              !QuickViewPreviewView.isTypingInField(responder, among: quickViewSurfaces)
+        else { return }
+        focusedPanel.focusTable()
+    }
+
+    /// Every Quick View surface this window has, whichever mode is showing one.
+    var quickViewSurfaces: [QuickViewPreviewView?] {
+        [
             leftPanel.quickViewPreview,
             rightPanel.quickViewPreview,
             fullWindowPreview,
             fullScreenPreview
         ]
-        guard QuickViewPreviewView.hasFocus(window?.firstResponder, among: surfaces) else { return }
-        focusedPanel.focusTable()
     }
 }

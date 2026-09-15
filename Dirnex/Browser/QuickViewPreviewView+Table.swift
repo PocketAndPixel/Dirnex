@@ -75,6 +75,15 @@ extension QuickViewPreviewView {
     /// sideways through a preview.
     nonisolated static let tableColumnLimit = 1024
 
+    /// The table on screen that View ▸ Filter Table would filter, or `nil` when the surface is showing
+    /// anything else — the one predicate the command and its menu item both ask.
+    var filterableTable: QuickViewTableView? {
+        guard placeholderCard?.isHidden != false,
+              let tableSurface, !tableSurface.isHidden, tableSurface.table != nil
+        else { return nil }
+        return tableSurface
+    }
+
     func standDownTable() {
         tableSurface?.isHidden = true
         tableSurface?.clearTable()

@@ -9,19 +9,13 @@ import DirnexCore
 /// header's arrow changes at once and the rows follow when the order lands. A second click reverses
 /// it, and the `#` column is the way back to the file's order.
 ///
-/// The rows are never moved: the table keeps its parse and a permutation over it (`rowOrder`), which
-/// is what lets a row keep its number from the file and lets a sort be undone for free.
+/// The rows are never moved: the table keeps its parse and a permutation over it (`sortOrder`), which
+/// is what lets a row keep its number from the file and lets a sort be undone for free. The filter
+/// narrows that same permutation (`QuickViewTableView+Filter`), and `reloadRows` draws the two together.
 extension QuickViewTableView {
     /// The data row shown at `row`.
     func record(atDisplayedRow row: Int) -> Int {
-        guard let rowOrder, rowOrder.indices.contains(row) else { return row }
-        return rowOrder[row]
-    }
-
-    /// Where data row `record` is shown.
-    func displayedRow(ofRecord record: Int) -> Int {
-        guard let rowPositions, rowPositions.indices.contains(record) else { return record }
-        return rowPositions[record]
+        rows.record(atRow: row)
     }
 
     /// Back to the file's order with no column marked, for a new table — without running a sort for
@@ -32,8 +26,7 @@ extension QuickViewTableView {
     /// `isResettingSort`, is what keeps that call from running a sort in the middle of a rebuild.
     func resetSort() {
         sortGeneration += 1
-        rowOrder = nil
-        rowPositions = nil
+        sortOrder = nil
         isResettingSort = true
         tableView.sortDescriptors = []
         isResettingSort = false
@@ -64,33 +57,35 @@ extension QuickViewTableView {
     }
 
     /// Show the rows in `order`, or in the file's order for `nil`.
+    private func apply(_ order: [Int]?) {
+        sortOrder = order
+        reloadRows()
+    }
+
+    /// Draw the rows the sort and the filter call for now.
     ///
     /// Where the view lands depends on whose the selection is. The row selected as the table opened
-    /// is nobody's choice, so a sort goes to the top of the new order and selects what is there —
-    /// sorting by size to see the largest shows the largest. Rows somebody selected stay selected,
-    /// and the view follows the first of them.
-    private func apply(_ order: [Int]?) {
+    /// is nobody's choice, so it goes to the top of the new rows and selects what is there — sorting
+    /// by size to see the largest shows the largest, and a filter shows its first match. Rows somebody
+    /// selected stay selected wherever they are still drawn, and the view follows the first of them.
+    /// When the filter leaves out every one of them the top row is selected, as nobody's choice again.
+    func reloadRows() {
         let chosen = selectionIsAutomatic
             ? []
             : tableView.selectedRowIndexes.map { record(atDisplayedRow: $0) }
-        rowOrder = order
-        rowPositions = order.map { order in
-            var positions = [Int](repeating: 0, count: order.count)
-            for (position, record) in order.enumerated() {
-                positions[record] = position
-            }
-            return positions
-        }
+        rows = DelimitedTableRows(
+            rowCount: table?.rowCount ?? 0,
+            order: sortOrder,
+            matches: filterMatches
+        )
         tableView.reloadData()
-        guard tableView.numberOfRows > 0 else {
-            showSelectedRecord()
-            return
+        let kept = IndexSet(chosen.compactMap { rows.row(ofRecord: $0) })
+        if kept.isEmpty { selectionIsAutomatic = true }
+        let selection = !kept.isEmpty ? kept : !rows.isEmpty ? IndexSet(integer: 0) : IndexSet()
+        selectProgrammatically(selection)
+        if let first = selection.first {
+            tableView.scrollRowToVisible(first)
         }
-        let rows = chosen.isEmpty
-            ? IndexSet(integer: 0)
-            : IndexSet(chosen.map { displayedRow(ofRecord: $0) })
-        selectProgrammatically(rows)
-        tableView.scrollRowToVisible(rows.first ?? 0)
         showSelectedRecord()
     }
 

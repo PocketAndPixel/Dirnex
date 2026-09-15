@@ -24,6 +24,21 @@ extension QuickViewPreviewView {
             return focused.isDescendant(of: surface)
         }
     }
+
+    /// Whether `responder` is somebody typing into a text field inside one of `surfaces` — the
+    /// table's filter (`QuickViewTableView+Filter`) — which is the one focus inside a preview the
+    /// window must leave where it is: the arrows there move the caret or step through the rows, and a
+    /// preview re-shown behind it must not take the keyboard back to the file list mid-word.
+    ///
+    /// Asked of the field the editor is editing, not of the editor: the shared field editor belongs
+    /// to the window, and what places it is the field.
+    static func isTypingInField(_ responder: NSResponder?, among surfaces: [QuickViewPreviewView?])
+        -> Bool {
+        guard let editor = responder as? NSTextView, editor.isFieldEditor,
+              let field = editor.delegate as? NSView
+        else { return false }
+        return hasFocus(field, among: surfaces)
+    }
 }
 
 extension NSView {

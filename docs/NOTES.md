@@ -738,6 +738,11 @@ at build time.
   reads digit runs as numbers. It parts company on fractions and negatives (`1.5` before `1.25`, `-2`
   before `-10`), and a fixture holding those failed the control. When a test pins a choice between two
   rules, take the fixture from where they disagree.
+  - **Selecting the row a table already has selected is not a selection.** Measured 2026-09-15: a
+    test standing for "somebody chose this row" selected row 0, which the CSV table selects as it
+    opens, so `selectRowIndexes` posted no `selectionDidChange`, the surface never counted a choice,
+    and the control that deleted the rule for chosen rows passed. Select a row the table is not
+    already on, and assert the choice registered before relying on it.
 
 - **A `git checkout` is not available to revert a control here, because the work is uncommitted** —
   Oleg commits, so a control's cleanup has to copy the file aside and copy it back. Done anyway
@@ -2164,6 +2169,15 @@ at build time.
   - Take **bare** arrows only. ⇧← must still extend the selection in the text the user is in the
     middle of selecting; without that escape hatch, "the arrows belong to the file list" is not an
     affordable rule.
+  - **A text field inside a preview is the one focus that must be left alone, and the handing-back
+    runs far more often than a flip.** In the full-size modes `restoreTableFocus` follows every
+    `deliverPreview`, and a background refresh of the folder re-delivers the preview with nobody
+    touching a key. Measured A/B on 2026-09-15 with the CSV table's filter field: without a guard,
+    creating and deleting files in the folder while typing moved focus to the file table mid-word,
+    and the rest of the word went into the pane's type-to-filter, which blanked the preview. Nothing
+    logs, and a test that types and then asserts never gives a refresh the chance to land. Ask whether
+    the first responder is a field editor whose field sits inside a surface
+    (`QuickViewPreviewView.isTypingInField`), in the arrow reclaim as well as in the restore.
 - **Transforming a layer that hosts an out-of-process view costs a round trip per frame.** A
   `QLPreviewView` renders in another process, so animating it judders visibly ("like 30 fps") — on
   exactly the content a preview swipe is used for. Route images to an in-process `NSImageView`

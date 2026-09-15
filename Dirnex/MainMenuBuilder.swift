@@ -116,6 +116,7 @@ enum MainMenuBuilder {
             .subcommand("view.downloadPreview"),
             .subcommand("view.quickViewZoomIn"), .keyAlias("view.quickViewZoomIn"),
             .subcommand("view.quickViewZoomOut"), .subcommand("view.quickViewResetZoom"),
+            .subcommand("view.quickViewFilterTable"),
             .separator,
             .command("view.terminal")
         ]),

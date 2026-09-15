@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-15)
 
-Sixty-eight dated passes that landed outside a milestone of their own, between M18's close on
+Sixty-nine dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-15: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12935,7 +12935,54 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
 
-**2026-09-15 (last) — the strip under the CSV table can be dragged taller or shorter.** Asked for
+**2026-09-15 (last) — the CSV table filters.** Asked for as "a filter for the table", with three
+choices settled first: one text field searching every column, with a popup narrowing it to one; ⌥⌘F
+showing a bar above the table, with the command also under View ▸ Filter Table and in the palette
+(⌘F was already Favorites); and each new file opening unfiltered.
+
+- **`DelimitedTable.rowsMatching(_:inColumn:isCancelled:)` (core)** answers one `Bool` per data row:
+  a case-insensitive substring match in which accents count, as the pane's own type-to-filter does.
+  The header is not searched. An ASCII query is matched against each cell's bytes in place with A–Z
+  folded, a quoted cell read inside its quotes and only a cell with doubled quotes decoded; any other
+  query decodes each cell and lowercases it. Release build: 1.5–2.8 ms over a million cells for an
+  ASCII query, 132–222 ms at worst for a non-ASCII one. Ignoring diacritics too was measured and
+  passed over: it reads `й` as `и`, and a query found nowhere cost 490 ms against 140.
+  `DelimitedTableRows` composes the sort's permutation with the matches, so a row keeps its number
+  from the file and a sort made while filtered sorts only what is shown. 13 tests, one of them
+  comparing the in-place read with decoding every cell of a fixture full of quotes; four controls (a
+  quoted cell read with its quotes, no case fold, an escaped cell read as raw bytes, rows ignoring the
+  matches) each failed.
+- **The app half (`QuickViewTableFilterBar`, `QuickViewTableView+Filter`).** The match runs off the
+  main actor, and each keystroke cancels the run before it (the core checks a flag every 1,024 rows).
+  `reloadRows`, now shared with sorting, keeps rows somebody chose while they still match, and
+  otherwise puts the automatic selection, and the strip, on the first match. The bar counts "299 of
+  3 000 rows". In the field, Esc clears the text and a second Esc puts the bar away; ↑ and ↓ step
+  through the rows left; Return and Tab hand the keyboard back to the file list with the filter kept.
+  The column code moved to `QuickViewTableView+Columns` to stay under the type-body ceiling.
+- **Every render took the keyboard out of the field.** `restoreTableFocus` runs after each
+  `deliverPreview` in the two full-size modes, and background refreshes re-deliver the preview too.
+  A/B in the Debug build: with the new guard removed, creating and deleting files in the folder moved
+  focus to the file table mid-word, and the rest of the typing went into the pane's type-to-filter,
+  blanking the preview. `QuickViewPreviewView.isTypingInField` is now honoured there, and by the key
+  monitor that takes the arrows back from a focused preview (docs/NOTES.md ▸ AppKit).
+- **One control passed, and the test was at fault.** "A chosen row the filter leaves out gives way to
+  the first match" selected row 0, which a table already has selected when it opens, so no selection
+  change was posted and nothing counted as a choice. It selects row 1 now, and the control fails it.
+
+Tests: 14 core (the 13 above and ⌥⌘F clear of every other shortcut), 15 app in two suites. Controls:
+17, each failing its own tests except removing the generation guard alone, which the cancellation
+covers (removing both fails). Seven strings in all 14 languages, the count with a plural. Validation:
+both linters, the CI scripts (1,021 localization keys), 3,437 core tests and the app suite (1,249
+tests in 204 suites, one pre-existing known issue). Live, on the load-test log (3,000 rows, 17
+columns) in Full Window: ⌥⌘F from a real key press opened the bar focused; `bad req` left 299 rows
+numbered 9, 10, 11, 22…; files created and deleted in the folder while typing left the keyboard in
+the field; ↓ stepped through the matches, ← moved the caret, and `1` went into the text rather than
+switching to Source; Return gave the keyboard back with the filter kept, and the next file opened with
+the bar away. On a CSV with Cyrillic names `ИВАН` found one row, and View ▸ Filter Table is disabled
+on a text file. Esc could not be sent by the tooling (docs/NOTES.md ▸ Live verification); confirmed
+by hand, clearing the text and then putting the bar away.
+
+**2026-09-15 (later again) — the strip under the CSV table can be dragged taller or shorter.** Asked for
 with a screenshot of the strip. A 12-point handle from the strip's separator down
 (`QuickViewStripHandle`) takes the drag, and a double-click on it puts the strip back to fitting the
 selected row. A dragged height holds for every row and file, in all three Quick View sizes and

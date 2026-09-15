@@ -313,6 +313,8 @@ extension BrowserWindowController: NSMenuItemValidation {
         case #selector(zoomInQuickView(_:)), #selector(zoomOutQuickView(_:)),
              #selector(resetQuickViewZoom(_:)):
             return canPerformQuickViewZoom(menuItem.action)
+        case #selector(filterQuickViewTable(_:)):
+            return canFilterQuickViewTable
         default:
             break
         }

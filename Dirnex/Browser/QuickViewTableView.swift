@@ -26,13 +26,15 @@ final class QuickViewTableView: NSView {
     /// The table on screen, or `nil` once cleared.
     private(set) var table: DelimitedTable?
 
+    /// The rows drawn and in what order: the sort's order, narrowed to the filter's matches. Rebuilt by
+    /// `reloadRows` whenever either changes.
+    var rows = DelimitedTableRows(rowCount: 0)
+
     // The sort's state, kept here because an extension cannot hold any
     // (`QuickViewTableView+Sorting` owns every rule about it).
 
-    /// The data row shown at each position, or `nil` while the rows are in the file's order.
-    var rowOrder: [Int]?
-    /// The inverse of `rowOrder`: where each data row is shown.
-    var rowPositions: [Int]?
+    /// The data rows in the order the sort put them, or `nil` while they are in the file's order.
+    var sortOrder: [Int]?
     /// Bumped by every sort and every new table, so a sort landing after either is discarded.
     var sortGeneration = 0
     /// The last sort sent off the main actor — what a test awaits to know it has landed, or been
@@ -44,6 +46,26 @@ final class QuickViewTableView: NSView {
     /// which decides where a sort leaves the view.
     var selectionIsAutomatic = true
     var isSelectingProgrammatically = false
+
+    // The filter's state, for the same reason (`QuickViewTableView+Filter`).
+
+    /// The bar over the table, hidden until ⌥⌘F.
+    let filterBar = QuickViewTableFilterBar()
+    /// For each data row, whether the filter keeps it, or `nil` while no text is typed.
+    var filterMatches: [Bool]?
+    /// Bumped by every change to the filter and every new table, so a filter landing after either is
+    /// discarded.
+    var filterGeneration = 0
+    /// The last filter sent off the main actor — what a test awaits, as it does a sort's.
+    var filterTask: Task<Void, Never>?
+    /// What stops that filter early once a newer one makes it pointless.
+    var filterCancellation: CancellationFlag?
+    /// The scroll view's top edge: against the surface, or under the filter bar while it is shown.
+    var tableTopToSurface: NSLayoutConstraint?
+    var tableTopToFilterBar: NSLayoutConstraint?
+    /// Where the keyboard goes when the filter bar lets go of it: the file list the arrows walk. Set
+    /// by whoever opens the bar, since the surface does not know which list that is.
+    var returnKeyboard: (() -> Void)?
 
     // The zoom's state, for the same reason (`QuickViewTableView+Zoom`).
 
@@ -76,9 +98,6 @@ final class QuickViewTableView: NSView {
     static let minimumColumnWidth: CGFloat = 44
     static let maximumColumnWidth: CGFloat = 320
     static let rowNumberColumn = NSUserInterfaceItemIdentifier("row")
-    /// How many values in all a table measures to size its columns, spread over its columns — about
-    /// a hundred rows of a typical file, and fewer rows of a very wide one.
-    private static let measurementBudget = 2000
 
     init(layoutDefaults: UserDefaults) {
         self.layoutDefaults = layoutDefaults
@@ -88,6 +107,7 @@ final class QuickViewTableView: NSView {
         buildStrip()
         buildNotice()
         installStripHandle()
+        installFilterBar()
     }
 
     @available(*, unavailable)
@@ -97,12 +117,15 @@ final class QuickViewTableView: NSView {
 
     // MARK: - Content
 
-    /// Show `table`, back at its top-left with its first row selected.
+    /// Show `table`, back at its top-left with its first row selected, unsorted and unfiltered.
     func show(_ table: DelimitedTable, isTruncated: Bool) {
         resetSort()
+        resetFilter()
         resetZoom()
         self.table = table
+        rows = DelimitedTableRows(rowCount: table.rowCount)
         rebuildColumns(for: table)
+        filterBar.setColumns((0..<table.columnCount).map(table.title(ofColumn:)))
         tableView.reloadData()
         // To the first row and column, not to the document's origin. The column header floats over
         // the rows, so the scroll view rests *above* the origin by the header's height (plus the title
@@ -122,7 +145,9 @@ final class QuickViewTableView: NSView {
 
     func clearTable() {
         resetSort()
+        resetFilter()
         table = nil
+        rows = DelimitedTableRows(rowCount: 0)
         rebuildColumns(for: nil)
         tableView.reloadData()
         strip.clear()
@@ -138,7 +163,7 @@ final class QuickViewTableView: NSView {
 
     /// The selected row's values in the strip — the last row selected, when several are.
     func showSelectedRecord() {
-        guard let table, tableView.selectedRow >= 0, tableView.selectedRow < table.rowCount else {
+        guard let table, tableView.selectedRow >= 0, tableView.selectedRow < rows.count else {
             strip.clear()
             needsLayout = true
             return
@@ -148,117 +173,6 @@ final class QuickViewTableView: NSView {
             (table.title(ofColumn: column), table.cell(row: row, column: column))
         })
         needsLayout = true
-    }
-
-    // MARK: - Columns
-
-    private func rebuildColumns(for table: DelimitedTable?) {
-        for column in tableView.tableColumns.reversed() {
-            tableView.removeTableColumn(column)
-        }
-        baseWidths = [:]
-        guard let table else { return }
-        let rowNumbers = NSTableColumn(identifier: Self.rowNumberColumn)
-        rowNumbers.title = "#"
-        rowNumbers.headerCell.alignment = .right
-        applyHeaderTitle(to: rowNumbers)
-        rowNumbers.resizingMask = []
-        // Sorting by the row number is the way back to the file's order.
-        rowNumbers.sortDescriptorPrototype = NSSortDescriptor(
-            key: Self.rowNumberColumn.rawValue,
-            ascending: true
-        )
-        tableView.addTableColumn(rowNumbers)
-        let numbers = ceil(
-            ("\(max(table.rowCount, 1))" as NSString)
-                .size(withAttributes: [.font: Self.rowNumberFont]).width
-        ) + 16
-        rowNumbers.width = max(numbers, headerWidth(of: rowNumbers))
-        rowNumbers.minWidth = Self.minimumRowNumberWidth
-        baseWidths[rowNumbers.identifier] = rowNumbers.width
-
-        let sampledRows = min(
-            table.rowCount,
-            max(8, Self.measurementBudget / max(table.columnCount, 1))
-        )
-        for index in 0..<table.columnCount {
-            let title = table.title(ofColumn: index)
-            let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(String(index)))
-            column.title = title
-            column.headerToolTip = title
-            column.sortDescriptorPrototype = NSSortDescriptor(key: String(index), ascending: true)
-            if table.numericColumns.indices.contains(index), table.numericColumns[index] {
-                column.headerCell.alignment = .right
-            }
-            applyHeaderTitle(to: column)
-            column.maxWidth = 10000
-            column.resizingMask = .userResizingMask
-            tableView.addTableColumn(column)
-            column.minWidth = Self.minimumColumnWidth
-            column.width = width(ofColumn: column, index: index, in: table, sampling: sampledRows)
-            baseWidths[column.identifier] = column.width
-        }
-    }
-
-    /// Wide enough for the header and the widest sampled value, within the two bounds. A value is
-    /// measured by its first 80 characters, which is already past the widest column allowed. A column
-    /// of numbers is wide enough for its longest value in the whole file, since a sort can bring any
-    /// of them to the top and a number cut off with an ellipsis reads as a different number.
-    private func width(
-        ofColumn column: NSTableColumn,
-        index: Int,
-        in table: DelimitedTable,
-        sampling rows: Int
-    ) -> CGFloat {
-        var widest = headerWidth(of: column)
-        for row in 0..<rows {
-            let value = String(table.cell(row: row, column: index).prefix(80))
-            guard !value.isEmpty else { continue }
-            let measured = (value as NSString).size(withAttributes: [.font: Self.cellFont]).width
-            widest = max(widest, ceil(measured) + 14)
-        }
-        if table.numericColumns.indices.contains(index), table.numericColumns[index] {
-            let digit = ("0" as NSString).size(withAttributes: [.font: Self.cellFont]).width
-            let longest = CGFloat(table.longestValueByteCount(inColumn: index))
-            widest = max(widest, ceil(longest * digit) + 14)
-        }
-        return min(max(widest, Self.minimumColumnWidth), Self.maximumColumnWidth)
-    }
-
-    /// A header's width with a sort arrow in it: its title at the current level's size, and the
-    /// arrow's and the cell's own room, which do not scale (`headerChrome`).
-    func headerWidth(of column: NSTableColumn) -> CGFloat {
-        titleWidth(of: column) + Self.headerChrome
-    }
-
-    /// How much wider than its title a header has to be to show it whole beside a sort arrow: the
-    /// cell's padding around the title, the arrow's room at the right edge, and a gap between the two.
-    ///
-    /// The first two are AppKit's, measured once from a header cell: `cellSize` less the title's own
-    /// width (4 pt), and the header's right edge less `sortIndicatorRect`'s left one (a 9 pt arrow
-    /// drawn 8 pt in, so 17). Neither `sizeToFit` answer is usable: with an attributed title — which
-    /// the zoom needs — it leaves the arrow out altogether (4 pt of room), and a plain title's 21 pt
-    /// still cut a sorted `elapsed` to `elaps…` at 0.8 (seen live), which is the gap.
-    static let headerChrome: CGFloat = {
-        let cell = NSTableHeaderCell(textCell: "")
-        cell.attributedStringValue = NSAttributedString(
-            string: "value",
-            attributes: [.font: baseHeaderFont]
-        )
-        let title = ("value" as NSString).size(withAttributes: [.font: baseHeaderFont]).width
-        let padding = max(cell.cellSize.width - title, 0)
-        let bounds = NSRect(x: 0, y: 0, width: 100, height: 28)
-        let arrow = bounds.maxX - cell.sortIndicatorRect(forBounds: bounds).minX
-        return ceil(padding + arrow + headerTitleGap)
-    }()
-
-    /// The room between a header's title and its sort arrow.
-    static let headerTitleGap: CGFloat = 8
-
-    /// The width of a column's title in the header font at the current level.
-    func titleWidth(of column: NSTableColumn) -> CGFloat {
-        let font = NSFont.systemFont(ofSize: Self.baseHeaderFont.pointSize * CGFloat(zoomLevel))
-        return ceil((column.title as NSString).size(withAttributes: [.font: font]).width)
     }
 
     // MARK: - Layout
@@ -312,10 +226,12 @@ final class QuickViewTableView: NSView {
         addSubview(strip)
         let height = strip.heightAnchor.constraint(equalToConstant: 0)
         stripHeight = height
+        let top = scrollView.topAnchor.constraint(equalTo: topAnchor)
+        tableTopToSurface = top
         NSLayoutConstraint.activate([
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            scrollView.topAnchor.constraint(equalTo: topAnchor),
+            top,
             scrollView.bottomAnchor.constraint(equalTo: strip.topAnchor),
             strip.leadingAnchor.constraint(equalTo: leadingAnchor),
             strip.trailingAnchor.constraint(equalTo: trailingAnchor),
@@ -356,7 +272,7 @@ final class QuickViewTableView: NSView {
 
 extension QuickViewTableView: NSTableViewDataSource, NSTableViewDelegate {
     func numberOfRows(in tableView: NSTableView) -> Int {
-        table?.rowCount ?? 0
+        table == nil ? 0 : rows.count
     }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {

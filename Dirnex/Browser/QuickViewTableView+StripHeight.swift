@@ -10,7 +10,8 @@ import AppKit
 ///
 /// The height is kept in points rather than as a share of the surface: what it has to fit is lines
 /// of text, which are the same size in a pane as in a full window. Where a surface is too short for
-/// it, the table keeps room for its header and a couple of rows.
+/// it, the table keeps room for its header and a couple of rows — under the filter bar, while that is
+/// shown (`QuickViewTableView+Filter`).
 extension QuickViewTableView {
     /// The shortest the strip can be dragged: its separator and one line.
     static let minimumStripHeight: CGFloat = 36
@@ -52,7 +53,7 @@ extension QuickViewTableView {
 
     /// Keep `height`, bounded by this surface, for the strip from now on.
     func resizeStrip(to height: CGFloat) {
-        chosenStripHeight = round(Self.clampedStripHeight(height, surface: bounds.height))
+        chosenStripHeight = round(Self.clampedStripHeight(height, surface: roomBelowFilterBar))
         needsLayout = true
     }
 
@@ -68,7 +69,7 @@ extension QuickViewTableView {
         let height = strip.isEmpty ? 0 : Self.stripHeight(
             chosen: chosenStripHeight,
             fitting: strip.fittingHeight(forWidth: bounds.width),
-            surface: bounds.height
+            surface: roomBelowFilterBar
         )
         if let stripHeight, abs(stripHeight.constant - height) > 0.5 {
             stripHeight.constant = height

@@ -96,6 +96,8 @@ enum CommandBinding {
         "view.quickViewZoomIn": #selector(BrowserWindowController.zoomInQuickView(_:)),
         "view.quickViewZoomOut": #selector(BrowserWindowController.zoomOutQuickView(_:)),
         "view.quickViewResetZoom": #selector(BrowserWindowController.resetQuickViewZoom(_:)),
+        // The window controller, for the same reason: the table filtered is the preview's.
+        "view.quickViewFilterTable": #selector(BrowserWindowController.filterQuickViewTable(_:)),
         // The window controller, not a pane: the drawer spans both panes, and this is the one
         // command that must also fire while the *terminal* holds focus — where no pane is in the
         // responder chain, but the window controller still is.
