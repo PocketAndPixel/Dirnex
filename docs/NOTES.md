@@ -723,6 +723,15 @@ at build time.
     language-independent, and the control then failed on demand. The neutered build was telling
     somebody with a bad secret that their key had **signed in**, which the first version could not
     see.
+- **A fixture that builds its window in a helper and returns only the view leaves every later step
+  running in no window at all.** Measured 2026-09-15: `QuickViewTableFixtures.loaded` created an
+  `NSWindow`, laid the preview out in it and returned the preview, so `surface.window` was `nil` by the
+  test's next line. Everything a window changes was therefore absent from every assertion after the
+  first, including the column header floating over the rows under a full-size content view. A zoom
+  test that keeps the top row at the top passed there while the running app got it wrong by two rows.
+  Keep the window for the life of the process, as `TrashlessProbe` does, and check `view.window` when a
+  test of on-screen geometry passes too easily.
+
 - **A fixture on which the right rule and the wrong one agree tests neither, and `localizedStandardCompare`
   agrees with a numeric sort on plain integers.** Measured 2026-09-15: sorting a numeric CSV column as
   text instead of by value left `["-2.5", "0.75", "9", "10", "100"]` green, because Finder's comparison
@@ -1345,6 +1354,25 @@ at build time.
     strip of its own and the clip starts below it, so origin 0 is right and the test passed against the
     bug. It took `.fullSizeContentView` (the browser window's) *and* a surface laid out before the table
     landed to fail the way the app did.
+
+- **Magnifying the scroll view an `NSTableView` sits in does not magnify its column header, and a
+  zoomed table needs four more measured corrections.** Found 2026-09-15 zooming Quick View's CSV table:
+  - At `magnification` 2 the rows draw twice as large under a header still at 1×, so each title sits
+    half a column away from its values (a scratch-table snapshot). Zoom a table by scaling its fonts,
+    row height, header height and column widths instead.
+  - A header cell's `font` is ignored when the header draws (22 pt set, 11 pt drawn). An
+    `attributedStringValue` with the font in it is honoured, and `title` still returns the plain string.
+  - `NSTableHeaderView` takes a new frame height, and `tile()` puts the rows under it.
+  - Once a header cell has an attributed title, `sizeToFit` measures the title alone and leaves the
+    sort arrow out: 4 pt of room, where a plain-titled column gets 17 pt for the arrow. Work the room
+    out from the cell: `cellSize` less the title's width (4 pt of padding), plus the header's right edge
+    less `sortIndicatorRect(forBounds:).minX` (a 9 pt arrow drawn 8 pt in), plus a gap; 21 pt was still
+    short by a few points at 0.8×.
+  - `reloadData` after those changes left the table with no selection and posted no
+    `selectionDidChange`, so anything following the notification kept showing a row the table no
+    longer marked. Save `selectedRowIndexes` across the reload.
+  - A header click's arrow is not `indicatorImage(in:)`, which stays `nil`, so a test cannot read the
+    arrow back that way.
 
 - **Removing a sorted `NSTableColumn` clears the table's `sortDescriptors` and calls
   `tableView(_:sortDescriptorsDidChange:)` as it does.** Measured 2026-09-15 while adding header sorting

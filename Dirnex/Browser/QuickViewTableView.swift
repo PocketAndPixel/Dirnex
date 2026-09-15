@@ -39,6 +39,22 @@ final class QuickViewTableView: NSView {
     var selectionIsAutomatic = true
     var isSelectingProgrammatically = false
 
+    // The zoom's state, for the same reason (`QuickViewTableView+Zoom`).
+
+    /// ⌘+'s level, relative to the table as it opened.
+    var zoomLevel: Double = 1
+    /// The fonts cells draw in at `zoomLevel`.
+    var zoomedCellFont = QuickViewTableView.cellFont
+    var zoomedRowNumberFont = QuickViewTableView.rowNumberFont
+    /// The column header's height as AppKit built it, which a zoom scales.
+    var baseHeaderHeight: CGFloat = 0
+    /// Each column's width at level 1 — as measured, or as somebody dragged it, divided back out of
+    /// the level it was dragged at. What a zoom scales, so a step never builds on a width the header
+    /// floor raised at another level.
+    var baseWidths: [NSUserInterfaceItemIdentifier: CGFloat] = [:]
+    /// Set while a zoom sets widths itself, which is not somebody resizing a column.
+    var isApplyingZoomWidths = false
+
     /// The data font, and what a column is measured in: the system font with fixed-width digits, so
     /// a column of numbers lines up the way it does in Numbers and Activity Monitor.
     static let cellFont = NSFont.monospacedDigitSystemFont(
@@ -76,6 +92,7 @@ final class QuickViewTableView: NSView {
     /// Show `table`, back at its top-left with its first row selected.
     func show(_ table: DelimitedTable, isTruncated: Bool) {
         resetSort()
+        resetZoom()
         self.table = table
         rebuildColumns(for: table)
         tableView.reloadData()
@@ -131,10 +148,12 @@ final class QuickViewTableView: NSView {
         for column in tableView.tableColumns.reversed() {
             tableView.removeTableColumn(column)
         }
+        baseWidths = [:]
         guard let table else { return }
         let rowNumbers = NSTableColumn(identifier: Self.rowNumberColumn)
         rowNumbers.title = "#"
         rowNumbers.headerCell.alignment = .right
+        applyHeaderTitle(to: rowNumbers)
         rowNumbers.resizingMask = []
         // Sorting by the row number is the way back to the file's order.
         rowNumbers.sortDescriptorPrototype = NSSortDescriptor(
@@ -147,6 +166,8 @@ final class QuickViewTableView: NSView {
                 .size(withAttributes: [.font: Self.rowNumberFont]).width
         ) + 16
         rowNumbers.width = max(numbers, headerWidth(of: rowNumbers))
+        rowNumbers.minWidth = Self.minimumRowNumberWidth
+        baseWidths[rowNumbers.identifier] = rowNumbers.width
 
         let sampledRows = min(
             table.rowCount,
@@ -161,11 +182,13 @@ final class QuickViewTableView: NSView {
             if table.numericColumns.indices.contains(index), table.numericColumns[index] {
                 column.headerCell.alignment = .right
             }
-            column.minWidth = Self.minimumColumnWidth
+            applyHeaderTitle(to: column)
             column.maxWidth = 10000
             column.resizingMask = .userResizingMask
             tableView.addTableColumn(column)
+            column.minWidth = Self.minimumColumnWidth
             column.width = width(ofColumn: column, index: index, in: table, sampling: sampledRows)
+            baseWidths[column.identifier] = column.width
         }
     }
 
@@ -194,18 +217,54 @@ final class QuickViewTableView: NSView {
         return min(max(widest, Self.minimumColumnWidth), Self.maximumColumnWidth)
     }
 
-    /// The header's own width with a sort arrow in it — AppKit's arithmetic, asked of the header cell
-    /// rather than guessed, so a sorted column's title is not cut short by its own arrow.
-    private func headerWidth(of column: NSTableColumn) -> CGFloat {
-        tableView.setIndicatorImage(NSImage(named: "NSAscendingSortIndicator"), in: column)
-        column.sizeToFit()
-        tableView.setIndicatorImage(nil, in: column)
-        return ceil(column.width)
+    /// A header's width with a sort arrow in it: its title at the current level's size, and the
+    /// arrow's and the cell's own room, which do not scale (`headerChrome`).
+    func headerWidth(of column: NSTableColumn) -> CGFloat {
+        titleWidth(of: column) + Self.headerChrome
+    }
+
+    /// How much wider than its title a header has to be to show it whole beside a sort arrow: the
+    /// cell's padding around the title, the arrow's room at the right edge, and a gap between the two.
+    ///
+    /// The first two are AppKit's, measured once from a header cell: `cellSize` less the title's own
+    /// width (4 pt), and the header's right edge less `sortIndicatorRect`'s left one (a 9 pt arrow
+    /// drawn 8 pt in, so 17). Neither `sizeToFit` answer is usable: with an attributed title — which
+    /// the zoom needs — it leaves the arrow out altogether (4 pt of room), and a plain title's 21 pt
+    /// still cut a sorted `elapsed` to `elaps…` at 0.8 (seen live), which is the gap.
+    static let headerChrome: CGFloat = {
+        let cell = NSTableHeaderCell(textCell: "")
+        cell.attributedStringValue = NSAttributedString(
+            string: "value",
+            attributes: [.font: baseHeaderFont]
+        )
+        let title = ("value" as NSString).size(withAttributes: [.font: baseHeaderFont]).width
+        let padding = max(cell.cellSize.width - title, 0)
+        let bounds = NSRect(x: 0, y: 0, width: 100, height: 28)
+        let arrow = bounds.maxX - cell.sortIndicatorRect(forBounds: bounds).minX
+        return ceil(padding + arrow + headerTitleGap)
+    }()
+
+    /// The room between a header's title and its sort arrow.
+    static let headerTitleGap: CGFloat = 8
+
+    /// The width of a column's title in the header font at the current level.
+    func titleWidth(of column: NSTableColumn) -> CGFloat {
+        let font = NSFont.systemFont(ofSize: Self.baseHeaderFont.pointSize * CGFloat(zoomLevel))
+        return ceil((column.title as NSString).size(withAttributes: [.font: font]).width)
     }
 
     // MARK: - Layout
 
     /// The strip takes what its text needs, up to two fifths of the surface, and scrolls past that.
+    /// A pinch zooms the table the way ⌘+ and ⌘− do, continuously rather than by steps.
+    override func magnify(with event: NSEvent) {
+        guard table != nil else {
+            super.magnify(with: event)
+            return
+        }
+        setZoomLevel(zoomLevel * (1 + Double(event.magnification)))
+    }
+
     override func layout() {
         let wanted = strip.isEmpty ? 0 : strip.fittingHeight(forWidth: bounds.width)
         let height = min(wanted, max(bounds.height * 0.4, 48))
@@ -218,7 +277,7 @@ final class QuickViewTableView: NSView {
     private func buildTable() {
         tableView.style = .plain
         tableView.font = Self.cellFont
-        tableView.rowHeight = ceil(Self.cellFont.ascender - Self.cellFont.descender) + 6
+        tableView.rowHeight = Self.baseRowHeight
         tableView.intercellSpacing = NSSize(width: 6, height: 0)
         tableView.usesAlternatingRowBackgroundColors = true
         tableView.gridStyleMask = [.solidVerticalGridLineMask]
@@ -240,6 +299,7 @@ final class QuickViewTableView: NSView {
         scrollView.autohidesScrollers = true
         scrollView.documentView = tableView
         addSubview(scrollView)
+        baseHeaderHeight = tableView.headerView?.frame.height ?? 0
     }
 
     private func buildStrip() {
@@ -304,7 +364,7 @@ extension QuickViewTableView: NSTableViewDataSource, NSTableViewDelegate {
         if tableColumn.identifier == Self.rowNumberColumn {
             cell.show(
                 "\(record + 1)",
-                font: Self.rowNumberFont,
+                font: zoomedRowNumberFont,
                 color: .secondaryLabelColor,
                 alignment: .right
             )
@@ -314,11 +374,19 @@ extension QuickViewTableView: NSTableViewDataSource, NSTableViewDelegate {
         let isNumeric = table.numericColumns.indices.contains(column) && table.numericColumns[column]
         cell.show(
             table.cell(row: record, column: column),
-            font: Self.cellFont,
+            font: zoomedCellFont,
             color: .labelColor,
             alignment: isNumeric ? .right : .left
         )
         return cell
+    }
+
+    /// A column somebody dragged keeps its new width, in proportion, through later zooms.
+    func tableViewColumnDidResize(_ notification: Notification) {
+        guard !isApplyingZoomWidths,
+              let column = notification.userInfo?["NSTableColumn"] as? NSTableColumn
+        else { return }
+        baseWidths[column.identifier] = column.width / CGFloat(zoomLevel)
     }
 
     func tableViewSelectionDidChange(_ notification: Notification) {
@@ -332,71 +400,5 @@ extension QuickViewTableView: NSTableViewDataSource, NSTableViewDelegate {
         sortDescriptorsDidChange oldDescriptors: [NSSortDescriptor]
     ) {
         sortDescriptorsChanged()
-    }
-}
-
-/// One cell: a single-line label, centered vertically, cut off with an ellipsis, and floating its
-/// whole value on hover when it was cut.
-@MainActor
-final class QuickViewTableCell: NSTableCellView {
-    static let identifier = NSUserInterfaceItemIdentifier("QuickViewTableCell")
-    private let label = NSTextField(labelWithString: "")
-
-    init() {
-        super.init(frame: .zero)
-        identifier = Self.identifier
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.lineBreakMode = .byTruncatingTail
-        label.allowsExpansionToolTips = true
-        label.cell?.truncatesLastVisibleLine = true
-        addSubview(label)
-        textField = label
-        NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 2),
-            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -2),
-            label.centerYAnchor.constraint(equalTo: centerYAnchor)
-        ])
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    /// A line break inside a quoted value would push the rest of it below the row, so a cell draws
-    /// one as a space; the strip shows the value as written.
-    func show(_ value: String, font: NSFont, color: NSColor, alignment: NSTextAlignment) {
-        let singleLine = value.contains(where: \.isNewline)
-            ? value.split(whereSeparator: \.isNewline).joined(separator: " ")
-            : value
-        label.stringValue = singleLine
-        label.font = font
-        label.textColor = color
-        label.alignment = alignment
-    }
-}
-
-/// The table itself, which puts the selected rows on the pasteboard as tab-separated text — what a
-/// spreadsheet reads back into cells.
-@MainActor
-final class QuickViewDataTableView: NSTableView, NSMenuItemValidation {
-    var copiedText: ((IndexSet) -> String?)?
-    /// Where ⌘C writes. The general pasteboard, except in a test, which must not overwrite the
-    /// clipboard of whoever is running it.
-    var pasteboard = NSPasteboard.general
-
-    @objc func copy(_ sender: Any?) {
-        guard let text = copiedText?(selectedRowIndexes), !text.isEmpty else {
-            NSSound.beep()
-            return
-        }
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
-        pasteboard.setString(text, forType: .tabularText)
-    }
-
-    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-        guard menuItem.action == #selector(copy(_:)) else { return true }
-        return !selectedRowIndexes.isEmpty
     }
 }

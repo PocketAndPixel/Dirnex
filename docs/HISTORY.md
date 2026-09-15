@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-15)
 
-Sixty-five dated passes that landed outside a milestone of their own, between M18's close on
+Sixty-six dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-15: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12934,6 +12934,50 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-15 (late night) — the CSV table zooms.** Asked for after sorting landed. ⌘+, ⌘− and ⌘0
+walk the ladder every preview shares (`QuickViewZoom`), a pinch zooms continuously, and a new file
+opens at 1. Two Xcode 27 steps the user took first: accepting the license, and
+`xcodebuild -downloadComponent MetalToolchain`, since SwiftTerm compiles a Metal shader and Xcode 27
+no longer ships the toolchain.
+
+- **The probe ruled out the text preview's way of zooming.** An `NSTableView` in a scroll view
+  magnified 2× drew its rows at twice the size under a column header left at 1×, so `bravo`'s title
+  sat about 170 points left of its column (a snapshot of a scratch table). So
+  `QuickViewTableView+Zoom` scales what the table is drawn with: cell and row-number fonts, row height,
+  the header's height, column widths, and the strip's fonts. A header cell's `font` is ignored when the
+  header draws (set to 22 pt, the title drew at 11), so titles are attributed strings.
+- **Five things only measuring found.**
+  - Raising a column's floor before scaling its width pushed a 65 pt column to 88, then doubled it to
+    176. Widths are now each column's base times the level, and a width somebody drags is divided back
+    into its base, so a round trip to 0.25 and back returns the table as it opened.
+  - `reloadData` after a zoom's changes left the table with no selection and posted no notification,
+    so the strip went on showing a row the table no longer marked (seen live, then traced to the
+    reload). The zoom reselects what was selected, as the table's own choice rather than the user's.
+  - The row at the top was measured from the clip view's origin, which in the browser window sits 60
+    points above the first visible row, under the title bar and the header. `firstVisibleRow` reads the
+    header's bottom edge instead, and the restore puts that row just under it.
+  - Widths that were only multiplied cut titles short (`responseCo…` at 0.8, `elap…` under its arrow
+    at 1.75), so every column is floored at its title's width at that level plus the header's own room.
+    `sizeToFit` could not supply that room: with an attributed title it leaves the arrow out (4 pt), and
+    a plain title's 21 pt still cut `elapsed` at 0.8. The room is AppKit's cell padding (4 pt) plus
+    `sortIndicatorRect`'s distance from the right edge (a 9 pt arrow, 8 pt in) plus an 8 pt gap.
+  - **The fixture's window was deallocated the moment `loaded` returned**, so every step after it,
+    across all four table suites, had been running on a surface in no window. The zoom's top-row test
+    passed that way while the app got it wrong. `QuickViewTableFixtures` now keeps its windows for the
+    life of the process, and the sorting controls were run again on it (all seven still fail).
+
+Tests: 8 new (scaling, the header over its column at 0.5, 1.5 and 3, titles fitting at four levels, a
+dragged width, the strip, the ladder and ⌘0, the top row, a new file). Controls: nine reverts each
+failed their own tests. Among them: magnifying instead of scaling (failing the header-alignment test,
+which is the probe's finding pinned), the floor raised before the width is read, the arrow room taken
+from `sizeToFit`, the selection not restored, and the top row read from the clip origin. Validation: both linters, the four CI scripts,
+3,423 core tests, and the app suite (1,228 tests in 201 suites, the live-server suites skipped, one
+pre-existing known issue). Live, on the load-test log at full window: four Zoom In steps with row 1
+still selected, the strip scaled, headers over their columns, and `elapsed` sorted at 1.75 and at 0.8
+with its whole title beside its arrow; Reset Zoom back to 1, and the file opening at 1 again after
+the pane moved away and back. **Not verified live:** a real pinch (a synthetic scroll is not a
+trackpad, docs/NOTES.md ▸ AppKit), and ⌘+ from a real key press rather than the menu item.
 
 **2026-09-15 (night) — the CSV table sorts by a click on a column header.** Asked for straight after
 the table below landed.

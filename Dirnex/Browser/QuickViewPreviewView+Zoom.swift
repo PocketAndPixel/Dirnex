@@ -5,7 +5,7 @@ import DirnexCore
 /// how a step reaches it. The keys themselves are the window's (`BrowserWindowController+QuickViewZoom`),
 /// since the surface refuses first responder so the arrows keep driving the file list.
 ///
-/// Four backends zoom and two do not. A web page (HTML, Markdown, a converted office document), a PDF
+/// Five backends zoom and two do not. A web page (HTML, Markdown, a converted office document), a PDF
 /// (including a converted iWork document) and text (source or rich) each already had a zoom a pinch
 /// could reach, and the keys drive that same zoom; an image gained one of its own
 /// (`QuickViewImageScrollView`). Quick Look's out-of-process view and the remote placeholder card have
@@ -17,10 +17,14 @@ extension QuickViewPreviewView {
         case pdf
         case text(QuickViewTextView)
         case image(QuickViewImageScrollView)
+        case table(QuickViewTableView)
     }
 
     private var zoomTarget: ZoomTarget? {
         if placeholderCard?.isHidden == false { return nil }
+        if let tableSurface, !tableSurface.isHidden, tableSurface.table != nil {
+            return .table(tableSurface)
+        }
         if let webSurface, !webSurface.isHidden { return .web(webSurface) }
         if let pdfView, !pdfView.isHidden, pdfView.document != nil { return .pdf }
         if let textSurface, !textSurface.isHidden { return .text(textSurface) }
@@ -37,6 +41,7 @@ extension QuickViewPreviewView {
         case .pdf: pdfZoomLevel
         case let .text(surface): surface.zoomLevel
         case let .image(scrollView): scrollView.zoomLevel
+        case let .table(surface): surface.zoomLevel
         case nil: nil
         }
     }
@@ -54,6 +59,7 @@ extension QuickViewPreviewView {
         case .pdf: abs(pdfZoomLevel - 1) > 0.005 || pdfView?.autoScales != pdfFitsWidth
         case let .text(surface): abs(surface.zoomLevel - 1) > 0.005
         case let .image(scrollView): !scrollView.isAtStartingZoom
+        case let .table(surface): !surface.isAtStartingZoom
         case nil: false
         }
     }
@@ -71,6 +77,7 @@ extension QuickViewPreviewView {
         case .pdf: setPDFZoomLevel(1)
         case let .text(surface): surface.setZoomLevel(1)
         case let .image(scrollView): scrollView.resetZoom()
+        case let .table(surface): surface.setZoomLevel(1)
         case nil: break
         }
     }
@@ -81,6 +88,7 @@ extension QuickViewPreviewView {
         case .pdf: setPDFZoomLevel(level)
         case let .text(surface): surface.setZoomLevel(level)
         case let .image(scrollView): scrollView.setZoomLevel(level)
+        case let .table(surface): surface.setZoomLevel(level)
         case nil: break
         }
     }
@@ -104,7 +112,7 @@ extension QuickViewPreviewView {
             } else {
                 false
             }
-        case .web, .text, nil: false
+        case .web, .text, .table, nil: false
         }
     }
 }

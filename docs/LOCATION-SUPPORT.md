@@ -397,7 +397,7 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | Quick Look (`⌘Y`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes, limited<sup>s</sup> | yes | yes |
 | Syntax highlighting, Markdown, diagrams in preview | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | Office, iWork and rich-text documents in preview, zoomable and selectable<sup>rrr</sup> | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
-| CSV and TSV as a sortable table in preview, with the selected row in full<sup>sss</sup> | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| CSV and TSV as a sortable, zoomable table in preview, with the selected row in full<sup>sss</sup> | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t, ddd</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes, limited<sup>mmm</sup> | yes | yes |
 | Edit `F4`, with save written back | yes | yes | yes, limited<sup>v, ddd</sup> | yes | yes | yes | n/a | no<sup>jjj</sup> | yes | yes |
 | Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes, limited<sup>yy</sup> | yes | yes |

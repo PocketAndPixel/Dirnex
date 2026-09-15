@@ -14,20 +14,29 @@ final class QuickViewRecordStrip: NSView {
     private let textView = QuickViewDocumentTextView()
     private let separator = NSBox()
     private var record = NSAttributedString()
+    /// The row on show, kept so a zoom can draw it again at the new size.
+    private var fields: [(name: String, value: String)] = []
+
+    /// The table's zoom, which the strip follows so the two read at one size.
+    var scale: CGFloat = 1 {
+        didSet {
+            guard scale != oldValue, !fields.isEmpty else { return }
+            show(fields)
+        }
+    }
 
     /// Room between the text and the strip's edges.
     private static let inset = NSSize(width: 10, height: 6)
     /// The widest a column name may push the values to the right. A longer name sits on its own
     /// line with its value under it, rather than squeezing every value into a sliver.
     private static let nameColumnLimit: CGFloat = 180
-    private static let valueFont = NSFont.monospacedDigitSystemFont(
-        ofSize: NSFont.systemFontSize,
-        weight: .regular
-    )
-    private static let nameFont = NSFont.systemFont(
-        ofSize: NSFont.smallSystemFontSize,
-        weight: .medium
-    )
+    private var valueFont: NSFont {
+        NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize * scale, weight: .regular)
+    }
+
+    private var nameFont: NSFont {
+        NSFont.systemFont(ofSize: NSFont.smallSystemFontSize * scale, weight: .medium)
+    }
 
     init() {
         super.init(frame: .zero)
@@ -46,12 +55,14 @@ final class QuickViewRecordStrip: NSView {
 
     /// Show one row: its column names and values, in column order.
     func show(_ fields: [(name: String, value: String)]) {
-        record = Self.attributed(fields)
+        self.fields = fields
+        record = attributed(fields)
         textView.textStorage?.setAttributedString(record)
         textView.scroll(.zero)
     }
 
     func clear() {
+        fields = []
         record = NSAttributedString()
         textView.string = ""
     }
@@ -70,7 +81,7 @@ final class QuickViewRecordStrip: NSView {
 
     /// A name column as wide as the widest name that fits under the limit: the value starts at a tab
     /// stop there and its wrapped lines stay under it. A name past the limit takes a line of its own.
-    private static func attributed(_ fields: [(name: String, value: String)]) -> NSAttributedString {
+    private func attributed(_ fields: [(name: String, value: String)]) -> NSAttributedString {
         let nameAttributes: [NSAttributedString.Key: Any] = [
             .font: nameFont,
             .foregroundColor: NSColor.secondaryLabelColor
@@ -78,7 +89,8 @@ final class QuickViewRecordStrip: NSView {
         let widths = fields.map { ceil(
             ($0.name as NSString).size(withAttributes: nameAttributes).width
         ) }
-        let column = min(widths.filter { $0 <= nameColumnLimit }.max() ?? 0, nameColumnLimit) + 12
+        let limit = Self.nameColumnLimit * scale
+        let column = min(widths.filter { $0 <= limit }.max() ?? 0, limit) + 12
         let text = NSMutableAttributedString()
         for (index, field) in fields.enumerated() {
             let paragraph = NSMutableParagraphStyle()
@@ -86,7 +98,7 @@ final class QuickViewRecordStrip: NSView {
             paragraph.headIndent = column
             paragraph.paragraphSpacing = 3
             let name = NSMutableAttributedString(string: field.name, attributes: nameAttributes)
-            let fitsBeside = widths[index] <= nameColumnLimit
+            let fitsBeside = widths[index] <= limit
             name.append(NSAttributedString(string: fitsBeside ? "\t" : "\n"))
             if !fitsBeside {
                 paragraph.firstLineHeadIndent = 0

@@ -173,13 +173,19 @@ struct QuickViewTableSurfaceTests {
         let wideFile = try tree.write("wide.csv", contents: "\(header)\n\(row)\n\(row)\n")
         let wide = try await QuickViewTableFixtures.loaded(wideFile)
         #expect(wide.consumesHorizontalScroll)
-        #expect(!wide.canZoom(.larger))
     }
 }
 
 /// A table preview in a window, and the parts of it the table suites read.
 @MainActor
 enum QuickViewTableFixtures {
+    /// Every fixture window, kept for the life of the test process. Without this the window goes the
+    /// moment `loaded` returns and every step after it runs on a surface in no window — which hides
+    /// exactly what a window changes, the header floating over the rows (found when the zoom's
+    /// top-row test passed windowless). Kept rather than closed, since tearing a window down while
+    /// AppKit is still settling it crashes a later test (docs/NOTES.md ▸ Testing).
+    private static var windows: [NSWindow] = []
+
     /// A surface in a window, showing `url`, awaited until a table or a text view has landed —
     /// polling with `Task.sleep` rather than spinning the run loop, which cannot land a detached
     /// read (docs/NOTES.md ▸ Testing).
@@ -194,6 +200,7 @@ enum QuickViewTableFixtures {
             backing: .buffered,
             defer: true
         )
+        windows.append(window)
         let container = try #require(window.contentView)
         container.addSubview(preview)
         NSLayoutConstraint.activate([
