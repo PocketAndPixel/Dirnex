@@ -25,8 +25,16 @@ final class QuickViewRecordStrip: NSView {
         }
     }
 
-    /// Room between the text and the strip's edges.
-    private static let inset = NSSize(width: 10, height: 6)
+    /// Room between the text and the strip's sides, inside the text view.
+    private static let inset = NSSize(width: 10, height: 1)
+    /// Blank room between the separator and the text view, which the table's drag handle lies over
+    /// (`QuickViewTableView+StripHeight`). Outside the text view rather than inside it as an inset: a
+    /// text view sets the I-beam across its whole frame — cursor rects, a cursor-update tracking area
+    /// and its own mouse-moved handling (probed) — so a handle laid over one showed its resize
+    /// cursor only along the one-point separator, however tall it was made (seen live).
+    static let handleRoom: CGFloat = 11
+    /// Blank room under the text view.
+    private static let bottomRoom: CGFloat = 5
     /// The widest a column name may push the values to the right. A longer name sits on its own
     /// line with its value under it, rather than squeezing every value into a sliver.
     private static let nameColumnLimit: CGFloat = 180
@@ -67,7 +75,7 @@ final class QuickViewRecordStrip: NSView {
         textView.string = ""
     }
 
-    /// The height the text needs at `width`, insets and separator included.
+    /// The height the text needs at `width`, the blank room around it and the separator included.
     func fittingHeight(forWidth width: CGFloat) -> CGFloat {
         guard !isEmpty else { return 0 }
         let padding = textView.textContainer?.lineFragmentPadding ?? 5
@@ -76,7 +84,14 @@ final class QuickViewRecordStrip: NSView {
             with: NSSize(width: available, height: .greatestFiniteMagnitude),
             options: [.usesLineFragmentOrigin, .usesFontLeading]
         )
-        return ceil(bounds.height) + 2 * Self.inset.height + 2
+        return ceil(bounds.height) + 2 * Self.inset.height + Self.handleRoom + Self.bottomRoom + 2
+    }
+
+    /// The blank room above and below the text is the strip's own, so it is painted here: what is
+    /// behind the strip is the preview's backing, which is black in full screen.
+    override func draw(_ dirtyRect: NSRect) {
+        NSColor.textBackgroundColor.setFill()
+        dirtyRect.intersection(bounds).fill()
     }
 
     /// A name column as wide as the widest name that fits under the limit: the value starts at a tab
@@ -165,8 +180,11 @@ final class QuickViewRecordStrip: NSView {
             separator.topAnchor.constraint(equalTo: topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            scrollView.topAnchor.constraint(equalTo: separator.bottomAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor)
+            scrollView.topAnchor.constraint(
+                equalTo: separator.bottomAnchor,
+                constant: Self.handleRoom
+            ),
+            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Self.bottomRoom)
         ])
     }
 }

@@ -80,6 +80,9 @@ final class QuickViewPreviewView: NSView {
     var webSurface: QuickViewWebView?
     /// Internal for the same reason, from `QuickViewPreviewView+Table`.
     var tableSurface: QuickViewTableView?
+    /// Where the table surface keeps the height its strip was dragged to. Set before the first CSV
+    /// is shown; a test hands over a scratch domain so it neither reads nor writes the real one.
+    var tableLayoutDefaults: UserDefaults = .standard
     /// Internal for the same reason, from `QuickViewPreviewView+Placeholder`.
     var placeholderCard: QuickViewPlaceholderCard?
     /// The office-document conversion in flight, so the next one — or putting the surface away —

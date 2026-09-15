@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-15)
 
-Sixty-seven dated passes that landed outside a milestone of their own, between M18's close on
+Sixty-eight dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-15: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12934,6 +12934,27 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-15 (last) — the strip under the CSV table can be dragged taller or shorter.** Asked for
+with a screenshot of the strip. A 12-point handle from the strip's separator down
+(`QuickViewStripHandle`) takes the drag, and a double-click on it puts the strip back to fitting the
+selected row. A dragged height holds for every row and file, in all three Quick View sizes and
+across launches, kept in points under `Dirnex.quickView.tableStripHeight` because what the strip
+fits is lines of text; the table keeps 80 points for its header and a couple of rows, and the strip
+one line (`QuickViewTableView+StripHeight`). An NSSplitView was passed over because the strip sizes
+itself until somebody drags it. The store is handed to the surface (`tableLayoutDefaults`), and the
+table fixture gives every table test a scratch domain, so no test reads or writes the running app's
+height. Six tests, driven through the handle's own mouse handlers; five controls (the dragged height
+ignored, no bound, a double-click that forgets nothing, the handle left up with no row, the drag's
+sign flipped) each failed the suite. App suite 1,234, core 3,423. Live in the Debug build: a
+background drag moved the edge where it was dragged and wrote 390, selecting another row kept the
+height, Full Window opened at the same height, and a double-click cleared the key. The resize cursor
+could not be seen in a screenshot, and it was the part that was wrong: laid over the strip's text
+view, the handle showed its cursor only along the one-point separator, because a text view claims
+the I-beam across its whole frame (a probe found cursor rects, a cursor-update tracking area and
+mouse-moved handling on `NSTextView`). Making the handle taller changed nothing anyone could see.
+The text view now starts under an 11-point blank band that the strip paints itself, and the handle
+lies over that band alone; confirmed by hand (docs/NOTES.md ▸ AppKit).
 
 **2026-09-15 (later still) — the stray `Info.plist` in the bundle's resources is gone.** Xcode 27
 warned that the Copy Bundle Resources phase held the target's `Info.plist`. The

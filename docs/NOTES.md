@@ -1382,6 +1382,27 @@ at build time.
   under a flag the handler ignores. A control that removes the clearing line cannot fail, since AppKit
   clears them anyway, so the flag is the part that matters.
 
+- **A view laid over an `NSTextView` does not get its cursor where the two overlap: the text view
+  keeps the I-beam across its whole frame.** Found 2026-09-15 with the drag handle over the top edge
+  of Quick View's CSV strip. The handle took the drag correctly (it wins the hit test), but its resize
+  cursor showed only on the 1-point separator above the text view. Making it 7 and then 12 points
+  tall changed nothing anyone could see, and the report was "too narrow", then "no difference".
+  - **A text view sets the cursor in three ways.** A probe found `NSTextView` overrides
+    `resetCursorRects` and `cursorUpdate(with:)`, and carries its own cursor-update tracking area over
+    its bounds; `NSClipView` overrides `resetCursorRects` too. The handle had a cursor-update tracking
+    area of its own. Whether a cursor rect would have fared better is not known, since the probe
+    could not drive either one (below).
+  - **The fix is to leave nothing under the handle that sets a cursor.** The strip's text view now
+    starts under an 11-point blank band, which the strip paints itself (the preview's backing behind
+    it is black in full screen), and the handle lies over the separator and the band only. Confirmed
+    by hand: the resize cursor shows across the whole band.
+  - **A synthetic `mouseMoved` cannot measure this.** Sent through `NSApp.sendEvent`, it never ran the
+    handle's `cursorUpdate` or cursor rect at all, while the text view still set the I-beam from its own
+    mouse-moved handling. So the probe showed the text view claiming the overlap, and nothing about
+    which mechanism wins for real mouse movement. What a test can pin is the layout: the handle's frame
+    does not intersect the text view's scroll view, and the band is opaque in a `cacheDisplay` of the
+    strip (with the fill removed, its alpha is 0).
+
 - **`NSAlert.runModal()` centers on the *display*, not on the window that raised it** — measured, a
   260 pt alert lands at x=734 on a 1728 pt screen whatever the app window's frame is. So every
   `runModal` alert reads as detached from the app, and on a large display it can be nowhere near the

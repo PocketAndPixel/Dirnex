@@ -189,11 +189,20 @@ enum QuickViewTableFixtures {
     /// A surface in a window, showing `url`, awaited until a table or a text view has landed —
     /// polling with `Task.sleep` rather than spinning the run loop, which cannot land a detached
     /// read (docs/NOTES.md ▸ Testing).
+    ///
+    /// The surface keeps a dragged strip height in a scratch domain named for the calling test, so no
+    /// table test reads the height somebody dragged in the running app, or writes one into it. Pass
+    /// `layoutDefaults` for a second preview that should share the first one's domain.
     static func loaded(
         _ url: URL,
-        style: QuickViewRenderStyle = .rendered
+        style: QuickViewRenderStyle = .rendered,
+        layoutDefaults: UserDefaults? = nil,
+        file: String = #fileID,
+        function: String = #function
     ) async throws -> QuickViewPreviewView {
         let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
+        preview.tableLayoutDefaults = layoutDefaults
+            ?? ScratchDefaults.fresh(file: file, function: function)
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 400),
             styleMask: [.titled, .fullSizeContentView],

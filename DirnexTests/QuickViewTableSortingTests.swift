@@ -25,7 +25,7 @@ struct QuickViewTableSortingTests {
 
     @Test("AppKit can reach the sort handler")
     func handlerIsReachable() {
-        let surface = QuickViewTableView()
+        let surface = QuickViewTableView(layoutDefaults: ScratchDefaults.fresh())
         #expect(surface.responds(to: NSSelectorFromString("tableView:sortDescriptorsDidChange:")))
     }
 

@@ -14,8 +14,14 @@ final class QuickViewTableView: NSView {
     let scrollView = NSScrollView()
     let tableView = QuickViewDataTableView()
     let strip = QuickViewRecordStrip()
+    /// The strip's top edge, which a drag moves (`QuickViewTableView+StripHeight`).
+    let stripHandle = QuickViewStripHandle()
     private let truncationNotice = NSVisualEffectView()
-    private var stripHeight: NSLayoutConstraint?
+    /// Internal, not private, for `QuickViewTableView+StripHeight`, which sets it.
+    var stripHeight: NSLayoutConstraint?
+    /// Where the height somebody dragged the strip to is kept: the app's own defaults, or a
+    /// test's scratch domain (docs/NOTES.md ▸ Testing).
+    let layoutDefaults: UserDefaults
 
     /// The table on screen, or `nil` once cleared.
     private(set) var table: DelimitedTable?
@@ -74,12 +80,14 @@ final class QuickViewTableView: NSView {
     /// a hundred rows of a typical file, and fewer rows of a very wide one.
     private static let measurementBudget = 2000
 
-    init() {
+    init(layoutDefaults: UserDefaults) {
+        self.layoutDefaults = layoutDefaults
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
         buildTable()
         buildStrip()
         buildNotice()
+        installStripHandle()
     }
 
     @available(*, unavailable)
@@ -255,7 +263,6 @@ final class QuickViewTableView: NSView {
 
     // MARK: - Layout
 
-    /// The strip takes what its text needs, up to two fifths of the surface, and scrolls past that.
     /// A pinch zooms the table the way ⌘+ and ⌘− do, continuously rather than by steps.
     override func magnify(with event: NSEvent) {
         guard table != nil else {
@@ -265,12 +272,10 @@ final class QuickViewTableView: NSView {
         setZoomLevel(zoomLevel * (1 + Double(event.magnification)))
     }
 
+    /// The strip fits its row, or keeps the height it was dragged to, and scrolls past either
+    /// (`QuickViewTableView+StripHeight`).
     override func layout() {
-        let wanted = strip.isEmpty ? 0 : strip.fittingHeight(forWidth: bounds.width)
-        let height = min(wanted, max(bounds.height * 0.4, 48))
-        if let stripHeight, abs(stripHeight.constant - height) > 0.5 {
-            stripHeight.constant = height
-        }
+        updateStripHeight()
         super.layout()
     }
 
