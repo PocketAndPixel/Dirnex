@@ -12,9 +12,22 @@
 		1000000000000000000000303 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 1000000000000000000000302 /* Sparkle */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		1000000000000000000000D3 /* Exceptions for "Dirnex" folder in "Dirnex" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 1000000000000000000000B1 /* Dirnex */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		1000000000000000000000D1 /* Dirnex */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				1000000000000000000000D3 /* Exceptions for "Dirnex" folder in "Dirnex" target */,
+			);
 			path = Dirnex;
 			sourceTree = "<group>";
 		};

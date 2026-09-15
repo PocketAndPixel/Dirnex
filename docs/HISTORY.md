@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-15)
 
-Sixty-six dated passes that landed outside a milestone of their own, between M18's close on
+Sixty-seven dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-15: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12934,6 +12934,17 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-15 (later still) — the stray `Info.plist` in the bundle's resources is gone.** Xcode 27
+warned that the Copy Bundle Resources phase held the target's `Info.plist`. The
+file-system-synchronized `Dirnex` group had been adding it as a resource since July, so every build
+carried the raw source plist at `Contents/Resources/Info.plist`, the installed release included. A
+membership exception in `project.pbxproj` leaves it out. With the stale copy deleted from
+DerivedData, the Debug build has no warning and no copy, the processed `Contents/Info.plist` is
+byte-identical, and the bundle differs by that one file. Restoring the old project file brought both
+back (the control). The app suite passed (1,228 tests), a Release build shows neither the warning
+nor the file, and the Debug build launched and answered AppleScript (docs/NOTES.md ▸ Release
+pipeline).
 
 **2026-09-15 (late night) — the CSV table zooms.** Asked for after sorting landed. ⌘+, ⌘− and ⌘0
 walk the ladder every preview shares (`QuickViewZoom`), a pinch zooms continuously, and a new file

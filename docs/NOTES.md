@@ -7260,6 +7260,15 @@ macOS 26.6 before any Swift was written.
 
 See [RELEASING.md](RELEASING.md) for the procedure. The traps:
 
+- **A file-system-synchronized group makes *every* file under `Dirnex/` a member of the target, and a
+  plist becomes a bundle resource.** So `Dirnex/Info.plist` — also the target's `INFOPLIST_FILE` —
+  was copied raw into `Contents/Resources/Info.plist` beside the processed `Contents/Info.plist`, in
+  every build since July, the shipped release included. Xcode 27 is the first to warn about it
+  ("The Copy Bundle Resources build phase contains this target's Info.plist file"). The fix is a
+  `PBXFileSystemSynchronizedBuildFileExceptionSet` with `Info.plist` in its `membershipExceptions`,
+  listed in the root group's `exceptions`. Measured both ways on 2026-09-15: with it, no warning and no
+  stray copy, and the processed plist byte-identical; with the project file reverted, both back. An
+  incremental build leaves an old resource in the product, so delete it before judging the fix.
 - **`github.run_number` is per-workflow-FILE, and under `workflow_call` the `github` context is
   the CALLER's.** A beta released via `beta.yml` therefore draws a fresh counter starting at 1
   while stable sits at ~5, silently breaking the monotonic-`CFBundleVersion` invariant the update
