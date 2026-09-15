@@ -117,6 +117,26 @@ public struct DelimitedTable: Sendable, Equatable {
         )
     }
 
+    /// A table built from values already in hand rather than read from delimited text — what a JSON
+    /// Lines file or a JSON array of objects becomes (`JSONDocument.recordTable`). Record 0 names the
+    /// columns, and nothing is guessed: the values say which columns hold numbers.
+    init(
+        builtFrom bytes: [UInt8],
+        cells: [DelimitedCell],
+        recordStarts: [Int],
+        columnCount: Int,
+        numericColumns: [Bool]
+    ) {
+        self.bytes = bytes
+        self.cells = cells
+        self.recordStarts = recordStarts
+        self.columnCount = columnCount
+        self.numericColumns = numericColumns
+        // A comma, so the sort reads a decimal point, which is the only one JSON writes.
+        delimiter = .comma
+        hasHeaderRow = true
+    }
+
     // MARK: - Cells
 
     /// The number of data rows, the header row not counted.

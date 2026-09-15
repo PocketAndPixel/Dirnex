@@ -61,6 +61,9 @@ final class QuickViewRecordStrip: NSView {
     /// The text on screen, for tests.
     var text: String { textView.string }
 
+    /// The text on screen with its paragraph styles, for tests.
+    var attributedText: NSAttributedString { record }
+
     /// Show one row: its column names and values, in column order.
     func show(_ fields: [(name: String, value: String)]) {
         self.fields = fields
@@ -108,41 +111,54 @@ final class QuickViewRecordStrip: NSView {
         let column = min(widths.filter { $0 <= limit }.max() ?? 0, limit) + 12
         let text = NSMutableAttributedString()
         for (index, field) in fields.enumerated() {
+            // A value of several lines — a JSON value written out, a quoted cell holding line breaks —
+            // is several paragraphs, and a paragraph's first line starts at its first-line indent. So
+            // every line after the first takes the column's indent of its own, or it starts at the
+            // strip's edge under the names (seen live on the JSON tree's first container). By
+            // `isNewline`, since a CRLF is one `Character` that equals neither break (docs/NOTES.md).
+            let lines = field.value.split(
+                omittingEmptySubsequences: false,
+                whereSeparator: \.isNewline
+            )
+            let fitsBeside = widths[index] <= limit
             let paragraph = NSMutableParagraphStyle()
             paragraph.tabStops = [NSTextTab(textAlignment: .left, location: column)]
             paragraph.headIndent = column
-            paragraph.paragraphSpacing = 3
+            paragraph.paragraphSpacing = fitsBeside && lines.count > 1 ? 0 : 3
             let name = NSMutableAttributedString(string: field.name, attributes: nameAttributes)
-            let fitsBeside = widths[index] <= limit
             name.append(NSAttributedString(string: fitsBeside ? "\t" : "\n"))
-            if !fitsBeside {
-                paragraph.firstLineHeadIndent = 0
-            }
             name.addAttribute(
                 .paragraphStyle,
                 value: paragraph,
                 range: NSRange(location: 0, length: name.length)
             )
             text.append(name)
-            let valueParagraph = fitsBeside ? paragraph : Self.indented(column)
-            text.append(NSAttributedString(
-                string: field.value + (index == fields.count - 1 ? "" : "\n"),
-                attributes: [
-                    .font: valueFont,
-                    .foregroundColor: NSColor.labelColor,
-                    .paragraphStyle: valueParagraph
-                ]
-            ))
+            for (number, line) in lines.enumerated() {
+                let isLast = number == lines.count - 1
+                let style = number == 0 && fitsBeside
+                    ? paragraph
+                    : Self.indented(column, spacing: isLast ? 3 : 0)
+                let ending = isLast && index == fields.count - 1 ? "" : "\n"
+                text.append(NSAttributedString(
+                    string: String(line) + ending,
+                    attributes: [
+                        .font: valueFont,
+                        .foregroundColor: NSColor.labelColor,
+                        .paragraphStyle: style
+                    ]
+                ))
+            }
         }
         return text
     }
 
-    /// The paragraph a value takes when its name sat on the line above: every line under the names.
-    private static func indented(_ column: CGFloat) -> NSParagraphStyle {
+    /// The paragraph a line of a value takes when it does not share a line with its name: under the
+    /// names, like every other line of the value.
+    private static func indented(_ column: CGFloat, spacing: CGFloat) -> NSParagraphStyle {
         let paragraph = NSMutableParagraphStyle()
         paragraph.firstLineHeadIndent = column
         paragraph.headIndent = column
-        paragraph.paragraphSpacing = 3
+        paragraph.paragraphSpacing = spacing
         return paragraph
     }
 

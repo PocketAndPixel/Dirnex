@@ -1,0 +1,299 @@
+import AppKit
+import DirnexCore
+
+/// A JSON file as a tree of its keys and values, with the selected value's path and its whole text in
+/// the strip underneath — one of `QuickViewPreviewView`'s backends (`QuickViewPreviewView+JSON`).
+///
+/// Built like the CSV table beside it and from its parts: the strip and its drag handle, the cells,
+/// the "first 4 MB" notice and the zoom's ladder. Two columns, the key and the value: a string in
+/// quotes, a number or a word in the source view's colors (`SyntaxTheme`), and a container as how many
+/// values it holds. An element's key is its index.
+///
+/// The first row is selected as a file opens, so the strip says something before anything is clicked.
+/// The arrows belong to the file list, as they do over the table, so a container opens by its
+/// disclosure triangle or a double-click on its row; ⌥-click on a triangle opens everything under it,
+/// which is the outline view's own.
+@MainActor
+final class QuickViewJSONTreeView: NSView {
+    let scrollView = NSScrollView()
+    let outlineView = QuickViewJSONOutlineView()
+    let strip = QuickViewRecordStrip()
+    /// The strip's top edge, which a drag moves (`QuickViewJSONTreeView+Layout`).
+    let stripHandle = QuickViewStripHandle()
+    let truncationNotice = QuickViewTruncationNotice()
+    /// Internal, not private, for `QuickViewJSONTreeView+Layout`, which sets it.
+    var stripHeight: NSLayoutConstraint?
+    /// Where the height somebody dragged the strip to is kept: the app's own defaults, or a test's
+    /// scratch domain (docs/NOTES.md ▸ Testing).
+    let layoutDefaults: UserDefaults
+
+    /// The document on screen, or `nil` once cleared.
+    private(set) var document: JSONDocument?
+    /// The values listed at the top of the tree, kept because the outline view asks for them one at a
+    /// time.
+    private(set) var topLevel: [Int] = []
+    /// One object per value the outline view has been handed. It keeps a row's expanded state against
+    /// the object, so a value has to come back as the same object every time it is asked for.
+    private var items: [Int: QuickViewJSONItem] = [:]
+
+    // The zoom's state, kept here because an extension cannot hold any (`QuickViewJSONTreeView+Layout`).
+
+    /// ⌘+'s level, relative to the tree as it opened.
+    var zoomLevel: Double = 1
+    /// The font cells draw in at `zoomLevel`.
+    var zoomedFont = QuickViewTableView.cellFont
+    /// The column header's height as AppKit built it, which a zoom scales.
+    var baseHeaderHeight: CGFloat = 0
+    /// The key column's width at level 1: as measured, or as somebody dragged it.
+    var baseKeyWidth: CGFloat = 0
+    /// Set while a zoom sets the key column's width itself, which is not somebody resizing it.
+    var isApplyingZoom = false
+
+    static let keyColumn = NSUserInterfaceItemIdentifier("key")
+    static let valueColumn = NSUserInterfaceItemIdentifier("value")
+    /// How many rows a file may open showing before its bigger containers are left closed
+    /// (`JSONDocument.initialExpansion`): a `package.json` opens whole, an array of ten thousand closed.
+    static let initialRowBudget = 200
+    /// The most of a string a cell decodes, which is already wider than any column.
+    static let cellTextLimit = 512
+    /// The most of a value the strip shows. The strip measures its text on every layout, so a 4 MB value
+    /// would cost that on every layout; ⌘C still copies the whole value.
+    static let stripTextLimit = 64 * 1024
+    static let baseIndentation: CGFloat = 16
+    static let minimumKeyWidth: CGFloat = 90
+    static let maximumKeyWidth: CGFloat = 360
+    /// What a key's cell needs beside its text: the disclosure triangle and the cell's own padding.
+    static let keyChrome: CGFloat = 34
+
+    init(layoutDefaults: UserDefaults) {
+        self.layoutDefaults = layoutDefaults
+        super.init(frame: .zero)
+        translatesAutoresizingMaskIntoConstraints = false
+        buildOutline()
+        buildStrip()
+        truncationNotice.install(in: self, above: scrollView.bottomAnchor)
+        installStripHandle()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    // MARK: - Content
+
+    /// Show `document`, at its top with its first row selected and its small containers open.
+    func show(_ document: JSONDocument) {
+        zoomLevel = 1
+        applyZoom()
+        self.document = document
+        topLevel = document.topLevelValues
+        items = [:]
+        outlineView.reloadData()
+        for value in document.initialExpansion(rowBudget: Self.initialRowBudget) {
+            outlineView.expandItem(item(for: value))
+        }
+        sizeKeyColumn()
+        // To the first row, not to the document's origin, for the reason the table gives: the header
+        // floats over the rows (`QuickViewTableView.show`).
+        if outlineView.numberOfRows > 0 {
+            outlineView.scrollRowToVisible(0)
+            outlineView.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+        }
+        outlineView.scrollColumnToVisible(0)
+        showSelectedValue()
+        truncationNotice.isHidden = !document.isTruncated
+        needsLayout = true
+    }
+
+    func clearDocument() {
+        document = nil
+        topLevel = []
+        items = [:]
+        outlineView.reloadData()
+        strip.clear()
+        truncationNotice.isHidden = true
+    }
+
+    /// The object standing for `value`, made the first time it is asked for.
+    func item(for value: Int) -> QuickViewJSONItem {
+        if let item = items[value] { return item }
+        let item = QuickViewJSONItem(value: value)
+        items[value] = item
+        return item
+    }
+
+    /// The value on the selected row, if any.
+    var selectedValue: Int? {
+        (outlineView.item(atRow: outlineView.selectedRow) as? QuickViewJSONItem)?.value
+    }
+
+    /// The selected value's path and text in the strip.
+    func showSelectedValue() {
+        guard let document, let value = selectedValue else {
+            strip.clear()
+            needsLayout = true
+            return
+        }
+        strip.show([
+            (Self.pathTitle, document.path(of: value)),
+            (Self.valueTitle, stripText(of: value, in: document))
+        ])
+        needsLayout = true
+    }
+
+    /// A string's text, a number or word as written, and a container as indented JSON — cut, with an
+    /// ellipsis, at `stripTextLimit`.
+    private func stripText(of value: Int, in document: JSONDocument) -> String {
+        if document.kind(of: value).isContainer {
+            return document.formattedText(of: value, byteLimit: Self.stripTextLimit)
+        }
+        let text = document.scalarText(of: value)
+        guard text.utf8.count > Self.stripTextLimit else { return text }
+        return document.scalarText(of: value, byteLimit: Self.stripTextLimit) + "…"
+    }
+
+    /// What ⌘C puts on the pasteboard: the selected value whole — a string's text, or a container as
+    /// indented JSON.
+    func copiedValueText() -> String? {
+        guard let document, let value = selectedValue else { return nil }
+        return document.kind(of: value).isContainer
+            ? document.formattedText(of: value)
+            : document.scalarText(of: value)
+    }
+
+    /// A double-click opens a closed container on its row, and closes an open one.
+    @objc func toggleClickedRow(_ sender: Any?) {
+        guard let item = outlineView.item(atRow: outlineView.clickedRow) else { return }
+        if outlineView.isItemExpanded(item) {
+            outlineView.collapseItem(item)
+        } else if outlineView.isExpandable(item) {
+            outlineView.expandItem(item)
+        }
+    }
+
+    /// Whether the tree is wider than the surface, so a sideways two-finger scroll pans it rather than
+    /// turning to the next file — the table's rule.
+    var pansHorizontally: Bool {
+        guard let document = scrollView.documentView else { return false }
+        return document.frame.width > scrollView.contentView.bounds.width + 0.5
+    }
+
+    // MARK: - Layout
+
+    /// A pinch zooms the tree the way ⌘+ and ⌘− do, continuously rather than by steps.
+    override func magnify(with event: NSEvent) {
+        guard document != nil else {
+            super.magnify(with: event)
+            return
+        }
+        setZoomLevel(zoomLevel * (1 + Double(event.magnification)))
+    }
+
+    override func layout() {
+        updateStripHeight()
+        super.layout()
+    }
+
+    /// The key column as wide as the widest key among the rows the tree opened with, at its depth,
+    /// within the two bounds. The value column takes the rest, and follows the surface as it resizes.
+    func sizeKeyColumn() {
+        guard let column = outlineView.tableColumn(withIdentifier: Self.keyColumn) else { return }
+        let font = QuickViewTableView.cellFont
+        var widest = ceil((Self.keyTitle as NSString)
+            .size(withAttributes: [.font: QuickViewTableView.baseHeaderFont]).width) + 20
+        for row in 0..<min(outlineView.numberOfRows, 500) {
+            guard let item = outlineView.item(atRow: row) as? QuickViewJSONItem else { continue }
+            let text = String(keyLabel(for: item.value).text.prefix(60))
+            let width = ceil((text as NSString).size(withAttributes: [.font: font]).width)
+            let indent = CGFloat(outlineView.level(forRow: row)) * Self.baseIndentation
+            widest = max(widest, width + indent + Self.keyChrome)
+        }
+        baseKeyWidth = min(max(widest, Self.minimumKeyWidth), Self.maximumKeyWidth)
+        isApplyingZoom = true
+        column.width = baseKeyWidth * CGFloat(zoomLevel)
+        isApplyingZoom = false
+    }
+
+    private func buildOutline() {
+        outlineView.style = .plain
+        outlineView.rowHeight = QuickViewTableView.baseRowHeight
+        outlineView.intercellSpacing = NSSize(width: 6, height: 0)
+        outlineView.usesAlternatingRowBackgroundColors = true
+        outlineView.columnAutoresizingStyle = .lastColumnOnlyAutoresizingStyle
+        outlineView.allowsMultipleSelection = false
+        outlineView.allowsEmptySelection = true
+        outlineView.allowsColumnReordering = false
+        outlineView.allowsColumnSelection = false
+        outlineView.indentationPerLevel = Self.baseIndentation
+        outlineView.autoresizesOutlineColumn = false
+
+        let key = NSTableColumn(identifier: Self.keyColumn)
+        key.title = Self.keyTitle
+        key.resizingMask = .userResizingMask
+        key.minWidth = 40
+        key.maxWidth = 10000
+        let value = NSTableColumn(identifier: Self.valueColumn)
+        value.title = Self.valueTitle
+        value.resizingMask = [.autoresizingMask, .userResizingMask]
+        value.minWidth = 80
+        value.maxWidth = 100_000
+        outlineView.addTableColumn(key)
+        outlineView.addTableColumn(value)
+        outlineView.outlineTableColumn = key
+
+        outlineView.dataSource = self
+        outlineView.delegate = self
+        outlineView.target = self
+        outlineView.doubleAction = #selector(toggleClickedRow(_:))
+        outlineView.copiedText = { [weak self] in self?.copiedValueText() }
+
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = true
+        scrollView.autohidesScrollers = true
+        scrollView.documentView = outlineView
+        addSubview(scrollView)
+        baseHeaderHeight = outlineView.headerView?.frame.height ?? 0
+    }
+
+    private func buildStrip() {
+        strip.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(strip)
+        let height = strip.heightAnchor.constraint(equalToConstant: 0)
+        stripHeight = height
+        NSLayoutConstraint.activate([
+            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: strip.topAnchor),
+            strip.leadingAnchor.constraint(equalTo: leadingAnchor),
+            strip.trailingAnchor.constraint(equalTo: trailingAnchor),
+            strip.bottomAnchor.constraint(equalTo: bottomAnchor),
+            height
+        ])
+    }
+
+    // MARK: - Words
+
+    static var keyTitle: String {
+        String(
+            localized: "Key",
+            comment: "Quick View JSON tree column header: the key a value is stored under"
+        )
+    }
+
+    static var valueTitle: String {
+        String(
+            localized: "Value",
+            comment: "Quick View JSON tree column header, and the strip's name for the selected value's text"
+        )
+    }
+
+    static var pathTitle: String {
+        String(
+            localized: "Path",
+            comment: "Quick View JSON tree strip: the name beside the selected value's JSONPath, such as $.name"
+        )
+    }
+}

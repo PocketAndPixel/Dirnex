@@ -743,6 +743,13 @@ at build time.
     opens, so `selectRowIndexes` posted no `selectionDidChange`, the surface never counted a choice,
     and the control that deleted the rule for chosen rows passed. Select a row the table is not
     already on, and assert the choice registered before relying on it.
+  - **A four-hex-digit `\u` escape typed into a test can land in the file as the character it names,
+    and the test then passes without reading an escape.** Seen 2026-09-15 writing `JSONDocument`'s
+    tests with an agent's file tools: a raw-string fixture spelled with the six characters of a JSON
+    escape reached disk holding `é` and `😀`, so "escapes are read" was green against a scanner whose
+    escape path it never ran. Only a neighbouring test cutting a value mid-character failed, for a
+    different reason, and that is what showed it. Spell such an escape in pieces
+    (`"\\" + "u00e9"`), and assert the fixture's source does not contain the character.
 
 - **A `git checkout` is not available to revert a control here, because the work is uncommitted** —
   Oleg commits, so a control's cleanup has to copy the file aside and copy it back. Done anyway
@@ -1950,6 +1957,29 @@ at build time.
   types explicitly rather than deriving them from one conformance. (`.shtml` and `.htm` are both
   `public.html`; `.mhtml` and `.webarchive` conform to neither text nor html; `.svg` is an image
   *and* text, so backend order decides it.)
+- **Most of the JSON family has no registered type on a Mac, so a type gate sends it to Quick Look.**
+  Probed 2026-09-15: `.jsonl`, `.jsonc`, `.json5`, `.ipynb`, `.har`, `.webmanifest`, `.topojson` and
+  `.avsc` resolve to `dyn.…` types that conform to nothing, not even `public.text`, so `isText` refused
+  every one and none had ever reached the text preview. Only `.json`, `.geojson` and `.xcstrings`
+  conform to `public.json`, and `.ndjson` is `public.ndjson`, which conforms to `public.text` and not
+  to `public.json`. Route the family by name, with the conformance as the fallback
+  (`QuickViewPreviewView.isJSON`).
+- **`JSONSerialization` cannot back a preview: it reorders keys, merges repeats, rewrites numbers and
+  refuses a cut file.** Measured before `JSONDocument` was written: `{"zeta","alpha","mid"}` came back
+  as `alpha, mid, zeta` (it is an `NSDictionary`), a repeated key kept one value, `1.10` read as `1.1`,
+  and the 4 MB prefix of a 13 MB file on this Mac did not parse at all. A preview shows the file, so
+  it needs a scanner that keeps byte ranges — which also made JSONC cheap (29 of the 34 files here a
+  strict parser refused were `tsconfig.json`-style, with comments and trailing commas) and a truncated
+  tail. The oracle that checks such a scanner is Python's `json` with `object_pairs_hook`, which keeps
+  both order and repeats: over the 1 487 JSON files in the home folder the two agreed on every whole
+  file, and the scanner took 46 ms for all of them in a release build.
+- **A paragraph style's `headIndent` keeps a value's *wrapped* lines under a tab stop, and not its later
+  *lines*: a line break starts a new paragraph, and that starts at `firstLineHeadIndent`.** Seen live
+  2026-09-15 on the strip under Quick View's JSON tree: a container written out put its `{` in the
+  value column and every line after it at the strip's left edge, under the names. The CSV strip had
+  the same flaw for a quoted cell holding a line break, rare enough that nobody had seen it. Give each
+  line after the first a style of its own whose first-line indent is the column
+  (`QuickViewRecordStrip`), and split on `isNewline`, since a CRLF is one `Character`.
 - **The shared `QLPreviewPanel` (⌘Y) is key while open**, so arrows navigate its preview items,
   not the table. `QLPreviewView` is not opaque and `init(frame:style:)` is failable — an
   embedded preview needs an opaque backing or the covered view bleeds through. It also only

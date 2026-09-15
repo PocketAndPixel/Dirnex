@@ -154,7 +154,13 @@ public enum SyntaxLanguage: String, Sendable, CaseIterable {
         // `.xcstrings` is JSON, not XML — probed against this repo's own catalogs, which open with
         // `{ "sourceLanguage": … }`. PLAN.md §M17 lists it with the markup family; that is a slip,
         // and it belongs here.
-        case .json: ["json", "jsonc", "json5", "geojson", "xcstrings", "ipynb"]
+        // JSON Lines and the rest are JSON too, and resolve to no registered type on a Mac, so only
+        // their names say so (2026-09-15, Quick View's JSON tree).
+        case .json:
+            [
+                "json", "jsonc", "json5", "geojson", "xcstrings", "ipynb", "jsonl", "ndjson",
+                "topojson", "webmanifest", "har", "avsc"
+            ]
         case .sql: ["sql", "psql", "mysql", "ddl"]
         case .css: ["css", "scss", "less", "sass"]
         case .python: ["py", "pyw", "pyi"]

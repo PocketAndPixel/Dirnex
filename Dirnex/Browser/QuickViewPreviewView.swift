@@ -83,6 +83,13 @@ final class QuickViewPreviewView: NSView {
     /// Where the table surface keeps the height its strip was dragged to. Set before the first CSV
     /// is shown; a test hands over a scratch domain so it neither reads nor writes the real one.
     var tableLayoutDefaults: UserDefaults = .standard
+    /// Internal for the same reason, from `QuickViewPreviewView+JSON`; its strip's dragged height is
+    /// kept in `tableLayoutDefaults` too.
+    var jsonTreeSurface: QuickViewJSONTreeView?
+    /// Whether the JSON file last shown was a list of records, drawn in the table (`captionForHeader`).
+    var jsonShowsRecords = false
+    /// The caption as last handed over, so it can be drawn again once a JSON file's shape is known.
+    private var shownCaption: QuickViewCaption?
     /// Internal for the same reason, from `QuickViewPreviewView+Placeholder`.
     var placeholderCard: QuickViewPlaceholderCard?
     /// The office-document conversion in flight, so the next one — or putting the surface away —
@@ -168,11 +175,16 @@ final class QuickViewPreviewView: NSView {
         loadedStyle = style
         loadedPlaceholder = placeholder
         hasLoaded = true
-        // The table is put away here rather than by every other backend, for the reason the card below
-        // is: a sixth hand-written list is six chances to forget one. It stays up when the next file is
-        // a table too, so stepping between two CSVs keeps the old one on screen until the new one lands.
-        let showsTable = style == .rendered && url.map(Self.isDelimitedTable) == true
-        if !showsTable { standDownTable() }
+        // The table and the JSON tree are put away here rather than by every other backend, for the
+        // reason the card below is: a sixth hand-written list is six chances to forget one. Each stays
+        // up while the next file is data too, so stepping between two keeps the old one on screen until
+        // the new one lands; a JSON file says which of the two it takes only once it has been read.
+        let isTable = url.map(Self.isDelimitedTable) == true
+        let showsData = style == .rendered && (isTable || url.map(Self.isJSON) == true)
+        if !showsData {
+            standDownTable()
+            standDownJSONTree()
+        }
         // The one funnel every render goes through, which is why the card is raised and lowered here
         // rather than at each backend: a fifth stand-down in four hand-written lists is four chances
         // to forget one, and the one forgotten leaves the card drawn over a real preview.
@@ -188,8 +200,10 @@ final class QuickViewPreviewView: NSView {
             showPDF(url)
         } else if let url, Self.isImage(url) {
             showImage(url)
-        } else if let url, showsTable {
+        } else if let url, showsData, isTable {
             showTable(url)
+        } else if let url, showsData {
+            showJSON(url)
         } else if let url, Self.isRenderableHTML(url), style == .rendered {
             showRenderedHTML(url)
         } else if let url, Self.isRenderableMarkdown(url), style == .rendered {
@@ -207,25 +221,6 @@ final class QuickViewPreviewView: NSView {
         } else {
             showQuickLook(url)
         }
-    }
-
-    /// Whether `url` is a file Quick View can honestly draw two ways — the one predicate behind the
-    /// `1` / `2` keys, the header's hint, and the routing above (PLAN.md §M18 ▸ Slice 3).
-    ///
-    /// One place, deliberately. Until this milestone the same question was spelled `isRenderableHTML`
-    /// at three sites, and adding a second dual-style type meant finding all three by hand with the
-    /// compiler checking none of them — the trap docs/NOTES.md names for a new VFS backend, in a
-    /// different shape. The failure available here is quiet: `2` doing nothing on a `.md` while the
-    /// header says it should, or the digit being swallowed on a file that has one rendering.
-    static func offersBothStyles(_ url: URL) -> Bool {
-        dualStyleKind(of: url) != nil
-    }
-
-    /// Which family of dual-style file `url` is, which names its rendered style and decides which
-    /// remembered choice it follows — `nil` for a file with one rendering.
-    static func dualStyleKind(of url: URL) -> QuickViewDualStyleKind? {
-        if isDelimitedTable(url) { return .table }
-        return isRenderableHTML(url) || isRenderableMarkdown(url) ? .page : nil
     }
 
     /// Release both backends' loaded documents so nothing lingers in memory while the mode is off.
@@ -252,11 +247,19 @@ final class QuickViewPreviewView: NSView {
         textSurface?.clearText()
         webSurface?.clearPage()
         tableSurface?.clearTable()
+        jsonTreeSurface?.clearDocument()
+        jsonShowsRecords = false
     }
 
     /// The file the header names. Ignored when this surface has no header.
     func setCaption(_ caption: QuickViewCaption?) {
-        headerView?.caption = caption
+        shownCaption = caption
+        refreshCaption()
+    }
+
+    /// Draw the caption again, as `captionForHeader` adjusts it for what is on screen now.
+    func refreshCaption() {
+        headerView?.caption = captionForHeader(shownCaption)
     }
 
     // MARK: - Appearance
@@ -324,6 +327,7 @@ final class QuickViewPreviewView: NSView {
                 textSurface?.interactiveSubtree,
                 webSurface?.interactiveSubtree,
                 tableSurface,
+                jsonTreeSurface,
                 headerView,
                 placeholderCard?.downloadButton,
                 placeholderCard?.stopButton

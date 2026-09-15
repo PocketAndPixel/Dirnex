@@ -120,34 +120,19 @@ extension QuickViewTableView {
         strip.scale = scale
     }
 
-    /// The first row not hidden under the column header — the row a reader sees at the top.
-    ///
-    /// Not the row at the clip view's origin: the header floats over the rows, and in the browser
-    /// window the title bar does too, so the origin sits 60 points above what is visible and the row
-    /// there is two or three rows up (measured).
+    /// The first row not hidden under the column header — the row a reader sees at the top. Not the
+    /// row at the clip view's origin, which the header and the title bar cover (`QuickViewTableScrolling`).
     var firstVisibleRow: Int {
-        let row = tableView.row(at: NSPoint(x: 0, y: visibleRowsTop + 1))
-        return max(row, 0)
-    }
-
-    /// Where, in the table's own coordinates, the rows stop being covered: the header's lower edge, or
-    /// the clip view's top when the header does not overlap the rows at all.
-    private var visibleRowsTop: CGFloat {
-        let clip = scrollView.contentView
-        guard let header = tableView.headerView, header.window != nil else { return clip.bounds.minY }
-        let headerBottom = clip.convert(header.bounds, from: header).maxY
-        return max(clip.bounds.minY, headerBottom)
+        QuickViewTableScrolling.firstVisibleRow(of: tableView, in: scrollView)
     }
 
     /// Put `topRow` back just under the header and the view `across` points into the columns.
-    ///
-    /// By row rather than by offset, since the header's height changes with the level: what is kept
-    /// is how far the row sits below the covered strip, which is none.
     private func restoreScroll(topRow: Int, across: CGFloat) {
-        let clip = scrollView.contentView
-        let covered = visibleRowsTop - clip.bounds.minY
-        let rowTop = topRow < tableView.numberOfRows ? tableView.rect(ofRow: topRow).minY : 0
-        clip.scroll(to: NSPoint(x: max(across, 0), y: rowTop - covered))
-        scrollView.reflectScrolledClipView(clip)
+        QuickViewTableScrolling.restore(
+            topRow: topRow,
+            across: across,
+            of: tableView,
+            in: scrollView
+        )
     }
 }

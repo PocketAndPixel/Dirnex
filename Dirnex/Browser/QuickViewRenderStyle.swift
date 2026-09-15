@@ -8,21 +8,21 @@ import Foundation
 /// decodes bytes, the app decides which surface they land on.
 ///
 /// Which files offer both is `QuickViewPreviewView.dualStyleKind(of:)` — HTML since §M16, Markdown
-/// since §M18, CSV and TSV since 2026-09-15 — and the single predicate is the point: the same
+/// since §M18, CSV, TSV and JSON since 2026-09-15 — and the single predicate is the point: the same
 /// question used to be spelled three times. Everything else has one honest rendering and ignores
 /// this entirely — a photograph has no source, and a `.txt` has no document.
 enum QuickViewRenderStyle: String, CaseIterable, Identifiable {
     /// The file's own text, in the same monospaced, selectable view every other text file gets.
     case source
-    /// The document the file describes, rendered in-process — a page, or a table.
+    /// The document the file describes, rendered in-process — a page, a table or a tree.
     case rendered
 
     var id: String { rawValue }
 
     /// The default for a page, and the milestone's headline decision: a file manager shows you the
     /// file. A rendered page hides exactly what a user opening `index.html` in a *file manager* most
-    /// often wants to see, and `2` is one key away. A table is the exception, and says why in
-    /// `QuickViewDualStyleKind`.
+    /// often wants to see, and `2` is one key away. A table and a tree are the exceptions, and say why
+    /// in `QuickViewDualStyleKind`.
     static let `default` = QuickViewRenderStyle.source
 
     /// The digit that selects this style — Lister's convention, where the view modes are numbered
@@ -79,11 +79,16 @@ enum QuickViewRenderStyle: String, CaseIterable, Identifiable {
                 localized: "Table",
                 comment: "Quick View header, short name for a CSV or TSV file drawn as a table of rows and columns"
             )
+        case (.rendered, .json):
+            String(
+                localized: "Tree",
+                comment: "Quick View header, short name for a JSON file drawn as a tree of keys and values"
+            )
         }
     }
 }
 
-/// The two families of file that offer both styles, and what separates them: what the rendered
+/// The three families of file that offer both styles, and what separates them: what the rendered
 /// style is called, and which remembered choice a file follows (2026-09-15).
 ///
 /// They remember separately because their defaults are opposite, and each is right for its family.
@@ -92,17 +97,24 @@ enum QuickViewRenderStyle: String, CaseIterable, Identifiable {
 /// source of a CSV is exactly what nobody can read: every record one long line, wrapped into the pane
 /// with nothing lined up. One shared choice would make pressing `1` on a CSV turn every web page into
 /// source and pressing `2` on a page turn every CSV into a table, which is not what either key said.
+///
+/// JSON defaults to its tree for the table's reason — a minified file, an API dump or a source map is
+/// one line — and remembers apart from the table too, which was the user's choice: `1` on a JSON file
+/// changes JSON files only.
 enum QuickViewDualStyleKind: Equatable {
     /// HTML and Markdown: the markup, or the page it describes.
     case page
     /// CSV and TSV: the delimited text, or a table of its rows and columns.
     case table
+    /// JSON and its family: the text, or a tree of its keys and values — which, for a list of like
+    /// objects, is drawn as a table (`QuickViewPreviewView+JSON`).
+    case json
 
     /// The style a file of this family opens in until the user picks the other.
     var defaultStyle: QuickViewRenderStyle {
         switch self {
         case .page: .default
-        case .table: .rendered
+        case .table, .json: .rendered
         }
     }
 }

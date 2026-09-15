@@ -29,6 +29,7 @@ extension QuickViewPreviewView {
         standDownImage()
         standDownText()
         standDownWeb()
+        standDownJSONTree()
         surface.isHidden = false
         loadToken += 1
         let token = loadToken
@@ -113,7 +114,9 @@ extension QuickViewPreviewView {
 
     private nonisolated static let tableExtensions: Set<String> = ["csv", "tsv", "tab"]
 
-    private func ensureTableSurface() -> QuickViewTableView {
+    /// Internal, not private: a JSON file that is a list of records is drawn in the table too
+    /// (`QuickViewPreviewView+JSON`).
+    func ensureTableSurface() -> QuickViewTableView {
         if let tableSurface { return tableSurface }
         let surface = QuickViewTableView(layoutDefaults: tableLayoutDefaults)
         pin(surface, inside: content)

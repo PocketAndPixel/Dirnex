@@ -151,18 +151,14 @@ final class AppPreferences: ObservableObject {
         }
     }
 
-    /// The remembered style for a family of dual-style file.
-    func quickViewRenderStyle(for kind: QuickViewDualStyleKind) -> QuickViewRenderStyle {
-        switch kind {
-        case .page: quickViewRenderStyle
-        case .table: quickViewTableStyle
-        }
-    }
-
-    func setQuickViewRenderStyle(_ style: QuickViewRenderStyle, for kind: QuickViewDualStyleKind) {
-        switch kind {
-        case .page: quickViewRenderStyle = style
-        case .table: quickViewTableStyle = style
+    /// How Quick View draws a JSON file — its source, or a tree of its values (a table, for a list of
+    /// like objects), 2026-09-15. Its own preference for the table's reason, so `1` on a JSON file
+    /// turns neither a CSV nor a page into source. Changing it posts the same notification.
+    @Published var quickViewJSONStyle: QuickViewRenderStyle {
+        didSet {
+            guard quickViewJSONStyle != oldValue else { return }
+            defaults.set(quickViewJSONStyle.rawValue, forKey: Keys.quickViewJSONStyle)
+            NotificationCenter.default.post(name: Self.quickViewRenderStyleDidChange, object: self)
         }
     }
 
@@ -464,6 +460,10 @@ final class AppPreferences: ObservableObject {
         quickViewTableStyle = QuickViewRenderStyle(
             rawValue: defaults.string(forKey: Keys.quickViewTableStyle) ?? ""
         ) ?? QuickViewDualStyleKind.table.defaultStyle
+        // Empty (never written) = the tree.
+        quickViewJSONStyle = QuickViewRenderStyle(
+            rawValue: defaults.string(forKey: Keys.quickViewJSONStyle) ?? ""
+        ) ?? QuickViewDualStyleKind.json.defaultStyle
         // Empty (never written) = Follow System, and so is anything `PanelPalette` can't parse.
         accentColorHex = defaults.string(forKey: Keys.accentColorHex) ?? ""
         cursorColorHex = defaults.string(forKey: Keys.cursorColorHex) ?? ""

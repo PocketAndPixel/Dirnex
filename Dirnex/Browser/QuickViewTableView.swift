@@ -16,7 +16,7 @@ final class QuickViewTableView: NSView {
     let strip = QuickViewRecordStrip()
     /// The strip's top edge, which a drag moves (`QuickViewTableView+StripHeight`).
     let stripHandle = QuickViewStripHandle()
-    private let truncationNotice = NSVisualEffectView()
+    private let truncationNotice = QuickViewTruncationNotice()
     /// Internal, not private, for `QuickViewTableView+StripHeight`, which sets it.
     var stripHeight: NSLayoutConstraint?
     /// Where the height somebody dragged the strip to is kept: the app's own defaults, or a
@@ -242,29 +242,7 @@ final class QuickViewTableView: NSView {
 
     /// The same "first 4 MB" notice the text view floats, over the bottom of the table.
     private func buildNotice() {
-        truncationNotice.material = .hudWindow
-        truncationNotice.blendingMode = .withinWindow
-        truncationNotice.state = .active
-        truncationNotice.wantsLayer = true
-        truncationNotice.layer?.cornerRadius = 6
-        truncationNotice.isHidden = true
-        truncationNotice.translatesAutoresizingMaskIntoConstraints = false
-
-        let label = NSTextField(labelWithString: QuickViewTextView.truncationText)
-        label.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        label.textColor = .secondaryLabelColor
-        label.translatesAutoresizingMaskIntoConstraints = false
-        truncationNotice.addSubview(label)
-        addSubview(truncationNotice)
-
-        NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: truncationNotice.leadingAnchor, constant: 10),
-            label.trailingAnchor.constraint(equalTo: truncationNotice.trailingAnchor, constant: -10),
-            label.topAnchor.constraint(equalTo: truncationNotice.topAnchor, constant: 5),
-            label.bottomAnchor.constraint(equalTo: truncationNotice.bottomAnchor, constant: -5),
-            truncationNotice.centerXAnchor.constraint(equalTo: centerXAnchor),
-            truncationNotice.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -12)
-        ])
+        truncationNotice.install(in: self, above: scrollView.bottomAnchor)
     }
 }
 

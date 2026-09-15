@@ -5,11 +5,12 @@ import DirnexCore
 /// how a step reaches it. The keys themselves are the window's (`BrowserWindowController+QuickViewZoom`),
 /// since the surface refuses first responder so the arrows keep driving the file list.
 ///
-/// Five backends zoom and two do not. A web page (HTML, Markdown, a converted office document), a PDF
+/// Seven backends zoom and two do not. A web page (HTML, Markdown, a converted office document), a PDF
 /// (including a converted iWork document) and text (source or rich) each already had a zoom a pinch
 /// could reach, and the keys drive that same zoom; an image gained one of its own
-/// (`QuickViewImageScrollView`). Quick Look's out-of-process view and the remote placeholder card have
-/// nothing to zoom, so the commands are disabled there.
+/// (`QuickViewImageScrollView`), and so did the CSV table and the JSON tree, which scale what they are
+/// drawn with. Quick Look's out-of-process view and the remote placeholder card have nothing to zoom,
+/// so the commands are disabled there.
 extension QuickViewPreviewView {
     /// The zooming backend on screen, if any.
     private enum ZoomTarget {
@@ -18,12 +19,16 @@ extension QuickViewPreviewView {
         case text(QuickViewTextView)
         case image(QuickViewImageScrollView)
         case table(QuickViewTableView)
+        case tree(QuickViewJSONTreeView)
     }
 
     private var zoomTarget: ZoomTarget? {
         if placeholderCard?.isHidden == false { return nil }
         if let tableSurface, !tableSurface.isHidden, tableSurface.table != nil {
             return .table(tableSurface)
+        }
+        if let jsonTreeSurface, !jsonTreeSurface.isHidden, jsonTreeSurface.document != nil {
+            return .tree(jsonTreeSurface)
         }
         if let webSurface, !webSurface.isHidden { return .web(webSurface) }
         if let pdfView, !pdfView.isHidden, pdfView.document != nil { return .pdf }
@@ -42,6 +47,7 @@ extension QuickViewPreviewView {
         case let .text(surface): surface.zoomLevel
         case let .image(scrollView): scrollView.zoomLevel
         case let .table(surface): surface.zoomLevel
+        case let .tree(surface): surface.zoomLevel
         case nil: nil
         }
     }
@@ -60,6 +66,7 @@ extension QuickViewPreviewView {
         case let .text(surface): abs(surface.zoomLevel - 1) > 0.005
         case let .image(scrollView): !scrollView.isAtStartingZoom
         case let .table(surface): !surface.isAtStartingZoom
+        case let .tree(surface): !surface.isAtStartingZoom
         case nil: false
         }
     }
@@ -78,6 +85,7 @@ extension QuickViewPreviewView {
         case let .text(surface): surface.setZoomLevel(1)
         case let .image(scrollView): scrollView.resetZoom()
         case let .table(surface): surface.setZoomLevel(1)
+        case let .tree(surface): surface.setZoomLevel(1)
         case nil: break
         }
     }
@@ -89,6 +97,7 @@ extension QuickViewPreviewView {
         case let .text(surface): surface.setZoomLevel(level)
         case let .image(scrollView): scrollView.setZoomLevel(level)
         case let .table(surface): surface.setZoomLevel(level)
+        case let .tree(surface): surface.setZoomLevel(level)
         case nil: break
         }
     }
@@ -97,12 +106,13 @@ extension QuickViewPreviewView {
     /// belongs to it — panning — rather than to the swipe that turns to the next file. Preview's own
     /// rule: the swipe only flips pages that fit.
     ///
-    /// An image and a PDF can say so, and so can a table, which has no zoom but is often wider than
-    /// the surface as it opens. Text never runs wider than the surface (it re-wraps as it zooms), and
-    /// a web page scrolls inside WebKit, where the width is not ours to read without a script — so a
+    /// An image and a PDF can say so, and so can a table or a tree, which are often wider than the
+    /// surface as they open. Text never runs wider than the surface (it re-wraps as it zooms), and a
+    /// web page scrolls inside WebKit, where the width is not ours to read without a script — so a
     /// page keeps the swipe it always had.
     var consumesHorizontalScroll: Bool {
         if let tableSurface, !tableSurface.isHidden { return tableSurface.pansHorizontally }
+        if let jsonTreeSurface, !jsonTreeSurface.isHidden { return jsonTreeSurface.pansHorizontally }
         return switch zoomTarget {
         case let .image(scrollView): scrollView.pansHorizontally
         case .pdf:
@@ -112,7 +122,7 @@ extension QuickViewPreviewView {
             } else {
                 false
             }
-        case .web, .text, .table, nil: false
+        case .web, .text, .table, .tree, nil: false
         }
     }
 }

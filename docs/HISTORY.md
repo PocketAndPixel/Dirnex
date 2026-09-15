@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-15)
 
-Sixty-nine dated passes that landed outside a milestone of their own, between M18's close on
+Seventy dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-15: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12935,7 +12935,87 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
 
-**2026-09-15 (last) — the CSV table filters.** Asked for as "a filter for the table", with three
+**2026-09-15 (last) — JSON previews as a tree, and a list of records as the CSV table.** Asked for as
+"a table (tree) preview for all types of json files like we have it for csv files". The user picked
+the shape from three options (a tree for every file, with a JSON Lines file or a top-level array of
+objects in the CSV table instead) and the default from three (the tree, remembered apart from the
+CSV table's choice and the pages').
+
+- **The probe decided the parser before any Swift.** The corpus was the 1 487 `.json` and `.jsonl`
+  files in the home folder: 1 418 nested objects; 26 top-level arrays, 11 of them arrays of like
+  objects; 7 of the 8 JSON Lines files lists of like objects; and 78 objects holding such a list one
+  level down. `JSONSerialization` was measured and turned down (docs/NOTES.md ▸ AppKit): it reorders
+  keys, keeps one of two repeated values, reads `1.10` as `1.1`, and does not parse a file cut at the
+  4 MB read limit. Of the 34 files a strict parser refused, 29 were JSONC (`tsconfig.json` and its
+  kin, with comments and trailing commas) and 5 were UTF-16 files `TextPreview` already refuses. And
+  `.jsonl`, `.jsonc`, `.json5`, `.ipynb`, `.har` and `.webmanifest` resolve to dynamic types that
+  conform to nothing, so until now they went to Quick Look.
+- **`JSONDocument` (core)** scans the UTF-8 bytes once with a stack of its own and keeps, per value,
+  where it sits (28 bytes a value, plus 4 a child); a key or a string is decoded when it is shown. It
+  reads JSONC comments and trailing commas, `NaN` and `Infinity`, and several values in a row as
+  several roots. In a file cut at the read limit it closes the open containers, marks them
+  incomplete, and leaves out the value the cut split. Past a million values, or on anything else, the
+  file is shown as text. It writes a value back out indented (the strip, ⌘C) or compact (a table
+  cell), keys and scalars exactly as the file has them, and names a value's JSONPath. In a release
+  build it read the whole corpus in 46 ms, the slowest file in 6 ms, and refused a 4 MB `[0,0,…]` in
+  13 ms. Compared value by value with Python's `json` (with `object_pairs_hook`, which keeps order and
+  repeats), it read the same roots, value counts, top level and table shapes on all 1 480 whole files.
+  - **`recordTable`** makes a `DelimitedTable` from a JSON Lines file or a top-level array of at least
+    two objects, when at least half its cells would be filled: a column per key in the order keys
+    first appear. So the CSV table's sorting, filter, ⌘C and column sizing came with no change. A
+    nested value is its compact JSON, a repeated key takes the last value, a column is numeric when
+    every value in it that is not `null` is a number, and a record the cut split is left out.
+    **`initialExpansion`** opens containers level by level while the rows stay within a budget (200),
+    passing over one too big so its smaller siblings still open.
+  - 36 tests, which found two bugs: `start + byteLimit` trapped where `.max` stood for no limit, and a
+    limit ending inside a character left half of it behind when nothing had to be cut. A third they
+    could not find: the escape test's `é` reached disk as `é` through the agent's file tools, so
+    it passed without reading an escape (docs/NOTES.md ▸ Testing).
+- **The app half.** `QuickViewPreviewView+JSON` routes the family by name — `.json`, `.jsonl`,
+  `.ndjson`, `.jsonc`, `.json5`, `.geojson`, `.topojson`, `.webmanifest`, `.har`, `.ipynb`,
+  `.xcstrings`, `.avsc` and `Package.resolved` — and by `public.json` conformance.
+  `QuickViewJSONTreeView` is an `NSOutlineView` with Key and Value columns: strings quoted, numbers
+  and words in `SyntaxTheme`'s colors, a container as `{3}` or `[12]` with `…` when cut. Its first row
+  is selected as it opens, a double-click opens or closes a row, and under it is the CSV table's strip
+  with the selected value's path and text, its drag handle, and a height remembered apart. It zooms by
+  scaling what it draws, as the table does, with the keep-the-top-row arithmetic now shared
+  (`QuickViewTableScrolling`); the "first 4 MB" notice became a view both use
+  (`QuickViewTruncationNotice`). `QuickViewDualStyleKind.json` opens in the rendered style and follows
+  `quickViewJSONStyle`; the header says "Tree", or "Table" once the file turns out to be records
+  (`captionForHeader`). "Tree", "Key" and "Path" are in all 14 languages, "Tree" taken from each
+  language's own word for the tree view. `AppPreferences` and `QuickViewPreviewView` each moved two
+  functions to an extension file to stay under SwiftLint's ceilings.
+- **One bug only looking found.** The strip drew the second and later lines of a value at its left
+  edge, under the names. Each line of a value is a paragraph of its own, and its style gave those
+  paragraphs no first-line indent (docs/NOTES.md ▸ AppKit). The JSON tree's first container shows it
+  in every file; the CSV strip had it for any quoted cell holding a line break. Every line after the
+  first now takes the value column's indent, and a test reads the paragraph style back.
+
+Controls: four core reverts (a cut record kept, no coverage rule, comments refused, a cut number kept)
+failed exactly the eight tests aimed at them. Seven app reverts each failed only the test aimed at it:
+the tree left out of the hit-test exemptions, the header never saying Table, JSON sharing the table's
+choice, `Package.resolved` not routed by name, the tree not a zoom target, the tree left up under a
+table of records, and the strip's later lines taking the first line's style. Validation: both linters,
+all four CI scripts (the localization check finds all 1 024 keys), 3,473 core tests, and the app suite
+(1,262 tests, 1,181 executed with the live-server suites skipped, one pre-existing known issue). Live,
+in the Debug build launched by path, on copies of real files from this Mac:
+- a `tsconfig.app.json` tree under the header "1 Source · 2 Tree";
+- a 293 KB session log in JSON Lines as a table headed "2 Table", its `durationMs` column
+  right-aligned;
+- the 4.09 MB `Localizable.xcstrings`, just under the 4 MiB limit, with `strings {1381}` left closed;
+- a generated 9.8 MB file showing `items [25778…]` and the notice;
+- a double-click collapsing a row, two zoom steps and a reset, and `1` showing the colored source with
+  `2` going back;
+- the strip's fix, after a relaunch.
+
+**Not verified live:** a real trackpad pinch or pan, ⌘C from a real key press, ⌥-click opening a branch
+whole, a real drag of the strip's edge, and a JSON file on a server or in an archive (both reach the
+same `show(url)` through the local copy). **Left undone:** filtering the tree itself (View ▸ Filter
+Table stays disabled over a tree, and works over a table of records); a list one level down as a
+table; the rest of JSON5; source maps, whose `.map` extension other formats use too; and coloring
+`Package.resolved`'s source, which the grammar table does not name.
+
+**2026-09-15 (later still) — the CSV table filters.** Asked for as "a filter for the table", with three
 choices settled first: one text field searching every column, with a popup narrowing it to one; ⌥⌘F
 showing a bar above the table, with the command also under View ▸ Filter Table and in the palette
 (⌘F was already Favorites); and each new file opening unfiltered.
