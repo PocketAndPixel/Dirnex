@@ -33,7 +33,7 @@ extension QuickViewJSONTreeView: QuickViewFilterHost {
         let query = filterBar.query
         guard let document, !query.isEmpty else {
             filterTask = nil
-            applyFilter(nil)
+            applyFilter(nil, marking: nil)
             return
         }
         let generation = filterGeneration
@@ -45,7 +45,7 @@ extension QuickViewJSONTreeView: QuickViewFilterHost {
                 document.filter(matching: query, in: scope) { cancellation.isCancelled }
             }
             guard let self, generation == filterGeneration, let found else { return }
-            applyFilter(found)
+            applyFilter(found, marking: (FilterQuery(query), scope))
         }
     }
 
@@ -57,6 +57,7 @@ extension QuickViewJSONTreeView: QuickViewFilterHost {
         filterCancellation = nil
         filterTask = nil
         filter = nil
+        filterMarking = nil
         filteredChildren = [:]
         expandedBeforeFilter = nil
         let hadKeyboard = filterHasKeyboard
@@ -78,7 +79,10 @@ extension QuickViewJSONTreeView: QuickViewFilterHost {
 
     // MARK: - Private
 
-    private func applyFilter(_ found: JSONFilter?) {
+    private func applyFilter(
+        _ found: JSONFilter?,
+        marking: (query: FilterQuery, scope: JSONFilterScope)?
+    ) {
         guard let document else { return }
         filterBar.showValueCount(
             matched: found?.matchCount ?? 0,
@@ -91,6 +95,7 @@ extension QuickViewJSONTreeView: QuickViewFilterHost {
             expandedBeforeFilter = openValues
         }
         filter = found
+        filterMarking = found == nil ? nil : marking
         filteredChildren = [:]
         topLevel = document.topLevelValues(filteredBy: found)
         outlineView.collapseItem(nil, collapseChildren: true)

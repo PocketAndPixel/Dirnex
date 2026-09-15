@@ -537,7 +537,8 @@ splits left out; and a file of more than a million values, or one that is not JS
 quotes and unquoted keys included — is shown as text instead. A list one level down
 (`{"value": [...]}`) stays a tree. The filter (⌥⌘F) searches the keys and values that were read; a
 matched object or array keeps its contents, closed, and the way down to each match opens while the
-rows it opens stay within 2 000.
+rows it opens stay within 2 000. What it matched is marked in find yellow, in the tree and in the
+table alike.
 
 ## 4. Find Files (`⌥F7`)
 

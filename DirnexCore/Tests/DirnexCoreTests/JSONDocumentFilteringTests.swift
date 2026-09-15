@@ -167,4 +167,17 @@ struct JSONDocumentFilteringTests {
         #expect(parsed.initialExpansion(rowBudget: 100, filteredBy: nil)
             == parsed.initialExpansion(rowBudget: 100))
     }
+
+    /// An ASCII query folds `A`–`Z` and nothing more (`FilterQuery`), and a string that had to be
+    /// decoded used to be lowercased instead — so `k` found the Kelvin sign, which lowercases to `k`,
+    /// only where the file wrote it as an escape.
+    @Test("a string reads the same to the filter whether or not it is written with escapes")
+    func escapesReadLikePlainText() throws {
+        let escapedSource = "[\"" + "\\" + "u212Aelvin\"]"
+        #expect(!escapedSource.contains("\u{212A}"))
+        for parsed in try [document("[\"\u{212A}elvin\"]"), document(escapedSource)] {
+            #expect(try filter(parsed, "k").matchCount == 0)
+            #expect(try filter(parsed, "ELVIN").matchCount == 1)
+        }
+    }
 }

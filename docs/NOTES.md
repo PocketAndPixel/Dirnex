@@ -1394,6 +1394,18 @@ at build time.
   under a flag the handler ignores. A control that removes the clearing line cannot fail, since AppKit
   clears them anyway, so the flag is the part that matters.
 
+- **A label drawn from an attributed string keeps the white a selected row gives it only where no run
+  sets a color.** Measured 2026-09-15 before Quick View's filter marked its matches, on an
+  `NSTableCellView` in a real window with `backgroundStyle` set by hand and the pixels read back from
+  `cacheDisplay`. A label whose `textColor` is `labelColor` draws white on an emphasized row; the same
+  text as an attributed string carrying `.foregroundColor: labelColor` stays dark on the blue (glyph
+  luminance 0.01–0.45 against 0.45–1.00). A run with no foreground attribute takes the label's
+  `textColor`, a custom one included, and turns white like a plain label. So a cell with a highlighted
+  run sets colors on that run only.
+  - **`.backgroundColor` does draw in a label, and a yellow test can say it does not.**
+    `findHighlightColor` read back as sRGB (1, 1, 0.4), so a check for blue below 0.3 counted no yellow
+    pixel at all and read as the attribute being ignored. A histogram of the region settled it.
+
 - **A view laid over an `NSTextView` does not get its cursor where the two overlap: the text view
   keeps the I-beam across its whole frame.** Found 2026-09-15 with the drag handle over the top edge
   of Quick View's CSV strip. The handle took the drag correctly (it wins the hit test), but its resize
@@ -8302,6 +8314,16 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   the right predicate and is also more honest about line *numbers*, since it counts CRLF as one
   separator rather than two. The same trap sits behind any hand-rolled scan that compares against
   `"\r"`; anything splitting text a user's other OS produced should use `isNewline` on principle.
+- **With Foundation imported, `text.lowercased().contains(needle)` is the standard library's
+  `contains`, which compares whole characters, and not Foundation's `range(of:)`.** Measured
+  2026-09-15 on the expression both Quick View filters used: half a flag is not found in a flag, nor 👨
+  in a joined family, where `NSString.range(of:)` finds both; a decomposed `é` is found by `é` either
+  way. It matters wherever something has to agree with a filter, such as marking what it matched:
+  `ranges(of:)` is the same rule and `range(of:)` is not. Two more things decide how a mark maps back.
+  An ASCII query is folded a byte at a time instead, so `e` is found inside a decomposed `é` and `k` is
+  not found in the Kelvin sign, which lowercases to `k`; and lowercasing can lengthen a text in UTF-16
+  (`İ` becomes `i` and a combining dot) while it kept the character count on every sample tried, so a
+  match in the lowercased text comes back by characters, never by offsets (`FilterQuery`).
 - **A notification that says "go re-read the cache" can lose results already computed.** One
   pane's FSEvents watcher invalidating every total on its root-to-leaf line produced a measured
   546 invalidations in two minutes — faster than a scan publishes — wiping freshly walked results

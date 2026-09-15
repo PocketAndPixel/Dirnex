@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-15)
 
-Seventy-one dated passes that landed outside a milestone of their own, between M18's close on
+Seventy-two dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-15: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12935,7 +12935,50 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
 
-**2026-09-15 (last) — the JSON tree filters.** Asked for as "add a filter for the json tree", with
+**2026-09-15 (last) — the table and the tree mark what the filter matched.** Asked for as "let's
+highlight the matched text too", with two choices settled first: the marks go in the JSON tree's rows
+and in the CSV table's, a JSON file of records included, and not in the strip; and they are the
+system's find yellow with black text on it.
+
+- **`FilterQuery` (core)** is the query read the one way both filters read it, and where it lies in a
+  text. A probe settled its two branches before any Swift. The filters' `text.lowercased().contains`
+  is the standard library's, which compares whole characters, not Foundation's: half a flag is not
+  found in a flag, where `NSString.range(of:)` finds it. An ASCII query is folded a byte at a time
+  instead, so `e` is found inside a decomposed `é`. Lowercasing kept the character count on every
+  sample tried (`İ` becomes two scalars and stays one character), so a match found in the lowercased
+  text maps back by characters (docs/NOTES.md ▸ Design lessons). Both filters now build their query
+  through it, and a JSON key or string written with an escape is folded like one without: it used to
+  be lowercased, so `k` found the Kelvin sign only where the file escaped it. 7 tests, one of them
+  holding the marks to the rows and values each filter really keeps, over texts where the branches
+  part.
+- **The app half.** `QuickViewTableCell.show` takes the query and the part of the value the filter
+  read — a key, a number or a word whole, a string inside its quotes, never an index or a count — and
+  marks each occurrence within its first 1,000 characters, counted in UTF-16 after line breaks are
+  drawn as spaces. A second probe decided how: in a cell on a selected row, text carrying
+  `.foregroundColor: labelColor` stays dark on the blue, while text with no color attribute takes the
+  label's own color and turns white, so only a marked run carries colors (docs/NOTES.md ▸ AppKit). The
+  tree marks a value only where it matched itself, in the columns the picker reads; the table marks the
+  column picked, or all of them. What is marked is the query the rows on screen came from rather than
+  the text in the field, and clearing takes the marks away. 9 tests.
+
+Controls: ten, each failing the tests aimed at it — the quotes not left out (two tests), the picker
+ignored in the tree, the picked column ignored in the table, marks counted in characters rather than
+UTF-16, no length limit, the unmarked text given its color, clearing the table keeping its marks,
+ASCII marks overlapping, marks found without lowercasing (which also broke the agreement with both
+filters), and an escaped string lowercased again. Validation: both linters, all four CI scripts (the
+localization check finds all 1,029 keys), 3,491 core tests, and the app suite (1,278 tests, 1,163
+executed with the live-server suites skipped, one pre-existing known issue). Live, in the Debug build
+launched by path: `es20` marked `ES20` in both `"ES2020"` values of a `tsconfig.app.json` tree and
+left the quotes alone; `lib` marked the key `lib` on the selected row and `Lib` inside `skipLibCheck`;
+`OK` marked the responseMessage cell of the 2,701 rows a 3,000-row JMeter log kept; and `44` marked
+inside the right-aligned timeStamp and elapsed columns.
+
+Confirmed by hand afterwards: in light mode as well as dark, and on a row selected while the table
+itself has focus, where the rest of the cell turns white around the mark and the selection goes gray
+once the keyboard is back in the field. **Left undone:** marks in the strip, and a match past a cell's first
+1,000 characters.
+
+**2026-09-15 (later yet again) — the JSON tree filters.** Asked for as "add a filter for the json tree", with
 three choices settled first: a matched object or array keeps everything inside it, closed, while the
 way down to each match opens, and clearing gives the tree back as it was; the text searches keys and
 values, with a popup narrowing it to either, case-insensitive as the table's filter is; and ⌥⌘F stays

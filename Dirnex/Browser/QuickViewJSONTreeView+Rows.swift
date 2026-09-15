@@ -75,10 +75,16 @@ extension QuickViewJSONTreeView: NSOutlineViewDataSource, NSOutlineViewDelegate 
         guard let item = item as? QuickViewJSONItem, let tableColumn else { return nil }
         let cell = outlineView.makeView(withIdentifier: QuickViewTableCell.identifier, owner: nil)
             as? QuickViewTableCell ?? QuickViewTableCell()
-        let label = tableColumn.identifier == Self.keyColumn
-            ? keyLabel(for: item.value)
-            : valueLabel(for: item.value)
-        cell.show(label.text, font: zoomedFont, color: label.color, alignment: .left)
+        let inKeys = tableColumn.identifier == Self.keyColumn
+        let label = inKeys ? keyLabel(for: item.value) : valueLabel(for: item.value)
+        cell.show(
+            label.text,
+            font: zoomedFont,
+            color: label.color,
+            alignment: .left,
+            marking: markedQuery(for: item.value, inKeys: inKeys),
+            within: label.searched
+        )
         return cell
     }
 
@@ -100,6 +106,24 @@ extension QuickViewJSONTreeView: NSOutlineViewDataSource, NSOutlineViewDelegate 
     struct Label {
         let text: String
         let color: NSColor
+        /// The part of `text` the filter reads, where a match is marked: all of a key, a number or a
+        /// word, a string inside its quotes, and nothing of an index, `$` or a count.
+        var searched: Range<String.Index>?
+    }
+
+    /// The query to mark in a value's key or its text: the one the tree is filtered by, where the
+    /// picker reads that column and the value is a match itself. A value shown because it lies inside a
+    /// matched container, or on the way down to one, matched nothing.
+    private func markedQuery(for value: Int, inKeys: Bool) -> FilterQuery? {
+        guard let filterMarking, filter?.isMatch(value) == true else { return nil }
+        switch filterMarking.scope {
+        case .keysAndValues:
+            return filterMarking.query
+        case .keys:
+            return inKeys ? filterMarking.query : nil
+        case .values:
+            return inKeys ? nil : filterMarking.query
+        }
     }
 
     /// A member's key; an element's index, dimmed, as `[3]`; and for a file that is one scalar, `$`.
@@ -109,7 +133,7 @@ extension QuickViewJSONTreeView: NSOutlineViewDataSource, NSOutlineViewDelegate 
             // An empty key is legal JSON, and a blank cell would read as a missing one.
             return key.isEmpty
                 ? Label(text: "\"\"", color: .secondaryLabelColor)
-                : Label(text: key, color: .labelColor)
+                : Label(text: key, color: .labelColor, searched: key.startIndex..<key.endIndex)
         }
         if document.parent(of: value) != nil || document.roots.count > 1 {
             return Label(text: "[\(document.position(of: value))]", color: .secondaryLabelColor)
@@ -130,12 +154,19 @@ extension QuickViewJSONTreeView: NSOutlineViewDataSource, NSOutlineViewDelegate 
                 color: .secondaryLabelColor
             )
         case .string:
-            let text = document.scalarText(of: value, byteLimit: Self.cellTextLimit)
-            return Label(text: "\"\(text)\"", color: SyntaxTheme.string)
-        case .number:
-            return Label(text: document.scalarText(of: value), color: SyntaxTheme.number)
-        case .boolean, .null:
-            return Label(text: document.scalarText(of: value), color: SyntaxTheme.keyword)
+            let text = "\"\(document.scalarText(of: value, byteLimit: Self.cellTextLimit))\""
+            return Label(
+                text: text,
+                color: SyntaxTheme.string,
+                searched: text.index(after: text.startIndex)..<text.index(before: text.endIndex)
+            )
+        case .number, .boolean, .null:
+            let text = document.scalarText(of: value)
+            return Label(
+                text: text,
+                color: kind == .number ? SyntaxTheme.number : SyntaxTheme.keyword,
+                searched: text.startIndex..<text.endIndex
+            )
         }
     }
 }

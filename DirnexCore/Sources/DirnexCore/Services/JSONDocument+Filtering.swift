@@ -56,9 +56,9 @@ public struct JSONFilter: Sendable, Equatable {
 /// what it holds. The whole document is searched, not only what is open: it is already in memory, so
 /// a match in a closed branch costs nothing to find, and one the reader cannot see would read as none.
 ///
-/// An ASCII query is matched against the bytes in place with A–Z folded, as the CSV filter's is; a key
-/// or a string with an escape is decoded first, since its bytes are not its text, and any other query
-/// decodes each text it reads.
+/// The query is read by `FilterQuery`, as the CSV filter's is. An ASCII query is matched against the
+/// bytes in place with A–Z folded; a key or a string with an escape is decoded first, since its bytes
+/// are not its text, and then folded the same way; and any other query decodes each text it reads.
 extension JSONDocument {
     /// Which values contain `query`, ignoring case, in the keys, the values or both. Every value
     /// matches an empty query. `nil` when `isCancelled` answered `true`, which it is asked every
@@ -70,13 +70,7 @@ extension JSONDocument {
         in scope: JSONFilterScope = .keysAndValues,
         isCancelled: () -> Bool = { false }
     ) -> JSONFilter? {
-        let needle = query.lowercased()
-        let needleBytes = Array(needle.utf8)
-        let search = TextSearch(
-            needle: needle,
-            bytes: needleBytes,
-            isASCII: needleBytes.allSatisfy { $0 < 0x80 }
-        )
+        let search = FilterQuery(query)
         var flags = [UInt8](repeating: 0, count: nodes.count)
         var matchCount = 0
         for value in nodes.indices {
@@ -86,7 +80,7 @@ extension JSONDocument {
                flags[Int(node.parent)] & (JSONFilter.matched | JSONFilter.insideMatch) != 0 {
                 flags[value] |= JSONFilter.insideMatch
             }
-            guard needle.isEmpty || matches(node, scope: scope, search: search) else { continue }
+            guard search.isEmpty || matches(node, scope: scope, search: search) else { continue }
             flags[value] |= JSONFilter.matched
             matchCount += 1
             // Values are numbered in the order they start, so a parent always comes before its
@@ -149,14 +143,7 @@ extension JSONDocument {
 
     // MARK: - Matching
 
-    /// The query, lowercased, in the two forms a search reads it in.
-    private struct TextSearch {
-        let needle: String
-        let bytes: [UInt8]
-        let isASCII: Bool
-    }
-
-    private func matches(_ node: Node, scope: JSONFilterScope, search: TextSearch) -> Bool {
+    private func matches(_ node: Node, scope: JSONFilterScope, search: FilterQuery) -> Bool {
         if scope != .values, node.keyStart != Self.absent {
             let quote = Int(node.keyStart)
             if contains(
@@ -191,13 +178,13 @@ extension JSONDocument {
 
     /// Whether the text in `bytes[start..<end]` contains the query, ignoring case. `hasEscapes` says
     /// the bytes are a string's between its quotes and need reading first.
-    private func contains(_ search: TextSearch, from start: Int, to end: Int, hasEscapes: Bool) -> Bool {
+    private func contains(_ search: FilterQuery, from start: Int, to end: Int, hasEscapes: Bool) -> Bool {
         if search.isASCII, !hasEscapes {
             return DelimitedTable.foldedContains(bytes, from: start, to: end, needle: search.bytes)
         }
         let text = hasEscapes
             ? decodeString(openingQuote: start - 1, closingQuote: end, hasEscapes: true)
             : Self.decodeUTF8(bytes[start..<end])
-        return text.lowercased().contains(search.needle)
+        return search.matches(text)
     }
 }

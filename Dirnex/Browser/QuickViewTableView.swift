@@ -60,6 +60,9 @@ final class QuickViewTableView: NSView {
     var filterTask: Task<Void, Never>?
     /// What stops that filter early once a newer one makes it pointless.
     var filterCancellation: CancellationFlag?
+    /// The query the rows on screen were filtered by, and the column the picker named, which the cells
+    /// mark.
+    var filterMarking: (query: FilterQuery, column: Int?)?
     /// The scroll view's top edge: against the surface, or under the filter bar while it is shown.
     var filterTopToSurface: NSLayoutConstraint?
     var filterTopToBar: NSLayoutConstraint?
@@ -275,7 +278,8 @@ extension QuickViewTableView: NSTableViewDataSource, NSTableViewDelegate {
             table.cell(row: record, column: column),
             font: zoomedCellFont,
             color: .labelColor,
-            alignment: isNumeric ? .right : .left
+            alignment: isNumeric ? .right : .left,
+            marking: filterMarking.flatMap { $0.column == nil || $0.column == column ? $0.query : nil }
         )
         return cell
     }

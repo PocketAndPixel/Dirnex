@@ -31,7 +31,7 @@ extension QuickViewTableView: QuickViewFilterHost {
         let query = filterBar.query
         guard let table, !query.isEmpty else {
             filterTask = nil
-            applyFilter(nil)
+            applyFilter(nil, marking: nil)
             return
         }
         let generation = filterGeneration
@@ -43,7 +43,7 @@ extension QuickViewTableView: QuickViewFilterHost {
                 table.rowsMatching(query, inColumn: column) { cancellation.isCancelled }
             }
             guard let self, generation == filterGeneration, let matches else { return }
-            applyFilter(matches)
+            applyFilter(matches, marking: (FilterQuery(query), column))
         }
     }
 
@@ -55,6 +55,7 @@ extension QuickViewTableView: QuickViewFilterHost {
         filterCancellation = nil
         filterTask = nil
         filterMatches = nil
+        filterMarking = nil
         let hadKeyboard = filterHasKeyboard
         filterBar.field.stringValue = ""
         filterBar.showCount(shown: 0, of: 0, filtering: false)
@@ -64,8 +65,9 @@ extension QuickViewTableView: QuickViewFilterHost {
 
     // MARK: - Private
 
-    private func applyFilter(_ matches: [Bool]?) {
+    private func applyFilter(_ matches: [Bool]?, marking: (query: FilterQuery, column: Int?)?) {
         filterMatches = matches
+        filterMarking = matches == nil ? nil : marking
         reloadRows()
         filterBar.showCount(
             shown: rows.count,

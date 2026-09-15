@@ -68,6 +68,8 @@ final class QuickViewJSONTreeView: NSView {
     var expandedBeforeFilter: [Int]?
     /// Each container's children under the filter, as far as the outline view has asked.
     var filteredChildren: [Int: [Int]] = [:]
+    /// The query and the picker's choice the tree on screen was filtered by, which its cells mark.
+    var filterMarking: (query: FilterQuery, scope: JSONFilterScope)?
 
     static let keyColumn = NSUserInterfaceItemIdentifier("key")
     static let valueColumn = NSUserInterfaceItemIdentifier("value")

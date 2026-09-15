@@ -26,8 +26,8 @@ extension DelimitedTable {
         inColumn column: Int? = nil,
         isCancelled: () -> Bool = { false }
     ) -> [Bool]? {
-        let needle = query.lowercased()
-        guard !needle.isEmpty else { return [Bool](repeating: true, count: rowCount) }
+        let search = FilterQuery(query)
+        guard !search.isEmpty else { return [Bool](repeating: true, count: rowCount) }
         let columns: Range<Int> = if let column {
             column >= 0 && column < columnCount ? column..<(column + 1) : 0..<0
         } else {
@@ -35,8 +35,6 @@ extension DelimitedTable {
         }
         var matches = [Bool](repeating: false, count: rowCount)
         guard !columns.isEmpty else { return matches }
-        let needleBytes = Array(needle.utf8)
-        let isASCII = needleBytes.allSatisfy { $0 < 0x80 }
         let firstRecord = hasHeaderRow ? 1 : 0
         for row in 0..<rowCount {
             if row & 1023 == 0, isCancelled() { return nil }
@@ -46,9 +44,9 @@ extension DelimitedTable {
             guard reached > columns.lowerBound else { continue }
             for column in columns.lowerBound..<reached {
                 let cell = cells[start + column]
-                let found = isASCII
-                    ? self.cell(cell, containsFolded: needleBytes)
-                    : Self.value(of: cell, in: bytes).lowercased().contains(needle)
+                let found = search.isASCII
+                    ? self.cell(cell, containsFolded: search.bytes)
+                    : search.matches(Self.value(of: cell, in: bytes))
                 if found {
                     matches[row] = true
                     break
@@ -108,8 +106,9 @@ extension DelimitedTable {
         }
     }
 
+    /// `byte` with `A`–`Z` read as `a`–`z` — the whole of an ASCII query's case rule (`FilterQuery`).
     @inline(__always)
-    private static func folded(_ byte: UInt8) -> UInt8 {
+    static func folded(_ byte: UInt8) -> UInt8 {
         byte >= 0x41 && byte <= 0x5A ? byte + 0x20 : byte
     }
 }
