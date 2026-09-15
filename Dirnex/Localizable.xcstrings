@@ -7968,6 +7968,375 @@
         }
       }
     },
+    "%lld of %lld values": {
+      "comment": "Quick View JSON tree filter: how many values matched. %1$lld values matched, of %2$lld in the file. Plural on the second.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld von %#@values@"
+          },
+          "substitutions": {
+            "values": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg Wert"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg Werten"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld of %#@values@"
+          },
+          "substitutions": {
+            "values": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg value"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg values"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld de %#@values@"
+          },
+          "substitutions": {
+            "values": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg valor"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg valores"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg valores"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld sur %#@values@"
+          },
+          "substitutions": {
+            "values": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg valeur"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg valeurs"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg valeurs"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld di %#@values@"
+          },
+          "substitutions": {
+            "values": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg valore"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg valori"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg valori"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld / %2$lld 値"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld/%2$lld개 값"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld van %#@values@"
+          },
+          "substitutions": {
+            "values": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg waarde"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg waarden"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld z %#@values@"
+          },
+          "substitutions": {
+            "values": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg wartości"
+                    }
+                  },
+                  "few": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg wartości"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg wartości"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg wartości"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld de %#@values@"
+          },
+          "substitutions": {
+            "values": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg valor"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg valores"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg valores"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld из %#@values@"
+          },
+          "substitutions": {
+            "values": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg значения"
+                    }
+                  },
+                  "few": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg значений"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg значений"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg значения"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld з %#@values@"
+          },
+          "substitutions": {
+            "values": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg значення"
+                    }
+                  },
+                  "few": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg значень"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg значень"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg значення"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld / %2$lld 个值"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld / %2$lld 個值"
+          }
+        }
+      }
+    },
     "%lld of %lld will be renamed": {
       "comment": "Multi-rename status: N of M items will change name. Verb is invariant.",
       "localizations": {
@@ -51922,6 +52291,186 @@
           "stringUnit": {
             "state": "translated",
             "value": "金鑰檔案："
+          }
+        }
+      }
+    },
+    "Keys": {
+      "comment": "Quick View JSON tree filter: the picker’s item that searches only keys.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schlüssel"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keys"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claves"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clés"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiavi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sleutels"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klucze"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chaves"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключи"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключі"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "键"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "鍵"
+          }
+        }
+      }
+    },
+    "Keys and Values": {
+      "comment": "Quick View JSON tree filter: the picker’s item that searches both keys and values.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schlüssel und Werte"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keys and Values"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claves y valores"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clés et valeurs"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiavi e valori"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キーと値"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키와 값"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sleutels en waarden"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klucze i wartości"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chaves e valores"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключи и значения"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключі та значення"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "键和值"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "鍵和值"
           }
         }
       }
@@ -98491,6 +99040,96 @@
         }
       }
     },
+    "Values": {
+      "comment": "Quick View JSON tree filter: the picker’s item that searches only values.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Werte"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Values"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Valores"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Valeurs"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Valori"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "値"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "값"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waarden"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wartości"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Valores"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Значения"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Значення"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "值"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "值"
+          }
+        }
+      }
+    },
     "Vault": {
       "comment": "Default name for a new encrypted vault, and its volume name once unlocked.",
       "localizations": {
@@ -99112,6 +99751,96 @@
           "stringUnit": {
             "state": "translated",
             "value": "當面板處於大小可視化（顯示選單）時，大小列所顯示的內容：ncdu 風格的進度列、每列在檔案夾中所佔的百分比，或兩者。"
+          }
+        }
+      }
+    },
+    "What to Filter": {
+      "comment": "Quick View JSON tree filter: accessibility label of the keys-or-values picker.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Was gefiltert wird"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What to Filter"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qué filtrar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Éléments à filtrer"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cosa filtrare"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フィルタする対象"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "필터링할 대상"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wat te filteren"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Co filtrować"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O que filtrar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Что фильтровать"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Що фільтрувати"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要过滤的内容"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要過濾的內容"
           }
         }
       }
@@ -117461,85 +118190,85 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "filter, filtern, tabelle, zeilen, suchen, finden, csv, vorschau"
+            "value": "filter, filtern, tabelle, zeilen, suchen, finden, csv, vorschau, json, baum, schlüssel, werte"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "quick view, preview, csv, tsv, table, rows, filter, search, find, narrow, option cmd f"
+            "value": "quick view, preview, csv, tsv, table, rows, json, tree, keys, values, filter, search, find, narrow, option cmd f"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "filtro, filtrar, tabla, filas, buscar, csv, vista previa"
+            "value": "filtro, filtrar, tabla, filas, buscar, csv, vista previa, json, árbol, claves, valores"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "filtre, filtrer, tableau, lignes, rechercher, trouver, csv, aperçu"
+            "value": "filtre, filtrer, tableau, lignes, rechercher, trouver, csv, aperçu, json, arbre, clés, valeurs"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "filtro, filtra, tabella, righe, cerca, trova, csv, anteprima"
+            "value": "filtro, filtra, tabella, righe, cerca, trova, csv, anteprima, json, albero, chiavi, valori"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "フィルタ, 絞り込み, 表, 行, 検索, csv, プレビュー"
+            "value": "フィルタ, 絞り込み, 表, 行, 検索, csv, プレビュー, json, ツリー, キー, 値"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "필터, 표, 행, 검색, 찾기, csv, 미리보기"
+            "value": "필터, 표, 행, 검색, 찾기, csv, 미리보기, json, 트리, 키, 값"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "filter, filteren, tabel, rijen, zoeken, vinden, csv, voorvertoning"
+            "value": "filter, filteren, tabel, rijen, zoeken, vinden, csv, voorvertoning, json, boom, sleutels, waarden"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "filtr, filtruj, tabela, wiersze, szukaj, znajdź, csv, podgląd"
+            "value": "filtr, filtruj, tabela, wiersze, szukaj, znajdź, csv, podgląd, json, drzewo, klucze, wartości"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "filtro, filtrar, tabela, linhas, buscar, procurar, csv, pré-visualização"
+            "value": "filtro, filtrar, tabela, linhas, buscar, procurar, csv, pré-visualização, json, árvore, chaves, valores"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "фильтр, фильтровать, таблица, строки, поиск, найти, csv, просмотр"
+            "value": "фильтр, фильтровать, таблица, строки, поиск, найти, csv, просмотр, json, дерево, ключи, значения"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "фільтр, фільтрувати, таблиця, рядки, пошук, знайти, csv, перегляд"
+            "value": "фільтр, фільтрувати, таблиця, рядки, пошук, знайти, csv, перегляд, json, дерево, ключі, значення"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "过滤, 筛选, 表格, 行, 搜索, 查找, csv, 预览"
+            "value": "过滤, 筛选, 表格, 行, 搜索, 查找, csv, 预览, json, 树, 键, 值"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "過濾, 篩選, 表格, 列, 搜尋, 尋找, csv, 預覽"
+            "value": "過濾, 篩選, 表格, 列, 搜尋, 尋找, csv, 預覽, json, 樹, 鍵, 值"
           }
         }
       }
@@ -117551,85 +118280,85 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tabelle filtern"
+            "value": "Filtern"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Filter Table"
+            "value": "Filter"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Filtrar tabla"
+            "value": "Filtrar"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Filtrer le tableau"
+            "value": "Filtrer"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Filtra tabella"
+            "value": "Filtra"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "表をフィルタ"
+            "value": "フィルタ"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "표 필터링"
+            "value": "필터"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tabel filteren"
+            "value": "Filteren"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Filtruj tabelę"
+            "value": "Filtruj"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Filtrar tabela"
+            "value": "Filtrar"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Фильтровать таблицу"
+            "value": "Фильтровать"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Фільтрувати таблицю"
+            "value": "Фільтрувати"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "过滤表格"
+            "value": "过滤"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "過濾表格"
+            "value": "過濾"
           }
         }
       }

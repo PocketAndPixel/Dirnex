@@ -61,8 +61,8 @@ final class QuickViewTableView: NSView {
     /// What stops that filter early once a newer one makes it pointless.
     var filterCancellation: CancellationFlag?
     /// The scroll view's top edge: against the surface, or under the filter bar while it is shown.
-    var tableTopToSurface: NSLayoutConstraint?
-    var tableTopToFilterBar: NSLayoutConstraint?
+    var filterTopToSurface: NSLayoutConstraint?
+    var filterTopToBar: NSLayoutConstraint?
     /// Where the keyboard goes when the filter bar lets go of it: the file list the arrows walk. Set
     /// by whoever opens the bar, since the surface does not know which list that is.
     var returnKeyboard: (() -> Void)?
@@ -227,7 +227,7 @@ final class QuickViewTableView: NSView {
         let height = strip.heightAnchor.constraint(equalToConstant: 0)
         stripHeight = height
         let top = scrollView.topAnchor.constraint(equalTo: topAnchor)
-        tableTopToSurface = top
+        filterTopToSurface = top
         NSLayoutConstraint.activate([
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),

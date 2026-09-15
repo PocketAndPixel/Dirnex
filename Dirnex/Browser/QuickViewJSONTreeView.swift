@@ -30,8 +30,8 @@ final class QuickViewJSONTreeView: NSView {
     /// The document on screen, or `nil` once cleared.
     private(set) var document: JSONDocument?
     /// The values listed at the top of the tree, kept because the outline view asks for them one at a
-    /// time.
-    private(set) var topLevel: [Int] = []
+    /// time — the filter's, while there is one.
+    var topLevel: [Int] = []
     /// One object per value the outline view has been handed. It keeps a row's expanded state against
     /// the object, so a value has to come back as the same object every time it is asked for.
     private var items: [Int: QuickViewJSONItem] = [:]
@@ -48,6 +48,26 @@ final class QuickViewJSONTreeView: NSView {
     var baseKeyWidth: CGFloat = 0
     /// Set while a zoom sets the key column's width itself, which is not somebody resizing it.
     var isApplyingZoom = false
+
+    // The filter's state, for the same reason (`QuickViewJSONTreeView+Filter`).
+
+    /// The bar over the tree, hidden until ⌥⌘F.
+    let filterBar = QuickViewTableFilterBar()
+    /// What the filter found, or `nil` while no text is typed.
+    var filter: JSONFilter?
+    /// Bumped by every change to the filter and every new document, so a filter landing after either
+    /// is discarded.
+    var filterGeneration = 0
+    var filterTask: Task<Void, Never>?
+    /// What stops that filter early once a newer one makes it pointless.
+    var filterCancellation: CancellationFlag?
+    var filterTopToSurface: NSLayoutConstraint?
+    var filterTopToBar: NSLayoutConstraint?
+    var returnKeyboard: (() -> Void)?
+    /// The containers open before the filter, in row order, opened again when it is cleared.
+    var expandedBeforeFilter: [Int]?
+    /// Each container's children under the filter, as far as the outline view has asked.
+    var filteredChildren: [Int: [Int]] = [:]
 
     static let keyColumn = NSUserInterfaceItemIdentifier("key")
     static let valueColumn = NSUserInterfaceItemIdentifier("value")
@@ -73,6 +93,8 @@ final class QuickViewJSONTreeView: NSView {
         buildStrip()
         truncationNotice.install(in: self, above: scrollView.bottomAnchor)
         installStripHandle()
+        installFilterBar()
+        filterBar.setScopes()
     }
 
     @available(*, unavailable)
@@ -84,6 +106,7 @@ final class QuickViewJSONTreeView: NSView {
 
     /// Show `document`, at its top with its first row selected and its small containers open.
     func show(_ document: JSONDocument) {
+        resetFilter()
         zoomLevel = 1
         applyZoom()
         self.document = document
@@ -107,6 +130,7 @@ final class QuickViewJSONTreeView: NSView {
     }
 
     func clearDocument() {
+        resetFilter()
         document = nil
         topLevel = []
         items = [:]
@@ -262,10 +286,12 @@ final class QuickViewJSONTreeView: NSView {
         addSubview(strip)
         let height = strip.heightAnchor.constraint(equalToConstant: 0)
         stripHeight = height
+        let top = scrollView.topAnchor.constraint(equalTo: topAnchor)
+        filterTopToSurface = top
         NSLayoutConstraint.activate([
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            scrollView.topAnchor.constraint(equalTo: topAnchor),
+            top,
             scrollView.bottomAnchor.constraint(equalTo: strip.topAnchor),
             strip.leadingAnchor.constraint(equalTo: leadingAnchor),
             strip.trailingAnchor.constraint(equalTo: trailingAnchor),

@@ -7,7 +7,7 @@ import Testing
 /// The table filter's keys, its place on the surface, and the command that opens it (2026-09-15):
 /// what Esc, Return, Tab and the arrows do while the keyboard is in the text, that the bar takes its
 /// room from the table, that the window can tell typing there from any other focus in a preview, and
-/// that View ▸ Filter Table reaches it on ⌥⌘F.
+/// that View ▸ Filter reaches it on ⌥⌘F.
 @Suite("Quick View table filter keys")
 @MainActor
 struct QuickViewTableFilterKeysTests {
@@ -120,7 +120,9 @@ struct QuickViewTableFilterKeysTests {
         #expect(!surface.filterHasKeyboard)
     }
 
-    @Test("View ▸ Filter Table reaches the window's action on ⌥⌘F, and only a table can be filtered")
+    @Test(
+        "View ▸ Filter reaches the window's action on ⌥⌘F, and a table can be filtered where text cannot"
+    )
     func command() async throws {
         let action = #selector(BrowserWindowController.filterQuickViewTable(_:))
         #expect(CommandBinding.selector(for: "view.quickViewFilterTable") == action)
@@ -134,9 +136,11 @@ struct QuickViewTableFilterKeysTests {
         let fixture = try await Fixtures.table(Self.sample)
         defer { fixture.cleanup() }
         #expect(fixture.preview.filterableTable === fixture.surface)
+        #expect(fixture.preview.filterableSurface === fixture.surface)
         let text = try await QuickViewTableFixtures.loaded(
             try fixture.tree.write("notes.txt", contents: "plain text\n")
         )
         #expect(text.filterableTable == nil)
+        #expect(text.filterableSurface == nil)
     }
 }

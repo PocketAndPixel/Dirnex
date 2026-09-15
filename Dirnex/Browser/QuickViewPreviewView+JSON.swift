@@ -80,6 +80,16 @@ extension QuickViewPreviewView {
         }
     }
 
+    /// The table or JSON tree on screen that View ▸ Filter would filter, or `nil` when the surface is
+    /// showing anything else — the one predicate the command and its menu item both ask.
+    var filterableSurface: (any QuickViewFilterHost)? {
+        if let filterableTable { return filterableTable }
+        guard placeholderCard?.isHidden != false,
+              let jsonTreeSurface, !jsonTreeSurface.isHidden, jsonTreeSurface.document != nil
+        else { return nil }
+        return jsonTreeSurface
+    }
+
     func standDownJSONTree() {
         jsonTreeSurface?.isHidden = true
         jsonTreeSurface?.clearDocument()

@@ -126,35 +126,4 @@ extension JSONDocument {
             numericColumns: zip(sawNumber, onlyNumbers).map { $0 && $1 }
         )
     }
-
-    // MARK: - Opening a tree
-
-    /// The containers a tree opens as it is first shown: level by level from the top, each container in
-    /// the file's order opened while the rows then showing stay within `rowBudget`, and a container too
-    /// big to fit left closed while its smaller siblings still open.
-    ///
-    /// So a `package.json` opens with everything in view, and a file whose top level holds one array of
-    /// ten thousand entries opens with that array closed and the rest of the top level open.
-    public func initialExpansion(rowBudget: Int) -> [Int] {
-        let top = topLevelValues
-        var rows = top.count
-        var frontier = top.filter(canOpen)
-        var expanded: [Int] = []
-        while !frontier.isEmpty {
-            var next: [Int] = []
-            for container in frontier {
-                let added = childCount(of: container)
-                guard rows + added <= rowBudget else { continue }
-                rows += added
-                expanded.append(container)
-                next += children(of: container).filter(canOpen)
-            }
-            frontier = next
-        }
-        return expanded
-    }
-
-    private func canOpen(_ value: Int) -> Bool {
-        kind(of: value).isContainer && childCount(of: value) > 0
-    }
 }

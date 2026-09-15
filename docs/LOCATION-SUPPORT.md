@@ -398,7 +398,7 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | Syntax highlighting, Markdown, diagrams in preview | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | Office, iWork and rich-text documents in preview, zoomable and selectable<sup>rrr</sup> | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | CSV and TSV as a sortable, zoomable, filterable table in preview, with the selected row in full in a resizable strip<sup>sss</sup> | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
-| JSON as a zoomable tree in preview, a list of records (JSON Lines, an array of objects) as the table above, with the selected value's path and text in a resizable strip<sup>ttt</sup> | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| JSON as a zoomable, filterable tree in preview, a list of records (JSON Lines, an array of objects) as the table above, with the selected value's path and text in a resizable strip<sup>ttt</sup> | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t, ddd</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes, limited<sup>mmm</sup> | yes | yes |
 | Edit `F4`, with save written back | yes | yes | yes, limited<sup>v, ddd</sup> | yes | yes | yes | n/a | no<sup>jjj</sup> | yes | yes |
 | Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes, limited<sup>yy</sup> | yes | yes |
@@ -535,7 +535,9 @@ location reaches it through the local copy Quick View already works from (<sup>s
 The hard limits: the first **4 MB** of a file, with the notice saying so and a value or record the cut
 splits left out; and a file of more than a million values, or one that is not JSON — JSON5's single
 quotes and unquoted keys included — is shown as text instead. A list one level down
-(`{"value": [...]}`) stays a tree.
+(`{"value": [...]}`) stays a tree. The filter (⌥⌘F) searches the keys and values that were read; a
+matched object or array keeps its contents, closed, and the way down to each match opens while the
+rows it opens stay within 2 000.
 
 ## 4. Find Files (`⌥F7`)
 

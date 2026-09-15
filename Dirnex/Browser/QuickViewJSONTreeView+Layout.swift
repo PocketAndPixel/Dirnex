@@ -34,7 +34,7 @@ extension QuickViewJSONTreeView {
         let height = strip.isEmpty ? 0 : QuickViewTableView.stripHeight(
             chosen: chosenStripHeight,
             fitting: strip.fittingHeight(forWidth: bounds.width),
-            surface: bounds.height
+            surface: roomBelowFilterBar
         )
         if let stripHeight, abs(stripHeight.constant - height) > 0.5 {
             stripHeight.constant = height
@@ -60,7 +60,7 @@ extension QuickViewJSONTreeView {
             guard let self else { return }
             chosenStripHeight = round(QuickViewTableView.clampedStripHeight(
                 height,
-                surface: bounds.height
+                surface: roomBelowFilterBar
             ))
             needsLayout = true
         }

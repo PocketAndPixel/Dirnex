@@ -1980,6 +1980,15 @@ at build time.
   the same flaw for a quoted cell holding a line break, rare enough that nobody had seen it. Give each
   line after the first a style of its own whose first-line indent is the column
   (`QuickViewRecordStrip`), and split on `isNewline`, since a CRLF is one `Character`.
+- **`NSOutlineView.reloadData` keeps a row open only while its item is still among the children the
+  data source hands back, and opening rows one call at a time is slow enough to matter.** Measured
+  2026-09-15 before the JSON tree's filter was written: open rows survived a reload over the same
+  data, and an item reloaded away and then back came back closed. So a filter that hides a branch
+  forgets which of its rows were open, and giving the tree back needs them recorded before filtering
+  (`QuickViewJSONTreeView+Filter`). `expandItem` one row at a time cost 62 ms for a thousand rows,
+  287 ms for five thousand and 1.3 s for twenty thousand; the same calls between `beginUpdates` and
+  `endUpdates` cost 6.8 ms, 48 ms and 390 ms. `collapseItem(nil, collapseChildren: true)` closes the
+  whole tree in one call.
 - **The shared `QLPreviewPanel` (⌘Y) is key while open**, so arrows navigate its preview items,
   not the table. `QLPreviewView` is not opaque and `init(frame:style:)` is failable — an
   embedded preview needs an opaque backing or the covered view bleeds through. It also only

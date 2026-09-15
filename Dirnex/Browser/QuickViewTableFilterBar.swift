@@ -1,10 +1,13 @@
 import AppKit
+import DirnexCore
 
-/// The bar over Quick View's table that narrows it to the rows containing some text (2026-09-15):
-/// a column picker, the text, how many rows are left, and a button to put it away.
+/// The bar over Quick View's table or JSON tree that narrows it to what contains some text
+/// (2026-09-15): a picker — a column for the table, keys or values for the tree — the text, how many
+/// rows or values are left, and a button to put it away.
 ///
-/// It reports and decides nothing. `QuickViewTableView+Filter` runs the filter and owns what each key
-/// does, so the bar can be driven in a test without a window's key handling in the way.
+/// It reports and decides nothing. The surface runs the filter (`QuickViewTableView+Filter`,
+/// `QuickViewJSONTreeView+Filter`) and `QuickViewFilterHost` owns what each key does, so the bar can be
+/// driven in a test without a window's key handling in the way.
 @MainActor
 final class QuickViewTableFilterBar: NSVisualEffectView, NSSearchFieldDelegate {
     static let height: CGFloat = 30
@@ -51,8 +54,61 @@ final class QuickViewTableFilterBar: NSVisualEffectView, NSSearchFieldDelegate {
         return tag == Self.allColumnsTag ? nil : tag
     }
 
+    /// The part of a JSON value searched — the tree's picker.
+    var scope: JSONFilterScope {
+        JSONFilterScope(rawValue: columnPicker.selectedTag()) ?? .keysAndValues
+    }
+
+    /// Offer keys and values, keys, or values as what to search, the first chosen — the tree's picker.
+    func setScopes() {
+        columnPicker.removeAllItems()
+        let choices = [
+            (JSONFilterScope.keysAndValues, String(
+                localized: "Keys and Values",
+                comment: "Quick View JSON tree filter: the picker’s item that searches both keys and values."
+            )),
+            (.keys, String(
+                localized: "Keys",
+                comment: "Quick View JSON tree filter: the picker’s item that searches only keys."
+            )),
+            (.values, String(
+                localized: "Values",
+                comment: "Quick View JSON tree filter: the picker’s item that searches only values."
+            ))
+        ]
+        for (scope, title) in choices {
+            let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+            item.tag = scope.rawValue
+            columnPicker.menu?.addItem(item)
+            if scope == .keysAndValues {
+                columnPicker.menu?.addItem(.separator())
+            }
+        }
+        columnPicker.selectItem(withTag: JSONFilterScope.keysAndValues.rawValue)
+        columnPicker.setAccessibilityLabel(String(
+            localized: "What to Filter",
+            comment: "Quick View JSON tree filter: accessibility label of the keys-or-values picker."
+        ))
+    }
+
+    /// "12 of 3000 values", or nothing while no text is typed — the tree's count, of the values that
+    /// matched rather than the rows shown, since a matched container shows everything it holds.
+    func showValueCount(matched: Int, of total: Int, filtering: Bool) {
+        countLabel.stringValue = filtering ? String(
+            localized: "\(matched) of \(total) values",
+            comment: """
+            Quick View JSON tree filter: how many values matched. %1$lld values matched, of %2$lld in \
+            the file. Plural on the second.
+            """
+        ) : ""
+    }
+
     /// Offer `titles` as the columns to search, every column chosen.
     func setColumns(_ titles: [String]) {
+        columnPicker.setAccessibilityLabel(String(
+            localized: "Column to Filter",
+            comment: "Quick View table filter: accessibility label of the column picker."
+        ))
         columnPicker.removeAllItems()
         columnPicker.addItem(withTitle: String(
             localized: "All Columns",
@@ -109,10 +165,6 @@ final class QuickViewTableFilterBar: NSVisualEffectView, NSSearchFieldDelegate {
         columnPicker.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         columnPicker.target = self
         columnPicker.action = #selector(columnChosen(_:))
-        columnPicker.setAccessibilityLabel(String(
-            localized: "Column to Filter",
-            comment: "Quick View table filter: accessibility label of the column picker."
-        ))
         setColumns([])
 
         field.controlSize = .small

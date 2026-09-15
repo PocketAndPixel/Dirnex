@@ -220,16 +220,19 @@ extension CommandCatalog {
             shortcut: CommandShortcut(key: "0", modifiers: .command)
         ),
         Command(
+            // The id keeps "Table" from when only a CSV could be filtered: it is a translation key.
             id: "view.quickViewFilterTable",
-            title: "Filter Table",
+            title: "Filter",
             category: .view,
             keywords: [
-                "quick view", "preview", "csv", "tsv", "table", "rows", "filter", "search", "find",
-                "narrow", "option cmd f"
+                "quick view", "preview", "csv", "tsv", "table", "rows", "json", "tree", "keys",
+                "values",
+                "filter", "search", "find", "narrow", "option cmd f"
             ],
             // ⌥⌘F beside the ⌘F that Favorites keeps (Total Commander muscle memory): Find-shaped, and
             // free. A ⌘ chord takes nothing from a text field, and the item is disabled whenever the
-            // preview is showing anything but a table (`BrowserWindowController+QuickViewFilter`).
+            // preview is showing neither a table nor a JSON tree
+            // (`BrowserWindowController+QuickViewFilter`).
             shortcut: CommandShortcut(key: "f", modifiers: [.command, .option])
         ),
         Command(

@@ -38,22 +38,33 @@ final class QuickViewJSONOutlineView: NSOutlineView, NSMenuItemValidation {
 // MARK: - Rows and cells
 
 extension QuickViewJSONTreeView: NSOutlineViewDataSource, NSOutlineViewDelegate {
+    // With no filter a container's children are read straight off the document; with one, they are
+    // the ones it leaves (`shownChildren`).
+
     func outlineView(_ outlineView: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
         guard let document else { return 0 }
         guard let item = item as? QuickViewJSONItem else { return topLevel.count }
-        return document.childCount(of: item.value)
+        return filter == nil
+            ? document.childCount(of: item.value)
+            : shownChildren(of: item.value).count
     }
 
     func outlineView(_ outlineView: NSOutlineView, child index: Int, ofItem item: Any?) -> Any {
         guard let document, let parent = item as? QuickViewJSONItem else {
             return self.item(for: topLevel[index])
         }
-        return self.item(for: document.child(index, of: parent.value))
+        return self.item(for: filter == nil
+            ? document.child(index, of: parent.value)
+            : shownChildren(of: parent.value)[index])
     }
 
     func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {
-        guard let document, let item = item as? QuickViewJSONItem else { return false }
-        return document.kind(of: item.value).isContainer && document.childCount(of: item.value) > 0
+        guard let document, let item = item as? QuickViewJSONItem,
+              document.kind(of: item.value).isContainer
+        else { return false }
+        return filter == nil
+            ? document.childCount(of: item.value) > 0
+            : !shownChildren(of: item.value).isEmpty
     }
 
     func outlineView(

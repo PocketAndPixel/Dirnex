@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-15)
 
-Seventy dated passes that landed outside a milestone of their own, between M18's close on
+Seventy-one dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-15: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12935,7 +12935,65 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
 
-**2026-09-15 (last) — JSON previews as a tree, and a list of records as the CSV table.** Asked for as
+**2026-09-15 (last) — the JSON tree filters.** Asked for as "add a filter for the json tree", with
+three choices settled first: a matched object or array keeps everything inside it, closed, while the
+way down to each match opens, and clearing gives the tree back as it was; the text searches keys and
+values, with a popup narrowing it to either, case-insensitive as the table's filter is; and ⌥⌘F stays
+one command for the table and the tree, retitled View ▸ Filter in all 14 languages.
+
+- **`JSONDocument.filter(matching:in:isCancelled:)` (core)** answers one byte a value: matched, on the
+  way down to a match, or inside one. It is one pass in document order, since a parent comes before
+  its children: a value under a matched container is marked as inside it, and a match marks its
+  parents until it meets one already marked. A key is searched unless the popup says Values; a string,
+  number, `true`, `false` or `null` is searched as the file writes it unless it says Keys; a container
+  has no text of its own. An ASCII query is matched against the bytes in place with the table filter's
+  A–Z fold, a string holding an escape is decoded first, and any other query decodes and lowercases; a
+  cancellation flag is read every 1,024 values. `children(of:filteredBy:)`,
+  `topLevelValues(filteredBy:)` and `initialExpansion(rowBudget:filteredBy:)` answer which rows a
+  filtered tree lists and opens; the last moved out of `+Records`, so opening a tree is one function
+  with or without a filter. Release build, on the 4.09 MB `Localizable.xcstrings` (91,533 values),
+  the generated file cut at 4 MB (232,006) and a real 60,495-value log: 0.7–4.7 ms for an ASCII
+  query, 54–101 ms for a non-ASCII one, and under 2 ms to work out which rows to open. 11 tests.
+- **The app half.** What the bar does — showing and hiding, Esc, Return and Tab handing the keyboard
+  back, ↑ and ↓ stepping through the rows left — moved out of the table into `QuickViewFilterHost`, a
+  protocol both surfaces adopt, so the tree's own part (`QuickViewJSONTreeView+Filter`) is what it
+  matches and what it shows. The match runs off the main actor and each keystroke cancels the one
+  before. Applying it closes the whole tree, reloads, and opens the way down to the matches while the
+  rows stay within 2,000 (an unfiltered tree opens within 200), in one `beginUpdates`. The rows that
+  were open are recorded first and opened again on clearing, because a reload forgets any open row it
+  hides (docs/NOTES.md ▸ AppKit). The selection stays on a value that still matches and otherwise goes
+  to the first match; cleared, it stays on the value it was on, opened into view. The popup offers
+  "Keys and Values", "Keys" and "Values", and the bar counts "2 of 28 values". Another file puts the bar
+  away. The command keeps its id, `view.quickViewFilterTable`, since the id is its translation key,
+  and gains json, tree, keys and values as keywords; `filterableSurface` answers the table, and
+  otherwise a tree showing a document. Five new strings in all 14 languages, the count with a plural.
+
+Controls: five core reverts failed the tests aimed at them — the inside-a-match rule left out
+(`matchInsideAMatch`), no walk up to the parents (five tests), no case fold (three), escapes read as
+raw bytes (one) and a matched container's contents opened (one). Seven app reverts, each run alone,
+failed theirs: the command not reaching the tree, the popup ignored, a new file keeping the bar,
+clearing not opening the chosen value into view, and the first match not chosen (two tests); the rows
+below the top ignoring the filter failed five. Clearing that forgot the open rows failed the two tests
+that count rows after clearing, and passed the clearing test, where nothing was open to begin with.
+Validation: both linters, all four CI scripts (the localization check finds all 1,029 keys), 3,484
+core tests, and the app suite (1,269 tests, 1,152 executed with the live-server suites skipped, one
+pre-existing known issue). Live,
+in the Debug build launched by path, on a copy of a real `tsconfig.app.json`: ⌥⌘F opened the bar
+focused, the popup on Keys and Values; `ES2020` left `compilerOptions {19}`, `target "ES2020"` and
+`lib [3]` opened to `[0] "ES2020"`, counted "2 of 28 values", with `target` selected and
+`$.compilerOptions.target` in the strip; `lib` left `lib [3]` closed beside `skipLibCheck true`; and
+closing the bar with its button gave the whole tree back with `lib` selected. Confirmed by hand
+afterwards, on JSON files from a search tab: Esc, which the tooling cannot send, clears the text and a
+second puts the bar away; ↑ and ↓ step through the rows left; Return and Tab hand the keyboard back to
+the file list with the filter kept (`inv` leaving 22 of 236 values); deleting the text gives the tree
+back; the popup narrows to Keys or to Values; and on a 4.2 MB file cut at the read limit, `node.sh`
+left 6 of 118,068 values under `attribute_calls [118066…]`.
+
+**Left undone:** searching past
+what was read (a file cut at 4 MB is filtered over its first 4 MB), marking the matched text inside a
+row, and a query as a JSONPath or a pattern.
+
+**2026-09-15 (later yet) — JSON previews as a tree, and a list of records as the CSV table.** Asked for as
 "a table (tree) preview for all types of json files like we have it for csv files". The user picked
 the shape from three options (a tree for every file, with a JSON Lines file or a top-level array of
 objects in the CSV table instead) and the default from three (the tree, remembered apart from the
