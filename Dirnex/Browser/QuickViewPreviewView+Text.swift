@@ -133,8 +133,16 @@ extension QuickViewPreviewView {
     ///
     /// Content type first (an odd extension still classifies), extension as the fallback, matching
     /// the PDF and image routing beside it.
+    ///
+    /// **A property list too**, which is not `public.text`: `.plist` is `com.apple.property-list`
+    /// and `.stringsdict` conforms to it, because either may be binary. Probed 2026-09-16, only
+    /// those two and `.entitlements` and `.xcprivacy` (already text) conform; `.webloc` and the other
+    /// plist-shaped Finder files do not. An XML one shows as its markup, colored; a binary one
+    /// holds a NUL in its first bytes, so `TextPreview` refuses it and it goes to Quick Look as
+    /// before, which shows it converted to XML with its keys sorted, in one color.
     static func isText(_ url: URL) -> Bool {
         guard let type = contentType(of: url) else { return false }
+        if type.conforms(to: .propertyList) { return true }
         guard type.conforms(to: .text) else { return false }
         return !type.conforms(to: .html) && !type.conforms(to: .rtf)
     }

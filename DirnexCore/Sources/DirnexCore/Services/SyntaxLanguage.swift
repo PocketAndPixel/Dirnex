@@ -41,6 +41,21 @@ public enum SyntaxLanguage: String, Sendable, CaseIterable {
     case yaml
     case toml
     case ini
+    /// `.env` files: `KEY=value` lines, where what a reader looks for is the key.
+    case dotenv
+    /// nginx's configuration, whose directive is the first word of each statement.
+    case nginx
+    /// Xcode's build settings files.
+    case xcconfig
+    /// Apple's `.strings` tables: `"key" = "value";` between C comments.
+    case appleStrings
+    /// Windows `.bat` and `.cmd` scripts.
+    case batch
+    case powerShell
+    /// `.gitignore` and the ignore files that copied its patterns (`.dockerignore`, `.npmignore`…).
+    case ignoreFile
+    /// `.gitattributes`, and `CODEOWNERS`, which has the same shape: a pattern, then words about it.
+    case gitAttributes
     /// XML, HTML, SVG and `.plist` — one scanner, four extensions' worth of files.
     case markup
     case markdown
@@ -50,7 +65,7 @@ public enum SyntaxLanguage: String, Sendable, CaseIterable {
     /// How a language is scanned: from the grammar table, or by a scanner of its own.
     ///
     /// One switch rather than two. The obvious alternative — an optional `grammar` plus a second
-    /// switch for the three that have none — needs a `default` branch that can only ever mean "a
+    /// switch for the ones that have none — needs a `default` branch that can only ever mean "a
     /// case nobody wired up", and it would return an empty token list rather than fail. That is the
     /// quiet direction, and it is avoidable for free: this way the compiler names any case that is
     /// added without being routed.
@@ -59,6 +74,10 @@ public enum SyntaxLanguage: String, Sendable, CaseIterable {
         case markup
         case markdown
         case diff
+        case dotenv
+        case nginx
+        case ignoreFile
+        case gitAttributes
     }
 
     var scanning: Scanning {
@@ -66,18 +85,22 @@ public enum SyntaxLanguage: String, Sendable, CaseIterable {
         case .markup: .markup
         case .markdown: .markdown
         case .diff: .diff
+        case .dotenv: .dotenv
+        case .nginx: .nginx
+        case .ignoreFile: .ignoreFile
+        case .gitAttributes: .gitAttributes
         default: .grammar(tableGrammar)
         }
     }
 
-    /// The grammar, for the languages the table covers, and `nil` for the three with their own
-    /// scanner.
+    /// The grammar, for the languages the table covers, and `nil` for the ones with a scanner of
+    /// their own.
     public var grammar: LanguageGrammar? {
         if case let .grammar(grammar) = scanning { return grammar }
         return nil
     }
 
-    /// The table's own answer. Reached only through `scanning`, which is what keeps the three
+    /// The table's own answer. Reached only through `scanning`, which is what keeps the
     /// scanner-backed cases from ever landing here.
     private var tableGrammar: LanguageGrammar {
         switch self {
@@ -109,9 +132,14 @@ public enum SyntaxLanguage: String, Sendable, CaseIterable {
         case .yaml: HashFamilyGrammars.yaml
         case .toml: HashFamilyGrammars.toml
         case .ini: HashFamilyGrammars.ini
-        // Unreachable: `scanning` routes these three before it asks for a grammar, and the switch
-        // above is exhaustive over everything else.
-        case .markup, .markdown, .diff: LanguageGrammar()
+        case .xcconfig: ToolingGrammars.xcconfig
+        case .appleStrings: ToolingGrammars.appleStrings
+        case .batch: ToolingGrammars.batch
+        case .powerShell: ToolingGrammars.powerShell
+        // Unreachable: `scanning` routes these before it asks for a grammar, and the switch above
+        // is exhaustive over everything else.
+        case .markup, .markdown, .diff, .dotenv, .nginx, .ignoreFile, .gitAttributes:
+            LanguageGrammar()
         }
     }
 
@@ -128,85 +156,13 @@ public enum SyntaxLanguage: String, Sendable, CaseIterable {
         // Whole names first: a `Makefile` has no extension, and `.zshrc`'s only dot is its first
         // character — so an extension-only route would read the whole name as the extension.
         if let byName = byFileName[lowered] { return byName }
-        guard let dot = lowered.lastIndex(of: "."), dot != lowered.startIndex else { return nil }
-        return byExtension[String(lowered[lowered.index(after: dot)...])]
-    }
-
-    /// Extensions that route here, lowercased and without the dot. Kept beside the case rather than
-    /// in one big literal so that adding a language is one edit in one place.
-    var fileExtensions: [String] {
-        switch self {
-        case .swift: ["swift"]
-        case .objectiveC: ["m", "mm"]
-        case .cLanguage: ["c"]
-        case .cPlusPlus: ["cpp", "cc", "cxx", "c++", "hpp", "hh", "hxx", "ipp", "inl"]
-        case .cHeader: ["h"]
-        case .java: ["java"]
-        case .kotlin: ["kt", "kts"]
-        case .scala: ["scala", "sc"]
-        case .cSharp: ["cs"]
-        case .go: ["go"]
-        case .rust: ["rs"]
-        case .javascript: ["js", "mjs", "cjs", "jsx"]
-        case .typeScript: ["ts", "tsx", "mts", "cts"]
-        case .php: ["php", "phtml"]
-        case .dart: ["dart"]
-        // `.xcstrings` is JSON, not XML — probed against this repo's own catalogs, which open with
-        // `{ "sourceLanguage": … }`. PLAN.md §M17 lists it with the markup family; that is a slip,
-        // and it belongs here.
-        // JSON Lines and the rest are JSON too, and resolve to no registered type on a Mac, so only
-        // their names say so (2026-09-15, Quick View's JSON tree).
-        case .json:
-            [
-                "json", "jsonc", "json5", "geojson", "xcstrings", "ipynb", "jsonl", "ndjson",
-                "topojson", "webmanifest", "har", "avsc"
-            ]
-        case .sql: ["sql", "psql", "mysql", "ddl"]
-        case .css: ["css", "scss", "less", "sass"]
-        case .python: ["py", "pyw", "pyi"]
-        case .ruby: ["rb", "rake", "gemspec", "podspec"]
-        case .shell: ["sh", "bash", "zsh", "ksh", "command"]
-        case .perl: ["pl", "pm"]
-        case .makefile: ["mk", "mak", "make"]
-        case .cmake: ["cmake"]
-        case .dockerfile: ["dockerfile"]
-        case .yaml: ["yml", "yaml"]
-        case .toml: ["toml"]
-        case .ini: ["ini", "conf", "cfg", "properties"]
-        // `.xhtml` is `public.xhtml` and does not conform to `public.html` (docs/NOTES.md), which
-        // is why the family is named by extension here rather than derived from one conformance.
-        case .markup:
-            [
-                "xml", "html", "htm", "xhtml", "shtml", "svg", "plist", "entitlements",
-                "storyboard", "xib", "xsd", "xsl", "xslt", "rss", "atom", "pom", "resx"
-            ]
-        case .markdown: ["md", "markdown", "mdown", "mkd", "mdx"]
-        case .diff: ["diff", "patch"]
+        if let dot = lowered.lastIndex(of: "."), dot != lowered.startIndex,
+           let byExtension = byExtension[String(lowered[lowered.index(after: dot)...])] {
+            return byExtension
         }
-    }
-
-    /// Whole file names that route here, lowercased. The dot-files are matched here rather than as
-    /// extensions on purpose — see `forFile(named:)`.
-    var fileNames: [String] {
-        switch self {
-        case .makefile: ["makefile", "gnumakefile", "bsdmakefile"]
-        case .cmake: ["cmakelists.txt"]
-        case .dockerfile: ["dockerfile", "containerfile"]
-        case .ruby: ["gemfile", "rakefile", "podfile", "brewfile", "fastfile", "appfile"]
-        case .shell:
-            [
-                ".bashrc",
-                ".bash_profile",
-                ".bash_aliases",
-                ".profile",
-                ".zshrc",
-                ".zprofile",
-                ".zshenv",
-                ".kshrc"
-            ]
-        case .ini: [".editorconfig", ".gitconfig", ".npmrc", ".curlrc"]
-        default: []
-        }
+        // Prefixes last, so the extension still wins where there is one to win: `dockerfile.dev` is
+        // a Dockerfile, and `Dockerfile.dockerignore` is the ignore file BuildKit reads beside it.
+        return namePrefixes.first { lowered.hasPrefix($0.prefix) }?.language
     }
 
     /// Built once, and last-one-wins is never exercised: no extension appears on two cases, which
@@ -226,6 +182,9 @@ public enum SyntaxLanguage: String, Sendable, CaseIterable {
         }
         return table
     }()
+
+    private static let namePrefixes: [(prefix: String, language: SyntaxLanguage)] =
+        allCases.flatMap { language in language.fileNamePrefixes.map { ($0, language) } }
 }
 
 // MARK: - Fenced code blocks
@@ -267,6 +226,10 @@ public extension SyntaxLanguage {
         "kotlin": .kotlin,
         "perl": .perl,
         // A fenced shell block is as often a transcript as a script, and both are shell.
-        "shell": .shell, "shell-session": .shell, "console": .shell, "terminal": .shell
+        "shell": .shell, "shell-session": .shell, "console": .shell, "terminal": .shell,
+        "dotenv": .dotenv,
+        "powershell": .powerShell, "pwsh": .powerShell,
+        "batch": .batch, "batchfile": .batch,
+        "ignore": .ignoreFile
     ]
 }

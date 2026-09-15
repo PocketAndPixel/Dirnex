@@ -3,18 +3,8 @@ import Foundation
 /// Routing a script by its `#!` line, for the files whose name says nothing about their language:
 /// `gradlew`, `bin/rails`, `/usr/bin/pydoc3`, and every script somebody saved without an extension.
 public extension SyntaxLanguage {
-    /// The language for a file named `name` whose text is `text`: the name first, and the `#!` line
-    /// only when the name claims nothing.
-    ///
-    /// Name first because a name is the one routing that never needs the file's bytes, and because
-    /// where both answer they agree on everything but the rare script whose name and interpreter
-    /// disagree — and there the name is what the author chose to call it.
-    static func forFile(named name: String, text: String) -> SyntaxLanguage? {
-        forFile(named: name) ?? forShebang(in: text)
-    }
-
     /// The language the interpreter on `text`'s `#!` line is written in, or `nil` when `text` does not
-    /// open with one or names an interpreter nothing here colors (`dtrace`, `pwsh`, `osascript`).
+    /// open with one or names an interpreter nothing here colors (`dtrace`, `osascript`).
     ///
     /// The shapes are the ones a survey of about 3 000 scripts on this Mac found (2026-09-16): a path
     /// (`#!/bin/sh`, `#! /bin/zsh`, `#!/usr/bin/perl -w`, a virtual environment's
@@ -52,6 +42,7 @@ public extension SyntaxLanguage {
     /// Interpreter names, as `commandName` leaves them, and the language a script for each is in.
     private static let interpreters: [String: SyntaxLanguage] = [
         "sh": .shell, "bash": .shell, "zsh": .shell, "ksh": .shell, "mksh": .shell, "dash": .shell,
+        "pwsh": .powerShell, "powershell": .powerShell,
         "python": .python, "pypy": .python, "vpython": .python,
         // `#!/usr/bin/env uv run`: uv runs Python scripts and nothing else.
         "uv": .python,

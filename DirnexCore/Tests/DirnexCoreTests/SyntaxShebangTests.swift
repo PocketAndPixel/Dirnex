@@ -32,6 +32,8 @@ struct SyntaxShebangTests {
         #expect(SyntaxLanguage.forShebang(in: "#!/usr/bin/env uv run\n") == .python)
         #expect(SyntaxLanguage.forShebang(in: "#!/usr/bin/xcrun swift\n") == .swift)
         #expect(SyntaxLanguage.forShebang(in: "#!/usr/bin/xcrun python3\n") == .python)
+        // Not from the survey, which found no PowerShell script on this Mac.
+        #expect(SyntaxLanguage.forShebang(in: "#!/usr/bin/env pwsh\n") == .powerShell)
     }
 
     /// Not from the survey: `env`'s own options, which the parser has to step over to find the name.
@@ -63,7 +65,6 @@ struct SyntaxShebangTests {
     @Test("an interpreter nothing here colors, or no #! line at all, is nil")
     func unclaimed() {
         #expect(SyntaxLanguage.forShebang(in: "#!/usr/sbin/dtrace -s\n") == nil)
-        #expect(SyntaxLanguage.forShebang(in: "#!/usr/bin/env pwsh\n") == nil)
         #expect(SyntaxLanguage.forShebang(in: "#!/usr/bin/env ./node_modules/.bin/coffee\n") == nil)
         #expect(SyntaxLanguage.forShebang(in: "#!/bin/csh\n") == nil)
         #expect(SyntaxLanguage.forShebang(in: "#!\n") == nil)

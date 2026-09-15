@@ -15,6 +15,7 @@ enum Unit {
     static let lineFeed: UInt16 = 0x0A
     static let carriageReturn: UInt16 = 0x0D
     static let space: UInt16 = 0x20
+    static let exclamation: UInt16 = 0x21
     static let doubleQuote: UInt16 = 0x22
     static let hash: UInt16 = 0x23
     static let dollar: UInt16 = 0x24
@@ -32,6 +33,7 @@ enum Unit {
     static let less: UInt16 = 0x3C
     static let equals: UInt16 = 0x3D
     static let greater: UInt16 = 0x3E
+    static let question: UInt16 = 0x3F
     static let upperA: UInt16 = 0x41
     static let upperE: UInt16 = 0x45
     static let upperP: UInt16 = 0x50
@@ -39,12 +41,15 @@ enum Unit {
     static let openBracket: UInt16 = 0x5B
     static let backslash: UInt16 = 0x5C
     static let closeBracket: UInt16 = 0x5D
+    static let caret: UInt16 = 0x5E
     static let underscore: UInt16 = 0x5F
     static let backtick: UInt16 = 0x60
     static let lowerA: UInt16 = 0x61
     static let lowerE: UInt16 = 0x65
     static let lowerP: UInt16 = 0x70
     static let lowerZ: UInt16 = 0x7A
+    static let openBrace: UInt16 = 0x7B
+    static let closeBrace: UInt16 = 0x7D
     static let tilde: UInt16 = 0x7E
     static let openParen: UInt16 = 0x28
     static let closeParen: UInt16 = 0x29

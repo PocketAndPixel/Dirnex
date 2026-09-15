@@ -18,14 +18,18 @@ import Foundation
 /// scanned in one go on the detached task that already reads the file, with no viewport-incremental
 /// pass and no per-paragraph state.
 public enum SyntaxHighlighter {
-    /// Tokenize `text` as `language`, whether that means the grammar table or one of the three
-    /// scanners that fit no table at all (PLAN.md §M17 ▸ Slice 2).
+    /// Tokenize `text` as `language`, whether that means the grammar table or one of the scanners
+    /// for the languages that fit no table at all (PLAN.md §M17 ▸ Slice 2).
     public static func tokens(in text: String, language: SyntaxLanguage) -> [SyntaxToken] {
         switch language.scanning {
         case let .grammar(grammar): tokens(in: text, grammar: grammar)
         case .markup: SyntaxMarkupScanner.tokens(in: text)
         case .markdown: SyntaxMarkdownScanner.tokens(in: text)
         case .diff: SyntaxDiffScanner.tokens(in: text)
+        case .dotenv: SyntaxDotenvScanner.tokens(in: text)
+        case .nginx: SyntaxNginxScanner.tokens(in: text)
+        case .ignoreFile: SyntaxIgnoreScanner.tokens(in: text, dialect: .ignore)
+        case .gitAttributes: SyntaxIgnoreScanner.tokens(in: text, dialect: .attributes)
         }
     }
 

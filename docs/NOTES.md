@@ -1976,6 +1976,20 @@ at build time.
   conform to `public.json`, and `.ndjson` is `public.ndjson`, which conforms to `public.text` and not
   to `public.json`. Route the family by name, with the conformance as the fallback
   (`QuickViewPreviewView.isJSON`).
+- **A `.plist` is not `public.text`, so a text gate sends every property list to Quick Look.**
+  Probed 2026-09-16: `.plist` resolves to `com.apple.property-list` and `.stringsdict` to a type
+  conforming to it, and neither conforms to `public.text`, because either may be binary. Only those two,
+  `.entitlements` and `.xcprivacy` conform to the property-list type; `.webloc`, `.inetloc`,
+  `.terminal` and `.savedSearch` do not. Quick Look's `Text.qlgenerator` shows a binary one as XML, and
+  both it and `PropertyListSerialization` sort a dictionary's keys on the way (`zeta, alpha, mid` came
+  back `alpha, mid, zeta`), so neither shows the file as written.
+  - **A declared type can be wrong about a name, too.** On this Mac `.config` resolves to
+    `public.toml`, while 28 of the 29 `.config` files under `~/Dev` are .NET XML. That is the reason syntax routing reads names rather than types
+    (`SyntaxLanguage`'s doc comment), met from a new direction.
+  - **`.conf` is a family, not a format.** Of 89 `.conf` files in `/etc`, `/opt/homebrew/etc` and
+    `~/Dev`: 9 nginx, 23 fontconfig XML, and the rest Apache, `key value` and `key=value`. nginx's own
+    files are as often `default.conf` or a bare `default` as `nginx.conf`, so the name cannot find
+    them and the contents can (`SyntaxNginxScanner.looksLikeConfiguration`).
 - **A text file with no extension is `public.data`, and one with an extension nothing declares is a
   dynamic type, so a type gate cannot tell either from a binary.** Probed 2026-09-15: `VERSION`,
   `NOTICE`, `Dockerfile`, `.gitignore` and `.zshrc` resolve to bare `public.data` whatever they hold;

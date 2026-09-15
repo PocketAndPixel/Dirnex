@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-16)
 
-Seventy-four dated passes that landed outside a milestone of their own, between M18's close on
+Seventy-five dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-16: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12934,6 +12934,63 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-16 (later) — `.gitignore`, nginx, `.plist`, Dockerfile variants and other development
+files are colored.** Asked for as "can we colorize .gitignore, nginx.conf, .plist, dockerfile in
+preview if there are not? you can also add some useful files for development". Probed first: a
+`Dockerfile` was already colored, but `dockerfile.dev` and `Dockerfile.blackwell` (both under `~/Dev`)
+were not; `.gitignore` had no grammar; `nginx.conf` took the INI row, which colors `on` and a `;` and
+not one directive; and a `.plist` never reached the text preview at all, because
+`com.apple.property-list` is neither `public.text` nor an unclaimed type. A survey of every text file
+under `~/Dev` that no route claimed chose the rest: `.csproj` (80), `.gitignore` (55), `.config` (29,
+28 of them XML), `.cshtml` (29), `.dockerignore` (15), `.bat` (14), `.env` (14, plus `.env.*`),
+`.xcconfig` (10), `.strings` (9), `.xaml` (7), `.babelrc`, `Package.resolved`, `.ps1`.
+
+- **Core, routing.** The name tables moved to `SyntaxLanguage+Names.swift` and gained a third one,
+  **name prefixes** (`dockerfile.`, `containerfile.`, `.env.`), asked after the whole name and the
+  extension, so `Dockerfile.dockerignore` stays an ignore file. New names and extensions on existing
+  rows: the .NET, Razor, Xcode and Vue/Svelte XML families as markup; `.uplugin`, `.uproject`,
+  `.code-workspace`, `Package.resolved`, `.babelrc`, `.eslintrc`, `.prettierrc` and friends as JSON;
+  `Podfile.lock`, `pubspec.lock` and `.clang-format` as YAML; `Cargo.lock`, `poetry.lock`, `uv.lock`
+  and `Pipfile` as TOML; fastlane's and Vagrant's Ruby files; `.envrc` and the zsh/bash login files
+  as shell; `.gitmodules` and three Python tool rc files as INI; `.mdc` as Markdown; `.swiftinterface`;
+  `.metal` as C++. `forFile(named:text:)` moved to `SyntaxLanguage+Contents.swift` and asks the
+  contents in two cases: when the name claims nothing (after the `#!` line), and when it claims INI,
+  which is a family. An `<?xml` opening is markup, and nginx's shape — one of its block names opening
+  a block, plus a statement ending in `;` — is nginx. Over the 89 `.conf` files in `/etc`,
+  `/opt/homebrew/etc` and `~/Dev` that picked out exactly the 9 nginx files and the 23 fontconfig XML
+  ones; `racoon.conf`, with 30 `;` lines and 6 blocks of its own, stayed INI.
+- **Core, four scanners' worth of new languages.** `SyntaxNginxScanner` colors the first word of a
+  statement as the directive, which a keyword list cannot (`index` is a directive and a file name on
+  one line, `http` a block name and every upstream's scheme); variables are `.typeOrTag`, numbers and
+  strings as usual. `SyntaxDotenvScanner` colors `KEY=value` as keyword and string, with quoted values
+  allowed across lines only when the quote opens the value. `SyntaxIgnoreScanner` has two dialects:
+  ignore files (a `#` or `!` means something only as a line's first character; glob metacharacters are
+  keywords) and `.gitattributes`/`CODEOWNERS` (a pattern, then attributes or owners, and `=value`
+  strings). `ToolingGrammars` adds four grammar rows: `.xcconfig` (no block comment, since
+  `$(SRCROOT)/**` would open one), `.strings`, batch (`REM` spelled out, since comment tokens match
+  exactly) and PowerShell (`<# #>`, here-strings, backtick escapes, `$variables`; `pwsh` joins the
+  `#!` interpreters). 26 core tests.
+- **App.** `QuickViewPreviewView.isText` takes a property list. Only `.plist`, `.stringsdict`,
+  `.entitlements` and `.xcprivacy` conform (`.webloc` and its siblings do not). An XML plist shows
+  colored; a binary one is refused by `TextPreview` on its NULs and goes to Quick Look, whose
+  `Text.qlgenerator` shows it converted to XML with sorted keys, as before. 4 app tests.
+
+Controls: eight, each failing the tests aimed at it — every nginx word a directive (the five nginx
+scanner tests), `#` a comment anywhere in an ignore file, `#` ending any `.env` value, prefixes asked
+before the extension, the INI family not refined by contents (the `default.conf` and fontconfig
+cases), any block name counting as nginx's (`racoon.conf`), no line limit on the nginx sniff, and
+`isText` without the property-list line (all three plist app tests). Validation: both linters, all four
+CI scripts, 3,531 core tests, and the app suite (1,288 tests, the one pre-existing known issue). The
+first full app run failed three archive tests after 33–51 s each (`ArchiveNameEncodingCallSiteTests`,
+`ArchiveNameEncodingGestureTests`, `ArchiveWatchReachTests`); those three suites passed alone (28 tests,
+4 s) and the next full run was green. Live, in the Debug build launched by path with Quick View on over
+real files copied from `~/Dev`: `nginx.conf`, `default.conf`, `.gitignore`, `Info.plist`, `.env`,
+`dockerfile.prod`, `run.bat`, `stop-cuda.ps1`, `App.csproj`, `Localizable.strings` and `.gitattributes`
+each drew in their colors, and a binary `.plist` fell back to Quick Look. **Left undone:** showing a
+binary plist as colored XML; a `key=value` scanner for INI (sections and keys stay one color); the
+`.sln` format, `.pbxproj`, `yarn.lock` and `go.mod`; a prose word in a batch `echo` (`not`) or a
+Dockerfile's `npm run` still colors as a keyword.
 
 **2026-09-16 — a script with no extension is colored by its `#!` line.** Asked for as "color
 extensionless scripts by their shebang", one of the items the entry below left undone.

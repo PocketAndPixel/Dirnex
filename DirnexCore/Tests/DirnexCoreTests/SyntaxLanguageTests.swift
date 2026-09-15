@@ -45,6 +45,48 @@ struct SyntaxLanguageTests {
         #expect(SyntaxLanguage.forFile(named: ".editorconfig") == .ini)
     }
 
+    @Test("a name prefix routes a family that varies the end of a name, after the extension")
+    func byNamePrefix() {
+        // `dockerfile.prod` and `Dockerfile.blackwell` are real names from `~/Dev`.
+        #expect(SyntaxLanguage.forFile(named: "dockerfile.prod") == .dockerfile)
+        #expect(SyntaxLanguage.forFile(named: "Dockerfile.blackwell") == .dockerfile)
+        #expect(SyntaxLanguage.forFile(named: "Containerfile.arm64") == .dockerfile)
+        #expect(SyntaxLanguage.forFile(named: ".env.example") == .dotenv)
+        #expect(SyntaxLanguage.forFile(named: ".env.development") == .dotenv)
+        // The extension wins where there is one to win: BuildKit's per-Dockerfile ignore file, and
+        // a JSON file that happens to start with `.env.`.
+        #expect(SyntaxLanguage.forFile(named: "Dockerfile.dockerignore") == .ignoreFile)
+        #expect(SyntaxLanguage.forFile(named: ".env.json") == .json)
+        // A prefix is its dot too.
+        #expect(SyntaxLanguage.forFile(named: "dockerfiles") == nil)
+        #expect(SyntaxLanguage.forFile(named: ".environment") == nil)
+        #expect(SyntaxLanguage.forFile(named: ".envrc") == .shell)
+    }
+
+    @Test("the development files found under ~/Dev with no route now have one")
+    func developmentFiles() {
+        let expected: [String: SyntaxLanguage] = [
+            ".gitignore": .ignoreFile, ".dockerignore": .ignoreFile, ".prettierignore": .ignoreFile,
+            "Swift.gitignore": .ignoreFile, ".gitattributes": .gitAttributes,
+            "CODEOWNERS": .gitAttributes, "nginx.conf": .nginx, "site.nginx": .nginx,
+            ".env": .dotenv, "Base.xcconfig": .xcconfig, "Localizable.strings": .appleStrings,
+            "run.bat": .batch, "build.cmd": .batch, "stop-cuda.ps1": .powerShell,
+            "App.csproj": .markup, "App.config": .markup, "App.xaml": .markup,
+            "Index.cshtml": .markup, "Runner.xcscheme": .markup,
+            "contents.xcworkspacedata": .markup, "Localizable.stringsdict": .markup,
+            "App.vue": .markup, "Package.resolved": .json, ".babelrc": .json, ".eslintrc": .json,
+            "Game.uproject": .json, "RadiantFall.code-workspace": .json, "rules.mdc": .markdown,
+            "Podfile.lock": .yaml, ".clang-format": .yaml, "Cargo.lock": .toml,
+            "Vagrantfile": .ruby, ".gitmodules": .ini, "Module.swiftinterface": .swift,
+            "Shaders.metal": .cPlusPlus
+        ]
+        var misrouted: [String] = []
+        for (name, language) in expected where SyntaxLanguage.forFile(named: name) != language {
+            misrouted.append(name)
+        }
+        #expect(misrouted.isEmpty)
+    }
+
     @Test("a path is reduced to its last component")
     func pathsWork() {
         #expect(SyntaxLanguage.forFile(named: "/Users/o/Dev/x/Panel.swift") == .swift)
@@ -61,7 +103,7 @@ struct SyntaxLanguageTests {
         #expect(SyntaxLanguage.forFile(named: ".") == nil)
     }
 
-    @Test("the three scanner-backed languages route, and offer no grammar")
+    @Test("the scanner-backed languages route, and offer no grammar")
     func scannerBackedLanguages() {
         #expect(SyntaxLanguage.forFile(named: "index.html") == .markup)
         // `.xhtml` is `public.xhtml` and conforms to neither `public.html` nor anything the family
@@ -71,7 +113,10 @@ struct SyntaxLanguageTests {
         #expect(SyntaxLanguage.forFile(named: "logo.svg") == .markup)
         #expect(SyntaxLanguage.forFile(named: "PLAN.md") == .markdown)
         #expect(SyntaxLanguage.forFile(named: "fix.patch") == .diff)
-        for language in [SyntaxLanguage.markup, .markdown, .diff] {
+        let scanned: [SyntaxLanguage] = [
+            .markup, .markdown, .diff, .dotenv, .nginx, .ignoreFile, .gitAttributes
+        ]
+        for language in scanned {
             #expect(language.grammar == nil)
         }
     }
@@ -107,6 +152,11 @@ struct SyntaxLanguageTests {
         #expect(SyntaxLanguage.forFenceInfo("shell") == .shell)
         #expect(SyntaxLanguage.forFenceInfo("console") == .shell)
         #expect(SyntaxLanguage.forFenceInfo("objective-c") == .objectiveC)
+        #expect(SyntaxLanguage.forFenceInfo("powershell") == .powerShell)
+        #expect(SyntaxLanguage.forFenceInfo("batch") == .batch)
+        #expect(SyntaxLanguage.forFenceInfo("dotenv") == .dotenv)
+        #expect(SyntaxLanguage.forFenceInfo("gitignore") == .ignoreFile)
+        #expect(SyntaxLanguage.forFenceInfo("nginx") == .nginx)
         // …and each is genuinely unreachable the other way, which is the claim being made.
         #expect(SyntaxLanguage.forFile(named: "a.makefile") == nil)
         #expect(SyntaxLanguage.forFile(named: "a.python") == nil)
@@ -164,6 +214,10 @@ struct SyntaxLanguageTests {
             }
             for name in language.fileNames where SyntaxLanguage.forFile(named: name) != language {
                 misrouted.append(name)
+            }
+            for prefix in language.fileNamePrefixes
+                where SyntaxLanguage.forFile(named: "\(prefix)sample") != language {
+                misrouted.append(prefix)
             }
         }
         #expect(unreachable.isEmpty)
