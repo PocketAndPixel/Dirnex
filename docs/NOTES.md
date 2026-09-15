@@ -1981,8 +1981,13 @@ at build time.
   conforming to it, and neither conforms to `public.text`, because either may be binary. Only those two,
   `.entitlements` and `.xcprivacy` conform to the property-list type; `.webloc`, `.inetloc`,
   `.terminal` and `.savedSearch` do not. Quick Look's `Text.qlgenerator` shows a binary one as XML, and
-  both it and `PropertyListSerialization` sort a dictionary's keys on the way (`zeta, alpha, mid` came
-  back `alpha, mid, zeta`), so neither shows the file as written.
+  it, `plutil -convert xml1` and `PropertyListSerialization` all sort a dictionary's keys on the way (a
+  file stored `zeta, alpha, mid` came back `alpha, mid, zeta` from each), so none shows the file as
+  written — which is what made converting one in-process (`TextPreview.readBinaryPropertyList`) lose
+  nothing Quick Look had kept.
+  - **The `bplist` magic does not settle the format.** `PropertyListSerialization` reads the text
+    `bplist00 = x;` as an old-style plist, a dictionary, so a reader that trusts the magic converts a
+    text file. Check the format it reports after parsing too.
   - **A declared type can be wrong about a name, too.** On this Mac `.config` resolves to
     `public.toml`, while 28 of the 29 `.config` files under `~/Dev` are .NET XML. That is the reason syntax routing reads names rather than types
     (`SyntaxLanguage`'s doc comment), met from a new direction.

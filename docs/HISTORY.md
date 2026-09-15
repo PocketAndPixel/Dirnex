@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-16)
 
-Seventy-five dated passes that landed outside a milestone of their own, between M18's close on
+Seventy-six dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-16: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12934,6 +12934,39 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-16 (last) — a binary property list previews as colored XML.** Asked for as "can we
+apply the highlight to them too, just like a regular one?", after the entry below left binary plists
+going to Quick Look. The live run there had shown Quick Look drawing one as uncolored XML, and the
+first probe here showed why converting it ourselves costs nothing Quick Look was keeping: a binary
+plist written by Python's `plistlib` with its keys stored `zeta`, `alpha`, `mid` came back from Quick
+Look as `alpha`, `mid`, `zeta`, the order `PropertyListSerialization` and `plutil -convert xml1`
+write too.
+
+- **Core.** `TextPreview.readBinaryPropertyList` (`TextPreview+PropertyList.swift`) reads a file
+  that opens with `bplist`, converts it with `PropertyListSerialization` and returns the XML. A file
+  without the magic costs its first six bytes. The whole file has to be read (a binary plist's
+  offset table is at the end), so a file or its XML over `TextPreview.byteLimit` is refused rather
+  than truncated. Measured over the 4 559 binary plists in `~/Library/Preferences`,
+  `~/Library/Application Support`, `~/Library/Containers` and `~/Dev`: all converted, the XML was a
+  median 1.5× and at the 99th percentile 4.4× the file's size, the largest XML was 3.5 MB, and the
+  slowest conversion took 26 ms. The format is checked after parsing as well as the magic before it,
+  because `bplist00 = x;` is a valid old-style plist. 5 core tests.
+- **App.** `TextScan.read` asks for the conversion when `TextPreview.read` refuses a file, and colors
+  the result as markup whatever the name. 1 440 of those 4 559 were compiled `.strings` tables, which
+  the `.strings` grammar their name picks would color as strings and nothing else. It applies to any
+  file the text preview is asked about, so a binary plist with an unclaimed name (`.xcuserstate`,
+  `.sfl4`) previews as XML too. 1 app test added and 1 turned from "falls back to Quick Look" into
+  "previews colored".
+
+Controls: five, each failing the tests aimed at it — reading the whole file before checking the magic
+(the six-bytes test), converting whatever parses (the `bplist00 = x;` case), no limit on the XML (the
+limits test), `TextScan` without the fallback (both app tests), and the converted text colored by name
+(the compiled `.strings` test). The second was inert until that case was added: without it every
+fixture that passed the magic was binary, and the guard looked removable. Validation: both linters,
+3,536 core tests, and the app suite (1,289 tests, the one pre-existing known issue). Live, in the
+Debug build: the unsorted plist, the Finder's preferences file and Sparkle's compiled German
+`.strings` each drew as colored XML.
 
 **2026-09-16 (later) — `.gitignore`, nginx, `.plist`, Dockerfile variants and other development
 files are colored.** Asked for as "can we colorize .gitignore, nginx.conf, .plist, dockerfile in

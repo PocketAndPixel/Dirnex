@@ -79,10 +79,12 @@ extension QuickViewPreviewView {
         /// were colored. A 3 MB, 18 800-row matrix is 131 000 fields and is colored whole.
         static let columnSpanLimit = 200_000
 
-        /// Blocking; call it off the main thread. `nil` for a file that is not text after all,
-        /// which is `TextPreview`'s own answer and sends the caller back to Quick Look.
+        /// Blocking; call it off the main thread. `nil` for a file that is not text after all and not
+        /// a binary property list either, which sends the caller back to Quick Look.
         static func read(_ url: URL) -> TextScan? {
-            guard let preview = TextPreview.read(contentsOf: url) else { return nil }
+            guard let preview = TextPreview.read(contentsOf: url) else {
+                return readBinaryPropertyList(url)
+            }
             // By name, not by content type — the inversion is argued in `SyntaxLanguage`: `UTType`
             // answers `public.c-header` for a `.h` and cannot say which of three languages it is.
             // A name that claims nothing falls back to a `#!` line, which is how a script with no
@@ -95,6 +97,20 @@ extension QuickViewPreviewView {
             return TextScan(
                 preview: preview,
                 tokens: SyntaxHighlighter.tokens(in: preview.text, language: language)
+            )
+        }
+
+        /// A binary property list, which `TextPreview.read` refuses on its NULs, shown as the XML it
+        /// converts to (`TextPreview.readBinaryPropertyList`) and colored like an XML plist.
+        ///
+        /// Colored as markup whatever the file is called, because the text is XML now: a compiled
+        /// `.strings` table (1 440 of the 4 559 binary plists surveyed) would otherwise get the `.strings`
+        /// grammar. `nil` for a file that is not one, which goes on to Quick Look as before.
+        private static func readBinaryPropertyList(_ url: URL) -> TextScan? {
+            guard let preview = TextPreview.readBinaryPropertyList(contentsOf: url) else { return nil }
+            return TextScan(
+                preview: preview,
+                tokens: SyntaxHighlighter.tokens(in: preview.text, language: .markup)
             )
         }
 
@@ -137,9 +153,8 @@ extension QuickViewPreviewView {
     /// **A property list too**, which is not `public.text`: `.plist` is `com.apple.property-list`
     /// and `.stringsdict` conforms to it, because either may be binary. Probed 2026-09-16, only
     /// those two and `.entitlements` and `.xcprivacy` (already text) conform; `.webloc` and the other
-    /// plist-shaped Finder files do not. An XML one shows as its markup, colored; a binary one
-    /// holds a NUL in its first bytes, so `TextPreview` refuses it and it goes to Quick Look as
-    /// before, which shows it converted to XML with its keys sorted, in one color.
+    /// plist-shaped Finder files do not. An XML one shows as its markup, colored, and a binary one as
+    /// the XML it converts to (`TextScan.read`).
     static func isText(_ url: URL) -> Bool {
         guard let type = contentType(of: url) else { return false }
         if type.conforms(to: .propertyList) { return true }

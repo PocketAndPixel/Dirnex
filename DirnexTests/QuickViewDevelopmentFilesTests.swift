@@ -4,10 +4,11 @@ import Testing
 
 @testable import Dirnex
 
-/// Property lists reach the text preview, and the development files a survey of `~/Dev` found
-/// previewing in one color are colored there (docs/HISTORY.md, 2026-09-16). Which language each file
-/// gets is the core's (`SyntaxLanguageTests`, `SyntaxConfigurationScannerTests`); what is left here
-/// is that the preview routes and asks as the core expects.
+/// Property lists reach the text preview, a binary one converted to XML, and the development files a
+/// survey of `~/Dev` found previewing in one color are colored there (docs/HISTORY.md, 2026-09-16).
+/// Which language each file gets, and the conversion, are the core's (`SyntaxLanguageTests`,
+/// `SyntaxConfigurationScannerTests`, `TextPreviewPropertyListTests`); what is left here is that the
+/// preview routes and asks as the core expects.
 @Suite("Quick View development files")
 @MainActor
 struct QuickViewDevelopmentFilesTests {
@@ -46,10 +47,8 @@ struct QuickViewDevelopmentFilesTests {
         #expect(Self.foregroundColors(in: textView).contains(SyntaxTheme.typeOrTag))
     }
 
-    /// `showText` raises the text surface before its read lands, so what is waited for is the surface
-    /// going away again, which only a refused read does.
-    @Test("a binary property list still goes to Quick Look")
-    func binaryPropertyListFallsBack() async throws {
+    @Test("a binary property list previews as the XML it converts to, colored")
+    func binaryPropertyListIsColored() async throws {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let data = try PropertyListSerialization.data(
@@ -59,13 +58,31 @@ struct QuickViewDevelopmentFilesTests {
         )
         let url = tree.root.appendingPathComponent("Info.plist")
         try data.write(to: url)
-        #expect(QuickViewPreviewView.isText(url))
         let preview = try await QuickViewTextPreviewTests.loaded(url)
 
-        for _ in 0..<2000 where preview.textSurface?.isHidden == false {
-            try? await Task.sleep(for: .milliseconds(5))
-        }
-        #expect(preview.textSurface?.isHidden == true)
+        let textView = await Self.settledTextView(of: preview)
+        #expect(textView?.string.hasPrefix("<?xml") == true)
+        #expect(textView?.string.contains("<string>Dirnex</string>") == true)
+        #expect(Self.foregroundColors(in: textView).contains(SyntaxTheme.typeOrTag))
+    }
+
+    /// A compiled `.strings` table is a binary plist too, and its converted text is XML rather than
+    /// `"key" = "value";`, so the `.strings` grammar its name picks would color nothing but strings.
+    @Test("a compiled .strings table is colored as the XML it converts to")
+    func compiledStringsTableIsMarkup() throws {
+        let tree = try TempDirectory()
+        defer { tree.cleanup() }
+        let data = try PropertyListSerialization.data(
+            fromPropertyList: ["OK": "Хорошо"],
+            format: .binary,
+            options: 0
+        )
+        let url = tree.root.appendingPathComponent("Localizable.strings")
+        try data.write(to: url)
+
+        let scan = try #require(QuickViewPreviewView.TextScan.read(url))
+        #expect(scan.preview.text.contains("<string>Хорошо</string>"))
+        #expect(scan.tokens.contains { $0.kind == .typeOrTag })
     }
 
     @Test("the development files that previewed in one color are colored")
