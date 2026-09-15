@@ -19,7 +19,11 @@ extension QuickViewPreviewView {
     /// A file that turns out not to be text after all — a binary someone named `.txt`, bytes in an
     /// encoding nothing claims — decodes to `nil` and falls back to Quick Look, which is exactly
     /// what it got before this backend existed.
-    func showText(_ url: URL) {
+    ///
+    /// `refusingPlaceholders` is for a file routed here by its bytes alone (`isUnclaimed`): one whose
+    /// bytes are in a cloud goes to Quick Look unread, since reading its first byte would download it
+    /// because the cursor passed over a row that Quick Look drew as an icon.
+    func showText(_ url: URL, refusingPlaceholders: Bool = false) {
         let surface = ensureTextSurface()
         standDownPDF()
         standDownQuickLook()
@@ -33,8 +37,9 @@ extension QuickViewPreviewView {
         let isDelimited = Self.isDelimitedTable(url)
         let delimited = isDelimited ? Self.delimiterHint(for: url) : nil
         Task { [weak self] in
-            let scan = await BlockingWork.run {
-                isDelimited
+            let scan = await BlockingWork.run { () -> TextScan? in
+                if refusingPlaceholders, Self.isPlaceholder(url) { return nil }
+                return isDelimited
                     ? TextScan.readDelimited(url, delimiterHint: delimited)
                     : TextScan.read(url)
             }
@@ -80,8 +85,11 @@ extension QuickViewPreviewView {
             guard let preview = TextPreview.read(contentsOf: url) else { return nil }
             // By name, not by content type — the inversion is argued in `SyntaxLanguage`: `UTType`
             // answers `public.c-header` for a `.h` and cannot say which of three languages it is.
-            // A file no grammar claims tokenizes to nothing and renders exactly as it did before.
-            guard let language = SyntaxLanguage.forFile(named: url.lastPathComponent) else {
+            // A name that claims nothing falls back to a `#!` line, which is how a script with no
+            // extension gets colored. A file neither claims tokenizes to nothing and renders exactly
+            // as it did before.
+            let name = url.lastPathComponent
+            guard let language = SyntaxLanguage.forFile(named: name, text: preview.text) else {
                 return TextScan(preview: preview, tokens: [])
             }
             return TextScan(
@@ -129,6 +137,30 @@ extension QuickViewPreviewView {
         guard let type = contentType(of: url) else { return false }
         guard type.conforms(to: .text) else { return false }
         return !type.conforms(to: .html) && !type.conforms(to: .rtf)
+    }
+
+    /// Whether no type on this Mac says what `url` is, so only its bytes can say whether it is text.
+    ///
+    /// Probed 2026-09-15: a name with no extension resolves to bare `public.data` (`VERSION`,
+    /// `NOTICE`, `Dockerfile`, `.gitignore`, `.zshrc`), a name with an extension nothing declares to
+    /// a dynamic type that conforms to nothing (`.conf`, `.env`, `.lock`, `.vue`, `.dart`), and a
+    /// script with its execute bit set to `public.unix-executable`. `isText` refuses all three, so
+    /// they went to Quick Look, which draws a question-mark document for them. Of the 46 000 such files
+    /// on this Mac, 11 687 were text.
+    ///
+    /// A type that is declared but not text (a certificate, a VLC module) keeps whatever Quick Look
+    /// does with it; only the three shapes above are asked.
+    static func isUnclaimed(_ url: URL) -> Bool {
+        guard let type = contentType(of: url) else { return true }
+        return type == .data || type == .unixExecutable || type.isDynamic
+    }
+
+    /// Whether `url` is a cloud placeholder (`SF_DATALESS`), whose first read downloads it. A `stat`
+    /// that follows a symlink, since the read that would download it follows one too.
+    nonisolated static func isPlaceholder(_ url: URL) -> Bool {
+        var info = stat()
+        guard stat(url.path, &info) == 0 else { return false }
+        return info.st_flags & UInt32(SF_DATALESS) != 0
     }
 
     private static func contentType(of url: URL) -> UTType? {

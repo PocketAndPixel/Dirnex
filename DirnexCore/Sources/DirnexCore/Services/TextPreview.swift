@@ -29,6 +29,14 @@ public struct TextPreview: Sendable, Equatable {
     /// should not turn ↓ into a disk-thrashing exercise.
     public static let byteLimit = 4 * 1024 * 1024
 
+    /// How much of a file is read before the rest, to see whether it is a binary.
+    ///
+    /// A binary says so almost at once. Measured 2026-09-15 over the 46 000 files on this Mac whose
+    /// type nothing claims: the first NUL of the 34 399 binaries sat at byte 9 in the median case and
+    /// by byte 52 in 99 %, and only 3 put it past 8 KiB. So a file with no type, which the preview
+    /// has to ask its bytes about, costs a binary 8 KiB rather than the 4 MiB a text file may take.
+    public static let sniffLength = 8 * 1024
+
     /// Read up to `byteLimit` bytes of a local file and decode them.
     ///
     /// `nil` for anything that isn't text after all — an unreadable file, or bytes no encoding
@@ -39,10 +47,37 @@ public struct TextPreview: Sendable, Equatable {
     public static func read(contentsOf url: URL, byteLimit: Int = byteLimit) -> TextPreview? {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
         defer { try? handle.close() }
+        return read(from: handle, byteLimit: byteLimit)
+    }
+
+    /// The read itself, from an open handle, so a test can see how far into the file it went.
+    ///
+    /// The first `sniffLength` bytes are read on their own and a binary stops there. That refusal is
+    /// `decode`'s own NUL rule applied early, and it can only refuse what `decode` would refuse: the
+    /// bytes checked are the start of the ones `decode` gets, and a file opening with a byte-order
+    /// mark is never refused here.
+    static func read(from handle: FileHandle, byteLimit: Int) -> TextPreview? {
         // One byte past the limit, so a file that lands exactly on it is not reported as truncated.
-        guard let data = try? handle.read(upToCount: byteLimit + 1) else { return nil }
+        let wanted = byteLimit + 1
+        let headLength = min(sniffLength, wanted)
+        var data: Data
+        do {
+            // `nil` at the end of the file, which for an empty file is the first read.
+            data = try handle.read(upToCount: headLength) ?? Data()
+            guard !isBinary(data.prefix(byteLimit)) else { return nil }
+            if data.count == headLength, headLength < wanted {
+                data += try handle.read(upToCount: wanted - headLength) ?? Data()
+            }
+        } catch {
+            return nil
+        }
         let isTruncated = data.count > byteLimit
         return decode(isTruncated ? data.prefix(byteLimit) : data, isTruncated: isTruncated)
+    }
+
+    /// Whether `data` holds a NUL with no byte-order mark in front of it, which `decode` refuses.
+    private static func isBinary(_ data: Data) -> Bool {
+        !ByteOrderMark.all.contains { data.starts(with: $0.bytes) } && data.contains(0)
     }
 
     /// Decode `data` — a whole file, or its first bytes when `isTruncated` — into displayable text.

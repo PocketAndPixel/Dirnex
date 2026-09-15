@@ -12923,10 +12923,10 @@ front of a user:
 
 ---
 
-### After M19 — the follow-on log (2026-08-07 → 2026-09-15)
+### After M19 — the follow-on log (2026-08-07 → 2026-09-16)
 
-Seventy-two dated passes that landed outside a milestone of their own, between M18's close on
-2026-08-07 and 2026-09-15: user-reported bugs, three vault features, the tree crossing into S3,
+Seventy-four dated passes that landed outside a milestone of their own, between M18's close on
+2026-08-07 and 2026-09-16: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
 sit here at the end rather than in a numeric slot — and they keep their **newest-first** order,
@@ -12934,6 +12934,69 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-16 — a script with no extension is colored by its `#!` line.** Asked for as "color
+extensionless scripts by their shebang", one of the items the entry below left undone.
+`SyntaxLanguage.forFile(named:text:)` (core) routes by name first, exactly as before, and reads the
+file's first line only when the name claims nothing; `TextScan.read` is its one caller. So `gradlew`,
+`bin/rails` and a `deploy` script now color, and so would a `notes.txt` that opens with `#!/bin/sh`,
+since the rule is "the name claims nothing" rather than "the name has no extension".
+
+A survey of about 3 000 `#!` lines on this Mac shaped the parser. Most name the interpreter by path
+(`#!/bin/sh`, `#! /bin/zsh`, `#!/usr/bin/perl -w`, a virtual environment's `.venv312/bin/python3`).
+About four in ten put `env` in front (`env node`, `env -S ruby`, `env node --harmony`, `env uv run`),
+and `xcrun` turned out to be a launcher too (`#!/usr/bin/xcrun swift` on 13 files, `xcrun python3`
+on 5), so both are stepped over along with their options, the value an option takes, `--` and
+`env`'s `NAME=value`. A version on the name is dropped (`python3.14`, `ksh93`, `perl5.30`). `sh`,
+`bash`, `zsh`, `ksh`, `mksh` and `dash` color as shell; `python`, `pypy`, `vpython` and `uv` as
+Python; `node`, `nodejs` and `zx` as JavaScript; `perl`, `ruby`, `swift` and `php` as themselves.
+`dtrace`, `pwsh`, `coffee` and `csh` have no grammar here and stay one color. Nothing may precede
+the `#!`, as for the kernel, and the first line is read no further than 1 024 characters, so a 4 MB
+file that opens with `#!` and no line break is not walked. 8 core tests, 1 app test.
+
+Controls: five, each failing the tests aimed at it — launchers not skipped (the four tests with an
+`env` or `xcrun` line), versions not stripped (every test with a versioned name, `python3`
+included), the `#!` line asked before the name (the name-first test), no length cap (the
+unbroken-line test), and `TextScan` routing by name alone (the app test, with the suite's other five
+green). Validation: both linters, all four CI scripts, 3,505 core tests, and the app suite (1,284
+tests, 1,203 executed with the live-server suites skipped, the one pre-existing known issue). Live, in
+the Debug build launched by path, with Quick View on over eight extensionless fixtures: `env bash`,
+`env -S ruby`, `env python3`, `xcrun swift`, `perl -w` and `env node` each drew in their language's
+colors, while `dtrace -s` and a plain `VERSION` stayed one color. **Left undone:** `deno`, `bun`,
+`ts-node` and `make -f`, which no script on this Mac used.
+
+**2026-09-15 (after the filter marks) — files no type claims preview as text.** Asked for as "can we
+treat text files as text files and display their content in the preview?", over a screenshot of
+Quick View drawing a question-mark document for this repo's `VERSION`. `LICENSE` beside it previewed
+fine, and a probe said why: LaunchServices knows `LICENSE`, `README`, `COPYING` and `AUTHORS` by name,
+and nothing else. `VERSION`, `NOTICE`, `Dockerfile` and every dotfile resolve to bare `public.data`, a
+name with an extension nothing declares (`.conf`, `.env`, `.lock`, `.vue`, `.dart`) to a dynamic type
+conforming to nothing, and a script with its execute bit set to `public.unix-executable`. `isText`
+refused all three. A survey of the ~46 000 such files on this Mac found 11 687 text and 34 399 binary,
+with a binary's first NUL at byte 9 in the median case and past 8 KiB in only 3 (docs/NOTES.md ▸
+AppKit, beside the JSON family).
+
+- **`TextPreview` (core)** reads the first 8 KiB on their own and stops there for a binary. The
+  refusal is `decode`'s own NUL rule applied early, on the bytes `decode` would get, and never for a
+  file opening with a byte-order mark, so it can only refuse what the decode would. The same probe
+  found `FileHandle.read(upToCount:)` answering `nil` rather than empty data at the end of a file, so
+  an **empty** file had been refused since the text preview existed; it now reads as empty text. 6
+  tests, one reading the handle's offset after a binary to see the read stopped at 8 KiB.
+- **The app half.** `QuickViewPreviewView.isUnclaimed` is the three shapes above, asked last in
+  `show`, after every backend a declared type could want; a declared type that is not text (a
+  certificate, a VLC module) keeps Quick Look. Such a file goes through `showText`, which falls back
+  to Quick Look for a binary as it always has, and refuses a cloud placeholder unread: Quick Look drew
+  those as an icon, and the text read would download one because the cursor passed over it. 5 tests.
+
+Controls: four, each failing only the tests aimed at it — the sniff removed (the offset test), the
+empty read returning `nil` again, the sniff checking past the byte limit (a NUL one byte beyond it),
+and the route removed (both end-to-end tests, with the three predicate tests staying green).
+Validation: both linters, all four CI scripts, 3,497 core tests, and the app suite (1,283 tests,
+1,202 executed with the live-server suites skipped, the one pre-existing known issue).
+
+Confirmed by hand afterwards, in the running app. **Left undone:** the placeholder refusal, which no
+test can reach because the kernel drops an `SF_DATALESS` set by `chflags`; a placeholder `.txt`, which the text preview still reads, as it did before; `go.mod`, which
+VLC declares as `org.videolan.mod`; and coloring an extensionless script by its `#!` line.
 
 **2026-09-15 (last) — the table and the tree mark what the filter matched.** Asked for as "let's
 highlight the matched text too", with two choices settled first: the marks go in the JSON tree's rows

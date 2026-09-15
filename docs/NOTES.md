@@ -1976,6 +1976,21 @@ at build time.
   conform to `public.json`, and `.ndjson` is `public.ndjson`, which conforms to `public.text` and not
   to `public.json`. Route the family by name, with the conformance as the fallback
   (`QuickViewPreviewView.isJSON`).
+- **A text file with no extension is `public.data`, and one with an extension nothing declares is a
+  dynamic type, so a type gate cannot tell either from a binary.** Probed 2026-09-15: `VERSION`,
+  `NOTICE`, `Dockerfile`, `.gitignore` and `.zshrc` resolve to bare `public.data` whatever they hold;
+  `.conf`, `.env`, `.lock`, `.vue`, `.dart` and `.properties` to `dyn.…` types conforming to nothing;
+  a script with its execute bit set to `public.unix-executable`. LaunchServices does know a few by
+  name (`LICENSE`, `README`, `COPYING` and `AUTHORS` are `public.plain-text`, `Makefile` is make
+  source), which is why `LICENSE` previewed as text while `NOTICE` beside it did not. Of the ~46 000
+  such files on this Mac 11 687 were text, so only the bytes can decide
+  (`QuickViewPreviewView.isUnclaimed`, which also keeps a cloud placeholder away from the read).
+  - **A binary gives itself away in its first bytes.** Of the 34 399 binaries in that survey the
+    first NUL was at byte 9 in the median case, by byte 52 in 99 %, and past 8 KiB in 3, which is why
+    `TextPreview` reads 8 KiB and stops there for a binary.
+  - **`FileHandle.read(upToCount:)` returns `nil`, not empty data, at the end of a file**, and for an
+    empty file that is the first read. So `guard let data = try? handle.read(…)` refuses every empty
+    file: an empty `.txt` had gone to Quick Look for as long as the text preview existed.
 - **`JSONSerialization` cannot back a preview: it reorders keys, merges repeats, rewrites numbers and
   refuses a cut file.** Measured before `JSONDocument` was written: `{"zeta","alpha","mid"}` came back
   as `alpha, mid, zeta` (it is an `NSDictionary`), a repeated key kept one value, `1.10` read as `1.1`,

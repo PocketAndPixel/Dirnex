@@ -218,6 +218,10 @@ final class QuickViewPreviewView: NSView {
             showConvertedDocument(url)
         } else if let url, Self.isRichTextDocument(url) {
             showRichText(url)
+        } else if let url, Self.isUnclaimed(url) {
+            // `VERSION`, `.gitignore`, `nginx.conf`: no type says what they are, so their bytes do,
+            // and a binary goes on to Quick Look as it did before.
+            showText(url, refusingPlaceholders: true)
         } else {
             showQuickLook(url)
         }
