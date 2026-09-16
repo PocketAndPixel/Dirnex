@@ -1,9 +1,9 @@
 import AppKit
 import DirnexCore
 
-/// A value, as the JSON tree's outline view holds it. A class, since the outline view keeps a row's
-/// expanded state against the object (`QuickViewJSONTreeView.item(for:)`).
-final class QuickViewJSONItem: NSObject {
+/// A value, as the tree's outline view holds it. A class, since the outline view keeps a row's
+/// expanded state against the object (`QuickViewTreeView.item(for:)`).
+final class QuickViewTreeItem: NSObject {
     let value: Int
 
     init(value: Int) {
@@ -14,7 +14,7 @@ final class QuickViewJSONItem: NSObject {
 /// The tree itself, which puts the selected value on the pasteboard — the twin of the table's
 /// `QuickViewDataTableView`.
 @MainActor
-final class QuickViewJSONOutlineView: NSOutlineView, NSMenuItemValidation {
+final class QuickViewTreeOutlineView: NSOutlineView, NSMenuItemValidation {
     var copiedText: (() -> String?)?
     /// Where ⌘C writes. The general pasteboard, except in a test, which must not overwrite the
     /// clipboard of whoever is running it.
@@ -37,20 +37,20 @@ final class QuickViewJSONOutlineView: NSOutlineView, NSMenuItemValidation {
 
 // MARK: - Rows and cells
 
-extension QuickViewJSONTreeView: NSOutlineViewDataSource, NSOutlineViewDelegate {
-    // With no filter a container's children are read straight off the document; with one, they are
-    // the ones it leaves (`shownChildren`).
+extension QuickViewTreeView: NSOutlineViewDataSource, NSOutlineViewDelegate {
+    // With no filter a value's rows are read straight off the document; with one, they are the ones it
+    // leaves (`shownChildren`).
 
     func outlineView(_ outlineView: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
         guard let document else { return 0 }
-        guard let item = item as? QuickViewJSONItem else { return topLevel.count }
+        guard let item = item as? QuickViewTreeItem else { return topLevel.count }
         return filter == nil
             ? document.childCount(of: item.value)
             : shownChildren(of: item.value).count
     }
 
     func outlineView(_ outlineView: NSOutlineView, child index: Int, ofItem item: Any?) -> Any {
-        guard let document, let parent = item as? QuickViewJSONItem else {
+        guard let document, let parent = item as? QuickViewTreeItem else {
             return self.item(for: topLevel[index])
         }
         return self.item(for: filter == nil
@@ -59,9 +59,7 @@ extension QuickViewJSONTreeView: NSOutlineViewDataSource, NSOutlineViewDelegate 
     }
 
     func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {
-        guard let document, let item = item as? QuickViewJSONItem,
-              document.kind(of: item.value).isContainer
-        else { return false }
+        guard let document, let item = item as? QuickViewTreeItem else { return false }
         return filter == nil
             ? document.childCount(of: item.value) > 0
             : !shownChildren(of: item.value).isEmpty
@@ -72,15 +70,15 @@ extension QuickViewJSONTreeView: NSOutlineViewDataSource, NSOutlineViewDelegate 
         viewFor tableColumn: NSTableColumn?,
         item: Any
     ) -> NSView? {
-        guard let item = item as? QuickViewJSONItem, let tableColumn else { return nil }
+        guard let document, let item = item as? QuickViewTreeItem, let tableColumn else { return nil }
         let cell = outlineView.makeView(withIdentifier: QuickViewTableCell.identifier, owner: nil)
             as? QuickViewTableCell ?? QuickViewTableCell()
         let inKeys = tableColumn.identifier == Self.keyColumn
-        let label = inKeys ? keyLabel(for: item.value) : valueLabel(for: item.value)
+        let label = inKeys ? document.keyLabel(of: item.value) : document.valueLabel(of: item.value)
         cell.show(
             label.text,
             font: zoomedFont,
-            color: label.color,
+            color: Self.color(for: label.role),
             alignment: .left,
             marking: markedQuery(for: item.value, inKeys: inKeys),
             within: label.searched
@@ -103,12 +101,17 @@ extension QuickViewJSONTreeView: NSOutlineViewDataSource, NSOutlineViewDelegate 
 
     // MARK: - Labels
 
-    struct Label {
-        let text: String
-        let color: NSColor
-        /// The part of `text` the filter reads, where a match is marked: all of a key, a number or a
-        /// word, a string inside its quotes, and nothing of an index, `$` or a count.
-        var searched: Range<String.Index>?
+    /// The source view's color for a kind of text: a string, a number and a word as they are colored
+    /// there, a key, a name or an element's text in the label color, and what the tree says about a value
+    /// — an index, a count, an element's attributes — dimmed.
+    static func color(for role: TreeLabel.Role) -> NSColor {
+        switch role {
+        case .name, .text: .labelColor
+        case .annotation: .secondaryLabelColor
+        case .string: SyntaxTheme.string
+        case .number: SyntaxTheme.number
+        case .keyword: SyntaxTheme.keyword
+        }
     }
 
     /// The query to mark in a value's key or its text: the one the tree is filtered by, where the
@@ -123,50 +126,6 @@ extension QuickViewJSONTreeView: NSOutlineViewDataSource, NSOutlineViewDelegate 
             return inKeys ? filterMarking.query : nil
         case .values:
             return inKeys ? nil : filterMarking.query
-        }
-    }
-
-    /// A member's key; an element's index, dimmed, as `[3]`; and for a file that is one scalar, `$`.
-    func keyLabel(for value: Int) -> Label {
-        guard let document else { return Label(text: "", color: .labelColor) }
-        if let key = document.key(of: value) {
-            // An empty key is legal JSON, and a blank cell would read as a missing one.
-            return key.isEmpty
-                ? Label(text: "\"\"", color: .secondaryLabelColor)
-                : Label(text: key, color: .labelColor, searched: key.startIndex..<key.endIndex)
-        }
-        if document.parent(of: value) != nil || document.roots.count > 1 {
-            return Label(text: "[\(document.position(of: value))]", color: .secondaryLabelColor)
-        }
-        return Label(text: "$", color: .secondaryLabelColor)
-    }
-
-    /// A string in quotes, a number or a word as written, each in the source view's color for it; a
-    /// container as how many values it holds, `{3}` or `[12]`, with `…` when the read limit cut it.
-    func valueLabel(for value: Int) -> Label {
-        guard let document else { return Label(text: "", color: .labelColor) }
-        let kind = document.kind(of: value)
-        switch kind {
-        case .object, .array:
-            let count = "\(document.childCount(of: value))\(document.isIncomplete(value) ? "…" : "")"
-            return Label(
-                text: kind == .object ? "{\(count)}" : "[\(count)]",
-                color: .secondaryLabelColor
-            )
-        case .string:
-            let text = "\"\(document.scalarText(of: value, byteLimit: Self.cellTextLimit))\""
-            return Label(
-                text: text,
-                color: SyntaxTheme.string,
-                searched: text.index(after: text.startIndex)..<text.index(before: text.endIndex)
-            )
-        case .number, .boolean, .null:
-            let text = document.scalarText(of: value)
-            return Label(
-                text: text,
-                color: kind == .number ? SyntaxTheme.number : SyntaxTheme.keyword,
-                searched: text.startIndex..<text.endIndex
-            )
         }
     }
 }

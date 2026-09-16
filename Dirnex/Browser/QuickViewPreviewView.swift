@@ -83,11 +83,12 @@ final class QuickViewPreviewView: NSView {
     /// Where the table surface keeps the height its strip was dragged to. Set before the first CSV
     /// is shown; a test hands over a scratch domain so it neither reads nor writes the real one.
     var tableLayoutDefaults: UserDefaults = .standard
-    /// Internal for the same reason, from `QuickViewPreviewView+JSON`; its strip's dragged height is
+    /// Internal for the same reason, from `QuickViewPreviewView+Tree`; its strip's dragged height is
     /// kept in `tableLayoutDefaults` too.
-    var jsonTreeSurface: QuickViewJSONTreeView?
-    /// Whether the JSON file last shown was a list of records, drawn in the table (`captionForHeader`).
-    var jsonShowsRecords = false
+    var treeSurface: QuickViewTreeView?
+    /// Whether the JSON or XML file last shown was a list of records, drawn in the table
+    /// (`captionForHeader`).
+    var treeShowsRecords = false
     /// The caption as last handed over, so it can be drawn again once a JSON file's shape is known.
     private var shownCaption: QuickViewCaption?
     /// Internal for the same reason, from `QuickViewPreviewView+Placeholder`.
@@ -175,15 +176,16 @@ final class QuickViewPreviewView: NSView {
         loadedStyle = style
         loadedPlaceholder = placeholder
         hasLoaded = true
-        // The table and the JSON tree are put away here rather than by every other backend, for the
-        // reason the card below is: a sixth hand-written list is six chances to forget one. Each stays
-        // up while the next file is data too, so stepping between two keeps the old one on screen until
-        // the new one lands; a JSON file says which of the two it takes only once it has been read.
+        // The table and the tree are put away here rather than by every other backend, for the reason
+        // the card below is: a sixth hand-written list is six chances to forget one. Each stays up while
+        // the next file is data too, so stepping between two keeps the old one on screen until the new
+        // one lands; a JSON or XML file says which of the two it takes only once it has been read.
         let isTable = url.map(Self.isDelimitedTable) == true
-        let showsData = style == .rendered && (isTable || url.map(Self.isJSON) == true)
+        let showsData = style == .rendered
+            && (isTable || url.map { Self.isJSON($0) || Self.isXML($0) } == true)
         if !showsData {
             standDownTable()
-            standDownJSONTree()
+            standDownTree()
         }
         // The one funnel every render goes through, which is why the card is raised and lowered here
         // rather than at each backend: a fifth stand-down in four hand-written lists is four chances
@@ -203,7 +205,7 @@ final class QuickViewPreviewView: NSView {
         } else if let url, showsData, isTable {
             showTable(url)
         } else if let url, showsData {
-            showJSON(url)
+            showTree(url)
         } else if let url, Self.isRenderableHTML(url), style == .rendered {
             showRenderedHTML(url)
         } else if let url, Self.isRenderableMarkdown(url), style == .rendered {
@@ -251,8 +253,8 @@ final class QuickViewPreviewView: NSView {
         textSurface?.clearText()
         webSurface?.clearPage()
         tableSurface?.clearTable()
-        jsonTreeSurface?.clearDocument()
-        jsonShowsRecords = false
+        treeSurface?.clearDocument()
+        treeShowsRecords = false
     }
 
     /// The file the header names. Ignored when this surface has no header.
@@ -331,7 +333,7 @@ final class QuickViewPreviewView: NSView {
                 textSurface?.interactiveSubtree,
                 webSurface?.interactiveSubtree,
                 tableSurface,
-                jsonTreeSurface,
+                treeSurface,
                 headerView,
                 placeholderCard?.downloadButton,
                 placeholderCard?.stopButton

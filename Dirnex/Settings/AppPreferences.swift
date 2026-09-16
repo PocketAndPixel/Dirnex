@@ -162,12 +162,15 @@ final class AppPreferences: ObservableObject {
         }
     }
 
-    /// Posted (on the main actor) when `quickViewRenderStyle` or `quickViewTableStyle` changes, so
-    /// every open Quick View re-delivers its current file in the new style. `object` is the
-    /// `AppPreferences` that changed.
-    static let quickViewRenderStyleDidChange = Notification.Name(
-        "Dirnex.quickViewRenderStyleDidChange"
-    )
+    /// How Quick View draws an XML file or a property list — its source, or a tree (a table, for a list
+    /// of like elements), 2026-09-16. Its own preference for JSON's reason.
+    @Published var quickViewXMLStyle: QuickViewRenderStyle {
+        didSet {
+            guard quickViewXMLStyle != oldValue else { return }
+            defaults.set(quickViewXMLStyle.rawValue, forKey: Keys.quickViewXMLStyle)
+            NotificationCenter.default.post(name: Self.quickViewRenderStyleDidChange, object: self)
+        }
+    }
 
     /// Panels ▸ whether a rendered HTML preview may run the page's own JavaScript (PLAN.md §M16).
     ///
@@ -460,10 +463,13 @@ final class AppPreferences: ObservableObject {
         quickViewTableStyle = QuickViewRenderStyle(
             rawValue: defaults.string(forKey: Keys.quickViewTableStyle) ?? ""
         ) ?? QuickViewDualStyleKind.table.defaultStyle
-        // Empty (never written) = the tree.
+        // Empty (never written) = the tree, for JSON and XML alike.
         quickViewJSONStyle = QuickViewRenderStyle(
             rawValue: defaults.string(forKey: Keys.quickViewJSONStyle) ?? ""
         ) ?? QuickViewDualStyleKind.json.defaultStyle
+        quickViewXMLStyle = QuickViewRenderStyle(
+            rawValue: defaults.string(forKey: Keys.quickViewXMLStyle) ?? ""
+        ) ?? QuickViewDualStyleKind.xml.defaultStyle
         // Empty (never written) = Follow System, and so is anything `PanelPalette` can't parse.
         accentColorHex = defaults.string(forKey: Keys.accentColorHex) ?? ""
         cursorColorHex = defaults.string(forKey: Keys.cursorColorHex) ?? ""

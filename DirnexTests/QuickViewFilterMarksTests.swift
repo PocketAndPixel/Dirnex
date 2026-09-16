@@ -224,7 +224,7 @@ struct QuickViewFilterMarksTests {
         )
         return QuickViewJSONFilterFixtures.Fixture(
             preview: preview,
-            surface: try #require(preview.jsonTreeSurface),
+            surface: try #require(preview.treeSurface),
             tree: tree
         )
     }

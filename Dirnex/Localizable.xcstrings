@@ -56226,6 +56226,186 @@
         }
       }
     },
+    "Names": {
+      "comment": "Quick View XML tree filter: the picker’s item that searches only the names of elements and attributes.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Namen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Names"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombres"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noms"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nomi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이름"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Namen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nazwy"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nomes"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имена"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Назви"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名稱"
+          }
+        }
+      }
+    },
+    "Names and Values": {
+      "comment": "Quick View XML tree filter: the picker’s item that searches both the names of elements and attributes and their values.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Namen und Werte"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Names and Values"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombres y valores"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noms et valeurs"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nomi e valori"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前と値"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이름과 값"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Namen en waarden"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nazwy i wartości"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nomes e valores"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имена и значения"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Назви та значення"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称和值"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名稱和值"
+          }
+        }
+      }
+    },
     "Names can’t contain the “/” character.": {
       "comment": "Rename validation failure body: slash is not allowed in a name.",
       "localizations": {
@@ -64962,7 +65142,7 @@
       }
     },
     "Path": {
-      "comment": "Quick View JSON tree strip: the name beside the selected value's JSONPath, such as $.name",
+      "comment": "Quick View tree strip: the name beside the selected value's path, such as $.name, /Project/ItemGroup or :CFBundleName",
       "extractionState": "manual",
       "localizations": {
         "de": {
@@ -98952,7 +99132,7 @@
       }
     },
     "Value": {
-      "comment": "Extended attributes table column header: a preview of the value.",
+      "comment": "Quick View tree column header, and the strip's name for the selected value's text",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -118190,85 +118370,85 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "filter, filtern, tabelle, zeilen, suchen, finden, csv, vorschau, json, baum, schlüssel, werte"
+            "value": "filter, filtern, tabelle, zeilen, suchen, finden, csv, vorschau, json, xml, plist, baum, schlüssel, werte, namen"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "quick view, preview, csv, tsv, table, rows, json, tree, keys, values, filter, search, find, narrow, option cmd f"
+            "value": "quick view, preview, csv, tsv, table, rows, json, xml, plist, tree, keys, names, values, filter, search, find, narrow, option cmd f"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "filtro, filtrar, tabla, filas, buscar, csv, vista previa, json, árbol, claves, valores"
+            "value": "filtro, filtrar, tabla, filas, buscar, csv, vista previa, json, xml, plist, árbol, claves, valores, nombres"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "filtre, filtrer, tableau, lignes, rechercher, trouver, csv, aperçu, json, arbre, clés, valeurs"
+            "value": "filtre, filtrer, tableau, lignes, rechercher, trouver, csv, aperçu, json, xml, plist, arbre, clés, valeurs, noms"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "filtro, filtra, tabella, righe, cerca, trova, csv, anteprima, json, albero, chiavi, valori"
+            "value": "filtro, filtra, tabella, righe, cerca, trova, csv, anteprima, json, xml, plist, albero, chiavi, valori, nomi"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "フィルタ, 絞り込み, 表, 行, 検索, csv, プレビュー, json, ツリー, キー, 値"
+            "value": "フィルタ, 絞り込み, 表, 行, 検索, csv, プレビュー, json, xml, plist, ツリー, キー, 値, 名前"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "필터, 표, 행, 검색, 찾기, csv, 미리보기, json, 트리, 키, 값"
+            "value": "필터, 표, 행, 검색, 찾기, csv, 미리보기, json, xml, plist, 트리, 키, 값, 이름"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "filter, filteren, tabel, rijen, zoeken, vinden, csv, voorvertoning, json, boom, sleutels, waarden"
+            "value": "filter, filteren, tabel, rijen, zoeken, vinden, csv, voorvertoning, json, xml, plist, boom, sleutels, waarden, namen"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "filtr, filtruj, tabela, wiersze, szukaj, znajdź, csv, podgląd, json, drzewo, klucze, wartości"
+            "value": "filtr, filtruj, tabela, wiersze, szukaj, znajdź, csv, podgląd, json, xml, plist, drzewo, klucze, wartości, nazwy"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "filtro, filtrar, tabela, linhas, buscar, procurar, csv, pré-visualização, json, árvore, chaves, valores"
+            "value": "filtro, filtrar, tabela, linhas, buscar, procurar, csv, pré-visualização, json, xml, plist, árvore, chaves, valores, nomes"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "фильтр, фильтровать, таблица, строки, поиск, найти, csv, просмотр, json, дерево, ключи, значения"
+            "value": "фильтр, фильтровать, таблица, строки, поиск, найти, csv, просмотр, json, xml, plist, дерево, ключи, значения, имена"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "фільтр, фільтрувати, таблиця, рядки, пошук, знайти, csv, перегляд, json, дерево, ключі, значення"
+            "value": "фільтр, фільтрувати, таблиця, рядки, пошук, знайти, csv, перегляд, json, xml, plist, дерево, ключі, значення, назви"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "过滤, 筛选, 表格, 行, 搜索, 查找, csv, 预览, json, 树, 键, 值"
+            "value": "过滤, 筛选, 表格, 行, 搜索, 查找, csv, 预览, json, xml, plist, 树, 键, 值, 名称"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "過濾, 篩選, 表格, 列, 搜尋, 尋找, csv, 預覽, json, 樹, 鍵, 值"
+            "value": "過濾, 篩選, 表格, 列, 搜尋, 尋找, csv, 預覽, json, xml, plist, 樹, 鍵, 值, 名稱"
           }
         }
       }

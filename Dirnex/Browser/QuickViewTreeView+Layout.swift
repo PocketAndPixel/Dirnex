@@ -8,7 +8,7 @@ import DirnexCore
 /// to two fifths of the surface until somebody drags its edge; the zoom scales what the tree is drawn
 /// with — fonts, row height, indentation, the header and the key column — rather than magnifying the
 /// scroll view, which leaves an outline view's header at 1× over rows at 2×, as it does a table's.
-extension QuickViewJSONTreeView {
+extension QuickViewTreeView {
     // MARK: - The strip
 
     /// Where a dragged height is kept — apart from the table's, since a tree's strip shows a path and

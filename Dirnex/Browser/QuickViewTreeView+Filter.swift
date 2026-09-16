@@ -1,13 +1,14 @@
 import AppKit
 import DirnexCore
 
-/// Narrowing Quick View's JSON tree to the values containing some text (2026-09-15).
+/// Narrowing Quick View's tree to the values containing some text (2026-09-15; XML and property lists
+/// from 2026-09-16).
 ///
 /// View ▸ Filter (⌥⌘F) shows the CSV table's bar over the tree, its picker offering keys and values,
-/// keys, or values, and its keys the table's (`QuickViewFilterHost`). Which values match is
-/// `DirnexCore`'s (`JSONDocument.filter(matching:in:isCancelled:)`), off the main actor: measured in a
-/// release build, 1–5 ms over the 4 MB catalog in this repository for an ASCII query, and 50–100 ms
-/// over it for one that is not, which decodes every text it reads.
+/// keys, or values — names rather than keys over XML — and its keys the table's
+/// (`QuickViewFilterHost`). Which values match is `DirnexCore`'s (`TreeDocument.filter`), off the main
+/// actor: measured in a release build, 1–5 ms over the 4 MB catalog in this repository for an ASCII
+/// query, and 50–100 ms over it for one that is not, which decodes every text it reads.
 ///
 /// The tree then lists the matches and the way down to each, and — the user's choice — a matched
 /// object or array keeps everything inside it, closed. The whole document is searched, not only what
@@ -15,7 +16,7 @@ import DirnexCore
 /// of updates: opening rows one by one cost an outline view 62 ms a thousand and 1.3 s for twenty
 /// thousand, and a batch a third to a ninth of that (measured). Clearing the text gives back the rows
 /// that were open before the filter, with the selected value opened into view.
-extension QuickViewJSONTreeView: QuickViewFilterHost {
+extension QuickViewTreeView: QuickViewFilterHost {
     var filteredRowsView: NSTableView { outlineView }
 
     var hasFilterableContent: Bool { document != nil }
@@ -80,8 +81,8 @@ extension QuickViewJSONTreeView: QuickViewFilterHost {
     // MARK: - Private
 
     private func applyFilter(
-        _ found: JSONFilter?,
-        marking: (query: FilterQuery, scope: JSONFilterScope)?
+        _ found: TreeFilter?,
+        marking: (query: FilterQuery, scope: TreeFilterScope)?
     ) {
         guard let document else { return }
         filterBar.showValueCount(
@@ -118,7 +119,7 @@ extension QuickViewJSONTreeView: QuickViewFilterHost {
     /// each after its parent.
     private var openValues: [Int] {
         (0..<outlineView.numberOfRows).compactMap { row in
-            guard let item = outlineView.item(atRow: row) as? QuickViewJSONItem,
+            guard let item = outlineView.item(atRow: row) as? QuickViewTreeItem,
                   outlineView.isItemExpanded(item)
             else { return nil }
             return item.value
@@ -134,7 +135,7 @@ extension QuickViewJSONTreeView: QuickViewFilterHost {
             if let previous, filter.isMatch(previous), rowOf(previous) >= 0 {
                 row = rowOf(previous)
             } else if let first = (0..<outlineView.numberOfRows).first(where: { row in
-                (outlineView.item(atRow: row) as? QuickViewJSONItem).map { filter.isMatch($0.value) }
+                (outlineView.item(atRow: row) as? QuickViewTreeItem).map { filter.isMatch($0.value) }
                     ?? false
             }) {
                 row = first

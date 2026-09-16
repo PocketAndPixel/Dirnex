@@ -31,7 +31,7 @@ struct QuickViewJSONSurfaceTests {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let preview = try await loaded("tsconfig.json", QuickViewJSONPreviewTests.config, in: tree)
-        let surface = try #require(preview.jsonTreeSurface)
+        let surface = try #require(preview.treeSurface)
         #expect(!surface.isHidden)
         #expect(preview.tableSurface?.isHidden != false)
         #expect(preview.textSurface?.isHidden != false)
@@ -40,7 +40,7 @@ struct QuickViewJSONSurfaceTests {
             "[0] \"./src/*\"", "include [1]", "[0] \"src\""
         ])
         #expect(surface.outlineView.tableColumns.map(\.title) == [
-            QuickViewJSONTreeView.keyTitle, QuickViewJSONTreeView.valueTitle
+            QuickViewTreeView.keyTitle, QuickViewTreeView.valueTitle
         ])
     }
 
@@ -51,7 +51,7 @@ struct QuickViewJSONSurfaceTests {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let preview = try await loaded("tsconfig.json", QuickViewJSONPreviewTests.config, in: tree)
-        let surface = try #require(preview.jsonTreeSurface)
+        let surface = try #require(preview.treeSurface)
         #expect(surface.outlineView.selectedRow == 0)
         #expect(surface.strip.text.contains("$.compilerOptions"))
         #expect(surface.strip.text.contains("\"target\": \"ES2022\""))
@@ -87,7 +87,7 @@ struct QuickViewJSONSurfaceTests {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let preview = try await loaded("tsconfig.json", QuickViewJSONPreviewTests.config, in: tree)
-        let outline = try #require(preview.jsonTreeSurface?.outlineView)
+        let outline = try #require(preview.treeSurface?.outlineView)
         let pasteboard = NSPasteboard(name: NSPasteboard.Name("dirnex-tests-\(UUID().uuidString)"))
         defer { pasteboard.releaseGlobally() }
         outline.pasteboard = pasteboard
@@ -110,7 +110,7 @@ struct QuickViewJSONSurfaceTests {
             #"{"big": [\#(numbers)], "small": {"x": 1}}"#,
             in: tree
         )
-        let surface = try #require(preview.jsonTreeSurface)
+        let surface = try #require(preview.treeSurface)
         #expect(QuickViewJSONFixtures.rows(surface) == ["big [500]", "small {1}", "x 1"])
     }
 
@@ -126,7 +126,7 @@ struct QuickViewJSONSurfaceTests {
         #expect(!table.isHidden)
         #expect(table.tableView.tableColumns.map(\.title) == ["#", "role", "content", "ts"])
         #expect(table.tableView.numberOfRows == 2)
-        #expect(preview.jsonTreeSurface?.isHidden != false)
+        #expect(preview.treeSurface?.isHidden != false)
         #expect(preview.filterableTable != nil)
         let caption = QuickViewCaption(
             name: "events.jsonl",
@@ -153,7 +153,7 @@ struct QuickViewJSONSurfaceTests {
         #expect(preview.captionForHeader(caption)?.styleKind == .json)
 
         let broken = try await loaded("broken.json", #"{"a": "#, in: tree)
-        #expect(broken.jsonTreeSurface?.isHidden != false)
+        #expect(broken.treeSurface?.isHidden != false)
         #expect(broken.textSurface?.isHidden == false)
     }
 
@@ -167,7 +167,7 @@ struct QuickViewJSONSurfaceTests {
             in: tree,
             style: .source
         )
-        #expect(preview.jsonTreeSurface?.isHidden != false)
+        #expect(preview.treeSurface?.isHidden != false)
         let text = try #require(QuickViewTableFixtures.documentTextView(of: preview))
         #expect(text.string.contains("compilerOptions"))
     }
@@ -179,7 +179,7 @@ struct QuickViewJSONSurfaceTests {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let preview = try await loaded("tsconfig.json", QuickViewJSONPreviewTests.config, in: tree)
-        let surface = try #require(preview.jsonTreeSurface)
+        let surface = try #require(preview.treeSurface)
         let point = surface.convert(
             NSPoint(x: 60, y: surface.bounds.height - 40),
             to: preview.superview
@@ -196,7 +196,7 @@ struct QuickViewJSONSurfaceTests {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let preview = try await loaded("tsconfig.json", QuickViewJSONPreviewTests.config, in: tree)
-        let surface = try #require(preview.jsonTreeSurface)
+        let surface = try #require(preview.treeSurface)
 
         preview.show(try tree.write("second.json", contents: #"{"b": 1}"#), style: .rendered)
         #expect(!surface.isHidden)
@@ -226,7 +226,7 @@ struct QuickViewJSONSurfaceTests {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let preview = try await loaded("tsconfig.json", QuickViewJSONPreviewTests.config, in: tree)
-        let surface = try #require(preview.jsonTreeSurface)
+        let surface = try #require(preview.treeSurface)
         let rowHeight = surface.outlineView.rowHeight
         let rows = surface.outlineView.numberOfRows
         #expect(preview.canZoom(.larger))
@@ -249,14 +249,14 @@ struct QuickViewJSONSurfaceTests {
 @MainActor
 enum QuickViewJSONFixtures {
     /// Every row as `key value`, the text its two cells draw, through the tree's own delegate.
-    static func rows(_ surface: QuickViewJSONTreeView) -> [String] {
+    static func rows(_ surface: QuickViewTreeView) -> [String] {
         (0..<surface.outlineView.numberOfRows).map { row in
             guard let item = surface.outlineView.item(atRow: row) else { return "" }
             return "\(text(surface, column: 0, item: item)) \(text(surface, column: 1, item: item))"
         }
     }
 
-    private static func text(_ surface: QuickViewJSONTreeView, column: Int, item: Any) -> String {
+    private static func text(_ surface: QuickViewTreeView, column: Int, item: Any) -> String {
         let tableColumn = surface.outlineView.tableColumns[column]
         let view = surface.outlineView(surface.outlineView, viewFor: tableColumn, item: item)
         return (view as? NSTableCellView)?.textField?.stringValue ?? ""

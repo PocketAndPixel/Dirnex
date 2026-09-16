@@ -21,6 +21,7 @@ extension QuickViewPreviewView {
     static func dualStyleKind(of url: URL) -> QuickViewDualStyleKind? {
         if isDelimitedTable(url) { return .table }
         if isJSON(url) { return .json }
+        if isXML(url) { return .xml }
         return isRenderableHTML(url) || isRenderableMarkdown(url) ? .page : nil
     }
 }

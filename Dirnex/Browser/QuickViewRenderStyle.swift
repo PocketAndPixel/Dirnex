@@ -8,7 +8,7 @@ import Foundation
 /// decodes bytes, the app decides which surface they land on.
 ///
 /// Which files offer both is `QuickViewPreviewView.dualStyleKind(of:)` — HTML since §M16, Markdown
-/// since §M18, CSV, TSV and JSON since 2026-09-15 — and the single predicate is the point: the same
+/// since §M18, CSV, TSV and JSON since 2026-09-15, XML since 2026-09-16 — and the single predicate is the point: the same
 /// question used to be spelled three times. Everything else has one honest rendering and ignores
 /// this entirely — a photograph has no source, and a `.txt` has no document.
 enum QuickViewRenderStyle: String, CaseIterable, Identifiable {
@@ -79,7 +79,7 @@ enum QuickViewRenderStyle: String, CaseIterable, Identifiable {
                 localized: "Table",
                 comment: "Quick View header, short name for a CSV or TSV file drawn as a table of rows and columns"
             )
-        case (.rendered, .json):
+        case (.rendered, .json), (.rendered, .xml):
             String(
                 localized: "Tree",
                 comment: "Quick View header, short name for a JSON file drawn as a tree of keys and values"
@@ -107,14 +107,17 @@ enum QuickViewDualStyleKind: Equatable {
     /// CSV and TSV: the delimited text, or a table of its rows and columns.
     case table
     /// JSON and its family: the text, or a tree of its keys and values — which, for a list of like
-    /// objects, is drawn as a table (`QuickViewPreviewView+JSON`).
+    /// objects, is drawn as a table (`QuickViewPreviewView+Tree`).
     case json
+    /// XML and property lists: the text, or a tree of elements and attributes, or of keys and values —
+    /// a table, for a list of like elements (2026-09-16). Apart from JSON, for JSON's reason.
+    case xml
 
     /// The style a file of this family opens in until the user picks the other.
     var defaultStyle: QuickViewRenderStyle {
         switch self {
         case .page: .default
-        case .table, .json: .rendered
+        case .table, .json, .xml: .rendered
         }
     }
 }

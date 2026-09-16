@@ -27,14 +27,14 @@ struct JSONDocumentFilteringTests {
     private func filter(
         _ document: JSONDocument,
         _ query: String,
-        in scope: JSONFilterScope = .keysAndValues
-    ) throws -> JSONFilter {
+        in scope: TreeFilterScope = .keysAndValues
+    ) throws -> TreeFilter {
         try #require(document.filter(matching: query, in: scope))
     }
 
     /// The tree a filter leaves, as `key` or `[index]` per shown value in row order, indented by depth,
     /// every shown container walked whether or not it would be open.
-    private func shown(_ document: JSONDocument, _ filter: JSONFilter) -> [String] {
+    private func shown(_ document: JSONDocument, _ filter: TreeFilter) -> [String] {
         var lines: [String] = []
         func walk(_ values: [Int], depth: Int) {
             for value in values {

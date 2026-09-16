@@ -723,6 +723,12 @@ at build time.
     language-independent, and the control then failed on demand. The neutered build was telling
     somebody with a bad secret that their key had **signed in**, which the first version could not
     see.
+  - **An inert control can also mean the guarded state cannot happen, and then the guard is what
+    goes.** Measured 2026-09-16 on `XMLScanner`: removing the line that moved `position` back to the
+    start of a tag a truncated file had cut failed nothing, and no fixture could have made it fail —
+    every token is read with a local index and `position` moves only once the token is whole, so the
+    reset re-stated a value already there. Deleted, with the invariant written on `position` instead.
+    Ask whether a reachable input exists before strengthening a test around an inert control.
 - **A fixture that builds its window in a helper and returns only the view leaves every later step
   running in no window at all.** Measured 2026-09-15: `QuickViewTableFixtures.loaded` created an
   `NSWindow`, laid the preview out in it and returned the preview, so `surface.window` was `nil` by the
@@ -2019,6 +2025,27 @@ at build time.
   tail. The oracle that checks such a scanner is Python's `json` with `object_pairs_hook`, which keeps
   both order and repeats: over the 1 487 JSON files in the home folder the two agreed on every whole
   file, and the scanner took 46 ms for all of them in a release build.
+- **Foundation's XML parsers cannot back a preview either, each for one of `JSONSerialization`'s
+  reasons.** Measured 2026-09-16 before `XMLTree` was written: `XMLParser` hands a start tag's
+  attributes over as a `[String: String]`, and five attributes came back in three different orders on
+  three runs of one binary (the dictionary's seed changes per process); `XMLDocument` keeps the order
+  but throws on a file cut in half, where `XMLParser` delivers what it read and then an error. So XML
+  got a byte-range scanner like JSON's. The oracles that checked it were Python's `expat` (with
+  `ordered_attributes`) and `plistlib`, which keeps a file's key order: over 3,765 XML files and
+  2,477 property lists on this Mac, every element name, attribute value in order, leaf text, key and
+  typed value agreed, and the 4 files both refused were not XML.
+  - **The spec's line-break normalization is what a hand-written reader forgets, and it cost 44 files.**
+    Every XML reader must turn CR LF and a lone CR into LF before parsing, and a tab, CR or LF inside an
+    attribute value into a space (one space for CR LF). Skipping it disagreed with `expat` on 44 files,
+    mostly SVG path data and Windows-written `customizations.xml`. A character reference (`&#10;`) is
+    exempt, since it is read after normalization.
+  - **Trim a value with XML's four whitespace bytes, not `.whitespacesAndNewlines`.** Foundation's set
+    also strips U+00A0 and U+200B, which 2 more files open or end a value with.
+  - **`.svg` and `.xhtml` both conform to `public.xml`**, so routing by that conformance takes images
+    and pages; and most of the XML the survey found resolves to a dynamic type (`.csproj`, `.props`,
+    `.targets`, `.xaml`, `.resx`, `.xsd`, `.xsl`, `.kml`, `.atom`, `.xcworkspacedata`) while `.config`
+    is `public.toml`. Route the family by name, then by conformance less images and HTML
+    (`QuickViewPreviewView.isXML`).
 - **A paragraph style's `headIndent` keeps a value's *wrapped* lines under a tab stop, and not its later
   *lines*: a line break starts a new paragraph, and that starts at `firstLineHeadIndent`.** Seen live
   2026-09-15 on the strip under Quick View's JSON tree: a container written out put its `{` in the

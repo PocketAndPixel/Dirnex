@@ -29,7 +29,7 @@ extension QuickViewPreviewView {
         standDownImage()
         standDownText()
         standDownWeb()
-        standDownJSONTree()
+        standDownTree()
         surface.isHidden = false
         loadToken += 1
         let token = loadToken

@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-16)
 
-Seventy-six dated passes that landed outside a milestone of their own, between M18's close on
+Seventy-seven dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-16: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12934,6 +12934,91 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-16 (after the binary plists) — XML previews as a tree, a property list as its keys and values,
+and a list of like elements as the CSV table.** Asked for as "can we implement a similar table preview for
+xml, like we already have for json / csv?", with three choices settled first, each the recommended one
+of its question: the JSON rule's shape (a tree for every file, the table when the root's children are
+all one element with like fields); every attribute a row of its own, `@name` and its value in quotes,
+while a closed element lists its attributes in its value column; and a property list read as keys and
+values, the way the JSON tree reads an object, rather than as `dict`, `key` and `string` rows. The
+survey behind the questions covered 4,707 XML-family files under `~/Dev`, `~/Documents`, `~/Downloads`,
+`~/Library/Preferences`, `/etc` and `/opt/homebrew/etc`: 2,331 `.plist` (938 binary), 1,505 `.xml`, then
+`.xaml`, `.xib`, `.xcprivacy`, `.props`, `.csproj`, `.svg`, `.targets` and `.storyboard`; 534 of the
+2,372 non-plist files had a root of like records (`catalog.xml`'s 535 `<Book>`, Android's
+`<resources>`).
+
+- **The parser was decided by a probe (docs/NOTES.md ▸ AppKit).** `XMLParser` returned one tag's five
+  attributes in three orders on three runs, and `XMLDocument` threw on a file cut in half, so XML got a
+  byte-range scanner as JSON did.
+- **`TreeDocument` (core)** is what the one tree view reads — rows, labels with a kind rather than a
+  color, path, strip text, ⌘C text, filter and record table — so JSON, XML and property lists share an
+  outline view, strip, filter and zoom rather than growing a second tree. `JSONFilter` became
+  `TreeFilter`, built in one generic pass; the rows a filtered tree lists and opens moved into the
+  protocol unchanged; JSON's labels, strip and copy text moved from the app into `JSONDocument+Tree`; and
+  the record-table builder JSON had became `RecordTableBuilder`, shared.
+- **`XMLTree` (core)** scans the UTF-8 bytes once with a stack of its own, 48 bytes a node. An element
+  lists its attributes, then its child elements and the text beside them; a leaf's text is its value,
+  held back during the scan until a child element shows it is not one. Comments, processing
+  instructions and the document type are skipped, CDATA is text, the predefined entities and character
+  references are read and other entities kept, line breaks and attribute whitespace are normalized as
+  the spec says, several top-level elements are several roots, and anything not well formed is shown as
+  text. A cut file closes its open elements, marked, and leaves out the tag it split. Paths are XPaths
+  (`/Project/ItemGroup[1]/Reference[3]/@Include`, `text()[2]`); the strip and ⌘C read a value as text
+  and an element as its source, taken back to its own indentation. Its record table is the root's
+  children when they share a name: `@name` columns, a column per child element (the first of a repeated
+  name), `#text` for a record's own text, and a child holding elements as its source on one line.
+- **`PropertyListTree` (core)** reads an `XMLTree` whose root is `<plist>`: a dictionary's key and value
+  one row in the file's order, array elements by index, and strings, integers, reals, dates, data (as
+  `<48656c6c 6f>`) and booleans typed. The path is `PlistBuddy`'s (`:Types:0:UTTypeIdentifier`). Anything
+  else in a `<plist>` makes it generic XML (`XMLTree.document(from:)`); a dictionary cut part-way through
+  a pair drops the key.
+- **Checked against oracles before tests.** A release-build harness over the corpus read 4,701 files (the
+  4 refused were `key=value` `.props` files and a Logstash config, which `expat` refuses too) in 2.4 s with
+  every label, path and a filter worked out, the slowest file 12 ms; the table count matched the survey's
+  534 exactly. Element and attribute counts agreed with `expat` on all 3,765 text XML files. A canonical
+  digest of names, attribute values in order and leaf text disagreed on 44 files, all line-break and
+  attribute-whitespace normalization, then on 2, both trimming U+00A0 and U+200B with Foundation's
+  whitespace set; both fixed, 0. Property lists agreed with `plistlib` on 2,477 of 2,477, binary ones
+  included. 47 core tests.
+- **The app half.** `QuickViewTreeView` (renamed from the JSON tree view) holds any `TreeDocument`, maps a
+  label's kind to `SyntaxTheme`, and titles its first column and the filter's picker by the document:
+  Key and "Keys and Values" for JSON and plists, Name and "Names and Values" for XML.
+  `QuickViewPreviewView+Tree` routes JSON and XML through one `showTree`; a binary plist is read through
+  the XML it converts to. `isXML` takes the family by name (the .NET project and resource files, XAML,
+  Xcode's interface, scheme and workspace files, schemas, stylesheets, feeds, GPX and KML) and then by
+  `public.xml` or the property-list type, less images and pages, since `.svg` and `.xhtml` both claim
+  `public.xml`, and `.config` is declared TOML. `QuickViewDualStyleKind.xml` opens as the tree, is called
+  Tree, and remembers its choice apart (`quickViewXMLStyle`); the notification moved to the styles
+  extension to keep `AppPreferences` under the file-length ceiling. "Names and Values" and "Names" are in
+  all 14 languages, and the palette's Filter command gained xml, plist and names. 8 app tests.
+- **One wart only looking found.** An Android string with an inline placeholder
+  (`Поділитися через додаток <ns1:g id="APPLICATION_NAME">%s</ns1:g>`) lost its sentence from the table,
+  which showed an `ns1:g` column holding `%s`. A record whose text sits beside elements is now its whole
+  content on one line as `#text`, with no column per inline element. 1 core test.
+
+Controls: ten core, of which nine failed the tests aimed at them (attribute whitespace, held text dropped,
+Foundation's trim, a repeated child taking the last, an odd dictionary accepted, attribute-only leaves
+opening, a parent matching its text, a mismatched end tag accepted, references not read); the tenth,
+moving the scan back to the split tag after a cut, was inert because the scan never moves past an
+unfinished token, and the line was deleted (docs/NOTES.md ▸ Testing). The mixed-content rule's control
+failed its test. Eight app controls each failed theirs: SVG not excluded, no XML style kind, the column
+title or the picker not following the document, no binary plist read, the header saying Table for JSON
+only, XML not routed to the tree, and plists read as elements. Validation: both linters, all four CI
+scripts (1,031 keys), 3,583 core tests, and the app suite (1,297 tests, the one pre-existing known
+issue). Live, in the Debug build launched by path with the full-window preview over copies of real files:
+a `.csproj` as a tree under "1 Source · 2 Tree" with its `@` rows and `/Project` in the strip; an XML
+`Info.plist` and a binary preferences plist as keys and values with a Key column; `catalog.xml`
+and an Android `values-uk.xml` as tables headed "2 Table", the second after the fix reading the whole
+placeholder sentence under a filter for `APPLICATION_NAME`; the tree's filter over the `.csproj`
+counting "2 of 408 values" with the matches marked and
+`/Project/ItemGroup[1]/Reference[3]/@Include` in the strip; a `.xib` as a tree; a generated 10 MB log as a
+table with its numeric columns right-aligned and the 4 MB notice; `1` showing the colored source; a
+`key=value` `.props` as text; and an `.svg` still an image.
+
+**Left undone:** a list of like elements below the root as a table; XML namespaces resolved rather than
+shown as written; a DTD's own entities; comments as rows; and the header of a file that fell back to text,
+which still says Tree, as a broken JSON file's already did.
 
 **2026-09-16 (last) — a binary property list previews as colored XML.** Asked for as "can we
 apply the highlight to them too, just like a regular one?", after the entry below left binary plists

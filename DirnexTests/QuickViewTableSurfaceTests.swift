@@ -224,7 +224,7 @@ enum QuickViewTableFixtures {
         preview.show(url, style: style)
         for _ in 0..<400 {
             if preview.tableSurface?.table != nil { break }
-            if preview.jsonTreeSurface?.document != nil { break }
+            if preview.treeSurface?.document != nil { break }
             if let text = documentTextView(of: preview), !text.string.isEmpty { break }
             try? await Task.sleep(for: .milliseconds(5))
         }

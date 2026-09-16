@@ -1,12 +1,12 @@
 import AppKit
 import DirnexCore
 
-/// The bar over Quick View's table or JSON tree that narrows it to what contains some text
-/// (2026-09-15): a picker — a column for the table, keys or values for the tree — the text, how many
-/// rows or values are left, and a button to put it away.
+/// The bar over Quick View's table or tree that narrows it to what contains some text (2026-09-15): a
+/// picker — a column for the table, keys or names or values for the tree — the text, how many rows or
+/// values are left, and a button to put it away.
 ///
 /// It reports and decides nothing. The surface runs the filter (`QuickViewTableView+Filter`,
-/// `QuickViewJSONTreeView+Filter`) and `QuickViewFilterHost` owns what each key does, so the bar can be
+/// `QuickViewTreeView+Filter`) and `QuickViewFilterHost` owns what each key does, so the bar can be
 /// driven in a test without a window's key handling in the way.
 @MainActor
 final class QuickViewTableFilterBar: NSVisualEffectView, NSSearchFieldDelegate {
@@ -54,22 +54,35 @@ final class QuickViewTableFilterBar: NSVisualEffectView, NSSearchFieldDelegate {
         return tag == Self.allColumnsTag ? nil : tag
     }
 
-    /// The part of a JSON value searched — the tree's picker.
-    var scope: JSONFilterScope {
-        JSONFilterScope(rawValue: columnPicker.selectedTag()) ?? .keysAndValues
+    /// The part of a value searched — the tree's picker.
+    var scope: TreeFilterScope {
+        TreeFilterScope(rawValue: columnPicker.selectedTag()) ?? .keysAndValues
     }
 
     /// Offer keys and values, keys, or values as what to search, the first chosen — the tree's picker.
-    func setScopes() {
+    /// Over XML the first column holds names, and the picker says so.
+    func setScopes(naming noun: TreeLabelNoun = .key) {
         columnPicker.removeAllItems()
         let choices = [
-            (JSONFilterScope.keysAndValues, String(
+            (TreeFilterScope.keysAndValues, noun == .key ? String(
                 localized: "Keys and Values",
                 comment: "Quick View JSON tree filter: the picker’s item that searches both keys and values."
+            ) : String(
+                localized: "Names and Values",
+                comment: """
+                Quick View XML tree filter: the picker’s item that searches both the names of elements and \
+                attributes and their values.
+                """
             )),
-            (.keys, String(
+            (.keys, noun == .key ? String(
                 localized: "Keys",
                 comment: "Quick View JSON tree filter: the picker’s item that searches only keys."
+            ) : String(
+                localized: "Names",
+                comment: """
+                Quick View XML tree filter: the picker’s item that searches only the names of elements and \
+                attributes.
+                """
             )),
             (.values, String(
                 localized: "Values",
@@ -84,7 +97,7 @@ final class QuickViewTableFilterBar: NSVisualEffectView, NSSearchFieldDelegate {
                 columnPicker.menu?.addItem(.separator())
             }
         }
-        columnPicker.selectItem(withTag: JSONFilterScope.keysAndValues.rawValue)
+        columnPicker.selectItem(withTag: TreeFilterScope.keysAndValues.rawValue)
         columnPicker.setAccessibilityLabel(String(
             localized: "What to Filter",
             comment: "Quick View JSON tree filter: accessibility label of the keys-or-values picker."

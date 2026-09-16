@@ -153,7 +153,7 @@ struct QuickViewJSONFilterTests {
 enum QuickViewJSONFilterFixtures {
     struct Fixture {
         let preview: QuickViewPreviewView
-        let surface: QuickViewJSONTreeView
+        let surface: QuickViewTreeView
         let tree: TempDirectory
 
         func cleanup() {
@@ -168,15 +168,15 @@ enum QuickViewJSONFilterFixtures {
             try tree.write("tsconfig.json", contents: QuickViewJSONPreviewTests.config),
             function: function
         )
-        return Fixture(preview: preview, surface: try #require(preview.jsonTreeSurface), tree: tree)
+        return Fixture(preview: preview, surface: try #require(preview.treeSurface), tree: tree)
     }
 
-    static func rows(_ surface: QuickViewJSONTreeView) -> [String] {
+    static func rows(_ surface: QuickViewTreeView) -> [String] {
         QuickViewJSONFixtures.rows(surface)
     }
 
     /// The field editor typing into the bar, opening the bar first if it is not up.
-    static func editor(of surface: QuickViewJSONTreeView) throws -> NSTextView {
+    static func editor(of surface: QuickViewTreeView) throws -> NSTextView {
         if !surface.filterHasKeyboard { surface.beginFiltering() }
         let editor = try #require(surface.window?.firstResponder as? NSTextView)
         #expect(editor.isFieldEditor)
@@ -184,7 +184,7 @@ enum QuickViewJSONFilterFixtures {
     }
 
     /// Replace the bar's text with `text` as typing would, and wait for the filter to land.
-    static func type(_ text: String, into surface: QuickViewJSONTreeView) async throws {
+    static func type(_ text: String, into surface: QuickViewTreeView) async throws {
         let editor = try editor(of: surface)
         editor.selectAll(nil)
         if text.isEmpty {
@@ -197,7 +197,7 @@ enum QuickViewJSONFilterFixtures {
     }
 
     /// Pick `scope` and wait for the filter to land.
-    static func choose(_ scope: JSONFilterScope, in surface: QuickViewJSONTreeView) async throws {
+    static func choose(_ scope: TreeFilterScope, in surface: QuickViewTreeView) async throws {
         let picker = surface.filterBar.columnPicker
         picker.selectItem(withTag: scope.rawValue)
         let action = try #require(picker.action)

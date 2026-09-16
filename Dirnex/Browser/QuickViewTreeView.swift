@@ -1,42 +1,47 @@
 import AppKit
 import DirnexCore
 
-/// A JSON file as a tree of its keys and values, with the selected value's path and its whole text in
-/// the strip underneath — one of `QuickViewPreviewView`'s backends (`QuickViewPreviewView+JSON`).
+/// A JSON, XML or property-list file as a tree of its keys or names and their values, with the selected
+/// value's path and its whole text in the strip underneath — one of `QuickViewPreviewView`'s backends
+/// (`QuickViewPreviewView+Tree`). Built for JSON (2026-09-15), and made to read any `TreeDocument` when
+/// XML became the second format drawn as a tree (2026-09-16), so the two share one outline view, one
+/// strip, one filter and one zoom rather than growing apart.
 ///
 /// Built like the CSV table beside it and from its parts: the strip and its drag handle, the cells,
-/// the "first 4 MB" notice and the zoom's ladder. Two columns, the key and the value: a string in
-/// quotes, a number or a word in the source view's colors (`SyntaxTheme`), and a container as how many
-/// values it holds. An element's key is its index.
+/// the "first 4 MB" notice and the zoom's ladder. Two columns, the key or name and the value, with the
+/// text of each coming from the document (`TreeDocument.keyLabel`, `valueLabel`) and its color from the
+/// source view's for its kind (`SyntaxTheme`).
 ///
 /// The first row is selected as a file opens, so the strip says something before anything is clicked.
 /// The arrows belong to the file list, as they do over the table, so a container opens by its
 /// disclosure triangle or a double-click on its row; ⌥-click on a triangle opens everything under it,
 /// which is the outline view's own.
 @MainActor
-final class QuickViewJSONTreeView: NSView {
+final class QuickViewTreeView: NSView {
     let scrollView = NSScrollView()
-    let outlineView = QuickViewJSONOutlineView()
+    let outlineView = QuickViewTreeOutlineView()
     let strip = QuickViewRecordStrip()
-    /// The strip's top edge, which a drag moves (`QuickViewJSONTreeView+Layout`).
+    /// The strip's top edge, which a drag moves (`QuickViewTreeView+Layout`).
     let stripHandle = QuickViewStripHandle()
     let truncationNotice = QuickViewTruncationNotice()
-    /// Internal, not private, for `QuickViewJSONTreeView+Layout`, which sets it.
+    /// Internal, not private, for `QuickViewTreeView+Layout`, which sets it.
     var stripHeight: NSLayoutConstraint?
     /// Where the height somebody dragged the strip to is kept: the app's own defaults, or a test's
     /// scratch domain (docs/NOTES.md ▸ Testing).
     let layoutDefaults: UserDefaults
 
     /// The document on screen, or `nil` once cleared.
-    private(set) var document: JSONDocument?
+    private(set) var document: (any TreeDocument)?
     /// The values listed at the top of the tree, kept because the outline view asks for them one at a
     /// time — the filter's, while there is one.
     var topLevel: [Int] = []
     /// One object per value the outline view has been handed. It keeps a row's expanded state against
     /// the object, so a value has to come back as the same object every time it is asked for.
-    private var items: [Int: QuickViewJSONItem] = [:]
+    private var items: [Int: QuickViewTreeItem] = [:]
+    /// What the first column names, which titles it and the filter's picker.
+    private var labelNoun = TreeLabelNoun.key
 
-    // The zoom's state, kept here because an extension cannot hold any (`QuickViewJSONTreeView+Layout`).
+    // The zoom's state, kept here because an extension cannot hold any (`QuickViewTreeView+Layout`).
 
     /// ⌘+'s level, relative to the tree as it opened.
     var zoomLevel: Double = 1
@@ -49,12 +54,12 @@ final class QuickViewJSONTreeView: NSView {
     /// Set while a zoom sets the key column's width itself, which is not somebody resizing it.
     var isApplyingZoom = false
 
-    // The filter's state, for the same reason (`QuickViewJSONTreeView+Filter`).
+    // The filter's state, for the same reason (`QuickViewTreeView+Filter`).
 
     /// The bar over the tree, hidden until ⌥⌘F.
     let filterBar = QuickViewTableFilterBar()
     /// What the filter found, or `nil` while no text is typed.
-    var filter: JSONFilter?
+    var filter: TreeFilter?
     /// Bumped by every change to the filter and every new document, so a filter landing after either
     /// is discarded.
     var filterGeneration = 0
@@ -69,15 +74,13 @@ final class QuickViewJSONTreeView: NSView {
     /// Each container's children under the filter, as far as the outline view has asked.
     var filteredChildren: [Int: [Int]] = [:]
     /// The query and the picker's choice the tree on screen was filtered by, which its cells mark.
-    var filterMarking: (query: FilterQuery, scope: JSONFilterScope)?
+    var filterMarking: (query: FilterQuery, scope: TreeFilterScope)?
 
     static let keyColumn = NSUserInterfaceItemIdentifier("key")
     static let valueColumn = NSUserInterfaceItemIdentifier("value")
     /// How many rows a file may open showing before its bigger containers are left closed
-    /// (`JSONDocument.initialExpansion`): a `package.json` opens whole, an array of ten thousand closed.
+    /// (`TreeDocument.initialExpansion`): a `package.json` opens whole, an array of ten thousand closed.
     static let initialRowBudget = 200
-    /// The most of a string a cell decodes, which is already wider than any column.
-    static let cellTextLimit = 512
     /// The most of a value the strip shows. The strip measures its text on every layout, so a 4 MB value
     /// would cost that on every layout; ⌘C still copies the whole value.
     static let stripTextLimit = 64 * 1024
@@ -107,8 +110,15 @@ final class QuickViewJSONTreeView: NSView {
     // MARK: - Content
 
     /// Show `document`, at its top with its first row selected and its small containers open.
-    func show(_ document: JSONDocument) {
+    func show(_ document: any TreeDocument) {
         resetFilter()
+        if document.labelNoun != labelNoun {
+            labelNoun = document.labelNoun
+            outlineView.tableColumn(withIdentifier: Self.keyColumn)?.title = Self.keyTitle(
+                for: labelNoun
+            )
+            filterBar.setScopes(naming: labelNoun)
+        }
         zoomLevel = 1
         applyZoom()
         self.document = document
@@ -142,16 +152,16 @@ final class QuickViewJSONTreeView: NSView {
     }
 
     /// The object standing for `value`, made the first time it is asked for.
-    func item(for value: Int) -> QuickViewJSONItem {
+    func item(for value: Int) -> QuickViewTreeItem {
         if let item = items[value] { return item }
-        let item = QuickViewJSONItem(value: value)
+        let item = QuickViewTreeItem(value: value)
         items[value] = item
         return item
     }
 
     /// The value on the selected row, if any.
     var selectedValue: Int? {
-        (outlineView.item(atRow: outlineView.selectedRow) as? QuickViewJSONItem)?.value
+        (outlineView.item(atRow: outlineView.selectedRow) as? QuickViewTreeItem)?.value
     }
 
     /// The selected value's path and text in the strip.
@@ -163,29 +173,16 @@ final class QuickViewJSONTreeView: NSView {
         }
         strip.show([
             (Self.pathTitle, document.path(of: value)),
-            (Self.valueTitle, stripText(of: value, in: document))
+            (Self.valueTitle, document.stripText(of: value, byteLimit: Self.stripTextLimit))
         ])
         needsLayout = true
     }
 
-    /// A string's text, a number or word as written, and a container as indented JSON — cut, with an
-    /// ellipsis, at `stripTextLimit`.
-    private func stripText(of value: Int, in document: JSONDocument) -> String {
-        if document.kind(of: value).isContainer {
-            return document.formattedText(of: value, byteLimit: Self.stripTextLimit)
-        }
-        let text = document.scalarText(of: value)
-        guard text.utf8.count > Self.stripTextLimit else { return text }
-        return document.scalarText(of: value, byteLimit: Self.stripTextLimit) + "…"
-    }
-
-    /// What ⌘C puts on the pasteboard: the selected value whole — a string's text, or a container as
-    /// indented JSON.
+    /// What ⌘C puts on the pasteboard: the selected value whole — a JSON string's text or a container as
+    /// indented JSON, an XML value's text or an element as its source.
     func copiedValueText() -> String? {
         guard let document, let value = selectedValue else { return nil }
-        return document.kind(of: value).isContainer
-            ? document.formattedText(of: value)
-            : document.scalarText(of: value)
+        return document.copiedText(of: value)
     }
 
     /// A double-click opens a closed container on its row, and closes an open one.
@@ -226,11 +223,11 @@ final class QuickViewJSONTreeView: NSView {
     func sizeKeyColumn() {
         guard let column = outlineView.tableColumn(withIdentifier: Self.keyColumn) else { return }
         let font = QuickViewTableView.cellFont
-        var widest = ceil((Self.keyTitle as NSString)
+        var widest = ceil((Self.keyTitle(for: labelNoun) as NSString)
             .size(withAttributes: [.font: QuickViewTableView.baseHeaderFont]).width) + 20
         for row in 0..<min(outlineView.numberOfRows, 500) {
-            guard let item = outlineView.item(atRow: row) as? QuickViewJSONItem else { continue }
-            let text = String(keyLabel(for: item.value).text.prefix(60))
+            guard let item = outlineView.item(atRow: row) as? QuickViewTreeItem else { continue }
+            let text = String((document?.keyLabel(of: item.value).text ?? "").prefix(60))
             let width = ceil((text as NSString).size(withAttributes: [.font: font]).width)
             let indent = CGFloat(outlineView.level(forRow: row)) * Self.baseIndentation
             widest = max(widest, width + indent + Self.keyChrome)
@@ -255,7 +252,7 @@ final class QuickViewJSONTreeView: NSView {
         outlineView.autoresizesOutlineColumn = false
 
         let key = NSTableColumn(identifier: Self.keyColumn)
-        key.title = Self.keyTitle
+        key.title = Self.keyTitle(for: labelNoun)
         key.resizingMask = .userResizingMask
         key.minWidth = 40
         key.maxWidth = 10000
@@ -311,17 +308,35 @@ final class QuickViewJSONTreeView: NSView {
         )
     }
 
+    /// The first column's header: a key for JSON and a property list, a name for XML.
+    static func keyTitle(for noun: TreeLabelNoun) -> String {
+        switch noun {
+        case .key: keyTitle
+        case .name: nameTitle
+        }
+    }
+
+    static var nameTitle: String {
+        String(
+            localized: "Name",
+            comment: "Quick View XML tree column header: an element's or attribute's name."
+        )
+    }
+
     static var valueTitle: String {
         String(
             localized: "Value",
-            comment: "Quick View JSON tree column header, and the strip's name for the selected value's text"
+            comment: "Quick View tree column header, and the strip's name for the selected value's text"
         )
     }
 
     static var pathTitle: String {
         String(
             localized: "Path",
-            comment: "Quick View JSON tree strip: the name beside the selected value's JSONPath, such as $.name"
+            comment: """
+            Quick View tree strip: the name beside the selected value's path, such as $.name, \
+            /Project/ItemGroup or :CFBundleName
+            """
         )
     }
 }

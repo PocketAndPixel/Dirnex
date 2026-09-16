@@ -19,7 +19,7 @@ extension QuickViewPreviewView {
         case text(QuickViewTextView)
         case image(QuickViewImageScrollView)
         case table(QuickViewTableView)
-        case tree(QuickViewJSONTreeView)
+        case tree(QuickViewTreeView)
     }
 
     private var zoomTarget: ZoomTarget? {
@@ -27,8 +27,8 @@ extension QuickViewPreviewView {
         if let tableSurface, !tableSurface.isHidden, tableSurface.table != nil {
             return .table(tableSurface)
         }
-        if let jsonTreeSurface, !jsonTreeSurface.isHidden, jsonTreeSurface.document != nil {
-            return .tree(jsonTreeSurface)
+        if let treeSurface, !treeSurface.isHidden, treeSurface.document != nil {
+            return .tree(treeSurface)
         }
         if let webSurface, !webSurface.isHidden { return .web(webSurface) }
         if let pdfView, !pdfView.isHidden, pdfView.document != nil { return .pdf }
@@ -112,7 +112,7 @@ extension QuickViewPreviewView {
     /// page keeps the swipe it always had.
     var consumesHorizontalScroll: Bool {
         if let tableSurface, !tableSurface.isHidden { return tableSurface.pansHorizontally }
-        if let jsonTreeSurface, !jsonTreeSurface.isHidden { return jsonTreeSurface.pansHorizontally }
+        if let treeSurface, !treeSurface.isHidden { return treeSurface.pansHorizontally }
         return switch zoomTarget {
         case let .image(scrollView): scrollView.pansHorizontally
         case .pdf:

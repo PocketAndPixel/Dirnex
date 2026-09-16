@@ -399,6 +399,7 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | Office, iWork and rich-text documents in preview, zoomable and selectable<sup>rrr</sup> | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | CSV and TSV as a sortable, zoomable, filterable table in preview, with the selected row in full in a resizable strip<sup>sss</sup> | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | JSON as a zoomable, filterable tree in preview, a list of records (JSON Lines, an array of objects) as the table above, with the selected value's path and text in a resizable strip<sup>ttt</sup> | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| XML and property lists as the same tree, attributes as `@` rows and a plist as its keys and values, a root of like elements as the table above<sup>uuu</sup> | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
 | Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t, ddd</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes, limited<sup>mmm</sup> | yes | yes |
 | Edit `F4`, with save written back | yes | yes | yes, limited<sup>v, ddd</sup> | yes | yes | yes | n/a | no<sup>jjj</sup> | yes | yes |
 | Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes, limited<sup>yy</sup> | yes | yes |
@@ -539,6 +540,16 @@ quotes and unquoted keys included — is shown as text instead. A list one level
 matched object or array keeps its contents, closed, and the way down to each match opens while the
 rows it opens stay within 2 000. What it matched is marked in find yellow, in the tree and in the
 table alike.
+
+<sup>uuu</sup> Parsed in-process from the same decoded text the source view shows — a binary property
+list from the XML it converts to — so every location reaches it through the local copy Quick View
+already works from (<sup>s</sup> for a server). The hard limits: the first **4 MB** of a file, with the
+notice saying so and a tag the cut splits left out; a file of more than a million nodes, or one that is
+not well-formed XML (an end tag that does not match, text outside the root), is shown as text instead,
+and a binary property list whose XML would pass 4 MB goes to Quick Look. Comments, processing
+instructions and the document type are not rows; an entity the DTD declares is shown as written. A
+list of like elements one level below the root stays a tree. The filter (⌥⌘F) searches names or
+values, with the JSON tree's rules.
 
 ## 4. Find Files (`⌥F7`)
 

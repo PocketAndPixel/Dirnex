@@ -1,7 +1,6 @@
 import Foundation
 
-/// A JSON file that is a list of like objects, as the rows of Quick View's table — and which of a
-/// tree's containers are open as it is first shown (2026-09-15).
+/// A JSON file that is a list of like objects, as the rows of Quick View's table (2026-09-15).
 ///
 /// The shape was the user's choice: a tree for every JSON file, except a list of records, which reads
 /// best the way a CSV does, a row a record and a column a key. Of the 1 487 JSON files in this Mac's
@@ -9,22 +8,15 @@ import Foundation
 /// an API export) and 7 of the 8 JSON Lines files. A list one level down, `{"value": [...]}`, stays a
 /// tree.
 ///
-/// The table is a `DelimitedTable` built from the values rather than a type of its own, so the sorting,
-/// the filter, ⌘C and the column sizing a CSV has come with it unchanged.
+/// The table is a `DelimitedTable` built from the values rather than a type of its own
+/// (`RecordTableBuilder`), so the sorting, the filter, ⌘C and the column sizing a CSV has come with it
+/// unchanged.
 extension JSONDocument {
-    /// How much of a table of records must be filled for it to be a table: the share of cells whose
-    /// record has that key. Below it the objects are not alike — an event log of a dozen shapes — and a
-    /// table of mostly blank cells says less than the tree.
-    static let recordCoverage = 0.5
-
-    /// The most cells a table of records is built with. The coverage already bounds a table to twice
-    /// the members the file holds; this bounds what the check allocates before it can say so.
-    static let recordCellLimit = 4_000_000
-
     /// The table this document's records make: one row for each object in a JSON Lines file or a
     /// top-level array, one column for each key in the order keys first appear, and the header row
     /// naming them. `nil` when the document is not a list of at least two objects, when the objects
-    /// have too little in common (`recordCoverage`), or when they have more than `columnLimit` keys.
+    /// have too little in common (`RecordTableBuilder.coverage`), or when they have more than
+    /// `columnLimit` keys.
     ///
     /// A string's cell is its text, a nested value's is its compact JSON, and a number, `true`, `false`
     /// or `null` is as written. A key an object does not have is an empty cell; a key an object repeats
@@ -37,36 +29,25 @@ extension JSONDocument {
         guard var records = recordValues else { return nil }
         if let last = records.last, isIncomplete(last) { records.removeLast() }
         guard records.count >= 2, records.allSatisfy({ kind(of: $0) == .object }) else { return nil }
-
-        var titles: [String] = []
-        var columns: [String: Int] = [:]
-        var members: [RecordMember] = []
+        var members: [RecordTableBuilder.Member] = []
         for (row, record) in records.enumerated() {
             for member in children(of: record) {
-                let key = key(of: member) ?? ""
-                let column: Int
-                if let known = columns[key] {
-                    column = known
-                } else {
-                    guard titles.count < columnLimit else { return nil }
-                    column = titles.count
-                    columns[key] = column
-                    titles.append(key)
-                }
-                members.append(RecordMember(row: row, column: column, value: member))
+                members.append(.init(row: row, title: key(of: member) ?? "", value: member))
             }
         }
-        let columnCount = titles.count
-        guard columnCount > 0, records.count * columnCount <= Self.recordCellLimit else { return nil }
-        var slots = [Int32](repeating: -1, count: records.count * columnCount)
-        var filled = 0
-        for member in members {
-            let slot = member.row * columnCount + member.column
-            if slots[slot] < 0 { filled += 1 }
-            slots[slot] = Int32(member.value)
-        }
-        guard Double(filled) >= Self.recordCoverage * Double(slots.count) else { return nil }
-        return buildTable(titles: titles, rowCount: records.count, slots: slots)
+        return RecordTableBuilder.table(
+            rowCount: records.count,
+            members: members,
+            columnLimit: columnLimit,
+            appendCell: { appendText(of: $0, to: &$1) },
+            cellKind: { value in
+                switch kind(of: value) {
+                case .number: .number
+                case .null: .blank
+                default: .other
+                }
+            }
+        )
     }
 
     /// The values a table's rows would come from: the roots of a file of several, or the elements of
@@ -75,55 +56,5 @@ extension JSONDocument {
         if roots.count > 1 { return roots }
         guard let root = roots.first, kind(of: root) == .array else { return nil }
         return children(of: root)
-    }
-
-    private struct RecordMember {
-        let row: Int
-        let column: Int
-        let value: Int
-    }
-
-    private func buildTable(titles: [String], rowCount: Int, slots: [Int32]) -> DelimitedTable? {
-        let columnCount = titles.count
-        var bytes: [UInt8] = []
-        var cells: [DelimitedCell] = []
-        cells.reserveCapacity(slots.count + columnCount)
-        var recordStarts = [0]
-        for title in titles {
-            let start = UInt32(bytes.count)
-            bytes.append(contentsOf: title.utf8)
-            cells.append(DelimitedCell(start: start, end: UInt32(bytes.count), form: .verbatim))
-        }
-        recordStarts.append(cells.count)
-        var sawNumber = [Bool](repeating: false, count: columnCount)
-        var onlyNumbers = [Bool](repeating: true, count: columnCount)
-        for row in 0..<rowCount {
-            for column in 0..<columnCount {
-                let start = bytes.count
-                let value = Int(slots[row * columnCount + column])
-                if value >= 0 {
-                    appendText(of: value, to: &bytes)
-                    switch kind(of: value) {
-                    case .number: sawNumber[column] = true
-                    case .null: break
-                    default: onlyNumbers[column] = false
-                    }
-                }
-                guard bytes.count < Int(Self.absent) else { return nil }
-                cells.append(DelimitedCell(
-                    start: UInt32(start),
-                    end: UInt32(bytes.count),
-                    form: .verbatim
-                ))
-            }
-            recordStarts.append(cells.count)
-        }
-        return DelimitedTable(
-            builtFrom: bytes,
-            cells: cells,
-            recordStarts: recordStarts,
-            columnCount: columnCount,
-            numericColumns: zip(sawNumber, onlyNumbers).map { $0 && $1 }
-        )
     }
 }

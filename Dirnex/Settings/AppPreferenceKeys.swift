@@ -19,6 +19,7 @@ extension AppPreferences {
         static let quickViewRenderStyle = "Dirnex.pref.quickViewRenderStyle"
         static let quickViewTableStyle = "Dirnex.pref.quickViewTableStyle"
         static let quickViewJSONStyle = "Dirnex.pref.quickViewJSONStyle"
+        static let quickViewXMLStyle = "Dirnex.pref.quickViewXMLStyle"
         static let quickViewJavaScriptEnabled = "Dirnex.pref.quickViewJavaScriptEnabled"
         static let quickViewFetchLimit = "Dirnex.pref.quickViewFetchLimit"
         static let remoteRefreshFloor = "Dirnex.pref.remoteRefreshFloor"
