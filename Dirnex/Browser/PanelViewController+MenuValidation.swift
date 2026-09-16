@@ -282,11 +282,11 @@ extension PanelViewController: NSMenuItemValidation {
     ///   and a loose file in the merged iCloud listing are ordinary files in ordinary directories,
     ///   and asking `search:` or `icloud:` about them answered for the *presentation*.
     ///
-    /// Deliberately **not** `Panel.cursorDirectory`, which stops at `panel.path` outside a tree —
-    /// that property answers where a *create* lands, and there the pane's own directory is right
-    /// (F7 in the merged iCloud listing creates in the CloudDocs container underneath, via
-    /// `writeDirectory`, not beside whichever row the cursor happens to be on). Two questions that
-    /// coincide in a plain listing and must not be collapsed.
+    /// Deliberately **not** `Panel.cursorDirectory`, which stops at `panel.path` outside a tree and
+    /// at a tree's root level — that property answers where a *create* lands, and there the pane's
+    /// own directory is right (F7 in the merged iCloud listing creates in the CloudDocs container
+    /// underneath, via `writeDirectory`, not beside whichever row the cursor happens to be on). Two
+    /// questions that coincide in a plain listing and must not be collapsed.
     private var renameDirectory: VFSPath {
         // The `..` row stands for the pane's own parent rather than for any row, so a cursor parked
         // on it is pointing at nothing and the pane's own directory is the answer.

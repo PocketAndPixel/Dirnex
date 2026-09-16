@@ -28,8 +28,9 @@ extension PanelViewController {
         /// The stable English `pathSummary` the Recents listing is identified by. Never displayed —
         /// the tab title and path-bar label localize separately — but the path bar matches on it to
         /// self-name Recents rather than borrow the "Results for …" phrasing (see
-        /// `rebuildVirtualLabel`), exactly as the Trash matches on `backend == .trash`.
-        static let recentsIdentity = "Recents"
+        /// `rebuildVirtualLabel`), exactly as the Trash matches on `backend == .trash`. Defined in
+        /// the core, because the sidebar's Focus Sidebar recognizes the tab by it too.
+        static let recentsIdentity = RecentsQuery.listingName
 
         /// The synthetic container's backend: `.search` for hits, `.trash` for the merged Trash.
         var backend: VFSBackendID = .search

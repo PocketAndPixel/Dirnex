@@ -38,6 +38,12 @@ final class SidebarViewController: NSViewController {
     /// answer costs a `hdiutil` spawn and every row in one pass must agree about it.
     var vaultMountPoints: [String: String] = [:]
 
+    /// Every place the last `rebuild` assembled, folded sections included — what Focus Sidebar
+    /// searches for the pane's place (`SidebarViewController+Keyboard`). Kept rather than
+    /// re-assembled on the keystroke, because assembling reads every store and looks inside each
+    /// cloud mount.
+    var placeGroups: [SidebarPlaceGroup] = []
+
     // A focus-preserving subclass: empty-space / header clicks don't steal keyboard focus from
     // the active file pane (which would disable the responder-chain file commands). `tableView` and
     // `rows` are `internal` (not `private`) so the companion management extensions can read the
@@ -138,7 +144,8 @@ final class SidebarViewController: NSViewController {
         // only thing this file decides, which is why the fold state is applied here and is not an
         // input over there: a section the user folded shut must still be in the menu bar.
         var rows: [Row] = []
-        for group in SidebarPlaces.groups(from: placeSources()) {
+        placeGroups = SidebarPlaces.groups(from: placeSources())
+        for group in placeGroups {
             render(group, into: &rows)
         }
         self.rows = rows

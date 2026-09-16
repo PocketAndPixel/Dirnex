@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-16)
 
-Seventy-eight dated passes that landed outside a milestone of their own, between M18's close on
+Eighty dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-16: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12934,6 +12934,75 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-16 (after Focus Sidebar) — F7 at the top of a tree over iCloud Drive creates where list mode
+does. VERIFIED LIVE.** The other half of what the Cloud-renames pass found. `creationDirectory` took
+`Panel.cursorDirectory`, the parent of the cursor row's path, at every level of a tree. At the root
+level of the merged iCloud listing that is the wrong directory: a loose row's parent is
+`com~apple~CloudDocs`, which the sheet then named («Create a folder in “com~apple~CloudDocs”»), and an
+app library's row is `com~apple~Pages/Documents`, so F7, ⇧F4 and a paste there targeted the app's
+container beside `Documents`, which iCloud Drive does not show.
+
+- **The rule (core).** `Panel.cursorDirectory` answers by the cursor row's depth: a root-level row
+  answers the pane's own path, as every row of a flat list does, and only a deeper row answers its
+  parent. For an ordinary folder the answer is unchanged, since a root row's parent is that folder.
+- **The app.** `creationDirectory` maps the pane's own path to `writeDirectory` (the CloudDocs
+  container for the merged listing), which also drops the separate `isTree` branch. The new
+  `createsInPaneDirectory` decides both `creationDirectoryName` (name the pane, or the deeper folder)
+  and ⇧F4's wording, which compared the target with `panel.path` and so always named the folder over
+  the merged listing, even in list mode.
+- **Tests.** Two core tests over a merge built with `ICloudFixture`, `ICloudDrive.libraryRow` and
+  `merge` (the root level answers the pane; the deeper levels inside a library and a loose folder
+  answer their folders). Three app tests in `CreateTargetTreeTests`: root-level rows target the
+  container, name the pane and take the paste; deeper rows do not; a tree over an ordinary folder is
+  unchanged. The two merged app tests read this Mac's real container through `writeDirectory`, so
+  they are skipped where there is none. Controls: the old core rule failed both new core tests, and
+  "always the pane" failed the deeper test plus five existing tree tests; the old core and app code
+  failed only the root-level app test (the target on the library row, the name on all three rows);
+  "always the container" failed only the deeper app test. Both suites green (3620 core, 1319 app),
+  both linters clean.
+- **Live, in the Debug build**, left pane in tree mode on iCloud Drive, each sheet cancelled. F7 on
+  the loose `Car` folder and on the `Pages` library row read «Create a folder in “iCloud Drive”.»; F7
+  on a file inside the expanded `Car` read «… in “Car”.»; ⇧F4 on `Car` read «Open a file, or type a
+  new name to create one.» Launched through LaunchServices the rebuilt build had no Full Disk Access
+  and listed only `Car`, so the library row was checked in a second run started from a shell, which
+  borrows the shell's grant.
+- **Left as it is.** One level inside a library the target is right (`com~apple~Pages/Documents`) and
+  the sheet says «… in “Documents”», not “Pages”, because the name is the target's `displayName`. List
+  mode inside the same library names it “Documents” too, so it belongs to `VFSPath.displayName` rather
+  than to the create target.
+
+**2026-09-16 (after the Cloud renames) — View ▸ Focus Sidebar lands on the place the pane is in.
+VERIFIED LIVE.** Asked for as "fix the Focus Sidebar landing on Recents too", after the rename pass
+found it on an iCloud pane. The cursor went to the row whose path *equalled* the pane's and otherwise
+to the first row of the list, and almost nothing is equal: iCloud Drive's listing is `icloud:/…`
+while its row names the CloudDocs container, and any folder one level inside a pin, a Photos month, a
+bucket, the Trash or Recents itself matched nothing. So Recents was where Focus Sidebar went from most
+of the app, not only from iCloud.
+
+- **`SidebarPlaceLocator` (core)** answers with the rule the path bar already draws: the place whose
+  territory holds the location, and of several the deepest (`~/Dev/Common` is in Dev, not Home, and
+  Home rather than Macintosh HD). Each place's territory is its folder, a volume's mount, an unlocked
+  vault's mount point, a saved server's backend root (none for SMB, whose share is a volume), a
+  provider mount's own root rather than the `My Drive` its row opens, the whole of
+  `~/Library/Mobile Documents` plus the merged listing for iCloud Drive, and the Photos and Trash
+  backends. A results tab matches exactly or not at all: Recents by its listing name (moved into the
+  core as `RecentsQuery.listingName`, which the app's `recentsIdentity` now reads) with no query, a
+  saved search by its query and scope, a tag by `FileQuery(tags:)` everywhere. Inside an archive,
+  where only a pin into the archive can match the path, the question falls back to the outermost
+  archive's file. Ties go to sidebar order.
+- **The app.** The pane reports `sidebarLocation` (path, the tab's query and scope, the archive file);
+  the sidebar keeps the groups its last rebuild assembled (`placeGroups`) rather than re-reading every
+  store and every cloud mount on the keystroke, and `row(showing:)` returns the place's row, or its
+  section's **header** when the section is folded shut or the tag sits past the stock seven.
+- **Tests.** 20 core tests and 7 app tests. Eight core controls run one at a time (first match wins,
+  ties to the last, the iCloud listing dropped, iCloud narrowed to its container, a mount by its entry
+  directory, Recents ignoring the query, a saved search ignoring scope, no archive fallback) each
+  failed its own tests, the first one eight of them; two app controls (no header fallback, no archive
+  file reported) failed theirs. Both suites green (3618 core, 1316 app), both linters clean.
+- **Live, in the Debug build.** With the sidebar cursor first parked on Recents each time and focus
+  handed back to the pane, Focus Sidebar landed on iCloud Drive from its listing and from its `Car`
+  folder, and on Home from `~/swtest`.
 
 **2026-09-16 (after the XML previews) — the Cloud rows can be renamed. VERIFIED LIVE.** Asked for as
 "let's make it possible to rename Cloud items", over a screenshot of the section showing two Google
@@ -12991,7 +13060,7 @@ a tab parked there. A rename that stopped at the row would leave the path bar ca
   listing, F7 names the row's real parent — "Create a folder in “com~apple~CloudDocs”" — and for an
   app-library row would target the app's container rather than its `Documents`. And View ▸ Focus
   Sidebar from an iCloud pane selects Recents, because the pane's `icloud:` path matches no row's
-  real container path. Both predate this pass. Running the Debug build over iCloud also raised the
+  real container path (fixed in the entry above; the F7 half two entries above). Both predate this pass. Running the Debug build over iCloud also raised the
   "Full Disk Access has probably been reset" offer, which cleared `hasReadICloudAppLibraries` in the
   shared domain; it re-arms the next time a build with the grant reads the app libraries.
 

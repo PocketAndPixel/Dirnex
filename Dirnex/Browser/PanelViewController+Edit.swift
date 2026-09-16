@@ -247,8 +247,10 @@ extension PanelViewController {
         // Normally the folder isn't named: the path bar above the dialog already says which one this
         // is, and the field below is prefilled out of it. A tree breaks that — the path bar shows the
         // *root* while the cursor stands in a folder several levels down, so the one case where the
-        // dialog would be silently wrong about where is the one case that says it out loud.
-        alert.informativeText = target == panel.path
+        // dialog would be silently wrong about where is the one case that says it out loud. Asked of
+        // `writeDirectory` rather than `panel.path`, which for the merged iCloud listing is synthetic
+        // and never equal to a real target, so the plain sentence would never have been chosen there.
+        alert.informativeText = createsInPaneDirectory
             ? String(
                 localized: "Open a file, or type a new name to create one.",
                 comment: "Body of the ⇧F4 edit/create-file dialog."

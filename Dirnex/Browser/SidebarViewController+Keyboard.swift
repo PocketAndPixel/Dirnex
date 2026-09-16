@@ -21,15 +21,32 @@ extension SidebarViewController {
     }
 
     /// Take keyboard focus (the entry point `view.focusSidebar` / ⌥⌘S reaches through the window
-    /// controller, which reveals a collapsed sidebar first). The cursor lands on `path` if that
-    /// place is pinned, else on the first real row — never on a header, so the first keystroke a
-    /// user sees is a highlighted destination, not a section title.
-    func focusFromKeyboard(preferring path: VFSPath?) {
+    /// controller, which reveals a collapsed sidebar first). The cursor lands on the place the
+    /// active pane is in (`row(showing:)`), and only when no place holds it on the first real row —
+    /// never on a header, so the first keystroke a user sees is a highlighted destination.
+    func focusFromKeyboard(showing location: SidebarPaneLocation?) {
         guard let window = view.window else { return }
-        let target = path.flatMap { wanted in rows.firstIndex { $0.path == wanted } }
-            ?? rows.firstIndex { !$0.isHeader }
+        let target = location.flatMap(row(showing:)) ?? rows.firstIndex { !$0.isHeader }
         if let target { select(row: target) }
         window.makeFirstResponder(tableView)
+    }
+
+    /// The row for the place `location` is in (`SidebarPlaceLocator`), or `nil` when no place holds
+    /// it.
+    ///
+    /// The answer is looked for among *every* place, not only the rows on screen, so a pane inside a
+    /// section folded shut lands on that section's **header**, where → opens it onto the place,
+    /// rather than on Recents. The same goes for a tag past the stock seven, which sits behind the
+    /// Tags header until "All Tags…" is clicked.
+    func row(showing location: SidebarPaneLocation) -> Int? {
+        guard let place = SidebarPlaceLocator.place(
+            for: location,
+            among: placeGroups.flatMap(\.places),
+            vaultMountPoints: vaultMountPoints
+        ) else { return nil }
+        if let row = rows.firstIndex(where: { $0.place == place }) { return row }
+        let section = placeGroups.first { $0.places.contains(place) }?.section
+        return section.flatMap(headerRow(of:))
     }
 
     // MARK: - Key handlers

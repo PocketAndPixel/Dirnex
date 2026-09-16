@@ -8953,6 +8953,17 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     and never "com~apple~CloudDocs" — the target and its name coincide only in a tree, which is the
     one case where the pane genuinely draws the deeper folder with a row of its own. Swapping
     `panel.path.lastComponent` for the target's own is the obvious edit and is wrong everywhere else.
+  - **"The folder the cursor's row lives in" is wrong at a tree's root level, and only a merged
+    listing can show it.** The root level *is* the pane's own listing, so it owes the flat list's
+    answer: `writeDirectory`. For an ordinary folder a root row's parent is that directory anyway,
+    which is why the first version took the parent and nothing failed. Over iCloud Drive it is not:
+    a loose row's parent is `com~apple~CloudDocs`, so F7 offered «Create a folder in
+    “com~apple~CloudDocs”», and an app library's row is `com~apple~Pages/Documents`, whose parent is
+    the app's container, a folder iCloud Drive never shows (fixed 2026-09-16). The doc comment on
+    the name said "at a tree's root level the two are the same string anyway", which held for every
+    listing except the one the comment was written to protect. `Panel.cursorDirectory` now answers
+    by the row's **depth**, not by its path, and the app maps "the pane's own directory" to
+    `writeDirectory` in one place.
   - **The refresh needed nothing.** `refreshCurrentDirectory(selecting:)` already routes a tree
     through `refreshTree(selecting:)`, which re-lists every listed directory and lands the cursor on
     the target by identity — so a row created at depth 2 appears at depth 2 with the cursor on it, for

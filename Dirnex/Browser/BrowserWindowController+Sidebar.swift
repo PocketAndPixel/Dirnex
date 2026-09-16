@@ -8,14 +8,14 @@ import DirnexCore
 /// pane one.
 extension BrowserWindowController {
     /// Reveal the sidebar if it's collapsed, then hand it keyboard focus with the cursor on the
-    /// active pane's current location (if that place is pinned). Focusing an invisible list would be
-    /// a dead keystroke, so the reveal comes first; it is not animated, because the user asked to
-    /// *use* the sidebar now, not to watch it slide in.
+    /// place the active pane is in. Focusing an invisible list would be a dead keystroke, so the
+    /// reveal comes first; it is not animated, because the user asked to *use* the sidebar now, not
+    /// to watch it slide in.
     @objc func focusSidebar(_ sender: Any?) {
         if sidebarSplitItem.isCollapsed {
             sidebarSplitItem.isCollapsed = false
         }
-        sidebar.focusFromKeyboard(preferring: focusedPanel.panel.path)
+        sidebar.focusFromKeyboard(showing: focusedPanel.sidebarLocation)
     }
 
     /// Open a place picked from **Go ▸ Places** (PLAN.md §M20). Dispatched here through the responder

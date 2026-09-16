@@ -27,6 +27,12 @@ public struct RecentsQuery: Sendable, Equatable {
         self.usedWithinSeconds = usedWithinSeconds
     }
 
+    /// The name the Recents results tab is filed under — the last component of its synthetic
+    /// `search:` path. A stable English identity, never displayed: the tab title and the path bar
+    /// localize on their own, and the sidebar recognizes the tab by it
+    /// (``SidebarPlaceLocator/recentsPath``).
+    public static let listingName = "Recents"
+
     /// 30 days. Not exact-calendar (a month is 30 days here, as in `SearchAge`); exactness doesn't
     /// matter for a "recently used" cutoff.
     public static let defaultWindowSeconds = 30 * 24 * 60 * 60

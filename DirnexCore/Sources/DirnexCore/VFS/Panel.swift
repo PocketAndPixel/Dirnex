@@ -141,11 +141,23 @@ public struct Panel: Sendable {
     /// itself, and a scaffolding row (a folder drawn only because something under it matched the
     /// filter) is no different from any other. The question is which directory the row lives in.
     ///
+    /// **A root-level row answers the pane's own directory, whatever its path says.** The root level
+    /// *is* the pane's own listing, exactly as every row of a flat list is, so the two shapes give
+    /// one answer there. For an ordinary folder that is the row's parent anyway. For a merged listing
+    /// it is not, and the row's parent is the wrong answer twice over: iCloud Drive's loose rows live
+    /// in `com~apple~CloudDocs`, a folder the user has never heard of, and an app library's row is a
+    /// `Documents` folder whose parent is the app's container, which the listing does not show at
+    /// all. Only a deeper row, which a listing of an expanded folder put there, lives where its path
+    /// says.
+    ///
     /// Two cases the caller still owns, because this type cannot see them: a cursor parked on the
-    /// `..` row, which is no level's row at all, and a pane with no real directory underneath —
-    /// search results, a browsed archive, the merged Trash (`PanelViewController.writeDirectory`).
+    /// `..` row, which is no level's row at all, and what the pane's own directory is *for a write*:
+    /// nothing for search results, a browsed archive or the merged Trash, and the CloudDocs container
+    /// for the merged iCloud listing (`PanelViewController.writeDirectory`).
     public var cursorDirectory: VFSPath {
-        guard isTree, let parent = currentEntry?.path.parent else { return path }
+        guard let tree, tree.rows.indices.contains(cursor) else { return path }
+        let row = tree[cursor]
+        guard row.depth > 0, let parent = row.entry.path.parent else { return path }
         return parent
     }
 
