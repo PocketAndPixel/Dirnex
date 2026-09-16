@@ -160,6 +160,49 @@ struct CloudPlaceRenameTests {
         #expect(ICloudLocation.mergedPath.displayName == CloudPlaceTitle.iCloudDrive())
     }
 
+    /// The folder the merged listing shows loose is iCloud Drive itself, so a tab parked there by a
+    /// typed path is called what the row is called, and follows a rename of it.
+    @Test("a tab at the CloudDocs container is called what the iCloud Drive row is called")
+    func iCloudContainerTitle() {
+        let home = "/Users/u"
+        let container = ICloudDrive.cloudDocs(home: home)
+
+        #expect(CloudPlaceTitle.iCloudContainer(container, home: home, names: renamed) == "Personal")
+        #expect(
+            CloudPlaceTitle.iCloudContainer(container, home: home, names: SidebarItemNames())
+                == CloudPlaceTitle.iCloudDriveDefault
+        )
+        // Through the surfaces that ask, on this Mac's own container.
+        let real = ICloudDrive.cloudDocs()
+        #expect(real.displayName == CloudPlaceTitle.iCloudDrive())
+        #expect(PanelTab(path: real).title == CloudPlaceTitle.iCloudDrive())
+    }
+
+    @Test("only the CloudDocs container itself takes iCloud Drive's name")
+    func iCloudContainerIsNarrow() {
+        let home = "/Users/u"
+        let container = ICloudDrive.cloudDocs(home: home)
+        let others: [VFSPath] = [
+            // A loose folder, including one that happens to be called `Documents`.
+            container.appending("Car"),
+            container.appending("Documents"),
+            // The machinery around it, and an app library, which is named for its app instead.
+            ICloudDrive.mobileDocuments(home: home),
+            ICloudDrive.mobileDocuments(home: home).appending("com~apple~Pages").appending(
+                "Documents"
+            ),
+            // Another account's container is not this user's iCloud Drive.
+            ICloudDrive.cloudDocs(home: "/Users/someone"),
+            .local("/Users/u/com~apple~CloudDocs")
+        ]
+        for path in others {
+            #expect(
+                CloudPlaceTitle.iCloudContainer(path, home: home, names: renamed) == nil,
+                "\(path.path)"
+            )
+        }
+    }
+
     // MARK: - The store
 
     @Test("names round-trip, and forgetting the last one leaves no key behind")
@@ -212,20 +255,41 @@ struct CloudPlaceRenameTests {
         menu.items.map { $0.action.map(NSStringFromSelector) ?? "-" }
     }
 
-    @Test("a Cloud row's menu offers Rename, and Restore only once it has been renamed")
+    @Test("a Cloud row's menu offers Open and Rename, and Restore only once it has been renamed")
     func menuOffersRestoreOnlyWhenRenamed() {
         let sidebar = loadedSidebar()
 
         let fresh = NSMenu()
         sidebar.buildCloudPlaceMenu(fresh, for: .cloudMount(mount), names: SidebarItemNames())
-        #expect(actions(fresh) == ["renameCloudPlaceItem:"])
+        #expect(actions(fresh) == ["openCloudPlaceItem:", "-", "renameCloudPlaceItem:"])
 
         let named = NSMenu()
         sidebar.buildCloudPlaceMenu(named, for: .cloudMount(mount), names: renamed)
-        #expect(actions(named) == ["renameCloudPlaceItem:", "restoreCloudPlaceNameItem:"])
+        #expect(actions(named) == [
+            "openCloudPlaceItem:", "-", "renameCloudPlaceItem:", "restoreCloudPlaceNameItem:"
+        ])
         // Each item carries the place's identity rather than a row, which a rebuild would move.
-        #expect(named.items.allSatisfy { ($0.representedObject as? String) == "mount:Dropbox-Home" })
-        #expect(named.items.allSatisfy { $0.target === sidebar })
+        let commands = named.items.filter { !$0.isSeparatorItem }
+        #expect(commands.allSatisfy { ($0.representedObject as? String) == "mount:Dropbox-Home" })
+        #expect(commands.allSatisfy { $0.target === sidebar })
+    }
+
+    /// Open reaches the same delegate call a click on the row makes, for all three kinds of place.
+    @Test("Open on a Cloud row activates the place a click would")
+    func openActivatesThePlace() throws {
+        let sidebar = loadedSidebar()
+        let recorder = CloudOpenRecorder()
+        sidebar.delegate = recorder
+        sidebar.rows = [.place(iCloud), .place(.photos), .place(.cloudMount(mount))]
+
+        for place in [iCloud, SidebarPlace.photos, .cloudMount(mount)] {
+            let menu = NSMenu()
+            sidebar.buildCloudPlaceMenu(menu, for: place, names: SidebarItemNames())
+            let open = try #require(menu.items.first)
+            let action = try #require(open.action)
+            _ = sidebar.perform(action, with: open)
+        }
+        #expect(recorder.events == ["icloud", "photos", mount.path.path])
     }
 
     @Test("F2 is offered on a selected Cloud row, and not on a favorite")
@@ -261,4 +325,29 @@ private final class NamesSource {
 private final class NotificationCounter: @unchecked Sendable {
     var app = 0
     var scratch = 0
+}
+
+/// Records which place a sidebar asked the window to open; every other verb is ignored.
+@MainActor
+private final class CloudOpenRecorder: SidebarViewControllerDelegate {
+    var events: [String] = []
+
+    func sidebar(_ sidebar: SidebarViewController, didActivate path: VFSPath) { events.append(
+        path.path
+    ) }
+    func sidebarDidActivateICloud(_ sidebar: SidebarViewController) { events.append("icloud") }
+    func sidebarDidActivatePhotos(_ sidebar: SidebarViewController) { events.append("photos") }
+
+    func sidebar(_ sidebar: SidebarViewController, didActivateFavorite entry: FavoriteEntry) {}
+    func sidebar(_ sidebar: SidebarViewController, didActivateSavedSearch savedSearch: SavedSearch) {}
+    func sidebarDidActivateRecents(_ sidebar: SidebarViewController) {}
+    func sidebarDidActivateTrash(_ sidebar: SidebarViewController) {}
+    func sidebarDidRequestEmptyTrash(_ sidebar: SidebarViewController) {}
+    func sidebar(_ sidebar: SidebarViewController, didActivateServer server: ServerConnection) {}
+    func sidebar(_ sidebar: SidebarViewController, didEditServer server: ServerConnection) {}
+    func sidebar(_ sidebar: SidebarViewController, didActivateVault vault: VaultLocation) {}
+    func sidebar(_ sidebar: SidebarViewController, didRequestLockOf vault: VaultLocation) {}
+    func sidebar(_ sidebar: SidebarViewController, didRequestRenameOf vault: VaultLocation) {}
+    func sidebar(_ sidebar: SidebarViewController, didActivateTag tag: FinderTag) {}
+    func sidebarDidClickEmptyArea(_ sidebar: SidebarViewController) {}
 }

@@ -121,4 +121,22 @@ enum CloudPlaceTitle {
               let mount = CloudStorageMounts.mount(containing: path, home: home) else { return nil }
         return self.mount(mount, names: names ?? CloudPlaceNameStore.load())
     }
+
+    /// iCloud Drive's name when `path` **is** the CloudDocs container, or `nil` for any other path —
+    /// what a tab parked there is called.
+    ///
+    /// The container is what the merged listing shows loose, so it is iCloud Drive itself: the path
+    /// bar draws it as the root crumb and nothing more (`ICloudLocation.trail` answers no steps), while
+    /// a tab chip or a sentence called it `com~apple~CloudDocs`, a folder the user has never heard of.
+    /// Only the container: its children have names of their own, and an app library beside it is
+    /// named for its app (`ICloudLocation.libraryTitle(of:)`). A pure comparison, so an ordinary path
+    /// pays nothing, and `names` is optional for the reason ``mountRoot(_:home:names:)`` gives.
+    static func iCloudContainer(
+        _ path: VFSPath,
+        home: String = NSHomeDirectory(),
+        names: SidebarItemNames? = nil
+    ) -> String? {
+        guard path == ICloudDrive.cloudDocs(home: home) else { return nil }
+        return iCloudDrive(names: names ?? CloudPlaceNameStore.load())
+    }
 }

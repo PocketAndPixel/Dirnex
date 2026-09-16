@@ -128,6 +128,11 @@ at build time.
   `Dirnex.debug.dylib`, not the thin executable — grep the dylib to confirm new code actually
   compiled in. `xcodebuild` writes to `~/Library/Developer/Xcode/DerivedData/`, not the repo's
   `build/`.
+  - **A grep for a Swift name can miss code that is there.** The mangler replaces a word the
+    symbol has already spelled with a back-reference, so `CloudPlaceTitle.iCloudContainer` has no
+    `Cloud` after the type's own and `strings`/`nm` counted **0** for `iCloudContainer` in a build
+    that contained it (2026-09-16). `nm <dylib> | xcrun swift-demangle | command grep <name>` finds
+    it. Grep for a string literal the change added, or demangle, before concluding a build is stale.
 - **When no gesture can reach a state, drive the *reader* from outside through whatever seam it
   already reads.** M23 Slice 5 had to prove that pasting a row from inside a `.zip` really extracts
   and copies it in the running app, and the gesture is unreachable headlessly twice over: session

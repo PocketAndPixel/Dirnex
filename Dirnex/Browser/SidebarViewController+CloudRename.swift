@@ -26,13 +26,23 @@ extension SidebarViewController {
 
     // MARK: - Right-click menu
 
-    /// Populate `menu` with Rename… and, for a row the user has renamed, Restore Original Name.
+    /// Populate `menu` with Open, Rename… and, for a row the user has renamed, Restore Original
+    /// Name — the shape the favorite and Trash menus already have, Open first.
     func buildCloudPlaceMenu(
         _ menu: NSMenu,
         for place: SidebarPlace,
         names: SidebarItemNames = CloudPlaceNameStore.load()
     ) {
         guard let identity = CloudPlaceIdentity.of(place) else { return }
+        menu.addItem(cloudPlaceMenuItem(
+            String(
+                localized: "Open",
+                comment: "Sidebar context-menu item on iCloud Drive, Photos or a cloud-provider row: open it."
+            ),
+            #selector(openCloudPlaceItem(_:)),
+            identity
+        ))
+        menu.addItem(.separator())
         menu.addItem(cloudPlaceMenuItem(
             String(
                 localized: "Rename…",
@@ -75,6 +85,15 @@ extension SidebarViewController {
     /// reach the network.
     private func cloudPlace(identity: String) -> SidebarPlace? {
         rows.lazy.compactMap(\.place).first { CloudPlaceIdentity.of($0) == identity }
+    }
+
+    /// Open goes through `activate(_:)`, the funnel a click on the row uses, because two of the
+    /// three places are not a path to navigate to: iCloud Drive assembles a merged listing and
+    /// Photos asks macOS for library access on first use.
+    @objc private func openCloudPlaceItem(_ sender: NSMenuItem) {
+        guard let identity = sender.representedObject as? String,
+              let place = cloudPlace(identity: identity) else { return }
+        activate(place)
     }
 
     @objc private func renameCloudPlaceItem(_ sender: NSMenuItem) {

@@ -12935,6 +12935,19 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
 
+**2026-09-16 (after the CloudDocs container) — a Cloud row's right-click menu opens the place.
+VERIFIED LIVE.** Asked for as "add Open for Cloud items, like the others have it". The iCloud Drive,
+Photos and provider-mount rows offered only Rename… (and Restore Original Name), where the favorite,
+Trash and unlocked-vault menus lead with Open. `buildCloudPlaceMenu` now puts Open and a separator
+first, the favorites menu's shape. The item carries the place's identity like its neighbours, and
+`openCloudPlaceItem` finds the row by it and calls `activate(_:)`, the funnel a click uses, because
+iCloud Drive assembles a merged listing and Photos asks for library access rather than navigating to
+a path. The existing menu test now expects the order, and a new app test sends Open for all three kinds
+of place and checks the delegate heard the same call a click makes (iCloud, Photos, the mount's
+path). "Open" was already translated in every catalog. Live: right-clicking iCloud Drive in the Debug
+build showed Open above Rename…, and Open put the right pane in iCloud Drive. App suite green (1323),
+both linters clean; the core was not touched.
+
 **2026-09-16 (after Focus Sidebar) — F7 at the top of a tree over iCloud Drive creates where list mode
 does. VERIFIED LIVE.** The other half of what the Cloud-renames pass found. `creationDirectory` took
 `Panel.cursorDirectory`, the parent of the cursor row's path, at every level of a tree. At the root
@@ -12982,6 +12995,17 @@ container beside `Documents`, which iCloud Drive does not show.
   F7 on the file inside the expanded `Pages` row, and in list mode inside the library, read «Create a
   folder in “Pages”.», and both tab chips of a second tab there read "Pages". Both suites green
   afterwards (3623 core, 1320 app), both linters clean.
+- **And the CloudDocs container itself, a second follow-up.** A pane standing in
+  `com~apple~CloudDocs` (reached by a typed path, a pin or `reveal`) drew only the "iCloud Drive" root
+  crumb while its tab chip and F7 said `com~apple~CloudDocs`. `CloudPlaceTitle.iCloudContainer`,
+  shaped like `mountRoot`, answers the iCloud Drive row's title (so a rename of the row follows) for
+  that exact path and nothing else, and `displayName` asks it. Two app tests (the title, renamed and
+  not, through `displayName` and `PanelTab.title`; six other paths keep their names). Controls: without
+  the `displayName` branch the first test fails twice; matching the container "or anything inside it"
+  fails the narrowness test and the loose-`Documents` assertion in `VFSPathDisplayNameTests`. Live,
+  after `reveal` put the right pane in the real container: F7 read «Create a folder in “iCloud
+  Drive”.» and both chips of a second tab read "iCloud Drive". Both suites green (3623 core, 1322 app),
+  both linters clean.
 
 **2026-09-16 (after the Cloud renames) — View ▸ Focus Sidebar lands on the place the pane is in.
 VERIFIED LIVE.** Asked for as "fix the Focus Sidebar landing on Recents too", after the rename pass

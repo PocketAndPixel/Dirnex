@@ -94,6 +94,9 @@ extension VFSPath {
         // The merged listing's path ends in `ICloudLocation.mergedName`, an English identity that is
         // never displayed — so F7 there offered «Create a folder in "iCloud Drive"» in every language.
         if backend == .icloud { return CloudPlaceTitle.iCloudDrive() }
+        // The CloudDocs container is the folder that listing shows loose, so it is iCloud Drive too,
+        // as its root crumb already says, rather than `com~apple~CloudDocs`.
+        if let container = CloudPlaceTitle.iCloudContainer(self) { return container }
         // A mount's root is a folder called `Dropbox-Home`, which the sidebar and the path bar have
         // always drawn as the provider's name — or the user's, since the row can be renamed.
         if let mountTitle = CloudPlaceTitle.mountRoot(self) { return mountTitle }
