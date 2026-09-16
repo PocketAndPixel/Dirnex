@@ -23,7 +23,7 @@ extension VFSPath {
     /// it, not what it is called. The endpoint rides along because two buckets of the same name on
     /// two providers are a real thing — and an account, which has no bucket, is the endpoint alone.
     var backendRootTitle: String? {
-        if backend.isPhotos { return PhotosPresentation.libraryTitle }
+        if backend.isPhotos { return CloudPlaceTitle.photos() }
         if let archivePath = backend.archivePath {
             // For a nested mount this is the extracted member's file name — the inner archive's own.
             return (archivePath as NSString).lastPathComponent
@@ -79,6 +79,12 @@ extension VFSPath {
     var displayName: String {
         // The undated folder is the one non-root place whose name is not its path component.
         if backend.isPhotos { return PhotosPresentation.title(for: self) }
+        // The merged listing's path ends in `ICloudLocation.mergedName`, an English identity that is
+        // never displayed — so F7 there offered «Create a folder in "iCloud Drive"» in every language.
+        if backend == .icloud { return CloudPlaceTitle.iCloudDrive() }
+        // A mount's root is a folder called `Dropbox-Home`, which the sidebar and the path bar have
+        // always drawn as the provider's name — or the user's, since the row can be renamed.
+        if let mountTitle = CloudPlaceTitle.mountRoot(self) { return mountTitle }
         guard isRoot else { return lastComponent }
         return backendRootTitle ?? lastComponent
     }

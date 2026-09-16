@@ -95,12 +95,11 @@ extension PanelViewController {
             sort: panel.model.sort,
             query: nil,
             scope: nil,
-            // The *tab title* is what's shown, so it localizes — the core's `mergedName` is the
-            // identity above and carries no words for the screen.
-            title: String(
-                localized: "iCloud Drive",
-                comment: "Apple's iCloud Drive: the sidebar row, the tab title, and the path bar's root crumb."
-            ),
+            // No chip label of its own: the tab reads `displayName`, which names the merged listing
+            // through `CloudPlaceTitle` — translated, and following a rename of the sidebar row
+            // while the tab is open, which a string captured here could not. The core's
+            // `mergedName` is the identity above and carries no words for the screen.
+            title: nil,
             // The pane's own setting, not the results default: this is a place being browsed, and
             // its dotfiles are ordinary dotfiles — a forced-on `.DS_Store` would be the first row of
             // the user's iCloud Drive.

@@ -7,24 +7,17 @@ import DirnexCore
 /// `SidebarViewController` so that file stays under its length limit, the same reason Favorites
 /// and the sections logic live beside it.
 ///
-/// There is nothing here to rename or remove — these are system locations, not user-owned pins, so
-/// a row is present or absent purely on whether the folder is on disk. Their **order**, though, is
-/// the user's: the rows are draggable like a favorite's, and `CloudSectionOrderStore` remembers
-/// where they were put. That takes an order stored beside the rows rather than in them, since the
-/// rows come back from a scan every rebuild — `SidebarItemOrder` is that, and the identities it
-/// keys off are chosen here (`orderIdentity`).
+/// There is nothing here to remove — these are system locations, not user-owned pins, so a row is
+/// present or absent purely on whether the folder is on disk. Their **order** and their **names**,
+/// though, are the user's: the rows are draggable like a favorite's, and can be renamed
+/// (`SidebarViewController+CloudRename`). Both take a store beside the rows rather than in them,
+/// since the rows come back from a scan every rebuild — `SidebarItemOrder` and `SidebarItemNames`
+/// are those, keyed by the identities `CloudPlaceIdentity` defines once for the two.
 ///
 /// The section keeps the `icloud` identity rather than gaining a new one, so a user who had it
 /// folded shut finds it still folded after the rename: `SidebarSectionCollapse` persists the raw
 /// case name, and only the header's *title* changed.
 extension SidebarViewController {
-    /// The identity iCloud Drive is remembered by. A literal rather than its path: the path is
-    /// `~/Library/Mobile Documents/com~apple~CloudDocs`, which carries the user's home directory
-    /// into a stored order and would lose the row's position on a Mac where that differs.
-    private static let iCloudOrderIdentity = "icloud"
-    /// The identity the Photos row is remembered by — a literal, for the same reason.
-    private static let photosOrderIdentity = "photos"
-
     /// The section's places in the user's order — or, until they have dragged anything, the natural
     /// one: iCloud Drive and then Photos (Apple's own, and the rows a Mac is likeliest to have), then
     /// the provider mounts by name.
@@ -39,23 +32,7 @@ extension SidebarViewController {
         )
         // Everything here is a Cloud place by construction, so the fallback is unreachable rather
         // than a stand-in identity anything could be stored under.
-        return CloudSectionOrderStore.load().apply(to: discovered) { Self.orderIdentity(of: $0) ?? "" }
-    }
-
-    /// How a Cloud place is named in the stored order, or `nil` for one that is not in that section.
-    ///
-    /// A mount is keyed off its **directory name** under `~/Library/CloudStorage`, the one stable
-    /// thing about it: `name` is a display string that changes the moment a second account of the
-    /// same provider appears and both rows gain their account label, and keying off that would drop
-    /// both rows back to the bottom of the section on the day one is added. The `mount:` prefix
-    /// keeps that namespace clear of the iCloud literal.
-    static func orderIdentity(of place: SidebarPlace) -> String? {
-        switch place {
-        case .iCloudDrive: return iCloudOrderIdentity
-        case .photos: return photosOrderIdentity
-        case let .cloudMount(mount): return "mount:\(mount.directoryName)"
-        default: return nil
-        }
+        return CloudSectionOrderStore.load().apply(to: discovered) { CloudPlaceIdentity.of($0) ?? "" }
     }
 
     /// Rebuild when the shared Cloud order changes — a drag here or in another window re-sorts every
@@ -70,6 +47,22 @@ extension SidebarViewController {
     }
 
     @objc private func cloudSectionOrderChanged() {
+        rebuild()
+    }
+
+    /// Rebuild when a Cloud row is renamed — here, from another window, or from the pane's own
+    /// Places menu, which shares the store. Scoped to the app's own domain so a test writing to a
+    /// scratch one leaves the sidebar alone (docs/NOTES.md ▸ Testing).
+    func observeCloudPlaceNameChanges() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(cloudPlaceNamesChanged),
+            name: CloudPlaceNameStore.didChangeNotification,
+            object: UserDefaults.standard
+        )
+    }
+
+    @objc private func cloudPlaceNamesChanged() {
         rebuild()
     }
 
@@ -92,9 +85,9 @@ extension SidebarViewController {
         }
     }
 
-    /// Build (or reuse) the iCloud Drive cell: the `icloud` glyph and a fixed "iCloud Drive" label,
-    /// with the real container path as its tooltip. No eject or delete affordance — a system row
-    /// carries neither.
+    /// Build (or reuse) the iCloud Drive cell: the `icloud` glyph and "iCloud Drive" — or what the
+    /// user renamed it to — with the real container path as its tooltip. No eject or delete
+    /// affordance — a system row carries neither.
     func iCloudCell(for path: VFSPath) -> NSView {
         cloudCell(
             name: SidebarPlacePresentation.title(for: .iCloudDrive(path)),
@@ -103,24 +96,34 @@ extension SidebarViewController {
         )
     }
 
-    /// Build (or reuse) the Photos library's cell (PLAN.md §M28). The tooltip repeats the name: where
-    /// the library's file lives is PhotoKit's business and need not be the default, so there is no
-    /// path worth revealing, and guessing one would name a file nobody is browsing.
+    /// Build (or reuse) the Photos library's cell (PLAN.md §M28). The tooltip is the library's own
+    /// name: where the library's file lives is PhotoKit's business and need not be the default, so
+    /// there is no path worth revealing, and guessing one would name a file nobody is browsing. It
+    /// repeats the row's label until the user renames the row, and then says what the row is.
     func photosCell() -> NSView {
-        let title = SidebarPlacePresentation.title(for: .photos)
-        return cloudCell(name: title, symbolName: PhotosPresentation.symbolName, tooltip: title)
+        cloudCell(
+            name: SidebarPlacePresentation.title(for: .photos),
+            symbolName: PhotosPresentation.symbolName,
+            tooltip: PhotosPresentation.libraryTitle
+        )
     }
 
-    /// Build (or reuse) a provider mount's cell — "Google Drive", or "Google Drive
-    /// (someone@gmail.com)" when a second account of the same provider has to be told apart.
+    /// Build (or reuse) a provider mount's cell — "Google Drive", or "someone@gmail.com — Google
+    /// Drive" when a second account of the same provider has to be told apart, or whatever the user
+    /// renamed the row to.
     ///
     /// The tooltip is the real mount path, which is the useful thing to reveal here: the label is a
-    /// product name, and the path is what says *which* folder on this Mac it is.
+    /// product name or a nickname, and the path is what says *which* folder on this Mac it is.
     func cloudMountCell(for mount: CloudStorageMount) -> NSView {
-        cloudCell(name: mount.name, symbolName: mount.symbolName, tooltip: mount.path.path)
+        cloudCell(
+            name: SidebarPlacePresentation.title(for: .cloudMount(mount)),
+            symbolName: mount.symbolName,
+            tooltip: mount.path.path
+        )
     }
 
-    /// The shared shape of a Cloud row: a template glyph, a label, no eject button.
+    /// The shared shape of a Cloud row: a template glyph, a label, no eject button. The glyph is
+    /// described by the label, so VoiceOver reads a renamed row by its new name.
     private func cloudCell(name: String, symbolName: String, tooltip: String) -> NSView {
         let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
         cell.configure(

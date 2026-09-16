@@ -36,7 +36,7 @@ struct SidebarVaultRenameTests {
         )
     }
 
-    @Test("F2 is offered only on a vault row")
+    @Test("F2 is not offered with nothing selected")
     func f2IsValidatedAgainstTheSelectedRow() {
         let sidebar = loadedSidebar()
         let item = NSMenuItem(

@@ -192,17 +192,20 @@ extension SidebarViewController {
 
     // MARK: - F2
 
-    /// F2 on a selected vault row, reaching here the same way the panes' F2 reaches them: the menu
-    /// item carries a nil target, so AppKit walks the responder chain from whatever holds focus and
-    /// finds this controller when the focus is the sidebar. (`PanelViewController` is in a sibling
-    /// branch of the chain, so a focused pane still gets its own inline rename — the two can't
-    /// collide.)
+    /// F2 on a selected vault or Cloud row, reaching here the same way the panes' F2 reaches them:
+    /// the menu item carries a nil target, so AppKit walks the responder chain from whatever holds
+    /// focus and finds this controller when the focus is the sidebar. (`PanelViewController` is in a
+    /// sibling branch of the chain, so a focused pane still gets its own inline rename — the two
+    /// can't collide.)
     ///
     /// Deliberately the *selected* row and not `clickedRow`: this arrives from the keyboard, where
     /// there is no click, and a stale `clickedRow` would rename whatever was last right-clicked.
     @objc func renameSelection(_ sender: Any?) {
-        guard let vault = selectedVault else { return }
-        delegate?.sidebar(self, didRequestRenameOf: vault)
+        if let vault = selectedVault {
+            delegate?.sidebar(self, didRequestRenameOf: vault)
+        } else if let place = selectedCloudPlace {
+            renameCloudPlace(place)
+        }
     }
 
     /// The vault under the keyboard cursor, if this row is one.
@@ -219,7 +222,7 @@ extension SidebarViewController {
 extension SidebarViewController: NSMenuItemValidation {
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         guard menuItem.action == #selector(renameSelection(_:)) else { return true }
-        return selectedVault != nil
+        return selectedVault != nil || selectedCloudPlace != nil
     }
 
     /// Confirm before forgetting a vault.

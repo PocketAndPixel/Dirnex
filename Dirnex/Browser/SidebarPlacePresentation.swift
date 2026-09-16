@@ -8,6 +8,9 @@ import DirnexCore
 /// name or a symbol chosen in only one of them is a name the two can come to disagree about. That
 /// matters most for the three whose title is a *literal*: "Recents", "Trash" and "iCloud Drive" are
 /// translated strings, and a display string that exists twice gets localized once (docs/NOTES.md).
+/// It matters as much for the Cloud rows, which the user may rename (`CloudPlaceTitle`): a name
+/// applied in only one renderer would leave the menu calling the place what the sidebar no longer
+/// does.
 ///
 /// Only the *naming* lives here. How the glyph is finally drawn stays with each renderer, because a
 /// 32 pt source-list row and a menu item genuinely want different renderings — point size, template
@@ -15,23 +18,24 @@ import DirnexCore
 /// to buy a symmetry nobody sees.
 @MainActor
 enum SidebarPlacePresentation {
-    /// The place's label.
-    static func title(for place: SidebarPlace) -> String {
+    /// The place's label. `names` is what the user called the Cloud rows, read once per call by
+    /// default and handed in by a test.
+    static func title(
+        for place: SidebarPlace,
+        names: SidebarItemNames = CloudPlaceNameStore.load()
+    ) -> String {
         switch place {
         case .recents:
             String(localized: "Recents", comment: "Sidebar row: recently used files.")
         case .trash:
             String(localized: "Trash", comment: "Sidebar row and section for deleted items.")
         case .photos:
-            PhotosPresentation.libraryTitle
+            CloudPlaceTitle.photos(names: names)
         case .iCloudDrive:
-            String(
-                localized: "iCloud Drive",
-                comment: "Apple's iCloud Drive: the sidebar row, the tab title, and the path bar's root crumb."
-            )
+            CloudPlaceTitle.iCloudDrive(names: names)
         case let .savedSearch(search): search.name
         case let .favorite(entry): entry.name
-        case let .cloudMount(mount): mount.name
+        case let .cloudMount(mount): CloudPlaceTitle.mount(mount, names: names)
         case let .volume(volume): volume.name
         // The volume's name, not the image file's: that is what the user renamed, and what the pane
         // shows once the vault is open (PLAN.md §M19).

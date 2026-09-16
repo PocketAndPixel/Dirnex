@@ -58,6 +58,12 @@ final class PathBarView: NSView, NSTextFieldDelegate {
     private var crumbTargets: [VFSPath] = []
 
     private var path: VFSPath?
+    /// The archive trail the location was last drawn with, kept so `reloadLocation` can redraw it
+    /// without the pane having to hand it over again.
+    private var archiveAncestry: [VFSPath] = []
+    /// What the user named the Cloud rows, read by each rebuild that draws one of their names. A seam
+    /// rather than a store read inline, so a test never draws the developer's own renames.
+    var cloudPlaceNames: () -> SidebarItemNames = { CloudPlaceNameStore.load() }
     var isEditing = false
 
     /// The location Cmd+L started from — the base for resolving relative/`~` input.
@@ -150,7 +156,16 @@ final class PathBarView: NSView, NSTextFieldDelegate {
     func setPath(_ path: VFSPath, archiveAncestry: [VFSPath] = []) {
         guard self.path != path else { return }
         self.path = path
+        self.archiveAncestry = archiveAncestry
         if isEditing { endEditing(restoreFocus: false) }
+        rebuildContents(for: path, archiveAncestry: archiveAncestry)
+    }
+
+    /// Redraw the location already on screen, for a change `setPath` cannot see because the path did
+    /// not move — a Cloud row renamed while the pane stands inside it. An open ⌘L edit is left
+    /// alone: the crumbs sit hidden under the field and are simply rebuilt there.
+    func reloadLocation() {
+        guard let path else { return }
         rebuildContents(for: path, archiveAncestry: archiveAncestry)
     }
 

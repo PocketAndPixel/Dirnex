@@ -128,8 +128,10 @@ struct PhotosLibraryAppTests {
         "the root, the undated and albums folders, a month and an album are named where a person reads them"
     )
     func names() {
-        #expect(path("/").backendRootTitle == PhotosPresentation.libraryTitle)
-        #expect(path("/").displayName == PhotosPresentation.libraryTitle)
+        // What the library is called *now* — the Photos row may be renamed, and this target runs
+        // against the developer's own store, so the default is not the value to compare with.
+        #expect(path("/").backendRootTitle == CloudPlaceTitle.photos())
+        #expect(path("/").displayName == CloudPlaceTitle.photos())
         #expect(path("/Undated").displayName == PhotosPresentation.undatedTitle)
         #expect(path("/Albums").displayName == PhotosPresentation.albumsTitle)
         #expect(path("/Albums/Summer:Beach").displayName == "Summer:Beach")
@@ -150,10 +152,9 @@ struct PhotosLibraryAppTests {
         #expect(restored.first?.pendingConnection == nil)
     }
 
-    @MainActor
     @Test("the sidebar remembers the Photos row's position under a literal of its own")
     func sidebarOrderIdentity() {
-        #expect(SidebarViewController.orderIdentity(of: .photos) == "photos")
+        #expect(CloudPlaceIdentity.of(.photos) == "photos")
     }
 
     @Test("PhotoKit's resource types map onto originals, and the rest keep their raw value")

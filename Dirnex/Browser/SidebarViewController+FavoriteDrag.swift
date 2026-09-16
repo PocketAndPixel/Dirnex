@@ -171,7 +171,7 @@ extension SidebarViewController {
     /// is the section's items, from just below its header through one past its last row.
     private func cloudIdentities(in range: ClosedRange<Int>) -> [String] {
         (range.lowerBound..<range.upperBound).compactMap { row in
-            rows.indices.contains(row) ? rows[row].place.flatMap(Self.orderIdentity(of:)) : nil
+            rows.indices.contains(row) ? rows[row].place.flatMap(CloudPlaceIdentity.of) : nil
         }
     }
 

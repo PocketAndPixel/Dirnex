@@ -37,9 +37,10 @@ extension PathBarView {
             // Crumbs, like any re-listable location — but not all of them are path components: the
             // root is the library's name, and `Undated` is a translated title over a path that stays
             // English (PLAN.md §M28). So it is named ahead of the remote branch it would fall into.
+            let names = cloudPlaceNames()
             installCrumbs(
                 path.ancestorsFromRoot.map { Crumb(
-                    title: PhotosPresentation.title(for: $0),
+                    title: PhotosPresentation.title(for: $0, names: names),
                     target: $0
                 ) },
                 leadingSymbol: Self.rootSymbolName(for: path)
@@ -72,7 +73,7 @@ extension PathBarView {
     }
 
     /// Render a location inside a cloud provider's mount, with the trail rooted at the mount under
-    /// the provider's name — `Google Drive › My Drive › Job`.
+    /// the provider's name — `Google Drive › My Drive › Job` — or the one the user gave its row.
     ///
     /// Still fully clickable, unlike the merged iCloud Drive's dead-end label: every crumb here is a
     /// real directory, so the breadcrumb affordance tells the truth. The trail simply *starts*
@@ -81,10 +82,11 @@ extension PathBarView {
     /// asked to see, the same judgment the merged iCloud listing makes about its containers.
     func rebuildCrumbs(for path: VFSPath, under mount: CloudStorageMount) {
         let trail = path.ancestorsFromRoot.filter { $0.isSelfOrDescendant(of: mount.path) }
+        let rootTitle = CloudPlaceTitle.mount(mount, names: cloudPlaceNames())
         installCrumbs(
             trail.map { ancestor in
                 Crumb(
-                    title: ancestor == mount.path ? mount.name : ancestor.lastComponent,
+                    title: ancestor == mount.path ? rootTitle : ancestor.lastComponent,
                     target: ancestor
                 )
             },
@@ -115,12 +117,10 @@ extension PathBarView {
     /// instead of somewhere you can only arrive from the sidebar.
     func rebuildICloudCrumbs(_ trail: [ICloudLocation.Step]) {
         // The crumb's *target* is the core's stable synthetic path; its *title* is the displayed
-        // name, so it localizes rather than borrowing `mergedName`, which is an identity.
+        // name, so it localizes — and follows a rename — rather than borrowing `mergedName`, which
+        // is an identity.
         let root = Crumb(
-            title: String(
-                localized: "iCloud Drive",
-                comment: "Apple's iCloud Drive: the sidebar row, the tab title, and the path bar's root crumb."
-            ),
+            title: CloudPlaceTitle.iCloudDrive(names: cloudPlaceNames()),
             target: ICloudLocation.mergedPath
         )
         installCrumbs(

@@ -39830,6 +39830,96 @@
         }
       }
     },
+    "Dirnex uses this name in the sidebar, in tabs and in the path bar. Nothing is renamed on your Mac or in the cloud. Leave the field empty to go back to “%@”.": {
+      "comment": "Body of the dialog that renames a cloud row in the sidebar; %@ is the name Dirnex gives the row when the user has not renamed it.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex verwendet diesen Namen in der Seitenleiste, in Tabs und in der Pfadleiste. Weder auf Ihrem Mac noch in der Cloud wird etwas umbenannt. Lassen Sie das Feld leer, um wieder „%@“ zu verwenden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex uses this name in the sidebar, in tabs and in the path bar. Nothing is renamed on your Mac or in the cloud. Leave the field empty to go back to “%@”."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex usa este nombre en la barra lateral, en las pestañas y en la barra de ruta. No se renombra nada en tu Mac ni en la nube. Deja el campo vacío para volver a «%@»."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex utilise ce nom dans la barre latérale, dans les onglets et dans la barre de chemin. Rien n’est renommé sur votre Mac ni dans le cloud. Laissez le champ vide pour revenir à «%@»."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex usa questo nome nella barra laterale, nelle schede e nella barra del percorso. Non viene rinominato nulla sul Mac né nel cloud. Lascia il campo vuoto per tornare a “%@”."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex はこの名前をサイドバー、タブ、パスバーで使用します。Mac 上でもクラウド上でも、名前は何も変更されません。“%@”に戻すには、フィールドを空にしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex는 이 이름을 사이드바, 탭, 경로 막대에서 사용합니다. Mac이나 클라우드에서는 아무것도 이름이 변경되지 않습니다. “%@”(으)로 되돌리려면 필드를 비워 두십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex gebruikt deze naam in de navigatiekolom, in tabbladen en in de padbalk. Er wordt niets hernoemd op je Mac of in de cloud. Laat het veld leeg om terug te gaan naar “%@”."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex używa tej nazwy na pasku bocznym, w kartach i na pasku ścieżki. Nic nie zmienia nazwy na Macu ani w chmurze. Zostaw pole puste, aby wrócić do „%@”."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex usa este nome na barra lateral, nas abas e na barra de caminho. Nada é renomeado no seu Mac ou na nuvem. Deixe o campo vazio para voltar a “%@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex показывает это название в боковой панели, во вкладках и в строке пути. Ничего не переименовывается ни на Mac, ни в облаке. Оставьте поле пустым, чтобы вернуть «%@»."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex показує цю назву в бічній панелі, у вкладках і в рядку шляху. Нічого не перейменовується ні на Mac, ні в хмарі. Залиште поле порожнім, щоб повернути «%@»."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 会在边栏、标签页和路径栏中使用此名称。Mac 上和云端的任何内容都不会被重新命名。将此栏留空即可恢复为“%@”。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 會在側邊欄、標籤頁和路徑列中使用此名稱。Mac 上和雲端的任何項目都不會重新命名。將此欄位留空即可回復為「%@」。"
+          }
+        }
+      }
+    },
     "Doesn’t match — expected %@": {
       "comment": "Checksum report row: digest differs; %@ is the expected digest.",
       "localizations": {
@@ -71352,6 +71442,96 @@
         }
       }
     },
+    "Rename “%@”": {
+      "comment": "Title of the dialog that renames an iCloud Drive, Photos or cloud-provider row in the sidebar; %@ is the row's current name.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ umbenennen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename “%@”"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renombrar «%@»"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renommer «%@»"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rinomina “%@”"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”の名前を変更"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” 이름 변경"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” hernoemen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zmień nazwę „%@”"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renomear “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переименовать «%@»"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перейменувати «%@»"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新命名“%@”"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新命名「%@」"
+          }
+        }
+      }
+    },
     "Rename “%@” to “%@”?": {
       "comment": "Confirmation title for a rename that has to run as a job; the two %@ are the current name and the new one.",
       "localizations": {
@@ -73192,6 +73372,96 @@
           "stringUnit": {
             "state": "translated",
             "value": "復原預設設定"
+          }
+        }
+      }
+    },
+    "Restore Original Name": {
+      "comment": "Sidebar context-menu item on a renamed iCloud Drive, Photos or cloud-provider row: show the name Dirnex gives it again.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ursprünglichen Namen wiederherstellen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore Original Name"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaurar nombre original"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rétablir le nom d’origine"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ripristina nome originale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "元の名前に戻す"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "원래 이름으로 복원"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oorspronkelijke naam herstellen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przywróć oryginalną nazwę"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaurar Nome Original"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вернуть исходное название"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відновити початкову назву"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复原始名称"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回復原始名稱"
           }
         }
       }

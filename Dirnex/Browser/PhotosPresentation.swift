@@ -8,7 +8,9 @@ import Foundation
 /// relearning is that a display string that exists twice gets translated once (docs/NOTES.md ▸
 /// Localization).
 enum PhotosPresentation {
-    /// The library's name — the one the Photos app has in the running language.
+    /// The library's name — the one the Photos app has in the running language. The **default**
+    /// title: a surface naming the library reads `CloudPlaceTitle.photos`, which the user may have
+    /// renamed.
     static var libraryTitle: String {
         String(
             localized: "Photos",
@@ -43,10 +45,14 @@ enum PhotosPresentation {
     static let symbolName = "photo.on.rectangle.angled"
 
     /// What a location inside the library is called where a person reads it: the library's name at
-    /// the root, the translated titles for the undated and albums folders, and the path component — a
-    /// year, a month or an album's own name, which read the same in every language — everywhere else.
-    static func title(for path: VFSPath) -> String {
-        if path.isRoot { return libraryTitle }
+    /// the root — or what the user renamed its sidebar row to (`CloudPlaceTitle`) — the translated
+    /// titles for the undated and albums folders, and the path component — a year, a month or an
+    /// album's own name, which read the same in every language — everywhere else.
+    ///
+    /// `names` is optional because only the root reads it, and a default argument would be evaluated
+    /// for every crumb.
+    static func title(for path: VFSPath, names: SidebarItemNames? = nil) -> String {
+        if path.isRoot { return CloudPlaceTitle.photos(names: names ?? CloudPlaceNameStore.load()) }
         if path.path == "/" + PhotosLayout.undatedFolderName { return undatedTitle }
         if path.path == "/" + PhotosLayout.albumsFolderName { return albumsTitle }
         return path.lastComponent

@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-16)
 
-Seventy-seven dated passes that landed outside a milestone of their own, between M18's close on
+Seventy-eight dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-16: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12934,6 +12934,66 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-16 (after the XML previews) — the Cloud rows can be renamed. VERIFIED LIVE.** Asked for as
+"let's make it possible to rename Cloud items", over a screenshot of the section showing two Google
+Drive rows cut to `oleg.verhog…` and `oleg.email.a…`. Nothing there can be renamed for real — a
+mount's folder belongs to its sync client, and iCloud Drive and the Photos library have no name a file
+manager may change — so what is renamed is the label Dirnex already made up for each place. It is
+shown **wherever Dirnex names that place**: the sidebar row, Go ▸ Places, the path bar's root crumb and
+a tab parked there. A rename that stopped at the row would leave the path bar calling the same place
+"Google Drive" under a row saying "Work".
+
+- **`SidebarItemNames` and `CloudPlaceIdentity` (core).** The names sit beside the rows, as the Cloud
+  order already did, keyed by the same identities (`icloud`, `photos`, `mount:<directory>`). Those
+  identities moved into the core from `SidebarViewController.orderIdentity(of:)` and are pinned byte
+  for byte, since both stores are already on disk under them. A name equal to the default, or one that
+  normalizes to nothing, **clears** the entry rather than pinning a copy: "iCloud Drive" is translated,
+  and a mount's label gains its account when a second account appears, so a stored default would
+  freeze the row. Control characters (a pasted line break included) are stripped and whitespace
+  trimmed, on the way in from a hand-edited store as well.
+- **The app.** `CloudPlaceNameStore` (JSON in `Dirnex.cloudPlaceNames`, the key removed when the last
+  name goes) and `CloudPlaceTitle`, which every surface reads, with the "iCloud Drive" literal now
+  written once instead of three times. A Cloud row's right-click menu offers Rename… and, once
+  renamed, Restore Original Name; F2 on a selected Cloud row reaches the same prompt, whose emptied
+  field also restores the original (shown as the placeholder). The sidebar rebuilds on a rename, and
+  each pane redraws its path bar in place (`PathBarView.reloadLocation`, since `setPath` ignores an
+  unchanged path) and its tab strip. The notification carries the defaults domain written to, and
+  every observer watches `UserDefaults.standard` only, so a test saving into a scratch domain redraws
+  nothing in the test host.
+- **Two naming fixes the rename needed.** The merged iCloud tab no longer captures a chip title when
+  the listing is gathered — it reads `displayName`, which now names the `.icloud` location through
+  `CloudPlaceTitle` — so the chip follows a rename, and F7's sentence there stops printing the English
+  identity `ICloudLocation.mergedName` in every language. And a tab at a provider mount's **root** is
+  called what the row is called, where it used to read the folder's `Dropbox-Home`
+  (`CloudPlaceTitle.mountRoot`: a string test turns away everything that is not a direct child of
+  `~/Library/CloudStorage` before the one `readdir`, and the store is read only on a hit).
+- **Tests.** 15 core tests, 12 app tests (`CloudPlaceRenameTests`: the names handed in wherever a
+  surface allows, the path bar through a new `cloudPlaceNames` seam, mount roots against a temp home,
+  the store in a scratch domain). Two Photos assertions compared against the default library title
+  and would fail on a Mac where the row was renamed; they compare against the current title now.
+  Seven negative controls run together — the in-place redraw made a no-op, the mount row drawn by its
+  default, the iCloud chip title restored, F2 validated for vaults only, the notification posted to
+  the app's domain, the mount-root parent guard dropped, Restore offered unconditionally — failed
+  exactly the seven tests aimed at them and left the other five green. Both suites green (3598 core;
+  1309 app, the live-server suites skipped with no servers up), both linters clean, and
+  `check_localization_keys.py` finds every extracted key: the three new strings carry all 13
+  translations.
+- **Live, in the Debug build driven in the background.** F2 on the sidebar's Dropbox row, "Team
+  Dropbox": the row, the path bar's root crumb (the pane was standing at the mount's root) and, after
+  a New Tab, both chips changed at once, and the store held `{"mount:Dropbox-Home":"Team Dropbox"}`.
+  Emptying the field put "Dropbox" back on all three surfaces with no navigation, and removed the key.
+  iCloud Drive renamed to "Personal" changed its row, chip and crumb; typing "iCloud Drive" back left
+  the store empty. With Recents selected, Rename is disabled. Not checked live: the right-click menu
+  (a background session cannot open a context menu; its builder is unit-tested) and Go ▸ Places,
+  which is filled only when opened from a key window.
+- **Found on the way, left for a pass of their own.** In tree mode at the top of the merged iCloud
+  listing, F7 names the row's real parent — "Create a folder in “com~apple~CloudDocs”" — and for an
+  app-library row would target the app's container rather than its `Documents`. And View ▸ Focus
+  Sidebar from an iCloud pane selects Recents, because the pane's `icloud:` path matches no row's
+  real container path. Both predate this pass. Running the Debug build over iCloud also raised the
+  "Full Disk Access has probably been reset" offer, which cleared `hasReadICloudAppLibraries` in the
+  shared domain; it re-arms the next time a build with the grant reads the app libraries.
 
 **2026-09-16 (after the binary plists) — XML previews as a tree, a property list as its keys and values,
 and a list of like elements as the CSV table.** Asked for as "can we implement a similar table preview for

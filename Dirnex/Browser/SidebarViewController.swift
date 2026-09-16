@@ -113,6 +113,7 @@ final class SidebarViewController: NSViewController {
         observeTagChanges()
         observeCloudStorageChanges()
         observeCloudSectionOrderChanges()
+        observeCloudPlaceNameChanges()
         observePaletteChanges()
         rebuild()
     }
@@ -409,9 +410,9 @@ extension SidebarViewController: NSTableViewDelegate {
 // MARK: - Right-click context menu
 
 extension SidebarViewController: NSMenuDelegate {
-    /// Build the right-click menu lazily from the clicked row, dispatching to the Trash,
-    /// saved-search, server or tag builder (in companion files). Any other row — a header, place, or
-    /// volume — leaves the menu empty, so AppKit shows nothing.
+    /// Build the right-click menu lazily from the clicked row, dispatching to the Trash, favorite,
+    /// saved-search, server, vault, tag or Cloud builder (in companion files). Any other row — a
+    /// header, Recents or a volume — leaves the menu empty, so AppKit shows nothing.
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         let row = tableView.clickedRow
@@ -428,6 +429,8 @@ extension SidebarViewController: NSMenuDelegate {
             buildVaultMenu(menu, for: vault)
         } else if let tag = rows[row].tag {
             buildTagMenu(menu, for: tag)
+        } else if let place = rows[row].place, CloudPlaceIdentity.of(place) != nil {
+            buildCloudPlaceMenu(menu, for: place)
         }
     }
 }
