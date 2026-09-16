@@ -12967,10 +12967,21 @@ container beside `Documents`, which iCloud Drive does not show.
   new name to create one.» Launched through LaunchServices the rebuilt build had no Full Disk Access
   and listed only `Car`, so the library row was checked in a second run started from a shell, which
   borrows the shell's grant.
-- **Left as it is.** One level inside a library the target is right (`com~apple~Pages/Documents`) and
-  the sheet says «… in “Documents”», not “Pages”, because the name is the target's `displayName`. List
-  mode inside the same library names it “Documents” too, so it belongs to `VFSPath.displayName` rather
-  than to the create target.
+- **The name one level inside a library, asked for as a follow-up.** The target there was already
+  right (`com~apple~Pages/Documents`) and the sheet said «… in “Documents”», because the name is the
+  target's `VFSPath.displayName`. List mode inside the library said the same, and so did its tab chip,
+  while the path bar's crumb read "Pages". `ICloudLocation.libraryTitle(of:)` (core) answers the app's
+  name only for a library's own `Documents` folder, through the lookup and fallbacks `trail` uses (now
+  shared); a loose folder called `Documents`, which `ICloudDrive.isMergedRoot` would take for a library,
+  is ruled out first. `displayName` asks it, and the system-name fallback moved from `PathBarView` onto
+  `VFSPath.systemName` so the crumb and the name share it. Three core tests (the name; agreement with
+  the crumb for the cached, translated, system and bundle-id sources; nine other folders keep their
+  names) and new assertions in two app tests. Controls: without the CloudDocs exclusion, or with
+  "anywhere inside a library", the narrowness test fails; without the `displayName` branch both app
+  tests fail. Live:
+  F7 on the file inside the expanded `Pages` row, and in list mode inside the library, read «Create a
+  folder in “Pages”.», and both tab chips of a second tab there read "Pages". Both suites green
+  afterwards (3623 core, 1320 app), both linters clean.
 
 **2026-09-16 (after the Cloud renames) — View ▸ Focus Sidebar lands on the place the pane is in.
 VERIFIED LIVE.** Asked for as "fix the Focus Sidebar landing on Recents too", after the rename pass

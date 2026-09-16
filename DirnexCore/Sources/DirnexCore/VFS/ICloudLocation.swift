@@ -69,14 +69,48 @@ public enum ICloudLocation {
         // An app library: the `Documents` folder is the row, and the one-child container above it
         // never appears.
         guard let documents = libraryDocuments(containing: path, home: home) else { return nil }
-        let containerID = documents.parent?.lastComponent ?? ""
-        let title = libraryName(
-            forContainerID: containerID,
+        let title = title(
+            ofLibrary: documents,
             home: home,
             languageCode: languageCode,
-            fileManager: fileManager
-        ) ?? fallbackName(documents) ?? containerID.replacingOccurrences(of: "~", with: ".")
+            fileManager: fileManager,
+            fallbackName: fallbackName
+        )
         return [Step(title: title, directory: documents)] + steps(from: documents, to: path)
+    }
+
+    /// What iCloud Drive calls `path` when it is an app library's own `Documents` folder — "Pages"
+    /// for `com~apple~Pages/Documents` — or `nil` for any other path, a folder *inside* a library
+    /// included, since that one's own name is already right.
+    ///
+    /// The same name the listing's row and the path bar's crumb show, from the same lookup and the
+    /// same fallbacks as ``trail(for:home:languageCode:fileManager:fallbackName:)``, so a sentence or
+    /// a tab chip naming the folder cannot disagree with the crumb above it. Without it they read the
+    /// folder's real name, and F7 one level inside the Pages row offered «Create a folder in
+    /// “Documents”» (seen live 2026-09-16).
+    ///
+    /// A folder called `Documents` among the loose files is not a library, though the shape test in
+    /// ``ICloudDrive/isMergedRoot(_:home:)`` would take it for one: CloudDocs is ruled out first.
+    public static func libraryTitle(
+        of path: VFSPath,
+        home: String = NSHomeDirectory(),
+        languageCode: String? = Locale.current.language.languageCode?.identifier,
+        fileManager: FileManager = .default,
+        fallbackName: (VFSPath) -> String? = { _ in nil }
+    ) -> String? {
+        // The miss every ordinary path is, answered by string tests before anything is allocated.
+        guard path.backend == .local, path.lastComponent == "Documents",
+              path.path.hasPrefix(ICloudDrive.mobileDocuments(home: home).path + "/"),
+              !path.isSelfOrDescendant(of: ICloudDrive.cloudDocs(home: home)),
+              libraryDocuments(containing: path, home: home) == path
+        else { return nil }
+        return title(
+            ofLibrary: path,
+            home: home,
+            languageCode: languageCode,
+            fileManager: fileManager,
+            fallbackName: fallbackName
+        )
     }
 
     /// The row of the merged listing that leads to `path` — where the cursor should land when the
@@ -98,6 +132,24 @@ public enum ICloudLocation {
         guard let container = containers.child(towards: path) else { return nil }
         let documents = container.appending("Documents")
         return path.isSelfOrDescendant(of: documents) ? documents : nil
+    }
+
+    /// The name an app library's `Documents` folder wears: the cached metadata's, else the system's,
+    /// else the bundle id, so a library this Mac has forgotten still names its app.
+    private static func title(
+        ofLibrary documents: VFSPath,
+        home: String,
+        languageCode: String?,
+        fileManager: FileManager,
+        fallbackName: (VFSPath) -> String?
+    ) -> String {
+        let containerID = documents.parent?.lastComponent ?? ""
+        return libraryName(
+            forContainerID: containerID,
+            home: home,
+            languageCode: languageCode,
+            fileManager: fileManager
+        ) ?? fallbackName(documents) ?? containerID.replacingOccurrences(of: "~", with: ".")
     }
 
     /// What iCloud Drive calls the container directory `containerID` — "Pages" for

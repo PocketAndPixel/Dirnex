@@ -9,6 +9,18 @@ extension VFSPath {
         URL(fileURLWithPath: path)
     }
 
+    /// What the OS calls this directory — "Pages" for an app library's `Documents` folder, which is
+    /// the name Finder shows for it.
+    ///
+    /// The non-hermetic half of the library-name lookup, which is why it lives in the app and is
+    /// handed to the core rather than called by it: it only answers for a real iCloud item, so no
+    /// test can synthesize it. Asked only when `bird`'s cached plist could not be read, which on a
+    /// build without Full Disk Access is exactly when the container itself is still listable. Shared
+    /// by the path bar's crumb and ``displayName``, so the two cannot name a library differently.
+    var systemName: String? {
+        try? localURL.resourceValues(forKeys: [.localizedNameKey]).localizedName
+    }
+
     /// What this backend's **root** is called, or `nil` for a backend whose root has no name of its
     /// own (a plain local path, a virtual listing).
     ///
@@ -85,6 +97,10 @@ extension VFSPath {
         // A mount's root is a folder called `Dropbox-Home`, which the sidebar and the path bar have
         // always drawn as the provider's name — or the user's, since the row can be renamed.
         if let mountTitle = CloudPlaceTitle.mountRoot(self) { return mountTitle }
+        // An iCloud app library's `Documents` folder is the row the merged listing calls "Pages", and
+        // the path bar's crumb says so, so F7 one level inside that row offered «Create a folder in
+        // “Documents”» beside a tab chip reading "Documents". The same lookup the crumb makes.
+        if let library = ICloudLocation.libraryTitle(of: self, fallbackName: \.systemName) { return library }
         guard isRoot else { return lastComponent }
         return backendRootTitle ?? lastComponent
     }

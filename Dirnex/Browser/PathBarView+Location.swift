@@ -18,7 +18,7 @@ extension PathBarView {
             // `CloudStorageMounts.mount(containing:)`.
             if let mount = CloudStorageMounts.mount(containing: path) {
                 rebuildCrumbs(for: path, under: mount)
-            } else if let trail = ICloudLocation.trail(for: path, fallbackName: Self.localizedName) {
+            } else if let trail = ICloudLocation.trail(for: path, fallbackName: \.systemName) {
                 // Same judgment one level over: a folder opened from the merged iCloud listing is
                 // a real local directory, but its real path runs through container machinery
                 // (`com~apple~Pages/Documents`) the user never asked to see (PLAN.md §M9).
@@ -94,18 +94,6 @@ extension PathBarView {
             // the same `cloud` symbol its sidebar row carries.
             leadingSymbol: mount.symbolName
         )
-    }
-
-    /// What the OS calls a directory — "Pages" for an app library's `Documents` folder, which is
-    /// the name Finder shows for it.
-    ///
-    /// The non-hermetic half of the library-name lookup, which is why it lives here and is handed
-    /// to the core rather than called by it: it only answers for a real iCloud item, so no test can
-    /// synthesize it. Asked only when `bird`'s cached plist could not be read, which on a build
-    /// without Full Disk Access is exactly when the container itself is still listable.
-    static func localizedName(of directory: VFSPath) -> String? {
-        try? URL(fileURLWithPath: directory.path)
-            .resourceValues(forKeys: [.localizedNameKey]).localizedName
     }
 
     /// Render a location inside iCloud Drive, rooted at the merged listing — `iCloud Drive ›

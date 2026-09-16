@@ -8963,7 +8963,10 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     the name said "at a tree's root level the two are the same string anyway", which held for every
     listing except the one the comment was written to protect. `Panel.cursorDirectory` now answers
     by the row's **depth**, not by its path, and the app maps "the pane's own directory" to
-    `writeDirectory` in one place.
+    `writeDirectory` in one place. The *name* one level down had the same shape through
+    `VFSPath.displayName`: a library's folder is called `Documents`, so F7 inside the Pages row, and
+    the tab chip in list mode, said "Documents" under a crumb reading "Pages". `displayName` now asks
+    `ICloudLocation.libraryTitle(of:)`, the crumb's own lookup.
   - **The refresh needed nothing.** `refreshCurrentDirectory(selecting:)` already routes a tree
     through `refreshTree(selecting:)`, which re-lists every listed directory and lands the cursor on
     the target by identity — so a row created at depth 2 appears at depth 2 with the cursor on it, for

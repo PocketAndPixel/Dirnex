@@ -133,8 +133,12 @@ struct CreateTargetTreeTests {
         let container = try MergedICloud.container()
 
         pane.panel.moveCursor(to: 1) // Pages ▸ Letter.pages
-        #expect(pane.creationDirectory == (try MergedICloud.pagesDocuments(container)))
+        let documents = try MergedICloud.pagesDocuments(container)
+        #expect(pane.creationDirectory == documents)
         #expect(!pane.createsInPaneDirectory)
+        // Named as the row above it is drawn, never as the folder's real name (`VFSPathDisplayNameTests`).
+        #expect(pane.creationDirectoryName == documents.displayName)
+        #expect(pane.creationDirectoryName != "Documents")
 
         pane.panel.moveCursor(to: 3) // Projects ▸ plan.md
         #expect(pane.creationDirectory == container.appending("Projects"))

@@ -1,4 +1,5 @@
 import DirnexCore
+import Foundation
 import Testing
 @testable import Dirnex
 
@@ -91,6 +92,32 @@ struct VFSPathDisplayNameTests {
         let account = VFSPath(backend: .s3Account(Self.bucket.account), path: "/")
 
         #expect(bucket.displayName != account.displayName)
+    }
+
+    /// An app library's `Documents` folder is the row iCloud Drive calls "Pages", so a tab chip or a
+    /// sentence naming it says what the path bar's crumb says: F7 one level inside the row offered
+    /// «Create a folder in “Documents”» until 2026-09-16. Compared with the crumb rather than with
+    /// "Pages", because which source answers (the cached metadata, the system's name, the bundle id)
+    /// depends on this Mac's iCloud state and its Full Disk Access — and whichever it is, the two
+    /// must agree and neither may be the folder's real name.
+    @Test("an iCloud app library's Documents folder is named as its crumb names it")
+    func iCloudLibraryFolder() throws {
+        let containers = VFSPath.local(NSHomeDirectory()).appending("Library").appending(
+            "Mobile Documents"
+        )
+        let documents = containers.appending("com~apple~Pages").appending("Documents")
+        let crumb = try #require(
+            ICloudLocation.trail(for: documents, fallbackName: \.systemName)?.first
+        )
+
+        #expect(documents.displayName == crumb.title)
+        #expect(documents.displayName != "Documents")
+        // Inside the library, and a loose folder that happens to be called `Documents`, keep their
+        // own names.
+        #expect(documents.appending("Drafts").displayName == "Drafts")
+        #expect(
+            containers.appending("com~apple~CloudDocs").appending("Documents").displayName == "Documents"
+        )
     }
 
     @Test("a local path keeps its last component, and has no root title of its own")
