@@ -2027,6 +2027,36 @@ at build time.
   - **A declared type can be wrong about a name, too.** On this Mac `.config` resolves to
     `public.toml`, while 28 of the 29 `.config` files under `~/Dev` are .NET XML. That is the reason syntax routing reads names rather than types
     (`SyntaxLanguage`'s doc comment), met from a new direction.
+  - **And it can be wrong in a way a *type gate* cannot survive: `.ts` is `public.mpeg-2-transport-stream`.**
+    The `.config` note above costs a wrong *grammar*; this one costs the whole surface. Measured
+    2026-09-18 while asking what Quick View's find still could not reach: `.ts` resolves to
+    `public.mpeg-2-transport-stream` and `.mts` to `public.avchd-mpeg-2-transport-stream`, both
+    conforming to `public.movie` — so `isText` refused them, `isUnclaimed` refused them (the type is
+    declared and not dynamic), and **every TypeScript file went to Quick Look to be drawn as a video
+    that will not play**: 52 934 `.ts` and 287 `.mts` under `~/Dev` on this Mac. `.tsx` and `.cts`
+    beside them resolve to *dynamic* types, so they were routed by their bytes and previewed
+    perfectly all along — which is what makes the bug so quiet, since the same project shows most of
+    its TypeScript correctly and a `vite.config.ts` is the odd one out.
+    - **The tell is a grammar that claims an extension the router can never deliver.**
+      `SyntaxLanguage` has claimed `["ts", "tsx", "mts", "cts"]` since M17, and for two of the four
+      nothing could ever reach it. Worth scanning for directly whenever a type gate sits in front of
+      a name-keyed table: build a file per claimed extension and ask the router. Exactly **2 of the
+      148** extensions the scanner claims failed, which is the measurement that made the fix a
+      four-line predicate rather than a redesign.
+    - **The bytes separate the two populations exactly, so nothing has to be guessed.** A real
+      transport stream's first packet is a PAT whose `pointer_field` and `table_id` are both `0x00`,
+      so its first NUL is at **byte 2** — far inside `TextPreview.sniffLength` — and it is refused
+      and goes on to Quick Look, while a TypeScript file decodes. So the fix is not "trust the name"
+      but "let the name buy the file the byte test `isUnclaimed` already buys"
+      (`QuickViewPreviewView.isMistypedSource`). Verified live on both halves of one fixture: the
+      source file drew coloured, selectable text and found 5 matches of `beta`; the stream beside it,
+      same extension, kept Quick Look's media preview.
+    - **State it as a rule over the scanner's table, not as a pair of special cases** — and then do
+      **not** assert the count of 2, which is a fact about macOS's type table rather than about this
+      app: a third one appearing is the rule working, and a test pinning the number would fail in a
+      pass that had done nothing wrong (▸ Testing, an assertion one level broader than its own name).
+      What is asserted instead is the *premise* for the two that matter — that macOS types them as
+      video — which fails loudly if that ever changes.
   - **`.conf` is a family, not a format.** Of 89 `.conf` files in `/etc`, `/opt/homebrew/etc` and
     `~/Dev`: 9 nginx, 23 fontconfig XML, and the rest Apache, `key value` and `key=value`. nginx's own
     files are as often `default.conf` or a bare `default` as `nginx.conf`, so the name cannot find

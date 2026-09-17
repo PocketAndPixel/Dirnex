@@ -178,6 +178,44 @@ extension QuickViewPreviewView {
         return type == .data || type == .unixExecutable || type.isDynamic
     }
 
+    /// Whether the type macOS gives `url` is contradicted by its *name*, so only its bytes can say
+    /// what it is — the same question `isUnclaimed` asks, reached the other way round.
+    ///
+    /// `isUnclaimed` covers a name nothing claims. This covers a name something claims **wrongly**,
+    /// which is not hypothetical: LaunchServices resolves `.ts` to `public.mpeg-2-transport-stream`
+    /// and `.mts` to `public.avchd-mpeg-2-transport-stream` — both conforming to `public.movie` — so
+    /// every TypeScript file went to Quick Look to be drawn as a video that will not play. Measured
+    /// 2026-09-18: **52 934 `.ts` and 287 `.mts`** files under `~/Dev` on this Mac, against `.tsx`
+    /// and `.cts` beside them, which resolve to dynamic types and reached the text preview all along.
+    /// `SyntaxLanguage` has claimed `["ts", "tsx", "mts", "cts"]` with a grammar ready since M17; for
+    /// two of the four the router could never deliver a file to it.
+    ///
+    /// **The scanner's table is the authority**, not a list of extensions repeated here — the same
+    /// inversion `SyntaxLanguage`'s own doc comment argues for reading names rather than types, and
+    /// docs/NOTES.md records for `.config` resolving to `public.toml`. Stated as a rule rather than a
+    /// pair of special cases, it also covers the next extension macOS re-types and the next language
+    /// the scanner learns. Measured 2026-09-18 over all 148 extensions the scanner claims, exactly
+    /// these two cannot otherwise reach the text preview, so today the rule and the pair are the same
+    /// set. That count is deliberately **not** asserted anywhere: it is a fact about macOS's type
+    /// table rather than about this app, so a third one appearing is the rule working, and a test
+    /// pinning it would fail in a pass that had done nothing wrong. What *is* asserted is the premise
+    /// for the two that matter — that macOS types them as video — which fails loudly if that changes.
+    ///
+    /// **A type conforming to `public.text` is never second-guessed**, so this can only ever widen
+    /// what reaches the text preview, never narrow it: a file already routed by `isText` is refused
+    /// here before its name is read.
+    ///
+    /// Nothing is *decided* by the name — it only buys the file the same byte test `isUnclaimed`
+    /// buys, and a real transport stream fails it. Probed against the real `TextPreview`: a
+    /// spec-faithful stream's first NUL is at **byte 2** (the PAT's pointer field), well inside the
+    /// 8 KiB sniff, so it is refused and goes on to Quick Look and its video preview exactly as
+    /// before, while a TypeScript file decodes and is colored, selectable and findable.
+    static func isMistypedSource(_ url: URL) -> Bool {
+        guard let type = contentType(of: url) else { return false }
+        guard !type.conforms(to: .text), !type.conforms(to: .propertyList) else { return false }
+        return SyntaxLanguage.forFile(named: url.lastPathComponent) != nil
+    }
+
     /// Whether `url` is a cloud placeholder (`SF_DATALESS`), whose first read downloads it. A `stat`
     /// that follows a symlink, since the read that would download it follows one too.
     nonisolated static func isPlaceholder(_ url: URL) -> Bool {

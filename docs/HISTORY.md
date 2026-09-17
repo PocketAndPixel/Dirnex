@@ -12923,10 +12923,10 @@ front of a user:
 
 ---
 
-### After M19 — the follow-on log (2026-08-07 → 2026-09-17)
+### After M19 — the follow-on log (2026-08-07 → 2026-09-18)
 
-Eighty-four dated passes that landed outside a milestone of their own, between M18's close on
-2026-08-07 and 2026-09-17: user-reported bugs, three vault features, the tree crossing into S3,
+Eighty-five dated passes that landed outside a milestone of their own, between M18's close on
+2026-08-07 and 2026-09-18: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
 sit here at the end rather than in a numeric slot — and they keep their **newest-first** order,
@@ -12934,6 +12934,66 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-18 — the last surface the find could not reach, and what the question turned up instead.
+VERIFIED LIVE.** Asked for as "also add find to the Quick View preview if possible" — the
+`QLPreviewView` backend, which the entry below left undone as "whose text is in another process".
+Probed before any Swift, and the probe answered a different question than the one asked.
+
+- **The answer to the question as asked is no, and it is now measured rather than asserted.** The
+  backend renders out of process and no public API searches it — but the stronger half is what
+  *reaches* it. Reproducing `show`'s routing chain predicate for predicate over 628 000 real files
+  under `~/Dev`, `~/Documents`, `~/Downloads`, `~/Desktop`, `~/Pictures`, `~/Music` and `~/Movies`:
+  549 953 land on a surface that already finds, and the 78 574 that do not are video, audio,
+  archives, binaries, certificates, fonts and 3D models — **nothing with findable text**. So the
+  item is closed as *cannot, and need not*, rather than left open. A certificate is the one arguable
+  case and was left alone deliberately: a `.pem` is base64 armor, and Quick Look's certificate panel
+  is more useful than its own source.
+- **What the same probe found is that 53 000 files on this Mac had no find because they were never
+  text.** `.ts` resolves to `public.mpeg-2-transport-stream` and `.mts` to
+  `public.avchd-mpeg-2-transport-stream`, both conforming to `public.movie`, so every TypeScript file
+  went to Quick Look to be drawn as a video that will not play — 52 934 `.ts` and 287 `.mts` under
+  `~/Dev`. `.tsx` and `.cts` beside them resolve to *dynamic* types and reached the text preview all
+  along, which is why it stayed quiet: most of a project's TypeScript previews correctly and the
+  `vite.config.ts` is the odd one out. `SyntaxLanguage` has claimed all four with a grammar since
+  M17; for two of them the router could never deliver a file to it.
+- **The fix is four lines and is stated as a rule, not as two special cases.**
+  `QuickViewPreviewView.isMistypedSource` asks whether a *name* a grammar claims is contradicted by
+  a declared, non-text type, and routes such a file into the branch `isUnclaimed` already owns —
+  where the **bytes** decide and a binary goes on to Quick Look. Nothing is decided by the name: it
+  only buys the file the byte test. Measured over all 148 extensions the scanner claims, exactly
+  these two need it today, so the rule and the pair are the same set — and that count is deliberately
+  **not** asserted, being a fact about macOS's type table rather than about this app (a third one
+  appearing is the rule working, and a test pinning the number would fail a pass that did nothing
+  wrong). The premise *is* asserted, so a macOS that re-types `.ts` fails loudly.
+- **The control that makes it safe is a real transport stream, built to spec rather than captured.**
+  Packet one is a PAT whose `pointer_field` and `table_id` are both `0x00`, so the first NUL is at
+  **byte 2**, far inside `TextPreview.sniffLength`. A fixture holding both populations under the same
+  extension — and both typed `public.mpeg-2-transport-stream`, so only the bytes separate them — is
+  what the live run drove.
+
+Tests: 5 app in a new suite, no core change. Three controls, each failing only its own test and no
+other suite: the predicate neutered to always-false (3 issues, both TypeScript tests), the grammar
+check dropped (6 issues, all in "a binary no grammar claims still goes to Quick Look"), and the text
+guard dropped (6 issues, all in "a file whose type already says what it is is not second-guessed") —
+the last two being the narrowness halves, without which "narrow" quietly becomes "show everything as
+text". The always-false control is deliberately the *permissive* spelling, so it can only take the
+old Quick Look branch and can raise no dialog.
+Validation: both linters, 3 646 core tests (unchanged), 1 366 app tests — 1 361 before, plus exactly
+these 5 — with the one pre-existing known issue. No new strings, so all 14 languages carry over.
+
+Live, in the Debug build launched by path (`pgrep` read back, and `isMistypedSource` demangled out of
+`Dirnex.debug.dylib` to be sure it was not a stale binary). `vite.config.ts` drew as **coloured,
+selectable text** where it had drawn a video icon; ⌥⌘F over it read **"1 of 5 matches"** with the
+current one orange and the other four in the find yellow, the syntax colours intact around them, and
+↓ read "2 of 5" with the orange moved on. Then the control on the same fixture: `clip.ts`, the real
+stream, kept **Quick Look's media preview** and took the find bar away with it.
+
+**Not verified live:** a `.mts` file, whose type differs from `.ts` only in name; a physical Esc; a
+cloud-placeholder `.ts`, which the branch refuses to read by design (`refusingPlaceholders`). **Left
+undone:** find in the `QLPreviewView` backend, now closed as measured-impossible rather than pending;
+Return stepping to the next match rather than handing the keyboard back; the menu item's title, which
+stays "Filter"; and case-sensitive, whole-word or pattern search.
 
 **2026-09-17 (later still) — the find reaches the rendered page and the PDF. VERIFIED LIVE.** Asked
 for as "add find to the rendered pages and pdf" — the two surfaces the pass earlier the same day left

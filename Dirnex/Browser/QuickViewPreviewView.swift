@@ -226,9 +226,11 @@ final class QuickViewPreviewView: NSView {
             showConvertedDocument(url)
         } else if let url, Self.isRichTextDocument(url) {
             showRichText(url)
-        } else if let url, Self.isUnclaimed(url) {
+        } else if let url, Self.isUnclaimed(url) || Self.isMistypedSource(url) {
             // `VERSION`, `.gitignore`, `nginx.conf`: no type says what they are, so their bytes do,
-            // and a binary goes on to Quick Look as it did before.
+            // and a binary goes on to Quick Look as it did before. A `.ts` reaches the same test from
+            // the other side — macOS types it as an MPEG-2 transport stream, and its bytes are what
+            // separate the TypeScript file from the video (`isMistypedSource`).
             showText(url, refusingPlaceholders: true)
         } else {
             showQuickLook(url)
