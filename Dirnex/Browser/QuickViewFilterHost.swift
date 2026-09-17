@@ -1,23 +1,22 @@
 import AppKit
 
-/// A Quick View surface with a filter bar over its rows: the CSV table and the JSON tree (split out of
-/// `QuickViewTableView+Filter` when the tree gained a filter, 2026-09-15).
+/// A Quick View surface with a filter bar over it: the CSV table and the JSON tree, whose rows it
+/// narrows (split out of `QuickViewTableView+Filter` when the tree gained a filter, 2026-09-15), and
+/// the text preview, where it finds the text in place (2026-09-17).
 ///
-/// What the bar does is the same over both and lives here once. View ▸ Filter (⌥⌘F) shows it with the
-/// keyboard in its text and the text selected, so typing replaces it. While the keyboard is there:
+/// What the bar does is the same over all three and lives here once. View ▸ Filter (⌥⌘F) shows it with
+/// the keyboard in its text and the text selected, so typing replaces it. While the keyboard is there:
 /// - **Esc** clears the text, and a second Esc puts the bar away. The window's Quick View monitor
 ///   leaves Esc to any field being typed in, so the third, back in the file list, closes Quick View.
-/// - **↑ / ↓** step through the rows the filter left, the strip following. The file list's arrows
-///   are its own again once the keyboard goes back to it.
+/// - **↑ / ↓** step through what the text found: the rows the filter left, the strip following, or
+///   the matches in a text. The file list's arrows are its own again once the keyboard goes back to it.
 /// - **Return** and **Tab** hand the keyboard back to the file list and keep the filter.
 ///
-/// What a filter matches, and what it does to the rows, is each surface's own (`filterChanged`).
+/// What a filter matches, and what it does to the surface, is each surface's own (`filterChanged`).
 @MainActor
 protocol QuickViewFilterHost: NSView {
     var filterBar: QuickViewTableFilterBar { get }
     var scrollView: NSScrollView { get }
-    /// The table or outline whose rows the filter narrows.
-    var filteredRowsView: NSTableView { get }
     /// The scroll view's top edge: against the surface, or under the bar while it is shown.
     var filterTopToSurface: NSLayoutConstraint? { get set }
     var filterTopToBar: NSLayoutConstraint? { get set }
@@ -30,6 +29,17 @@ protocol QuickViewFilterHost: NSView {
     var hasFilterableContent: Bool { get }
     /// Run the filter the bar now describes.
     func filterChanged()
+    /// ↑ or ↓ in the text: move `step` results along what the filter found.
+    func stepFilterResult(by step: Int)
+    /// Where the keyboard goes when the bar lets go of it with nobody to say where the file list is.
+    var keyboardFallback: NSView { get }
+}
+
+/// A filter host whose results are rows: the table and the tree, where ↑ and ↓ move the selection.
+@MainActor
+protocol QuickViewRowFilterHost: QuickViewFilterHost {
+    /// The table or outline whose rows the filter narrows.
+    var filteredRowsView: NSTableView { get }
 }
 
 extension QuickViewFilterHost {
@@ -73,9 +83,9 @@ extension QuickViewFilterHost {
              #selector(NSResponder.insertBacktab(_:)):
             giveKeyboardBack()
         case #selector(NSResponder.moveUp(_:)):
-            stepSelection(by: -1)
+            stepFilterResult(by: -1)
         case #selector(NSResponder.moveDown(_:)):
-            stepSelection(by: 1)
+            stepFilterResult(by: 1)
         default:
             return false
         }
@@ -115,14 +125,24 @@ extension QuickViewFilterHost {
         needsLayout = true
     }
 
-    /// Back to the file list, or — with nobody to say where that is — to the rows, whose arrows the
-    /// window's monitor hands on to the list in any case.
+    /// Back to the file list, or — with nobody to say where that is — to the surface's own content,
+    /// whose arrows the window's monitor hands on to the list in any case.
     func giveKeyboardBack() {
         if let returnKeyboard {
             returnKeyboard()
         } else {
-            window?.makeFirstResponder(filteredRowsView)
+            window?.makeFirstResponder(keyboardFallback)
         }
+    }
+}
+
+extension QuickViewRowFilterHost {
+    var keyboardFallback: NSView {
+        filteredRowsView
+    }
+
+    func stepFilterResult(by step: Int) {
+        stepSelection(by: step)
     }
 
     /// Select the row `step` rows from the selection, within the rows drawn: from the last selected

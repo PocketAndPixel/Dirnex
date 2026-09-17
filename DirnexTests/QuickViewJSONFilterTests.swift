@@ -156,7 +156,7 @@ struct QuickViewJSONFilterTests {
     }
 
     @Test(
-        "View ▸ Filter reaches the tree, a JSON file of records filters as a table, and text as neither"
+        "View ▸ Filter reaches the tree, a JSON file of records filters as a table, and text finds in place"
     )
     func filterableSurfaces() async throws {
         let fixture = try await Fixtures.tree()
@@ -170,7 +170,14 @@ struct QuickViewJSONFilterTests {
         let text = try await QuickViewTableFixtures.loaded(
             try fixture.tree.write("notes.txt", contents: "plain text\n")
         )
-        #expect(text.filterableSurface == nil)
+        #expect(text.filterableSurface === text.textSurface)
+        // The same JSON in the source style is text, and is found in rather than filtered.
+        let source = try await QuickViewTableFixtures.loaded(
+            try fixture.tree.write("source.json", contents: "{\"a\": 1}\n"),
+            style: .source
+        )
+        #expect(source.treeSurface?.isHidden != false)
+        #expect(source.filterableSurface === source.textSurface)
     }
 }
 

@@ -2219,6 +2219,41 @@ at build time.
     ~20 ms to install it, against 0.47 ms to assign the same text as a plain `String`. Prefer
     `textStorage` over the TextKit-2 spelling anyway: it is non-`nil` in both generations, where
     `textContentStorage?.textStorage?` fails as a **blank preview** if either optional is ever `nil`.
+- **`NSTextView` under TextKit 2 stores rendering attributes and draws none of them, and reading them
+  back succeeds.** Found 2026-09-17 building find in Quick View's text preview. Match highlights added
+  with `textLayoutManager.addRenderingAttribute(.backgroundColor/.foregroundColor, …)` never appeared
+  in the running app, and three follow-ups changed nothing: `invalidateLayout(for:)`,
+  `invalidateRenderingAttributes(for:)`, and `needsDisplay` on the view and its subviews plus
+  `layoutViewport()`. Stderr from the binary run from a shell showed the attributes being added over
+  the visible matches every time. Every app test passed meanwhile, because they read the attributes
+  back with `enumerateRenderingAttributes`, which answers with exactly what was stored. The same colors
+  written into `textStorage` drew at once, and TextKit 2 stayed on (`textLayoutManager` non-`nil`), so
+  the find keeps each match's own colors and puts them back when the highlight comes off
+  (`QuickViewTextView+Find`).
+  - **Nothing but the running app could judge this.** A probe's `cacheDisplay` into a bitmap captured
+    nothing of a TextKit 2 text view (no glyph pixels either, so it was not about the highlights), and
+    a probe window screenshotted with computer-use showed no text at all. Test what a highlight writes,
+    and look at the app for whether it draws.
+  - **A formatted document in Dark Mode turns plain black text white.** With
+    `usesAdaptiveColorMappingForDarkAppearance` on (RTF, RTFD, OpenDocument), black match text on the
+    find yellow came out white on yellow and could not be read, while `findHighlightColor` and
+    `systemOrange` came through unchanged. A named dynamic color (`NSColor(name:dynamicProvider:)`,
+    type `.catalog`) is left alone like them.
+- **Under TextKit 2, where a range far into a large document lies is an estimate that moves after it is
+  scrolled to, so no single scroll lands on it.** Measured 2026-09-17 in the running app on a 4 MB
+  text preview, jumping from the first match to the last: `scrollRangeToVisible` returned in **1 ms**
+  and left the match off screen; `textViewportLayoutController.relocateViewport(to:)` took **0.6 s**
+  and scrolling to its offset plus `layoutViewport()` another 0.26 s, still off screen; and
+  `ensureLayout` from the start of the document to the match took **1.8 s** and missed as well. A trace
+  of each step showed why. The match's frame moved from y = 2 269 415 to 2 299 112 within half a
+  second, and a scroll to the new frame did not show up in `documentVisibleRect` until later turns,
+  because the view's height lagged the laid-out height. What converges is the system's own scroll and
+  then a check a few turns later: if the range's frame (`enumerateTextSegments`) is not visible,
+  `scrollToVisible` it and look again, up to a bound. It lands within a few tens of milliseconds and
+  costs nothing for a match already near the screen.
+  - **A probe disagreed with the app by three orders of magnitude.** A scratch app measured
+    `scrollRangeToVisible` at 3.7–4.6 s for the same file, against 1 ms in Dirnex, and its screenshot
+    drew no text at all, so what it measured was its own text view. Time TextKit in the app's own view.
 - **An overlay does not disable the `NSSplitView` divider it covers.** The split view keeps its drag
   region *and* its resize cursor whatever is drawn on top, so a full-window preview showed a `< | >`
   cursor over a photograph and a drag there resized two panes nobody could see — the divider was

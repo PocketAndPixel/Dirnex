@@ -3,7 +3,8 @@ import DirnexCore
 
 /// The bar over Quick View's table or tree that narrows it to what contains some text (2026-09-15): a
 /// picker — a column for the table, keys or names or values for the tree — the text, how many rows or
-/// values are left, and a button to put it away.
+/// values are left, and a button to put it away. Over a text preview it finds rather than narrows
+/// (2026-09-17): no picker, and the count says which match is the current one (`useForFinding`).
 ///
 /// It reports and decides nothing. The surface runs the filter (`QuickViewTableView+Filter`,
 /// `QuickViewTreeView+Filter`) and `QuickViewFilterHost` owns what each key does, so the bar can be
@@ -138,6 +139,52 @@ final class QuickViewTableFilterBar: NSVisualEffectView, NSSearchFieldDelegate {
             columnPicker.menu?.addItem(item)
         }
         columnPicker.selectItem(withTag: Self.allColumnsTag)
+    }
+
+    /// Set the bar up to find in a text: nothing to pick, and the field and close button named for
+    /// finding.
+    func useForFinding() {
+        columnPicker.isHidden = true
+        field.placeholderString = String(
+            localized: "Find in Text",
+            comment: "Quick View text find: placeholder of the text field."
+        )
+        let closeTitle = String(
+            localized: "Close Find Bar",
+            comment: "Quick View text find: tooltip and accessibility label of the close button."
+        )
+        closeButton.toolTip = closeTitle
+        closeButton.image?.accessibilityDescription = closeTitle
+        closeButton.setAccessibilityLabel(closeTitle)
+    }
+
+    /// "3 of 17 matches", "3 of 100 000+ matches" when the search stopped at its limit, "No matches",
+    /// or nothing while no text is typed. `current` counts from 1.
+    func showMatchCount(current: Int, of total: Int, isComplete: Bool, finding: Bool) {
+        guard finding else {
+            countLabel.stringValue = ""
+            return
+        }
+        guard total > 0 else {
+            countLabel.stringValue = String(
+                localized: "No matches",
+                comment: "Quick View text find: the count when the text is found nowhere in the file."
+            )
+            return
+        }
+        countLabel.stringValue = isComplete ? String(
+            localized: "\(current) of \(total) matches",
+            comment: """
+            Quick View text find: which match is the current one. %1$lld is the current match, of \
+            %2$lld in the file. Plural on the second.
+            """
+        ) : String(
+            localized: "\(current) of \(total)+ matches",
+            comment: """
+            Quick View text find: which match is the current one, when the search stopped at its limit \
+            with more in the file. %1$lld is the current match, of more than %2$lld. Plural on the second.
+            """
+        )
     }
 
     /// "12 of 3000 rows", or nothing while no text is typed.

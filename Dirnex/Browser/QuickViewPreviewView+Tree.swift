@@ -94,14 +94,18 @@ extension QuickViewPreviewView {
         }
     }
 
-    /// The table or tree on screen that View ▸ Filter would filter, or `nil` when the surface is showing
-    /// anything else — the one predicate the command and its menu item both ask.
+    /// The table, tree or text on screen that View ▸ Filter would filter or find in, or `nil` when the
+    /// surface is showing anything else — the one predicate the command and its menu item both ask.
     var filterableSurface: (any QuickViewFilterHost)? {
         if let filterableTable { return filterableTable }
-        guard placeholderCard?.isHidden != false,
-              let treeSurface, !treeSurface.isHidden, treeSurface.document != nil
-        else { return nil }
-        return treeSurface
+        guard placeholderCard?.isHidden != false else { return nil }
+        if let treeSurface, !treeSurface.isHidden, treeSurface.document != nil {
+            return treeSurface
+        }
+        if let textSurface, !textSurface.isHidden, textSurface.hasFilterableContent {
+            return textSurface
+        }
+        return nil
     }
 
     func standDownTree() {

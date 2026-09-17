@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-17)
 
-Eighty-two dated passes that landed outside a milestone of their own, between M18's close on
+Eighty-three dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-17: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12934,6 +12934,67 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-17 (later) — Quick View finds text in the text preview. VERIFIED LIVE.** Asked for as "can we
+make a search in the preview?", with a screenshot of `com.apple.networkextension.plist` as source text,
+and three choices settled first: find in place (every match highlighted, one current, stepped through)
+rather than filtering lines; the table's own bar on ⌥⌘F rather than the system find bar, whose
+keyboard model Quick View does not share and whose ⌘G is Places; and every text surface in this pass
+(source text, plists, CSV as source, RTF and OpenDocument text) but not rendered pages or PDFs.
+
+- **`TextFindMatches` (core)** finds a `FilterQuery` in a text by the filters' own rule (case ignored,
+  accents counted, ASCII a byte at a time, anything else by character) and answers in UTF-16 offsets,
+  counted during the scan: mapping 145 000 `String.Index` ranges to `NSRange` had cost 17 ms on a 4 MB
+  file. It stops at 100 000 matches and says so, reads a cancellation flag, and does the arithmetic of
+  stepping with wraparound, where a search starts, and which matches overlap what is on screen. Release
+  build, over the 4 MB catalog: 4–7 ms for an ASCII query, 130–190 ms for Cyrillic or CJK. 12 tests, one
+  holding both branches to the filters' marks.
+- **The app half.** `QuickViewFilterHost` split into the bar's shared behaviour and
+  `QuickViewRowFilterHost`, so ↑ and ↓ step rows in the table and tree and matches in the text.
+  `QuickViewTextView+Find` runs the search off the main actor over a copy of the text, makes the first
+  match from the reader's place current (from the current match while typing refines the query),
+  highlights only the matches within 2 000 UTF-16 units of the viewport, updating as it scrolls, and
+  counts "3 of 17 matches", "No matches", or "3 of 100 000+ matches". A new file, a style switch or
+  clearing the text takes it all away. The bar hides its picker and says "Find in Text"; it is exempt
+  from the surface's mouse swallow while it is up. View ▸ Filter stays one command and gains text,
+  source and matches as keywords. Five strings in all 14 languages, the counts with plurals.
+- **Three things only the running app showed, each with every test green.** TextKit 2 rendering
+  attributes, the first way the highlights were drawn, are stored by `NSTextView` and never painted:
+  not after invalidating the layout, the rendering attributes or the display, while reading them back
+  answered exactly what was stored. The colors now go into the text storage, with each match's own
+  colors kept run by run and put back. A match far into a large file did not land on screen with any
+  single scroll, because its position is an estimate that moves after scrolling to it: on the 4 MB
+  file `scrollRangeToVisible` took 1 ms, relocating the viewport 0.9 s and laying out everything above
+  the match 1.8 s, and all three came to rest off screen. The system's scroll plus corrections on later
+  turns converges. And in a formatted document in Dark Mode, adaptive color mapping turned black match
+  text white on the yellow; a named dynamic black is left alone (docs/NOTES.md ▸ AppKit, twice).
+
+Tests: 12 core, 13 app in a new suite, and two existing tests that asserted a text preview could not be
+filtered now assert that it finds, one of them over JSON in the source style too. Controls: five core, each failing only its own tests (a four-byte scalar counted as
+one UTF-16 unit, the limit off by one, cancellation ignored, no wraparound, the character branch counting
+characters as units). Ten app, nine of which failed only what they aimed at: originals never kept (5 tests, since nothing then comes off), the
+highlight removed without its colors put back (the restore test), every match highlighted rather than
+those near the screen, refining starting from the top (once its fixture stopped being one where both
+rules land on the same match, which left the first run inert), a new file keeping the find, the bar not
+exempt from the swallow, plain black match text, text not filterable (3), and the previous current
+match not recoloured. One stayed inert: removing the settling corrections, since the test window is
+never on screen and the first scroll lands exactly there. The live A/B is its evidence, the build
+without them logging the last match off screen and the build with them showing it. Validation: both
+linters, all four CI scripts (1 039 localization keys), 3 635 core tests, and the app suite (1 337
+tests, 1 222 executed with the live-server suites skipped, one pre-existing known issue).
+
+Live, in the Debug build launched by path. Full Window over the plist: `cf$uid` counted "1 of 2 285
+matches", the first in orange and the rest in yellow with black text; ↓ twice made it "3 of 2 285"
+with the keyboard still in the field; the field's clear button gave back the file's own colors. A 4 MB
+copy of `Localizable.xcstrings` as `.txt`: `zh-hant` found 1 396, ↑ wrapped to the last one at the end
+of the file, on screen and in orange, and ↓ went back to the first. An RTF in Dark Mode: black on
+yellow and orange, and clearing restored its green word and peach background. Pane mode (⌃Q), as in the
+report: the bar over the left pane, "1 of 2 matches". **Not verified live:** a physical Esc, which the
+tooling cannot send; typing a letter at a time rather than setting the field whole; the light
+appearance; a pinch-zoomed preview. **Left undone:** finding in rendered pages (Markdown, HTML, Office
+documents) and in PDFs, each its own mechanism; Return stepping to the next match, which hands the
+keyboard back as it does over the table; the menu item's title, which stays "Filter"; text past the
+4 MB read limit; and case-sensitive, whole-word or pattern search.
 
 **2026-09-17 — the tree filter no longer quits the app on the second letter. VERIFIED LIVE.** Reported
 with a crash report as "the app crashes when i put a second symbol in the filter, for example vi",

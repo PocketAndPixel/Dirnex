@@ -120,9 +120,7 @@ struct QuickViewTableFilterKeysTests {
         #expect(!surface.filterHasKeyboard)
     }
 
-    @Test(
-        "View ▸ Filter reaches the window's action on ⌥⌘F, and a table can be filtered where text cannot"
-    )
+    @Test("View ▸ Filter reaches the window's action on ⌥⌘F, over a table and over a text alike")
     func command() async throws {
         let action = #selector(BrowserWindowController.filterQuickViewTable(_:))
         #expect(CommandBinding.selector(for: "view.quickViewFilterTable") == action)
@@ -141,6 +139,6 @@ struct QuickViewTableFilterKeysTests {
             try fixture.tree.write("notes.txt", contents: "plain text\n")
         )
         #expect(text.filterableTable == nil)
-        #expect(text.filterableSurface == nil)
+        #expect(text.filterableSurface === text.textSurface)
     }
 }

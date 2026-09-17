@@ -1,7 +1,7 @@
 import AppKit
 
 /// View ▸ Filter (⌥⌘F): the bar that narrows a table or a JSON tree in Quick View to what contains some
-/// text (2026-09-15). Everything about the filter itself is the surface's (`QuickViewFilterHost`); this
+/// text (2026-09-15), and that finds text in place in a text preview (2026-09-17). Everything about the filter itself is the surface's (`QuickViewFilterHost`); this
 /// is the window's half, for the reason every Quick View command is the window's — at full size the
 /// preview is a sibling of the panes, so a pane-hosted selector has no target once somebody clicks
 /// into it. The selector and the command's id keep the name they had when only a table could be
@@ -18,7 +18,7 @@ extension BrowserWindowController {
         surface.beginFiltering()
     }
 
-    /// Whether there is a table or a tree on screen to filter — the menu item's enabled state, asked
+    /// Whether there is a table, a tree or a text on screen to filter — the menu item's enabled state, asked
     /// through the same property the action reaches the surface by.
     var canFilterQuickViewTable: Bool {
         visibleQuickViewSurface?.filterableSurface != nil

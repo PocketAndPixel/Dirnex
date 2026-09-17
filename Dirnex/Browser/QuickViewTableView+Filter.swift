@@ -17,7 +17,7 @@ import DirnexCore
 ///
 /// What the bar's keys do — Esc, Return, Tab, ↑ and ↓ — is `QuickViewFilterHost`'s, which the JSON
 /// tree shares.
-extension QuickViewTableView: QuickViewFilterHost {
+extension QuickViewTableView: QuickViewRowFilterHost {
     var filteredRowsView: NSTableView { tableView }
 
     var hasFilterableContent: Bool { table != nil }

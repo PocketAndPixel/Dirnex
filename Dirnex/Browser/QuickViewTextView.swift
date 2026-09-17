@@ -19,14 +19,46 @@ final class QuickViewDocumentTextView: NSTextView {}
 /// `NSTextView` implements those itself.
 @MainActor
 final class QuickViewTextView: NSView {
-    private let scrollView = NSScrollView()
-    private let textView = QuickViewDocumentTextView()
+    let scrollView = NSScrollView()
+    let textView = QuickViewDocumentTextView()
     /// Shown only for a file too big to read whole — a preview that stops early without saying so
     /// is a preview that lies about where the file ends.
     private let truncationNotice = NSVisualEffectView()
 
     /// The view the surface must let the mouse reach for a selection drag to work at all.
     var interactiveSubtree: NSView { scrollView }
+
+    // Finding in the text (`QuickViewTextView+Find`), stored here because an extension cannot.
+
+    /// The bar over the text, hidden until ⌥⌘F.
+    let filterBar = QuickViewTableFilterBar()
+    /// The text on screen as a value a search can read off the main actor: the text storage is mutable
+    /// and belongs to the main actor, so a search never reads it.
+    var searchableText = ""
+    /// What the text in the bar found, or `nil` while none is typed.
+    var findMatches: TextFindMatches?
+    /// Which of `findMatches` is the current one.
+    var currentMatch: Int?
+    /// The matches drawn highlighted — those around what is on screen, not all of them.
+    var highlightedMatches: Range<Int> = 0..<0
+    /// Each highlighted match's own colors, put back when its highlight comes off.
+    var highlightOriginals: [Int: [OriginalColors]] = [:]
+    /// Set while a highlight update for a scroll is waiting for the next turn.
+    var isHighlightUpdateScheduled = false
+    /// Bumped by every reveal of a match, so the corrections an older one scheduled stand down.
+    var revealGeneration = 0
+    /// Bumped by every change to the text in the bar and every new file, so a search landing after
+    /// either is discarded.
+    var filterGeneration = 0
+    /// The last search sent off the main actor — what a test awaits to know it has landed.
+    var filterTask: Task<Void, Never>?
+    /// What stops that search early once a newer one makes it pointless.
+    var filterCancellation: CancellationFlag?
+    /// The scroll view's top edge: against the surface, or under the bar while it is shown.
+    var filterTopToSurface: NSLayoutConstraint?
+    var filterTopToBar: NSLayoutConstraint?
+    /// Where the keyboard goes when the bar lets go of it: the file list the arrows walk.
+    var returnKeyboard: (() -> Void)?
 
     /// Set on the view *and* into the attributed string: `setAttributedString` replaces every
     /// attribute, so the font the view carries stops governing the moment a document is installed
@@ -41,6 +73,8 @@ final class QuickViewTextView: NSView {
         translatesAutoresizingMaskIntoConstraints = false
         buildTextView()
         buildNotice()
+        installFilterBar()
+        installFinding()
     }
 
     @available(*, unavailable)
@@ -56,23 +90,29 @@ final class QuickViewTextView: NSView {
     func show(_ preview: TextPreview, tokens: [SyntaxToken], columns: [DelimitedFieldSpan] = []) {
         let text = attributed(preview.text, tokens: tokens)
         colorColumns(columns, in: text)
-        present(text, asDocument: false)
+        present(text, searchable: preview.text, asDocument: false)
         truncationNotice.isHidden = !preview.isTruncated
     }
 
     /// Show a formatted document — RTF, RTFD, OpenDocument text — with its own fonts and colors.
     func showRichText(_ document: NSAttributedString) {
-        present(document, asDocument: true)
+        // A native copy, so the search reads its own value rather than the document's string.
+        var searchable = document.string
+        searchable.makeContiguousUTF8()
+        present(document, searchable: searchable, asDocument: true)
         truncationNotice.isHidden = true
     }
 
-    /// Install `text` and reset everything a previous file may have left behind.
+    /// Install `text` and reset everything a previous file may have left behind, the find bar included:
+    /// its matches were in the previous file.
     ///
     /// A document's colors were chosen on white paper, so black body text would vanish on a dark
     /// background: adaptive color mapping — what TextEdit does — maps them into the appearance.
     /// It is **off** for source text, whose colors are the syntax theme's own and already resolve per
     /// appearance, where a second mapping over them would shift every hue.
-    private func present(_ text: NSAttributedString, asDocument: Bool) {
+    private func present(_ text: NSAttributedString, searchable: String, asDocument: Bool) {
+        resetFilter()
+        searchableText = searchable
         textView.usesAdaptiveColorMappingForDarkAppearance = asDocument
         textView.textContainerInset = asDocument ? Self.documentInset : Self.sourceInset
         textView.textStorage?.setAttributedString(text)
@@ -149,6 +189,8 @@ final class QuickViewTextView: NSView {
     }
 
     func clearText() {
+        resetFilter()
+        searchableText = ""
         textView.string = ""
         truncationNotice.isHidden = true
     }
@@ -192,10 +234,12 @@ final class QuickViewTextView: NSView {
         scrollView.maxMagnification = CGFloat(QuickViewZoom.levels.last ?? 1)
         scrollView.documentView = textView
         addSubview(scrollView)
+        let top = scrollView.topAnchor.constraint(equalTo: topAnchor)
+        filterTopToSurface = top
         NSLayoutConstraint.activate([
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            scrollView.topAnchor.constraint(equalTo: topAnchor),
+            top,
             scrollView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
     }

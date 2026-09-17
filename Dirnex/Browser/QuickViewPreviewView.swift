@@ -320,6 +320,8 @@ final class QuickViewPreviewView: NSView {
     /// taller than the surface **scrolls at all**, which is the whole of §M16. An image's scroll view
     /// joined them with zoom (2026-09-15): a zoomed photograph has to be panned and pinched, and a
     /// click it does not use travels up its responder chain to this view's own swallowing handlers.
+    /// The find bar over the text is exempt beside it; a hidden bar is not, so the exemption lasts as
+    /// long as the bar is up.
     /// All of them consume what they handle, which is what separates them from the remote view. The header keeps the
     /// mouse too — as do the placeholder card's Download and Stop buttons, which are the only way to
     /// ask for a large remote file or call one off. The *buttons* are exempt and not the card, so the
@@ -331,6 +333,7 @@ final class QuickViewPreviewView: NSView {
                 pdfView,
                 imageScrollView,
                 textSurface?.interactiveSubtree,
+                textSurface?.filterBar,
                 webSurface?.interactiveSubtree,
                 tableSurface,
                 treeSurface,

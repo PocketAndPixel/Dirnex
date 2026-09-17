@@ -186,7 +186,7 @@ enum QuickViewTableFilterFixtures {
     }
 
     /// The field editor typing into the bar, opening the bar first if it is not up.
-    static func editor(of surface: QuickViewTableView) throws -> NSTextView {
+    static func editor(of surface: some QuickViewFilterHost) throws -> NSTextView {
         if !surface.filterHasKeyboard { surface.beginFiltering() }
         let editor = try #require(surface.window?.firstResponder as? NSTextView)
         #expect(editor.isFieldEditor)
@@ -194,7 +194,7 @@ enum QuickViewTableFilterFixtures {
     }
 
     /// Replace the bar's text with `text` as typing would, and wait for the filter to land.
-    static func type(_ text: String, into surface: QuickViewTableView) async throws {
+    static func type(_ text: String, into surface: some QuickViewFilterHost) async throws {
         let editor = try editor(of: surface)
         editor.selectAll(nil)
         if text.isEmpty {

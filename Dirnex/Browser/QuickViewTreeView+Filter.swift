@@ -16,7 +16,7 @@ import DirnexCore
 /// of updates: opening rows one by one cost an outline view 62 ms a thousand and 1.3 s for twenty
 /// thousand, and a batch a third to a ninth of that (measured). Clearing the text gives back the rows
 /// that were open before the filter, with the selected value opened into view.
-extension QuickViewTreeView: QuickViewFilterHost {
+extension QuickViewTreeView: QuickViewRowFilterHost {
     var filteredRowsView: NSTableView { outlineView }
 
     var hasFilterableContent: Bool { document != nil }
