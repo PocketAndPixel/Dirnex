@@ -31,6 +31,32 @@ struct QuickViewJSONFilterTests {
         #expect(surface.filterBar.countLabel.stringValue.isEmpty)
     }
 
+    /// Closing the tree for a new filter fetches the rows the outline view counted and never drew, here
+    /// the three keys below a hundred open entries. It used to fetch them once the narrower filter had
+    /// taken them away, and the app died on the second letter typed (2026-09-17). A regression kills
+    /// the test host rather than failing this test, so nothing may read the rows between the two
+    /// filters: reading them fetches them.
+    @Test("narrowing the text past rows the tree never drew lists what is left")
+    func narrowingPastUndrawnRows() async throws {
+        let tree = try TempDirectory()
+        defer { tree.cleanup() }
+        let entries = (0..<100).map { "\"vi\($0)\"" }.joined(separator: ", ")
+        let preview = try await QuickViewTableFixtures.loaded(try tree.write(
+            "narrowing.json",
+            contents: #"{"items": [\#(entries)], "vx": 1, "vy": 2, "vz": 3}"#
+        ))
+        let surface = try #require(preview.treeSurface)
+        try await Fixtures.type("v", into: surface)
+        #expect(surface.outlineView.numberOfRows == 104)
+
+        try await Fixtures.type("vi", into: surface)
+        let rows = Fixtures.rows(surface)
+        #expect(rows.count == 101)
+        #expect(rows.first == "items [100]")
+        #expect(rows.last == #"[99] "vi99""#)
+        #expect(surface.outlineView.selectedRow == 1)
+    }
+
     /// The user's choice: finding `paths` finds what it holds.
     @Test("a matched container keeps its contents, closed, and opens to all of them")
     func containerKeepsItsContents() async throws {

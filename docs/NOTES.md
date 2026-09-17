@@ -2063,10 +2063,26 @@ at build time.
   2026-09-15 before the JSON tree's filter was written: open rows survived a reload over the same
   data, and an item reloaded away and then back came back closed. So a filter that hides a branch
   forgets which of its rows were open, and giving the tree back needs them recorded before filtering
-  (`QuickViewJSONTreeView+Filter`). `expandItem` one row at a time cost 62 ms for a thousand rows,
+  (`QuickViewTreeView+Filter`). `expandItem` one row at a time cost 62 ms for a thousand rows,
   287 ms for five thousand and 1.3 s for twenty thousand; the same calls between `beginUpdates` and
   `endUpdates` cost 6.8 ms, 48 ms and 390 ms. `collapseItem(nil, collapseChildren: true)` closes the
   whole tree in one call.
+- **`collapseItem(nil, collapseChildren: true)` fetches rows the outline view counted and never asked
+  for, from whatever the data source answers now, so change the model after it returns.** Found
+  2026-09-17 as a crash on the second letter typed into Quick View's tree filter: `EXC_BREAKPOINT` in
+  `outlineView(_:child:ofItem:)`, under AppKit's `loadItemEntryLazyInfoIfNecessary` and
+  `_batchCollapseItemsWithItemEntries`. An outline view records how many children an open row has and
+  fetches each child only when something asks for its row, so the rows below a big open branch that
+  were never drawn stay unfetched. `applyFilter` swapped in the new filter first and collapsed after,
+  and on a 45 KB property list `v` → `vi` asked for top-level child 3 of a list that now held 1. The
+  first letter survived only because `v` still listed all four top-level keys.
+  - Measured in a scratch harness with the real `PropertyListTree` and a copy of the data source:
+    collapsing first fetched nothing out of range; collapsing after the swap fetched the stale index
+    every time.
+  - `reloadData` does not do this. Emptying or replacing the model and then reloading fetched no
+    stale row (0 and 1 child calls), which is why `show` and `clearDocument` were already safe.
+  - The regression test is a crash, not a failure: with the fix reverted, the test host died with
+    `Index out of range`, and the relaunch reported `0 tests in 1 suite passed`.
 - **The shared `QLPreviewPanel` (⌘Y) is key while open**, so arrows navigate its preview items,
   not the table. `QLPreviewView` is not opaque and `init(frame:style:)` is failable — an
   embedded preview needs an opaque backing or the covered view bleeds through. It also only

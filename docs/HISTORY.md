@@ -12923,10 +12923,10 @@ front of a user:
 
 ---
 
-### After M19 — the follow-on log (2026-08-07 → 2026-09-16)
+### After M19 — the follow-on log (2026-08-07 → 2026-09-17)
 
-Eighty dated passes that landed outside a milestone of their own, between M18's close on
-2026-08-07 and 2026-09-16: user-reported bugs, three vault features, the tree crossing into S3,
+Eighty-two dated passes that landed outside a milestone of their own, between M18's close on
+2026-08-07 and 2026-09-17: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
 sit here at the end rather than in a numeric slot — and they keep their **newest-first** order,
@@ -12934,6 +12934,24 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-17 — the tree filter no longer quits the app on the second letter. VERIFIED LIVE.** Reported
+with a crash report as "the app crashes when i put a second symbol in the filter, for example vi",
+over `com.apple.networkextension.plist` in 1.0.11-beta.22. Four reports from the day, all the same:
+`EXC_BREAKPOINT` in an `@objc` thunk whose source string is `QuickViewTreeView+Rows.swift` line 52,
+`outlineView(_:child:ofItem:)`, under AppKit's `loadItemEntryLazyInfoIfNecessary` inside
+`collapseItem(nil, collapseChildren: true)`. `applyFilter` swapped in the new filter, its children and
+its top level first and collapsed after, and the collapse fetches rows the outline view had counted and
+never drawn, from the new answers: after `v`, `$top` and `$version` sat below 1 300 open rows, and after
+`vi` the top level held one key, so AppKit's request for top-level child 3 ran off `topLevel`. The
+collapse now comes first. A scratch harness with the real `PropertyListTree` and a copy of the data
+source reproduced it on every run and was clean with the order swapped, and it showed `reloadData`
+fetching nothing stale, so `show` and `clearDocument` stay as they are (docs/NOTES.md ▸ AppKit). One
+app test types `v` and then `vi` over a hundred open entries with three keys below them. Control: with
+the old order the test host died with `Index out of range`, a crash report with the same stack as
+the user's, and the relaunch reported `0 tests in 1 suite passed`. Live, in the Debug build on the
+same file: `v` (1 158 values), `vi` (916), `vide`, back to `v`, then `vpn` (6), with no crash. Both
+suites green (3623 core, 1324 app), both linters clean; the core was not touched.
 
 **2026-09-16 (after the CloudDocs container) — a Cloud row's right-click menu opens the place.
 VERIFIED LIVE.** Asked for as "add Open for Cloud items, like the others have it". The iCloud Drive,

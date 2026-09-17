@@ -95,11 +95,14 @@ extension QuickViewTreeView: QuickViewFilterHost {
         if filter == nil {
             expandedBeforeFilter = openValues
         }
+        // Closed while the data source still answers for the rows on screen. The collapse fetches the
+        // children the outline view has counted and not yet asked for, rows below a big open branch
+        // that were never drawn, and a narrower filter lists fewer of them (docs/NOTES.md ▸ AppKit).
+        outlineView.collapseItem(nil, collapseChildren: true)
         filter = found
         filterMarking = found == nil ? nil : marking
         filteredChildren = [:]
         topLevel = document.topLevelValues(filteredBy: found)
-        outlineView.collapseItem(nil, collapseChildren: true)
         outlineView.reloadData()
         let opening = found.map {
             document.initialExpansion(rowBudget: Self.filterRowBudget, filteredBy: $0)
