@@ -35,10 +35,9 @@ final class QuickViewTextView: NSView {
     /// The text on screen as a value a search can read off the main actor: the text storage is mutable
     /// and belongs to the main actor, so a search never reads it.
     var searchableText = ""
-    /// What the text in the bar found, or `nil` while none is typed.
-    var findMatches: TextFindMatches?
-    /// Which of `findMatches` is the current one.
-    var currentMatch: Int?
+    /// The matches, the current one and the search in flight — the state every finding surface keeps
+    /// (`QuickViewFind`).
+    let find = QuickViewFind()
     /// The matches drawn highlighted — those around what is on screen, not all of them.
     var highlightedMatches: Range<Int> = 0..<0
     /// Each highlighted match's own colors, put back when its highlight comes off.
@@ -47,13 +46,8 @@ final class QuickViewTextView: NSView {
     var isHighlightUpdateScheduled = false
     /// Bumped by every reveal of a match, so the corrections an older one scheduled stand down.
     var revealGeneration = 0
-    /// Bumped by every change to the text in the bar and every new file, so a search landing after
-    /// either is discarded.
-    var filterGeneration = 0
-    /// The last search sent off the main actor — what a test awaits to know it has landed.
-    var filterTask: Task<Void, Never>?
-    /// What stops that search early once a newer one makes it pointless.
-    var filterCancellation: CancellationFlag?
+    /// The bar shortens the scroll view (`QuickViewFilterHost`).
+    var filterContentView: NSView { scrollView }
     /// The scroll view's top edge: against the surface, or under the bar while it is shown.
     var filterTopToSurface: NSLayoutConstraint?
     var filterTopToBar: NSLayoutConstraint?
@@ -111,7 +105,7 @@ final class QuickViewTextView: NSView {
     /// It is **off** for source text, whose colors are the syntax theme's own and already resolve per
     /// appearance, where a second mapping over them would shift every hue.
     private func present(_ text: NSAttributedString, searchable: String, asDocument: Bool) {
-        resetFilter()
+        resetFind()
         searchableText = searchable
         textView.usesAdaptiveColorMappingForDarkAppearance = asDocument
         textView.textContainerInset = asDocument ? Self.documentInset : Self.sourceInset
@@ -189,7 +183,7 @@ final class QuickViewTextView: NSView {
     }
 
     func clearText() {
-        resetFilter()
+        resetFind()
         searchableText = ""
         textView.string = ""
         truncationNotice.isHidden = true

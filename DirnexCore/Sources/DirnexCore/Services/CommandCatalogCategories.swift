@@ -227,12 +227,13 @@ extension CommandCatalog {
             keywords: [
                 "quick view", "preview", "csv", "tsv", "table", "rows", "json", "xml", "plist",
                 "tree", "keys", "names", "values", "text", "source", "matches",
+                "page", "html", "markdown", "pdf", "document",
                 "filter", "search", "find", "narrow", "option cmd f"
             ],
             // ⌥⌘F beside the ⌘F that Favorites keeps (Total Commander muscle memory): Find-shaped, and
             // free. A ⌘ chord takes nothing from a text field, and the item is disabled whenever the
-            // preview is showing no table, tree or text; over a text it finds in place
-            // (`BrowserWindowController+QuickViewFilter`).
+            // preview is showing none of a table, a tree, a text, a rendered page or a PDF; over the
+            // last three it finds in place (`BrowserWindowController+QuickViewFilter`).
             shortcut: CommandShortcut(key: "f", modifiers: [.command, .option])
         ),
         Command(

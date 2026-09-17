@@ -94,8 +94,13 @@ extension QuickViewPreviewView {
         }
     }
 
-    /// The table, tree or text on screen that View ▸ Filter would filter or find in, or `nil` when the
-    /// surface is showing anything else — the one predicate the command and its menu item both ask.
+    /// The table, tree, text, rendered page or PDF on screen that View ▸ Filter would filter or find
+    /// in, or `nil` when the surface is showing anything else — the one predicate the command and its
+    /// menu item both ask.
+    ///
+    /// The order is the order the backends stand each other down in, so the one on screen is the one
+    /// returned. Quick Look's own view and an image are deliberately absent: neither can be searched
+    /// from here, the first because it renders in another process.
     var filterableSurface: (any QuickViewFilterHost)? {
         if let filterableTable { return filterableTable }
         guard placeholderCard?.isHidden != false else { return nil }
@@ -104,6 +109,12 @@ extension QuickViewPreviewView {
         }
         if let textSurface, !textSurface.isHidden, textSurface.hasFilterableContent {
             return textSurface
+        }
+        if let webSurface, !webSurface.isHidden, webSurface.hasFilterableContent {
+            return webSurface
+        }
+        if let pdfSurface, !pdfSurface.isHidden, pdfSurface.hasFilterableContent {
+            return pdfSurface
         }
         return nil
     }

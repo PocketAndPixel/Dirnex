@@ -2,7 +2,8 @@ import AppKit
 
 /// A Quick View surface with a filter bar over it: the CSV table and the JSON tree, whose rows it
 /// narrows (split out of `QuickViewTableView+Filter` when the tree gained a filter, 2026-09-15), and
-/// the text preview, where it finds the text in place (2026-09-17).
+/// the text preview, where it finds the text in place, joined later the same day by a rendered page
+/// and a PDF, which find in place too (2026-09-17).
 ///
 /// What the bar does is the same over all three and lives here once. View ▸ Filter (⌥⌘F) shows it with
 /// the keyboard in its text and the text selected, so typing replaces it. While the keyboard is there:
@@ -16,8 +17,11 @@ import AppKit
 @MainActor
 protocol QuickViewFilterHost: NSView {
     var filterBar: QuickViewTableFilterBar { get }
-    var scrollView: NSScrollView { get }
-    /// The scroll view's top edge: against the surface, or under the bar while it is shown.
+    /// What the bar sits above and shortens: a scroll view for the rows and the text, the web view
+    /// itself for a rendered page, the `PDFView` for a PDF. Only its top edge is the bar's business,
+    /// which is why this is an `NSView` rather than the scroll view three of the five happen to have.
+    var filterContentView: NSView { get }
+    /// The content view's top edge: against the surface, or under the bar while it is shown.
     var filterTopToSurface: NSLayoutConstraint? { get set }
     var filterTopToBar: NSLayoutConstraint? { get set }
     /// Where the keyboard goes when the bar lets go of it: the file list the arrows walk. Set by
@@ -100,7 +104,7 @@ extension QuickViewFilterHost {
     func installFilterBar() {
         filterBar.isHidden = true
         addSubview(filterBar)
-        filterTopToBar = scrollView.topAnchor.constraint(equalTo: filterBar.bottomAnchor)
+        filterTopToBar = filterContentView.topAnchor.constraint(equalTo: filterBar.bottomAnchor)
         NSLayoutConstraint.activate([
             filterBar.leadingAnchor.constraint(equalTo: leadingAnchor),
             filterBar.trailingAnchor.constraint(equalTo: trailingAnchor),
@@ -114,7 +118,7 @@ extension QuickViewFilterHost {
     func setFilterBarShown(_ shown: Bool) {
         guard filterBar.isHidden == shown else { return }
         filterBar.isHidden = !shown
-        // One off before the other on, so the scroll view is never pinned to both edges at once.
+        // One off before the other on, so the content is never pinned to both edges at once.
         if shown {
             filterTopToSurface?.isActive = false
             filterTopToBar?.isActive = true

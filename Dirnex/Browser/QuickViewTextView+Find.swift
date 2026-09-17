@@ -26,7 +26,7 @@ import DirnexCore
 /// A match off screen is brought into view by the system's scroll and then corrected on later turns
 /// (`revealCurrentMatch`), since under TextKit 2 where a far match lies is an estimate until the text
 /// around it is laid out.
-extension QuickViewTextView: QuickViewFilterHost {
+extension QuickViewTextView: QuickViewFindHost {
     var hasFilterableContent: Bool {
         !searchableText.isEmpty
     }
@@ -35,62 +35,10 @@ extension QuickViewTextView: QuickViewFilterHost {
         textView
     }
 
-    /// Run the search the bar now describes. An empty text clears it at once; anything else is read
-    /// off the main actor, and a search still running for older text is stopped.
-    func filterChanged() {
-        filterGeneration += 1
-        filterCancellation?.isCancelled = true
-        filterCancellation = nil
-        let query = filterBar.query
-        guard !query.isEmpty, !searchableText.isEmpty else {
-            filterTask = nil
-            applyMatches(nil)
-            return
-        }
-        let generation = filterGeneration
-        let text = searchableText
-        let cancellation = CancellationFlag()
-        filterCancellation = cancellation
-        filterTask = Task { [weak self] in
-            let found = await BlockingWork.run {
-                TextFindMatches.find(FilterQuery(query), in: text) { cancellation.isCancelled }
-            }
-            guard let self, generation == filterGeneration, let found else { return }
-            applyMatches(found)
-        }
-    }
-
-    /// Make the match `step` matches along the current one, wrapping past either end, and bring it
-    /// into view.
-    func stepFilterResult(by step: Int) {
-        guard let findMatches, let previous = currentMatch, !findMatches.isEmpty else { return }
-        let next = findMatches.index(previous, steppedBy: step)
-        currentMatch = next
-        editStorage {
-            for index in [previous, next] where highlightedMatches.contains(index) {
-                highlight(index)
-            }
-        }
-        revealCurrentMatch()
-        updateHighlights()
-        showMatchCount()
-    }
-
-    /// No search, no highlights, the bar away, and the keyboard back if it was in the bar — for a new
-    /// file, whose text the matches are not in, and which must not keep a search still running.
-    func resetFilter() {
-        filterGeneration += 1
-        filterCancellation?.isCancelled = true
-        filterCancellation = nil
-        filterTask = nil
-        removeHighlights()
-        findMatches = nil
-        currentMatch = nil
-        let hadKeyboard = filterHasKeyboard
-        filterBar.field.stringValue = ""
-        showMatchCount()
-        setFilterBarShown(false)
-        if hadKeyboard { giveKeyboardBack() }
+    /// The text already on screen, held as a value beside the storage so the search never reads a
+    /// mutable object off the main actor. No round trip, unlike the page and PDF surfaces.
+    func findableText() async -> String {
+        searchableText
     }
 
     /// The bar set up for finding, and the scroll view reporting its moves so the highlights can follow.
@@ -124,31 +72,27 @@ extension QuickViewTextView: QuickViewFilterHost {
     /// Room above and below a match brought into view from nearby.
     private static let revealMargin: CGFloat = 40
 
-    /// What a search found, the current match being the first from where the reader is: the current
-    /// match's start while text is being typed into the bar, and otherwise the top of what is on
-    /// screen.
-    private func applyMatches(_ found: TextFindMatches?) {
-        let current = currentMatch.flatMap { findMatches?.ranges[$0].lowerBound }
-        let anchor = current ?? firstVisibleOffset()
-        removeHighlights()
-        findMatches = found
-        currentMatch = found?.index(atOrAfter: anchor)
-        revealCurrentMatch()
+    /// Draw the matches around what is on screen. Re-colouring the ones already highlighted is what
+    /// moves the orange from the previous current match to the new one after a step; `highlight`
+    /// reads `find.current` to decide which colour each takes.
+    func showFindMatches() {
+        guard find.matches != nil else {
+            removeHighlights()
+            return
+        }
+        editStorage {
+            for index in highlightedMatches { highlight(index) }
+        }
         updateHighlights()
-        showMatchCount()
     }
 
-    private func showMatchCount() {
-        filterBar.showMatchCount(
-            current: (currentMatch ?? 0) + 1,
-            of: findMatches?.count ?? 0,
-            isComplete: findMatches?.isComplete ?? true,
-            finding: findMatches != nil
-        )
+    /// Put every highlighted match's own colors back.
+    func removeFindHighlights() {
+        removeHighlights()
     }
 
     @objc private func visibleTextMoved(_ notification: Notification) {
-        guard findMatches != nil, !isHighlightUpdateScheduled else { return }
+        guard find.matches != nil, !isHighlightUpdateScheduled else { return }
         // Next turn, once the viewport has been laid out for where the text now is.
         isHighlightUpdateScheduled = true
         Task { @MainActor [weak self] in
@@ -161,11 +105,11 @@ extension QuickViewTextView: QuickViewFilterHost {
     /// Highlight the matches around what is on screen, and take the highlight off those no longer
     /// around it.
     private func updateHighlights() {
-        guard let findMatches, let span = visibleSpan() else {
+        guard let matches = find.matches, let span = visibleSpan() else {
             removeHighlights()
             return
         }
-        let wanted = findMatches.indices(overlapping: span)
+        let wanted = matches.indices(overlapping: span)
         let leaving = TextFindMatches.indices(highlightedMatches, notIn: wanted)
         let arriving = TextFindMatches.indices(wanted, notIn: highlightedMatches)
         guard !leaving.isEmpty || !arriving.isEmpty else { return }
@@ -200,7 +144,7 @@ extension QuickViewTextView: QuickViewFilterHost {
         }
         storage.addAttributes(
             [
-                .backgroundColor: index == currentMatch ? Self.currentMatchColor : .findHighlightColor,
+                .backgroundColor: index == find.current ? Self.currentMatchColor : .findHighlightColor,
                 .foregroundColor: Self.matchTextColor
             ],
             range: characters
@@ -248,8 +192,8 @@ extension QuickViewTextView: QuickViewFilterHost {
     /// (0.9 s) both came to rest screens away, and laying out everything above the match first (1.8 s)
     /// missed too, the view's height lagging its layout. What converges is the system's own scroll and
     /// then a few more on later turns, each to the frame the match has by then (`settleReveal`).
-    private func revealCurrentMatch() {
-        guard let currentMatch, let range = matchRange(currentMatch) else { return }
+    func revealCurrentMatch() {
+        guard let current = find.current, let range = matchRange(current) else { return }
         revealGeneration += 1
         textView.scrollRangeToVisible(nsRange(range))
         guard textView.textLayoutManager != nil else { return }
@@ -322,7 +266,7 @@ extension QuickViewTextView: QuickViewFilterHost {
     }
 
     /// The offset of the first text on screen: where a search that has no current match yet begins.
-    private func firstVisibleOffset() -> Int {
+    func findAnchorOffset() async -> Int {
         guard let layoutManager = textView.textLayoutManager, let storage = textView.textContentStorage else {
             return laidOutCharacters()?.lowerBound ?? 0
         }
@@ -339,8 +283,8 @@ extension QuickViewTextView: QuickViewFilterHost {
     /// A match's range, or `nil` for one the text on screen does not reach — a mismatched pair must fail
     /// as a missing highlight rather than raise on a range past the end.
     private func matchRange(_ index: Int) -> Range<Int>? {
-        guard let findMatches, findMatches.ranges.indices.contains(index) else { return nil }
-        let range = findMatches.ranges[index]
+        guard let matches = find.matches, matches.ranges.indices.contains(index) else { return nil }
+        let range = matches.ranges[index]
         return range.upperBound <= (textView.textStorage?.length ?? 0) ? range : nil
     }
 

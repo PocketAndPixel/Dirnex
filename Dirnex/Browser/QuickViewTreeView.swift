@@ -66,6 +66,8 @@ final class QuickViewTreeView: NSView {
     var filterTask: Task<Void, Never>?
     /// What stops that filter early once a newer one makes it pointless.
     var filterCancellation: CancellationFlag?
+    /// The bar shortens the scroll view (`QuickViewFilterHost`).
+    var filterContentView: NSView { scrollView }
     var filterTopToSurface: NSLayoutConstraint?
     var filterTopToBar: NSLayoutConstraint?
     var returnKeyboard: (() -> Void)?

@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-17)
 
-Eighty-three dated passes that landed outside a milestone of their own, between M18's close on
+Eighty-four dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-17: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12934,6 +12934,89 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-17 (later still) — the find reaches the rendered page and the PDF. VERIFIED LIVE.** Asked
+for as "add find to the rendered pages and pdf" — the two surfaces the pass earlier the same day left
+undone, "each its own mechanism". They are, and both were probed before any Swift.
+
+- **One state machine, not three.** `QuickViewFilterHost` split again: `QuickViewFind` holds the
+  matches, the current one and the search in flight, and `QuickViewFindHost` runs everything that is
+  the same over all three surfaces — the search off the main actor, discarding one the reader has
+  moved past, picking the match to make current, stepping with wraparound, the count. Each surface
+  answers only what it alone can: what its text *is* (asked asynchronously, since two of the three
+  are a round trip), how a match is drawn, how one is brought into view, and where a search with no
+  current match begins. The text preview moved onto it unchanged — its 13 tests are the guard.
+  `TextSegmentMap` (core) is the arithmetic both new surfaces need: a global offset back into the
+  piece of a joined text that holds it, which the PDF spends on pages and the page on frames. 11
+  tests, and writing them caught a real defect — an offset landing in a *separator* answered
+  `(index: 1, offset: -1)`, a negative offset bound for `PDFPage.selection(for:)`.
+- **The rendered page** (`QuickViewWebView+Find`, `QuickViewPageFindScript`). The page is read through
+  an isolated content world, which was measured to evaluate and read the DOM with the page's own
+  scripts **off** — so finding neither needs nor grants the JavaScript a preview declines. Matching is
+  `DirnexCore`'s rather than `WKWebView.find`, for two reasons: the bar counts and `WKFindResult`
+  reports only whether *something* was found, and an HTML or Markdown file has a source style one
+  keystroke away that finds by the same rule. Highlighting is the CSS Custom Highlight API, which
+  paints without touching the DOM, so a page cannot be damaged by being searched. A converted **Excel
+  workbook** draws its sheet in a `file://` iframe, which is cross-origin and unreachable from the
+  page — a `WKFrameInfo` captured in `decidePolicyFor` is not, so the frames are searched beside the
+  main document and `TextSegmentMap` cuts the offsets back apart.
+- **The PDF** (`QuickViewPDFSurface`, `+Find`), which is also every Pages, Numbers and Keynote
+  document. `PDFDocument.string` is read once off the main actor and kept — 369–423 ms on a 231-page
+  manual, 1 ms thereafter, and measured safe to read while the main thread lays the same document out.
+  `PDFDocument.findString` is 28× faster and was **refused**: it folds ß against ss, a ﬁ ligature
+  against `fi`, and `cafe` against `café`, where every other surface counts accents. A test in each
+  new suite pins that choice, so reaching for `findString` later goes red. The bare `PDFView` gained a
+  container to carry the bar; `preview.pdfView` still answers the view itself, so nothing that zooms or
+  reads the document changed. `QuickViewPreviewView+QuickLook` was split out in the same pass, the
+  class having reached SwiftLint's `type_body_length`.
+- **One bug only the running app could show, and the suite cannot watch the fix.** The CSS Custom
+  Highlight API does not invalidate the area a highlight used to occupy, so a replaced or cleared match
+  went on being painted: *two* current-match oranges on screen at once while the registry held one. The
+  model was right and the pixels were stale — which is why nine tests reading the registry back through
+  the page's own JavaScript were green against it, and why a `takeSnapshot` probe cleared the exact
+  sequence that was failing (it re-renders rather than reading the screen). A ⌘+ step wiping every
+  stale highlight is what named it. Fixed with a paint nudge on the root reverted by whichever of a
+  frame and a timer comes first — **not** belt and braces: `requestAnimationFrame` never fires in a page
+  that is not rendering, which the one test that *can* watch this caught by finding the page left
+  permanently dimmed (docs/NOTES.md ▸ AppKit, three entries).
+
+Two of the tests were wrong before they were right, both found by their own controls. The page
+fixture settled inside a read that callers also looped over, so the failing path was 80 000 JavaScript
+round trips and a test host that sat idle for ten minutes; and the reload test read the surface before
+the asynchronous reload landed, so it passed with the redraw deleted — it now waits on a marker the
+reload takes with it (docs/NOTES.md ▸ Testing, two entries).
+
+Tests: 11 core in a new suite, 12 + 11 app in two new suites, plus the text preview's 13 unchanged
+through the refactor. Controls: two core (a separator swallowed by the next segment, empty pieces kept)
+and eight app, each failing only its own tests — the PDF page separator dropped (which the *count* test
+still passed, so only the mapping assertion could see it), the page walk counting scripts and hidden
+text, no current-match colour on either surface, a new page keeping the old find, stale highlights not
+taken off before new matches install, the bars not exempt from the surface's mouse swallow, and a
+reload that does not redraw.
+Validation: both linters, all four CI scripts (1 039 localization keys, and **no new strings** — the
+bar's wording is reused, so all 14 languages carry over), 3 646 core tests, 1 361 app tests, one
+pre-existing known issue.
+
+Live, in the Debug build launched by path (`pgrep` read back, and the new JavaScript grepped out of
+`Dirnex.debug.dylib` to be sure it was not a stale binary). Full Window over a three-page PDF: `beta`
+counted "1 of 5 matches", the current one orange and the rest in the find yellow; ↓ three times read
+"4 of 5" and had scrolled to **page 2** with the match on screen, once more "5 of 5" on page 3 over an
+upper-case `BETA`, and once more wrapped to "1 of 5" back on page 1. An HTML page: "1 of 6 matches"
+with the current one orange *inside* the blue `<h1>`, the heading's own colour intact around it, under
+a header reading **(no JavaScript)** — the page's scripts off while the find ran; ↑ wrapped to "6 of 6"
+and scrolled past a 1400 px spacer to bring the last match into view. A Markdown page: "1 of 5
+matches", matching the **rendered** text rather than the source's `**beta**`. Then the A/B that is the
+fix's only evidence: before it, replacing `beta` with `changelog` left all five `beta` highlights
+painted beside the new one; after it, only `changelog` is highlighted and clearing restores the page
+exactly as rendered.
+
+**Not verified live:** a physical Esc, which the tooling cannot send; a multi-sheet Excel workbook,
+having none to hand — the frame route is covered by the probe that measured it and by nothing else;
+typing a letter at a time rather than setting the field whole; the light appearance. **Left undone:**
+finding in the `QLPreviewView` backend, whose text is in another process; Return stepping to the next
+match rather than handing the keyboard back; the menu item's title, which stays "Filter"; a match in a
+PDF that no text layer covers, i.e. a scanned page, which has no text to find; and case-sensitive,
+whole-word or pattern search.
 
 **2026-09-17 (later) — Quick View finds text in the text preview. VERIFIED LIVE.** Asked for as "can we
 make a search in the preview?", with a screenshot of `com.apple.networkextension.plist` as source text,

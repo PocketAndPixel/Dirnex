@@ -18,12 +18,15 @@ extension QuickViewPreviewView {
     /// new document; `false` shows it at its own size, which is what a converted spreadsheet asks for
     /// (`QuickViewPreviewView+Document`). Either way the user can then pinch to zoom in or out.
     func showPDFDocument(_ document: PDFDocument?, fitsWidth: Bool = true) {
-        let pdfView = ensurePDFView()
+        let surface = ensurePDFSurface()
+        let pdfView = surface.pdfView
         standDownQuickLook()
         standDownImage()
         standDownText()
         standDownWeb()
-        pdfView.isHidden = false
+        surface.isHidden = false
+        // The matches were in whatever was on screen before, and its text is not this one's.
+        surface.documentDidChange()
         // A view built a moment ago has no frame yet, and a scale worked out against a zero frame is
         // what the position below would then be relative to.
         content.layoutSubtreeIfNeeded()
@@ -77,7 +80,8 @@ extension QuickViewPreviewView {
     }
 
     func standDownPDF() {
-        pdfView?.isHidden = true
+        pdfSurface?.isHidden = true
+        pdfSurface?.documentDidChange()
         pdfView?.document = nil
     }
 
@@ -90,19 +94,13 @@ extension QuickViewPreviewView {
         return url.pathExtension.caseInsensitiveCompare("pdf") == .orderedSame
     }
 
-    /// Build the PDFKit backend on first use. Continuous single-page layout scrolls a multi-page
-    /// document naturally, and `PDFView` handles pinch-to-zoom itself.
-    private func ensurePDFView() -> PDFView {
-        if let pdfView { return pdfView }
-        let view = PDFView()
-        view.autoScales = true
-        view.displayMode = .singlePageContinuous
-        view.displaysPageBreaks = true
-        // The full-screen surface is deliberately black behind the page; the others follow the
-        // window. Reusing this view's own backing keeps the two consistent for free.
-        view.backgroundColor = backingColor
-        pin(view, inside: content)
-        pdfView = view
-        return view
+    /// Build the PDFKit backend on first use — the `PDFView` and the find bar over it
+    /// (`QuickViewPDFSurface`, which owns how the two are laid out).
+    private func ensurePDFSurface() -> QuickViewPDFSurface {
+        if let pdfSurface { return pdfSurface }
+        let surface = QuickViewPDFSurface(backingColor: backingColor)
+        pin(surface, inside: content)
+        pdfSurface = surface
+        return surface
     }
 }

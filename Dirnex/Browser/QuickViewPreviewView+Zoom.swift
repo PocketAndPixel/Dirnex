@@ -31,7 +31,7 @@ extension QuickViewPreviewView {
             return .tree(treeSurface)
         }
         if let webSurface, !webSurface.isHidden { return .web(webSurface) }
-        if let pdfView, !pdfView.isHidden, pdfView.document != nil { return .pdf }
+        if let pdfSurface, !pdfSurface.isHidden, pdfSurface.pdfView.document != nil { return .pdf }
         if let textSurface, !textSurface.isHidden { return .text(textSurface) }
         if let imageScrollView, !imageScrollView.isHidden, imageScrollView.imageView.image != nil {
             return .image(imageScrollView)

@@ -507,6 +507,31 @@ at build time.
     `show` no longer resetting the zoom failed nothing until it was run alone (two issues). Run a
     control that shares an observable with another one by itself.
 
+- **A settle that a caller may also loop over has to be a plain read, or the two nest and a single
+  failing assertion becomes a run somebody has to kill.** Measured 2026-09-17 on the page-find
+  fixture: `highlighted(in:)` polled 200 × 5 ms for the highlights to land *and* the reload test
+  polled `highlighted` 400 times, so the failing path was 80 000 JavaScript round trips — the test
+  host sat alive and idle for ten minutes, which is the signature this file already records for an
+  Objective-C exception, and the honest cause was arithmetic in the fixture. Split them: one plain
+  read, one `settled(in:until:)` around it, and every wait bounded once.
+  - **Then each wait has to name what it is waiting *for*, not merely that something happened.** The
+    obvious signature — `settled(expecting: 3)` — is satisfied by the draw *before* a step, because ↓
+    leaves three highlights and only changes which one is current, so the assertion read the old
+    current match. A predicate per caller (`{ $0.current == ["Beta"] }`) is what makes the wait about
+    the thing the gesture produces (▸ "ask what the predicate would be true of in the broken build").
+  - **`timeout` is not on macOS**, so `timeout 400 xcodebuild …` fails with `command not found` and
+    the run it was meant to bound never happens at all — twice here, reported as a control that
+    produced no output, which reads exactly like a control that found nothing.
+
+- **A test that acts on an asynchronous reload and then reads the surface is reading the state from
+  *before* the reload, and it passes with the behaviour deleted.** `reloadPage()` returns at once, so
+  the highlights still up from the previous load satisfy any wait about them; the control on the
+  redraw passed, which is what showed the test was inert. What fixes it is a marker the reload
+  **takes with it** — `window.dirnexReloadProbe` in the isolated world, gone once the new document
+  is up — waited on before anything about the new page is read. Reverted, the control then fails in
+  2.5 s on exactly its own test. Same family as this file's "a wait on a value the code under test
+  sets *before* doing the work", arriving on a navigation.
+
 - **An assertion inside `offCooperativePool` is filed under `Test «unknown»` while the test it came
   from still prints a tick — so a live suite's ✔ is not evidence.** The helper runs its body on a
   `DispatchQueue` thread, outside any task (which is the whole point — ▸ Swift 6 and concurrency),
@@ -2219,6 +2244,84 @@ at build time.
     ~20 ms to install it, against 0.47 ms to assign the same text as a plain `String`. Prefer
     `textStorage` over the TextKit-2 spelling anyway: it is non-`nil` in both generations, where
     `textContentStorage?.textStorage?` fails as a **blank preview** if either optional is ever `nil`.
+- **The CSS Custom Highlight API does not invalidate the area a highlight used to occupy, so a removed
+  highlight goes on being painted — and every assertion about it passes.** Found live 2026-09-17,
+  finding in Quick View's rendered page: replacing the query left the previous search's matches on
+  screen beside the new one, *two* current-match oranges at once, while `CSS.highlights` held exactly
+  one range. The model was right and the pixels were stale, which is why 9 tests reading the registry
+  back through the page's own JavaScript were green against the broken build.
+  - **The tell is that a re-layout cleans it**: one ⌘+ step wiped every stale highlight. That is the
+    discriminator worth reaching for whenever a drawing looks wrong — if forcing a layout fixes it,
+    the data was never the problem (▸ the queue bar's "instrument the *drawing*", arriving in another
+    process).
+  - **It clears unevenly, which is what makes the natural diagnosis wrong.** Some regions repainted and
+    some did not, *within one line* — a stale yellow match and a fresh orange one in the same
+    paragraph. That rules out tile invalidation and any story about scrolling, and it reads as "our
+    clear script only half ran".
+  - **`WKWebView.takeSnapshot` cannot see it.** It re-renders the page rather than reading what is on
+    screen, so a probe built on it reported a clean result for the exact sequence the app was getting
+    wrong — four candidate fixes all "passed". The instrument that works is a screenshot of the
+    running app. Same family as this file's `cacheDisplay` warnings, one process further out.
+  - **The fix is a paint-affecting property set on the root and taken off again**, `opacity` because
+    it costs no layout so the reading position does not move. It has to be reverted by **whichever of
+    `requestAnimationFrame` and a timer comes first**, and that is not belt and braces:
+    `requestAnimationFrame` is the right primitive, since the point is to revert *after* a paint, and
+    **it does not fire at all in a page that is not rendering** — a miniaturized or fully covered
+    window, or a surface put away. Caught by the one test that *can* watch this, which found the page
+    left permanently dimmed; the timer alone is no good either, because it can run before any paint
+    and revert a nudge that never drew.
+  - **What is testable here is the fix's own hazard, not the bug.** No test can see a stale highlight;
+    a test can see a page left at 0.9999 opacity. Write that one and say the rest rests on the live
+    A/B.
+
+- **A `WKWebView` evaluates the host's JavaScript in an isolated world while the page's own scripts are
+  switched off, which is what makes finding in a rendered preview offerable at all.** Measured
+  2026-09-17 with `allowsContentJavaScript = false`, the shipping default for a previewed page
+  (▸ `QuickViewWebView`, where a preview renders on cursor movement): `callAsyncJavaScript` in
+  `WKContentWorld.defaultClient` reads the DOM (163 characters of it), keeps globals the page world
+  cannot see (`window.probeMark` reads `undefined` there), and the page's own `<script>` never ran in
+  either world. So the find neither needs nor grants the JavaScript the user declined, and the switch
+  goes on meaning exactly what it meant.
+  - **A `file://` iframe is a different origin, so no script in the page can reach it**:
+    `contentDocument` is `null` from the main document, which matters because a converted Excel
+    workbook of two sheets or more draws its tab strip in the page and the *sheet* in an iframe — a
+    DOM-based find would have found the sheet names and none of the cells. A `WKFrameInfo` **captured
+    from `decidePolicyFor`** is reachable through `callAsyncJavaScript(in:)`, reading and highlighting
+    inside the frame; it is the only place one for a child frame can be had.
+  - Costs, so nobody designs around a price that is not there: 1.57 MB of page text extracted in
+    **18 ms** and handed to Swift in 13 ms, 20 000 matches counted in 2 ms and highlighted in
+    **38 ms** end to end — which is why the page highlights every match where the text preview can
+    only afford those near the screen.
+  - **WebKit decodes an HTML file that declares no charset as windows-1252.** Probed: an undeclared
+    UTF-8 page holding `café` renders as `cafÃ©` (`document.characterSet` reads `windows-1252`), and
+    with `<meta charset="utf-8">` it reads UTF-8. So finding no `café` in such a file is the *right*
+    answer — the find searches what the page shows — and a fixture without the declaration measures
+    the decoder rather than the find. It also means the **source** and **rendered** styles of one file
+    can honestly disagree about its text, since `TextPreview` detects the encoding and WebKit guesses.
+
+- **`PDFDocument.string` is exactly the pages' strings joined by one `\n`, it is cached after the
+  first call, and it is safe to read off the main thread.** All measured 2026-09-17 before the PDF
+  find was written, on real documents of 1, 78 and 231 pages: re-joining the pages reproduced the
+  whole string **byte for byte** every time, so a global offset maps back to a page by accumulating
+  `page.string.utf16.count + 1` and `PDFPage.selection(for:)` turns it into something drawable. The
+  first `document.string` on the 231-page manual is **369–423 ms** and the second is **1 ms**. Read
+  from a background queue while the main thread laid the same document out 213–217 times, it came
+  back exact, 3 runs of 3, with the offset round trip agreeing exactly.
+  - **`PDFDocument.findString` is 28× faster and does not agree with `FilterQuery`**, which is why it
+    is not used: probed, PDFKit folds ß against ss (2 matches for both `strasse` and `straße`),
+    matches a ﬁ ligature against `fi`, finds a Kelvin sign for `k`, and matches `cafe` against
+    `café`. Every other Quick View surface counts accents. A find bar that counted differently
+    depending on which preview was up would be one bar telling two stories, and an HTML or Markdown
+    file has a **source** style one keystroke away that finds by the core's rule.
+  - Costs on the same 231-page document: building 58 027 selections **48 ms**, assigning 20 000 to
+    `highlightedSelections` **88 ms**, `go(to:)` **0 ms**. Enough to want a window — `PDFView
+    .visiblePages` makes "the pages near the reader" exact — and not enough to want a different
+    design.
+  - **`.caseInsensitive` is the option to pass and `.diacriticInsensitive` is the one to leave off**,
+    if `findString` is ever reached for: by default accents count, matches across a line break work,
+    and `findString` returns every match in page order with a real count, which `WKWebView.find` does
+    not (`WKFindResult` reports only `matchFound`).
+
 - **`NSTextView` under TextKit 2 stores rendering attributes and draws none of them, and reading them
   back succeeds.** Found 2026-09-17 building find in Quick View's text preview. Match highlights added
   with `textLayoutManager.addRenderingAttribute(.backgroundColor/.foregroundColor, …)` never appeared

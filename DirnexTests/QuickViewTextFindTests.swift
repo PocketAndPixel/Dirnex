@@ -30,8 +30,8 @@ struct QuickViewTextFindTests {
         let expected = [
             text.range(of: "Beta"), text.range(of: "beta"), text.range(of: "BETA")
         ].map { $0.location..<NSMaxRange($0) }
-        #expect(surface.findMatches?.ranges == expected)
-        #expect(surface.currentMatch == 0)
+        #expect(surface.find.matches?.ranges == expected)
+        #expect(surface.find.current == 0)
         #expect(surface.filterBar.countLabel.stringValue.contains("1"))
         #expect(surface.filterBar.countLabel.stringValue.contains("3"))
         #expect(surface.filterBar.columnPicker.isHidden)
@@ -46,12 +46,12 @@ struct QuickViewTextFindTests {
         let down = #selector(NSResponder.moveDown(_:))
         let up = #selector(NSResponder.moveUp(_:))
         try Typing.editor(of: surface).doCommand(by: down)
-        #expect(surface.currentMatch == 1)
+        #expect(surface.find.current == 1)
         try Typing.editor(of: surface).doCommand(by: down)
         try Typing.editor(of: surface).doCommand(by: down)
-        #expect(surface.currentMatch == 0)
+        #expect(surface.find.current == 0)
         try Typing.editor(of: surface).doCommand(by: up)
-        #expect(surface.currentMatch == 2)
+        #expect(surface.find.current == 2)
         #expect(surface.filterBar.countLabel.stringValue.contains("3"))
         #expect(surface.filterHasKeyboard)
     }
@@ -64,7 +64,7 @@ struct QuickViewTextFindTests {
         defer { fixture.cleanup() }
         let surface = fixture.surface
         try await Typing.type("beta", into: surface)
-        let starts = try #require(surface.findMatches).ranges.map(\.lowerBound)
+        let starts = try #require(surface.find.matches).ranges.map(\.lowerBound)
         var marks = Fixtures.highlights(surface)
         #expect(Set(marks.keys) == Set(starts))
         #expect(marks[starts[0]] == .systemOrange)
@@ -82,7 +82,7 @@ struct QuickViewTextFindTests {
         #expect(Fixtures.highlights(surface).isEmpty)
         let storage = try #require(surface.textView.textStorage)
         #expect(storage.attribute(.backgroundColor, at: starts[1], effectiveRange: nil) == nil)
-        #expect(surface.findMatches == nil)
+        #expect(surface.find.matches == nil)
         #expect(surface.filterBar.countLabel.stringValue.isEmpty)
     }
 
@@ -103,15 +103,15 @@ struct QuickViewTextFindTests {
         defer { fixture.cleanup() }
         let surface = fixture.surface
         try await Typing.type("needle", into: surface)
-        let ranges = try #require(surface.findMatches).ranges
+        let ranges = try #require(surface.find.matches).ranges
         // Past `TextPreview.byteLimit` the far needle would not be read at all.
         #expect(fixture.surface.searchableText.utf8.count < TextPreview.byteLimit)
         try #require(ranges.count == 2)
-        #expect(surface.currentMatch == 0)
+        #expect(surface.find.current == 0)
         #expect(Set(Fixtures.highlights(surface).keys) == [ranges[0].lowerBound])
 
         try Typing.editor(of: surface).doCommand(by: #selector(NSResponder.moveDown(_:)))
-        #expect(surface.currentMatch == 1)
+        #expect(surface.find.current == 1)
         // Where a far match lies settles over a few turns.
         let settled = await Fixtures.settle {
             let onScreen = Fixtures.frame(of: ranges[1], in: surface)
@@ -132,11 +132,11 @@ struct QuickViewTextFindTests {
         let surface = fixture.surface
         try await Typing.type("ab", into: surface)
         try Typing.editor(of: surface).doCommand(by: #selector(NSResponder.moveDown(_:)))
-        #expect(surface.findMatches?.ranges[surface.currentMatch ?? -1] == 4..<6)
+        #expect(surface.find.matches?.ranges[surface.find.current ?? -1] == 4..<6)
 
         try await Typing.type("ab2", into: surface)
-        #expect(surface.findMatches?.ranges == [0..<3, 8..<11])
-        #expect(surface.currentMatch == 1)
+        #expect(surface.find.matches?.ranges == [0..<3, 8..<11])
+        #expect(surface.find.current == 1)
     }
 
     @Test("text found nowhere highlights nothing and says so")
@@ -145,8 +145,8 @@ struct QuickViewTextFindTests {
         defer { fixture.cleanup() }
         let surface = fixture.surface
         try await Typing.type("zzz", into: surface)
-        #expect(surface.findMatches?.isEmpty == true)
-        #expect(surface.currentMatch == nil)
+        #expect(surface.find.matches?.isEmpty == true)
+        #expect(surface.find.current == nil)
         #expect(Fixtures.highlights(surface).isEmpty)
         let label = surface.filterBar.countLabel.stringValue
         #expect(!label.isEmpty)
@@ -198,7 +198,7 @@ struct QuickViewTextFindTests {
         #expect(surface.filterBar.isHidden)
         #expect(surface.filterBar.query.isEmpty)
         await stale.value
-        #expect(surface.findMatches == nil)
+        #expect(surface.find.matches == nil)
         #expect(Fixtures.highlights(surface).isEmpty)
         #expect(surface.searchableText == "beta again\n")
     }
@@ -245,11 +245,11 @@ struct QuickViewTextFindTests {
         let surface = try #require(preview.textSurface)
         #expect(preview.filterableSurface === surface)
         try await Typing.type("report", into: surface)
-        #expect(surface.findMatches?.count == 2)
+        #expect(surface.find.matches?.count == 2)
         #expect(Fixtures.highlights(surface).count == 2)
         // A document is drawn with adaptive color mapping in Dark Mode, which turned a plain black match
         // text white on the yellow (found live). A named color is left alone.
-        let start = try #require(surface.findMatches?.ranges.first?.lowerBound)
+        let start = try #require(surface.find.matches?.ranges.first?.lowerBound)
         let text = surface.textView.textStorage?.attribute(
             .foregroundColor,
             at: start,
@@ -281,9 +281,9 @@ struct QuickViewTextFindTests {
         let before = NSAttributedString(attributedString: storage)
 
         try await Typing.type("let", into: surface)
-        #expect(surface.findMatches?.count == 2)
+        #expect(surface.find.matches?.count == 2)
         try await Typing.type("a = \"l", into: surface)
-        #expect(surface.findMatches?.count == 1)
+        #expect(surface.find.matches?.count == 1)
         #expect(!Fixtures.highlights(surface).isEmpty)
         try await Typing.type("", into: surface)
         #expect(storage.isEqual(to: before))
@@ -299,7 +299,7 @@ struct QuickViewTextFindTests {
         _ = try #require(surface.textView.layoutManager)
         #expect(surface.textView.textLayoutManager == nil)
         try await Typing.type("beta", into: surface)
-        let starts = try #require(surface.findMatches).ranges.map(\.lowerBound)
+        let starts = try #require(surface.find.matches).ranges.map(\.lowerBound)
         let marks = Fixtures.highlights(surface)
         #expect(marks[starts[0]] == .systemOrange)
         #expect(marks[starts[2]] == .findHighlightColor)

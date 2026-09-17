@@ -60,10 +60,16 @@ final class QuickViewPreviewView: NSView {
     /// does not cross files.
     let content = NSView()
 
-    private var previewView: QLPreviewView?
+    /// Internal, not private: built and driven from `QuickViewPreviewView+QuickLook`, and Swift's
+    /// `private` does not cross files.
+    var previewView: QLPreviewView?
     /// Internal, not private: built and driven from `QuickViewPreviewView+PDF`, and Swift's `private`
     /// does not cross files.
-    var pdfView: PDFView?
+    var pdfSurface: QuickViewPDFSurface?
+    /// The `PDFView` itself — what everything that zooms, scrolls or reads the document asks for. It
+    /// gained a container when the find bar arrived (`QuickViewPDFSurface`); this keeps that a
+    /// detail of the PDF backend rather than something every caller has to know.
+    var pdfView: PDFView? { pdfSurface?.pdfView }
     /// Whether the PDF on screen opened fitted to the surface or at its own size — what ⌘0 goes back
     /// to. Internal, from `QuickViewPreviewView+PDF`.
     var pdfFitsWidth = true
@@ -239,6 +245,7 @@ final class QuickViewPreviewView: NSView {
         standDownPlaceholder()
         cancelDocumentConversion()
         previewView?.previewItem = nil
+        pdfSurface?.documentDidChange()
         pdfView?.document = nil
         // Retire any pending fade-out: the surface is going away, and a stray one landing on the
         // next file would blank the header the moment it was shown.
@@ -331,6 +338,8 @@ final class QuickViewPreviewView: NSView {
         if let hit = super.hitTest(point), hit.isInteractiveQuickViewBackend(
             among: [
                 pdfView,
+                pdfSurface?.filterBar,
+                webSurface?.filterBar,
                 imageScrollView,
                 textSurface?.interactiveSubtree,
                 textSurface?.filterBar,
@@ -357,42 +366,6 @@ final class QuickViewPreviewView: NSView {
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
         needsDisplay = true
-    }
-
-    // MARK: - Backends
-
-    /// Show `url` in the Quick Look backend, standing the others down.
-    /// Internal: `QuickViewPreviewView+Text` falls back here for a file that isn't text after all.
-    func showQuickLook(_ url: URL?) {
-        guard let preview = ensureQuickLookPreview() else { return }
-        standDownPDF()
-        standDownImage()
-        standDownText()
-        standDownWeb()
-        preview.isHidden = false
-        preview.previewItem = url as NSURL?
-    }
-
-    // The three stand-downs are internal for the same reason `showQuickLook` is: the text backend
-    // lives in its own file and has to put the others away when it takes the surface.
-
-    func standDownQuickLook() {
-        previewView?.isHidden = true
-        previewView?.previewItem = nil
-    }
-
-    /// Build the Quick Look backend on first use. `.compact` style drops Quick Look's
-    /// title/controls chrome, which suits an always-on embedded preview. `init(frame:style:)` is
-    /// failable, so this returns `nil` on the rare miss and the caller shows nothing.
-    private func ensureQuickLookPreview() -> QLPreviewView? {
-        if let preview = previewView { return preview }
-        guard let preview = QLPreviewView(frame: .zero, style: .compact) else { return nil }
-        // Closes automatically when the window goes away; this surface lives as long as the
-        // window, so there is nothing to tear down by hand.
-        preview.shouldCloseWithWindow = true
-        pin(preview, inside: content)
-        previewView = preview
-        return preview
     }
 
     // MARK: - Layout

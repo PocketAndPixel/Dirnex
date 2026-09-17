@@ -1,4 +1,5 @@
 import AppKit
+import DirnexCore
 import WebKit
 
 /// The web view a Quick View *rendered* HTML preview draws into. A named subclass because two places
@@ -97,12 +98,37 @@ final class QuickViewWebView: NSView {
         }
     }
 
-    private let webView: QuickViewDocumentWebView
+    /// Internal, not private: `QuickViewWebView+Find` reads the page through it, and Swift's
+    /// `private` does not cross files.
+    let webView: QuickViewDocumentWebView
     /// What is on screen, which is the *one* navigation `decidePolicyFor` allows.
     private var page: Page?
 
     /// The view the surface must let the mouse reach for the page to scroll at all.
     var interactiveSubtree: NSView { webView }
+
+    /// Whether anything is rendered — what View ▸ Filter asks before offering to find in it.
+    var hasPage: Bool { page != nil }
+
+    // Finding in the page (`QuickViewWebView+Find`), stored here because an extension cannot.
+
+    /// The bar over the page, hidden until ⌥⌘F.
+    let filterBar = QuickViewTableFilterBar()
+    /// The matches, the current one and the search in flight (`QuickViewFind`).
+    let find = QuickViewFind()
+    /// Every child frame this page has loaded, newest last — a converted workbook's sheets. Captured
+    /// in `decidePolicyFor`, which is the only place a `WKFrameInfo` for one can be had; a frame the
+    /// tab strip has since replaced answers nothing and is dropped when the text is read.
+    var childFrames: [WKFrameInfo] = []
+    /// The frames the last read of the text actually reached, in the order it joined them.
+    var findFrames: [WKFrameInfo] = []
+    /// How that joined text is cut back into the documents it came from.
+    var findSegments = TextSegmentMap(lengths: [])
+    /// The web view's top edge: against the surface, or under the bar while it is shown.
+    var filterTopToSurface: NSLayoutConstraint?
+    var filterTopToBar: NSLayoutConstraint?
+    /// Where the keyboard goes when the bar lets go of it: the file list the arrows walk.
+    var returnKeyboard: (() -> Void)?
 
     /// Block everything, then put `file://` back — the order matters, since
     /// `ignore-previous-rules` is what re-admits the page's own bytes and its local siblings.
@@ -239,6 +265,9 @@ final class QuickViewWebView: NSView {
     private func startNewPage() {
         zoomLevel = 1
         webView.magnification = 1
+        // The matches were in the page being replaced, and the new one carries no highlight to take
+        // off — including the frames, whose infos belong to the document going away.
+        resetFindForNewPage()
     }
 
     /// Apply the page's starting size times ``zoomLevel`` as `pageZoom`.
@@ -284,6 +313,7 @@ final class QuickViewWebView: NSView {
     /// empty document rather than merely stopping: a page that finished loading keeps its timers.
     func clearPage() {
         page = nil
+        resetFindForNewPage()
         webView.stopLoading()
         webView.loadHTMLString("", baseURL: nil)
     }
@@ -311,12 +341,16 @@ final class QuickViewWebView: NSView {
         webView.navigationDelegate = self
         webView.allowsMagnification = true
         addSubview(webView)
+        let top = webView.topAnchor.constraint(equalTo: topAnchor)
+        filterTopToSurface = top
         NSLayoutConstraint.activate([
             webView.leadingAnchor.constraint(equalTo: leadingAnchor),
             webView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            webView.topAnchor.constraint(equalTo: topAnchor),
+            top,
             webView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
+        installFilterBar()
+        installFinding()
     }
 }
 
@@ -346,7 +380,20 @@ extension QuickViewWebView: WKNavigationDelegate {
             ?? AppPreferences.quickViewJavaScriptValue
         guard let url = navigationAction.request.url else { return (.cancel, preferences) }
         let inFrame = navigationAction.targetFrame.map { !$0.isMainFrame } ?? false
-        return (isPermitted(url, inFrame: inFrame) ? .allow : .cancel, preferences)
+        let allowed = isPermitted(url, inFrame: inFrame)
+        // The one place a `WKFrameInfo` for a child frame can be had, and the only way to search a
+        // converted workbook's sheet: a `file://` frame is a different origin, so no script running
+        // in the page can reach into it (`QuickViewWebView+Find`).
+        if allowed, inFrame, let frame = navigationAction.targetFrame {
+            childFrames.append(frame)
+        }
+        return (allowed ? .allow : .cancel, preferences)
+    }
+
+    /// A load finished. The DOM a reload rebuilds carries none of the highlights the search drew, so
+    /// they go back on rather than the user having to retype.
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        redrawFindAfterReload()
     }
 
     /// The empty document `clearPage` loads, and the page this preview is showing — compared

@@ -64,6 +64,8 @@ final class QuickViewTableView: NSView {
     /// mark.
     var filterMarking: (query: FilterQuery, column: Int?)?
     /// The scroll view's top edge: against the surface, or under the filter bar while it is shown.
+    /// The bar shortens the scroll view (`QuickViewFilterHost`).
+    var filterContentView: NSView { scrollView }
     var filterTopToSurface: NSLayoutConstraint?
     var filterTopToBar: NSLayoutConstraint?
     /// Where the keyboard goes when the filter bar lets go of it: the file list the arrows walk. Set
