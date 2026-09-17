@@ -45,11 +45,13 @@ public protocol TreeDocument: Sendable {
     /// What ⌘C copies for `value`: all of it.
     func copiedText(of value: Int) -> String
 
-    /// Which values contain `query`, ignoring case, in the first column, the second or both. `nil` when
-    /// `isCancelled` answered `true`. Blocking and linear in the document; call it off the main thread.
+    /// Which values contain `query`, under `options`, in the first column, the second or both. `nil`
+    /// when `isCancelled` answered `true`. Blocking and linear in the document; call it off the main
+    /// thread.
     func filter(
         matching query: String,
         in scope: TreeFilterScope,
+        options: FilterQuery.Options,
         isCancelled: () -> Bool
     ) -> TreeFilter?
 

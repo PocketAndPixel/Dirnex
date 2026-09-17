@@ -4,10 +4,11 @@ import Foundation
 /// the UTF-16 offsets a text view addresses, left to right and not overlapping, and the arithmetic of
 /// stepping through them.
 ///
-/// The query is read the one way the table and tree filters read it (`FilterQuery`): case does not
-/// count and accents do, an ASCII query compares a byte at a time with `A`–`Z` folded, and any other
-/// query compares whole characters in the text lowercased. So a word the filters find in a CSV cell is
-/// found in the same file's source, and the two never disagree about what matches.
+/// The query is read the one way the table and tree filters read it (`FilterQuery`), options included:
+/// by default case does not count and accents do, an ASCII query compares a byte at a time with
+/// `A`–`Z` folded, and any other query compares whole characters in the text lowercased. So a word the
+/// filters find in a CSV cell is found in the same file's source, and the two never disagree about
+/// what matches — under Case Sensitive and Whole Word as much as without them.
 ///
 /// UTF-16 rather than `String.Index` because the text view is where the offsets are spent: a match is
 /// highlighted and scrolled to by `NSRange`, and mapping 145 000 `String.Index` ranges to `NSRange`
@@ -134,7 +135,11 @@ extension FilterQuery {
                     if isCancelled() { return nil }
                 }
                 let byte = haystack[position]
-                if byte < 0x80, Self.matchesFolded(haystack, at: position, needle: needle) {
+                if byte < 0x80, matchesNeedle(haystack, at: position), wholeWordHolds(
+                    haystack,
+                    at: position,
+                    length: length
+                ) {
                     guard ranges.count < limit else {
                         return TextFindMatches(ranges: ranges, isComplete: false)
                     }
@@ -156,16 +161,21 @@ extension FilterQuery {
         }
     }
 
-    private static func matchesFolded(
+    /// Whether a whole-word search is satisfied here — free, and `true`, when none was asked for.
+    /// The bounds are the whole text's, since a preview searches a document rather than a field.
+    private func wholeWordHolds(
         _ haystack: UnsafeBufferPointer<UInt8>,
         at position: Int,
-        needle: [UInt8]
+        length: Int
     ) -> Bool {
-        for (offset, byte) in needle.enumerated()
-            where DelimitedTable.folded(haystack[position + offset]) != byte {
-            return false
-        }
-        return true
+        guard options.contains(.wholeWord) else { return true }
+        return FilterQuery.isWholeWord(
+            haystack,
+            at: position,
+            length: length,
+            from: 0,
+            to: haystack.count
+        )
     }
 
     /// The other branch: whole characters in the text lowercased, mapped back character for character
@@ -176,7 +186,7 @@ extension FilterQuery {
         limit: Int,
         isCancelled: () -> Bool
     ) -> TextFindMatches? {
-        let lowered = text.lowercased()
+        let lowered = options.contains(.caseSensitive) ? text : text.lowercased()
         var ranges: [Range<Int>] = []
         var searchStart = lowered.startIndex
         var cursor = CharacterCursor(lowered: lowered.startIndex, text: text.startIndex)
@@ -188,6 +198,10 @@ extension FilterQuery {
                     return TextFindMatches(ranges: [], isComplete: true)
                 }
                 checkedCount = true
+            }
+            guard !options.contains(.wholeWord) || FilterQuery.isWholeWord(found, in: lowered) else {
+                searchStart = found.upperBound
+                continue
             }
             guard ranges.count < limit else {
                 return TextFindMatches(ranges: ranges, isComplete: false)

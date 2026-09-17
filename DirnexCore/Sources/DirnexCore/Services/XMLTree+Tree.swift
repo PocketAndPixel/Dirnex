@@ -103,9 +103,10 @@ extension XMLTree: TreeDocument {
     public func filter(
         matching query: String,
         in scope: TreeFilterScope = .keysAndValues,
+        options: FilterQuery.Options = [],
         isCancelled: () -> Bool = { false }
     ) -> TreeFilter? {
-        let search = FilterQuery(query)
+        let search = FilterQuery(query, options: options)
         return TreeFilter.build(count: nodes.count, parent: parent(of:), isCancelled: isCancelled) {
             search.isEmpty || matches($0, scope: scope, search: search)
         }
@@ -138,7 +139,7 @@ extension XMLTree: TreeDocument {
     /// Whether `bytes[start..<end]`, which are their own text, contain the query.
     private func contains(_ search: FilterQuery, from start: Int, to end: Int) -> Bool {
         if search.isASCII {
-            return DelimitedTable.foldedContains(bytes, from: start, to: end, needle: search.bytes)
+            return search.matchesBytes(bytes, from: start, to: end)
         }
         return search.matches(JSONDocument.decodeUTF8(bytes[start..<end]))
     }

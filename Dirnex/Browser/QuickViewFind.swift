@@ -70,6 +70,14 @@ protocol QuickViewFindHost: QuickViewFilterHost {
 extension QuickViewFindHost {
     var filterTask: Task<Void, Never>? { find.task }
 
+    /// Return steps to the next match here, and ⇧Return to the previous one — but only while there is
+    /// a match to step to, so with nothing typed, or nothing found, the key falls through to handing
+    /// the keyboard back rather than doing nothing at all. A dead Return in a keyboard-first app reads
+    /// as a broken bar, and Tab is the only other way out of the field.
+    var returnStepsResults: Bool {
+        find.current != nil && find.matches?.isEmpty == false
+    }
+
     /// Run the search the bar now describes. An empty text clears it at once; anything else is read
     /// off the main actor, and a search still running for older text is stopped.
     func filterChanged() {
@@ -77,6 +85,9 @@ extension QuickViewFindHost {
         find.cancellation?.isCancelled = true
         find.cancellation = nil
         let query = filterBar.query
+        // Read on the main actor beside the text: the search runs off it, and a later change to the
+        // options is a new search of its own rather than something this one should pick up midway.
+        let options = filterBar.options
         guard !query.isEmpty, hasFilterableContent else {
             find.task = nil
             clearFindMatches()
@@ -92,7 +103,9 @@ extension QuickViewFindHost {
             // can have moved on before the search has even started.
             guard generation == find.generation else { return }
             let found = await BlockingWork.run {
-                TextFindMatches.find(FilterQuery(query), in: text) { cancellation.isCancelled }
+                TextFindMatches.find(FilterQuery(query, options: options), in: text) {
+                    cancellation.isCancelled
+                }
             }
             guard generation == find.generation, let found else { return }
             await applyFindMatches(found)

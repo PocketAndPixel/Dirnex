@@ -36,14 +36,19 @@ extension QuickViewTableView: QuickViewRowFilterHost {
         }
         let generation = filterGeneration
         let column = filterBar.column
+        // Read here, on the main actor and in the same turn as the text: the scan runs off it, and
+        // the marks a cell draws have to follow the options the match was made under.
+        let options = filterBar.options
         let cancellation = CancellationFlag()
         filterCancellation = cancellation
         filterTask = Task { [weak self] in
             let matches = await BlockingWork.run {
-                table.rowsMatching(query, inColumn: column) { cancellation.isCancelled }
+                table.rowsMatching(query, inColumn: column, options: options) {
+                    cancellation.isCancelled
+                }
             }
             guard let self, generation == filterGeneration, let matches else { return }
-            applyFilter(matches, marking: (FilterQuery(query), column))
+            applyFilter(matches, marking: (FilterQuery(query, options: options), column))
         }
     }
 

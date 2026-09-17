@@ -1729,6 +1729,23 @@ at build time.
     and driving the window's directly undid nothing.
   - The tell that this class of bug is present is a *comment* claiming a fall-through, and it fails
     in the quiet direction: nothing logs, every menu builds, and the key just does nothing.
+- **A field editor turns Return *and* ⇧Return into the same `insertNewline:`, and never sends
+  `insertLineBreak:` — so a find bar whose Return steps forward cannot get "step backward" from the
+  selector.** Measured 2026-09-18 through `interpretKeyEvents`, which is the entry point
+  `NSTextView` uses for a keyDown, over a field editor: Return, ⇧Return **and keypad Enter** all
+  arrive as `insertNewline:`; ⌘Return arrives as `noop:`; Tab and ⇧Tab both as `insertTab:`; ↑/↓ as
+  `moveUp:`/`moveDown:`; Esc as `cancelOperation:`. `insertLineBreak:` — the obvious guess for the
+  shifted spelling, and what the AppKit docs lead you to — is not sent at all.
+  - So the direction has to come from the **modifiers**, which makes it the family this file already
+    records under Testing: a rule that reads `NSEvent.modifierFlags` inside itself has exactly one
+    reachable test case, the one where nobody is holding a key. A **defaulted parameter**
+    (`modifiers: NSEvent.ModifierFlags = NSEvent.modifierFlags`) is the whole fix, evaluated at each
+    call, so production reads the live keyboard and a test hands over `.shift`.
+  - The probe is worth keeping in mind for any key a field editor eats: twenty lines, a `NSTextView`
+    subclass overriding `doCommand(by:)`, no window and no synthetic-event grant. It is **not** the
+    same instrument as sending a key to a live app, which ▸ Live verification records as unreliable;
+    what it measures is the text system's own mapping, which is the half in question here.
+
 - **A menu item bound to ⌘+ does not fire for ⌘=, which is how ⌘+ is typed on a US keyboard, and
   one bound to ⌘= misses ⇧⌘= and keypad +.** Measured 2026-09-15 with `NSMenu.performKeyEquivalent`
   while adding Quick View's zoom keys: key equivalent `+` matched ⇧⌘= (characters `+`) and keypad +,
@@ -1741,6 +1758,16 @@ at build time.
     no other command claims ⌘=. Otherwise a user's rebinding would leave a second key answering the
     old one, and Settings' conflict check, which only knows the registry, could not see it
     (`MainMenuBuilder.keyAliasItem`).
+- **`NSSearchField` *copies* its `searchMenuTemplate` to display it, so a checkmark written onto the
+  item an action received can be thrown away.** The magnifying-glass menu is where macOS puts search
+  options, and it costs a cramped bar no width at all — but the item the target gets is not
+  necessarily the one the template holds, so the reflex `sender.state = .on` is writing to a copy.
+  Hold the state and **rebuild the template from it** on every change: that cannot drift whichever
+  object the click arrived on, and it needs no assumption about when AppKit copies. Verified live
+  2026-09-18 on Quick View's find bar — the checkmark is there on reopening — and pinned headlessly
+  by driving the action with a deliberately **detached** `copy()` of the item, which is what a copy is
+  as far as the bar is concerned.
+
 - **An `NSMenuItem` that carries a submenu never fires its own key equivalent** — and it goes on
   reporting `isEnabled == true`, so the item looks armed and the chord does nothing. Measured
   directly: `NSMenu.performKeyEquivalent(with:)` returns **`false`** for a ⌃G item with a submenu and
@@ -8557,6 +8584,25 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   `size(of:using:) { true }` rebound to a new `excluding:` rather than the existing
   `isCancelled:`; only the differing arity made it fail loudly instead of inverting behavior.
   Label both at every call site.
+- **`Unicode.Scalar.Properties.isAlphabetic` is not a rule about combining marks, and reading it as
+  one makes "whole word" mean the opposite of what the neighbouring rule means.** Probed 2026-09-18
+  while giving Quick View's find a Whole Word option, because the predicate has to say what joins a
+  word: U+0301 COMBINING ACUTE ACCENT is `nonspacingMark` with `isAlphabetic` **false**, while
+  U+05B4 HEBREW POINT HIRIQ — the same general category — is **true**. So the property alone would
+  have let a decomposed `café` end a word after `cafe` and whole-word-match it, while this app's
+  accent-counting rule says the two are different text. Name the mark categories
+  (`nonspacingMark`, `spacingMark`, `enclosingMark`) beside the property.
+  - **The neighbouring half is the one worth generalising: at a byte boundary, "is the character
+    beside this match part of a word" cannot be answered by the byte.** A rule reading "any non-ASCII
+    byte is part of a word" is the cheap version and it is wrong in ordinary prose — a curly quote, an
+    em dash, an ellipsis and a no-break space are all multi-byte *punctuation*, so whole-word would
+    miss `beta` in `“beta”`, silently, in every typeset document. UTF-8 self-synchronizes, so walking
+    back over at most three continuation bytes and decoding that one scalar is bounded work per match
+    and exact.
+  - `numericType` rather than an ASCII digit range, so `٣` counts like `3`; and `_` has to be named,
+    being `connectorPunctuation` and alphabetic to nobody while being exactly what every programming
+    language means by one identifier.
+
 - **A Swift `Character` is a grapheme cluster, so CRLF is *one* `Character` that equals neither
   `"\n"` nor `"\r"`.** `split(whereSeparator: { $0 == "\n" || $0 == "\r" })` therefore does not
   split a Windows-written file **at all** — the whole file comes back as a single unparseable line,

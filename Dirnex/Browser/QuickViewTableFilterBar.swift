@@ -6,6 +6,9 @@ import DirnexCore
 /// values are left, and a button to put it away. Over a text preview it finds rather than narrows
 /// (2026-09-17): no picker, and the count says which match is the current one (`useForFinding`).
 ///
+/// The magnifying glass carries Case Sensitive and Whole Word, which every surface reads the same way
+/// (`FilterQuery.Options`, 2026-09-18).
+///
 /// It reports and decides nothing. The surface runs the filter (`QuickViewTableView+Filter`,
 /// `QuickViewTreeView+Filter`) and `QuickViewFilterHost` owns what each key does, so the bar can be
 /// driven in a test without a window's key handling in the way.
@@ -48,6 +51,29 @@ final class QuickViewTableFilterBar: NSVisualEffectView, NSSearchFieldDelegate {
 
     /// The text being searched for.
     var query: String { field.stringValue }
+
+    /// How the text is read: Case Sensitive and Whole Word, off unless the user turned them on.
+    ///
+    /// They live on the bar and survive a new file, so stepping through a folder of logs with Case
+    /// Sensitive on does not turn it off at every arrow key. They are deliberately **not** written to
+    /// disk, and each surface has a bar of its own, so switching from a text preview to a CSV starts
+    /// from the default — one stated limit rather than a preference key, a fifth store to inject, and
+    /// a process-wide value for tests to leak through (docs/NOTES.md ▸ Testing).
+    private(set) var options: FilterQuery.Options = [] {
+        didSet {
+            guard options != oldValue else { return }
+            buildOptionsMenu()
+            changed()
+        }
+    }
+
+    /// The one way the options change, kept here beside the stored property because `private(set)` is
+    /// file-scoped and the menu that drives them lives in `QuickViewTableFilterBar+Options`. Everything
+    /// outside these two files still reads them and cannot write them, which is the point: an option
+    /// set behind the bar's back would not rebuild the menu or re-run the search.
+    func applyOptions(_ newValue: FilterQuery.Options) {
+        options = newValue
+    }
 
     /// The column searched, or `nil` for every column.
     var column: Int? {
@@ -237,6 +263,7 @@ final class QuickViewTableFilterBar: NSVisualEffectView, NSSearchFieldDelegate {
         field.sendsWholeSearchString = false
         field.sendsSearchStringImmediately = true
         field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        buildOptionsMenu()
 
         countLabel.font = .monospacedDigitSystemFont(
             ofSize: NSFont.smallSystemFontSize,

@@ -11,7 +11,12 @@ import AppKit
 ///   leaves Esc to any field being typed in, so the third, back in the file list, closes Quick View.
 /// - **↑ / ↓** step through what the text found: the rows the filter left, the strip following, or
 ///   the matches in a text. The file list's arrows are its own again once the keyboard goes back to it.
-/// - **Return** and **Tab** hand the keyboard back to the file list and keep the filter.
+/// - **Return** steps to the next match on a surface that *finds*, and ⇧Return to the previous one —
+///   what every other find bar on the Mac does. On a surface that *narrows* (the table, the tree) it
+///   hands the keyboard back instead, because there is nothing to step through that ↑ and ↓ are not
+///   already stepping through: the rows are the result. It also hands the keyboard back on a find
+///   surface with nothing to step to, so the key is never dead.
+/// - **Tab** hands the keyboard back to the file list and keeps the filter, whichever the bar is doing.
 ///
 /// What a filter matches, and what it does to the surface, is each surface's own (`filterChanged`).
 @MainActor
@@ -35,6 +40,13 @@ protocol QuickViewFilterHost: NSView {
     func filterChanged()
     /// ↑ or ↓ in the text: move `step` results along what the filter found.
     func stepFilterResult(by step: Int)
+    /// Whether Return steps through what the text found rather than handing the keyboard back.
+    ///
+    /// No default here on purpose, and each sub-protocol answers it — the shape `stepFilterResult`
+    /// already has. A default in this extension *and* one in `QuickViewFindHost`'s would leave which
+    /// is picked up to overload resolution at the point each conformance is declared, which is not a
+    /// thing to leave to chance for a key's meaning.
+    var returnStepsResults: Bool { get }
     /// Where the keyboard goes when the bar lets go of it with nobody to say where the file list is.
     var keyboardFallback: NSView { get }
 }
@@ -74,7 +86,17 @@ extension QuickViewFilterHost {
     }
 
     /// What a key the field editor was about to act on does instead (see the protocol's comment).
-    func filterCommand(_ command: Selector) -> Bool {
+    ///
+    /// `modifiers` is what tells ⇧Return from Return, and it is a *parameter* rather than a read of
+    /// `NSEvent.modifierFlags` inside the rule — measured 2026-09-18, a field editor turns both into
+    /// the same `insertNewline:`, and `insertLineBreak:` (the natural guess) is never sent, so the
+    /// selector cannot carry the direction. Swift evaluates a default argument at each *call*, so the
+    /// production callers read the live keyboard and a test can hand over `.shift` without one
+    /// (docs/NOTES.md ▸ Testing, a rule whose input is read by the rule has one test case).
+    func filterCommand(
+        _ command: Selector,
+        modifiers: NSEvent.ModifierFlags = NSEvent.modifierFlags
+    ) -> Bool {
         switch command {
         case #selector(NSResponder.cancelOperation(_:)):
             if filterBar.query.isEmpty {
@@ -83,8 +105,13 @@ extension QuickViewFilterHost {
                 filterBar.field.stringValue = ""
                 filterChanged()
             }
-        case #selector(NSResponder.insertNewline(_:)), #selector(NSResponder.insertTab(_:)),
-             #selector(NSResponder.insertBacktab(_:)):
+        case #selector(NSResponder.insertNewline(_:)):
+            if returnStepsResults {
+                stepFilterResult(by: modifiers.contains(.shift) ? -1 : 1)
+            } else {
+                giveKeyboardBack()
+            }
+        case #selector(NSResponder.insertTab(_:)), #selector(NSResponder.insertBacktab(_:)):
             giveKeyboardBack()
         case #selector(NSResponder.moveUp(_:)):
             stepFilterResult(by: -1)
@@ -144,6 +171,11 @@ extension QuickViewRowFilterHost {
     var keyboardFallback: NSView {
         filteredRowsView
     }
+
+    /// Return hands the keyboard back here rather than stepping: the rows the filter left *are* the
+    /// result, and ↑ and ↓ are already walking them, so a Return that stepped would be a second
+    /// spelling of ↓ in place of the one key that leaves the bar.
+    var returnStepsResults: Bool { false }
 
     func stepFilterResult(by step: Int) {
         stepSelection(by: step)

@@ -21,9 +21,10 @@ extension JSONDocument {
     public func filter(
         matching query: String,
         in scope: TreeFilterScope = .keysAndValues,
+        options: FilterQuery.Options = [],
         isCancelled: () -> Bool = { false }
     ) -> TreeFilter? {
-        let search = FilterQuery(query)
+        let search = FilterQuery(query, options: options)
         return TreeFilter.build(count: nodes.count, parent: parent(of:), isCancelled: isCancelled) {
             search.isEmpty || matches(nodes[$0], scope: scope, search: search)
         }
@@ -68,7 +69,7 @@ extension JSONDocument {
     /// the bytes are a string's between its quotes and need reading first.
     private func contains(_ search: FilterQuery, from start: Int, to end: Int, hasEscapes: Bool) -> Bool {
         if search.isASCII, !hasEscapes {
-            return DelimitedTable.foldedContains(bytes, from: start, to: end, needle: search.bytes)
+            return search.matchesBytes(bytes, from: start, to: end)
         }
         let text = hasEscapes
             ? decodeString(openingQuote: start - 1, closingQuote: end, hasEscapes: true)

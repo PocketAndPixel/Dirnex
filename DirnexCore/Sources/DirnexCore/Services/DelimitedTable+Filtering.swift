@@ -24,9 +24,10 @@ extension DelimitedTable {
     public func rowsMatching(
         _ query: String,
         inColumn column: Int? = nil,
+        options: FilterQuery.Options = [],
         isCancelled: () -> Bool = { false }
     ) -> [Bool]? {
-        let search = FilterQuery(query)
+        let search = FilterQuery(query, options: options)
         guard !search.isEmpty else { return [Bool](repeating: true, count: rowCount) }
         let columns: Range<Int> = if let column {
             column >= 0 && column < columnCount ? column..<(column + 1) : 0..<0
@@ -45,7 +46,7 @@ extension DelimitedTable {
             for column in columns.lowerBound..<reached {
                 let cell = cells[start + column]
                 let found = search.isASCII
-                    ? self.cell(cell, containsFolded: search.bytes)
+                    ? self.cell(cell, contains: search)
                     : search.matches(Self.value(of: cell, in: bytes))
                 if found {
                     matches[row] = true
@@ -56,53 +57,22 @@ extension DelimitedTable {
         return matches
     }
 
-    /// Whether `cell`'s value contains `needle`, an ASCII text already lowercased, with the value's
-    /// `A`–`Z` folded as it is read. A plain or plainly quoted value is its bytes, so they are read in
-    /// place; one with a doubled quote or text after its closing quote is decoded first, since its
-    /// bytes are not its value.
-    private func cell(_ cell: DelimitedCell, containsFolded needle: [UInt8]) -> Bool {
+    /// Whether `cell`'s value contains `search`, an ASCII query, read in place under whatever options
+    /// it carries. A plain or plainly quoted value is its bytes, so they are read where they lie; one
+    /// with a doubled quote or text after its closing quote is decoded first, since its bytes are not
+    /// its value.
+    ///
+    /// The bounds handed over are the *value's*, which is what makes a whole-word search right at a
+    /// cell's edges: the comma and the quotes around a value are not part of it, so a cell holding
+    /// exactly the query is a whole word rather than one wedged between punctuation.
+    private func cell(_ cell: DelimitedCell, contains search: FilterQuery) -> Bool {
         switch cell.form {
         case .verbatim:
-            Self.foldedContains(bytes, from: Int(cell.start), to: Int(cell.end), needle: needle)
+            search.matchesBytes(bytes, from: Int(cell.start), to: Int(cell.end))
         case .quoted:
-            Self.foldedContains(
-                bytes,
-                from: Int(cell.start) + 1,
-                to: Int(cell.end) - 1,
-                needle: needle
-            )
+            search.matchesBytes(bytes, from: Int(cell.start) + 1, to: Int(cell.end) - 1)
         case .escaped:
-            Self.foldedContains(
-                Array(Self.value(of: cell, in: bytes).utf8),
-                from: 0,
-                to: Int.max,
-                needle: needle
-            )
-        }
-    }
-
-    /// Whether `haystack[from..<to]` (clamped to the haystack), with `A`–`Z` read as `a`–`z`,
-    /// contains `needle` as a run of bytes. `needle` is lowercased ASCII and never empty here.
-    static func foldedContains(_ haystack: [UInt8], from: Int, to: Int, needle: [UInt8]) -> Bool {
-        haystack.withUnsafeBufferPointer { raw in
-            needle.withUnsafeBufferPointer { needle in
-                let count = needle.count
-                let upper = min(to, raw.count)
-                guard count > 0, from >= 0, upper - from >= count else { return false }
-                let first = needle[0]
-                var position = from
-                while position <= upper - count {
-                    if folded(raw[position]) == first {
-                        var matched = 1
-                        while matched < count, folded(raw[position + matched]) == needle[matched] {
-                            matched += 1
-                        }
-                        if matched == count { return true }
-                    }
-                    position += 1
-                }
-                return false
-            }
+            search.matchesBytes(Array(Self.value(of: cell, in: bytes).utf8), from: 0, to: Int.max)
         }
     }
 

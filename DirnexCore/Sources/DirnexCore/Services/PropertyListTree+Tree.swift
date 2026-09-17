@@ -83,9 +83,10 @@ extension PropertyListTree: TreeDocument {
     public func filter(
         matching query: String,
         in scope: TreeFilterScope = .keysAndValues,
+        options: FilterQuery.Options = [],
         isCancelled: () -> Bool = { false }
     ) -> TreeFilter? {
-        let search = FilterQuery(query)
+        let search = FilterQuery(query, options: options)
         return TreeFilter.build(count: nodes.count, parent: parent(of:), isCancelled: isCancelled) {
             search.isEmpty || matches($0, scope: scope, search: search)
         }

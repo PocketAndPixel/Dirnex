@@ -39,14 +39,18 @@ extension QuickViewTreeView: QuickViewRowFilterHost {
         }
         let generation = filterGeneration
         let scope = filterBar.scope
+        // Read on the main actor beside the text, for the reason the table reads it there.
+        let options = filterBar.options
         let cancellation = CancellationFlag()
         filterCancellation = cancellation
         filterTask = Task { [weak self] in
             let found = await BlockingWork.run {
-                document.filter(matching: query, in: scope) { cancellation.isCancelled }
+                document.filter(matching: query, in: scope, options: options) {
+                    cancellation.isCancelled
+                }
             }
             guard let self, generation == filterGeneration, let found else { return }
-            applyFilter(found, marking: (FilterQuery(query), scope))
+            applyFilter(found, marking: (FilterQuery(query, options: options), scope))
         }
     }
 

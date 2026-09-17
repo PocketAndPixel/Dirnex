@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-18)
 
-Eighty-five dated passes that landed outside a milestone of their own, between M18's close on
+Eighty-six dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-18: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12934,6 +12934,91 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-18 (later) — the find bar's three remaining gaps: Return, the menu item's name, and search
+options. VERIFIED LIVE.** Asked for as "let's do the other left undone" — the three the entry below
+listed after closing the `QLPreviewView` one. Each was probed before any Swift, and two of the three
+probes overturned the obvious implementation.
+
+- **Return steps to the next match, ⇧Return to the previous.** The probe is the finding: measured
+  through `interpretKeyEvents`, a field editor turns Return, ⇧Return **and keypad Enter** all into
+  the same `insertNewline:`, and `insertLineBreak:` — the natural guess for the shifted spelling — is
+  never sent. So the selector cannot carry the direction and the modifiers must, which lands it in
+  the family this file records under Testing: a rule reading `NSEvent.modifierFlags` inside itself
+  has one reachable test case. `filterCommand` takes them as a **defaulted parameter**, evaluated at
+  each call, so production reads the live keyboard and a test hands over `.shift`.
+  - The fork is by *kind* of surface, not by a flag: a host that **finds** steps, and one that
+    **narrows** still hands the keyboard back, because there the rows are the result and ↑/↓ already
+    walk them. `returnStepsResults` is a requirement with no default in the base protocol and one
+    answer per sub-protocol — the shape `stepFilterResult` already had, chosen over a default in both
+    places so which witness wins is not left to overload resolution at each conformance. The built
+    dylib confirms all five surfaces resolved it.
+  - It also answers `false` when there is **nothing to step to**, so with nothing typed or nothing
+    found the key falls through to what it always did rather than going dead. Tab is untouched and is
+    what still leaves the field.
+- **The menu item says what ⌥⌘F would do.** It read "Filter" over a PDF, which is the wrong word for
+  three of the five surfaces. It now retitles live — **Find…** over a text, a rendered page or a PDF,
+  and the catalog's own **Filter** over a table or a tree — the same way Edit and Compare By Contents
+  already name what they would launch. The filter branch reads the title back from `LocalizedCatalog`
+  rather than spelling it, so the registry's string is not duplicated; the palette keeps the catalog
+  title, which is what its fuzzy search matches, and the command's keywords already carry "find" and
+  "search". The choice is split into `filterItemTitle(finding:)` so it can be tested without a window.
+- **Case Sensitive and Whole Word, on all five surfaces.** Scope was settled by measurement rather
+  than taste: `NSRegularExpression` is only 3–5× the current matcher over 4 MB (15–21 ms against
+  4.3 ms), so *performance* is no argument against pattern search — but `(a+)+b` over **31
+  characters** ran past a 10 s cap with the `stop` pointer never consulted, because it is only read
+  *between* matches. `CancellationFlag`, which every search here relies on, cannot interrupt one
+  backtracking match, and the bar searches on every keystroke. Recorded, and regex left out.
+  - **One type owns what "contains" means.** Every caller that reached for
+    `DelimitedTable.foldedContains` directly now asks `FilterQuery.matchesBytes`, so the table, the
+    three trees and the three finding surfaces cannot drift into six readings of one box — the same
+    reason `PDFDocument.findString` was turned down a day earlier. `foldedContains` had no callers
+    left and went. The options default to `[]` at every entry point, which is asserted rather than
+    assumed: all 3 646 core tests passed unchanged before a single new one was added.
+  - **The word-boundary rule needed two measurements.** `isAlphabetic` is **false** for U+0301 and
+    **true** for U+05B4, two scalars of one general category, so the mark categories are named beside
+    the property — without them a decomposed `café` would whole-word-match `cafe`, the opposite of
+    what the accent-counting rule beside it says. And at a byte boundary the neighbouring character
+    cannot be read from the byte: "any non-ASCII byte is part of a word" is the cheap rule and it
+    misses `beta` in `“beta”`, silently, in any typeset document. UTF-8 self-synchronizes, so the
+    scalar either side is decoded exactly, at bounded cost.
+  - The options live in the search field's **magnifying-glass menu**, which costs a bar that is
+    already four controls wide at a 320 pt pane no width at all — the localization budget this file
+    has four entries about. `NSSearchField` **copies** that template to display it, so the menu is
+    rebuilt from the stored value rather than by toggling the item the action received. They survive
+    a new file, because an option is a mode rather than content; they are deliberately **not** written
+    to disk and each surface has its own bar, which is one stated limit instead of a preference key, a
+    fifth store to inject and a process-wide value for tests to leak through.
+  - The bar reached SwiftLint's `type_body_length` and was split by concept
+    (`QuickViewTableFilterBar+Options`), not shaved.
+
+Tests: 14 core in a new suite, 15 app in two. Six controls, each failing only its own tests and no
+other suite: Return never stepping (2 tests), ⇧Return ignoring the modifier (1), one title for both
+states (1), the case option ignored (3 core), no scalar being a word character (5 core), and the
+table's matcher not being handed the options (1 app — the plumbing control, which is the one a
+five-surface change can silently miss).
+Validation: both linters, all four CI scripts, **1 042** localization keys with three new strings
+carried into all 14 languages, 3 660 core tests (3 646 before), 1 381 app tests (1 361 before), one
+pre-existing known issue.
+
+Live, in the Debug build launched by path, with the new symbols demangled out of `Dirnex.debug.dylib`
+and the three strings read back out of the compiled `.strings`. Over `vite.config.ts`: `beta` found
+**5** matches, Whole Word took it to **4** with the `betaOnly` highlight gone, and reopening the menu
+showed **✓ Whole Word** — the template-copy concern, answered on screen. The options then survived a
+step to another file: on a mixed-case one, with Case Sensitive *and* Whole Word still on, `beta` found
+exactly **2** — the lowercase standalone ones — while `Beta`, `BETA` and `betaOnly` were all correctly
+left out. Over a CSV the same two options narrowed **3 of 3 rows** to **2 of 3**, dropping `Beta`, with
+the cell marks following the same rule. And the menu item's two branches were read off the live menu
+bar: over the text preview there is no "Filter" item and the closest match is **"Find…"**, over the
+table there is no "Find…" and the closest match is **"Filter"**.
+
+**Not verified live:** Return and ⇧Return themselves — background computer-use cannot press Return in
+a text field, it sets the field's selected text to a newline (docs/NOTES.md ▸ Live verification), which
+this run reproduced as a puzzling "1 of 2 matches" before a clean retype gave the expected 5. They are
+covered by 4 tests and 2 controls. Also unverified live: the options over a rendered page, a PDF or a
+JSON tree (each shares its call site with a surface that was driven), and a physical Esc. **Left
+undone:** pattern search, for the measured reason above; the options persisting across surfaces or
+launches; and a match in a PDF that no text layer covers.
 
 **2026-09-18 — the last surface the find could not reach, and what the question turned up instead.
 VERIFIED LIVE.** Asked for as "also add find to the Quick View preview if possible" — the
