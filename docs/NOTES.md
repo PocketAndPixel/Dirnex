@@ -6991,6 +6991,95 @@ next to a download has no stock way to check it.
   is 274 MiB/s, which is what makes "compute everything while the bytes are in hand" affordable.
   Chunk size is irrelevant between 64 KiB and 4 MiB.
 
+### The system regex engine (TRE in libc)
+
+Pattern search in Quick View's find bar (M28-era, 2026-09-18). All of it probed before any Swift,
+and the first probe overturned the reason pattern search had been left out.
+
+- **macOS's `regex(3)` is linear, and neither of the two engines everybody reaches for is.** The find
+  bar shipped without patterns for a measured reason: `NSRegularExpression` is ICU, which backtracks,
+  and `(a+)+b` over **28 characters** took **9.4 s** with `enumerateMatches`' `stop` pointer read only
+  *between* matches — so one keystroke could wedge a thread with nothing able to interrupt it. Swift's
+  `Regex` is worse (**past 10 s at 20 characters**). What nobody had asked is what **libc** does:
+  `/usr/include/regex.h` is **TRE** (Ville Laurikari's copyright is in the header), a tagged-NFA
+  *parallel* simulation, and it answers that pattern in **0.00002 s** — a million characters of it in
+  **0.05 s**, with capture on. Measured against every shape that kills a backtracker: `^(a|aa)+$`,
+  `^((a*)*)*$`, `^(a?){100}a{100}$`, all linear at every length tried.
+  - **The cost that remains is linear in input × *pattern*,** since a bounded repetition expands the
+    machine — and the alarming numbers need a degenerate *file*, not a degenerate pattern:
+    `a{255}b` over 4 MB of nothing but `a` is **4.25 s**, while the same pattern over 3.6 MB of
+    ordinary text is **41 ms** and `(a{100}){100}b` (10 000 states) is **32 ms**, because the live
+    state set dies at the first byte that does not fit. So no complexity budget in front of it; what
+    a bar needs is to run off the main actor and drop a search the reader has moved past.
+  - Whole-file costs on 3.6 MB of prose, every match found: `\bbeta\b` 60 000 in **25 ms**, `[0-9]+`
+    60 000 in 123 ms, `\w+` 720 000 in 131 ms.
+
+- **Back references are the one exception, and they are only reachable under `REG_ENHANCED`.**
+  `(a*)*\1b` over a run of `a`s costs 0.0005 s at 10 characters, 0.17 s at 20, 2.5 s at 24 and
+  **40 s at 28** — TRE falls back to backtracking when one is present. Refuse the pattern instead:
+  the scan is over the *pattern* (`\1`–`\9` outside a bracket expression, where the enhanced escapes
+  do not operate at all), and the refusal has to be its own sentence, since a back reference is a
+  pattern every other tool would take.
+
+- **`REG_ENHANCED` (0400, absent from Swift's Darwin module) is what makes the syntax the one people
+  type**: `\d \w \s \b \B \< \>`, the `\n \t \xNN` literals, `\Q…\E` and lazy `*?`. Without it `\b` is
+  a literal `b` and finds nothing, which reads as a broken bar. `\A` and `\Z` are **not** supported
+  (they compile, as literal `A` and `Z`, and match nothing). `REG_NEWLINE` makes `^`/`$` line anchors
+  and stops `.` crossing a line, which is what a find field means by them — and is safe because a
+  newline is still reachable as `\n` from a one-line text field.
+
+- **The locale is captured at `regcomp`, not read at `regexec`** — measured in all four combinations:
+  compiled under UTF-8 and executed under `C`, `^.$` matches `б` and `REG_ICASE` folds `ПАНОРАМА`;
+  compiled under `C` and executed under UTF-8, neither does. That matters because a GUI-launched app
+  has **no locale at all** (▸ Design lessons, `ChildProcessLocale`), so the process's is `C`, where
+  `.` is a byte and `\w` is ASCII. There is **no `regexec_l`**, and `regcomp_l` is not exposed to
+  Swift, so the lever is **`uselocale`**, which is thread-local: set it around the compile alone, on
+  the thread already doing the search, and the process locale is untouched (verified `C` afterwards).
+  `newlocale`+`freelocale` costs **0.4 µs**.
+
+- **`regncomp`/`regnexec` take a length**, so a pattern matches a cell where it lies with no
+  NUL-termination and no copy. There is no `REG_STARTEND` on Darwin, so iterating means handing the
+  engine the *rest* of the buffer — and **the rest of a buffer has nothing before it**: `\bbeta` over
+  `betabeta` reports **two** matches sliced naively and **one** with the preceding character included.
+  Every assertion TRE has looks back exactly one character, so one character of context plus
+  `REG_NOTBOL` is exact; a leftmost match that starts *inside* that context overlaps the previous one
+  and the search is repeated from the seam. And `REG_NOTBOL` belongs to the **value's** start, not the
+  buffer's: a cell searched in place begins a line as surely as a document does, which is what makes
+  `^beta$` mean a cell holding exactly that.
+
+- **An empty match is returned at some positions and not others**, so skipping it is what guarantees
+  progress rather than a nicety: `a*` over `baab` answers `[1,3)`, then `[3,3)` and `[4,4)` — the
+  leftmost *non-empty* match first, and empties afterwards. Step past one by a whole character, and
+  let the step run past the upper bound: clamping it to the bound is what would spin.
+
+- **One compiled pattern is safe to match from several threads at once**: 8 threads × 201 rounds
+  against one `regex_t` agreed with the serial answers every time.
+
+- **A bracket *range* compares the low 8 bits of each character, which is the one thing here that is
+  simply wrong.** Found by asking what each range accepts, one character at a time, and looking for a
+  rule that fits every answer: `[A-Z]` (0x41–0x5A) takes `я` (U+044**F**) and `ё` (U+04**51**) while
+  refusing `а` (U+0430 → 0x30) and `Я` (U+042F → 0x2F); `[А-Я]` (truncated to 0x10–0x2F) takes a
+  **space**, `!`, `-` and `中` (U+4E**2D**) and none of `а`, `A` or `0`; `[א-ת]` (0xD0–0xEA) takes
+  `é`. Every other bracket construct is exact — a single character, a negation, `[[:upper:]]` (which
+  is Unicode-aware), and `REG_ICASE` over any of them.
+  - **The repair is to expand a range into its own characters before compiling**, which is what the
+    engine would have done had it compared code points: `[a-z]` → `[abcdefghijklmnopqrstuvwxyz]`. It
+    costs ~1.3× at match time in the worst case measured (`[a-zA-Z0-9_]+` over 3.6 MB: 720 000
+    matches in 0.27 s raw against 0.38 s expanded, identical counts) and is sometimes faster.
+  - **The cap is the engine's own**: a bracket expression holding more than **1024** items fails to
+    compile with `REG_ESPACE` (1024 compiles, 1025 does not; the limit is per expression, not per
+    pattern — three classes of 1000 compile fine). So a range wider than that is left as typed, where
+    the truncation changes an answer that was already "very nearly anything".
+  - **The syntax inside a bracket is not the syntax outside one**, and a rewriter has to match it:
+    probed, a backslash inside a bracket expression is a **literal backslash** (`[\x41]` matches `\`,
+    not `A`; `[\d]` matches `d`), `]` is literal when it comes first, `-` is literal first or last,
+    and `[:class:]`, `[.collating.]` and `[=equivalence=]` are items of their own. Since nothing can
+    be escaped in there, a rewritten class has to *order* its characters — `]` first, `-` last, `^`
+    anywhere but first.
+  - Live A/B on one file: `[а-я]+` over a mixed Latin/Cyrillic note answers **21 matches** with the
+    range as typed (`al`, `ha`, `gamma`, `and`, `bee`, `code:` …) and **2** expanded (`Панорама`,
+    `Дом`) — which is what the app shows.
+
 ### Encryption: encrypted archives (libarchive) and vaults (`hdiutil`)
 
 M19's two halves. Everything here was probed before any Swift was written, and the first probe

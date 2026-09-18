@@ -39,6 +39,9 @@ public struct TextFindMatches: Sendable, Equatable {
         isCancelled: () -> Bool = { false }
     ) -> TextFindMatches? {
         guard !query.isEmpty else { return TextFindMatches(ranges: [], isComplete: true) }
+        if query.options.contains(.pattern) {
+            return query.utf16PatternOccurrences(in: text, limit: limit, isCancelled: isCancelled)
+        }
         return query.isASCII
             ? query.utf16ByteOccurrences(in: text, limit: limit, isCancelled: isCancelled)
             : query.utf16CharacterOccurrences(in: text, limit: limit, isCancelled: isCancelled)
@@ -161,6 +164,38 @@ extension FilterQuery {
         }
     }
 
+    /// The pattern branch: the engine's matches, in the text's own bytes, with the UTF-16 offsets
+    /// counted alongside them by one walk that never goes back — the same arithmetic the byte branch
+    /// does inline, and the reason a match's offsets cost nothing beyond the scan that found it.
+    ///
+    /// A pattern that would not compile finds nothing, which is the answer the bar explains rather
+    /// than one it reports as a failure.
+    fileprivate func utf16PatternOccurrences(
+        in text: String,
+        limit: Int,
+        isCancelled: () -> Bool
+    ) -> TextFindMatches? {
+        guard let pattern else { return TextFindMatches(ranges: [], isComplete: true) }
+        var text = text
+        return text.withUTF8 { haystack -> TextFindMatches? in
+            var ranges: [Range<Int>] = []
+            var cursor = UTF16Cursor()
+            var start = 0
+            let bounds = 0..<haystack.count
+            while let found = firstPatternMatch(pattern, in: haystack, within: bounds, from: start) {
+                if isCancelled() { return nil }
+                guard ranges.count < limit else {
+                    return TextFindMatches(ranges: ranges, isComplete: false)
+                }
+                let lower = cursor.advance(to: found.lowerBound, in: haystack)
+                let upper = cursor.advance(to: found.upperBound, in: haystack)
+                ranges.append(lower..<upper)
+                start = found.upperBound
+            }
+            return TextFindMatches(ranges: ranges, isComplete: true)
+        }
+    }
+
     /// Whether a whole-word search is satisfied here — free, and `true`, when none was asked for.
     /// The bounds are the whole text's, since a preview searches a document rather than a field.
     private func wholeWordHolds(
@@ -213,6 +248,29 @@ extension FilterQuery {
             searchStart = found.upperBound
         }
         return TextFindMatches(ranges: ranges, isComplete: true)
+    }
+}
+
+/// A byte offset and the UTF-16 offset of the same place, walked forward together. Matches arrive in
+/// ascending order, so one cursor converts them all in a single pass over the text.
+private struct UTF16Cursor {
+    private var byte = 0
+    private var utf16 = 0
+
+    /// The UTF-16 offset of `target`, which must be at or after the last one asked for.
+    mutating func advance(to target: Int, in haystack: UnsafeBufferPointer<UInt8>) -> Int {
+        while byte < target {
+            // A lead byte starts a scalar: four-byte scalars are two UTF-16 units, the rest one.
+            // Continuation bytes (10xxxxxx) add nothing.
+            let value = haystack[byte]
+            if value < 0x80 || (value >= 0xC0 && value < 0xF0) {
+                utf16 += 1
+            } else if value >= 0xF0 {
+                utf16 += 2
+            }
+            byte += 1
+        }
+        return utf16
     }
 }
 

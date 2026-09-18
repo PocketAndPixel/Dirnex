@@ -42,8 +42,17 @@ struct FilterQueryOptionNamesTests {
             $0.insert($1.option)
         }
         #expect(named == FilterQuery.Options.all)
-        #expect(FilterQuery.Options.named.count == 2)
-        #expect(Set(FilterQuery.Options.named.map(\.name)).count == 2, "no two options share a name")
+        // Relationships rather than a count: a number here expires the day an option is added, in a
+        // pass that has done nothing wrong — which is what happened when pattern search arrived.
+        #expect(
+            Set(FilterQuery.Options.named.map(\.name)).count == FilterQuery.Options.named.count,
+            "no two options share a name"
+        )
+        #expect(
+            Set(FilterQuery.Options.named.map(\.option.rawValue)).count
+                == FilterQuery.Options.named.count,
+            "no option is named twice"
+        )
     }
 
     @Test("a name this build does not know is dropped, and the rest still read")

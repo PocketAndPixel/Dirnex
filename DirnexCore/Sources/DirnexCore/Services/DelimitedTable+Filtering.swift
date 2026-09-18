@@ -45,7 +45,7 @@ extension DelimitedTable {
             guard reached > columns.lowerBound else { continue }
             for column in columns.lowerBound..<reached {
                 let cell = cells[start + column]
-                let found = search.isASCII
+                let found = search.readsBytes
                     ? self.cell(cell, contains: search)
                     : search.matches(Self.value(of: cell, in: bytes))
                 if found {
@@ -57,7 +57,8 @@ extension DelimitedTable {
         return matches
     }
 
-    /// Whether `cell`'s value contains `search`, an ASCII query, read in place under whatever options
+    /// Whether `cell`'s value contains `search`, an ASCII query or a pattern, read in place under
+    /// whatever options
     /// it carries. A plain or plainly quoted value is its bytes, so they are read where they lie; one
     /// with a doubled quote or text after its closing quote is decoded first, since its bytes are not
     /// its value.

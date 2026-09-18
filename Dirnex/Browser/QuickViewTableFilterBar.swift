@@ -6,8 +6,8 @@ import DirnexCore
 /// values are left, and a button to put it away. Over a text preview it finds rather than narrows
 /// (2026-09-17): no picker, and the count says which match is the current one (`useForFinding`).
 ///
-/// The magnifying glass carries Case Sensitive and Whole Word, which every surface reads the same way
-/// (`FilterQuery.Options`, 2026-09-18).
+/// The magnifying glass carries Case Sensitive, Whole Word and Regular Expression, which every
+/// surface reads the same way (`FilterQuery.Options`, 2026-09-18).
 ///
 /// It reports and decides nothing. The surface runs the filter (`QuickViewTableView+Filter`,
 /// `QuickViewTreeView+Filter`) and `QuickViewFilterHost` owns what each key does, so the bar can be
@@ -72,7 +72,8 @@ final class QuickViewTableFilterBar: NSVisualEffectView, NSSearchFieldDelegate {
     /// The text being searched for.
     var query: String { field.stringValue }
 
-    /// How the text is read: Case Sensitive and Whole Word, off unless the user turned one on.
+    /// How the text is read: Case Sensitive, Whole Word and Regular Expression, off unless the user
+    /// turned one on.
     ///
     /// Read from the shared store rather than held here, so all five surfaces answer the same and a
     /// choice outlives both a new file and the app (2026-09-18). Nothing writes it but ``applyOptions``.
@@ -152,18 +153,6 @@ final class QuickViewTableFilterBar: NSVisualEffectView, NSSearchFieldDelegate {
         ))
     }
 
-    /// "12 of 3000 values", or nothing while no text is typed — the tree's count, of the values that
-    /// matched rather than the rows shown, since a matched container shows everything it holds.
-    func showValueCount(matched: Int, of total: Int, filtering: Bool) {
-        countLabel.stringValue = filtering ? String(
-            localized: "\(matched) of \(total) values",
-            comment: """
-            Quick View JSON tree filter: how many values matched. %1$lld values matched, of %2$lld in \
-            the file. Plural on the second.
-            """
-        ) : ""
-    }
-
     /// Offer `titles` as the columns to search, every column chosen.
     func setColumns(_ titles: [String]) {
         columnPicker.setAccessibilityLabel(String(
@@ -203,46 +192,6 @@ final class QuickViewTableFilterBar: NSVisualEffectView, NSSearchFieldDelegate {
         closeButton.toolTip = closeTitle
         closeButton.image?.accessibilityDescription = closeTitle
         closeButton.setAccessibilityLabel(closeTitle)
-    }
-
-    /// "3 of 17 matches", "3 of 100 000+ matches" when the search stopped at its limit, "No matches",
-    /// or nothing while no text is typed. `current` counts from 1.
-    func showMatchCount(current: Int, of total: Int, isComplete: Bool, finding: Bool) {
-        guard finding else {
-            countLabel.stringValue = ""
-            return
-        }
-        guard total > 0 else {
-            countLabel.stringValue = String(
-                localized: "No matches",
-                comment: "Quick View text find: the count when the text is found nowhere in the file."
-            )
-            return
-        }
-        countLabel.stringValue = isComplete ? String(
-            localized: "\(current) of \(total) matches",
-            comment: """
-            Quick View text find: which match is the current one. %1$lld is the current match, of \
-            %2$lld in the file. Plural on the second.
-            """
-        ) : String(
-            localized: "\(current) of \(total)+ matches",
-            comment: """
-            Quick View text find: which match is the current one, when the search stopped at its limit \
-            with more in the file. %1$lld is the current match, of more than %2$lld. Plural on the second.
-            """
-        )
-    }
-
-    /// "12 of 3000 rows", or nothing while no text is typed.
-    func showCount(shown: Int, of total: Int, filtering: Bool) {
-        countLabel.stringValue = filtering ? String(
-            localized: "\(shown) of \(total) rows",
-            comment: """
-            Quick View table filter: how many rows the filter left. %1$lld rows are shown, of %2$lld in \
-            the file. Plural on the second.
-            """
-        ) : ""
     }
 
     // MARK: - Field

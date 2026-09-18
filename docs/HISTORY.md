@@ -12935,6 +12935,112 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
 
+**2026-09-18 (after the find options) — pattern search, once the engine that made it unaffordable
+turned out not to be the only one. VERIFIED LIVE.** Asked for as "we have undone work in history.
+let's do it", quoting the two items the entry below left undone; pattern search was chosen over the
+OCR half, which is a milestone rather than a slice. The measured reason it had been left out is in
+that entry and it is sound — and it is a fact about **ICU**, not about pattern search. Re-probed
+before any Swift: `NSRegularExpression` takes **9.4 s** on `(a+)+b` over 28 characters and Swift's
+`Regex` runs past 10 s at **20**, while macOS's own `regex(3)` — which is **TRE**, a tagged-NFA
+parallel simulation, Laurikari's copyright sitting in the SDK header — answers the same pattern in
+**0.00002 s** and a million characters of it in **0.05 s**, with capture on. Every shape that kills a
+backtracker (`^(a|aa)+$`, `^((a*)*)*$`, `^(a?){100}a{100}$`) stayed linear. So the feature cost a
+wrapper rather than an engine, and what the pass is really about is the four things that wrapper has
+to get right.
+
+- **A bracket range compares the low 8 bits of each character, and that is libc's bug rather than a
+  surprise to live with.** Found by asking what each range accepts one character at a time and
+  looking for a rule that fits every answer: `[A-Z]` takes `я` (U+044**F**) and `ё` (U+04**51**);
+  `[А-Я]`, truncated to 0x10–0x2F, takes a **space**, `!`, `-` and `中` (U+4E**2D**) while taking
+  none of `а`, `A` or `0`. Everything else in a bracket is exact, which is what makes the repair
+  small: the ranges are expanded into their own characters before the pattern is compiled
+  (`PatternSearch.expandingRanges`), which is what the engine would have done had it compared code
+  points. It costs ~1.3× at match time in the worst case measured and is sometimes faster, and the
+  cap is the engine's own — **1024 items** per bracket expression, above which `REG_ESPACE` (1024
+  compiles, 1025 does not), so a wider range is left as typed. Writing the class back down is where
+  the care went: nothing can be escaped inside a bracket, so `]` goes first, `-` last and `^`
+  anywhere but first, and a backslash in there is a literal backslash rather than an escape.
+- **Back references are refused, and it is the one refusal with a number behind it.** They are
+  available only under `REG_ENHANCED` — which is also what buys `\d \w \s \b` and the `\n`/`\t`
+  literals, so it is not a flag to drop — and with one present TRE falls back to backtracking:
+  `(a*)*\1b` costs 0.17 s at 20 characters, 2.5 s at 24 and **40 s at 28**. The bar searches on every
+  keystroke, so the pattern is turned away before it runs, with a sentence of its own: a back
+  reference is a pattern every other tool would take, and "invalid" would be the app blaming the user
+  for its own rule.
+- **Iterating means handing the engine the rest of the buffer, and the rest of a buffer has nothing
+  before it.** There is no `REG_STARTEND` here, so a second match is found by slicing — and `\bbeta`
+  over `betabeta` then reports **two** matches where there is one. One character of context plus
+  `REG_NOTBOL` is exact, since every assertion TRE has looks back exactly one character; a leftmost
+  match that starts inside the context overlaps the previous one, and the search is repeated from the
+  seam. The neighbouring half is that `REG_NOTBOL` belongs to the **value's** start rather than the
+  buffer's, which is what makes `^beta$` mean a cell holding exactly that — caught by a test, and
+  visible in the live run as `^[45]0` matching `500` and `404` while leaving `1500` alone.
+- **The locale is captured at compile time, not read at exec time** (measured in all four
+  combinations), which is the whole reason a pattern reads UTF-8 at all: a GUI-launched app has no
+  locale, so the process's is `C`, where `.` is a byte. There is no `regexec_l` and `regcomp_l` is not
+  exposed to Swift, so the lever is `uselocale` — thread-local, 0.4 µs, set around the compile alone
+  and restored, with the process locale verified untouched afterwards.
+
+Where it lives is the same answer the last two passes gave: **one option on `FilterQuery`**
+(`.pattern`), so all five surfaces gain it from the type that owns what "contains" means, and Case
+Sensitive and Whole Word keep meaning what they meant — the first is the engine's `REG_ICASE`, the
+second is this app's own word-boundary rule applied to each match rather than anything the engine
+does. A pattern that will not compile matches **nothing**, which would be an unexplained empty table,
+so the bar says why where the count goes (`Invalid pattern`, `No back references`) — one funnel every
+count already goes through, since the bar is the only place that has both the text and the options,
+and the alternative is the same sentence plumbed through five surfaces. Half-typed, an unusable
+pattern is the ordinary state of one, so it is a thing to *say* rather than a failure to report.
+
+Two types reached SwiftLint's `type_body_length` and were split by concept rather than shaved:
+`FilterQuery` into the pattern half and the word-boundary rule, and the bar into the menu and what
+the count line says.
+
+**A test asserting a count expired in a pass that had done nothing wrong**, which is the shape this
+file keeps meeting from the other side: `FilterQueryOptionNamesTests` pinned `Options.named.count ==
+2` beside the relationship it really meant, so adding a third option failed a suite that was right.
+It now asserts relationships only — no two options share a name, no option is named twice — and the
+count went with it.
+
+Tests: 18 core in a new suite, 7 app in another, plus the option-coverage tests amended to read
+against `Options.all` rather than a number. Twelve controls, each failing only its own tests: six core
+(no range expansion, no context at the seam, back references allowed, `^` told the slice is never a
+start, empty matches reported, Whole Word not applied to a pattern) and six app (the option not
+offered, the count line never saying why, one sentence for both refusals, and three pieces of
+plumbing — the table's rows, a finding surface, and the *marks*, which are built at a different call
+site from the rows).
+
+**Three of those controls were inert first time, and each was a finding rather than noise.** The
+"empty matches" one *crashed* the test host instead of failing it — a range walked past its bound,
+which is how the loop's own termination rule is written — so it was reshaped into the rule plus
+scaffolding that only keeps the two consuming loops moving, and it then failed exactly its own test.
+The first "the table is not handed the options" control changed the *marking* query and broke
+nothing, because no test read the marks under a pattern: the gap was real, and a marks test closed it
+before the control was re-aimed at `rowsMatching`, where it fires. And the first "one sentence for
+both refusals" attempt reported nothing because it had not built at all — the run's own test count,
+not its verdict, is what said so.
+
+Validation: both linters, all four CI scripts, **1 045** localization keys with three new strings in
+all fourteen languages, **3 683** core tests (3 665 before), **1 396** app tests (1 389 before), one
+pre-existing known issue.
+
+Live, in the Debug build launched by path, after quitting the running instance and backing the
+developer's own defaults domain up. With Regular Expression **off**, `be(ta|er)` over a text preview
+read **No matches** — the literal reading, since nothing in the file spells that. The app was then
+quit, the option seeded into the store by name, and relaunched: the bar came up with it already on
+(which is the persistence half, read from disk), and the same text found **1 of 4 matches** —
+`beta`, `beta`42, `beta`Only and `beer`, with `bear` left alone and the current match drawn in
+orange. `[а-я]+` found **2**, `Панорама` and `Дом`, and nothing else on a line reading `code: value_1
+= 42; value_2 = 7`; the same query with the range handed to the engine as typed answers **21**
+matches on that file, `al`, `ha`, `gamma`, `and`, `bee` and `code:` among them, which is the A/B for
+the expansion. `be(ta` said **Invalid pattern** and `(bet)\1` said **No back references**. Over the
+CSV table `^[45]0` left **2 of 3 rows**, marking `50`0 and `40`4 and not the `1500` in the next
+column, and `cv/[` emptied the table under **Invalid pattern**. The domain was restored afterwards
+and read back as it was found.
+
+**Left undone:** a match in a PDF that no text layer covers, which has no text to find without OCR —
+the other half of the entry below, and its own milestone: Vision per page, a cache, progress and
+cancellation, and a way to draw a match that does not go through `PDFPage.selection(for:)`.
+
 **2026-09-18 (last) — the find options remembered, across surfaces and across launches. VERIFIED
 LIVE.** The second of the three the entry below left undone. What decided the design was not where to
 put the value but *how the five bars would agree about it*: they are built eagerly and live as long as

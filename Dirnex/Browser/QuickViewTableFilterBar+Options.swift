@@ -1,8 +1,9 @@
 import AppKit
 import DirnexCore
 
-/// Case Sensitive and Whole Word: the two options Quick View's find and filter bar offers, and the
-/// menu they live in (2026-09-18). Split out of `QuickViewTableFilterBar` in the pass that added them,
+/// Case Sensitive, Whole Word and Regular Expression: the options Quick View's find and filter bar
+/// offers, and the menu they live in (2026-09-18). Split out of `QuickViewTableFilterBar` in the pass
+/// that added the first two,
 /// which took the class past SwiftLint's `type_body_length` — by concept rather than by shaving lines,
 /// as every other split in this window has been.
 ///
@@ -10,7 +11,7 @@ import DirnexCore
 /// all five surfaces, which is the whole point of them living on one type: the bar offers them and
 /// decides nothing.
 extension QuickViewTableFilterBar {
-    /// The two toggles, in the search field's own magnifying-glass menu.
+    /// The toggles, in the search field's own magnifying-glass menu.
     ///
     /// The menu rather than a pair of buttons in the row, because this bar has no width to spare: it
     /// already carries a picker, the text, a count and a close button inside a pane that is 320 pt at
@@ -39,9 +40,9 @@ extension QuickViewTableFilterBar {
         field.searchMenuTemplate = menu
     }
 
-    /// The titles, in the order the menu lists them. A `static let` so the two are named once and the
+    /// The titles, in the order the menu lists them. A `static let` so each is named once and the
     /// loop above cannot fall out of step with the tags it reads back; a test checks it covers
-    /// ``DirnexCore/FilterQuery/Options/all``, so a third option cannot ship unofferable.
+    /// ``DirnexCore/FilterQuery/Options/all``, so a fourth option cannot ship unofferable.
     static let optionTitles: [(FilterQuery.Options, String)] = [
         (.caseSensitive, String(
             localized: "Case Sensitive",
@@ -55,6 +56,14 @@ extension QuickViewTableFilterBar {
             comment: """
             Quick View find and filter: the option that finds “beta” only where it stands alone, not \
             inside “betaOnly”. A checkable item in the search field's magnifying-glass menu.
+            """
+        )),
+        (.pattern, String(
+            localized: "Regular Expression",
+            comment: """
+            Quick View find and filter: the option that reads what is typed as a search pattern \
+            (`be(ta|er)`) rather than as text to find literally. A checkable item in the search \
+            field's magnifying-glass menu.
             """
         ))
     ]

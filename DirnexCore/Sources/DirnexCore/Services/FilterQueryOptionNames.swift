@@ -20,13 +20,14 @@ public extension FilterQuery.Options {
     /// Spelled out because an `OptionSet` has no `allCases`. It is what ``storedNames`` and the bar's
     /// menu are both checked against, so an option added here without a name or without a title fails
     /// a test rather than being silently unstorable and unofferable.
-    static let all: FilterQuery.Options = [.caseSensitive, .wholeWord]
+    static let all: FilterQuery.Options = [.caseSensitive, .wholeWord, .pattern]
 
     /// Every option paired with the name it is stored under. The names are API the moment one is
     /// written to disk, so they are never renamed — a new one is added.
     static let named: [(option: FilterQuery.Options, name: String)] = [
         (.caseSensitive, "caseSensitive"),
-        (.wholeWord, "wholeWord")
+        (.wholeWord, "wholeWord"),
+        (.pattern, "pattern")
     ]
 
     /// The names of the options that are on, in ``named`` order.

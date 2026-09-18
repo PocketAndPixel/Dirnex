@@ -33,6 +33,12 @@ public struct FilterQuery: Sendable, Equatable {
         /// A match must be a whole word: no letter, digit or `_` immediately before or after it, so
         /// `beta` is found in `'beta'` and not in `betaOnly`.
         public static let wholeWord = Options(rawValue: 1 << 1)
+        /// The text is a pattern rather than something to find literally (``PatternSearch``), read by
+        /// macOS's own `regex(3)` — which is TRE, and linear, which is what made this offerable at
+        /// all (2026-09-18). Case Sensitive and Whole Word keep meaning exactly what they mean
+        /// without it: the first is the engine's `REG_ICASE`, the second is this file's own
+        /// word-boundary rule applied to each match, so one box never means two things.
+        public static let pattern = Options(rawValue: 1 << 2)
     }
 
     /// The query, lowercased unless the search is case-sensitive.
@@ -43,12 +49,40 @@ public struct FilterQuery: Sendable, Equatable {
     let bytes: [UInt8]
     /// Whether the needle is all ASCII, and so compared a byte at a time.
     let isASCII: Bool
+    /// The compiled pattern, when the text is one and it compiled.
+    let pattern: PatternSearch?
+    /// Why the pattern would not compile, when it would not — what the bar says instead of a count.
+    /// `nil` whenever the text is not a pattern, or is one that compiled.
+    public let patternProblem: PatternSearchError?
 
     public init(_ query: String, options: Options = []) {
         self.options = options
-        needle = options.contains(.caseSensitive) ? query : query.lowercased()
+        // A pattern is never lowercased: its case is the engine's business (`REG_ICASE`), and folding
+        // it here would quietly rewrite `\W` into `\w` — an option turning a pattern into its own
+        // negation is the kind of wrong nothing downstream could notice.
+        let isPattern = options.contains(.pattern)
+        needle = isPattern || options.contains(.caseSensitive) ? query : query.lowercased()
         bytes = Array(needle.utf8)
         isASCII = bytes.allSatisfy { $0 < 0x80 }
+        guard isPattern, !query.isEmpty else {
+            pattern = nil
+            patternProblem = nil
+            return
+        }
+        do {
+            pattern = try PatternSearch(query, caseSensitive: options.contains(.caseSensitive))
+            patternProblem = nil
+        } catch {
+            pattern = nil
+            patternProblem = error
+        }
+    }
+
+    /// Two queries are the same question when they read the same text the same way. Spelled out
+    /// rather than synthesized because a compiled pattern is an object, and two compiled from one
+    /// string are the same question whether or not they are the same object.
+    public static func == (lhs: FilterQuery, rhs: FilterQuery) -> Bool {
+        lhs.needle == rhs.needle && lhs.options == rhs.options
     }
 
     /// Whether nothing is typed, which every text matches.
@@ -56,10 +90,19 @@ public struct FilterQuery: Sendable, Equatable {
         needle.isEmpty
     }
 
+    /// Whether the query is read straight off a value's bytes, which is what lets a filter search a
+    /// file in place. True of an ASCII query, and of every pattern — the engine reads UTF-8 itself.
+    ///
+    /// Read by the three filters that hold their file as bytes, so a pattern reaches them by the same
+    /// door an ordinary query does rather than through a branch of its own.
+    var readsBytes: Bool {
+        pattern != nil || (!options.contains(.pattern) && isASCII)
+    }
+
     /// Whether `text` contains the query. `true` for an empty query.
     public func matches(_ text: String) -> Bool {
         guard !isEmpty else { return true }
-        guard isASCII else { return matchesAsCharacters(text) }
+        guard options.contains(.pattern) || isASCII else { return matchesAsCharacters(text) }
         let utf8 = Array(text.utf8)
         return matchesBytes(utf8, from: 0, to: utf8.count)
     }
@@ -73,6 +116,19 @@ public struct FilterQuery: Sendable, Equatable {
     /// though the byte before it in the file is a comma.
     public func matchesBytes(_ haystack: [UInt8], from: Int, to: Int) -> Bool {
         guard !bytes.isEmpty else { return true }
+        if options.contains(.pattern) {
+            // A pattern that would not compile matches nothing, which is what the bar's own sentence
+            // about it explains: every row gone with no reason given would read as a broken filter.
+            guard let pattern else { return false }
+            return haystack.withUnsafeBufferPointer { raw in
+                let lower = max(from, 0)
+                let upper = min(to, raw.count)
+                // A caller may hand over a value whose bounds cross — an empty quoted cell is
+                // `start + 1 ..< end - 1` — and a range whose bounds cross is a trap, not an answer.
+                guard lower <= upper else { return false }
+                return firstPatternMatch(pattern, in: raw, within: lower..<upper) != nil
+            }
+        }
         return haystack.withUnsafeBufferPointer { raw in
             let upper = min(to, raw.count)
             let lower = max(from, 0)
@@ -105,119 +161,8 @@ public struct FilterQuery: Sendable, Equatable {
     /// character.
     public func occurrences(in text: String) -> [Range<String.Index>] {
         guard !isEmpty else { return [] }
+        if options.contains(.pattern) { return patternOccurrences(in: text) }
         return isASCII ? byteOccurrences(in: text) : characterOccurrences(in: text)
-    }
-
-    // MARK: - Word boundaries
-
-    /// Whether `scalar` is part of a word, and so stops a match beside it from being a whole one:
-    /// a letter, a digit, or `_`.
-    ///
-    /// Unicode's own properties rather than an ASCII table, and the difference is visible in ordinary
-    /// prose: a curly quote, an em dash, an ellipsis and a no-break space are *not* word characters, so
-    /// a whole-word search finds `beta` in `“beta”` — which a rule reading "any non-ASCII byte is part
-    /// of a word" would miss, and miss silently, in every typeset document anybody previews.
-    ///
-    /// **A combining mark has to be named, because `isAlphabetic` does not cover it** — probed
-    /// 2026-09-18 rather than assumed, and the assumption was wrong: U+0301 COMBINING ACUTE ACCENT is
-    /// `nonspacingMark` with `isAlphabetic` **false**, while U+05B4 HEBREW POINT HIRIQ, the same
-    /// category, is **true**. So the property alone is not a rule about marks at all, and without the
-    /// categories a decomposed `café` would end a word after `cafe` and whole-word-match it — the
-    /// opposite of the answer the accent-counting rule beside it gives for the same pair.
-    ///
-    /// `numericType` rather than an ASCII digit range, so `٣` counts as a digit like `3`. And `_` is
-    /// named because it is `connectorPunctuation` and alphabetic to nobody, while being exactly what
-    /// every language means by one identifier — which matters here, since this app previews source
-    /// code more than anything else.
-    static func isWordScalar(_ scalar: Unicode.Scalar) -> Bool {
-        if scalar == "_" { return true }
-        let properties = scalar.properties
-        if properties.isAlphabetic || properties.numericType != nil { return true }
-        switch properties.generalCategory {
-        case .nonspacingMark, .spacingMark, .enclosingMark: return true
-        default: return false
-        }
-    }
-
-    /// Whether the match at `position` stands alone: the scalar ending before it and the one beginning
-    /// after it are not part of a word. The bounds count as boundaries, so a value that *is* the query
-    /// is a whole word.
-    static func isWholeWord(
-        _ haystack: UnsafeBufferPointer<UInt8>,
-        at position: Int,
-        length: Int,
-        from: Int,
-        to: Int
-    ) -> Bool {
-        if position > from, let before = scalar(
-            endingBefore: position,
-            in: haystack,
-            notBefore: from
-        ),
-            isWordScalar(before) {
-            return false
-        }
-        let end = position + length
-        if end < to, let after = scalar(startingAt: end, in: haystack, before: to),
-           isWordScalar(after) {
-            return false
-        }
-        return true
-    }
-
-    /// The scalar whose UTF-8 ends at `position`. UTF-8 self-synchronizes, so this walks back over at
-    /// most three continuation bytes to find the lead byte.
-    private static func scalar(
-        endingBefore position: Int,
-        in haystack: UnsafeBufferPointer<UInt8>,
-        notBefore lower: Int
-    ) -> Unicode.Scalar? {
-        var start = position - 1
-        while start > lower, haystack[start] >= 0x80, haystack[start] < 0xC0 {
-            start -= 1
-        }
-        return scalar(startingAt: start, in: haystack, before: position)
-    }
-
-    /// The scalar whose UTF-8 begins at `position`, or `nil` for bytes that are not a whole one —
-    /// which counts as a boundary, since nothing that is not a character can be part of a word.
-    private static func scalar(
-        startingAt position: Int,
-        in haystack: UnsafeBufferPointer<UInt8>,
-        before upper: Int
-    ) -> Unicode.Scalar? {
-        guard position >= 0, position < upper else { return nil }
-        let lead = haystack[position]
-        if lead < 0x80 { return Unicode.Scalar(lead) }
-        let length: Int
-        var value: UInt32
-        switch lead {
-        case 0xC0...0xDF: length = 2; value = UInt32(lead & 0x1F)
-        case 0xE0...0xEF: length = 3; value = UInt32(lead & 0x0F)
-        case 0xF0...0xF7: length = 4; value = UInt32(lead & 0x07)
-        default: return nil
-        }
-        guard position + length <= upper else { return nil }
-        for offset in 1..<length {
-            let byte = haystack[position + offset]
-            guard byte >= 0x80, byte < 0xC0 else { return nil }
-            value = (value << 6) | UInt32(byte & 0x3F)
-        }
-        return Unicode.Scalar(value)
-    }
-
-    /// The same question about a text being read as characters: what sits either side of `range`.
-    /// The first scalar of the neighbouring character decides, so the two branches read one rule.
-    static func isWholeWord(_ range: Range<String.Index>, in text: String) -> Bool {
-        if range.lowerBound > text.startIndex {
-            let before = text[text.index(before: range.lowerBound)]
-            if let scalar = before.unicodeScalars.first, isWordScalar(scalar) { return false }
-        }
-        if range.upperBound < text.endIndex {
-            let after = text[range.upperBound]
-            if let scalar = after.unicodeScalars.first, isWordScalar(scalar) { return false }
-        }
-        return true
     }
 
     // MARK: - Private

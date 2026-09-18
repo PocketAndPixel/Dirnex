@@ -138,7 +138,7 @@ extension XMLTree: TreeDocument {
 
     /// Whether `bytes[start..<end]`, which are their own text, contain the query.
     private func contains(_ search: FilterQuery, from start: Int, to end: Int) -> Bool {
-        if search.isASCII {
+        if search.readsBytes {
             return search.matchesBytes(bytes, from: start, to: end)
         }
         return search.matches(JSONDocument.decodeUTF8(bytes[start..<end]))

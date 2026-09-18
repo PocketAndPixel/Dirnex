@@ -21,19 +21,21 @@ struct QuickViewFindOptionsTests {
         try #require(bar.field.searchMenuTemplate)
     }
 
-    @Test("the magnifying glass offers both options, unchecked to begin with")
-    func menuOffersBoth() async throws {
+    @Test("the magnifying glass offers every option, unchecked to begin with")
+    func menuOffersEveryOption() async throws {
         let fixture = try await Fixtures.text(Self.sample)
         defer { fixture.cleanup() }
         let items = try menu(of: fixture.surface.filterBar).items
-        #expect(items.count == 2)
         #expect(items.allSatisfy { $0.state == .off })
         #expect(items.allSatisfy { !$0.title.isEmpty })
         // By tag, not by title: the titles are translated and the app test target inherits whichever
-        // `AppleLanguages` Dirnex is pinned to (docs/NOTES.md ▸ Localization).
-        #expect(items.map(\.tag).sorted() == [
-            FilterQuery.Options.caseSensitive.rawValue, FilterQuery.Options.wholeWord.rawValue
-        ].sorted())
+        // `AppleLanguages` Dirnex is pinned to (docs/NOTES.md ▸ Localization). And against the option
+        // set rather than a count, which would expire the day a fourth one is added.
+        let offered = items.reduce(into: FilterQuery.Options()) {
+            $0.insert(FilterQuery.Options(rawValue: $1.tag))
+        }
+        #expect(offered == FilterQuery.Options.all)
+        #expect(items.count == FilterQuery.Options.named.count)
         #expect(fixture.surface.filterBar.options.isEmpty)
     }
 

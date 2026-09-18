@@ -68,7 +68,7 @@ extension JSONDocument {
     /// Whether the text in `bytes[start..<end]` contains the query, ignoring case. `hasEscapes` says
     /// the bytes are a string's between its quotes and need reading first.
     private func contains(_ search: FilterQuery, from start: Int, to end: Int, hasEscapes: Bool) -> Bool {
-        if search.isASCII, !hasEscapes {
+        if search.readsBytes, !hasEscapes {
             return search.matchesBytes(bytes, from: start, to: end)
         }
         let text = hasEscapes
