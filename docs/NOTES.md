@@ -736,6 +736,20 @@ at build time.
     through to is not one. Ask what the *other* branch does before believing a negative wait or a
     presence check — here the alternative branch's first act was to present something of the same
     kind.
+- **A reader that reads its own source cannot see who else was talking to it, so the scoping of an
+  observer is never testable by the value it produces.** The same family as the entry above, arriving
+  on a notification. Measured 2026-09-18 on Quick View's shared find options: every bar observes one
+  notification name and filters by `object:`, and the obvious test — turn an option on in a *stranger's*
+  store, assert this bar's options did not move — passes with the `object:` deliberately removed,
+  because a bar reads its **own** store and so still reports the right value. What an unscoped observer
+  does differently is not hold a wrong value, it is **do work it was not asked to do**: rebuild its menu
+  and re-run its search for somebody else's change. So the observable is the *reaction*, counted through
+  the closure the observer calls (`changed`), and the narrowness half has to sit beside it — its own
+  store must still reach it — or "hears nothing at all" passes the test just as well.
+  - Worth stating as a shape rather than a case, because the broken version is *invisible* in the
+    product too: an unscoped bar is correct about every value it shows and merely searches more often
+    than it should, which no screenshot and no assertion about state can tell from the fixed one.
+
 - **A negative control can read as *inert* because a gate further down catches its input first, and
   the reassuring reading is that the rule it protects is redundant.** Measured 2026-09-03 while
   covering the S3 refusal sentences: neutering `isCredentialFailure` — the guard that stops a
@@ -7773,6 +7787,25 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     `7zip` archive stores UTF-16, and both read back exactly under the `C` locale — only zip has a
     charset *flag* to get wrong. What was left was `sftp`, `bsdtar`, in-process libarchive, and
     FTP's own encoding negotiation.
+
+- **Persist an `OptionSet` by *name*, never by its `rawValue` — and the tolerant read it needs is
+  already `UserDefaults`', which is worth measuring once rather than writing defensively around.**
+  Both halves probed 2026-09-18 while giving Quick View's find options a memory.
+  - The bits of an `OptionSet` are an implementation detail its type has never promised to keep, so
+    writing them into a preferences domain quietly makes the bit layout a **compatibility surface**:
+    reordering two cases silently re-points every install's stored value. A name cannot, it is legible
+    in a `defaults read` where `3` is not, and an unknown one (a newer build's) is dropped while the
+    rest still read. The house style already said this for a *single* choice — `rowDensity` and
+    `sizeVizDisplayMode` are raw strings read back tolerantly — and a set is the same rule as an array.
+  - The completeness guard is what makes it safe, because an `OptionSet` has **no `allCases`**: spell
+    out an `all` beside the declarations, and check both the stored names *and* every display table
+    against it, so an option added without a name is unstorable and one added without a title is
+    unofferable — each failing a test rather than shipping quiet.
+  - **`UserDefaults.stringArray(forKey:)` is all-or-nothing, which is the behaviour you want and not
+    the one to assume.** Measured: it answers `nil` — never a partial value — for a never-written key,
+    a number, a bare string, an array of numbers, **and an array that is only partly strings**. So a
+    hand-edited or half-corrupt value falls back to the default instead of half-applying, and the
+    reader needs no validation of its own above the name mapping.
 
 - **A `try?` in front of a question turns a throw into an answer, and the two "no"s it merges are
   not the same fact.** `ArchiveExtractor.needsPassphrase` asked *is this archive encrypted?* by

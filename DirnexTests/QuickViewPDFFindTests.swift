@@ -230,7 +230,11 @@ enum QuickViewPDFFindFixtures {
     /// A surface showing a three-page document whose pages each hold one `beta`, the last upper
     /// case — so a match on every page, and case folding to prove.
     static func pdf(words: [String]? = nil) async throws -> Fixture {
-        let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
+        let preview = QuickViewPreviewView(
+            backingColor: .textBackgroundColor,
+            header: .none,
+            findOptions: QuickViewFindOptionsStore.scratch()
+        )
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 500, height: 400),
             styleMask: [.titled, .fullSizeContentView],

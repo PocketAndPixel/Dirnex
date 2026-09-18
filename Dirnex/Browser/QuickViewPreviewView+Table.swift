@@ -118,7 +118,10 @@ extension QuickViewPreviewView {
     /// (`QuickViewPreviewView+JSON`).
     func ensureTableSurface() -> QuickViewTableView {
         if let tableSurface { return tableSurface }
-        let surface = QuickViewTableView(layoutDefaults: tableLayoutDefaults)
+        let surface = QuickViewTableView(
+            layoutDefaults: tableLayoutDefaults,
+            findOptions: findOptions
+        )
         pin(surface, inside: content)
         tableSurface = surface
         return surface

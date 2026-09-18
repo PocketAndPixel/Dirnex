@@ -283,7 +283,11 @@ enum QuickViewPageFindFixtures {
     static func page(_ html: String, function: String = #function) async throws -> Fixture {
         let tree = try TempDirectory()
         let url = try tree.write("page.html", contents: html)
-        let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
+        let preview = QuickViewPreviewView(
+            backingColor: .textBackgroundColor,
+            header: .none,
+            findOptions: QuickViewFindOptionsStore.scratch(function: function)
+        )
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 500, height: 400),
             styleMask: [.titled, .fullSizeContentView],

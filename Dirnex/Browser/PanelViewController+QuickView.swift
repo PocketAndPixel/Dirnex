@@ -99,7 +99,11 @@ extension PanelViewController {
     /// bleed through.
     private func ensureQuickViewPreview() -> QuickViewPreviewView {
         if let preview = quickViewPreview { return preview }
-        let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
+        let preview = QuickViewPreviewView(
+            backingColor: .textBackgroundColor,
+            header: .none,
+            findOptions: .standard
+        )
         view.addSubview(preview)
         NSLayoutConstraint.activate([
             preview.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),

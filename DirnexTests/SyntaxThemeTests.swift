@@ -121,7 +121,7 @@ struct SyntaxThemeTests {
         // The core promises in-range offsets and its tests pin that — but `addAttribute` with a bad
         // `NSRange` *raises*, and a preview is the wrong place to find out. The guard has to fail as
         // a missing color.
-        let surface = QuickViewTextView()
+        let surface = QuickViewTextView(findOptions: .scratch())
         surface.show(
             TextPreview(text: "abc", isTruncated: false),
             tokens: [

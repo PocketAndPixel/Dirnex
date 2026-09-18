@@ -13,7 +13,11 @@ enum QuickViewZoomFixtures {
     static var retained: [NSWindow] = []
 
     static func surface(width: CGFloat, height: CGFloat) throws -> QuickViewPreviewView {
-        let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
+        let preview = QuickViewPreviewView(
+            backingColor: .textBackgroundColor,
+            header: .none,
+            findOptions: QuickViewFindOptionsStore.scratch()
+        )
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: width, height: height),
             styleMask: [.titled],

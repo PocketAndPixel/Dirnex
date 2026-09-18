@@ -98,7 +98,7 @@ extension QuickViewPreviewView {
     /// (`QuickViewPDFSurface`, which owns how the two are laid out).
     private func ensurePDFSurface() -> QuickViewPDFSurface {
         if let pdfSurface { return pdfSurface }
-        let surface = QuickViewPDFSurface(backingColor: backingColor)
+        let surface = QuickViewPDFSurface(backingColor: backingColor, findOptions: findOptions)
         pin(surface, inside: content)
         pdfSurface = surface
         return surface

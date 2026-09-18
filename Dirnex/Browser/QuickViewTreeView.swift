@@ -57,7 +57,7 @@ final class QuickViewTreeView: NSView {
     // The filter's state, for the same reason (`QuickViewTreeView+Filter`).
 
     /// The bar over the tree, hidden until ⌥⌘F.
-    let filterBar = QuickViewTableFilterBar()
+    let filterBar: QuickViewTableFilterBar
     /// What the filter found, or `nil` while no text is typed.
     var filter: TreeFilter?
     /// Bumped by every change to the filter and every new document, so a filter landing after either
@@ -92,7 +92,8 @@ final class QuickViewTreeView: NSView {
     /// What a key's cell needs beside its text: the disclosure triangle and the cell's own padding.
     static let keyChrome: CGFloat = 34
 
-    init(layoutDefaults: UserDefaults) {
+    init(layoutDefaults: UserDefaults, findOptions: QuickViewFindOptionsStore) {
+        filterBar = QuickViewTableFilterBar(findOptions: findOptions)
         self.layoutDefaults = layoutDefaults
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false

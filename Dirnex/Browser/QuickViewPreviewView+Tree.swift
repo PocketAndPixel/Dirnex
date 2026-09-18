@@ -136,7 +136,10 @@ extension QuickViewPreviewView {
 
     private func ensureTreeSurface() -> QuickViewTreeView {
         if let treeSurface { return treeSurface }
-        let surface = QuickViewTreeView(layoutDefaults: tableLayoutDefaults)
+        let surface = QuickViewTreeView(
+            layoutDefaults: tableLayoutDefaults,
+            findOptions: findOptions
+        )
         pin(surface, inside: content)
         treeSurface = surface
         return surface

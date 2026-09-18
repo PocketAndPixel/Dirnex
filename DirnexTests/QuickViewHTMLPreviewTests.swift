@@ -166,7 +166,11 @@ struct QuickViewHTMLPreviewTests {
     /// backend is built asynchronously, because the block-remote content rules have to compile
     /// before there is anything safe to build.
     private static func loadedRendered(_ url: URL) async throws -> QuickViewPreviewView {
-        let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
+        let preview = QuickViewPreviewView(
+            backingColor: .textBackgroundColor,
+            header: .none,
+            findOptions: QuickViewFindOptionsStore.scratch()
+        )
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 400),
             styleMask: [.titled],

@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-18)
 
-Eighty-six dated passes that landed outside a milestone of their own, between M18's close on
+Eighty-seven dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-18: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12934,6 +12934,66 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-18 (last) — the find options remembered, across surfaces and across launches. VERIFIED
+LIVE.** The second of the three the entry below left undone. What decided the design was not where to
+put the value but *how the five bars would agree about it*: they are built eagerly and live as long as
+the preview does, so a value read at construction would follow you from a text preview to a CSV only
+if that CSV's surface had never been built before — a rule whose answer depends on which files you
+happened to open first, which is worse than not persisting at all, because it looks like it works. So
+there is one store and the bars read it, and its notification is what puts the other four in step.
+That is not waste: a table still holding a filtered CSV has to be right about it before it is shown
+again, and an idle bar's re-run costs a cleared match set, since every `filterChanged` guards on an
+empty query.
+
+- **Stored by name, not by the option set's raw bits.** `FilterQuery.Options`' bit layout is a core
+  implementation detail the type has never promised to keep, and writing it into a preferences domain
+  would quietly make it a compatibility surface; a name also says what it is in a `defaults read`,
+  where `3` does not. `FilterQuery.Options.all` and `.named` are spelled out beside the declarations —
+  an `OptionSet` has no `allCases` — and are what the core's stored names *and* the bar's menu titles
+  are each checked against, so a third option cannot ship unstorable or unofferable.
+- **The tolerant read needed no defensive code, which one probe settled.**
+  `UserDefaults.stringArray(forKey:)` answers `nil` — never a partial value — for a number, a bare
+  string, an array of numbers and even an array that is only *partly* strings, so a hand-edited or
+  newer-build value falls back to the default rather than half-applying. An unknown name is dropped
+  and the rest still read.
+- **The domain is a required argument, and that is the change with the blast radius.**
+  `QuickViewPreviewView` now takes a `QuickViewFindOptionsStore` — fifteen call sites, three in the app
+  and twelve in the tests — rather than defaulting to `.standard` the way `tableLayoutDefaults` does.
+  The difference is that this store is **read** on the way in, not only written: a test asserting that
+  the options start off would otherwise have been asserting something about whoever ran it, and would
+  fail on the machine of anyone who had turned Case Sensitive on in the real app. Positive control: the
+  key is absent from `com.dirnex.Dirnex` after a full app run.
+- **`resetOptions()` went with it**, having had no callers since it was written the day before — and it
+  is the one thing that would have fought persistence.
+
+Tests: 5 core in a new suite, 8 app in another. Six controls. Two core (an option with no name; a read
+that case-folds) and four app (the store never writing; the bar not observing; a surface on a store of
+its own; the notification unscoped), each failing only its own tests.
+
+**One control was inert and is the finding worth keeping.** "A bar hears its own store and no other"
+first asserted the bar's *options*, and passed with the observer's `object:` scoping deliberately
+removed — because a bar reads its own store, so an unscoped observer still reports the right value.
+What an unscoped bar does differently is run `changed()` for a change that was never its own, so the
+observable had to be the **re-search**, counted through the bar's own `changed` closure, with the
+narrowness half beside it or "hears nothing" would pass just as well. The general shape this file
+keeps meeting: a control has to change the observable, not merely the code path — and a reader that
+reads *its own source* cannot see who else was talking to it.
+
+Validation: both linters, all four CI scripts, 1 042 localization keys unchanged (a persistence pass
+adds no user-facing text), 3 665 core tests (3 660 before), 1 389 app tests (1 381 before), one
+pre-existing known issue.
+
+Live, in the Debug build launched by path. Over a text preview `beta` found **4**; Case Sensitive
+took it to **2**, and the app wrote `Dirnex.quickView.findOptions = (caseSensitive)` — by name. The
+same preview switched to a CSV, whose table surface and bar were built fresh afterwards, narrowed
+**3 rows to 1**. Then the app was quit, confirmed gone, and relaunched by path: a new window, a new
+find bar, and `beta` found **2** with **✓ Case Sensitive** in the reopened menu. Turning it back off
+removed the key from the domain and the count returned to **4** — so the removal path was exercised
+live too, and the developer's own domain was left exactly as it was found.
+
+**Left undone:** pattern search, for the measured reason in the entry below; and a match in a PDF that
+no text layer covers, which has no text to find without OCR.
 
 **2026-09-18 (later) — the find bar's three remaining gaps: Return, the menu item's name, and search
 options. VERIFIED LIVE.** Asked for as "let's do the other left undone" — the three the entry below

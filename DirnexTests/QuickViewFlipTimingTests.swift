@@ -20,7 +20,11 @@ import Testing
 struct QuickViewFlipTimingTests {
     /// A surface with a real frame, so the entry offset is a real distance rather than zero.
     private func surface() -> QuickViewPreviewView {
-        let view = QuickViewPreviewView(backingColor: .black, header: .none)
+        let view = QuickViewPreviewView(
+            backingColor: .black,
+            header: .none,
+            findOptions: QuickViewFindOptionsStore.scratch()
+        )
         view.frame = NSRect(x: 0, y: 0, width: 800, height: 600)
         view.layoutSubtreeIfNeeded()
         return view

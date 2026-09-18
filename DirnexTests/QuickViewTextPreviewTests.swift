@@ -90,7 +90,11 @@ struct QuickViewTextPreviewTests {
     /// the chain to the window instead, exactly as the full-size modes already do by construction.
     @Test("the surface hands unhandled commands to the window, not to the pane it covers")
     func chainSkipsTheCoveredPane() throws {
-        let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
+        let preview = QuickViewPreviewView(
+            backingColor: .textBackgroundColor,
+            header: .none,
+            findOptions: QuickViewFindOptionsStore.scratch()
+        )
         let controller = NSViewController()
         controller.view = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 400))
         let window = NSWindow(
@@ -130,7 +134,11 @@ struct QuickViewTextPreviewTests {
         defer { tree.cleanup() }
         let url = try tree.write("notes.txt", contents: "test 01\n")
         let preview = try await Self.loaded(url)
-        let other = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
+        let other = QuickViewPreviewView(
+            backingColor: .textBackgroundColor,
+            header: .none,
+            findOptions: QuickViewFindOptionsStore.scratch()
+        )
         // Nested `#require` expands recursively and will not compile — hoist the hit out first.
         let hit = try #require(preview.hitTest(NSPoint(x: 200, y: 200)))
         let textView = try #require(Self.enclosingTextView(of: hit))
@@ -160,7 +168,11 @@ struct QuickViewTextPreviewTests {
         _ url: URL,
         style: QuickViewRenderStyle = .source
     ) async throws -> QuickViewPreviewView {
-        let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
+        let preview = QuickViewPreviewView(
+            backingColor: .textBackgroundColor,
+            header: .none,
+            findOptions: QuickViewFindOptionsStore.scratch()
+        )
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 400),
             styleMask: [.titled],

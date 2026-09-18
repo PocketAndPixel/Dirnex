@@ -31,7 +31,7 @@ final class QuickViewTextView: NSView {
     // Finding in the text (`QuickViewTextView+Find`), stored here because an extension cannot.
 
     /// The bar over the text, hidden until ⌥⌘F.
-    let filterBar = QuickViewTableFilterBar()
+    let filterBar: QuickViewTableFilterBar
     /// The text on screen as a value a search can read off the main actor: the text storage is mutable
     /// and belongs to the main actor, so a search never reads it.
     var searchableText = ""
@@ -62,7 +62,8 @@ final class QuickViewTextView: NSView {
         weight: .regular
     )
 
-    init() {
+    init(findOptions: QuickViewFindOptionsStore) {
+        filterBar = QuickViewTableFilterBar(findOptions: findOptions)
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
         buildTextView()

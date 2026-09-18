@@ -16,7 +16,11 @@ extension BrowserWindowController {
     /// surface, and a name that fades out is one you have to wave at the screen to read.
     func ensureFullWindowPreview() -> QuickViewPreviewView {
         if let preview = fullWindowPreview { return preview }
-        let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .pinned)
+        let preview = QuickViewPreviewView(
+            backingColor: .textBackgroundColor,
+            header: .pinned,
+            findOptions: .standard
+        )
         let panes = panesSplitViewController.view
         install(preview, pinnedTo: panes)
         fullWindowPreview = preview
@@ -29,7 +33,11 @@ extension BrowserWindowController {
     /// viewing surface, and permanent chrome is the thing being escaped.
     func ensureFullScreenPreview() -> QuickViewPreviewView {
         if let preview = fullScreenPreview { return preview }
-        let preview = QuickViewPreviewView(backingColor: .black, header: .floating)
+        let preview = QuickViewPreviewView(
+            backingColor: .black,
+            header: .floating,
+            findOptions: .standard
+        )
         guard let content = window?.contentView else { return preview }
         // Without this the fading header never appears: a window does not post mouse-moved events
         // by default, so the tracking area that reveals the strip is never told the pointer moved.

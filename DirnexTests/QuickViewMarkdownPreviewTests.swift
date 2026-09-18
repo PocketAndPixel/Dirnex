@@ -137,7 +137,11 @@ struct QuickViewMarkdownPreviewTests {
     // MARK: - Helpers
     /// compiled asynchronously on top of that (docs/NOTES.md ▸ Testing).
     private static func loadedRendered(_ url: URL) async throws -> QuickViewPreviewView {
-        let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
+        let preview = QuickViewPreviewView(
+            backingColor: .textBackgroundColor,
+            header: .none,
+            findOptions: QuickViewFindOptionsStore.scratch()
+        )
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 400),
             styleMask: [.titled],

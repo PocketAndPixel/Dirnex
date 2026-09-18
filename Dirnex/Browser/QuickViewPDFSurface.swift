@@ -15,7 +15,7 @@ final class QuickViewPDFSurface: NSView {
     // Finding in the PDF (`QuickViewPDFSurface+Find`), stored here because an extension cannot.
 
     /// The bar over the pages, hidden until ⌥⌘F.
-    let filterBar = QuickViewTableFilterBar()
+    let filterBar: QuickViewTableFilterBar
     /// The matches, the current one and the search in flight (`QuickViewFind`).
     let find = QuickViewFind()
     /// The document's text as one string, read once and kept: `PDFDocument.string` costs 370–420 ms
@@ -36,7 +36,8 @@ final class QuickViewPDFSurface: NSView {
     /// Where the keyboard goes when the bar lets go of it: the file list the arrows walk.
     var returnKeyboard: (() -> Void)?
 
-    init(backingColor: NSColor) {
+    init(backingColor: NSColor, findOptions: QuickViewFindOptionsStore) {
+        filterBar = QuickViewTableFilterBar(findOptions: findOptions)
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
         buildPDFView(backingColor: backingColor)

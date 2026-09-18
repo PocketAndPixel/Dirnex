@@ -113,7 +113,7 @@ final class QuickViewWebView: NSView {
     // Finding in the page (`QuickViewWebView+Find`), stored here because an extension cannot.
 
     /// The bar over the page, hidden until ⌥⌘F.
-    let filterBar = QuickViewTableFilterBar()
+    let filterBar: QuickViewTableFilterBar
     /// The matches, the current one and the search in flight (`QuickViewFind`).
     let find = QuickViewFind()
     /// Every child frame this page has loaded, newest last — a converted workbook's sheets. Captured
@@ -147,7 +147,8 @@ final class QuickViewWebView: NSView {
     /// gate and a race.
     private static var compiledRules: WKContentRuleList?
 
-    private init(rules: WKContentRuleList) {
+    private init(rules: WKContentRuleList, findOptions: QuickViewFindOptionsStore) {
+        filterBar = QuickViewTableFilterBar(findOptions: findOptions)
         let configuration = WKWebViewConfiguration()
         // Nothing a preview touches should outlive it: no cookies, no cache, no local storage.
         configuration.websiteDataStore = .nonPersistent()
@@ -171,9 +172,12 @@ final class QuickViewWebView: NSView {
     /// hand over, which should not happen and must not degrade into rendering anyway. The caller
     /// falls back to showing the file as text, which is this milestone's default and loses the user
     /// nothing but the rendering.
-    static func withContentRules(_ completion: @escaping (QuickViewWebView?) -> Void) {
+    static func withContentRules(
+        findOptions: QuickViewFindOptionsStore,
+        _ completion: @escaping (QuickViewWebView?) -> Void
+    ) {
         if let compiledRules {
-            completion(QuickViewWebView(rules: compiledRules))
+            completion(QuickViewWebView(rules: compiledRules, findOptions: findOptions))
             return
         }
         guard let store = WKContentRuleListStore.default() else {
@@ -190,7 +194,7 @@ final class QuickViewWebView: NSView {
             MainActor.assumeIsolated {
                 if let list {
                     compiledRules = list
-                    completion(QuickViewWebView(rules: list))
+                    completion(QuickViewWebView(rules: list, findOptions: findOptions))
                 } else {
                     NSLog(
                         "Quick View: content rules failed to compile — \(String(describing: error))"

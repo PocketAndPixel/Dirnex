@@ -208,7 +208,11 @@ struct QuickViewDocumentPreviewTests {
     @Test("a PDF opens at the top of its first page, and a sheet at its own size")
     func pdfOpensAtTheTop() async throws {
         let pages = (1...4).map { Self.pdf(text: "Page \($0) words") }
-        let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
+        let preview = QuickViewPreviewView(
+            backingColor: .textBackgroundColor,
+            header: .none,
+            findOptions: QuickViewFindOptionsStore.scratch()
+        )
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 900, height: 500),
             styleMask: [.titled],

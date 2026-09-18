@@ -33,7 +33,14 @@ final class QuickViewTableFilterBar: NSVisualEffectView, NSSearchFieldDelegate {
     /// The tag of the picker's first item, which searches every column.
     private static let allColumnsTag = -1
 
-    init() {
+    /// Where Case Sensitive and Whole Word live — one object shared with every other bar in the app,
+    /// so an option turned on over a text preview is already on over the next CSV, and is still on at
+    /// the next launch. Required, never defaulted: see the store's own note on the test target's
+    /// `UserDefaults.standard`.
+    let findOptions: QuickViewFindOptionsStore
+
+    init(findOptions: QuickViewFindOptionsStore) {
+        self.findOptions = findOptions
         super.init(frame: .zero)
         material = .headerView
         blendingMode = .withinWindow
@@ -42,6 +49,19 @@ final class QuickViewTableFilterBar: NSVisualEffectView, NSSearchFieldDelegate {
         state = .active
         translatesAutoresizingMaskIntoConstraints = false
         build()
+        // Selector-based, so it can be torn down from a `nonisolated deinit` — a token array is not
+        // `Sendable` (docs/NOTES.md > Swift 6 and concurrency). Scoped to this store by `object:`, so
+        // a bar on a test's scratch store never hears the app's.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(findOptionsChanged),
+            name: QuickViewFindOptionsStore.didChange,
+            object: findOptions
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     @available(*, unavailable)
@@ -52,27 +72,28 @@ final class QuickViewTableFilterBar: NSVisualEffectView, NSSearchFieldDelegate {
     /// The text being searched for.
     var query: String { field.stringValue }
 
-    /// How the text is read: Case Sensitive and Whole Word, off unless the user turned them on.
+    /// How the text is read: Case Sensitive and Whole Word, off unless the user turned one on.
     ///
-    /// They live on the bar and survive a new file, so stepping through a folder of logs with Case
-    /// Sensitive on does not turn it off at every arrow key. They are deliberately **not** written to
-    /// disk, and each surface has a bar of its own, so switching from a text preview to a CSV starts
-    /// from the default — one stated limit rather than a preference key, a fifth store to inject, and
-    /// a process-wide value for tests to leak through (docs/NOTES.md ▸ Testing).
-    private(set) var options: FilterQuery.Options = [] {
-        didSet {
-            guard options != oldValue else { return }
-            buildOptionsMenu()
-            changed()
-        }
+    /// Read from the shared store rather than held here, so all five surfaces answer the same and a
+    /// choice outlives both a new file and the app (2026-09-18). Nothing writes it but ``applyOptions``.
+    var options: FilterQuery.Options { findOptions.options }
+
+    /// The one way the options change — and it changes them for every bar, not this one.
+    ///
+    /// The store is what rebuilds this menu and re-runs this search, through the notification below,
+    /// so the bar the user clicked takes exactly the path the other four take. One path rather than
+    /// two is the point: a bar that updated itself directly *and* through the store would be the only
+    /// one whose behaviour was never exercised by the ordinary case.
+    func applyOptions(_ newValue: FilterQuery.Options) {
+        findOptions.apply(newValue)
     }
 
-    /// The one way the options change, kept here beside the stored property because `private(set)` is
-    /// file-scoped and the menu that drives them lives in `QuickViewTableFilterBar+Options`. Everything
-    /// outside these two files still reads them and cannot write them, which is the point: an option
-    /// set behind the bar's back would not rebuild the menu or re-run the search.
-    func applyOptions(_ newValue: FilterQuery.Options) {
-        options = newValue
+    /// Another bar — or this one — changed the options. Rebuild the menu from the store (it is
+    /// copied when displayed, so the state has to come from the value rather than from the item that
+    /// was clicked) and search again under the new reading.
+    @objc private func findOptionsChanged() {
+        buildOptionsMenu()
+        changed()
     }
 
     /// The column searched, or `nil` for every column.

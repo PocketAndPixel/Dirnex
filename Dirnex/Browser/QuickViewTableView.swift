@@ -50,7 +50,7 @@ final class QuickViewTableView: NSView {
     // The filter's state, for the same reason (`QuickViewTableView+Filter`).
 
     /// The bar over the table, hidden until ⌥⌘F.
-    let filterBar = QuickViewTableFilterBar()
+    let filterBar: QuickViewTableFilterBar
     /// For each data row, whether the filter keeps it, or `nil` while no text is typed.
     var filterMatches: [Bool]?
     /// Bumped by every change to the filter and every new table, so a filter landing after either is
@@ -104,7 +104,8 @@ final class QuickViewTableView: NSView {
     static let maximumColumnWidth: CGFloat = 320
     static let rowNumberColumn = NSUserInterfaceItemIdentifier("row")
 
-    init(layoutDefaults: UserDefaults) {
+    init(layoutDefaults: UserDefaults, findOptions: QuickViewFindOptionsStore) {
+        filterBar = QuickViewTableFilterBar(findOptions: findOptions)
         self.layoutDefaults = layoutDefaults
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false

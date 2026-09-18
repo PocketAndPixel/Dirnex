@@ -200,7 +200,11 @@ enum QuickViewTableFixtures {
         file: String = #fileID,
         function: String = #function
     ) async throws -> QuickViewPreviewView {
-        let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
+        let preview = QuickViewPreviewView(
+            backingColor: .textBackgroundColor,
+            header: .none,
+            findOptions: QuickViewFindOptionsStore.scratch(file: file, function: function)
+        )
         preview.tableLayoutDefaults = layoutDefaults
             ?? ScratchDefaults.fresh(file: file, function: function)
         let window = NSWindow(

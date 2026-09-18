@@ -89,6 +89,11 @@ final class QuickViewPreviewView: NSView {
     /// Where the table surface keeps the height its strip was dragged to. Set before the first CSV
     /// is shown; a test hands over a scratch domain so it neither reads nor writes the real one.
     var tableLayoutDefaults: UserDefaults = .standard
+    /// Case Sensitive and Whole Word, shared by every surface this preview builds and by every other
+    /// preview in the app (`QuickViewFindOptionsStore`). An init argument rather than a settable
+    /// property with a `.standard` default, because unlike the layout domain it is *read* on the way
+    /// in: a test that let it default would assert about whoever ran it.
+    let findOptions: QuickViewFindOptionsStore
     /// Internal for the same reason, from `QuickViewPreviewView+Tree`; its strip's dragged height is
     /// kept in `tableLayoutDefaults` too.
     var treeSurface: QuickViewTreeView?
@@ -140,8 +145,9 @@ final class QuickViewPreviewView: NSView {
     /// not because the concept belongs here.
     var flipGate = FlipGate()
 
-    init(backingColor: NSColor, header: Header) {
+    init(backingColor: NSColor, header: Header, findOptions: QuickViewFindOptionsStore) {
         self.backingColor = backingColor
+        self.findOptions = findOptions
         headerStyle = header
         headerView = switch header {
         case .none: nil

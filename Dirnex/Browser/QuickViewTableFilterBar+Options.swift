@@ -21,7 +21,8 @@ extension QuickViewTableFilterBar {
     /// Rebuilt from `options` on every change rather than toggling the item that was clicked:
     /// `NSSearchField` **copies** its template to display it, so the item the action receives is not
     /// necessarily the one held here, and a state written onto the copy would be thrown away. Building
-    /// from the stored value cannot drift whichever object the click arrived on.
+    /// from the stored value cannot drift whichever object the click arrived on — which is what lets
+    /// a bar rebuild on the shared store's notification, where there is no clicked item at all.
     func buildOptionsMenu() {
         let menu = NSMenu()
         for (option, title) in Self.optionTitles {
@@ -39,7 +40,8 @@ extension QuickViewTableFilterBar {
     }
 
     /// The titles, in the order the menu lists them. A `static let` so the two are named once and the
-    /// loop above cannot fall out of step with the tags it reads back.
+    /// loop above cannot fall out of step with the tags it reads back; a test checks it covers
+    /// ``DirnexCore/FilterQuery/Options/all``, so a third option cannot ship unofferable.
     static let optionTitles: [(FilterQuery.Options, String)] = [
         (.caseSensitive, String(
             localized: "Case Sensitive",
@@ -59,11 +61,5 @@ extension QuickViewTableFilterBar {
 
     @objc fileprivate func optionToggled(_ sender: NSMenuItem) {
         applyOptions(options.symmetricDifference(FilterQuery.Options(rawValue: sender.tag)))
-    }
-
-    /// Put the options back to the default — for a bar being set up for a different kind of surface,
-    /// where the previous one's choices are not this one's.
-    func resetOptions() {
-        applyOptions([])
     }
 }

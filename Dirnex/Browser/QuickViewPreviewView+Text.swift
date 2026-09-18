@@ -235,7 +235,7 @@ extension QuickViewPreviewView {
     /// Internal, not private: the rich-text backend draws into the same surface from its own file.
     func ensureTextSurface() -> QuickViewTextView {
         if let textSurface { return textSurface }
-        let surface = QuickViewTextView()
+        let surface = QuickViewTextView(findOptions: findOptions)
         pin(surface, inside: content)
         textSurface = surface
         return surface

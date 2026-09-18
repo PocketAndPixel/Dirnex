@@ -141,7 +141,11 @@ struct QuickViewPlaceholderCardTests {
 
     /// A surface in a window with a real frame, and — deliberately — nothing shown in it yet.
     private static func surface() -> QuickViewPreviewView {
-        let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
+        let preview = QuickViewPreviewView(
+            backingColor: .textBackgroundColor,
+            header: .none,
+            findOptions: QuickViewFindOptionsStore.scratch()
+        )
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 400),
             styleMask: [.titled],
