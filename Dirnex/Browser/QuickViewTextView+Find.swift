@@ -265,6 +265,9 @@ extension QuickViewTextView: QuickViewFindHost {
         return characters.location..<NSMaxRange(characters)
     }
 
+    /// Nothing here has to be read before it exists: the text preview holds its file's text already.
+    var findReadingProgress: (read: Int, total: Int)? { nil }
+
     /// The offset of the first text on screen: where a search that has no current match yet begins.
     func findAnchorOffset() async -> Int {
         guard let layoutManager = textView.textLayoutManager, let storage = textView.textContentStorage else {

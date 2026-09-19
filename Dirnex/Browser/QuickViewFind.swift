@@ -23,6 +23,14 @@ final class QuickViewFind {
     var cancellation: CancellationFlag?
     /// The last search sent off the main actor — what a test awaits to know it has landed.
     var task: Task<Void, Never>?
+    /// Set for a search the *app* is about to start because more of the surface's text has arrived
+    /// — a PDF's scanned pages landing — rather than one the reader asked for by typing. Read and
+    /// cleared by the next `filterChanged()`, which is called synchronously right after it is set.
+    ///
+    /// It decides one thing: whether the search may **scroll**. A re-run the reader did not ask for
+    /// may not move the document under them, and there are three of those a second for the length
+    /// of a book.
+    var isRerunForMoreText = false
 
     /// The current match's range, if there is one and it is still in range of what was searched.
     var currentRange: Range<Int>? {
@@ -65,6 +73,18 @@ protocol QuickViewFindHost: QuickViewFilterHost {
     /// typing finds what is in front of the reader rather than jumping back to the top. Asked
     /// asynchronously because a rendered page's answer is a round trip into the document.
     func findAnchorOffset() async -> Int
+    /// How much of this surface's text is still being *produced*, for a surface whose text has to
+    /// be read before it exists — a PDF's scanned pages, which take ~0.2–0.5 s each.
+    ///
+    /// `nil` for every surface whose text is simply there, which is all of them but that one. A
+    /// requirement with no default rather than a defaulted extension, for the reason
+    /// `returnStepsResults` is one: three surfaces, three explicit answers, and no question of
+    /// which witness wins.
+    ///
+    /// It matters because of what the count line would otherwise say. "No matches" over a document
+    /// whose pages have not been read yet is not an answer, it is a wrong one that looks exactly
+    /// like a right one.
+    var findReadingProgress: (read: Int, total: Int)? { get }
 }
 
 extension QuickViewFindHost {
@@ -84,6 +104,10 @@ extension QuickViewFindHost {
         find.generation += 1
         find.cancellation?.isCancelled = true
         find.cancellation = nil
+        // Captured here rather than read in the task: this runs synchronously in the turn the flag
+        // was set, so there is no window for a keystroke to land between the two.
+        let wasAskedFor = !find.isRerunForMoreText
+        find.isRerunForMoreText = false
         let query = filterBar.query
         // Read on the main actor beside the text: the search runs off it, and a later change to the
         // options is a new search of its own rather than something this one should pick up midway.
@@ -108,7 +132,7 @@ extension QuickViewFindHost {
                 }
             }
             guard generation == find.generation, let found else { return }
-            await applyFindMatches(found)
+            await applyFindMatches(found, revealing: wasAskedFor)
         }
     }
 
@@ -142,7 +166,9 @@ extension QuickViewFindHost {
     /// Take `found` as what the bar's text finds, and make current the first match from where the
     /// reader is: from the current match while text is being typed into the bar — so refining a
     /// query stays where it landed — and otherwise from the top of what is on screen.
-    func applyFindMatches(_ found: TextFindMatches) async {
+    ///
+    /// `revealing` is false only for a search the reader did not ask for (`isRerunForMoreText`).
+    func applyFindMatches(_ found: TextFindMatches, revealing: Bool = true) async {
         // The anchor is only asked for when there is no current match to refine from, which is what
         // keeps a page from paying a round trip on every keystroke of a query being narrowed.
         let anchor: Int
@@ -151,11 +177,18 @@ extension QuickViewFindHost {
         } else {
             anchor = await findAnchorOffset()
         }
+        let previous = find.currentRange
         removeFindHighlights()
         find.matches = found
         find.current = found.index(atOrAfter: anchor)
         showFindMatches()
-        revealCurrentMatch()
+        // A search the reader asked for always scrolls to its answer. One they did not — a PDF
+        // re-searched as each scanned page lands, three times a second for the better part of a
+        // minute — scrolls only when the current match has actually *moved*, which is the case
+        // where a page they have been waiting on has finally answered their question. Otherwise it
+        // would yank them back to the same match for the length of the book, so the document could
+        // not be read while it was being read.
+        if revealing || find.currentRange != previous { revealCurrentMatch() }
         showMatchCount()
     }
 
@@ -169,11 +202,15 @@ extension QuickViewFindHost {
     }
 
     func showMatchCount() {
+        let reading = findReadingProgress
         filterBar.showMatchCount(
             current: (find.current ?? 0) + 1,
             of: find.matches?.count ?? 0,
-            isComplete: find.matches?.isComplete ?? true,
-            finding: find.matches != nil
+            // A search still waiting on pages is as incomplete as one that stopped at its limit,
+            // and says so the same way: "3 of 17+ matches", the count that promises more.
+            isComplete: (find.matches?.isComplete ?? true) && reading == nil,
+            finding: find.matches != nil,
+            reading: reading
         )
     }
 }

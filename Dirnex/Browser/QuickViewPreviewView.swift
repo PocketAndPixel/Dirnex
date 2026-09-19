@@ -94,6 +94,8 @@ final class QuickViewPreviewView: NSView {
     /// property with a `.standard` default, because unlike the layout domain it is *read* on the way
     /// in: a test that let it default would assert about whoever ran it.
     let findOptions: QuickViewFindOptionsStore
+    /// What reads a PDF's scanned pages, for the PDF surface to use when one is built.
+    let pageRecognizer: PDFPageTextRecognizing
     /// Internal for the same reason, from `QuickViewPreviewView+Tree`; its strip's dragged height is
     /// kept in `tableLayoutDefaults` too.
     var treeSurface: QuickViewTreeView?
@@ -145,9 +147,18 @@ final class QuickViewPreviewView: NSView {
     /// not because the concept belongs here.
     var flipGate = FlipGate()
 
-    init(backingColor: NSColor, header: Header, findOptions: QuickViewFindOptionsStore) {
+    /// `pageRecognizer` is what reads a PDF's scanned pages, handed on to the PDF surface when one
+    /// is built. Defaulted, unlike `findOptions`, because it writes nothing outside the process —
+    /// a test that does not care cannot leak into anything, and one that does hands over a fake.
+    init(
+        backingColor: NSColor,
+        header: Header,
+        findOptions: QuickViewFindOptionsStore,
+        pageRecognizer: PDFPageTextRecognizing = VisionPageTextRecognizer.shared
+    ) {
         self.backingColor = backingColor
         self.findOptions = findOptions
+        self.pageRecognizer = pageRecognizer
         headerStyle = header
         headerView = switch header {
         case .none: nil

@@ -20,7 +20,10 @@ import Foundation
 /// Deliberately unlike ``EditedFileRevision``, which watches for a *save* and so must ignore the
 /// inode, since a macOS editor's atomic save replaces the file it was given. Here the replacement
 /// is exactly the event to catch.
-public struct ArchiveIdentity: Sendable, Equatable {
+/// `Hashable` — which carries the `Equatable` every reader here already used — so a cache can key
+/// on the identity itself rather than on a path: ``RecognizedPageStore`` does, for the same reason
+/// every other reader of this type compares one.
+public struct ArchiveIdentity: Sendable, Hashable {
     public let deviceID: Int32
     public let inode: UInt64
     public let byteSize: Int64

@@ -7810,6 +7810,115 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   Mach-O first (a missed `*.debug.dylib` crashes launch with "different Team IDs"). Release
   pipelines satisfy both gates automatically, so this is a local-verification problem only.
 
+### Vision, and reading a PDF page that is a picture (OCR)
+
+M28-era, the find bar's last surface (docs/HISTORY.md ▸ 2026-09-19). All measured on macOS 26
+against this Mac's own scanned fixtures — a 142-page scanned book, a Ukrainian insurance policy, a
+phone photograph of a document — before any Swift was written, and two of the measurements
+overturned the obvious implementation.
+
+- **`PDFPage.selection(for:)` on a page with no text does not fail — it answers a selection whose
+  bounds are `(inf, inf, 0, 0)` and whose `string` is `nil`.** So the natural guard (`guard let
+  selection = …`) passes, and what reaches `highlightedSelections` draws nothing and reports
+  nothing. That is the whole reason a recognized page needs a drawing route of its own rather than
+  a fallback: the failure has no `nil` in it to catch.
+- **PDFKit runs Live Text on a scanned page by itself, and it is not a mechanism to build on.**
+  Measured by displaying page 20 of a scanned book in a real `PDFView`: `page.string` is `nil` at
+  1 s and **792 characters at 2 s**, `findString` goes from 0 hits to 4, and `selection(for:)`
+  starts answering real bounds — PDFKit logs `addTextFromVisionDocument: numWordQuads = 344` while
+  it happens. It is **displayed pages only** (page 100, never on screen, stays `nil`), asynchronous
+  with no completion to wait on, undocumented, and absent from this app's macOS 14 deployment
+  target. What it does mean is that a document's text can *change under a reader*, which is why the
+  text is snapshotted per document rather than re-read: a page recognized by us and the same page
+  filled in by Live Text would number the document differently.
+- **`.fast` is unusable for a find, and its char count says the opposite.** On a clean scanned page
+  it reads `Reading` as `Readlng`, `Write` as `Wnte`, `ONE WORD ONLY` as `ONE WORD ONL Y` and
+  `answer` as `ansJYer`, at confidence **0.30–0.50** against `.accurate`'s **1.00** — while
+  reporting *more* characters (915 against 759), because the noise is characters too. A probe that
+  scores recognition by how much text came back prefers the broken one.
+- **144 dpi is enough and 72 is not.** Rendered at 2× the page's own size, the text differs from a
+  4× render only in runs of dot leaders and one ligature — no word differs — while 1× loses real
+  text under `.fast` and a few characters under `.accurate`. Above 2× nothing changes and the
+  bitmap keeps growing (a page at 2× is 2 MB, grayscale).
+- **The language list changes nothing**, so there is no setting to offer and none to get wrong: a
+  page of Ukrainian read **identically** with `["en-US"]`, with `["uk-UA", "ru-RU", "en-US"]` and
+  with nothing set at all. Pinning a list would only matter on an OS that does respect it, where it
+  would be the app deciding which scripts a user may search.
+- **Vision does not parallelize.** 24 pages at widths 2, 4 and 8 took **6.5 s every time**; only
+  the *rendering* overlaps, which took the run from 10.97 s to 7.7 s. So one page at a time is not
+  a simplification to apologise for, it is the measurement. Per page: **0.19–0.46 s** on a dense
+  scanned page, **19 ms** on a blank one — which is why a PDF with blank separator pages costs
+  almost nothing and needs no heuristic to avoid them.
+- **`boundingBox(for:)` is per *word*, not per character, and a lone space answers a sentinel at
+  the corner of the page.** Every letter of `applicants` answers the **same** box — the word's —
+  and a single space answers `x 0…0, y 1…1`, which is not empty and not `nil`. Unioning boxes
+  without checking therefore drags a match's outline to the page's corner: measured, **484 pt** of
+  error on a 595 pt page. Ask for the range of each whole word instead (144 per page, 1 ms), and
+  refuse an outline with no area.
+  - **Interpolating within a line is the tempting alternative and it is unusable**: mapping a
+    sub-range by character fraction along the line's own box is wrong by up to **65 pt** on an A4
+    page, a tenth of its width, which puts a highlight over different words. So a match covering
+    part of a word is drawn over the whole word, which is Vision's own granularity.
+- **A scan is not straight, so the outline is a quad.** Worst word on a page: **6.2°** off
+  horizontal in a scanned book and **28.6°** in a phone photograph. An upright box around a 28°
+  word covers the lines above and below it.
+- **Page rotation: `bounds(for:)` is unrotated and `draw(with:to:)` is not.** `bounds(for:
+  .mediaBox)` reports 595×842 at every rotation, while `draw` really does turn what it draws — so a
+  quarter-turned page drawn into a canvas sized from its own bounds is squeezed into the wrong
+  aspect and cropped. Size the canvas with the dimensions swapped for 90/270, then turn the result
+  back: measured by rotating one page by hand and reading the same word back, the inverse is
+  **`(1-y, x)` for 90°, `(1-x, 1-y)` for 180° and `(y, 1-x)` for 270°**.
+  - **The corner *labels* do not move with it, because Vision names them in the text's own reading
+    frame.** At all four rotations the labelled `topLeft`→`topRight` edge is the long one —
+    0.097–0.101 against 0.019 for `topLeft`→`bottomLeft` — so a 90°-turned word's "top" edge runs
+    *down* the image. Permuting the labels as well as the points is the obvious reading and it lays
+    every quarter-turned word's outline on its side. Deriving them instead from the turned points
+    ("the two highest corners are the top pair") is worse: on a 28° skewed word the top-right
+    corner sits *below* the bottom-right one, so that rule draws a bowtie.
+- **A PDF highlight annotation's `quadrilateralPoints` are relative to the annotation's own bounds,
+  and page-space points draw nothing at all.** Measured by pixel count over a rendered page: the
+  spec's own order (upper-left, upper-right, lower-left, lower-right) **relative to bounds** covers
+  the word (1716 px, the same as an unshaped highlight), the other two orders cover part of it
+  (1143 and 1202 — a bowtie), and the identical points in **page** coordinates draw **0 px** with
+  no error, no warning and an annotation that reports itself as present. A `.square` annotation
+  with an `interiorColor` draws reliably (2681 px) and covers the text rather than marking it.
+  - `PDFView.go(to:)` has **no** `PDFAnnotation` overload — `go(to: CGRect, on: PDFPage)` is the
+    one that moves the view to a mark with no selection behind it. Annotations are cheap: 2000
+    added in **23 ms** and removed in **2 ms**.
+- **`cacheDisplay` of a live `PDFView` captures nothing** — an empty bitmap, highlights or not — so
+  the pixel half of any of this has to be judged from a render of the *page* or from the running
+  app, never from a probe's snapshot of the view. Same family as the TextKit 2 note above.
+- **A "mixed" scanned book is cleanly split, which is what makes the rule "a page with no text
+  layer" safe.** Over five part-scanned books, the sampled pages are either absent, whitespace-only
+  or a full page of text: **not one** page carried a short run (under 40 characters) that a
+  density heuristic would have had to judge.
+- **Live Text reaches the shipped app, not only a probe, and the page it fills is the one you are
+  looking at — so a misplaced highlight on the *first* page is PDFKit's and not yours.** Measured in
+  the running app 2026-09-19: the log carries `addTextFromVisionDocument` seconds after a scan is
+  previewed, and by the time a find bar is opened and typed into, page 0 has a text layer. A
+  142-page scanned book therefore reports **"Reading 0 of 141 scanned pages"** — correct, and one
+  short of the page count — and a match on page 0 is drawn as a `PDFSelection` built from *PDFKit's*
+  word quads, by a code path that has nothing to do with the annotation route the feature is about.
+  - **It cost an hour, because the two are indistinguishable on screen.** A highlight on that page
+    read as sitting one table row too high, which is the exact shape a bad coordinate transform has;
+    a render of the page with the annotation added by hand put the orange ink at rows 215–222
+    against the word's 215–226, i.e. exactly right, and the two answers could not both be true. One
+    `NSLog` in `drawRecognizedMatch` settled it in one run — **it never fired**, because the match
+    was not on a recognized page at all. Instrument the drawing before believing a placement bug,
+    and note that the capture is downsampled below 1× so a 9 pt highlight is ~7 px and a two-pixel
+    reading error reads as a whole row (▸ Live verification, the geometry rule this is the third
+    instance of).
+  - **The way to reach the feature's own drawing is a page that has never been displayed**: a
+    multi-page scan with the match past the first page. There the annotation route runs, and the
+    highlight lands on the word.
+  - **It reaches a *test fixture* too, and there it reads as a product race.** A suite that showed a
+    freshly built two-page scan and expected both pages to need reading failed **1 full run in 5**,
+    passing alone every time — the signature this file records for main-actor starvation, and not
+    that: the diagnostic said `unread=[] ready=2`, i.e. Live Text had filled the new document's
+    first page between `showPDFDocument` and the keystroke. A fixture here may therefore not assume
+    **how many** of a document's pages need reading. Give it enough scanned pages that a page or two
+    being taken cannot empty the set, and make every wait relative to the count before it.
+
 ## Design lessons that generalize
 
 - **A subprocess's locale is part of its output format, and a GUI-launched app has none — so every

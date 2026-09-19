@@ -12923,10 +12923,10 @@ front of a user:
 
 ---
 
-### After M19 — the follow-on log (2026-08-07 → 2026-09-18)
+### After M19 — the follow-on log (2026-08-07 → 2026-09-19)
 
-Eighty-seven dated passes that landed outside a milestone of their own, between M18's close on
-2026-08-07 and 2026-09-18: user-reported bugs, three vault features, the tree crossing into S3,
+Eighty-eight dated passes that landed outside a milestone of their own, between M18's close on
+2026-08-07 and 2026-09-19: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
 sit here at the end rather than in a numeric slot — and they keep their **newest-first** order,
@@ -12934,6 +12934,144 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-19 — the find reaches a PDF that is a picture of a page. VERIFIED LIVE.** Asked for as
+"let's finish the task" over the uncommitted OCR work, which is the half the entry below left undone
+and called a milestone rather than a slice. What makes it one is that a page with no text layer has
+no answer to give and no way to be *told* it has none: `PDFPage.selection(for:)` there does not fail,
+it hands back a selection whose bounds are `(inf, inf, 0, 0)` and whose `string` is `nil` — so the
+natural `guard let` passes, `highlightedSelections` draws nothing, and a find over a scanned book
+answers **"No matches"** about 19 of every 20 pages while looking exactly like a correct answer.
+Every constant was measured against this Mac's own scans before any Swift (docs/NOTES.md ▸ Vision,
+and reading a PDF page that is a picture), and two of the measurements inverted the obvious
+implementation.
+
+- **`.fast` is unusable and reports *more* characters than `.accurate`**, because its noise is
+  characters too — `Reading` as `Readlng`, `answer` as `ansJYer`, at confidence 0.30–0.50 against
+  1.00 — so a probe scoring recognition by how much text came back prefers the broken one. **144 dpi
+  is enough and 72 is not**, and above 2× nothing changes but the bitmap. **The language list changes
+  nothing** (a page of Ukrainian read identically with three different lists and with none), so
+  there is no setting to offer and none to get wrong. **Vision does not parallelize** — 24 pages at
+  widths 2, 4 and 8 took 6.5 s every time — so one page at a time is the measurement rather than a
+  simplification to apologise for.
+- **`boundingBox(for:)` is per *word*, and a lone space answers a sentinel at the corner of the
+  page.** Every letter of `applicants` answers the same box, and a single space answers `x 0…0,
+  y 1…1` — not empty and not `nil` — so a caller that unions boxes without checking drags a match's
+  outline 484 pt across a 595 pt page. Interpolating within a line, the tempting alternative, is
+  wrong by up to 65 pt. So a match covering part of a word is drawn over that whole word: Vision's
+  own granularity, said out loud rather than faked.
+- **The outline is a quad, because a scan is not straight** (6.2° off horizontal in a scanned book,
+  28.6° in a phone photograph), and a **PDF highlight annotation's `quadrilateralPoints` are
+  relative to the annotation's own bounds** — measured by pixel count, page-space points draw
+  **nothing at all**, no error and no warning, while the spec's own corner order relative to bounds
+  covers the word exactly.
+- **A turned page moves the points and keeps the corner *labels*.** `bounds(for:)` is unrotated
+  while `draw(with:to:)` is not, so the canvas is sized with the dimensions swapped and the answer
+  turned back — `(1-y, x)`, `(1-x, 1-y)`, `(y, 1-x)`, measured by turning a page by hand. Permuting
+  the labels as well is the obvious reading and lays every quarter-turned word on its side, because
+  Vision names them in the text's own reading frame: at all four rotations the labelled
+  `topLeft`→`topRight` edge is the long one.
+
+**Three rules are what make a minute of somebody's machine affordable rather than merely possible**,
+and each was a fork with a recommendation rather than a survey. It **starts on the first keystroke
+and not before** — opening the bar costs nothing, and a query is the only thing that asks a question
+40–65 s of Neural Engine is the only way to answer. It **reads in page order and appends**, so a
+page's offsets are fixed once every page before it is known (`PagedDocumentText`) and a match found
+in the first pages keeps its number, its highlight and its place in the count while the rest arrive;
+the search is simply re-run as each lands, a few milliseconds against the half-second that produced
+the page. And it **stops the moment nobody is waiting** — the bar closed, the query cleared, another
+file under the cursor. What it keeps is **in memory and nowhere else** (`RecognizedPageStore`, keyed
+by `ArchiveIdentity` rather than by path): what this holds is the *contents* of the user's documents,
+and a store on disk would put the text of anything ever previewed — a document inside a locked vault
+included — under Application Support, where it would outlive the lock. `VaultPrivacy` exists because
+the app's own stores, not the system's caches, were what remembered a vault's file names.
+
+**The one design decision the finish added is about scrolling, and it is the "who asked" rule
+arriving on a search.** A re-run lands three times a second for the better part of a minute, and
+`applyFindMatches` ends by revealing the current match — so the document could not be read or
+scrolled while it was being read. The first shape was "reveal only when the current match moved",
+which is defensible and quietly changed the other two finding surfaces: backspacing a character
+after scrolling away leaves the match where it was, so it would have stopped scrolling back to it
+there too. Scoped to the rule instead (`QuickViewFind.isRerunForMoreText`, set by the re-read and
+consumed by the next `filterChanged`), a search the reader **asked for** always reveals and one they
+did not reveals only when the match has moved — which is the case that matters on a scan, where a
+reader who has waited out forty pages for their first hit must be taken to it. Three controls, one
+per direction.
+
+Reviewing the uncommitted work turned up four things worth naming because none of them is visible in
+a diff. Two `findReadingProgress` properties had been inserted **between an existing doc comment and
+the function it documented**, orphaning `findAnchorOffset`'s on both surfaces. The new fixture
+carried its own `settleUntil` at **10 s that gave up silently**, which is this file's own bounded-wait
+finding re-derived a third time — it now uses the shared 30 s one that records an issue, and under the
+broadest control that is exactly what it did. A *line* separator was borrowed from
+`PagedDocumentText.pageSeparator`, which happens to be the same character and answers a different
+question. And the reading's own teardown had a **handle one task could clear on another's behalf**:
+`recognitionTask = nil` ran unconditionally when a reading returned, and a new document nils that
+handle and bumps the generation — so a reading abandoned half a second earlier came back, cleared the
+*next* one's handle, and the page after that found no reading in flight and started a **second loop
+over the same document**, the two racing to read the same pages at half a second of Vision apiece.
+One `guard generation == recognitionGeneration` closes it. Nothing about it is visible in a green
+run: the answers are right either way and only the machine time doubles.
+
+Tests: **35 core in four suites** and **19 app in two**, driving a real PDF whose pages are
+rasterized words — a page drawn with glyphs cannot reproduce the state the whole feature is for —
+against a fake recognizer, with one test running the real Vision path so the render, the word ranges
+and the turn back into page coordinates are covered by something other than a fake agreeing with
+itself. The app suite reached SwiftLint's `type_body_length` and was split by concept rather than
+shaved: what the reader *sees* (the count line, the drawing, the three directions of the scrolling
+rule) and the **reading** itself (whether it happens, in what order, and the three ways of stopping
+it). **Eleven controls, each failing only its own tests**: eight app (a re-run never reveals; an
+asked-for search does not; every re-run scrolls, as before the rule; the PDF never says it is
+reading; nobody waiting is not a reason to stop; the outline shaped in page coordinates; an
+abandoned reading clearing whatever handle it finds; and nothing ever starting the reading) and three
+core (every outline drawn, the corner labels permuted, a page taken as soon as it lands). Two of them
+needed a second pass and both are findings rather than noise. The handle control **passed** first
+time, at 46 tests in 4 suites — the suite it was aimed at had just been split out and was missing
+from the filter, which the run's *count* says and its verdict does not. And the broadest one, with
+nothing starting the reading, leaves five tests waiting out their full budget and took a
+**neighbouring suite down with them**; run alone under the same control that suite passes, and the
+unmodified tree is green 2/2, so that is the main-actor starvation this file records rather than a
+second defect.
+
+Validation: both linters, all four CI scripts, **1 046** localization keys with one new plural string
+in all fourteen languages, **3 718** core tests (3 683 before), **1 415** app tests (1 396 before),
+one pre-existing known issue, five consecutive green full runs.
+
+Live, in the Debug build launched by path with the new symbols demangled out of `Dirnex.debug.dylib`
+first. A 34-page scanned manual: the count line read **"Reading 0 of 34 scanned pages"** on the first
+keystroke, climbed through **"1 of 5+ matches"** and **"1 of 6+ matches"** — the `+` that already
+means "and more to come" — and settled at **1 of 20 matches** with no `+`. The current match was
+orange on `T43 : Apply **Thread** Lock to fix.` and the rest in the find yellow, every one of them on
+the word, on pages that carry no text layer at all; ↓ read "2 of 20" with the orange moved on, and
+retyping the query answered **20 immediately with no reading line**, which is the store. Then the
+142-page book NOTES names: **"Reading 0 of 141 scanned pages"** — one short of the page count, which
+is the next paragraph — and with the reader scrolled to the *end* of the book the count climbed from
+23+ to 39+ over twelve seconds without the document moving under them, finishing at **1 of 60
+matches**.
+
+**The hour this pass lost is the one worth keeping.** PDFKit runs Live Text on a scanned page by
+itself, and it reaches the shipped app rather than only a probe: by the time a find bar is opened and
+typed into, the *displayed* page has a text layer, which is why the book reports 141 of 142 and why a
+match on page 0 is drawn as a `PDFSelection` built from **PDFKit's** word quads. Such a highlight
+read as sitting one table row too high — the exact shape a bad coordinate transform has — while a
+render of the same page with the annotation added by hand put the orange ink at rows 215–222 against
+the word's 215–226, i.e. exactly right. Both could not be true. One `NSLog` in `drawRecognizedMatch`
+settled it in one run by **never firing**: the match was not on a recognized page at all. Instrument
+the drawing before believing a placement bug — and note the screen capture is downsampled below 1×,
+so a 9 pt highlight is ~7 px and a two-pixel reading error reads as a whole row, which is the third
+instance of that rule in this file.
+
+**The handle test then failed one full run in five and passed alone every time**, which is that same
+starvation signature a third time and was not it either: the diagnostic read `unread=[] ready=2`, so
+PDFKit's Live Text had filled the *new* document's first page between showing it and the keystroke,
+leaving one page to read where the test expected two. A fixture here may not assume how many of a
+document's pages need reading — five scanned pages and every wait relative to the count before it,
+green 5/5 since.
+
+**Not verified live:** a page rotated 90°, whose transform is pinned by the core against the four
+measured cases but has no fixture here; the reading stopping when the bar closes, which is observable
+only from inside and is what three of the app tests are; and a physical Esc. **Left undone:** nothing
+from the find bar's own list — this was the last of it.
 
 **2026-09-18 (after the find options) — pattern search, once the engine that made it unaffordable
 turned out not to be the only one. VERIFIED LIVE.** Asked for as "we have undone work in history.

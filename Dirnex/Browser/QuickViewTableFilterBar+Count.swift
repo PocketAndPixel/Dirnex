@@ -64,8 +64,32 @@ extension QuickViewTableFilterBar {
 
     /// "3 of 17 matches", "3 of 100 000+ matches" when the search stopped at its limit, "No matches",
     /// or nothing while no text is typed. `current` counts from 1.
-    func showMatchCount(current: Int, of total: Int, isComplete: Bool, finding: Bool) {
+    ///
+    /// `reading` is how many of a PDF's scanned pages have been read of those that need it, and it
+    /// takes the line over when nothing has been found yet — because "No matches" over a document
+    /// most of which has not been read is a wrong answer wearing a right one's clothes. Once
+    /// something *has* been found, the count says it with the `+` that already means "and more to
+    /// come".
+    func showMatchCount(
+        current: Int,
+        of total: Int,
+        isComplete: Bool,
+        finding: Bool,
+        reading: (read: Int, total: Int)? = nil
+    ) {
         guard finding, total > 0 else {
+            if finding, let reading {
+                showCountLine(String(
+                    localized: "Reading \(reading.read) of \(reading.total) scanned pages",
+                    comment: """
+                    Quick View find in a PDF: how far reading its scanned pages has got, shown where \
+                    the match count goes while nothing has been found yet. %1$lld pages have been \
+                    read, of %2$lld that have no text of their own. Plural on the second. Kept \
+                    short: the bar is narrow and this label truncates its tail.
+                    """
+                ))
+                return
+            }
             showCountLine(finding ? String(
                 localized: "No matches",
                 comment: "Quick View text find: the count when the text is found nowhere in the file."

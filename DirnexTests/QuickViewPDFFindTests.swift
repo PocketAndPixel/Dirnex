@@ -125,10 +125,10 @@ struct QuickViewPDFFindTests {
         defer { fixture.cleanup() }
         let surface = fixture.surface
         try await Typing.type("beta", into: surface)
-        #expect(surface.hasReadDocumentText)
-        let first = surface.documentText
+        #expect(surface.hasReadPages)
+        let first = surface.pages.text
         try await Typing.type("gamma", into: surface)
-        #expect(surface.documentText == first)
+        #expect(surface.pages.text == first)
         #expect(surface.find.matches?.count == 1)
     }
 
@@ -157,13 +157,13 @@ struct QuickViewPDFFindTests {
         let surface = fixture.surface
         try await Typing.type("beta", into: surface)
         #expect(surface.find.matches != nil)
-        #expect(surface.hasReadDocumentText)
+        #expect(surface.hasReadPages)
 
         fixture.preview.showPDFDocument(QuickViewPDFFindFixtures.document(words: ["nothing here"]))
         #expect(surface.find.matches == nil)
         #expect(surface.find.current == nil)
-        #expect(!surface.hasReadDocumentText)
-        #expect(surface.documentText.isEmpty)
+        #expect(!surface.hasReadPages)
+        #expect(surface.pages.text.isEmpty)
         #expect(surface.filterBar.isHidden)
         #expect(surface.pdfView.highlightedSelections == nil)
     }
@@ -265,7 +265,7 @@ enum QuickViewPDFFindFixtures {
     /// map, so the test spends the same arithmetic the product does rather than re-deriving it.
     static func selection(for range: Range<Int>, in surface: QuickViewPDFSurface) -> PDFSelection? {
         guard let document = surface.pdfView.document else { return nil }
-        let pieces = surface.pageSegments.split(range)
+        let pieces = surface.pages.segments.split(range)
         guard let piece = pieces.first, let page = document.page(at: piece.index) else { return nil }
         return page.selection(
             for: NSRange(location: piece.range.lowerBound, length: piece.range.count)

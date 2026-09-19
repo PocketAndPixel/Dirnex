@@ -3,31 +3,35 @@ import DirnexCore
 import PDFKit
 
 /// Finding text in Quick View's PDF preview, which is also every Pages, Numbers and Keynote document
-/// (`QuickViewPreviewView+Document` merges those into one PDF) — 2026-09-18.
+/// (`QuickViewPreviewView+Document` merges those into one PDF) — 2026-09-18, reading scanned pages
+/// since 2026-09-19.
 ///
 /// The bar and its keys are the table's (`QuickViewFilterHost`), and the state machine is the one
 /// every finding surface runs (`QuickViewFindHost`). What is this surface's own:
 ///
-/// **What the text is.** `PDFDocument.string`, read once off the main actor and kept — 370–420 ms
-/// for a 231-page manual the first time and 1 ms afterwards, measured, and measured safe to read on
-/// a background thread while the main thread lays the same document out (3 runs, 213–217 concurrent
-/// layout passes, no crash and an exact result). Matching is `DirnexCore`'s
-/// (``DirnexCore/TextFindMatches``) rather than `PDFDocument.findString`, which is faster and does
-/// not agree with it: probed, PDFKit folds ß against ss, matches a ﬁ ligature against `fi`, and
-/// finds a Kelvin sign for `k`, where every other Quick View surface matches the way the table and
-/// tree filters do. A find bar that counted differently depending on which preview was up would be
-/// the same bar telling two stories.
+/// **What the text is.** Each page's own text layer, read once off the main actor and kept — 370–420
+/// ms for a 231-page manual the first time and 1 ms afterwards, measured, and measured safe to read
+/// on a background thread while the main thread lays the same document out. A page with **no** text
+/// layer has to be recognized before it has any, which is `QuickViewPDFSurface+Recognize`. Matching
+/// is `DirnexCore`'s (``DirnexCore/TextFindMatches``) rather than `PDFDocument.findString`, which is
+/// faster and does not agree with it: probed, PDFKit folds ß against ss, matches a ﬁ ligature
+/// against `fi`, and finds a Kelvin sign for `k`, where every other Quick View surface matches the
+/// way the table and tree filters do. A find bar that counted differently depending on which preview
+/// was up would be the same bar telling two stories.
 ///
-/// **How a match is found again on a page.** The whole text is the pages joined by one newline —
-/// verified on documents of 1, 78 and 231 pages, where re-joining reproduced `PDFDocument.string`
-/// byte for byte — so ``DirnexCore/TextSegmentMap`` turns an offset into the page holding it, and
-/// `PDFPage.selection(for:)` turns that into something the view can draw and scroll to. A match
-/// running across a page break becomes a selection on each page rather than being dropped.
+/// **How a match is found again on a page.** The pages are joined by one newline — which is exactly
+/// what `PDFDocument.string` is, verified on documents of 1, 78 and 231 pages — so
+/// ``DirnexCore/PagedDocumentText`` turns an offset into the page holding it and into whatever that
+/// page can be drawn with. A match running across a page break becomes a mark on each page rather
+/// than being dropped.
 ///
-/// **How a match is drawn.** `highlightedSelections`, the current one in orange and the rest in the
-/// find yellow. Only the matches on the pages nearby carry a selection: assigning 20 000 of them
-/// costs 88 ms and building 58 000 costs 48 ms, which is a price per keystroke rather than per
-/// document, and `PDFView.visiblePages` makes "nearby" exact.
+/// **How a match is drawn.** A page with a text layer gets a `PDFSelection`, the current match in
+/// orange and the rest in the find yellow. A recognized page has no selection to be made of it —
+/// `PDFPage.selection(for:)` there does not fail, it answers a selection whose bounds are
+/// `(inf, inf, 0, 0)` and whose string is `nil`, measured, which draws nothing and reports nothing —
+/// so it gets a highlight annotation over each word instead. Only the matches on the pages nearby
+/// carry either: assigning 20 000 selections costs 88 ms and building 58 000 costs 48 ms, which is a
+/// price per keystroke rather than per document, and `PDFView.visiblePages` makes "nearby" exact.
 extension QuickViewPDFSurface: QuickViewFindHost {
     var filterContentView: NSView { pdfView }
 
@@ -35,19 +39,31 @@ extension QuickViewPDFSurface: QuickViewFindHost {
 
     var keyboardFallback: NSView { pdfView }
 
-    /// The document's text, read once. Off the main actor, where it belongs: nearly half a second on
-    /// a long manual is not a keystroke's worth of main-thread time.
+    /// What is still being read, for the count line — `nil` once there is nothing left to read, so
+    /// an ordinary PDF never mentions it.
+    var findReadingProgress: (read: Int, total: Int)? {
+        guard pages.needsReading, !pages.isComplete else { return nil }
+        return (pages.readCount, pages.unreadPageCount)
+    }
+
+    /// The document's text: every page's own, and the scanned pages that have been read so far.
+    ///
+    /// Reading the text layer is off the main actor, where it belongs — nearly half a second on a
+    /// long manual is not a keystroke's worth of main-thread time — and asking for the text is also
+    /// what starts the scanned pages being read, because a search is the only thing that makes
+    /// reading them worth a minute of somebody's machine.
     func findableText() async -> String {
-        if hasReadDocumentText { return documentText }
         guard let document = pdfView.document else { return "" }
-        let box = PDFDocumentBox(document)
-        let read = await BlockingWork.run { box.read() }
-        // The cursor can have moved to another file while a long document was being read.
-        guard pdfView.document === document else { return "" }
-        documentText = read.text
-        pageSegments = TextSegmentMap(lengths: read.pageLengths, separator: 1)
-        hasReadDocumentText = true
-        return documentText
+        if !hasReadPages {
+            let box = PDFDocumentBox(document)
+            let layers = await BlockingWork.run { box.layerText() }
+            // The cursor can have moved to another file while a long document was being read.
+            guard pdfView.document === document else { return "" }
+            pages = PagedDocumentText(layerText: layers)
+            hasReadPages = true
+        }
+        startReadingScannedPages()
+        return pages.text
     }
 
     /// Draw the matches on the pages in view, the current one in orange.
@@ -56,26 +72,53 @@ extension QuickViewPDFSurface: QuickViewFindHost {
         guard let matches = find.matches, !matches.isEmpty else { return }
         var selections: [PDFSelection] = []
         for index in highlightableIndices(of: matches) {
-            guard let selection = selection(for: matches.ranges[index]) else { continue }
-            selection.color = index == find.current ? Self.currentMatchColor : Self.matchColor
-            selections.append(selection)
+            let isCurrent = index == find.current
+            for placement in pages.placement(of: matches.ranges[index]) {
+                switch placement {
+                case let .layer(page, range):
+                    guard let selection = selection(onPage: page, range: range) else { continue }
+                    selection.color = isCurrent ? Self.currentMatchColor : Self.matchColor
+                    selections.append(selection)
+                case let .recognized(page, quads):
+                    drawRecognizedMatch(quads, onPage: page, isCurrent: isCurrent)
+                }
+            }
         }
         highlighted = selections
         pdfView.highlightedSelections = selections.isEmpty ? nil : selections
     }
 
     func removeFindHighlights() {
+        for drawn in recognizedHighlights {
+            drawn.page.removeAnnotation(drawn.annotation)
+        }
+        recognizedHighlights = []
         guard !highlighted.isEmpty || pdfView.highlightedSelections != nil else { return }
         highlighted = []
         pdfView.highlightedSelections = nil
     }
 
-    /// Scroll the current match into view and make it the view's own selection, so ⌘C copies what
-    /// the bar found.
+    /// Scroll the current match into view and, where there is text behind it, make it the view's own
+    /// selection so ⌘C copies what the bar found.
+    ///
+    /// A recognized page has nothing to select, so it is scrolled to by the outline instead: what is
+    /// on screen is the page's picture, and there is no text on it to put on the pasteboard.
     func revealCurrentMatch() {
-        guard let range = find.currentRange, let selection = selection(for: range) else { return }
-        pdfView.go(to: selection)
-        pdfView.setCurrentSelection(selection, animate: false)
+        guard let range = find.currentRange else { return }
+        guard let first = pages.placement(of: range).first else { return }
+        switch first {
+        case let .layer(page, pageRange):
+            guard let selection = selection(onPage: page, range: pageRange) else { return }
+            pdfView.go(to: selection)
+            pdfView.setCurrentSelection(selection, animate: false)
+        case let .recognized(page, quads):
+            guard let page = pdfView.document?.page(at: page), let box = pageRect(
+                of: quads,
+                on: page
+            )
+            else { return }
+            pdfView.go(to: box, on: page)
+        }
         // The pages in view have changed, so which matches are worth drawing has too.
         redrawHighlightsForVisiblePages()
     }
@@ -85,9 +128,7 @@ extension QuickViewPDFSurface: QuickViewFindHost {
         guard let page = pdfView.visiblePages.first ?? pdfView.currentPage,
               let document = pdfView.document
         else { return 0 }
-        let index = document.index(for: page)
-        guard index > 0, pageSegments.lengths.indices.contains(index) else { return 0 }
-        return pageSegments.lengths.prefix(index).reduce(0) { $0 + $1 + 1 }
+        return pages.offset(ofPage: document.index(for: page)) ?? 0
     }
 
     /// The bar set up for finding, and the view reporting its scrolls so the highlights can follow
@@ -132,55 +173,91 @@ extension QuickViewPDFSurface: QuickViewFindHost {
             return 0..<min(matches.count, 1)
         }
         let first = max(0, lowest - Self.pageMargin)
-        let last = min(pageSegments.lengths.count - 1, highest + Self.pageMargin)
-        guard first <= last else { return 0..<0 }
-        let start = pageSegments.lengths.prefix(first).reduce(0) { $0 + $1 + 1 }
-        let end = pageSegments.lengths.prefix(last + 1).reduce(0) { $0 + $1 + 1 }
+        let last = min(pages.readyCount - 1, highest + Self.pageMargin)
+        guard first <= last,
+              let start = pages.offset(ofPage: first),
+              let end = pages.offset(ofPage: last).map({ $0 + pages.segments.lengths[last] })
+        else { return 0..<0 }
         return matches.indices(overlapping: start..<end)
     }
 
-    /// The selection a match's offsets name. A match inside one page is that page's selection; one
-    /// running across a page break is the pieces on each page joined, so it draws on both.
-    private func selection(for range: Range<Int>) -> PDFSelection? {
-        guard let document = pdfView.document else { return nil }
-        let pieces = pageSegments.split(range)
-        var built: [PDFSelection] = []
-        for piece in pieces {
-            guard let page = document.page(at: piece.index),
-                  let selection = page.selection(
-                      for: NSRange(location: piece.range.lowerBound, length: piece.range.count)
-                  )
-            else { continue }
-            built.append(selection)
+    /// The selection a match's offsets name on a page that has a text layer.
+    private func selection(onPage index: Int, range: Range<Int>) -> PDFSelection? {
+        guard let page = pdfView.document?.page(at: index) else { return nil }
+        return page.selection(for: NSRange(location: range.lowerBound, length: range.count))
+    }
+
+    /// Mark a match on a page that had to be read, by putting a highlight annotation over each word
+    /// it covers.
+    ///
+    /// A highlight annotation rather than a drawn overlay because PDFKit then scrolls and zooms it
+    /// with the page for nothing, and because it is the shape a PDF already has for this. Its
+    /// `quadrilateralPoints` are **relative to the annotation's own bounds**, which is the trap
+    /// here: measured, page-space points draw *nothing at all* — no error, no warning, an invisible
+    /// highlight — while the same four points relative to the bounds draw the full word, and the
+    /// PDF spec's own order (upper-left, upper-right, lower-left, lower-right) is the one that
+    /// covers it rather than a bowtie.
+    private func drawRecognizedMatch(_ quads: [TextQuad], onPage index: Int, isCurrent: Bool) {
+        guard let page = pdfView.document?.page(at: index) else { return }
+        for quad in quads {
+            guard let bounds = pageRect(of: [quad], on: page) else { continue }
+            let annotation = PDFAnnotation(bounds: bounds, forType: .highlight, withProperties: nil)
+            annotation.color = isCurrent ? Self.currentMatchColor : Self.matchColor
+            annotation.quadrilateralPoints = [
+                point(quad.topLeft, on: page, relativeTo: bounds),
+                point(quad.topRight, on: page, relativeTo: bounds),
+                point(quad.bottomLeft, on: page, relativeTo: bounds),
+                point(quad.bottomRight, on: page, relativeTo: bounds)
+            ]
+            page.addAnnotation(annotation)
+            recognizedHighlights.append((page, annotation))
         }
-        guard let first = built.first else { return nil }
-        guard built.count > 1 else { return first }
-        let joined = PDFSelection(document: document)
-        built.forEach(joined.add)
-        return joined
+    }
+
+    /// The upright box some outlines cover, in the page's own coordinates.
+    private func pageRect(of quads: [TextQuad], on page: PDFPage) -> CGRect? {
+        let media = page.bounds(for: .mediaBox)
+        var box: CGRect?
+        for quad in quads where quad.isDrawable {
+            let normalized = quad.boundingBox
+            let rect = CGRect(
+                x: media.minX + normalized.x * media.width,
+                y: media.minY + normalized.y * media.height,
+                width: normalized.width * media.width,
+                height: normalized.height * media.height
+            )
+            box = box.map { $0.union(rect) } ?? rect
+        }
+        return box
+    }
+
+    /// One corner, in the coordinates a highlight annotation shapes itself in: its own bounds.
+    private func point(_ corner: TextPoint, on page: PDFPage, relativeTo bounds: CGRect) -> NSValue {
+        let media = page.bounds(for: .mediaBox)
+        return NSValue(point: NSPoint(
+            x: media.minX + corner.x * media.width - bounds.minX,
+            y: media.minY + corner.y * media.height - bounds.minY
+        ))
     }
 }
 
-/// A `PDFDocument` carried across to a background thread to have its text read.
+/// A `PDFDocument` carried across to a background thread to have its pages' text read.
 ///
 /// `@unchecked Sendable` because `PDFDocument` is not `Sendable` and the read has to happen off the
 /// main actor — measured safe, and deliberately narrow: nothing but reading is done through this,
 /// the document is not mutated, and the result that comes back is plain values.
-private final class PDFDocumentBox: @unchecked Sendable {
+final class PDFDocumentBox: @unchecked Sendable {
     private let document: PDFDocument
 
     init(_ document: PDFDocument) {
         self.document = document
     }
 
-    /// The whole text and each page's length in UTF-16 units — the units `TextFindMatches` counts
-    /// and `PDFPage.selection(for:)` is addressed in.
-    func read() -> (text: String, pageLengths: [Int]) {
-        var lengths: [Int] = []
-        lengths.reserveCapacity(document.pageCount)
-        for index in 0..<document.pageCount {
-            lengths.append(document.page(at: index)?.string?.utf16.count ?? 0)
-        }
-        return (document.string ?? "", lengths)
+    /// Each page's own text layer, `nil` for a page that has none.
+    ///
+    /// Page by page rather than `PDFDocument.string`, which is those same pages joined and cannot
+    /// say which of them were empty — and the empty ones are exactly the ones that have to be read.
+    func layerText() -> [String?] {
+        (0..<document.pageCount).map { document.page(at: $0)?.string }
     }
 }

@@ -105,6 +105,10 @@ extension QuickViewWebView: QuickViewFindHost {
         )
     }
 
+    /// Nothing here has to be read before it exists: a rendered page's text is in the document the
+    /// moment it has loaded.
+    var findReadingProgress: (read: Int, total: Int)? { nil }
+
     /// Where a search with no current match begins: the first text on screen in the main document.
     /// A frame's own scroll position is deliberately not consulted — the reader's place is where the
     /// *page* is, and a search that began inside a sheet the page has scrolled past would look as
