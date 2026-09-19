@@ -125,6 +125,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         browserWindowController?.persistTabState()
         SMBMounter.shared.unmountOwnedMounts()
         browserWindowController?.terminateTerminalShell()
+        // A converted GoPro RAW is ~23 MB of temporary DNG per file previewed, so a session's worth
+        // of them is worth taking with us rather than leaving for whenever macOS next sweeps its
+        // temporary directory.
+        GPRConverter.shared.purge()
     }
 
     @objc private func rebuildMainMenu() {

@@ -12923,10 +12923,10 @@ front of a user:
 
 ---
 
-### After M19 — the follow-on log (2026-08-07 → 2026-09-19)
+### After M19 — the follow-on log (2026-08-07 → 2026-09-20)
 
-Eighty-eight dated passes that landed outside a milestone of their own, between M18's close on
-2026-08-07 and 2026-09-19: user-reported bugs, three vault features, the tree crossing into S3,
+Eighty-nine dated passes that landed outside a milestone of their own, between M18's close on
+2026-08-07 and 2026-09-20: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
 sit here at the end rather than in a numeric slot — and they keep their **newest-first** order,
@@ -12934,6 +12934,52 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-20 — GoPro RAW (.GPR) previews, through the first third-party binary Dirnex ships.
+VERIFIED LIVE.** Asked for as "let's also make a support of previewing go pro raw photos", which
+reads like the `.ts` fix one entry-family along — a type macOS gets wrong, routed by its bytes
+instead. It is not. Probing first (§2's rule, and the reason this took a fork in the road rather
+than a patch) settled that **macOS can decode a GPR by no route at all**: ImageIO identifies the
+container as `com.adobe.raw-image`, reports a complete status and reads the whole EXIF/DNG metadata
+block, then answers `nil` to `CreateImageAtIndex` *and* to `CreateThumbnailAtIndex`, while
+`CIRAWFilter` builds a filter whose `outputImage` is `nil`. The control is what makes that a fact
+about the codec rather than the name — renamed `.dng` it still answers `nil`, where a real `.dng`
+decodes 6000x4000 through the identical call. `Compression = 9` is GoPro's VC-5 wavelet codec, which
+macOS ships no decoder for, and the file carries **no embedded preview** (no `SubIFDs`, no
+`JPEGInterchangeFormat`) — so unlike every other RAW there is nothing to fall back on.
+
+So the options were not a routing tweak but a scope question, and it went to the user with a
+recommendation: bundle GoPro's decoder, show a metadata card, borrow the sibling JPEG, or only stop
+the hang. **Bundling was chosen.** `gpr_tools` (Apache-2.0/MIT) is built universal from a pinned
+upstream commit by `scripts/build_gpr_tools.sh`, checked in at `Packaging/Helpers/gpr_tools` (3.0 MB,
+linking nothing but `libc++` and `libSystem`) and copied into `Contents/Helpers` by a Copy Files
+phase with **CodeSignOnCopy**, so the nested Mach-O is signed and the bundle verifies.
+
+Three things the measurements decided rather than taste. **DNG is the only output worth asking for**
+— the tool's PPM and JPG are downsampled (`-r 2:1` is 2000x1500) and `-r 1:1`, the spelling that
+looks like full resolution, **writes an 11-byte 0x0 file and still exits 0**, which is why nothing
+here trusts an exit status alone. Converting to a DNG also means the photograph takes the *existing*
+`RAWImageDecoder` unchanged, so its demosaic, EXIF orientation and P3 tagging are the same code every
+ARW and NEF already takes — verified live against the camera's own sibling JPEG of the same frame.
+And it is a **process, not a library**: a truncated GPR makes the decoder `abort()` (uncaught
+`dng_exception`, SIGABRT), and a file manager puts the cursor on half-copied files as a matter of
+course, so linked in that is Dirnex gone during a preview nobody asked for.
+
+The bug underneath the feature is worth its own line: a GPR fell through to Quick Look, which does
+not merely fail on one — **it hangs**, 45 s producing nothing, where an ARW and a DNG each produce a
+thumbnail in 0.5 s. Routing it away was worth doing whatever the answer about decoding.
+
+Routing is the name **and** the bytes (`.gpr` is not GoPro's alone, and the header alone would claim
+every TIFF on the disk), with a placeholder judged by name so deciding which backend draws a row
+never costs a cloud download. `GoProRAW` in the core holds the pure half — 11 tests — and
+`GPRConverter` the spawn, with an `ArchiveIdentity`-keyed cache of three so stepping back and forth
+is free, purged on quit (measured: one temp root while running, zero after). Two negative controls:
+neutering the routing fails exactly the two routing tests while every narrowness control stays green,
+and neutering the conversion fails exactly the live decode. One pre-existing assertion **expired** in
+the pass and was fixed rather than left — `QuickViewRAWPreviewTests` pinned `.gpr` as *"left to Quick
+Look"*, which still passed only because its path did not exist. NOTICE carries the attribution,
+including the Adobe `dng_sdk` and `xmp_core` that GoPro redistributes and that no build flag can
+remove.
 
 **2026-09-19 — the find reaches a PDF that is a picture of a page. VERIFIED LIVE.** Asked for as
 "let's finish the task" over the uncommitted OCR work, which is the half the entry below left undone

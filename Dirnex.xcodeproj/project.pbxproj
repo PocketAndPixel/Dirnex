@@ -10,6 +10,7 @@
 		1000000000000000000000201 /* DirnexCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1000000000000000000000202 /* DirnexCore */; };
 		1000000000000000000000206 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 1000000000000000000000205 /* SwiftTerm */; };
 		1000000000000000000000303 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 1000000000000000000000302 /* Sparkle */; };
+		1000000000000000000000401 /* gpr_tools in Helpers */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000402 /* gpr_tools */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -43,7 +44,22 @@
 		1000000000000000000000C2 /* DirnexTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DirnexTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1000000000000000000000C3 /* PLAN.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PLAN.md; sourceTree = "<group>"; };
 		1000000000000000000000C4 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		1000000000000000000000402 /* gpr_tools */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = gpr_tools; path = Packaging/Helpers/gpr_tools; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		1000000000000000000000403 /* Helpers */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "Contents/Helpers";
+			dstSubfolderSpec = 1;
+			files = (
+				1000000000000000000000401 /* gpr_tools in Helpers */,
+			);
+			name = Helpers;
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		1000000000000000000000E2 /* Frameworks */ = {
@@ -71,6 +87,7 @@
 			children = (
 				1000000000000000000000C3 /* PLAN.md */,
 				1000000000000000000000C4 /* README.md */,
+				1000000000000000000000402 /* gpr_tools */,
 				1000000000000000000000D1 /* Dirnex */,
 				1000000000000000000000D2 /* DirnexTests */,
 				1000000000000000000000A3 /* Products */,
@@ -96,6 +113,7 @@
 				1000000000000000000000E1 /* Sources */,
 				1000000000000000000000E2 /* Frameworks */,
 				1000000000000000000000E3 /* Resources */,
+				1000000000000000000000403 /* Helpers */,
 			);
 			buildRules = (
 			);

@@ -7712,6 +7712,58 @@ macOS 26.6 before any Swift was written.
   Sendable` box, with the document type always given explicitly: left to detect, AppKit reads
   anything that looks like HTML through WebKit, on the main thread, loading what the page names.
 
+### gpr_tools (the bundled GoPro RAW decoder)
+
+The one format on this Mac that **nothing in macOS can decode**, and so far the only reason Dirnex
+ships a third-party binary. All measured 2026-09-20 against two HERO7 files before any Swift.
+
+- **macOS identifies a GPR and then decodes nothing, which is the shape that wastes an afternoon.**
+  ImageIO reports the container as `com.adobe.raw-image`, `count = 1`, a *complete* status, and
+  reads the whole EXIF/DNG/TIFF metadata block — then answers `nil` to
+  `CGImageSourceCreateImageAtIndex` **and** to `CGImageSourceCreateThumbnailAtIndex`, while
+  `CIRAWFilter` builds a filter whose `outputImage` is `nil`. `NSImage` and `sips` read `0x0`. So
+  every cheap signal says "supported" and only the pixels say otherwise.
+  - **The control is what makes it a fact about the codec rather than the file name**: renamed to
+    `.dng` it still decodes to `nil`, while a real `.dng` answers 6000x4000 through the identical
+    call. The container says why — one IFD, 4000x3000, **`Compression = 9`** (GoPro's VC-5 wavelet
+    codec, which macOS ships no decoder for), `PhotometricInterpretation = 32803` (a Bayer mosaic).
+- **A GPR embeds no preview at all**, which is what removes the usual escape hatch. No `SubIFDs`
+  (330), no `JPEGInterchangeFormat` (513) — unlike almost every other RAW, there is no thumbnail to
+  fall back on, so the failure mode is not a postage stamp (▸ the NEF entry) but nothing whatsoever.
+  The only JPEG-looking byte runs in the file are false positives inside compressed data: extracted,
+  they have no dimensions.
+- **Quick Look does not merely fail on one — it hangs.** Measured with a bounded runner:
+  `qlmanage -t` sat on a GPR for **45 s** and produced nothing, where an ARW and a DNG each produced
+  a thumbnail in **0.5 s** on the same run. So routing a GPR away from Quick Look is worth doing on
+  its own, before any question of decoding it.
+- **`gpr_tools` converts to DNG in 0.16–0.51 s, and DNG is the only output worth asking for.** The
+  same tool writes PPM and JPG, and both are *downsampled*: `-r 4:1` gives 1000x750, `-r 2:1` gives
+  2000x1500, and **`-r 1:1` — the spelling that looks like full resolution — writes an 11-byte 0x0
+  file and still exits 0.** Only the DNG carries the 4000x3000 sensor frame. That silent success is
+  the reason nothing here trusts an exit status alone.
+  - Asking for a DNG is also what keeps a GoPro photograph looking like its neighbours: the file it
+    writes is an ordinary `com.adobe.raw-image` that goes through the **existing** `RAWImageDecoder`
+    unchanged, so the demosaic, the EXIF orientation and the Display P3 tagging are the same code
+    every ARW, NEF and CR2 already takes. Verified live — the decoded GPR matched the camera's own
+    sibling JPEG in framing and orientation.
+- **A truncated GPR makes the decoder `abort()`, which is why it is a process and not a library.**
+  Measured: `libc++abi: terminating due to uncaught exception of type dng_exception`, SIGABRT, exit
+  134. A file manager puts the cursor on half-copied files as a matter of course, so linked in that
+  is Dirnex gone during a preview nobody asked for. Out of process it is one `.crashed` value. The
+  other exits are ordinary: **255** for a missing input and for a JPEG handed in as one.
+- **`.gpr` is not GoPro's alone**, so the routing test is the name **and** the bytes — a DNG
+  container opens with a TIFF header. Neither half is sufficient: the name alone hands a stranger's
+  file to a decoder that aborts on input it dislikes, and the header alone claims every TIFF on the
+  disk. The helper's exit status is the third, authoritative gate.
+- **Licensing is the half to check before reaching for it.** The repo is Apache-2.0/MIT, but
+  `dng_sdk` (104k lines) and `xmp_core` (27k) are **Adobe** code under "the Adobe license agreement
+  accompanying it", and they are **not** removable by a build flag — `gpr_sdk` includes `dng_sdk`
+  directly and both are added unconditionally. Bundling the decoder means shipping them, with their
+  notices preserved; NOTICE carries the attribution. The built binary is only **3.0 MB** universal
+  and links nothing but `libc++` and `libSystem`.
+  - The build needs `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` on CMake 4, which removed compatibility
+    with the `cmake_minimum_required(VERSION 3.5)` upstream declares.
+
 ### git
 
 - **`git status --ignored=traditional` already collapses every ignored directory to one row**,

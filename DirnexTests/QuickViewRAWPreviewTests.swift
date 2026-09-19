@@ -70,12 +70,17 @@ struct QuickViewRAWPreviewTests {
         }
     }
 
-    /// The three extensions macOS declares no type for. They conform to nothing, so they already
-    /// fail `isImage` and route to Quick Look; this pins that the RAW route does not claim them and
-    /// leave them somewhere Core Image cannot help.
+    /// The extensions macOS declares no type for. They conform to nothing, so they already fail
+    /// `isImage` and route to Quick Look; this pins that the RAW route does not claim them and leave
+    /// them somewhere Core Image cannot help.
+    ///
+    /// `.gpr` used to be listed here and is not any more: it is the one of the three Dirnex can now
+    /// decode, through the bundled helper rather than through Core Image, so its routing is pinned
+    /// by `QuickViewGoProRAWTests` against real bytes instead. Core Image still cannot read one,
+    /// which is why it stays out of `isRAW` below.
     @Test("undeclared RAW extensions are left to Quick Look")
     func undeclaredExtensionsUnclaimed() {
-        for name in ["shot.x3f", "shot.gpr", "shot.kdc"] {
+        for name in ["shot.x3f", "shot.kdc"] {
             let url = URL(fileURLWithPath: "/does/not/exist/\(name)")
             #expect(!QuickViewPreviewView.isRAW(url))
             #expect(!QuickViewPreviewView.isImage(url))

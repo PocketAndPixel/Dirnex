@@ -25,3 +25,22 @@ Copyright (c) 2015-2017 Mayur Pawashe.
 Copyright (c) 2014 C.W. Betts.
 Copyright (c) 2014 Petroules Corporation.
 Copyright (c) 2014 Big Nerd Ranch.
+
+GoPro GPR (https://github.com/gopro/gpr) — Apache License 2.0 or MIT, at your
+option. Copyright (c) 2016-2017 GoPro Inc.
+Bundled in binary form as Contents/Helpers/gpr_tools, built from the pinned
+commit recorded in scripts/build_gpr_tools.sh. It is the only decoder for the
+VC-5 wavelet codec GoPro RAW (.GPR) files use; macOS ships none.
+
+  That binary statically links two Adobe components, redistributed by GoPro as
+  part of the above and carried here unmodified:
+
+    Adobe DNG SDK — Copyright 2006-2012 Adobe Systems Incorporated.
+    Adobe XMP Core — Copyright 2002 Adobe Systems Incorporated.
+    All Rights Reserved. Adobe permits use, modification and distribution of
+    these files in accordance with the Adobe license agreement accompanying
+    them; the license text and per-file notices are preserved in the upstream
+    source that scripts/build_gpr_tools.sh checks out.
+
+  Expat — Copyright (c) 1998-2000 Thai Open Source Software Center Ltd and
+  Clark Cooper; Copyright (c) 2001-2017 Expat maintainers. MIT License.

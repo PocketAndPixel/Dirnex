@@ -99,9 +99,10 @@ extension QuickViewPreviewView {
         loadToken += 1
         let token = loadToken
         let isRAW = Self.isRAW(url)
+        let isGoProRAW = Self.isGoProRAW(url)
         flipGate.isLoading = true
         Task { [weak self] in
-            let image = await Self.loadImage(at: url, isRAW: isRAW)
+            let image = await Self.loadImage(at: url, isRAW: isRAW, isGoProRAW: isGoProRAW)
             guard let self, token == loadToken else { return }
             view.show(image)
             // Announce even when `image` is nil: a file that fails to decode has still finished
@@ -117,7 +118,22 @@ extension QuickViewPreviewView {
     /// EXIF orientation, and needs no change — cannot read a RAW at all (▸ `RAWImageDecoder`). A RAW
     /// whose camera model Core Image does not know falls back rather than showing nothing: the
     /// embedded preview is small, but it is the picture.
-    private static func loadImage(at url: URL, isRAW: Bool) async -> NSImage? {
+    private static func loadImage(at url: URL, isRAW: Bool, isGoProRAW: Bool) async -> NSImage? {
+        // A GoPro RAW is decoded by nobody on this Mac, so it is converted first and the DNG that
+        // comes back takes the ordinary RAW route below. There is deliberately no fall-through to
+        // `NSImage(data:)` for it: a GPR carries no embedded preview at all, so the bytes would be
+        // read only to produce the same nothing, having downloaded a cloud file to do it.
+        if isGoProRAW {
+            guard let converted = await BlockingWork.run(
+                { GPRConverter.shared.decodableCopy(of: url) }
+            ),
+                let decoded = await BlockingWork.run({ RAWImageDecoder.decode(converted) })
+            else { return nil }
+            return NSImage(
+                cgImage: decoded,
+                size: NSSize(width: decoded.width, height: decoded.height)
+            )
+        }
         if isRAW, let decoded = await BlockingWork.run({ RAWImageDecoder.decode(url) }) {
             return NSImage(
                 cgImage: decoded,
@@ -138,10 +154,39 @@ extension QuickViewPreviewView {
     /// Whether `url` is an image, so it routes to the in-process `NSImageView`. Content type first
     /// (an odd extension still classifies), extension as the fallback.
     static func isImage(_ url: URL) -> Bool {
+        // Asked first, because the type system is what is wrong about this one: macOS resolves
+        // `.gpr` to a dynamic type conforming to nothing but `public.data`, so the conformance test
+        // below answers `false` for a photograph.
+        if isGoProRAW(url) { return true }
         if let type = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType {
             return type.conforms(to: .image)
         }
         return UTType(filenameExtension: url.pathExtension)?.conforms(to: .image) ?? false
+    }
+
+    /// Whether `url` is a GoPro RAW, which reaches the image backend through the bundled decoder
+    /// rather than through Core Image.
+    ///
+    /// The same shape as `isMistypedSource`: a name macOS types *wrongly*, where only the bytes can
+    /// settle it. Here the type is not merely wrong but absent — `.gpr` gets a placeholder dynamic
+    /// type conforming to nothing — so a GPR failed `isImage`, fell through to Quick Look, and
+    /// **hung it**: measured 2026-09-20, `qlmanage` sat on one for 45 s and produced nothing, where
+    /// an ARW and a DNG each produced a thumbnail in 0.5 s.
+    ///
+    /// Both halves are needed and neither is sufficient. `.gpr` is not GoPro's alone, so the name
+    /// alone would hand a stranger's file to a decoder that aborts on input it dislikes; and the
+    /// header alone would claim every TIFF in the filesystem.
+    ///
+    /// A placeholder is judged by its name alone. Reading a cloud file's bytes downloads it, and
+    /// deciding *which backend draws a row* must never cost a download — the transfer that follows
+    /// is the user's own gesture and is asked for separately.
+    static func isGoProRAW(_ url: URL) -> Bool {
+        guard GoProRAW.namesGoProRAW(url.lastPathComponent) else { return false }
+        if isPlaceholder(url) { return true }
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
+        defer { try? handle.close() }
+        let head = try? handle.read(upToCount: GoProRAW.headerLength)
+        return GoProRAW.hasContainerHeader(head ?? Data())
     }
 
     /// Whether `url` is a camera RAW, so it decodes through Core Image rather than `NSImage(data:)`.
