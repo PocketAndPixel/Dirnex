@@ -63,6 +63,33 @@ struct ShareRecycleBinTests {
         #expect(origin.destination.path == "/home/a/b.txt")
     }
 
+    // MARK: - What a bin cannot catch
+
+    /// Reported 2026-09-20: deleting out of the bin was offered the softened *"the server may keep a
+    /// copy"* wording, which is true everywhere on that share except here — the file is already in
+    /// the bin, and a delete there is permanent (measured at the bin's root and one level in).
+    @Test("an item already in the bin is not something the bin can catch")
+    func itemInsideTheBinIsNotCaught() {
+        #expect(ShareRecycleBin.isBinOrInside(item("tmp/Screenshot.png")))
+        #expect(ShareRecycleBin.isBinOrInside(item("DSCF8564.JPG")))
+    }
+
+    /// The bin itself counts too: nothing moves a recycle bin into itself.
+    @Test("the bin itself is not something the bin can catch")
+    func theBinItselfIsNotCaught() {
+        #expect(ShareRecycleBin.isBinOrInside(VFSPath.local("\(share)/#recycle")))
+    }
+
+    /// The narrowness half — this is what decides whether an ordinary file on the share keeps the
+    /// softened wording, so a rule that answered `true` too widely would put the strong warning back
+    /// everywhere and quietly undo the fix it sits beside.
+    @Test("an ordinary path on the same share is still catchable")
+    func ordinaryPathIsCatchable() {
+        #expect(ShareRecycleBin.isBinOrInside(VFSPath.local("\(share)/DSCF8566.JPG")) == false)
+        #expect(ShareRecycleBin.isBinOrInside(VFSPath.local("\(share)/docs/report.txt")) == false)
+        #expect(ShareRecycleBin.isBinOrInside(VFSPath.local("\(share)/#recycled/a.txt")) == false)
+    }
+
     // MARK: - The bin that governs a share
 
     /// Where a delete on this share would land, which is the question the delete confirmation asks

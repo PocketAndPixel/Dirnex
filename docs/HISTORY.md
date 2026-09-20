@@ -13012,6 +13012,23 @@ renaming it in restored the softened one, which falsifies exactly the thing the 
 neutering the condition could not. Verified live in all three states: ⇧F8 on the share, ⇧F8 on a
 local disk with the byte-identical file name (unchanged), and F8's own fallback sheet on the share.
 
+**And it shipped wrong, reported within the hour, on the one path those three states did not
+include: deleting *out of* the bin.** Every other file on that share may be caught by `#recycle`;
+a file already in it cannot be, and was being offered the softened sentence — the **under**-warning
+direction the three conditions were each written to fail away from, arriving through a case none of
+them asked about. The gate asked "is there a bin on this volume", which is true *of the bin as well*.
+``ShareRecycleBin/isBinOrInside(_:)`` is the fix, deliberately broader than ``holds(_:)`` at both
+ends: the bin itself counts, since nothing moves a bin into itself, and **any** `#recycle` component
+counts rather than only the share-root one, because a bin further down is unmeasured and unsure
+should answer with the stronger warning. It is asked first, ahead of both syscalls, being the one
+condition that costs nothing. The measurement was extended to match the report — a delete from a
+*subdirectory* of the bin is permanent too, where only the bin's root had been measured — and the
+live A/B is on one share: a file inside `#recycle/wording-probe/` gets *"there's no Trash on this
+volume, so this can't be undone"*, an ordinary file beside it still gets the softened one. The
+lesson is the shape rather than the slip: **a rule that softens a warning needs its exceptions
+enumerated from the inside of the thing it softens for**, and "is there a bin here" answers for the
+whole volume, bin included.
+
 Two limits stated rather than papered over: **`#recycle` only**, not QNAP's `@Recycle`, whose
 mirroring is unmeasured and where a wrong guess restores a file to a folder nobody named; and the
 same arithmetic reaches a Synology browsed over **SFTP or FTP** — the origin carries the path's

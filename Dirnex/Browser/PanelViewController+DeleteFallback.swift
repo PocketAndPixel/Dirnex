@@ -23,10 +23,16 @@ extension PanelViewController {
     ///   says the server *may* keep a copy rather than promising it does.
     /// - **All of them, and the same bin.** A mixed set answers `nil` rather than softening for
     ///   the ones it does not cover.
+    ///
+    /// **A path already in a bin is not covered by one**, which is the case this shipped wrong
+    /// (reported 2026-09-20): deleting out of `#recycle` is permanent — measured — and was being
+    /// offered the softened sentence that is true everywhere else on the same share. Asked first,
+    /// because it is the one condition that costs no syscall.
     func shareRecycleBinGoverning(_ paths: [VFSPath]) -> VFSPath? {
         var governing: VFSPath?
         for path in paths {
-            guard path.backend == .local, let root = networkVolumeRoot(of: path) else { return nil }
+            guard path.backend == .local, !ShareRecycleBin.isBinOrInside(path),
+                  let root = networkVolumeRoot(of: path) else { return nil }
             let bin = ShareRecycleBin.bin(atShareRoot: root)
             guard isDirectory(bin), governing == nil || governing == bin else { return nil }
             governing = bin

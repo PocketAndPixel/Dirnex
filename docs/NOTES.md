@@ -6117,9 +6117,20 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     volume**: DSM keeps one bin per *shared folder*, so mounting `home` puts `#recycle` at the volume
     root while mounting `homes` puts one at `homes/<user>/#recycle`, and a volume-anchored rule
     restores the second case into the wrong folder.
-  - **Deleting *inside* the bin is genuinely permanent** — no nested `#recycle/#recycle`, measured —
-    so emptying it from a file manager works and needs no special verb. `desktop.ini` there is
-    Windows' folder-icon marker (74 bytes, `UF_HIDDEN`), not restore metadata.
+  - **Deleting *inside* the bin is genuinely permanent** — no nested `#recycle/#recycle`, measured
+    at the bin's root **and** one directory further in — so emptying it from a file manager works and
+    needs no special verb. `desktop.ini` there is Windows' folder-icon marker (74 bytes,
+    `UF_HIDDEN`), not restore metadata.
+    - **And it is the one path on the share the softened delete sentence must *not* cover**, which
+      is how it shipped wrong and was reported the same day: every other file there may be caught by
+      the bin, and a file already in it cannot be. So the rule the confirmation asks is broader than
+      "is this item in a bin" at both ends (``ShareRecycleBin/isBinOrInside(_:)``) — the **bin
+      itself** counts, since nothing moves a bin into itself, and **any** `#recycle` component
+      counts rather than only the one at the share root, because a bin further down the tree is
+      unmeasured and the honest answer when unsure is the stronger warning. The general shape is
+      worth more than the case: **a rule that softens a warning needs its exceptions enumerated from
+      the *inside* of the thing it is softening for**, and the obvious gate ("is there a bin on this
+      volume") answers for the whole volume including the bin.
   - **The first listing after a delete can be stale, and it reads as the opposite of the truth.**
     A `find` run in the same command as the `rm` showed the bin unchanged, which says *"the recycle
     bin does not catch SMB deletes"* — a clean, wrong, load-bearing conclusion. It is the macOS SMB

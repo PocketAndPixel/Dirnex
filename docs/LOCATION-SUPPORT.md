@@ -292,7 +292,9 @@ lands in it. The neighbouring wart was fixed the same day: `trashItem` is refuse
 (3328), so F8 degrades to the confirmed *permanent* delete and `vfs_recycle` then catches that
 `unlink` — so **both** permanent-delete confirmations (F8's fallback and ⇧F8's) now say the server
 may keep a copy in `#recycle` rather than promising destruction. They say *may*: the folder being
-there does not prove the setting is still on (NOTES.md ▸ The Trash).
+there does not prove the setting is still on. An item **already in** the bin is the exception and
+keeps the strong wording, since a delete there is permanent — measured, and reported the same day
+after it shipped the other way (NOTES.md ▸ The Trash).
 
 <sup>p</sup> Rename, move, New Folder and — since 2026-09-01 — an **attribute change** are journaled
 and reversed through the backend, so they undo remotely (▸ <sup>tt</sup> for what that last one can

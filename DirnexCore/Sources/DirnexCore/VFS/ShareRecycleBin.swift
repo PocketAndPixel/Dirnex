@@ -48,6 +48,27 @@ public enum ShareRecycleBin {
         origin(of: path) != nil
     }
 
+    /// Whether `path` **is** a recycle bin or already sits inside one — where a delete is not caught
+    /// by the bin and really is permanent.
+    ///
+    /// Measured 2026-09-20 on a live DSM share, at the bin's root *and* one directory further in:
+    /// `rm` of a file inside `#recycle` removes it, with no nested `#recycle/#recycle` and nothing
+    /// left behind. That is what makes emptying the bin from a file manager work at all, and it is
+    /// the case a delete confirmation has to tell apart from every other path on the same share —
+    /// reported 2026-09-20, where deleting out of the bin was offered the softened *"the server may
+    /// keep a copy"* wording that is true everywhere on that share except here.
+    ///
+    /// **Broader than ``holds(_:)`` at both ends**, deliberately. The bin *itself* counts, since
+    /// nothing moves a bin into itself; and any `#recycle` component counts, not only the one at the
+    /// share root, because a bin further down the tree is a case nothing here has measured and the
+    /// honest answer when unsure is the *stronger* warning.
+    public static func isBinOrInside(_ path: VFSPath) -> Bool {
+        path.path
+            .split(separator: "/", omittingEmptySubsequences: true)
+            .map(String.init)
+            .contains(directoryName)
+    }
+
     /// The bin that governs deletes on a mounted share, which sits at the share's own root.
     ///
     /// `vfs_recycle` is configured **per share**, so the bin that catches a delete is the one at the
