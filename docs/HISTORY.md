@@ -12925,7 +12925,7 @@ front of a user:
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-20)
 
-Eighty-nine dated passes that landed outside a milestone of their own, between M18's close on
+Ninety dated passes that landed outside a milestone of their own, between M18's close on
 2026-08-07 and 2026-09-20: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
@@ -12934,6 +12934,88 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-20 — Put Back for a network share's own `#recycle`, and the delete that is not permanent.
+VERIFIED LIVE.** Opened as a question rather than a request — *"NAS smb has #recycle folder, is it
+possible to display, restore, copy, move, delete files in it?"* — with a File Station screenshot and
+a test account. §2's rule answered most of it before any Swift: mounted, a `#recycle` is an
+**ordinary directory** on an ordinary `/Volumes/…` tree, with no dot prefix and no `UF_HIDDEN`, so
+`LocalBackend` already listed it and copy, move, rename, create and delete inside it were already
+working. Confirmed in the running app in the same pass. What was missing was the one gesture the bin
+exists for.
+
+**Probing found the feature's whole mechanism, and corrected the first conclusion.** A `find` run in
+the same command as an `rm` showed the bin unchanged — *"the recycle bin does not catch SMB
+deletes"*, clean and wrong: it is the macOS SMB client's **directory cache**, and timed properly the
+file is there in under 0.5 s (NOTES.md ▸ The Trash). It does catch them, and the shape it leaves is
+the feature: deleting `probe/sub/nested.txt` from the share root left it at
+`#recycle/probe/sub/nested.txt` — **the path is the entire origin record**. No database, nothing that
+can go stale, which is the opposite of Finder's Put Back, where the origin lives only in a
+`.DS_Store` B-tree and is absent for everything Finder never wrote a record for. So restoring is a
+move to the same relative path one level up, and it is *more* reliable than the macOS gesture it
+sits beside.
+
+**Relative to the bin's parent, never to the volume**, which is the one decision that is not
+cosmetic: DSM keeps one bin per *shared folder*, so mounting `home` puts `#recycle` at the volume
+root while mounting `homes` puts one at `homes/<user>/#recycle` — a volume-anchored rule restores the
+second case into the wrong folder. ``ShareRecycleBin`` is the pure half, deliberately **not**
+`TrashLocations.isInsideTrash`: that predicate withdraws `.trash` and `.rename` and pulls a location
+into the merged `trash:` listing, and the bin is the *server's* — it exists only while the share is
+mounted, DSM decides what lands in it, and rename inside it works. What it borrows is ``TrashOrigin``,
+so the restore inherits the three rules that flow already kept (never overwrite, recreate a vanished
+folder, one failure never abandons the rest) instead of re-deriving them.
+
+Two things the wiring needed. **One gate**, `putBackTargets`, read by the action *and* the menu
+validator — the "a *can this apply here* predicate lives in two places" family, where it is always
+the validator that drifts — and it asks the two sources different questions on purpose: the merged
+Trash is about the **pane**, a `#recycle` about the **row**, since that pane is an ordinary listing
+and a tree can put a bin's contents beside rows that are in no bin. And a **scaffolding prune**: the
+bin mirrors paths as real directories, so a restore left `#recycle/probe/sub` standing — litter in
+the one folder a user opens to see what they deleted. It is `rmdir` semantics, each folder listed and
+removed only while empty, stopping **at** the bin, because the backend's `removeItem` is recursive
+and the listing is what stands between it and somebody's files.
+
+**Five negative controls, each firing exactly where aimed**, which is what makes the green runs worth
+anything: drop the origin source → only the reach test fails; revert the gate → only *"offers Put
+Back"*; over-correct the gate to everything → all three narrowness tests and **not** the reach test;
+remove the prune → only the scaffolding assertion; drop the prune's empty-check → **the sibling file
+is destroyed**, which is the failure that guard exists for. 11 core tests and 9 app tests; the file
+was copied aside *with the work applied* and restored byte-identical after each control (§5's rule,
+since `git checkout` here throws the slice away).
+
+**Live on the reporter's own NAS**, driven through the shipped command with the `.sdef` verb rather
+than synthetic clicks: `docs/report.txt` went home with its bytes, the `docs/` chain it no longer had
+was **rebuilt**, and `#recycle/docs` was swept; restoring one of two files out of `media/` left
+`#recycle/media` standing with the sibling in it; and the pane re-listed itself, which no test covers.
+The share was left holding exactly the two files it started with.
+
+**The neighbouring finding was worth more than the feature, and it landed the same day.**
+`trashItem` is refused on an SMB share (measured here at last — 3328 over `NSOSStatusErrorDomain`
+−120, the file untouched), so F8 degrades to the confirmed **permanent** delete — and that delete is
+a plain `unlink`, which `vfs_recycle` catches. The confirmation promised destruction while the NAS
+quietly kept the file. Both permanent-delete sheets now ask one funnel
+(`shareRecycleBinGoverning`) whether a bin covers every path, and **⇧F8 needed it more than F8 did,
+not less**: there the user is deliberately destroying something, and a server keeping a copy is the
+fact they would most want to know. Each sheet keeps its own sentence — the fact is one fact, the
+wording is not — and the two existing bodies are untouched for the common case, so only the new
+branch needed translating (two keys × 14 languages, `#recycle` and `Dirnex` left alone;
+`scripts/check_localization_keys.py` named both before they were written and passed after, which is
+the check this file records as having to be *run* rather than documented).
+
+Three conditions gate it, and the middle one is why it says **may**: the volume must answer
+`volumeIsLocal == false` (measured `false` for the share, `true` for a disk), which stops a folder
+somebody called `#recycle` at the root of a USB drive from weakening a true warning; the directory
+must be there; and one bin must cover the whole set. Every test fails *towards* the strong wording,
+because softening wrongly is the under-warning direction. **The control needed no code edit** —
+renaming the bin aside on the live share put the original sentence back on the same file, and
+renaming it in restored the softened one, which falsifies exactly the thing the check is for where
+neutering the condition could not. Verified live in all three states: ⇧F8 on the share, ⇧F8 on a
+local disk with the byte-identical file name (unchanged), and F8's own fallback sheet on the share.
+
+Two limits stated rather than papered over: **`#recycle` only**, not QNAP's `@Recycle`, whose
+mirroring is unmeasured and where a wrong guess restores a file to a folder nobody named; and the
+same arithmetic reaches a Synology browsed over **SFTP or FTP** — the origin carries the path's
+backend, pinned by a unit test — but was verified only over SMB.
 
 **2026-09-20 — GoPro RAW (.GPR) previews, through the first third-party binary Dirnex ships.
 VERIFIED LIVE.** Asked for as "let's also make a support of previewing go pro raw photos", which

@@ -39678,6 +39678,95 @@
         }
       }
     },
+    "Dirnex can’t undo this. The share has its own recycle bin (#recycle) and the server may keep a copy there.": {
+      "comment": "Body of the permanent-delete confirmation on a network share that has a recycle bin of its own. \"#recycle\" is a folder name and is never translated.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex kann dies nicht widerrufen. Die Freigabe hat einen eigenen Papierkorb (#recycle), und der Server behält dort möglicherweise eine Kopie."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex can’t undo this. The share has its own recycle bin (#recycle) and the server may keep a copy there."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex no puede deshacer esto. El recurso compartido tiene su propia papelera (#recycle) y el servidor podría conservar una copia ahí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex ne peut pas annuler cette action. Le partage a sa propre corbeille (#recycle) et le serveur y conserve peut-être une copie."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex non può annullare questa azione. La condivisione ha un cestino proprio (#recycle) e il server potrebbe conservarvi una copia."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex はこの操作を取り消せません。共有には独自のゴミ箱（#recycle）があり、サーバがそこにコピーを保持している可能性があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex에서 이 작업을 취소할 수 없습니다.공유에는 자체 휴지통(#recycle)이 있으며 서버가 그곳에 사본을 보관할 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex kan dit niet ongedaan maken. De share heeft een eigen prullenmand (#recycle) en de server bewaart daar mogelijk een kopie."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex nie może cofnąć tej czynności. Udział ma własny kosz (#recycle) i serwer może przechowywać tam kopię."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex não pode desfazer isso. O compartilhamento tem sua própria lixeira (#recycle) e o servidor pode manter uma cópia lá."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex не может отменить это действие. У общей папки есть собственная корзина (#recycle), и сервер может сохранить там копию."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex не може скасувати цю дію. У спільній папці є власний кошик (#recycle), і сервер може зберегти там копію."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 无法撤销此操作。共享有自己的回收站（#recycle），服务器可能在其中保留副本。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 無法還原此操作。共用資料夾有自己的回收筒（#recycle），伺服器可能會在其中保留副本。"
+          }
+        }
+      }
+    },
     "Dirnex could read all of iCloud Drive before, so its Full Disk Access has probably been reset.": {
       "comment": "FDA (iCloud) sheet: opening line when access that used to work has gone.",
       "localizations": {
@@ -93421,6 +93510,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "已經有一個帶有該名稱的檔案夾了。"
+          }
+        }
+      }
+    },
+    "There’s no Trash on this volume, so Dirnex can’t undo this. The share has its own recycle bin (#recycle) and the server may keep a copy there.": {
+      "comment": "Body of the same confirmation on a share that has a recycle bin of its own, where the delete is beyond Dirnex's reach but may not be beyond the server's. It says \"may\" on purpose: the folder being there does not prove the setting is still on. \"#recycle\" is a folder name and is never translated.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf diesem Volume gibt es keinen Papierkorb, daher kann Dirnex dies nicht widerrufen. Die Freigabe hat einen eigenen Papierkorb (#recycle), und der Server behält dort möglicherweise eine Kopie."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There’s no Trash on this volume, so Dirnex can’t undo this. The share has its own recycle bin (#recycle) and the server may keep a copy there."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este volumen no tiene papelera, así que Dirnex no puede deshacer esto. El recurso compartido tiene su propia papelera (#recycle) y el servidor podría conservar una copia ahí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce volume n’a pas de corbeille, Dirnex ne peut donc pas annuler cette action. Le partage a sa propre corbeille (#recycle) et le serveur y conserve peut-être une copie."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo volume non ha un cestino, quindi Dirnex non può annullare l’operazione. La condivisione ha un cestino proprio (#recycle) e il server potrebbe conservarvi una copia."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このボリュームにはゴミ箱がないため、Dirnex はこの操作を取り消せません。共有には独自のゴミ箱（#recycle）があり、サーバがそこにコピーを保持している可能性があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 볼륨에는 휴지통이 없으므로 Dirnex에서 이 작업을 취소할 수 없습니다.공유에는 자체 휴지통(#recycle)이 있으며 서버가 그곳에 사본을 보관할 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dit volume heeft geen prullenmand, dus Dirnex kan dit niet ongedaan maken. De share heeft een eigen prullenmand (#recycle) en de server bewaart daar mogelijk een kopie."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten wolumin nie ma Kosza, więc Dirnex nie może cofnąć tej operacji. Udział ma własny kosz (#recycle) i serwer może przechowywać tam kopię."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este volume não tem Lixeira, portanto o Dirnex não pode desfazer isso. O compartilhamento tem sua própria lixeira (#recycle) e o servidor pode manter uma cópia lá."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На этом томе нет Корзины, поэтому Dirnex не может отменить это действие. У общей папки есть собственная корзина (#recycle), и сервер может сохранить там копию."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На цьому томі немає Кошика, тому Dirnex не може скасувати цю дію. У спільній папці є власний кошик (#recycle), і сервер може зберегти там копію."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此宗卷没有废纸篓，因此 Dirnex 无法撤销此操作。共享有自己的回收站（#recycle），服务器可能在其中保留副本。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此儲存空間沒有垃圾桶，因此 Dirnex 無法還原此操作。共用資料夾有自己的回收筒（#recycle），伺服器可能會在其中保留副本。"
           }
         }
       }

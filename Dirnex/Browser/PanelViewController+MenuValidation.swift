@@ -112,9 +112,10 @@ extension PanelViewController: NSMenuItemValidation {
             return backend.capabilities(for: panel.path).deleteStrategy != .unsupported
                 && !selectionTargets().isEmpty
         case #selector(putBackSelection(_:)):
-            // Only in a Trash listing, and only on something selected: outside one there is no
-            // record of where anything came from, which is the whole operation.
-            return isTrashListing && !selectionTargets().isEmpty
+            // Only where something can actually go home: the merged Trash, or a row inside a
+            // network share's own `#recycle` bin. `putBackTargets` is the single place that
+            // decides, so this cannot drift from the action it enables.
+            return !putBackTargets.isEmpty
         case #selector(paste(_:)):
             // ⌘V pastes into any folder bytes can land in — this disk or a connected account since
             // M23 — or *adds into* a writable browsed archive (PLAN.md §M4 — a nested archive is

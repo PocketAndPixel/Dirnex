@@ -195,7 +195,7 @@ rather than per fetch (docs/NOTES.md ▸ iCloud Photos). It rides the remote siz
 | Multi-rename `⇧F2` | yes | yes | no<sup>ccc</sup> | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
 | Delete `F8` → Trash | yes | yes, limited<sup>o</sup> | n/a | n/a | n/a | n/a | n/a | no<sup>jjj</sup> | yes | n/a |
 | Delete `F8` → permanent (confirmed) | yes | yes | yes, limited<sup>n</sup> | yes | yes | yes | yes, limited<sup>l</sup> | n/a | yes | yes |
-| Put Back (restore from Trash) | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes, limited<sup>o</sup> |
+| Put Back (restore from Trash, or a share's `#recycle`) | yes, limited<sup>iii</sup> | n/a | n/a | yes, limited<sup>iii</sup> | yes, limited<sup>iii</sup> | n/a | n/a | n/a | n/a | yes, limited<sup>o</sup> |
 | Undo `⌘Z` | yes | yes | yes, limited<sup>qq</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially | n/a | yes | no |
 | Background queue, progress bar, Stop | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Per-file conflict dialog | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
@@ -272,6 +272,27 @@ the *account* refuses: a Google Drive mount root is `dr-x------`, so deleting `M
 answers `EACCES` — which M26 Slice 3 stopped wording as a Full Disk Access problem, since that
 grant does not gate `~/Library/CloudStorage` and the permission being refused is the one set in
 the cloud account.
+
+<sup>iii</sup> **A network share's own recycle bin, not a macOS Trash.** A Synology (Samba's
+`vfs_recycle`) keeps a `#recycle` directory per *shared folder*, and since **2026-09-20** Put Back
+works on a row inside one. The origin needs no record: the bin mirrors an item's original path as
+real directories relative to **its own parent**, so restoring is a move to the same relative path one
+level up — measured against a live DSM share, where a file deleted at `probe/sub/nested.txt` sat at
+`#recycle/probe/sub/nested.txt`. That makes it *more* dependable than the macOS gesture beside it,
+which answers nothing for an item Finder wrote no record for. The restore rebuilds a folder chain
+that has since been deleted, never overwrites a name that has come back, and sweeps the empty mirror
+folders it leaves in the bin. **Limited** in three ways. It is `#recycle` only — **not** QNAP's
+`@Recycle`, whose mirroring is unmeasured, and guessing restores a file to a folder nobody named.
+Only **SMB was verified live**; SFTP and FTP follow structurally, since the origin carries the path's
+backend (pinned by a unit test) and every verb the restore uses exists on both, but neither has been
+exercised against a real server. And the bin is deliberately not treated as a Trash — `.rename` and
+`.trash` are not withdrawn there and it does not join the merged `trash:` listing — because it
+belongs to the *server*: it exists only while the share is mounted, and the NAS alone decides what
+lands in it. The neighbouring wart was fixed the same day: `trashItem` is refused on an SMB share
+(3328), so F8 degrades to the confirmed *permanent* delete and `vfs_recycle` then catches that
+`unlink` — so **both** permanent-delete confirmations (F8's fallback and ⇧F8's) now say the server
+may keep a copy in `#recycle` rather than promising destruction. They say *may*: the folder being
+there does not prove the setting is still on (NOTES.md ▸ The Trash).
 
 <sup>p</sup> Rename, move, New Folder and — since 2026-09-01 — an **attribute change** are journaled
 and reversed through the backend, so they undo remotely (▸ <sup>tt</sup> for what that last one can

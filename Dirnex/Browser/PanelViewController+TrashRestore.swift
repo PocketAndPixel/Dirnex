@@ -38,10 +38,31 @@ import DirnexCore
 /// server-side trash). All of those keep the honest answer: Put Back says it doesn't know where the
 /// item came from, which is the truth and better than a guess at a folder.
 extension PanelViewController {
+    /// The rows a Put Back would act on, or nothing where the gesture does not apply.
+    ///
+    /// One funnel for the action *and* the menu validator. This codebase has been bitten often
+    /// enough to make that worth a property rather than two `if`s: a "can this apply here" rule
+    /// spelled twice drifts, and it is the validator half that drifts, so the command goes gray
+    /// over a row the action would have handled perfectly (docs/NOTES.md).
+    ///
+    /// **The two sources are asked different questions on purpose.** The merged Trash is a question
+    /// about the *pane* — its rows carry real paths spread across every volume's trash, and what
+    /// makes them restorable is the `trash:` listing they arrived in. A share's `#recycle` is a
+    /// question about the *row*: that pane is an ordinary directory listing, and in a tree a bin's
+    /// contents can sit beside rows that are in no bin at all.
+    var putBackTargets: [FileEntry] {
+        let targets = selectionTargets()
+        guard !targets.isEmpty else { return [] }
+        if isTrashListing { return targets }
+        // Every target, not any: a mixed tree selection would otherwise restore the rows it could
+        // and report the rest as failures the user never asked for.
+        return targets.allSatisfy { ShareRecycleBin.holds($0.path) } ? targets : []
+    }
+
     /// "Put Back" — return the marked items (or the one under the cursor) to where they came from.
     @objc func putBackSelection(_ sender: Any?) {
-        let targets = selectionTargets()
-        guard isTrashListing, !targets.isEmpty else { return }
+        let targets = putBackTargets
+        guard !targets.isEmpty else { return }
         runPutBack(targets)
     }
 
@@ -121,14 +142,29 @@ extension PanelViewController {
                         outcome.unrecorded.append(path)
                         continue
                     }
-                    outcome.record(origins.putBack(path, to: origin), for: path)
+                    outcome.record(origins.putBack(path, to: origin), for: path, origin: origin)
                 }
                 return outcome
             }
 
             panel.clearSelection()
             refreshTrashPanes()
+            refreshPanes(showing: outcome.touched)
             report(outcome)
+        }
+    }
+
+    /// Re-list what is on screen that the restore changed: the bin the items left, and the folders
+    /// they landed in. ``refreshTrashPanes()`` above covers the merged Trash, which is a *listing*
+    /// rather than a directory and so answers to none of these paths — and a `#recycle` pane is the
+    /// mirror image, an ordinary directory that `refreshTrashPanes` will never touch. Without this
+    /// the bin goes on drawing the row it no longer holds (docs/NOTES.md, "which pane do I
+    /// re-list").
+    private func refreshPanes(showing directories: Set<VFSPath>) {
+        guard !directories.isEmpty else { return }
+        for pane in [self, host?.panelCounterpart(of: self)].compactMap({ $0 })
+            where !pane.isTrashListing && directories.contains(where: pane.isShowing) {
+            pane.refreshCurrentDirectory()
         }
     }
 
@@ -223,6 +259,14 @@ struct TrashOriginIndex {
     /// Dirnex's Put Back and Finder's own could send one file to two different folders. The merge
     /// itself lives in the core value, where a test can fail on it being inverted.
     mutating func origin(of path: VFSPath) -> TrashOrigin? {
+        // A network share's own `#recycle` answers first, and answers alone. It is not a third
+        // opinion about one item: the mirroring is **structural** — where the file came from is
+        // where it physically sits, measured 2026-09-20 against a live DSM share — where both
+        // sources below are records somebody wrote, and a `#recycle` has neither. Asked after them
+        // it would still be right; asked first it cannot be overruled by a `.DS_Store` that found
+        // its way into a bin, which is the "two sources answering one question" rule this type
+        // exists to keep.
+        if let mirrored = ShareRecycleBin.origin(of: path) { return mirrored }
         guard let trash = path.parent else { return nil }
         if indexes[trash.path] == nil {
             indexes[trash.path] = Self.readOrigins(inTrashAt: trash)
@@ -246,9 +290,11 @@ struct TrashOriginIndex {
 
     /// Move one item home, recreating the folder it came from if that has since been deleted.
     ///
-    /// `fileprivate` because it answers in this file's own vocabulary — only ``origin(of:)`` is the
-    /// decision worth reaching from a test.
-    fileprivate func putBack(_ path: VFSPath, to origin: TrashOrigin) -> PutBackResult {
+    /// Internal, like ``origin(of:)``, because a share's `#recycle` gave this function rules of its
+    /// own worth failing on: the scaffolding prune below, and the two inherited rules (never
+    /// overwrite, recreate a vanished folder) meeting a bin for the first time. It still answers in
+    /// this file's vocabulary, so ``PutBackResult`` travels with it.
+    func putBack(_ path: VFSPath, to origin: TrashOrigin) -> PutBackResult {
         // Checked, not left to `rename(2)`, which would replace whatever is there — see the note on
         // the extension. The gap between this stat and the move is a race no filesystem call closes
         // for a cross-directory rename; losing it needs the same name to appear in that folder in
@@ -256,19 +302,52 @@ struct TrashOriginIndex {
         if (try? backend.stat(at: origin.destination)) != nil { return .blocked }
         do {
             try backend.moveItem(at: path, to: origin.destination)
-            return .restored
+            return restored(after: path)
         } catch VFSError.notFound {
             // The original folder is gone. Rebuild the chain and try once more — the second failure
             // is reported rather than retried.
             createDirectories(upTo: origin.directory)
             do {
                 try backend.moveItem(at: path, to: origin.destination)
-                return .restored
+                return restored(after: path)
             } catch {
                 return .failed(error)
             }
         } catch {
             return .failed(error)
+        }
+    }
+
+    /// A restore that landed, plus the tidying only a `#recycle` needs.
+    private func restored(after path: VFSPath) -> PutBackResult {
+        pruneEmptyBinFolders(above: path)
+        return .restored
+    }
+
+    /// Remove the empty mirror folders a restore leaves standing in a share's `#recycle`.
+    ///
+    /// The bin reproduces an item's original path as **real directories**, so putting
+    /// `#recycle/probe/sub/nested.txt` back leaves `#recycle/probe/sub` behind — scaffolding for a
+    /// file that is no longer in it, piling up in the one folder a user opens to see what they
+    /// deleted. Measured on a live DSM share 2026-09-20. It is the exact inverse of
+    /// ``createDirectories(upTo:)``, and a macOS trash needs none of it: items there sit at the
+    /// trash's own root, so ``ShareRecycleBin/binRoot(of:)`` answers `nil` and this returns at once.
+    ///
+    /// **`rmdir` semantics, deliberately.** Each directory is listed and removed only while it is
+    /// empty, so a sibling still waiting to be restored can never be swept up with it — the backend's
+    /// `removeItem` is recursive, and the listing is what stands between it and somebody's files. The
+    /// walk stops **at** the bin, because one level further is the share's own folders. Every failure
+    /// is ignored: the restore has already happened, and leftover scaffolding is not worth turning a
+    /// successful Put Back into a reported one.
+    private func pruneEmptyBinFolders(above path: VFSPath) {
+        guard let bin = ShareRecycleBin.binRoot(of: path) else { return }
+        var directory = path.parent
+        while let current = directory, current != bin, current.isSelfOrDescendant(of: bin) {
+            guard let contents = try? backend.listDirectory(at: current), contents.isEmpty else {
+                return
+            }
+            try? backend.removeItem(at: current)
+            directory = current.parent
         }
     }
 
@@ -281,7 +360,9 @@ struct TrashOriginIndex {
     }
 }
 
-private enum PutBackResult {
+/// Internal rather than private so ``TrashOriginIndex/putBack(_:to:)`` can be reached from a test —
+/// a result type is not worth hiding at the cost of the function that returns it.
+enum PutBackResult {
     case restored
     /// Something already occupies the original path, so the item stayed in the Trash.
     case blocked
@@ -297,11 +378,16 @@ private struct PutBackOutcome: Sendable {
     var unrecorded: [VFSPath] = []
     var failed: [VFSPath] = []
     var firstError: (any Error)?
+    /// The directories a restore changed — the folder each item landed in, and the one it left.
+    /// Only the panes drawing these are re-listed.
+    var touched: Set<VFSPath> = []
 
-    mutating func record(_ result: PutBackResult, for path: VFSPath) {
+    mutating func record(_ result: PutBackResult, for path: VFSPath, origin: TrashOrigin) {
         switch result {
         case .restored:
             restored += 1
+            touched.insert(origin.directory)
+            if let source = path.parent { touched.insert(source) }
         case .blocked:
             blocked.append(path)
         case let .failed(error):

@@ -275,10 +275,23 @@ extension PanelViewController {
                 localized: "Delete \(targets.count) items permanently?",
                 comment: "Permanent-delete confirmation for several items; %lld is the count."
             )
-        alert.informativeText = String(
-            localized: "This can’t be undone.",
-            comment: "Warning that an action is irreversible."
-        )
+        // ⇧F8 needs this more than F8 does, not less: the user is deliberately destroying
+        // something, and a server quietly keeping a copy is the fact they would most want to know.
+        alert.informativeText = shareRecycleBinGoverning(targets.map(\.path)) != nil
+            ? String(
+                localized: """
+                Dirnex can’t undo this. The share has its own recycle bin (#recycle) and the \
+                server may keep a copy there.
+                """,
+                comment: """
+                Body of the permanent-delete confirmation on a network share that has a recycle \
+                bin of its own. "#recycle" is a folder name and is never translated.
+                """
+            )
+            : String(
+                localized: "This can’t be undone.",
+                comment: "Warning that an action is irreversible."
+            )
         alert.addButton(
             withTitle: String(
                 localized: "Delete",

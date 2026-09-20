@@ -79,6 +79,14 @@ extension PanelViewController {
     /// and separated, where a mis-aimed click won't land on it.
     private func entryMenu() -> NSMenu {
         let menu = NSMenu()
+        // A row inside a network share's `#recycle` gets Put Back first, for the same reason the
+        // Trash's own menu does: it is what the bin is *for*, and the one item here that cannot be
+        // reached any other way. This menu is only ever built outside a `trash:` listing, so the
+        // property can only be answering about a recycle bin.
+        if !putBackTargets.isEmpty {
+            add(["file.putBack"], to: menu)
+            menu.addSeparator()
+        }
         let open = NSMenuItem(
             title: String(localized: "Open", comment: "Context-menu item: open the file or folder."),
             action: #selector(openContextEntry(_:)),

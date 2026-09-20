@@ -6084,6 +6084,58 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     `<mount>/.Trash` a working Put Back, so the from-scratch path is the common one and needs its own
     live check.
 
+- **A Synology share catches the delete that macOS just refused, so Dirnex's "permanent" delete is
+  not permanent there — and the bin's *path* is the whole restore record.** Measured 2026-09-20
+  against a live DSM share over SMB, immediately after the refusal above. The two facts compose into
+  one behaviour worth knowing before wording anything: `trashItem` is refused (3328), F8 degrades to
+  the confirmed **permanent** delete, that delete is a plain `unlink` — and Samba's `vfs_recycle`,
+  which DSM turns on per shared folder, moves the file into `#recycle` instead of destroying it. So
+  the confirmation promised destruction while the NAS quietly kept the file. Wrong in the *safe*
+  direction, and still wrong; the tell that a share is like this is a `#recycle` directory at the
+  shared folder's root, which is what both permanent-delete sheets now ask before they word
+  themselves (fixed the same day).
+  - **What makes that sentence safe to soften is three conditions, and the middle one is why it says
+    "may".** The volume must answer `volumeIsLocal == false` — measured `false` for the share and
+    `true` for a disk in the same run, which is what stops a folder somebody happens to have called
+    `#recycle` at the root of a USB drive from weakening a warning that is perfectly true; the
+    directory must really be there; and every path in the set must be covered by the *same* bin.
+    Softening wrongly is the **under-warning** direction, so each test fails towards the strong
+    wording — a read that throws and a volume that does not answer the key both keep it. And the
+    folder being present does not prove the setting is still **on**, because DSM leaves it behind
+    when it is switched off, so the sentence promises nothing: *"the server **may** keep a copy
+    there."*
+  - **The control needed no code edit**, which is worth reaching for before neutering something: the
+    bin renamed aside on the live share put the original *"there's no Trash on this volume, so this
+    can't be undone"* back on the same file, and renaming it in restored the softened one. That
+    falsifies the thing the flag is *for* — keying on the bin rather than merely on "this is a
+    network volume" — where editing the condition out could not.
+  - **The bin mirrors the original path as real directories, relative to its own parent.** Deleting
+    `probe/sub/nested.txt` from the share root left it at `#recycle/probe/sub/nested.txt`. That is
+    the entire origin record — there is no database and nothing that can go stale, which is the
+    opposite of a macOS trash, where the origin lives only in a `.DS_Store` B-tree and is absent for
+    everything Finder never wrote a record for. **Relative to the bin's parent, never to the
+    volume**: DSM keeps one bin per *shared folder*, so mounting `home` puts `#recycle` at the volume
+    root while mounting `homes` puts one at `homes/<user>/#recycle`, and a volume-anchored rule
+    restores the second case into the wrong folder.
+  - **Deleting *inside* the bin is genuinely permanent** — no nested `#recycle/#recycle`, measured —
+    so emptying it from a file manager works and needs no special verb. `desktop.ini` there is
+    Windows' folder-icon marker (74 bytes, `UF_HIDDEN`), not restore metadata.
+  - **The first listing after a delete can be stale, and it reads as the opposite of the truth.**
+    A `find` run in the same command as the `rm` showed the bin unchanged, which says *"the recycle
+    bin does not catch SMB deletes"* — a clean, wrong, load-bearing conclusion. It is the macOS SMB
+    client's **directory cache**: timed properly the file is there in under 0.5 s. Re-list after a
+    beat, or ask a directory the client has not just enumerated, before concluding anything about a
+    share's behaviour.
+  - **FSEvents *does* fire for an SMB mount, which is the assumption worth not making either way.**
+    Measured with a local directory as the positive control: 17 events against the control's 9, and
+    a watcher on `#recycle` saw the **server-side** move into it. What stays unmeasured is a change
+    made by a *different* client — File Station, another Mac — so nothing here says a pane notices
+    those.
+  - `#recycle` is deliberately **not** `TrashLocations.isInsideTrash` (``ShareRecycleBin`` instead).
+    That predicate withdraws `.trash` and `.rename` and pulls a location into the merged `trash:`
+    listing; the bin is the *server's*, it exists only while the share is mounted, and rename inside
+    it works (measured). What it borrows is ``TrashOrigin``, so one restore flow serves both.
+
 - **`FileManager.trashItem` on an item already in a trash reports success and does nothing** — it
   hands back the path it was given. So "move to Trash" inside the Trash is a silent no-op that looks
   like it worked. Dirnex withdraws the `.trash` capability for any path inside a trash, which turns
@@ -6173,9 +6225,16 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   from `url(for: .trashDirectory, appropriateFor:)` it is noise (the entry above — measured again
   on freshly created **ExFAT and HFS+** images, both of which threw it and then trashed happily
   into `<volume>/.Trashes/501`), while from **`trashItem` itself** it is the volume's answer.
-  The SMB half is the *report* rather than a measurement taken here — no share was mountable on
-  this Mac, and no disk image can stand in for one, since every filesystem `hdiutil` makes trashes.
-  What was measured is everything on this side of the syscall.
+  **The SMB half was measured 2026-09-20** and is no longer the reporter's word: against a live
+  Synology share mounted over SMB, `trashItem` throws `NSCocoaErrorDomain` **3328** carrying an
+  underlying **`NSOSStatusErrorDomain` −120**, worded *"“x” couldn't be moved to the trash because
+  the volume “home” doesn't have one"*, with the file **still on the share** afterwards; and
+  `url(for: .trashDirectory, appropriateFor:)` throws the same 3328 for it, which is the entry
+  above's "the lookup means nothing" arriving on the one volume kind that really has no Trash. Note
+  the underlying error is an **OSStatus, not a POSIX errno**, which is the second reason to read the
+  outer code first — the errno-preferring mapper has nothing to prefer. Until then no share was
+  mountable on this Mac, and no disk image could stand in for one, since every filesystem `hdiutil`
+  makes trashes.
   - **There is no pre-check, so `capabilities(for:)` cannot be taught this.** Probed 2026-08-25:
     no `VOL_CAP_FMT_*` or `VOL_CAP_INT_*` bit names a Trash, and no `URLResourceKey`/`kCFURL*`
     does either — the `volumeSupports…` family covers cloning, renaming, immutable files and a
