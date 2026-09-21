@@ -32,8 +32,11 @@ extension PanelViewController {
         if onEntry { return entryMenu() }
         // The `..` row and the empty space below the list both get the folder menu. Its Copy Path
         // copies the folder the menu is *about*: the parent that `..` points at, or the pane's own
-        // directory for the empty space.
-        let directory = onParentRow ? (panel.parentPath ?? panel.path) : panel.path
+        // directory for the empty space. At an archive's root `..` leaves the archive, which
+        // `parentPath` cannot see, so the archive answers for itself.
+        let directory = onParentRow
+            ? (archiveParent()?.destination ?? panel.parentPath ?? panel.path)
+            : panel.path
         return backgroundMenu(directory: directory)
     }
 
@@ -106,7 +109,7 @@ extension PanelViewController {
         menu.addItem(scriptsMenuItem())
         menu.addSeparator()
         add(["edit.copy"], to: menu)
-        menu.addItem(copyPathItem(for: selectionTargets().map(\.path.path)))
+        menu.addItem(copyPathItem(for: selectionTargets().map(\.path)))
         add(["edit.paste", "file.pack"], to: menu)
         menu.addSeparator()
         add(["file.trash"], to: menu)
@@ -156,7 +159,7 @@ extension PanelViewController {
         add(["file.copy", "file.move"], to: menu)
         menu.addSeparator()
         add(["edit.copy"], to: menu)
-        menu.addItem(copyPathItem(for: selectionTargets().map(\.path.path)))
+        menu.addItem(copyPathItem(for: selectionTargets().map(\.path)))
         menu.addSeparator()
         add(["file.deletePermanently"], to: menu)
         return menu
@@ -201,17 +204,20 @@ extension PanelViewController {
     private func backgroundMenu(directory: VFSPath) -> NSMenu {
         let menu = NSMenu()
         add(["file.newFolder", "edit.paste"], to: menu)
-        menu.addItem(copyPathItem(for: [directory.path]))
+        menu.addItem(copyPathItem(for: [directory]))
         menu.addSeparator()
         add(["go.addToFavorites", "file.syncDirectories"], to: menu)
         menu.addItem(scriptsMenuItem())
         return menu
     }
 
-    /// A "Copy Path" item that writes `paths` to the pasteboard as text when chosen. The paths are
+    /// A "Copy Path" item that writes `locations` to the pasteboard as text when chosen. The text is
     /// captured here, as the menu is built, so it copies exactly what was under the pointer at
     /// right-click time even if a background refresh reshuffles the pane before the click lands.
-    private func copyPathItem(for paths: [String]) -> NSMenuItem {
+    /// It is ``copyPathText(for:)``'s, never a bare `VFSPath.path`, which inside an archive is the
+    /// inner path and read `/` for the archive's own root.
+    func copyPathItem(for locations: [VFSPath]) -> NSMenuItem {
+        let paths = locations.map(copyPathText(for:))
         let item = NSMenuItem(
             title: paths.count > 1
                 ? String(
@@ -337,9 +343,6 @@ extension PanelViewController {
         openCurrentEntry()
     }
 
-    /// Put the paths captured by `copyPathItem` on the pasteboard. A real target rather than a
-    /// responder-chain command because it acts on what the menu captured, not on the pane's live
-    /// selection — the `..` row and the empty space have no selection to dispatch against.
     /// "Empty Trash…" from the pane's own background menu — the same flow the sidebar row runs, so
     /// the confirmation counts the merged set both of them browse rather than a second idea of it.
     /// A real target for the same reason "Open" is one: emptying isn't a registry command.
@@ -353,6 +356,9 @@ extension PanelViewController {
         restoreAllFromTrash()
     }
 
+    /// Put the paths captured by `copyPathItem` on the pasteboard. A real target rather than a
+    /// responder-chain command because it acts on what the menu captured, not on the pane's live
+    /// selection — the `..` row and the empty space have no selection to dispatch against.
     @objc private func copyContextPath(_ sender: NSMenuItem) {
         guard let paths = sender.representedObject as? [String] else { return }
         PathClipboard.copy(paths)

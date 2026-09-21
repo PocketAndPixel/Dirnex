@@ -381,6 +381,11 @@ extension PathBarView {
     /// A right-click menu for a single crumb: copy the location it points at as text. Built per
     /// crumb so the path travels with the button — a background refresh that rebuilds the row can't
     /// leave the menu aimed at a stale location.
+    ///
+    /// The text goes through ``CopyPathText``, not the target's bare path: an archive crumb's path is
+    /// inner to the archive, so the archive's own crumb copied `/`. The stored `archiveAncestry` is
+    /// the chain of the location this row was built for, because `setPath` stores it before every
+    /// rebuild and `reloadLocation` redraws with it.
     private func crumbMenu(for target: VFSPath) -> NSMenu {
         let menu = NSMenu()
         let title = String(
@@ -389,7 +394,7 @@ extension PathBarView {
         )
         let item = NSMenuItem(title: title, action: #selector(copyCrumbPath(_:)), keyEquivalent: "")
         item.target = self
-        item.representedObject = target.path
+        item.representedObject = CopyPathText.text(for: target, archiveAncestry: archiveAncestry)
         menu.addItem(item)
         return menu
     }
