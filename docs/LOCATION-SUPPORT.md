@@ -44,7 +44,11 @@ refuses to materialize a placeholder rather than silently pulling a whole cloud 
 badges are blank there — measured, not a gap.
 
 <sup>2</sup> A **nested** archive is read-only: its own bytes are already a temp copy, so writes
-have nowhere to land.
+have nowhere to land. So is a **Windows self-extractor** — an `.exe` with a zip or 7z appended,
+often renamed to `.zip`. It browses, previews and copies out like any archive (a 7z behind a stub
+smaller than `0x27000`, which `bsdtar` cannot find, is read in-process through a window), but a
+rewrite repacks the archive alone and would write it over the program, so every write refuses
+(`SelfExtractingArchive`, 2026-09-21). Pressing ⏎ on a file *named* `.exe` still launches it.
 
 <sup>3</sup> The merged iCloud row is a *place* rather than a set of hits, so it navigates in
 place, accepts creates and pastes (they land in the CloudDocs container underneath), and is

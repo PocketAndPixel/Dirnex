@@ -96,6 +96,12 @@ final class ArchiveWriteHandle {
 final class ArchiveReadHandle {
     let raw: OpaquePointer
 
+    /// The byte source when the archive was opened through callbacks rather than a file name
+    /// (``ArchiveByteWindow``). Held here because libarchive holds only an unretained pointer to it,
+    /// and released only after `deinit` has freed the handle — stored properties outlive the body of
+    /// `deinit`, so the close callback `archive_read_free` makes still finds it alive.
+    var window: ArchiveByteWindow?
+
     init?() {
         guard let handle = archive_read_new() else { return nil }
         raw = handle

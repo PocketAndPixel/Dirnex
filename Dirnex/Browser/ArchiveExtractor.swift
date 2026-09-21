@@ -137,6 +137,10 @@ enum ArchiveExtractor {
     /// under any locale it fails to *create* them — measured, `Can't create '\217\240…':
     /// Illegal byte sequence`, exit 1, because APFS refuses a file name that is not valid UTF-8.
     /// So for these archives the in-process reader is not the faster route, it is the only one.
+    ///
+    /// **So does a 7z carried by a Windows self-extractor**, for the reason the listing gives: `bsdtar`
+    /// cannot find it behind a small stub and cannot be handed it in place, and the in-process reader
+    /// opens it where it starts (``DirnexCore/SelfExtractingArchive``).
     private static func unpack(
         innerPaths: [String],
         fromArchiveAt archiveOnDiskPath: String,
@@ -145,7 +149,8 @@ enum ArchiveExtractor {
         nameEncoding: ArchiveNameEncoding? = nil
     ) throws {
         let isEncrypted = needsPassphrase(forArchiveAt: archiveOnDiskPath)
-        if isEncrypted || nameEncoding != nil {
+        let isWindowed = SelfExtractingArchive.inspect(fileAt: archiveOnDiskPath)?.sevenZipOffset != nil
+        if isEncrypted || nameEncoding != nil || isWindowed {
             if isEncrypted, passphrase == nil { throw EncryptedArchiveError.passphraseRequired }
             try EncryptedArchiveReader.extract(
                 archiveAt: archiveOnDiskPath,

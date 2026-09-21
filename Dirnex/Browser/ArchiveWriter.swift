@@ -57,6 +57,15 @@ enum ArchiveWriter {
         let archiveURL = URL(fileURLWithPath: archiveOnDiskPath)
         let name = archiveURL.lastPathComponent
 
+        // A self-extractor is a Windows program with the archive appended, and everything below
+        // repacks the archive alone — it would write a bare archive over the program, and under a
+        // `.zip` name `bsdtar -a` would turn a 7z into a zip. The pane's gates already keep every
+        // write gesture away from one (`archiveAcceptsWrites`); this is what makes that true of the
+        // writer itself, whatever reaches it.
+        if SelfExtractingArchive.inspect(fileAt: archiveOnDiskPath) != nil {
+            throw VFSError.unsupported(.selfExtractingArchiveReadOnly(archive: name))
+        }
+
         // Headers only — no passphrase needed to learn whether one is needed, which is what lets the
         // caller be asked before any work starts rather than after the extract has failed.
         let format = ArchiveRewriteFormat.inferred(

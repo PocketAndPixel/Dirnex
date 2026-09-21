@@ -4136,6 +4136,22 @@ do not share a resolver, and neither half of that is obvious from either call si
   `MMM d HH:mm` names no seconds, so each parse stamps the row with the second and millisecond it
   ran at. Shared by all four columnar parsers (`bsdtar`, `sftp`, FTP `LIST`, and the `ssh` `find`
   walk) through `ColumnarListing.formatters(for:)`.
+- **A 7z appended to a small Windows program is invisible to `bsdtar`, and the archive is fine.**
+  Measured 2026-09-21 on a 7zSFX installer renamed `.zip`: libarchive 3.7.4's 7z reader looks for
+  its signature inside a PE only between `0x27000` and `0x60000`, and the 7zSFX modules installers
+  are built with are ~120 KB, so their archive starts below that — *"Unrecognized archive format"*,
+  while the same bytes with the stub cut off list at once. A **zip** behind the same stub lists fine
+  (the zip reader works back from the end), and so does a 7z moved to `0x28000`.
+  - **It cannot be handed to `bsdtar` in place.** Piped, a 7z is *"not seekable"*; as a stdin already
+    seeked to the archive, libarchive seeks the descriptor to *absolute* offsets, reads the stub and
+    fails *"Unexpected Property ID"*. What works is `archive_read_open2` with callbacks that shift
+    every position by the offset, the seek callback installed *before* the open that runs the bids
+    (``ArchiveByteWindow``). Find the offset from the PE section table, then a start header whose
+    CRC verifies — and do not read "bytes past the image" as "an archive": a **signed** program has
+    them too, its certificate table.
+  - **A rewrite strips the program, silently.** With `ArchiveWriter`'s guard removed as a control,
+    renaming a member of a zip self-extractor *succeeded* and wrote a bare zip over the `.exe`. Any
+    archive whose file is a PE is read-only for that reason, not only the 7z ones this reads.
 - **`-C` may be interleaved with the names in create mode, so a set gathered from several
   directories needs no staging directory at all.** Measured against libarchive 3.7.4 before any
   Swift: `bsdtar -c -f out.zip --format zip -C /a alpha.txt -C /b beta.txt` exits 0 and writes both

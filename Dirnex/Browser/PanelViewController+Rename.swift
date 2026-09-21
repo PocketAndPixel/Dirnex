@@ -53,9 +53,9 @@ extension PanelViewController {
     /// `canRenameHere` and stays gray inside an archive.
     func renameRoute(for path: VFSPath?) -> RenameRoute {
         if let archiveOnDiskPath = path?.backend.archivePath {
-            return host?.nestedArchiveRegistry.isNestedMount(archiveOnDiskPath) ?? false
-                ? .unavailable
-                : .archiveMember(archiveOnDiskPath: archiveOnDiskPath)
+            return archiveAcceptsWrites(atOnDiskPath: archiveOnDiskPath)
+                ? .archiveMember(archiveOnDiskPath: archiveOnDiskPath)
+                : .unavailable
         }
         // The directory whose backend decides is the **row's own**, not the pane's. In a tree they
         // are different directories and can be different backends: an S3 account pane's own rows are

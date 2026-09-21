@@ -215,10 +215,31 @@ public enum EncryptedArchiveReader {
             }
             guard status == LibArchive.ok else { throw EncryptedArchiveError.archiveUnreadable }
         }
-        guard archive_read_open_filename(handle.raw, path, chunkSize) == LibArchive.ok else {
+        guard open(handle, at: path) == LibArchive.ok else {
             throw EncryptedArchiveError.archiveUnreadable
         }
         return handle
+    }
+
+    /// Open `path` by name — or, when it is a Windows self-extractor carrying a 7z, from where that
+    /// 7z begins (``SelfExtractingArchive``).
+    ///
+    /// Here rather than at each caller because every in-process read comes through this one place —
+    /// the listing, the extraction, the encryption check, the code-page samples — so a self-extractor
+    /// reads through all of them at once, and none of them can be the one that was missed.
+    ///
+    /// Asking costs one 64-byte read for a file that is not a program, which is every archive but
+    /// these; a self-extractor carrying a *zip* is found by libarchive on its own, so it keeps the
+    /// ordinary route.
+    private static func open(_ handle: ArchiveReadHandle, at path: String) -> Int32 {
+        guard let offset = SelfExtractingArchive.inspect(fileAt: path)?.sevenZipOffset else {
+            return archive_read_open_filename(handle.raw, path, chunkSize)
+        }
+        guard let window = ArchiveByteWindow(path: path, offset: offset) else {
+            return LibArchive.fatal
+        }
+        handle.window = window
+        return window.open(handle.raw)
     }
 
     /// Turns libarchive's failure on `handle` into the one thing the user needs to know: retype the

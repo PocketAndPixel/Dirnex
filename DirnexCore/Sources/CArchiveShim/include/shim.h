@@ -86,6 +86,31 @@ int archive_read_add_passphrase(struct archive *, const char *passphrase);
 // detectable from inside; only somebody who can read the name can say.
 int archive_read_set_options(struct archive *, const char *options);
 int archive_read_open_filename(struct archive *, const char *filename, size_t blockSize);
+
+// Opening from callbacks instead of a file name — how the reader reads a 7z archive that starts
+// partway into a file, behind a Windows self-extractor's stub (`ArchiveByteWindow`). libarchive's
+// own search for an appended 7z covers only offsets 0x27000–0x60000, and a descriptor handed over
+// already positioned at the archive is seeked to *absolute* offsets, so neither the file name nor
+// the descriptor can express "the file starts here". The callbacks can.
+//
+// Declared with the function-pointer types written inline rather than through libarchive's
+// `archive_read_callback`-style typedefs: the types are identical (`la_ssize_t` and `la_int64_t` are
+// `ssize_t` and `int64_t` on Darwin), and a pointer parameter imports into Swift as a plain
+// `@convention(c)` closure, where a typedef of a *function* type would not. The seek callback has
+// to be installed before `archive_read_open2`, which is the call that runs the format bids.
+int archive_read_set_seek_callback(
+    struct archive *,
+    int64_t (*seek)(struct archive *, void *clientData, int64_t offset, int whence)
+);
+int archive_read_open2(
+    struct archive *,
+    void *clientData,
+    int (*open)(struct archive *, void *clientData),
+    ssize_t (*read)(struct archive *, void *clientData, const void **buffer),
+    int64_t (*skip)(struct archive *, void *clientData, int64_t request),
+    int (*close)(struct archive *, void *clientData)
+);
+
 int archive_read_next_header(struct archive *, struct archive_entry **);
 ssize_t archive_read_data(struct archive *, void *buffer, size_t length);
 

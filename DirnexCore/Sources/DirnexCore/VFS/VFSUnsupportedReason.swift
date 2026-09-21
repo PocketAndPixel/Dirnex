@@ -232,6 +232,8 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
     /// ⌘Z on an archive rewrite whose archive is no longer the file the rewrite produced: something
     /// else has updated it since, and putting the old container back would discard that.
     case archiveChangedSinceRewrite(archive: String)
+    /// A write into a Windows self-extractor, whose repack would drop the program (``SelfExtractingArchive``).
+    case selfExtractingArchiveReadOnly(archive: String)
 
     /// The stable translation key token — the case name, spelled once, never derived.
     public var key: String {
@@ -281,6 +283,7 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
         case .archiveUpdateFailed: return "archiveUpdateFailed"
         case .archiveUndoCopyUnavailable: return "archiveUndoCopyUnavailable"
         case .archiveChangedSinceRewrite: return "archiveChangedSinceRewrite"
+        case .selfExtractingArchiveReadOnly: return "selfExtractingArchiveReadOnly"
         }
     }
 }
@@ -432,6 +435,11 @@ public extension VFSUnsupportedReason {
                 "“%@” has changed since then — undoing would discard the newer version.",
                 [archive]
             )
+        case let .selfExtractingArchiveReadOnly(archive):
+            return (
+                "“%@” is a self-extracting Windows program, so it can be opened but not changed.",
+                [archive]
+            )
         }
     }
 
@@ -484,7 +492,8 @@ public extension VFSUnsupportedReason {
             .archiveRewriteFailed(archive: ""),
             .archiveUpdateFailed(archive: ""),
             .archiveUndoCopyUnavailable(archive: ""),
-            .archiveChangedSinceRewrite(archive: "")
+            .archiveChangedSinceRewrite(archive: ""),
+            .selfExtractingArchiveReadOnly(archive: "")
         ]
     }
 }

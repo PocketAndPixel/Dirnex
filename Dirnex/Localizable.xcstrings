@@ -138877,6 +138877,95 @@
         }
       }
     },
+    "vfs.unsupported.selfExtractingArchiveReadOnly": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown when a write into an archive is refused because the archive's file is a Windows self-extracting program (an .exe with an archive appended), which Dirnex can browse and copy out of but never rewrite. %@ is the file name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ ist ein selbstentpackendes Windows-Programm und kann daher geöffnet, aber nicht geändert werden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is a self-extracting Windows program, so it can be opened but not changed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» es un programa autoextraíble de Windows, así que se puede abrir pero no modificar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» est un programme Windows auto-extractible : il peut être ouvert, mais pas modifié."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” è un programma Windows autoestraente, quindi si può aprire ma non modificare."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”はWindowsの自己解凍プログラムのため、開くことはできますが変更はできません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”은(는) Windows 자동 압축 해제 프로그램이므로 열 수는 있지만 변경할 수는 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is een zelfuitpakkend Windows-programma en kan dus wel worden geopend, maar niet gewijzigd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@” to samorozpakowujący się program dla systemu Windows, więc można go otworzyć, ale nie zmienić."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» — самораспаковывающаяся программа для Windows: её можно открыть, но нельзя изменить."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» — саморозпакувальна програма для Windows: її можна відкрити, але не можна змінити."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” é um programa autoextraível do Windows, então pode ser aberto, mas não alterado."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”是 Windows 自解压程序，因此可以打开，但不能更改。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」是 Windows 自解壓縮程式，因此可以打開，但無法更改。"
+          }
+        }
+      }
+    },
     "vfs.unsupported.serverNotConnected": {
       "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the server descriptor.",
       "localizations": {

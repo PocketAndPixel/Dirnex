@@ -402,6 +402,19 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         return mounted[archivePath]?.backend.hasUnreadableNames ?? false
     }
 
+    /// Whether the archive this is **already listing from** is a Windows self-extractor
+    /// (``DirnexCore/ArchiveBackend/isSelfExtracting``) — a peek, for the same reason as the one
+    /// above: its callers are the write gates, which menu validation asks on every menu open.
+    ///
+    /// An archive nobody has mounted answers `false`, and nothing is lost by it: every gesture that
+    /// could write into one starts from a row the mount listed, and ``ArchiveWriter`` refuses a
+    /// self-extractor on its own whatever a gate said.
+    func mountedArchiveIsSelfExtracting(forArchiveAt archivePath: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return mounted[archivePath]?.backend.isSelfExtracting ?? false
+    }
+
     /// Declare — or, with `nil`, withdraw — the code page this archive's names are stored in, and
     /// drop its mount so the next listing re-reads them.
     ///
@@ -435,13 +448,19 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         if let cached = mounted[archivePath], cached.identity.stillDescribesFile(at: archivePath) {
             return cached.backend
         }
+        // Asked once, here, and handed to both halves: the listing needs it to find a 7z behind a
+        // Windows stub, and the record needs it to keep that file read-only.
+        let selfExtractor = SelfExtractingArchive.inspect(fileAt: archivePath)
         // Read directly rather than through `nameEncoding(forArchiveAt:)`: `lock` is an `NSLock`
         // and is already held here, so going back through the accessor would deadlock.
         let toc = try ArchiveMounter.readTableOfContents(
             ofArchiveAt: archivePath,
-            nameEncoding: nameEncodings[archivePath]
+            nameEncoding: nameEncodings[archivePath],
+            selfExtractor: selfExtractor
         )
-        let backend = ArchiveBackend(archiveOnDiskPath: archivePath, toc: toc)
+        let backend = ArchiveBackend(
+            archiveOnDiskPath: archivePath, toc: toc, isSelfExtracting: selfExtractor != nil
+        )
         // An archive that vanished between the read and here has no identity to stamp, and the read
         // above has already thrown; one that appears in that window is stamped on its next list.
         // Either way an unstamped mount is never cached, so it can never go stale.

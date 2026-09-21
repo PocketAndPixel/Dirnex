@@ -28,12 +28,12 @@ extension PanelViewController {
     }
 
     /// A browsed archive that accepts writes — the gate for delete (F8), add-into (F5/F6), and
-    /// paste-into. True for a top-level archive; false for a nested mount, whose bytes are an
-    /// extracted temp copy, so an edit wouldn't propagate back into the enclosing archive
-    /// (writing back through nesting is a later M4 pass). Distinct from the read-only `isArchive`,
-    /// which still allows browsing, F5 copy-*out*, and Quick Look inside a nested archive.
+    /// paste-into. True for a top-level archive; false for a nested mount and for a self-extractor
+    /// (``archiveAcceptsWrites(atOnDiskPath:)``). Distinct from the read-only `isArchive`, which
+    /// still allows browsing, F5 copy-*out*, and Quick Look inside either.
     var isWritableArchive: Bool {
-        isArchive && !isNestedArchive
+        guard isArchive, let archivePath = panel.path.backend.archivePath else { return false }
+        return archiveAcceptsWrites(atOnDiskPath: archivePath)
     }
 
     /// The same question asked of one **row**: whether an edit to `entry`'s extracted copy could be
@@ -46,7 +46,26 @@ extension PanelViewController {
     /// the row's backend is the pane's.
     func isWritableArchiveMember(_ entry: FileEntry) -> Bool {
         guard let archivePath = entry.path.backend.archivePath else { return false }
-        return !(host?.nestedArchiveRegistry.isNestedMount(archivePath) ?? false)
+        return archiveAcceptsWrites(atOnDiskPath: archivePath)
+    }
+
+    /// Whether a rewrite of the archive at `archiveOnDiskPath` would land where the user sees it —
+    /// the one rule behind every archive write gate, F2's route included.
+    ///
+    /// Two archives are read-only, for different reasons that come to the same thing:
+    /// - A **nested mount** is a temp copy of a member of the enclosing archive (or of a file on a
+    ///   server), so an edit would change the copy and never reach the archive (writing back through
+    ///   nesting is a later M4 pass).
+    /// - A **self-extractor** is a Windows program with the archive appended, and a rewrite repacks
+    ///   the archive alone — it would write a bare archive over the program, and under a `.zip`
+    ///   name `bsdtar -a` would turn a 7z into a zip (``DirnexCore/SelfExtractingArchive``).
+    ///
+    /// One predicate because this rule used to be written out three times — here twice and once in
+    /// `renameRoute` — and a second reason had to reach all of them.
+    func archiveAcceptsWrites(atOnDiskPath archiveOnDiskPath: String) -> Bool {
+        if host?.nestedArchiveRegistry.isNestedMount(archiveOnDiskPath) ?? false { return false }
+        let composite = backend as? CompositeBackend
+        return !(composite?.mountedArchiveIsSelfExtracting(forArchiveAt: archiveOnDiskPath) ?? false)
     }
 
     /// The enclosing-archive chain of the current pane, outermost-first, for the path-bar

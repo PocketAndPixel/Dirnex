@@ -5,14 +5,21 @@ import Foundation
 /// listing to the pure `ArchiveTOC` parser. The non-hermetic subprocess I/O lives here in the
 /// app layer, mirroring `SpotlightSearchRunner`; all parsing stays tested in `DirnexCore`.
 enum ArchiveMounter {
-    /// - Parameter nameEncoding: The code page the entry names are stored in, when the user has
-    ///   declared one. `nil` — every archive whose names are UTF-8, which is nearly all of them —
-    ///   takes the `bsdtar` route this has always taken.
+    /// - Parameters:
+    ///   - nameEncoding: The code page the entry names are stored in, when the user has declared one.
+    ///     `nil` — every archive whose names are UTF-8, which is nearly all of them — takes the
+    ///     `bsdtar` route this has always taken.
+    ///   - selfExtractor: What the file is, when it is a Windows self-extractor — asked once by the
+    ///     mount, which also records it, so the listing and the record cannot disagree.
     static func readTableOfContents(
         ofArchiveAt archivePath: String,
-        nameEncoding: ArchiveNameEncoding? = nil
+        nameEncoding: ArchiveNameEncoding? = nil,
+        selfExtractor: SelfExtractingArchive? = nil
     ) throws -> ArchiveTOC {
-        if let nameEncoding {
+        // `bsdtar` answers "Unrecognized archive format" for a 7z behind a stub smaller than
+        // libarchive's own search window, and cannot be handed the archive in place
+        // (``DirnexCore/SelfExtractingArchive``). The in-process reader opens it where it starts.
+        if nameEncoding != nil || selfExtractor?.sevenZipOffset != nil {
             return try readThroughLibarchive(archivePath, nameEncoding: nameEncoding)
         }
         let process = Process()
@@ -51,19 +58,21 @@ enum ArchiveMounter {
         return ArchiveTOC(verboseListing: text)
     }
 
-    /// Read the table of contents in-process, so the declared code page can be applied.
+    /// Read the table of contents in-process — for the two archives `bsdtar` cannot list.
     ///
-    /// This exists because **Apple's `bsdtar` has no `--hdrcharset`** — measured, it answers
-    /// `Option --hdrcharset=CP866 is not supported` and exits 1 — so the subprocess route above
-    /// cannot be told what the names are in, whatever environment it is handed. libarchive can, and
-    /// Dirnex already links it for encrypted archives; this is the same reader with one option set.
+    /// One is an archive with a declared code page: **Apple's `bsdtar` has no `--hdrcharset`** —
+    /// measured, it answers `Option --hdrcharset=CP866 is not supported` and exits 1 — so the
+    /// subprocess route above cannot be told what the names are in, whatever environment it is
+    /// handed. The other is a 7z carried by a Windows self-extractor, which libarchive can read only
+    /// through a window that starts where the archive does (``DirnexCore/SelfExtractingArchive``).
+    /// Dirnex already links libarchive for encrypted archives; this is the same reader.
     ///
     /// It costs headers rather than a spawn, so it is not the slower path — but it is only ever
-    /// taken for an archive somebody has declared, which keeps every ordinary listing on the engine
-    /// whose behaviour the whole `ArchiveTOC` corpus was captured from.
+    /// taken for those two, which keeps every ordinary listing on the engine whose behaviour the
+    /// whole `ArchiveTOC` corpus was captured from.
     private static func readThroughLibarchive(
         _ archivePath: String,
-        nameEncoding: ArchiveNameEncoding
+        nameEncoding: ArchiveNameEncoding?
     ) throws -> ArchiveTOC {
         let name = (archivePath as NSString).lastPathComponent
         do {

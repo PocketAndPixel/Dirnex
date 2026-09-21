@@ -12923,10 +12923,10 @@ front of a user:
 
 ---
 
-### After M19 — the follow-on log (2026-08-07 → 2026-09-20)
+### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 
-Ninety dated passes that landed outside a milestone of their own, between M18's close on
-2026-08-07 and 2026-09-20: user-reported bugs, three vault features, the tree crossing into S3,
+Ninety-one dated passes that landed outside a milestone of their own, between M18's close on
+2026-08-07 and 2026-09-21: user-reported bugs, three vault features, the tree crossing into S3,
 the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
 in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
 sit here at the end rather than in a numeric slot — and they keep their **newest-first** order,
@@ -12934,6 +12934,61 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 §4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-21 — A Windows self-extractor browses as an archive, and can never be rewritten.
+VERIFIED against the reported file, headlessly; the GUI pass is still owed.** Reported with a
+screenshot: an inner `…-Win10.zip` inside a zip failed with *"Couldn’t read the archive"*, where Total
+Commander opens it. It is not a zip. `file` calls it a PE32 executable — a 126 KB 7zSFX stub (Oleg
+Scherbakov's module), 71 bytes of its configuration (`RunProgram="openvpn-postinstall.exe"`), then
+an ordinary 7z, which `bsdtar` lists the moment the stub is cut off. libarchive 3.7.4 *does* look
+for a 7z inside a PE, but only between `0x27000` and `0x60000`, and this archive starts at `0x1EC47`.
+A zip behind the same stub lists fine (the zip reader works back from the end), and so does a 7z
+moved to `0x28000`, so the gap is exactly a 7z behind a small stub — which is what installers are.
+
+`bsdtar` cannot be handed the archive in place, measured both ways: piped, *"A file descriptor(0)
+is not seekable"*; as a stdin already seeked to the archive, libarchive seeks it to *absolute*
+offsets, reads the stub and fails *"Unexpected Property ID"*. A C probe opening the same file through
+`archive_read_open2` with read/seek/skip callbacks shifted by the offset listed all six entries in 3
+reads and extracted `openvpn-install.exe` byte-identical to `bsdtar`'s extraction of the cut-out
+payload; at offset 0 the same probe failed exactly as `bsdtar` does.
+
+So the core gained ``SelfExtractingArchive`` — the PE image's end from its section table, then the
+first 7z start header after it whose CRC verifies and whose next header fits inside the file — and
+``ArchiveByteWindow``, the callbacks. `EncryptedArchiveReader.openForReading` is the one funnel every
+in-process read comes through, so the listing, the extraction, the encryption check and the
+code-page samples all read a self-extractor at once; `ArchiveMounter` and `ArchiveExtractor.unpack`
+send a windowed 7z down that route, the way they already did for a declared code page. The parse
+was checked against real binaries before it was written: signed programs from the Parallels and
+.NET SDK bundles have 12 200 and 10 184 bytes past their image, which is their **certificate
+table** — so "something appended" is never taken to mean "an archive appended".
+
+**The half that is new risk rather than new reach is writing.** A rewrite repacks the archive alone,
+so it would put a bare archive where the program was, and under a `.zip` name `bsdtar -a` would
+even turn a 7z into a zip. Three hand copies of the nested-mount test — `isWritableArchive`,
+`isWritableArchiveMember` and `renameRoute` — became one `archiveAcceptsWrites(atOnDiskPath:)`,
+reading a fact the mount records (`ArchiveBackend.isSelfExtracting`, peeked like
+`hasUnreadableNames`), and `ArchiveWriter.rewrite` refuses a self-extractor by itself with a reason
+of its own, in all fourteen languages. The control on that guard is the finding worth keeping:
+with it removed, renaming a member of a **zip** self-extractor *succeeded* and rewrote the file,
+stub gone — reachable before today for any zip SFX with a browsable name. The 7z one failed only
+because `bsdtar` could not unpack it.
+
+Controls, each alone: the window removed failed both reader tests with `archiveUnreadable`, and the
+mount's routing removed failed the listing with `archiveUnreadable(archive: "installer-Win10.zip")`
+— the report's error; the extractor's routing, the gate's new clause and the writer's guard each
+failed their own test; *"an ordinary archive stays writable"* stayed green throughout. The CRC
+control first fired in one of its two tests: a decoy of signature-plus-garbage points past the end of
+any file, so the **bound** rejected it before the CRC was asked — rewritten as a header only the CRC
+can refuse, it fails as intended.
+
+Verified against the reported file through the real core in a scratch package: 6 entries listed in
+0.4 ms, `openvpn-install.exe` placed in 11 ms, byte-identical to `bsdtar`'s. **Not driven on screen**:
+the release build was the one running, and launching the Debug build beside it is the
+second-copy trap (docs/NOTES.md ▸ Live verification); the pane's ⏎ into the nested member is covered
+by the app suite on a synthetic self-extractor, through `CompositeBackend`'s real mount. Left as
+stated limits: a file *named* `.exe` still launches on ⏎ rather than browsing (a product question,
+asked rather than decided); only a 7z is looked for behind a stub, because a zip already works and
+RAR and CAB self-extractors are unmeasured; and a Linux (ELF) self-extractor is not looked for.
 
 **2026-09-20 — Put Back for a network share's own `#recycle`, and the delete that is not permanent.
 VERIFIED LIVE.** Opened as a question rather than a request — *"NAS smb has #recycle folder, is it

@@ -18,9 +18,16 @@ public struct ArchiveBackend: VFSBackend {
     public let archiveOnDiskPath: String
     private let toc: ArchiveTOC
 
-    public init(archiveOnDiskPath: String, toc: ArchiveTOC) {
+    /// The archive's file is a Windows program with the archive appended — a self-extractor
+    /// (``SelfExtractingArchive``). Browsable like any other, and never rewritten: a repack would
+    /// write a bare archive over the program, and under a `.zip` name `bsdtar -a` would even turn a
+    /// 7z into a zip. Recorded at mount so the gates that ask can peek rather than read the file.
+    public let isSelfExtracting: Bool
+
+    public init(archiveOnDiskPath: String, toc: ArchiveTOC, isSelfExtracting: Bool = false) {
         self.archiveOnDiskPath = archiveOnDiskPath
         self.toc = toc
+        self.isSelfExtracting = isSelfExtracting
     }
 
     public var id: VFSBackendID { .archive(forArchiveAt: archiveOnDiskPath) }
