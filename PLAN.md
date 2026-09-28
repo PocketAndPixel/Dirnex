@@ -4,7 +4,8 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M28 shipped** (14 languages) · Created: 2026-07-05 ·
+Status: **M0–M28 shipped** (14 languages) · **M29–M30 planned** (licensing, bug reports) ·
+Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
 [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)
 
@@ -135,6 +136,205 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 | M27 | Legacy code-page archive names | 09-09 | **Inferring** the code page — no reader can, and a wrong guess is a plausible name for the wrong file, so it is a chooser over a preview and never a detector; **preserving an un-representable name byte-for-byte**, the rejected streaming rewrite, which keeps bytes nobody can read and still cannot extract that row *out* of the archive; and **persisting the declaration** across sessions, since it is a guess the user made about one archive and a wrong one silently outliving the session is worse than being asked again |
 | M28 | iCloud Photos, as folders of originals | 09-13 | **Import, delete and album edits**, each a write Photos mediates with its own confirmation; **smart albums** — one a person made is returned by no PhotoKit fetch, and the system ones are views over the library rather than places; **shared albums, the Shared Library and hidden photos**, left out as Photos' own Library view leaves them out; **a per-asset time zone**, which PhotoKit does not expose, so months are cut in the Mac's; **⌘L inside the library**, which has no real directory to start from; and **Photos' lowercase `.mov`** for a Live Photo's movie, since a row's name is part of its path. **Exercised later that evening**: the download of an original that is only in iCloud, on clips recorded for it — the bar sat at zero and Stop was ignored until the request carried a progress handler (HISTORY.md §M28); after that fix a 219 MB copy arrived byte-identical and Stop on a 276 MB one stored nothing |
 
+### Next: M29 → M30 (planned 2026-09-29)
+
+Dirnex starts selling licenses. The store, the key server, the website at dirnex.app and the launch
+are planned in the private companion repo (`dirnex-home`, milestones C1–C15). These two milestones
+are the app's share, and they come first. Neither changes what Dirnex *is*: it stays open source,
+fully usable without paying, and it never asks a server whether a license is real.
+
+### M29 — A license, and the reminder it removes (M)
+
+**Planned 2026-09-29.** What is sold is a **license**: a signed key that turns off a reminder in
+every version released during the key's period (one or two years), and keeps those versions
+reminder-free for good. Updates keep reaching everyone. A version released after the period shows
+the reminder again until the key is renewed. The milestone lands **dormant**: nothing appears
+until a release is built with the licensing switch on — betas first, and stable on the day the store
+opens.
+
+Decided before Slice 1 (2026-09-28/29, with Oleg). Each is a recommendation that is cheap to
+overturn until Slice 4 puts the reminder in front of a user:
+
+- **Checked offline, never on a server.** The key is `dnx1.<payload>.<signature>`. The payload is
+  base64url JSON (`v`, `id`, `to`, `issued`, `until`), and the signature is Ed25519 over the ASCII
+  bytes of `dnx1.<payload>`. The app verifies it with a public key it carries (CryptoKit's
+  `Curve25519.Signing`, already a core import). There's no launch-time request and no activation
+  count. A key works on every Mac of the person it names, offline, whether or not the server is up.
+  Unknown payload fields are ignored, so the format can grow.
+- **Coverage is by release date.** A build is covered when its release date is on or before the
+  key's `until` (UTC dates). The release workflow writes the date into `Info.plist`
+  (`DirnexReleaseDate`) from the same timestamp it gives the appcast's `pubDate`, so an update can be
+  judged *before* it is installed (`SUAppcastItem.date`). A missing date never punishes a customer:
+  an undated build or update counts as covered.
+- **Only official builds remind.** The reminder runs only in a build made by `release.yml` with its
+  licensing switch on. A Debug build, an `xcodebuild test` host and anyone's own build from source
+  never show it. Building Dirnex yourself is free, and that is the promise the open source makes. A
+  Debug-only launch argument previews both reminder variants and fakes the clock.
+- **Thirty quiet days.** The grace period counts from the first launch of a build with the switch
+  on, not from install. So nobody who used an earlier, dormant build meets the reminder on the day it
+  arrives.
+- **When it appears.** After the 30 days, the reminder appears if there's no key, or if the key
+  doesn't cover this build:
+  - at every launch, and
+  - at the first activation of each new calendar day while Dirnex stays running. Macs sleep rather
+    than quit, so launch alone would almost never fire.
+
+  It never stacks over the first-run tour or the Full Disk Access sheet; it waits for them.
+- **What it is.** A sheet over the browser window. It's a custom window, not an `NSAlert`, so
+  `scripts/check_alert_escape.py` isn't asked to allow an exception. It has three buttons:
+  - a large **Buy a License**, in the accent color but deliberately *not* the default button;
+  - **Enter License…**;
+  - a small **OK**.
+
+  **Escape and Return do nothing.** This is the one surface in the app where that is intended,
+  because the sheet must not be dismissed by habit. It isn't a trap: OK is one click away, Tab
+  reaches it (`KeyboardReachableControls`) and Space presses it, and VoiceOver reads and presses
+  every button. Draft copy:
+  - Title: *"Thank you for using Dirnex"*
+  - Body: *"Dirnex grows from its users' wishes and feedback. If it's useful to you, a license keeps
+    it going."*
+
+  A key whose period has ended says so instead: *"Your license covers versions released until
+  12 March 2027. This version came out later. Renew to remove this reminder."*, with **Renew** in
+  place of Buy.
+- **A quiet label.** While the reminder is due, a small **Unlicensed** (or **Renew License**) label
+  sits in the titlebar's leading cluster, beside the update indicator. Clicking it opens the License
+  tab. It's hidden during the 30 days and whenever a key covers the build.
+- **Holding a key.**
+  - Settings gains a **License** tab. It shows the status (*Licensed to Jane Doe · updates until
+    12 March 2027*), a field that takes a pasted key (with the spaces and line breaks an email adds
+    removed), Buy or Renew, and Remove.
+  - `dirnex://license?key=…` activates a key from the email's link. It always asks first, naming who
+    the key is for, since any web page can open that URL.
+  - The key is kept in preferences, not the Keychain. It isn't a secret (it's signed, not hidden),
+    and a Keychain read raises prompts on builds signed differently (CLAUDE.md).
+  - A key that verifies but doesn't cover this build is still kept. It covers older versions, and a
+    renewal replaces it.
+- **Updates for a key whose period has ended.** Everyone keeps getting updates. The one change:
+  before a version the key doesn't cover is installed, Dirnex says so once, with **Renew**, **Update
+  Anyway** and **Not Now**: *"Your license covers versions released until … Dirnex 1.4.0 came out
+  later, so it will show the license reminder. Your current version stays reminder-free."*
+  - Sparkle must never install such a version silently in the background.
+  - An install with no key sees no notice, because its reminder doesn't change.
+  - Covered updates are untouched.
+  - Dirnex's own probe (`checkForUpdateInformation`) installs nothing, so it proceeds and still
+    lights the indicator.
+- **Commands.**
+  - `app.license` (*License…*) goes under *Check for Updates…* in the App menu, and `app.buyLicense`
+    (*Buy a License…*) goes beside it. Both are in the palette.
+  - They open `https://dirnex.app/buy` and `https://dirnex.app/renew?license=<id>`. Only the random
+    license id goes in a URL, never a name or an email.
+- **Not in this milestone:**
+  - revoking a refunded key inside the app (the server marks it; an in-app list waits until refunds
+    are actually abused);
+  - trials that stop working, and activation limits;
+  - any copy protection beyond the signature. The source is open, and the reminder is a request,
+    not a lock.
+
+#### Slices
+
+1. **The contract.** The key format above, pinned by test vectors.
+   - A throwaway test key pair signs about a dozen keys, made by the TypeScript signer in the private
+     repo (the same module the store's server will use).
+   - The vectors cover: a valid key; `until` in the past; one payload byte changed; a signature from
+     another key; a wrong prefix; bad base64url; an unknown `v`; a missing field; an unknown extra
+     field (accepted); and a non-ASCII `to`.
+   - The vectors are committed here as fixtures. The test private key may be public; the production
+     one never enters any repository.
+   - The production key pair is generated once, in this slice, with its private half going into
+     Oleg's password manager.
+2. **The core** (additive, app untouched).
+   - `LicenseKey`: parses, and never throws on hostile input.
+   - `LicenseVerifier`: the public key is injected.
+   - `LicenseCoverage`: release date against `until`.
+   - `LicenseReminderPolicy`: the grace period, launch versus activation, calendar days in the Mac's
+     time zone, and a clock that moves backwards.
+   - `UpdateCoverageNotice`: from a key and a pending update, whether to show the notice.
+
+   Tested against the vectors, with negative controls: a verifier that skips the signature, a
+   coverage check off by one day, and a policy that ignores the grace period.
+3. **The app: holding a key.** The License tab, paste-to-activate, the URL scheme with its
+   confirmation, both commands in the menu and palette, the production public key, and storage.
+   Translated into all 14 languages (`check_localization_keys.py` green).
+4. **The app: the reminder.**
+   - The switch and the release date run through `release.yml`, `build_app.sh` and
+     `make_appcast.sh` from one timestamp; docs/RELEASING.md gains both.
+   - The grace record; the sheet, queued behind onboarding; the titlebar label; the Debug preview.
+   - App tests pin that Escape and Return leave the sheet up, that OK closes it, and that Buy has no
+     key equivalent.
+5. **Updates for a key whose period has ended.** Opens with a probe of Sparkle 2.9.4 against a local
+   appcast, answering two questions:
+   - Which hook holds back a background install? The candidate is
+     `updater(_:shouldProceedWithUpdate:updateCheck:)`, throwing for `.updatesInBackground`.
+   - How can a user-initiated install wait for the notice and then continue? For example, a one-shot
+     allowance for that version, then re-running the check.
+
+   The findings go into docs/NOTES.md before the wiring lands. An app test pins that a background
+   check can't get past the hook.
+6. **End to end, on a beta.** A beta cut with the switch on:
+   - a key signed with the production key, activated from an email-style link;
+   - the reminder after a faked 31 days, at launch and at the next day's first activation;
+   - an uncovered update from a test feed, with its notice.
+
+   Stable keeps the switch off until the store opens.
+
+**Done when** a beta with the switch on:
+- shows nothing for 30 days, then reminds;
+- goes quiet the moment a real key is entered, pasted or by link;
+- shows the notice before an uncovered update and never installs one silently;
+
+and a self-built copy never reminds at all. Both suites green, both linters clean, every new string
+translated.
+
+### M30 — Report a Bug, and a Help menu to hold it (S)
+
+**Planned 2026-09-29.** A way to tell Oleg something broke without a GitHub account. The report goes
+to the store's server (`https://dirnex.app/api/bug-reports`, built in the private repo), which keeps
+it and messages him. Apart from Sparkle's update check, it is the only thing in Dirnex that talks to
+a server of ours. It sends only when the user presses Send, and only what the user was shown.
+
+Decided before Slice 1:
+
+- **A Help menu, finally.** M20 left adding one as its own decision; this takes it. It holds *Report
+  a Bug…*, *Dirnex Website* and *Release Notes*, which is where every Mac user looks, and it brings
+  macOS's menu search with it. `app.reportBug` is in the palette too.
+- **What is sent.**
+  - A description (required).
+  - Steps to reproduce and a reply email (both optional; the email is remembered for next time).
+  - Each behind its own checkbox, on by default: the Dirnex version and build, the macOS version,
+    the Mac model, the UI language, and whether a license is present (never the key itself).
+  - Optional and off by default: the newest Dirnex crash report from the last 7 days in
+    `~/Library/Logs/DiagnosticReports`.
+
+  The home folder is shortened to `~` everywhere.
+- **Shown before it's sent.** *Show What Will Be Sent* opens the exact JSON body. File names and
+  paths are personal data, so nothing reaches the payload that the user didn't type or tick.
+- **When the server can't be reached,** the dialog keeps the text and offers *Copy Report* and *Email
+  Instead* (a `mailto:` with the same body), rather than losing it.
+- **Hidden until the endpoint exists.** The menu item and the command appear only when the build
+  carries `DirnexBugReportURL` in `Info.plist`. The release workflow adds it once the server is
+  live; until then the feature ships inert.
+
+#### Slices
+
+1. **The core** (additive).
+   - `BugReport`: the payload and its redaction (home folder to `~`, a size cap, crash-report
+     trimming).
+   - Encoding to the server's JSON contract, which is defined in the private repo and mirrored here
+     as a fixture.
+   - Tests, including a negative control that leaves the home path in.
+2. **The app.**
+   - The Help menu, the command, the dialog, the preview, sending with a timeout, and the fallbacks.
+   - A fake endpoint in `Tooling/` (the `fake-s3-endpoint.py` pattern) for the app tests to post to.
+   - Translated into all 14 languages.
+3. **Live.** Against the real endpoint once it exists (staging first), then in a beta with
+   `DirnexBugReportURL` set.
+
+**Done when:**
+- a report sent from a beta arrives in the server's inbox with exactly what the preview showed;
+- the same report with the network off survives as Copy or Email;
+- a build without the URL shows no trace of the feature.
+
 ### Still open
 
 Everything through M28 is shipped, and the record of it — the milestone checklists, the sixty
@@ -205,6 +405,8 @@ plan keeps the strategy, which is a rule that outlives any one pass.
 | The tree becomes a *second* pane implementation by accretion — a refresh path, a mark gesture or a sort that quietly forks from the flat one | The tree is a flat projection over the same `NSTableView` and the same index space, not a parallel surface (HISTORY.md §M15 Slice 4); anything that forks is a signal the projection is wrong, not that the tree needs its own copy. Both fork points were answered in the slice — `SizeVisualization`'s per-directory assumption (the bars were withdrawn in tree mode at M15 close, then re-scoped *per parent directory* rather than forked — `SizeVisualization(tree:)` groups each row against its own level, so the projection stays one definition of "share of this folder") and the `installSortedModel` → `reloadEverything` → `syncCursorToTable` tail. It arrived once already, as the *second index space*: six `panel.model[row]` sites that crashed on the first click below the root's last entry, now routed through `displayedIndex(ofID:)` — NOTES.md ▸ AppKit |
 | M24 turns "fetch it first" into a download nobody asked for. Seven gestures gain the right to pull bytes over a network, and each one is a keystroke that used to be free | The rule is stated once and belongs to the **gesture**, never to the engine: `ByteComparator` refuses an evicted cloud placeholder rather than reading through it, and every engine reached here keeps that posture — it sees only files already on this disk, and the gesture is what fetches and what reports. The tell that the boundary is going is an *engine* learning to materialize, or a second threshold table appearing beside `RemoteFetchPolicy`'s. What makes it enforceable rather than a wish is that the size decision is already a named table keyed by `RemoteFetchPurpose`, so a new gesture is a row in it — and a purpose whose `isAutomatic` is true may never raise a dialog, which is the fork M21 Slice 10 settled and the bug a user reported when it was got wrong. **Held (closed 2026-08-28).** No engine learned to materialize: `ByteComparator` still refuses an evicted placeholder, every fetch runs through the one `MaterializationPlan` the gesture builds, and `RemoteFetchPurpose` grew **rows** — `handOff`, `compare`, `syncContents`, `checksum`, `userScript`, `pack` — rather than the second threshold table the row names as the tell. The unbounded case is refused rather than weighed: a folder that is not already here is turned away by name in each hand-off, because it stands for an unknown number of requests |
 | M25 writes attributes to a server through verbs that vary per account, and reports success it did not have. `sftp`'s `-p`, `chmod`, `copy` and the `readlink` behind a symlink target are each present on some accounts and absent on others — `ForceCommand internal-sftp` alone removes the exec channel | Degrade **per connection at run time**, the shape M22's search walk already proved: the account is asked once, the answer is remembered for that connection, and what cannot be carried is *not* carried rather than approximated. The failure to design against is the quiet one — writing an empty symlink because no target could be read, or reporting a preserved mode that was silently dropped — so the milestone opens with probes against a real `sshd` rather than with a man page, and a capability that cannot be established leaves the old behaviour standing. The corollary is that this milestone owes docs/NOTES.md a **correction** rather than only an entry: "neither remote protocol has a copy verb" is written down twice, and `sftp copy` exists. **Held (closed 2026-08-29).** Every capability is latched per connection and none is asked in advance; a refusal is *reported* rather than approximated (`RemoteMetadataPlan` names what a transfer will lose, and the status line says it), and the quiet failure the row names was found to be worse than described — `CopyEngine.swift:283` now refuses a symlink whose target could not be read, because `ln -s ""` is a dangling link over SFTP and an **`NSInvalidArgumentException` that terminates the process** on a download. The correction was made: NOTES.md records `copy-data revision 1`, measured at 64 MiB in 0.08 s |
+| M29's reminder turns goodwill into irritation. A sheet Escape cannot close, at every launch, is the most hostile thing Dirnex will ever do, in an app whose reviews are written by keyboard users | The mitigations: 30 quiet days; a sentence that asks rather than scolds; one sheet per launch or per day, never stacked over onboarding; and every rule a named constant in `LicenseReminderPolicy`, so changing the cadence is a one-line, tested change rather than a redesign. The tell is feedback about the sheet outnumbering feedback about the app |
+| M29: a paying customer meets the reminder after an update they didn't choose | The notice before any uncovered install, and no silent background install of one. Slice 5's probe decides the hook, and an app test pins that a background check cannot get past it |
 
 ## 7. Open questions
 
