@@ -214,7 +214,7 @@ overturn until Slice 4 puts the reminder in front of a user:
 - **Updates for a key whose period has ended.** Everyone keeps getting updates. The one change:
   before a version the key doesn't cover is installed, Dirnex says so once, with **Renew**, **Update
   Anyway** and **Not Now**: *"Your license covers versions released until … Dirnex 1.4.0 came out
-  later, so it will show the license reminder. Your current version stays reminder-free."*
+  later, so it will show the license reminder until you renew."* (Slice 5 changed the wording.)
   - Sparkle must never install such a version silently in the background.
   - An install with no key sees no notice, because its reminder doesn't change.
   - Covered updates are untouched.
@@ -416,6 +416,77 @@ generating the production key pair (below).
   The live run found one bug the tests had passed over: the titlebar label never hid, because
   `NSTitlebarAccessoryViewController.isHidden` does nothing on a leading accessory (docs/NOTES.md ▸
   AppKit). A Debug build left no reminder record in the real preferences.
+
+  **Correction (2026-09-30, Slice 5):** the Escape part of that run proved nothing. Computer use's
+  Escape never reaches the app while it holds the screen (docs/NOTES.md ▸ Live verification), so
+  "Escape leaves it up" would have passed either way. The sheet's own test is what pins Escape.
+
+**2026-09-30: Slice 5 landed** (updates for a key whose period has ended).
+
+- **The probe came first.** A throwaway host app on Sparkle 2.9.4, against a local appcast, ran one
+  check of each type through `updater(_:shouldProceedWithUpdate:updateCheck:)`. The findings are in
+  docs/NOTES.md ▸ Release pipeline. In short:
+  - the hook runs on the main thread before anything is shown or downloaded;
+  - throwing `SUInstallationCanceledError` (4007) ends any check silently, with no download even
+    when Sparkle downloads automatically;
+  - any other error puts Sparkle's own error alert up;
+  - a refusal doesn't clear the titlebar indicator;
+  - `checkForUpdates()` from `didFinishUpdateCycle` starts the next check at once.
+
+  So the plan's candidate held: the hook holds back, and **Update Anyway** allows the build and
+  checks again.
+- **Core:** `UpdateCoverageGate` and `UpdateCheckKind`. With a notice due:
+  - a background check is held back silently;
+  - a user-initiated one is held back, and the notice follows;
+  - the probe goes on, so the indicator still lights.
+
+  **Update Anyway** allows that build for the rest of the run, for every check.
+- **App:** the hook and `didFinishUpdateCycle` in `AppUpdater`, the logic in
+  `AppUpdater+Coverage`, and `UpdateCoverageAlert`. 3 new strings in 14 languages; Not Now and Renew
+  License… reuse existing ones.
+- **Decided in the slice:**
+  - **Not Now is the default, and Escape, Return and Space all choose it.** The notice exists so
+    that a habit can't update a customer into the reminder, and Renew isn't one keypress away, for
+    the same reason Buy isn't on the reminder.
+  - **The notice says what the update does and how to move past it, and nothing else** (Oleg). The
+    title is *"Your license doesn't cover Dirnex 1.4.0"*, and the text ends *"…so it will show the
+    license reminder until you renew."* The first draft also said *"Your current version stays
+    reminder-free"*. That's true, since a license covers its versions for good, but in this dialog
+    it reads as advice to stop updating.
+  - **Update Anyway lasts for the run, not forever.** After a relaunch the notice is shown again,
+    and it's still true.
+  - **A build that shows nothing about licenses holds nothing back.** The feed doesn't say whether an
+    update reminds, so the notice assumes it does. A dormant build would warn about a reminder that
+    doesn't exist.
+  - **The update's release day is `SUAppcastItem.date` as a UTC day.** Sparkle parses `pubDate` with
+    an `en_US` formatter, not `en_US_POSIX`, but it parsed our feed correctly with 12- and 24-hour
+    overrides and a Japanese locale.
+  - **The notice attaches to the browser window**, like the reminder and the license link, even
+    while Dirnex is in the background (`NSApp.mainWindow` is nil then).
+- **Tests:**
+  - the hook's selectors;
+  - **a background check can't get past the hook**;
+  - a user-initiated check leaves the notice;
+  - the probe goes on;
+  - nothing is held back for a covered update, with no key, or in a dormant build;
+  - Update Anyway and Not Now;
+  - the UTC day at both edges of the key's last day;
+  - the notice's words, keys and initial focus.
+- **Verified live** (2026-09-30, computer use). The Debug build ran with a test key ending
+  2027-03-12, a faked build date of 2027-02-01, and a local feed offering 1.4.0 dated 2027-04-01:
+  - the launch probe lit the indicator, and its tooltip named 1.4.0;
+  - clicking it brought the notice, with the right words;
+  - Return and Space chose Not Now, and the indicator stayed;
+  - Update Anyway brought Sparkle's own "A new version of Dirnex is available!" window;
+  - after that was closed, the indicator went straight to Sparkle's window;
+  - the feed log shows **no download** of the update in the whole run.
+
+  The key and the feed were launch arguments, so the real preferences gained neither. The live run
+  found two things the tests had passed over:
+  - **the alert opened with the keyboard focus on Renew License…**, so Space would have opened the
+    store. Fixed with `initialFirstResponder` (docs/NOTES.md ▸ AppKit);
+  - **Escape couldn't be tried live** (the correction above). A harness on the same alert answered
+    it, and the test pins it.
 
 ### M30 — Report a Bug, and a Help menu to hold it (S)
 

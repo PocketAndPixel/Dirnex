@@ -102148,6 +102148,95 @@
         }
       }
     },
+    "Update Anyway": {
+      "comment": "Button that installs an update the license doesn't cover.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trotzdem aktualisieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update Anyway"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizar igualmente"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mettre à jour quand même"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiorna comunque"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "それでもアップデート"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그래도 업데이트"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toch bijwerken"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uaktualnij mimo to"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atualizar Mesmo Assim"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Всё равно обновить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Однаково оновити"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仍然更新"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仍要更新"
+          }
+        }
+      }
+    },
     "Update available": {
       "comment": "Accessibility label for the titlebar update indicator.",
       "localizations": {
@@ -107874,6 +107963,95 @@
         }
       }
     },
+    "Your license covers versions released until %@. Dirnex %@ came out later, so it will show the license reminder until you renew.": {
+      "comment": "Notice before an update the license doesn't cover; %1$@ is a date, %2$@ the update's version.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihre Lizenz deckt Versionen ab, die bis zum %1$@ erschienen sind. Dirnex %2$@ ist später erschienen und zeigt deshalb die Lizenzerinnerung, bis Sie die Lizenz verlängern."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your license covers versions released until %@. Dirnex %@ came out later, so it will show the license reminder until you renew."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu licencia cubre las versiones publicadas hasta el %1$@. Dirnex %2$@ salió después, así que mostrará el recordatorio de licencia hasta que la renueves."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre licence couvre les versions publiées jusqu’au %1$@. Dirnex %2$@ est sorti plus tard, il affichera donc le rappel de licence jusqu’à ce que vous la renouveliez."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La tua licenza copre le versioni pubblicate fino al %1$@. Dirnex %2$@ è uscito dopo, quindi mostrerà il promemoria della licenza finché non la rinnovi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ご利用のライセンスは%1$@までにリリースされたバージョンが対象です。Dirnex %2$@はそれより後にリリースされたため、ライセンスを更新するまでライセンスのリマインダーが表示されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스는 %1$@까지 출시된 버전에 적용됩니다. Dirnex %2$@은(는) 그 이후에 출시되어 라이선스를 갱신할 때까지 라이선스 알림이 표시됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je licentie geldt voor versies die tot en met %1$@ zijn uitgebracht. Dirnex %2$@ is later uitgekomen en toont daarom de licentieherinnering tot je de licentie verlengt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twoja licencja obejmuje wersje wydane nie później niż %1$@. Dirnex %2$@ ukazał się później, więc będzie wyświetlać przypomnienie o licencji, dopóki jej nie odnowisz."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sua licença cobre as versões lançadas até %1$@. O Dirnex %2$@ saiu depois, então vai mostrar o lembrete de licença até você renová-la."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваша лицензия распространяется на версии, выпущенные не позже %1$@. Dirnex %2$@ вышел позже, поэтому в нём будет появляться напоминание о лицензии, пока вы её не продлите."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваша ліцензія поширюється на версії, випущені не пізніше %1$@. Dirnex %2$@ вийшов пізніше, тому в ньому з’являтиметься нагадування про ліцензію, доки ви її не продовжите."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的许可证涵盖截至 %1$@ 发布的版本。Dirnex %2$@ 发布得更晚，因此在你续期之前会显示许可证提醒。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的授權涵蓋截至 %1$@ 發佈的版本。Dirnex %2$@ 發佈得較晚，因此在你續訂之前會顯示授權提醒。"
+          }
+        }
+      }
+    },
     "Your license covers versions released until %@. This version came out later. Renew to remove this reminder.": {
       "comment": "License reminder text when the license ended before this version; %@ is a date.",
       "localizations": {
@@ -107959,6 +108137,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "你的授權涵蓋截至 %@ 發佈的版本。此版本發佈得較晚。續訂即可移除此提醒。"
+          }
+        }
+      }
+    },
+    "Your license doesn’t cover Dirnex %@": {
+      "comment": "Title of the notice before an update the license doesn't cover; %@ is the update's version.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihre Lizenz deckt Dirnex %@ nicht ab"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your license doesn’t cover Dirnex %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu licencia no cubre Dirnex %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre licence ne couvre pas Dirnex %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La tua licenza non copre Dirnex %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ご利用のライセンスはDirnex %@の対象外です"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스가 Dirnex %@에는 적용되지 않습니다"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je licentie geldt niet voor Dirnex %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twoja licencja nie obejmuje Dirnex %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sua licença não cobre o Dirnex %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваша лицензия не распространяется на Dirnex %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваша ліцензія не поширюється на Dirnex %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的许可证不涵盖 Dirnex %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的授權不涵蓋 Dirnex %@"
           }
         }
       }

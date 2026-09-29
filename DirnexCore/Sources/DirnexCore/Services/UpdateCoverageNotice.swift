@@ -1,9 +1,9 @@
 import Foundation
 
 /// The notice before installing an update the user's key doesn't cover (PLAN.md §M29 "Updates for
-/// a key whose period has ended"): *"Your license covers versions released until 12 March 2027.
-/// Dirnex 1.4.0 came out later, so it will show the license reminder. Your current version stays
-/// reminder-free."*, with **Renew**, **Update Anyway** and **Not Now**.
+/// a key whose period has ended"): *"Your license doesn't cover Dirnex 1.4.0. Your license covers
+/// versions released until 12 March 2027. Dirnex 1.4.0 came out later, so it will show the license
+/// reminder until you renew."*, with **Not Now**, **Update Anyway** and **Renew License…**.
 ///
 /// Everyone keeps getting updates. The notice exists so that a paying customer never meets the
 /// reminder after an update they didn't knowingly choose, which is PLAN.md §6's second M29 risk.

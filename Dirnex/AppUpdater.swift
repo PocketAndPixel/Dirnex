@@ -17,11 +17,12 @@ import Sparkle
 ///   live updater there would reach the network and pop Sparkle's permission prompt mid-suite.
 ///
 /// It is also the updater's `SPUUpdaterDelegate` — which is why it is an `NSObject` (Sparkle's
-/// delegate protocol refines `NSObject`). Two things ride on that: `allowedChannels(for:)`, how the
-/// opt-in beta channel reaches Sparkle, and the found/not-found/user-choice callbacks that keep
-/// `availability` current for the titlebar indicator. Everything else is left to the standard
-/// controller — except the scheduling, which Dirnex owns: see `startProbing()` for why Sparkle's own
-/// scheduler cannot be what keeps the indicator honest.
+/// delegate protocol refines `NSObject`). Three things ride on that: `allowedChannels(for:)`, how
+/// the opt-in beta channel reaches Sparkle; the found/not-found/user-choice callbacks that keep
+/// `availability` current for the titlebar indicator; and `shouldProceedWithUpdate`, which holds
+/// back an update the license doesn't cover (`AppUpdater+Coverage`). Everything else is left to the
+/// standard controller — except the scheduling, which Dirnex owns: see `startProbing()` for why
+/// Sparkle's own scheduler cannot be what keeps the indicator honest.
 ///
 /// Sparkle is still *compiled* in every configuration (the type is never `#if`-d out), so the Debug
 /// `xcodebuild test` job catches any misuse of the update API even though it never starts it.
@@ -31,7 +32,23 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
     // `super.init()`; it is assigned exactly once, right after, and never mutated again.
     private var updaterController: SPUStandardUpdaterController?
 
-    init(bundle: Bundle = .main) {
+    /// Where the license comes from, for the updates it doesn't cover (`AppUpdater+Coverage`).
+    let licenseStore: LicenseStore
+    let licensingIsOn: Bool
+
+    /// Which updates the license doesn't cover are held back, and which the user let through.
+    var coverageGate = UpdateCoverageGate()
+
+    /// The notice a user-initiated check was held back for, shown once that check has ended.
+    var pendingCoverageNotice: PendingCoverageNotice?
+
+    init(
+        bundle: Bundle = .main,
+        licenseStore: LicenseStore = .shared,
+        licensingIsOn: Bool = LicensingSwitch.isOn
+    ) {
+        self.licenseStore = licenseStore
+        self.licensingIsOn = licensingIsOn
         super.init()
         guard !Self.isRunningTests, Self.hasUpdateConfiguration(bundle: bundle) else {
             return
@@ -181,6 +198,32 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
         @unknown default: .dismiss
         }
         setAvailabilityAfter(mapped)
+    }
+
+    /// Every check passes through here before Sparkle shows or downloads anything, so this is where
+    /// an update the license doesn't cover is held back (PLAN.md §M29 Slice 5, docs/NOTES.md ▸
+    /// Release pipeline). The rule is `gate(…)`'s; this only reads the appcast item.
+    nonisolated func updater(
+        _: SPUUpdater,
+        shouldProceedWithUpdate item: SUAppcastItem,
+        updateCheck: SPUUpdateCheck
+    ) throws {
+        try gate(
+            version: item.displayVersionString,
+            build: item.versionString,
+            releaseDate: item.date,
+            check: updateCheck
+        )
+    }
+
+    /// A check ended. If it was held back for the notice, the notice comes now: Sparkle's session is
+    /// over, so **Update Anyway** can start a new one.
+    nonisolated func updater(
+        _: SPUUpdater,
+        didFinishUpdateCycleFor _: SPUUpdateCheck,
+        error _: (any Error)?
+    ) {
+        onMain { $0.presentPendingCoverageNotice() }
     }
 
     // MARK: - Main-actor hop

@@ -103,6 +103,13 @@ at build time.
   trace (0 events reached the monitor), and System Events keystrokes need assistive access the shell
   lacks (`-1719`). Log the event before believing a key test, and settle what a real key
   would send with `NSMenu.performKeyEquivalent` on a hand-built event.
+  - **Its Escape never reaches the app at all while it holds the screen.** Logged 2026-09-30 with a
+    local `.keyDown` monitor on the M29 update notice: Return (36) and Space (49) arrived, while
+    `Escape` and `esc` produced no event whatsoever, three times. The full-screen takeover keeps
+    Escape for itself. So a live check that **Escape does nothing** passes whether or not the code
+    works, and one that **Escape closes** fails whether or not it works. Slice 4's "Escape leaves the
+    reminder up" was the first kind. Pin Escape with a test instead (`AlertKeyCatcher.button(for:)`,
+    or `NSApp.sendEvent` on a hand-built event in a harness, which answered it on the same alert).
 - **`sips -s dpiWidth 72` on a JPEG exits 0 and leaves the old resolution.** Measured 2026-09-15 while
   making image-zoom fixtures: a 3000 px copy of a 240 dpi photo read back `dpiWidth: 240` after the
   call, in place and with `--out` alike, while the same call on a PNG took. An image preview sizes by
@@ -1381,6 +1388,15 @@ at build time.
 
 ## AppKit
 
+- **An `NSAlert` can open with the keyboard focus on its last button, and Space presses the
+  focused button.** Measured 2026-09-30 on the M29 update notice, a three-button sheet (Not Now,
+  Update Anyway, Renew License…): with Full Keyboard Access off, the sheet's first responder a second
+  after it opened was the *last* button, drawn with a focus ring. So Space would have opened the
+  store, while Return and Escape chose Not Now. A throwaway harness showing the same alert on the
+  same Mac reported the panel itself as first responder, so a harness doesn't settle this; the
+  running app does. `alert.window.initialFirstResponder = alert.buttons.first` moved the focus to
+  Not Now, measured the same way. An alert whose last button isn't the safe one needs the same
+  line.
 - **`applicationShouldTerminateAfterLastWindowClosed` is asked from a run-loop *timer*, not at the
   moment a window closes — so a bare `true` lets the app quit itself during its own launch.** AppKit
   defers the check (`_scheduleCheckForTerminateAfterLastWindowClosed`) and asks whenever the main run
@@ -7933,6 +7949,31 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
 - **A timer does not fire while the Mac sleeps**, so an 8 h probe armed before a lid close is hours
   overdue on wake and still waiting for its original fire date. The catch-up is
   `NSApplication.didBecomeActiveNotification` re-asking the schedule, not a shorter interval.
+- **Holding back an update: `updater(_:shouldProceedWithUpdate:updateCheck:)`, and the error it
+  throws decides whether the user sees anything** (M29 Slice 5). Probed 2026-09-30 against Sparkle
+  2.9.4 with a throwaway host app and a local appcast, one run per check type, watching the visible
+  windows and the HTTP log:
+  - The hook runs on the **main thread** for all three check types (`.updates`,
+    `.updatesInBackground`, `.updateInformation`), before `didFindValidUpdate` and before any
+    download.
+  - Throw **`SUSparkleErrorDomain` / `SUInstallationCanceledError` (4007)** and the check ends
+    silently for every type: no window, no alert, and in the background with
+    `automaticallyDownloadsUpdates` on, **no download** (the control run that let the hook pass
+    fetched the enclosure). `didAbortWithError` and `didFinishUpdateCycle(for:error:)` report it.
+  - **Any other error is shown to the user**: a user-initiated check puts Sparkle's own modal
+    error alert up, with the error's description as its text. That's what 4007 avoids.
+  - A refusal is **not** "no update found": `updaterDidNotFindUpdate` isn't called, so the titlebar
+    indicator stays lit.
+  - **`checkForUpdates()` works from inside `didFinishUpdateCycle`**: the session is already over
+    there, and with the version allowed the second check reached Sparkle's normal update window.
+    That's how **Update Anyway** continues: allow the build, check again.
+  - **The hook is skipped when Sparkle resumes** an update it already downloaded, or an install
+    already staged (`SPUBasicUpdateDriver`, `resuming:YES`). That's safe here, because nothing
+    downloads without passing the hook first. It would not be safe for a gate that could change its
+    mind about a build it once let through.
+  - `SUAppcastItem.date` parses `pubDate` with an `en_US` formatter rather than `en_US_POSIX`. It
+    parsed our real feed's dates correctly with 12- and 24-hour overrides and a Japanese locale, so
+    the app reads the update's release day from it (`LicenseDay(_:in: .gmt)`).
 - **A `GITHUB_TOKEN`-pushed tag does not re-trigger `on: push`** — which is exactly why the beta
   workflow calls `release.yml` as a reusable workflow instead of pushing a tag and hoping the tag
   trigger fires.
