@@ -78,11 +78,11 @@ extension NSAlert {
 
     /// Present as a sheet on ``sheetHost(over:)`` and wait for the answer.
     ///
-    /// `onPresented` runs once the sheet is up, for the one thing a sheet cannot do for itself:
+    /// `onPresented` runs once the sheet is up, for what cannot be arranged before it is:
     /// `selectText(nil)` on an accessory field, so a prefilled name is selected and typing replaces
-    /// it. (`initialFirstResponder` gets the *focus* there; only this selects the text.) On the
-    /// windowless fallback it runs just before the modal loop, which is the closest equivalent
-    /// available — nothing can run *during* `runModal`.
+    /// it (`initialFirstResponder` gets the *focus* there; only this selects the text), and
+    /// ``focusFirstButton()``. On the windowless fallback it runs just before the modal loop, which is
+    /// the closest equivalent available — nothing can run *during* `runModal`.
     func runSheet(
         over window: NSWindow?,
         onPresented: (() -> Void)? = nil
@@ -95,5 +95,19 @@ extension NSAlert {
             beginSheetModal(for: host) { continuation.resume(returning: $0) }
             onPresented?()
         }
+    }
+
+    /// Give the keyboard focus to the first button, where an alert that puts its safe choice first
+    /// keeps it. Call it once the alert is up, as `runSheet`'s `onPresented`.
+    ///
+    /// Space presses the focused button, and an alert opens focused on its **last** one
+    /// (docs/NOTES.md ▸ AppKit). Setting `initialFirstResponder` beforehand moves the focus for most
+    /// alerts, but not for a critical one with a long text: presenting it sets `initialFirstResponder`
+    /// to the last button, over whatever was there. Measured 2026-09-30 on the changed host key alert,
+    /// where the line set beforehand still left the focus on Trust New Key & Connect.
+    func focusFirstButton() {
+        guard let first = buttons.first else { return }
+        window.initialFirstResponder = first
+        window.makeFirstResponder(first)
     }
 }

@@ -1396,7 +1396,22 @@ at build time.
   same Mac reported the panel itself as first responder, so a harness doesn't settle this; the
   running app does. `alert.window.initialFirstResponder = alert.buttons.first` moved the focus to
   Not Now, measured the same way. An alert whose last button isn't the safe one needs the same
-  line.
+  line, unless it is critical with a long text (below).
+  - **It is every alert, and on a critical alert with a long text that line does nothing.** Measured
+    2026-09-30 in the running Debug app, same way, on every alert that puts its safe button first:
+    the SSH changed host key, both FTPS trust alerts and Full Disk Access "already granted" opened on
+    their last, action button; the two lone-OK alerts on OK; the Full Disk Access prompt (Not Now
+    last) on Not Now. A real connect to a throwaway `sshd` with a wrong pin raised the host key alert,
+    and one Space trusted the key and connected. The line fixed Full Disk Access, not the three trust
+    alerts: presenting a **critical** alert with a **long** text sets `initialFirstResponder` to the
+    last button over whatever was there. Bisected in the app: critical with a short text, and warning
+    with either, kept it, and calling `layout()` first didn't help. `NSAlert.focusFirstButton()` as
+    `runSheet`'s `onPresented` works, and Space on the same live connect then answered Cancel.
+    The test host reproduces the overwrite though not the focus, so `SafeButtonFocusTests` reads
+    `initialFirstResponder` after presenting: read before, it passed against the bug. Presenting
+    costs the test host's main actor ~0.29 s to begin and ~0.27 s to end, every time and with any
+    animation setting. Four at once failed a main-actor timing suite in 3 of 3 full runs (0 of 2 with
+    them skipped); three, serialized, passed 3 of 3.
 - **`applicationShouldTerminateAfterLastWindowClosed` is asked from a run-loop *timer*, not at the
   moment a window closes — so a bare `true` lets the app quit itself during its own launch.** AppKit
   defers the check (`_scheduleCheckForTerminateAfterLastWindowClosed`) and asks whenever the main run

@@ -265,7 +265,9 @@ extension PanelViewController {
                 guard !request.hasWeighedHostKey else {
                     return .failed(Self.knownHostsRepairFailed(file: change.knownHostsFile))
                 }
-                guard await confirmHostKeyChange(location: location, change: change) else {
+                guard await Self.confirmHostKeyChange(
+                    location: location, change: change, over: view.window
+                ) else {
                     return .failed(Self.connectFailureDetail(error))
                 }
                 guard await repairKnownHosts(location: location, change: change) else {
@@ -334,9 +336,15 @@ extension PanelViewController {
     /// browser window when it came from the sidebar. It used to be `runModal()`, which lands in the
     /// center of the *display* rather than the app — the sheet host is what makes attaching it
     /// possible without queueing it invisibly behind the Connect sheet (see `AlertSheet`).
-    private func confirmHostKeyChange(
+    ///
+    /// Cancel also starts with the keyboard focus, because Space presses the focused button, and that
+    /// has to be arranged once the alert is up (``NSAlert/focusFirstButton()`` says why). Static and
+    /// internal so a test can present it over a bare window: a live pane in a window upsets
+    /// `PanelPassiveRefreshTests` (docs/NOTES.md).
+    static func confirmHostKeyChange(
         location: SFTPLocation,
-        change: SFTPHostKeyChange
+        change: SFTPHostKeyChange,
+        over window: NSWindow?
     ) async -> Bool {
         let alert = NSAlert()
         alert.alertStyle = .critical
@@ -358,7 +366,8 @@ extension PanelViewController {
             comment: "Host-key-change alert: accept the new key and reconnect."
         ))
         alert.enableEscapeToCancel(safe: .alertFirstButtonReturn)
-        return await alert.runSheet(over: view.window) == .alertSecondButtonReturn
+        return await alert.runSheet(over: window) { alert.focusFirstButton() }
+            == .alertSecondButtonReturn
     }
 
     private static func hostKeyChangeDetail(_ change: SFTPHostKeyChange) -> String {
