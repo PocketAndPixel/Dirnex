@@ -1,4 +1,4 @@
-// The View, Navigation, Workspace, Window, and Application categories live in this companion file so
+// The View, Navigation, Workspace and Window categories live in this companion file so
 // `CommandCatalog.swift` stays under SwiftLint's `type_body_length` *and* `file_length` limits — the
 // M8 Focus Sidebar command was the entry that pushed the single file over 500 lines. `all`, in the
 // main file, still composes these in with `file`/`edit`/`selection`; the arrays widen from `private`
@@ -437,43 +437,6 @@ extension CommandCatalog {
             category: .window,
             keywords: ["tab"],
             shortcut: CommandShortcut(key: "]", modifiers: [.command, .shift])
-        )
-    ]
-
-    // MARK: - Application
-
-    static let application: [Command] = [
-        Command(
-            id: "app.settings",
-            title: "Settings…",
-            category: .application,
-            keywords: ["preferences", "options", "shortcuts", "config"],
-            shortcut: CommandShortcut(key: ",", modifiers: .command)
-        ),
-        Command(
-            id: "app.fullDiskAccess",
-            title: "Full Disk Access…",
-            category: .application,
-            keywords: ["permission", "privacy", "security", "access", "disk", "grant", "onboarding"]
-        ),
-        Command(
-            id: "app.showTour",
-            title: "Welcome to Dirnex…",
-            category: .application,
-            keywords: ["tour", "welcome", "guide", "intro", "onboarding", "help", "getting started"]
-        ),
-        Command(
-            id: "app.checkForUpdates",
-            title: "Check for Updates…",
-            category: .application,
-            keywords: ["update", "upgrade", "sparkle", "version", "release", "new"]
-        ),
-        Command(
-            id: "app.quit",
-            title: "Quit Dirnex",
-            category: .application,
-            keywords: ["exit"],
-            shortcut: CommandShortcut(key: "q", modifiers: .command)
         )
     ]
 }

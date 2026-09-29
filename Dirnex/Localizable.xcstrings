@@ -11915,6 +11915,184 @@
         }
       }
     },
+    "Activate": {
+      "comment": "Button that activates a license key.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktivieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activate"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activer"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attiva"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有効にする"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "활성화"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activeer"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktywuj"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Активировать"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Активувати"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ativar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "激活"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "啟用"
+          }
+        }
+      }
+    },
+    "Activate the license for “%@”?": {
+      "comment": "Confirmation after a license link was opened; %@ is the name the license is for.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lizenz für „%@“ aktivieren?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activate the license for “%@”?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Activar la licencia de «%@»?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activer la licence de «%@» ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attivare la licenza per “%@”?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”のライセンスを有効にしますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”의 라이선스를 활성화할까요?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licentie voor “%@” activeren?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktywować licencję dla „%@”?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Активировать лицензию на имя «%@»?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Активувати ліцензію на ім’я «%@»?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ativar a licença de “%@”?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要激活“%@”的许可证吗？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要啟用「%@」的授權嗎？"
+          }
+        }
+      }
+    },
     "Add": {
       "comment": "Button that creates the new tag.",
       "localizations": {
@@ -17072,6 +17250,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "儲存桶："
+          }
+        }
+      }
+    },
+    "Buy a License…": {
+      "comment": "Settings ▸ License button that opens the store.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lizenz kaufen …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buy a License…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprar una licencia…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acheter une licence…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acquista una licenza…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンスを購入…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 구입…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koop een licentie…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kup licencję…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Купить лицензию…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Купити ліцензію…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprar uma licença…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "购买许可证…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "購買授權…"
           }
         }
       }
@@ -35936,6 +36203,95 @@
         }
       }
     },
+    "Covers every version released until %@.": {
+      "comment": "Settings ▸ License; %@ is the last release date the license covers.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deckt alle Versionen ab, die bis zum %@ erschienen sind."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Covers every version released until %@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cubre todas las versiones publicadas hasta el %@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couvre toutes les versions publiées jusqu’au %@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copre tutte le versioni pubblicate fino al %@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@までにリリースされたすべてのバージョンが対象です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@까지 출시된 모든 버전에 적용됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geldt voor elke versie die tot en met %@ is uitgebracht."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obejmuje każdą wersję wydaną nie później niż %@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Распространяется на все версии, выпущенные не позже %@."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поширюється на всі версії, випущені не пізніше %@."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cobre todas as versões lançadas até %@."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "涵盖截至 %@ 发布的所有版本。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "涵蓋截至 %@ 發佈的所有版本。"
+          }
+        }
+      }
+    },
     "Create": {
       "comment": "Confirm button of the New Folder dialog.",
       "localizations": {
@@ -40564,6 +40920,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dirnex 正在從伺服器取得此檔案，然後再開啟它。"
+          }
+        }
+      }
+    },
+    "Dirnex is free to use. A license removes the reminder and keeps Dirnex going.": {
+      "comment": "Settings ▸ License, when no license is entered.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex ist kostenlos nutzbar. Eine Lizenz entfernt die Erinnerung und hilft, Dirnex weiterzuentwickeln."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex is free to use. A license removes the reminder and keeps Dirnex going."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex se puede usar gratis. Una licencia quita el recordatorio y ayuda a que Dirnex siga adelante."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex est gratuit. Une licence supprime le rappel et permet à Dirnex de continuer."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex è gratuito. Una licenza rimuove il promemoria e aiuta Dirnex ad andare avanti."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnexは無料で使えます。ライセンスがあればリマインダーが表示されなくなり、Dirnexの開発を支えられます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex는 무료로 사용할 수 있습니다. 라이선스가 있으면 알림이 사라지고 Dirnex 개발을 이어 가는 데 도움이 됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex is gratis te gebruiken. Een licentie verwijdert de herinnering en helpt Dirnex verder."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Z Dirnex można korzystać bezpłatnie. Licencja usuwa przypomnienie i pomaga rozwijać Dirnex."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex можно использовать бесплатно. Лицензия убирает напоминание и помогает развитию Dirnex."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex можна використовувати безкоштовно. Ліцензія прибирає нагадування й допомагає розвитку Dirnex."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex é gratuito. Uma licença remove o lembrete e ajuda o Dirnex a seguir em frente."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 可以免费使用。许可证可以移除提醒，并支持 Dirnex 继续发展。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 可以免費使用。授權可以移除提醒，並支持 Dirnex 繼續發展。"
           }
         }
       }
@@ -52485,6 +52930,184 @@
         }
       }
     },
+    "It covers every version of Dirnex released until %@, and replaces the license for “%@” on this Mac. Activate it only if the link came from your own license email.": {
+      "comment": "License link confirmation, replacing a key; %1$@ is a date, %2$@ the current license's name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sie deckt alle Versionen von Dirnex ab, die bis zum %1$@ erschienen sind, und ersetzt die Lizenz für „%2$@“ auf diesem Mac. Aktivieren Sie sie nur, wenn der Link aus Ihrer eigenen Lizenz-E-Mail stammt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It covers every version of Dirnex released until %@, and replaces the license for “%@” on this Mac. Activate it only if the link came from your own license email."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cubre todas las versiones de Dirnex publicadas hasta el %1$@ y sustituye la licencia de «%2$@» en este Mac. Actívala solo si el enlace viene de tu propio correo de licencia."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elle couvre toutes les versions de Dirnex publiées jusqu’au %1$@ et remplace la licence de «%2$@» sur ce Mac. Ne l’activez que si le lien provient de votre propre e-mail de licence."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copre tutte le versioni di Dirnex pubblicate fino al %1$@ e sostituisce la licenza per “%2$@” su questo Mac. Attivala solo se il link proviene dalla tua email di licenza."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@までにリリースされたすべてのバージョンのDirnexが対象で、このMacの“%2$@”のライセンスを置き換えます。リンクがご自身のライセンスメールからのものである場合にのみ有効にしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@까지 출시된 모든 Dirnex 버전에 적용되며, 이 Mac의 “%2$@” 라이선스를 대체합니다. 링크가 본인의 라이선스 이메일에서 온 경우에만 활성화하세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze licentie geldt voor elke versie van Dirnex die tot en met %1$@ is uitgebracht, en vervangt de licentie voor “%2$@” op deze Mac. Activeer de licentie alleen als de link uit je eigen licentie-e-mail komt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obejmuje każdą wersję Dirnex wydaną nie później niż %1$@ i zastępuje licencję dla „%2$@” na tym Macu. Aktywuj ją tylko wtedy, gdy link pochodzi z Twojego e-maila z licencją."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Она распространяется на все версии Dirnex, выпущенные не позже %1$@, и заменяет лицензию на имя «%2$@» на этом Mac. Активируйте её, только если ссылка пришла из вашего собственного письма с лицензией."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вона поширюється на всі версії Dirnex, випущені не пізніше %1$@, і замінює ліцензію на ім’я «%2$@» на цьому Mac. Активуйте її, лише якщо посилання надійшло з вашого власного листа з ліцензією."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ela cobre todas as versões do Dirnex lançadas até %1$@ e substitui a licença de “%2$@” neste Mac. Ative-a somente se o link veio do seu próprio e-mail de licença."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它涵盖截至 %1$@ 发布的所有 Dirnex 版本，并将替换此 Mac 上“%2$@”的许可证。仅当链接来自你自己的许可证邮件时，才激活它。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它涵蓋截至 %1$@ 發佈的所有 Dirnex 版本，並將取代此 Mac 上「%2$@」的授權。只有在連結來自你自己的授權郵件時，才啟用它。"
+          }
+        }
+      }
+    },
+    "It covers every version of Dirnex released until %@. Activate it only if the link came from your own license email.": {
+      "comment": "License link confirmation; %@ is the last release date the license covers.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sie deckt alle Versionen von Dirnex ab, die bis zum %@ erschienen sind. Aktivieren Sie sie nur, wenn der Link aus Ihrer eigenen Lizenz-E-Mail stammt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It covers every version of Dirnex released until %@. Activate it only if the link came from your own license email."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cubre todas las versiones de Dirnex publicadas hasta el %@. Actívala solo si el enlace viene de tu propio correo de licencia."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elle couvre toutes les versions de Dirnex publiées jusqu’au %@. Ne l’activez que si le lien provient de votre propre e-mail de licence."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copre tutte le versioni di Dirnex pubblicate fino al %@. Attivala solo se il link proviene dalla tua email di licenza."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@までにリリースされたすべてのバージョンのDirnexが対象です。リンクがご自身のライセンスメールからのものである場合にのみ有効にしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@까지 출시된 모든 Dirnex 버전에 적용됩니다. 링크가 본인의 라이선스 이메일에서 온 경우에만 활성화하세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze licentie geldt voor elke versie van Dirnex die tot en met %@ is uitgebracht. Activeer de licentie alleen als de link uit je eigen licentie-e-mail komt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obejmuje każdą wersję Dirnex wydaną nie później niż %@. Aktywuj ją tylko wtedy, gdy link pochodzi z Twojego e-maila z licencją."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Она распространяется на все версии Dirnex, выпущенные не позже %@. Активируйте её, только если ссылка пришла из вашего собственного письма с лицензией."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вона поширюється на всі версії Dirnex, випущені не пізніше %@. Активуйте її, лише якщо посилання надійшло з вашого власного листа з ліцензією."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ela cobre todas as versões do Dirnex lançadas até %@. Ative-a somente se o link veio do seu próprio e-mail de licença."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它涵盖截至 %@ 发布的所有 Dirnex 版本。仅当链接来自你自己的许可证邮件时，才激活它。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它涵蓋截至 %@ 發佈的所有 Dirnex 版本。只有在連結來自你自己的授權郵件時，才啟用它。"
+          }
+        }
+      }
+    },
     "It hasn’t finished uploading, or it’s set to stay on this Mac.": {
       "comment": "Why a cloud provider refused Remove Download: not uploaded yet, or pinned to this Mac.",
       "localizations": {
@@ -54722,6 +55345,362 @@
           "stringUnit": {
             "state": "translated",
             "value": "左 → 右"
+          }
+        }
+      }
+    },
+    "License": {
+      "comment": "Settings tab holding the license key.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lizenz"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "License"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licencia"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licence"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licenza"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンス"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licentie"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licencja"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лицензия"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ліцензія"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licença"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "许可证"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "授權"
+          }
+        }
+      }
+    },
+    "License ID": {
+      "comment": "Settings ▸ License: the license's random id, for support.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lizenz-ID"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "License ID"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID de licencia"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Identifiant de licence"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID licenza"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンスID"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 ID"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licentie-ID"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID licencji"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID лицензии"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID ліцензії"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID da licença"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "许可证 ID"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "授權 ID"
+          }
+        }
+      }
+    },
+    "License Key": {
+      "comment": "Settings ▸ License: heading over the key field.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lizenzschlüssel"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "License Key"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clave de licencia"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clé de licence"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiave di licenza"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンスキー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 키"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licentiesleutel"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klucz licencyjny"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лицензионный ключ"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ліцензійний ключ"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chave de licença"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "许可证密钥"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "授權金鑰"
+          }
+        }
+      }
+    },
+    "Licensed to %@": {
+      "comment": "Settings ▸ License heading; %@ is the name the license is for.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lizenziert für %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licensed to %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con licencia para %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licence au nom de %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con licenza a nome di %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンス所有者：%@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 사용자: %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gelicentieerd aan %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licencja dla: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лицензия на имя: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ліцензія на ім’я: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licenciado para %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "授权给：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "授權給：%@"
           }
         }
       }
@@ -61326,6 +62305,95 @@
         }
       }
     },
+    "Not licensed": {
+      "comment": "Settings ▸ License: heading when no license is entered.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht lizenziert"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not licensed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin licencia"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sans licence"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Senza licenza"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンス未登録"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 없음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen licentie"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak licencji"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет лицензии"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Немає ліцензії"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sem licença"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有许可证"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沒有授權"
+          }
+        }
+      }
+    },
     "Nothing Here Yet": {
       "comment": "Places menu: shown in place of a section that has no entries.",
       "localizations": {
@@ -66681,6 +67749,184 @@
         }
       }
     },
+    "Paste a license key first.": {
+      "comment": "License key refused: the field was empty.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fügen Sie zuerst einen Lizenzschlüssel ein."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste a license key first."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pega primero una clave de licencia."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collez d’abord une clé de licence."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incolla prima una chiave di licenza."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まずライセンスキーをペーストしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "먼저 라이선스 키를 붙여 넣으세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plak eerst een licentiesleutel."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Najpierw wklej klucz licencyjny."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сначала вставьте лицензионный ключ."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Спочатку вставте ліцензійний ключ."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cole primeiro uma chave de licença."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先粘贴许可证密钥。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "請先貼上授權金鑰。"
+          }
+        }
+      }
+    },
+    "Paste your license key": {
+      "comment": "Placeholder of the license key field.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lizenzschlüssel hier einfügen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste your license key"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pega tu clave de licencia"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collez votre clé de licence"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incolla la chiave di licenza"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンスキーをペースト"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 키 붙여 넣기"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plak je licentiesleutel"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wklej klucz licencyjny"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вставьте лицензионный ключ"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вставте ліцензійний ключ"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cole sua chave de licença"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "粘贴你的许可证密钥"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "貼上你的授權金鑰"
+          }
+        }
+      }
+    },
     "Path": {
       "comment": "Quick View tree strip: the name beside the selected value's path, such as $.name, /Project/ItemGroup or :CFBundleName",
       "extractionState": "manual",
@@ -71617,6 +72863,95 @@
         }
       }
     },
+    "Remove License": {
+      "comment": "Settings ▸ License button that forgets the key on this Mac.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lizenz entfernen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove License"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar licencia"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer la licence"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimuovi licenza"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンスを削除"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 제거"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verwijder licentie"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń licencję"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить лицензию"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вилучити ліцензію"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover licença"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除许可证"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除授權"
+          }
+        }
+      }
+    },
     "Remove from Sidebar": {
       "comment": "Sidebar favorite context-menu item: unpin the folder.",
       "localizations": {
@@ -73703,6 +75038,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "重新命名…"
+          }
+        }
+      }
+    },
+    "Renew…": {
+      "comment": "Settings ▸ License button that opens the store to renew this license.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verlängern …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renew…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renovar…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renouveler…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rinnova…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "갱신…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verleng…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odnów…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Продлить…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Продовжити…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renovar…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "续期…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "續訂…"
           }
         }
       }
@@ -86393,6 +87817,95 @@
         }
       }
     },
+    "That isn’t a Dirnex license key. A key starts with “dnx1.”": {
+      "comment": "License key refused: not a Dirnex key. dnx1. is the literal start of every key.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das ist kein Dirnex-Lizenzschlüssel. Ein Schlüssel beginnt mit „dnx1.“"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That isn’t a Dirnex license key. A key starts with “dnx1.”"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esto no es una clave de licencia de Dirnex. Una clave empieza por «dnx1.»"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce n’est pas une clé de licence Dirnex. Une clé commence par «dnx1.»"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non è una chiave di licenza di Dirnex. Una chiave inizia con “dnx1.”"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnexのライセンスキーではありません。キーは“dnx1.”で始まります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 라이선스 키가 아닙니다. 키는 “dnx1.”로 시작합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dat is geen Dirnex-licentiesleutel. Een sleutel begint met “dnx1.”"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To nie jest klucz licencyjny Dirnex. Klucz zaczyna się od „dnx1.”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это не лицензионный ключ Dirnex. Ключ начинается с «dnx1.»"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Це не ліцензійний ключ Dirnex. Ключ починається з «dnx1.»"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Isso não é uma chave de licença do Dirnex. Uma chave começa com “dnx1.”"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这不是 Dirnex 许可证密钥。密钥以“dnx1.”开头。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這不是 Dirnex 授權金鑰。金鑰以「dnx1.」開頭。"
+          }
+        }
+      }
+    },
     "That item isn’t a folder.": {
       "comment": "Error sentence: not a directory.",
       "localizations": {
@@ -86923,6 +88436,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "數量太多，無法還原；⌘Z 將改為還原你在此之前的操作。"
+          }
+        }
+      }
+    },
+    "That’s far longer than a license key. Paste just the key from the email.": {
+      "comment": "License key refused: the pasted text is much longer than any key.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das ist viel länger als ein Lizenzschlüssel. Fügen Sie nur den Schlüssel aus der E-Mail ein."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That’s far longer than a license key. Paste just the key from the email."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esto es mucho más largo que una clave de licencia. Pega solo la clave del correo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C’est bien plus long qu’une clé de licence. Collez uniquement la clé de l’e-mail."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "È molto più lungo di una chiave di licenza. Incolla solo la chiave presente nell’email."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンスキーにしては長すぎます。メールに記載されたキーだけをペーストしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 키보다 훨씬 깁니다. 이메일에 있는 키만 붙여 넣으세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dat is veel langer dan een licentiesleutel. Plak alleen de sleutel uit de e-mail."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To jest znacznie dłuższe niż klucz licencyjny. Wklej tylko klucz z e-maila."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это намного длиннее лицензионного ключа. Вставьте только ключ из письма."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Це набагато довше за ліцензійний ключ. Вставте лише ключ із листа."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Isso é muito mais longo que uma chave de licença. Cole só a chave do e-mail."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这比许可证密钥长得多。请只粘贴邮件中的密钥。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這比授權金鑰長得多。請只貼上郵件中的金鑰。"
           }
         }
       }
@@ -89683,6 +91285,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "該項目不再存在。"
+          }
+        }
+      }
+    },
+    "The key is in the email you got after buying. One license covers all your Macs, and Dirnex checks it right here, without contacting any server.": {
+      "comment": "Settings ▸ License, under the key field.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Den Schlüssel finden Sie in der E-Mail, die Sie nach dem Kauf erhalten haben. Eine Lizenz gilt für alle Ihre Macs, und Dirnex prüft sie direkt hier, ohne einen Server zu kontaktieren."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The key is in the email you got after buying. One license covers all your Macs, and Dirnex checks it right here, without contacting any server."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La clave está en el correo que recibiste tras la compra. Una licencia cubre todos tus Mac, y Dirnex la comprueba aquí mismo, sin conectarse a ningún servidor."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La clé se trouve dans l’e-mail reçu après l’achat. Une licence couvre tous vos Mac, et Dirnex la vérifie ici même, sans contacter aucun serveur."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La chiave si trova nell’email ricevuta dopo l’acquisto. Una licenza copre tutti i tuoi Mac e Dirnex la verifica direttamente qui, senza contattare alcun server."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キーは購入後に届いたメールに記載されています。1つのライセンスでお持ちのすべてのMacに使え、Dirnexはサーバに接続せずにこのMac上で確認します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키는 구입 후 받은 이메일에 있습니다. 라이선스 하나로 모든 Mac에서 사용할 수 있으며, Dirnex는 서버에 연결하지 않고 이 Mac에서 바로 확인합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De sleutel staat in de e-mail die je na de aankoop kreeg. Eén licentie geldt voor al je Macs, en Dirnex controleert hem hier ter plekke, zonder contact met een server."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klucz znajduje się w e-mailu otrzymanym po zakupie. Jedna licencja obejmuje wszystkie Twoje Maki, a Dirnex sprawdza ją tutaj, bez łączenia się z żadnym serwerem."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключ — в письме, которое пришло после покупки. Одна лицензия действует на всех ваших Mac, а Dirnex проверяет её прямо здесь, не обращаясь ни к какому серверу."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключ — у листі, який надійшов після покупки. Одна ліцензія діє на всіх ваших Mac, а Dirnex перевіряє її просто тут, не звертаючись до жодного сервера."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A chave está no e-mail que você recebeu após a compra. Uma licença cobre todos os seus Macs, e o Dirnex a verifica aqui mesmo, sem contatar nenhum servidor."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密钥在购买后收到的邮件中。一个许可证适用于你的所有 Mac，Dirnex 会直接在本机验证，不会连接任何服务器。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "金鑰在購買後收到的郵件中。一個授權適用於你所有的 Mac，Dirnex 會直接在本機驗證，不會連線任何伺服器。"
           }
         }
       }
@@ -95383,6 +97074,451 @@
         }
       }
     },
+    "This license key can’t be read. Please reply to the email it came in.": {
+      "comment": "License key refused: signed, but its contents are unreadable (a store bug).",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Lizenzschlüssel kann nicht gelesen werden. Bitte antworten Sie auf die E-Mail, mit der er kam."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This license key can’t be read. Please reply to the email it came in."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede leer esta clave de licencia. Responde al correo en el que llegó."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de lire cette clé de licence. Veuillez répondre à l’e-mail qui la contenait."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile leggere questa chiave di licenza. Rispondi all’email con cui è arrivata."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このライセンスキーを読み取れません。キーが届いたメールに返信してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 라이선스 키를 읽을 수 없습니다. 키가 담긴 이메일에 회신해 주세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze licentiesleutel kan niet worden gelezen. Beantwoord de e-mail waarin hij zat."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można odczytać tego klucza licencyjnego. Odpowiedz na e-mail, w którym przyszedł."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удаётся прочитать лицензионный ключ. Ответьте, пожалуйста, на письмо, в котором он пришёл."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдається прочитати ліцензійний ключ. Дайте, будь ласка, відповідь на лист, у якому він прийшов."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não é possível ler esta chave de licença. Responda ao e-mail em que ela veio."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取此许可证密钥。请回复发送该密钥的邮件。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法讀取此授權金鑰。請回覆寄送該金鑰的郵件。"
+          }
+        }
+      }
+    },
+    "This license key is incomplete. Copy it again from the email, all of it.": {
+      "comment": "License key refused: damaged or cut short while copying.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Lizenzschlüssel ist unvollständig. Kopieren Sie ihn erneut aus der E-Mail, und zwar vollständig."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This license key is incomplete. Copy it again from the email, all of it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta clave de licencia está incompleta. Vuelve a copiarla del correo, entera."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette clé de licence est incomplète. Copiez-la à nouveau depuis l’e-mail, en entier."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa chiave di licenza è incompleta. Copiala di nuovo dall’email, per intero."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このライセンスキーは不完全です。メールからもう一度、全体をコピーしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 라이선스 키가 불완전합니다. 이메일에서 키 전체를 다시 복사하세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze licentiesleutel is onvolledig. Kopieer hem opnieuw uit de e-mail, helemaal."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten klucz licencyjny jest niepełny. Skopiuj go ponownie z e-maila, w całości."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лицензионный ключ неполный. Скопируйте его из письма ещё раз, целиком."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ліцензійний ключ неповний. Скопіюйте його з листа ще раз, повністю."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta chave de licença está incompleta. Copie-a de novo do e-mail, inteira."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此许可证密钥不完整。请从邮件中重新完整复制。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此授權金鑰不完整。請從郵件中重新完整拷貝。"
+          }
+        }
+      }
+    },
+    "This license key isn’t valid. Copy it again from the email, and if it still fails, reply to that email.": {
+      "comment": "License key refused: the signature does not match (changed, or not a real key).",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Lizenzschlüssel ist ungültig. Kopieren Sie ihn erneut aus der E-Mail. Falls es weiterhin nicht klappt, antworten Sie auf diese E-Mail."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This license key isn’t valid. Copy it again from the email, and if it still fails, reply to that email."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta clave de licencia no es válida. Vuelve a copiarla del correo y, si sigue sin funcionar, responde a ese correo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette clé de licence n’est pas valide. Copiez-la à nouveau depuis l’e-mail et, si cela échoue encore, répondez à cet e-mail."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa chiave di licenza non è valida. Copiala di nuovo dall’email e, se continua a non funzionare, rispondi a quell’email."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このライセンスキーは有効ではありません。メールからもう一度コピーしてください。それでもうまくいかない場合は、そのメールに返信してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 라이선스 키는 유효하지 않습니다. 이메일에서 다시 복사하고, 그래도 안 되면 그 이메일에 회신하세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze licentiesleutel is niet geldig. Kopieer hem opnieuw uit de e-mail, en als het dan nog niet lukt, beantwoord die e-mail."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten klucz licencyjny jest nieprawidłowy. Skopiuj go ponownie z e-maila, a jeśli nadal nie działa, odpowiedz na tę wiadomość."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лицензионный ключ недействителен. Скопируйте его из письма ещё раз, а если не получится, ответьте на это письмо."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ліцензійний ключ недійсний. Скопіюйте його з листа ще раз, а якщо не вийде, дайте відповідь на цей лист."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta chave de licença não é válida. Copie-a de novo do e-mail e, se ainda não funcionar, responda a esse e-mail."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此许可证密钥无效。请从邮件中重新复制；如果仍然无效，请回复那封邮件。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此授權金鑰無效。請從郵件中重新拷貝；如果仍然無效，請回覆那封郵件。"
+          }
+        }
+      }
+    },
+    "This license key needs a newer version of Dirnex. Check for updates, then try again.": {
+      "comment": "License key refused: it is in a newer format than this version understands.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für diesen Lizenzschlüssel ist eine neuere Version von Dirnex nötig. Suchen Sie nach Updates und versuchen Sie es dann erneut."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This license key needs a newer version of Dirnex. Check for updates, then try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta clave de licencia necesita una versión más reciente de Dirnex. Busca actualizaciones y vuelve a intentarlo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette clé de licence nécessite une version plus récente de Dirnex. Recherchez les mises à jour, puis réessayez."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa chiave di licenza richiede una versione più recente di Dirnex. Controlla gli aggiornamenti, poi riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このライセンスキーには新しいバージョンのDirnexが必要です。アップデートを確認してから、もう一度お試しください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 라이선스 키에는 더 최신 버전의 Dirnex가 필요합니다. 업데이트를 확인한 다음 다시 시도하세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voor deze licentiesleutel is een nieuwere versie van Dirnex nodig. Zoek naar updates en probeer het daarna opnieuw."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten klucz licencyjny wymaga nowszej wersji Dirnex. Sprawdź uaktualnienia, a potem spróbuj ponownie."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для этого лицензионного ключа нужна более новая версия Dirnex. Проверьте наличие обновлений и попробуйте снова."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для цього ліцензійного ключа потрібна новіша версія Dirnex. Перевірте оновлення й спробуйте ще раз."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta chave de licença precisa de uma versão mais nova do Dirnex. Busque atualizações e tente de novo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此许可证密钥需要更新版本的 Dirnex。请检查更新，然后重试。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此授權金鑰需要較新版本的 Dirnex。請檢查更新，然後再試一次。"
+          }
+        }
+      }
+    },
+    "This link doesn’t hold a valid license key": {
+      "comment": "Alert title when a license link's key was refused.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Link enthält keinen gültigen Lizenzschlüssel"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This link doesn’t hold a valid license key"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este enlace no contiene una clave de licencia válida"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce lien ne contient pas de clé de licence valide"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo link non contiene una chiave di licenza valida"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このリンクには有効なライセンスキーが含まれていません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 링크에는 유효한 라이선스 키가 없습니다"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze link bevat geen geldige licentiesleutel"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten link nie zawiera prawidłowego klucza licencyjnego"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эта ссылка не содержит действительного лицензионного ключа"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Це посилання не містить дійсного ліцензійного ключа"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este link não contém uma chave de licença válida"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此链接不包含有效的许可证密钥"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此連結不包含有效的授權金鑰"
+          }
+        }
+      }
+    },
     "This listing reports no owner or group for the item.": {
       "comment": "Info panel note when a listing carries a mode but no owner.",
       "localizations": {
@@ -97070,6 +99206,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "此伺服器要求使用加密連線。請選擇 FTPS（顯式或隱含），而不是一般 FTP。"
+          }
+        }
+      }
+    },
+    "This version came out later, so the license doesn’t cover it. Renew to cover this version and the ones after it.": {
+      "comment": "Settings ▸ License, when the license ended before this version was released.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Version ist später erschienen, daher deckt die Lizenz sie nicht ab. Verlängern Sie die Lizenz, um diese und die folgenden Versionen abzudecken."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This version came out later, so the license doesn’t cover it. Renew to cover this version and the ones after it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta versión salió después, así que la licencia no la cubre. Renueva para cubrir esta versión y las siguientes."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette version est sortie plus tard, la licence ne la couvre donc pas. Renouvelez-la pour couvrir cette version et les suivantes."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa versione è uscita dopo, quindi la licenza non la copre. Rinnova per coprire questa versione e le successive."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このバージョンはそれより後にリリースされたため、ライセンスの対象外です。このバージョン以降も対象にするには、ライセンスを更新してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 버전은 그 이후에 출시되어 라이선스가 적용되지 않습니다. 이 버전과 이후 버전에 적용하려면 갱신하세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze versie is later uitgekomen, dus de licentie geldt er niet voor. Verleng de licentie om deze en latere versies te dekken."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta wersja ukazała się później, więc licencja jej nie obejmuje. Odnów licencję, aby objąć tę wersję i kolejne."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эта версия вышла позже, поэтому лицензия на неё не распространяется. Продлите лицензию, чтобы она охватывала эту версию и последующие."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ця версія вийшла пізніше, тому ліцензія на неї не поширюється. Продовжте ліцензію, щоб вона охоплювала цю версію й наступні."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta versão saiu depois, então a licença não a cobre. Renove para cobrir esta versão e as seguintes."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此版本发布得更晚，因此不在许可证范围内。续期即可涵盖此版本及之后的版本。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此版本發佈得較晚，因此不在授權範圍內。續訂即可涵蓋此版本及之後的版本。"
           }
         }
       }
@@ -109565,6 +111790,186 @@
         }
       }
     },
+    "command.app.buyLicense.keywords": {
+      "comment": "Extra command-palette search terms, comma-separated. Added to the English terms, not replacing them, so the English words keep working. Synonyms a user might type — not a translation of the title.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kaufen, erwerben, bestellen, shop, store, preis, bezahlen, unterstützen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "buy, purchase, order, store, shop, price, pay, support, licence"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "comprar, compra, pedido, tienda, precio, pagar, apoyar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "acheter, achat, commander, boutique, prix, payer, soutenir"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "acquistare, comprare, ordine, negozio, prezzo, pagare, supportare"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "購入, 買う, 注文, ストア, 価格, 支払い, 支援"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "구입, 구매, 주문, 스토어, 가격, 결제, 후원"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kopen, aanschaffen, bestellen, winkel, prijs, betalen, steunen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kup, kupno, zakup, zamówienie, sklep, cena, zapłać, wsparcie"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "купить, покупка, заказ, магазин, цена, оплата, поддержать"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "купити, покупка, придбати, замовлення, магазин, ціна, оплата, підтримати"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "comprar, compra, pedido, loja, preço, pagar, apoiar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "购买, 买, 订购, 商店, 价格, 付款, 支持"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "購買, 買, 訂購, 商店, 價格, 付款, 支持"
+          }
+        }
+      }
+    },
+    "command.app.buyLicense.title": {
+      "comment": "Menu and command-palette title for the “app.buyLicense” command.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lizenz kaufen …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buy a License…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprar una licencia…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acheter une licence…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acquista una licenza…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンスを購入…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 구입…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koop een licentie…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kup licencję…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Купить лицензию…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Купити ліцензію…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprar uma Licença…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "购买许可证…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "購買授權…"
+          }
+        }
+      }
+    },
     "command.app.checkForUpdates.keywords": {
       "comment": "Extra command-palette search terms, comma-separated. Added to the English terms, not replacing them, so the English words keep working. Synonyms a user might type — not a translation of the title.",
       "extractionState": "manual",
@@ -109921,6 +112326,186 @@
           "stringUnit": {
             "state": "translated",
             "value": "完全取用磁碟…"
+          }
+        }
+      }
+    },
+    "command.app.license.keywords": {
+      "comment": "Extra command-palette search terms, comma-separated. Added to the English terms, not replacing them, so the English words keep working. Synonyms a user might type — not a translation of the title.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "lizenz, schlüssel, lizenzschlüssel, aktivieren, registrieren, registrierung, seriennummer, freischalten, verlängern"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "license, licence, key, activate, register, registration, serial, unlock, renew"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "licencia, clave, activar, registrar, registro, número de serie, desbloquear, renovar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "licence, clé, activer, enregistrer, enregistrement, numéro de série, débloquer, renouveler"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "licenza, chiave, attivare, registrare, registrazione, numero di serie, sbloccare, rinnovare"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンス, キー, ライセンスキー, アクティベート, 有効化, 登録, シリアル, 更新"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스, 키, 라이선스 키, 활성화, 등록, 시리얼, 잠금 해제, 갱신"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "licentie, sleutel, licentiesleutel, activeren, registreren, registratie, serienummer, ontgrendelen, verlengen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "licencja, klucz, klucz licencyjny, aktywuj, aktywacja, rejestracja, numer seryjny, odblokuj, odnów"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "лицензия, ключ, лицензионный ключ, активировать, активация, регистрация, серийный номер, разблокировать, продлить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ліцензія, ключ, ліцензійний ключ, активувати, активація, реєстрація, серійний номер, розблокувати, продовжити"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "licença, chave, chave de licença, ativar, registrar, registro, número de série, desbloquear, renovar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "许可证, 许可, 密钥, 激活, 注册, 序列号, 解锁, 续期"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "授權, 金鑰, 授權金鑰, 啟用, 註冊, 序號, 解鎖, 續訂"
+          }
+        }
+      }
+    },
+    "command.app.license.title": {
+      "comment": "Menu and command-palette title for the “app.license” command.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lizenz …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "License…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licencia…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licence…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licenza…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンス…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licentie…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licencja…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лицензия…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ліцензія…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licença…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "许可证…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "授權…"
           }
         }
       }

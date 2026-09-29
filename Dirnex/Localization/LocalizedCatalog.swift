@@ -17,8 +17,10 @@ enum LocalizedCatalog {
     /// Every registry command with its title and keywords translated, in catalog order.
     ///
     /// Computed once: the display language cannot change without a relaunch (`LanguageSettings`),
-    /// so there is nothing to invalidate.
-    static let all: [Command] = CommandCatalog.all.map(localized)
+    /// so there is nothing to invalidate. The licensing commands are left out of a build that shows
+    /// nothing about licenses (`LicensingSwitch`), which takes them out of the menu bar, the palette
+    /// and Settings ▸ Shortcuts at once, since all three read commands from here.
+    static let all: [Command] = LicensingSwitch.available(CommandCatalog.all).map(localized)
 
     private static let byID: [String: Command] = Dictionary(
         uniqueKeysWithValues: all.map { ($0.id, $0) }

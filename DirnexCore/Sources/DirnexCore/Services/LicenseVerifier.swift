@@ -14,6 +14,32 @@ public struct LicenseVerifier: Sendable {
 
     public struct InvalidPublicKey: Error, Equatable {}
 
+    /// The public half of the key the store signs licenses with (generated 2026-09-29). The private
+    /// half exists only in Oleg's password manager and in the store's server.
+    public static let productionPublicKey = "dnx1-public-wOrqllZ8Y0mgB9frtk0vJRFgH032J6BiqE7wQ62Hw-0"
+
+    /// The throwaway test key the shared vectors are signed with. Its private half is public (the
+    /// signer derives it from a fixed phrase), so a key signed with it proves nothing: only a Debug
+    /// build accepts it, which is the app's decision, not this type's.
+    public static let testPublicKey = "dnx1-public-8BfevcdnSDxaqWjDbkP64cZjnpYplZd4v4rj9AIrG5U"
+
+    /// The verifier for real licenses.
+    public static var production: LicenseVerifier {
+        failingClosed(productionPublicKey)
+    }
+
+    /// The verifier for keys signed with the test key.
+    public static var test: LicenseVerifier {
+        failingClosed(testPublicKey)
+    }
+
+    /// A verifier for one of the constants above. If a constant were ever malformed, every key
+    /// would be refused rather than the app trapping at launch; `LicenseKeyTests` pins that both
+    /// parse, so the fallback is never what runs.
+    private static func failingClosed(_ publicKey: String) -> LicenseVerifier {
+        (try? LicenseVerifier(publicKey: publicKey)) ?? LicenseVerifier { _, _ in false }
+    }
+
     private let isValidSignature: @Sendable (_ signature: Data, _ message: Data) -> Bool
 
     public init(publicKey text: String) throws {

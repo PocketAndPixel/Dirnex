@@ -296,8 +296,12 @@ enum MainMenuBuilder {
             keyEquivalent: ""
         )
         appMenu.addItem(.separator())
-        if let checkForUpdates = commandItem(for: "app.checkForUpdates", bindings: bindings) {
-            appMenu.addItem(checkForUpdates)
+        // Check for Updates…, then License… and Buy a License… (PLAN.md §M29), which
+        // `commandItem` leaves out in a build that shows nothing about licenses.
+        let updateItems = ["app.checkForUpdates", "app.license", "app.buyLicense"]
+            .compactMap { commandItem(for: $0, bindings: bindings) }
+        if !updateItems.isEmpty {
+            updateItems.forEach(appMenu.addItem)
             appMenu.addItem(.separator())
         }
         if let settings = commandItem(for: "app.settings", bindings: bindings) {

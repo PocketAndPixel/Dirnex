@@ -3042,6 +3042,10 @@ at build time.
     refresh would overwrite the model and the persisted cursor would come back as a root-level entry.
     It survived, so both agree. Worth reaching for whenever the thing to verify is "what is
     selected" — `screencapture` needs a permission the shell tool does not have.
+- **In a grouped SwiftUI `Form`, a `.labelsHidden()` `TextField`'s title is not drawn as a
+  placeholder.** Settings ▸ License's key field (M29) sat empty with no hint: the title reached
+  VoiceOver as the field's name and nothing else. Pass the hint as `prompt: Text(…)`. Found only by
+  looking, since the accessibility tree reads the title and the tests read nothing on screen.
 
 ## Localization
 

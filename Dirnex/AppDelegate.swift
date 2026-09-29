@@ -16,6 +16,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// lack the feed configuration. Reached through the `app.checkForUpdates` command.
     private let appUpdater = AppUpdater()
 
+    /// Links that arrived before the browser window existed: a license link that launched Dirnex.
+    /// Handled once the window is up, so the confirmation has a window to sit on.
+    private var pendingURLs: [URL] = []
+
     /// The browser window an AppleScript verb acts on: the key window's controller when it is a
     /// browser, otherwise the one built at launch. The scripting command handlers
     /// (`ScriptingCommands.swift`) reach the active panel through here rather than the palette's
@@ -93,6 +97,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Said once, out loud, rather than left to degrade quietly. Mutually exclusive with the
         // tour above: a fresh install has no scripts to displace.
         DisplacedScriptKeysNotice.presentIfNeeded(over: controller.window)
+
+        let urls = pendingURLs
+        pendingURLs = []
+        application(NSApp, open: urls)
+    }
+
+    /// `dirnex://` links (PLAN.md §M29): the license email's **Open in Dirnex**. Anything else that
+    /// reaches here is ignored, as it was before Dirnex handled any link. Dirnex declares no document
+    /// types, so no file is ever opened this way.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        guard browserWindowController != nil else {
+            pendingURLs += urls
+            return
+        }
+        for url in urls {
+            LicenseLinkActivation.handle(url, over: activeBrowserWindowController?.window)
+        }
     }
 
     /// Closing the browser window quits Dirnex — but only once there *is* one.
@@ -177,6 +198,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// link. A no-op when the updater is disabled (tests, or a build without feed configuration).
     @objc func checkForUpdates(_ sender: Any?) {
         appUpdater.checkForUpdates()
+    }
+
+    // MARK: - License
+
+    /// App menu ▸ "License…" (and the palette command) — Settings ▸ License (PLAN.md §M29).
+    @objc func showLicense(_ sender: Any?) {
+        guard LicensingSwitch.isOn else { return }
+        SettingsWindowController.shared.present(tab: .license)
+    }
+
+    /// App menu ▸ "Buy a License…" (and the palette command) — the store, in the browser.
+    @objc func buyLicense(_ sender: Any?) {
+        guard LicensingSwitch.isOn else { return }
+        NSWorkspace.shared.open(LicenseLinks.buy)
     }
 
     /// Whether a newer build is waiting, for the titlebar indicator to mirror. Read once when a

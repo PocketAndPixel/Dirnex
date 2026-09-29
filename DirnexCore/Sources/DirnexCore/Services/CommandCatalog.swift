@@ -22,6 +22,12 @@ public enum CommandCatalog {
         all.first { $0.id == id }
     }
 
+    /// The commands about licenses (PLAN.md §M29). A build without the licensing switch hides them
+    /// everywhere a command can appear: the menu bar, the palette, Settings ▸ Shortcuts, AppleScript
+    /// and Shortcuts. They stay in ``all`` so their translations and bindings are checked like any
+    /// other command's.
+    public static let licensingCommandIDs: Set<String> = ["app.license", "app.buyLicense"]
+
     // MARK: - File
 
     private static let file: [Command] = [

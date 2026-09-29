@@ -10,11 +10,27 @@
       GitHub release — one stable URL that holds both the latest stable and beta items, so the
       channels feature (Beta + stable update channels) works from a single feed. The private half
       of the key lives only in the login keychain / the CI SPARKLE_PRIVATE_KEY secret.
+    - The dirnex:// URL scheme (PLAN.md §M29): the license email's "Open in Dirnex" link,
+      dirnex://license?key=…. Registered in every build; a build without the licensing switch
+      ignores it (LicensingSwitch).
   Everything else — bundle name, version, principal class — is still generated from the build
   settings.
 -->
 <plist version="1.0">
 <dict>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.dirnex.Dirnex.license</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>dirnex</string>
+            </array>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+        </dict>
+    </array>
     <key>NSAppleScriptEnabled</key>
     <true/>
     <key>OSAScriptingDefinition</key>
