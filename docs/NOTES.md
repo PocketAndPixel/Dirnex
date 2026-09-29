@@ -377,6 +377,14 @@ at build time.
 
 ## Testing
 
+- **`NSWindow.sendEvent` skips key equivalents, so a synthesized Escape or Return sent that way never
+  reaches a button.** `NSApplication.sendEvent` offers a key event to the key window's
+  `performKeyEquivalent` first and only then to `sendEvent`. A test that calls `window.sendEvent`
+  alone therefore proves "Escape does nothing" for *any* window, including one whose Cancel is bound
+  to Escape. The M29 reminder's own test passed that way until a negative control gave OK the Escape
+  key and the sheet still didn't close. Dispatch the way the app does (`performKeyEquivalent`, then
+  `sendEvent` if it declined), and keep the control: a key test with no case where the key *does*
+  something can't tell a working key from one that never arrived.
 - **`#expect(optionalNumeric == arithmeticExpression)` can report a false failure** even when
   both operands display as equal. Confirmed on Swift 6.3 / Xcode 26:
   `let v: Int64? = 1_048_576; #expect(v == 1024 * 1024)` FAILS, while `#expect(v == 1_048_576)`
@@ -3046,6 +3054,12 @@ at build time.
   placeholder.** Settings ▸ License's key field (M29) sat empty with no hint: the title reached
   VoiceOver as the field's name and nothing else. Pass the hint as `prompt: Text(…)`. Found only by
   looking, since the accessibility tree reads the title and the tests read nothing on screen.
+- **`NSTitlebarAccessoryViewController.isHidden` hides nothing on a `.leading` accessory.** The M29
+  license label set it and the property read back `true` (so the unit test passed), while the label
+  stayed on screen. And a label that had never been shown drew its button's default title,
+  "Button", in the titlebar of a licensed copy. Hide the accessory's *content* and collapse the
+  accessory's view to zero width (`LicenseTitlebarLabel.update`). Test what is drawn (the button's
+  `isHidden` and the view's width), not the accessory's flag.
 
 ## Localization
 

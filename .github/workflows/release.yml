@@ -70,6 +70,11 @@ jobs:
           fetch-depth: 0
 
       - name: Resolve release values
+        env:
+          # The licensing switch (PLAN.md §M29 "lands dormant"), a repository variable (Settings ▸
+          # Secrets and variables ▸ Actions ▸ Variables): unset or `off`, no build reminds; `beta`,
+          # beta builds only; `all`, every build. See docs/RELEASING.md.
+          DIRNEX_LICENSING: ${{ vars.DIRNEX_LICENSING }}
         run: |
           RELEASE_NOTES_REF="$(git rev-parse HEAD)"
 
@@ -125,11 +130,32 @@ jobs:
             *)   CHANNEL="stable" ;;
           esac
 
+          # One moment for the whole release (PLAN.md §M29): the app's DirnexReleaseDate and the
+          # appcast's pubDate both come from it, so they can't name different days even when the
+          # run (notarization included) crosses midnight UTC.
+          RELEASE_TIMESTAMP="$(date -u +%s)"
+          RELEASE_DATE="$(date -u -r "$RELEASE_TIMESTAMP" +%Y-%m-%d)"
+
+          case "${DIRNEX_LICENSING:-off}" in
+            off)  LICENSING="NO" ;;
+            beta) if [ "$CHANNEL" = "beta" ]; then LICENSING="YES"; else LICENSING="NO"; fi ;;
+            all)  LICENSING="YES" ;;
+            *)
+              echo "DIRNEX_LICENSING must be off, beta or all (got '$DIRNEX_LICENSING')." >&2
+              exit 1
+              ;;
+          esac
+          echo "Licensing switch: $LICENSING (channel $CHANNEL, DIRNEX_LICENSING=${DIRNEX_LICENSING:-off})."
+          echo "Release date: $RELEASE_DATE."
+
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
           echo "TAG_NAME=$TAG_NAME" >> "$GITHUB_ENV"
           echo "DRAFT=$DRAFT" >> "$GITHUB_ENV"
           echo "CHANNEL=$CHANNEL" >> "$GITHUB_ENV"
+          echo "RELEASE_TIMESTAMP=$RELEASE_TIMESTAMP" >> "$GITHUB_ENV"
+          echo "RELEASE_DATE=$RELEASE_DATE" >> "$GITHUB_ENV"
+          echo "LICENSING=$LICENSING" >> "$GITHUB_ENV"
           echo "RELEASE_NOTES_REF=$RELEASE_NOTES_REF" >> "$GITHUB_ENV"
           echo "DOWNLOAD_URL=https://github.com/${GITHUB_REPOSITORY}/releases/download/$TAG_NAME/Dirnex.dmg" >> "$GITHUB_ENV"
 
@@ -256,6 +282,8 @@ jobs:
           TEAM_ID: ${{ secrets.TEAM_ID }}
           VERSION: ${{ env.VERSION }}
           BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
+          LICENSING: ${{ env.LICENSING }}
+          RELEASE_DATE: ${{ env.RELEASE_DATE }}
 
       - name: Create DMG
         run: scripts/make_dmg.sh
@@ -281,6 +309,7 @@ jobs:
           DOWNLOAD_URL: ${{ env.DOWNLOAD_URL }}
           APPCAST_LINK: https://github.com/${{ github.repository }}
           CHANNEL: ${{ env.CHANNEL }}
+          RELEASE_TIMESTAMP: ${{ env.RELEASE_TIMESTAMP }}
           EXISTING_APPCAST: ${{ github.workspace }}/existing/appcast.xml
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
           SPARKLE_PRIVATE_KEY_FILE: ${{ runner.temp }}/sparkle_private_key

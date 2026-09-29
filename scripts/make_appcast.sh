@@ -19,7 +19,12 @@
 # download's bin/sign_update.
 #
 # Env: DMG_PATH, VERSION/SHORT_VERSION, BUILD_NUMBER, DOWNLOAD_URL, SPARKLE_PRIVATE_KEY_FILE,
-#      CHANNEL (stable|beta, default stable), EXISTING_APPCAST (optional path to the current feed).
+#      CHANNEL (stable|beta, default stable), EXISTING_APPCAST (optional path to the current feed),
+#      RELEASE_TIMESTAMP (optional, seconds since 1970: the moment the release was cut).
+#
+# The item's <pubDate> comes from RELEASE_TIMESTAMP, the same moment the app's DirnexReleaseDate
+# was taken from (PLAN.md §M29), so the app can judge an update's license coverage from the feed
+# before installing it and get the answer the installed build will give. Unset, it is now.
 
 set -eu
 
@@ -94,7 +99,11 @@ xml_escape() {
 }
 
 SIGNATURE=$("$SPARKLE_SIGN_UPDATE" "$DMG_PATH" -f "$SPARKLE_PRIVATE_KEY_FILE")
-PUB_DATE=$(LC_ALL=C TZ=GMT date "+%a, %d %b %Y %H:%M:%S %z")
+if [ -n "${RELEASE_TIMESTAMP:-}" ]; then
+    PUB_DATE=$(LC_ALL=C TZ=GMT date -r "$RELEASE_TIMESTAMP" "+%a, %d %b %Y %H:%M:%S %z")
+else
+    PUB_DATE=$(LC_ALL=C TZ=GMT date "+%a, %d %b %Y %H:%M:%S %z")
+fi
 ESCAPED_TITLE=$(xml_escape "$APPCAST_TITLE")
 ESCAPED_LINK=$(xml_escape "$APPCAST_LINK")
 ESCAPED_DOWNLOAD_URL=$(xml_escape "$DOWNLOAD_URL")

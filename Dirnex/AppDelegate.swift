@@ -98,6 +98,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // tour above: a fresh install has no scripts to displace.
         DisplacedScriptKeysNotice.presentIfNeeded(over: controller.window)
 
+        // The license reminder (PLAN.md §M29): nothing in a build that doesn't remind. It starts the
+        // quiet period on the first launch of one that does, and never covers a sheet the lines
+        // above may have put up.
+        LicenseReminderController.shared.start { [weak self] in
+            self?.activeBrowserWindowController?.window
+        }
+
         let urls = pendingURLs
         pendingURLs = []
         application(NSApp, open: urls)

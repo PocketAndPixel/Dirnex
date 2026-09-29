@@ -13,6 +13,26 @@ public struct LicenseReminderRecord: Sendable, Equatable, Codable {
     }
 }
 
+/// Which reminder a build shows, when it shows one (PLAN.md §M29 "What it is").
+public enum LicenseReminderVariant: Sendable, Equatable {
+    /// No key: **Buy a License**.
+    case buy
+    /// A key whose period ended before this build came out: **Renew**, naming the key's last day.
+    case renew(until: LicenseDay)
+}
+
+public extension LicenseStatus {
+    /// The reminder this status calls for, or `nil` when a key covers this build: then there's no
+    /// reminder and no titlebar label at all.
+    var reminderVariant: LicenseReminderVariant? {
+        switch self {
+        case .unlicensed: .buy
+        case .licensed: nil
+        case let .lapsed(key): .renew(until: key.until)
+        }
+    }
+}
+
 /// When the license reminder appears (PLAN.md §M29 "Thirty quiet days", "When it appears").
 ///
 /// - Nothing for the first ``defaultGracePeriod``, counted from the first launch of a build with

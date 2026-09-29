@@ -13,23 +13,29 @@ import Testing
 struct LicensingSurfaceTests {
     // MARK: - The switch
 
-    @Test("a release build shows licensing only when Info.plist carries a true switch")
-    func releaseRule() {
-        for off: Any? in [nil, false, "YES", "true", NSNumber(value: false)] {
-            #expect(
-                !LicensingSwitch.isOn(infoValue: off, isDebugBuild: false),
-                "\(String(describing: off))"
-            )
+    @Test("the switch is on only for the exact value the build setting writes, YES")
+    func switchRule() {
+        for off: Any? in [nil, "", "NO", "yes", "true", " YES", true, NSNumber(value: 1)] {
+            #expect(!LicensingSwitch.switchIsOn(infoValue: off), "\(String(describing: off))")
         }
-        #expect(LicensingSwitch.isOn(infoValue: true, isDebugBuild: false))
-        #expect(LicensingSwitch.isOn(infoValue: NSNumber(value: true), isDebugBuild: false))
+        #expect(LicensingSwitch.switchIsOn(infoValue: "YES"))
     }
 
-    @Test("a Debug build shows licensing whatever Info.plist says")
-    func debugRule() {
-        #expect(LicensingSwitch.isOn(infoValue: nil, isDebugBuild: true))
+    @Test("this Debug test host shows licensing, carries no switch, and does not remind")
+    func debugHost() {
         #expect(LicensingSwitch.isDebugBuild)
+        #expect(!LicensingSwitch.isSwitchedOn)
         #expect(LicensingSwitch.isOn)
+        #expect(!LicensingSwitch.reminds)
+        #expect(LicensingSwitch.debugDaysAhead == nil)
+    }
+
+    @Test("the built Info.plist carries both keys, empty outside the release workflow")
+    func infoPlistKeys() {
+        for key in [LicensingSwitch.infoPlistKey, LicensingSwitch.releaseDateKey] {
+            let value = Bundle.main.object(forInfoDictionaryKey: key) as? String
+            #expect(value?.isEmpty == true, "\(key)")
+        }
     }
 
     @Test("without the switch the licensing commands leave the registry, and nothing else does")

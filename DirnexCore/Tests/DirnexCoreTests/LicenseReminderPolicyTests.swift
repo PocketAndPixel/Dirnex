@@ -148,6 +148,16 @@ struct LicenseReminderPolicyTests {
         )
     }
 
+    @Test(
+        "no key asks to buy, a lapsed key asks to renew naming its last day, a covering key asks nothing"
+    )
+    func variants() throws {
+        let key = try #require(covering.key)
+        #expect(LicenseStatus.unlicensed.reminderVariant == .buy)
+        #expect(covering.reminderVariant == nil)
+        #expect(LicenseStatus.lapsed(key).reminderVariant == .renew(until: key.until))
+    }
+
     @Test("the record survives a round trip through preferences")
     func codable() throws {
         let record = policy.recordingShown(

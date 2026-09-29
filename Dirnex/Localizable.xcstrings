@@ -40657,6 +40657,95 @@
         }
       }
     },
+    "Dirnex grows from its users’ wishes and feedback. If it’s useful to you, a license keeps it going.": {
+      "comment": "License reminder text when there is no license.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex wächst mit den Wünschen und Rückmeldungen seiner Nutzer. Wenn es Ihnen nützt, hält eine Lizenz es am Laufen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex grows from its users’ wishes and feedback. If it’s useful to you, a license keeps it going."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex crece gracias a los deseos y comentarios de quienes lo usan. Si te resulta útil, una licencia ayuda a que siga adelante."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex grandit grâce aux souhaits et aux retours de ses utilisateurs. S’il vous est utile, une licence lui permet de continuer."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex cresce grazie ai desideri e ai suggerimenti di chi lo usa. Se ti è utile, una licenza lo aiuta ad andare avanti."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnexはユーザーの要望とフィードバックによって成長しています。お役に立っているなら、ライセンスが開発の継続を支えます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex는 사용자의 요청과 의견으로 성장합니다. 유용하게 쓰고 계신다면 라이선스가 Dirnex를 계속 이어 가게 합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex groeit dankzij de wensen en feedback van zijn gebruikers. Heb je er iets aan, dan houdt een licentie Dirnex gaande."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex rozwija się dzięki życzeniom i opiniom użytkowników. Jeśli Ci się przydaje, licencja pozwala go dalej rozwijać."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex развивается благодаря пожеланиям и отзывам пользователей. Если он вам полезен, лицензия помогает ему развиваться дальше."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex розвивається завдяки побажанням і відгукам користувачів. Якщо він вам корисний, ліцензія допомагає йому розвиватися далі."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex cresce com os desejos e o feedback de quem o usa. Se ele é útil para você, uma licença ajuda a mantê-lo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 在用户的期望和反馈中不断成长。如果它对你有用，许可证能让它继续前进。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 在使用者的期望與回饋中不斷成長。如果它對你有用，授權能讓它繼續前進。"
+          }
+        }
+      }
+    },
     "Dirnex has no open browser window to act on.": {
       "comment": "Automation error when Dirnex is running with no browser window to act on.",
       "localizations": {
@@ -45424,6 +45513,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "端點："
+          }
+        }
+      }
+    },
+    "Enter License…": {
+      "comment": "License reminder button that opens Settings ▸ License.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lizenz eingeben …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter License…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Introducir licencia…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saisir une licence…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserisci licenza…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンスを入力…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 입력…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voer licentie in…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wprowadź licencję…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ввести лицензию…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ввести ліцензію…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserir licença…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入许可证…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "輸入授權…"
           }
         }
       }
@@ -75042,6 +75220,184 @@
         }
       }
     },
+    "Renew License": {
+      "comment": "Titlebar label while the license reminder is due and the license has ended.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lizenz verlängern"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renew License"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renovar licencia"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renouveler la licence"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rinnova licenza"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンスを更新"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 갱신"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licentie verlengen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odnów licencję"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Продлить лицензию"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Продовжити ліцензію"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renovar licença"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "续期许可证"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "續訂授權"
+          }
+        }
+      }
+    },
+    "Renew License…": {
+      "comment": "License reminder button that opens the store to renew.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lizenz verlängern …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renew License…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renovar la licencia…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renouveler la licence…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rinnova la licenza…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンスを更新…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 갱신…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verleng licentie…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odnów licencję…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Продлить лицензию…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Продовжити ліцензію…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renovar licença…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "续期许可证…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "續訂授權…"
+          }
+        }
+      }
+    },
     "Renew…": {
       "comment": "Settings ▸ License button that opens the store to renew this license.",
       "localizations": {
@@ -82610,6 +82966,95 @@
         }
       }
     },
+    "Show the license settings": {
+      "comment": "Tooltip of the titlebar label shown while the license reminder is due.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lizenzeinstellungen anzeigen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show the license settings"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar los ajustes de licencia"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher les réglages de licence"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra le impostazioni della licenza"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンス設定を表示"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 설정 보기"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toon de licentie-instellingen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż ustawienia licencji"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать настройки лицензии"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показати налаштування ліцензії"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar os ajustes de licença"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示许可证设置"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顯示授權設定"
+          }
+        }
+      }
+    },
     "Show unlocked vaults in Finder": {
       "comment": "General settings toggle: while a vault is unlocked, let its volume appear in Finder's sidebar, on the desktop and in other apps' Open panels. On by default.",
       "localizations": {
@@ -87635,6 +88080,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "取得擁有權"
+          }
+        }
+      }
+    },
+    "Thank you for using Dirnex": {
+      "comment": "License reminder title.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Danke, dass Sie Dirnex verwenden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thank you for using Dirnex"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gracias por usar Dirnex"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Merci d’utiliser Dirnex"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grazie per usare Dirnex"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnexをご利用いただきありがとうございます"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex를 사용해 주셔서 감사합니다"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bedankt dat je Dirnex gebruikt"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dziękujemy za korzystanie z Dirnex"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Спасибо, что пользуетесь Dirnex"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Дякуємо, що користуєтеся Dirnex"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obrigado por usar o Dirnex"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "感谢使用 Dirnex"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "感謝使用 Dirnex"
           }
         }
       }
@@ -100902,6 +101436,95 @@
         }
       }
     },
+    "Unlicensed": {
+      "comment": "Titlebar label while the license reminder is due and there is no license.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht lizenziert"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlicensed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin licencia"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sans licence"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Senza licenza"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンス未登録"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 없음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen licentie"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak licencji"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Без лицензии"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Без ліцензії"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sem licença"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未授权"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未授權"
+          }
+        }
+      }
+    },
     "Unlock": {
       "comment": "Vault context-menu item: ask for the passphrase and mount the vault.",
       "localizations": {
@@ -107247,6 +107870,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "你在「iCloud 雲碟」中的檔案已列在上方。App 存放在那裡的檔案夾，例如 Pages、「預覽」和「捷徑」，在你允許 Dirnex 讀取之前由 macOS 保護。\n\n按一下「打開系統設定」，然後在「完全取用磁碟」中啟用 Dirnex。macOS 會要求重新啟動 Dirnex，讓新的取用權限生效。"
+          }
+        }
+      }
+    },
+    "Your license covers versions released until %@. This version came out later. Renew to remove this reminder.": {
+      "comment": "License reminder text when the license ended before this version; %@ is a date.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihre Lizenz deckt Versionen ab, die bis zum %@ erschienen sind. Diese Version ist später erschienen. Verlängern Sie die Lizenz, um diese Erinnerung zu entfernen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your license covers versions released until %@. This version came out later. Renew to remove this reminder."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu licencia cubre las versiones publicadas hasta el %@. Esta versión salió después. Renueva para quitar este recordatorio."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre licence couvre les versions publiées jusqu’au %@. Cette version est sortie plus tard. Renouvelez-la pour retirer ce rappel."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La tua licenza copre le versioni pubblicate fino al %@. Questa versione è uscita dopo. Rinnova per togliere questo promemoria."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ご利用のライセンスは%@までにリリースされたバージョンが対象です。このバージョンはそれより後にリリースされました。更新するとこのリマインダーは表示されなくなります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스는 %@까지 출시된 버전에 적용됩니다. 이 버전은 그 이후에 출시되었습니다. 갱신하면 이 알림이 사라집니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je licentie geldt voor versies die tot en met %@ zijn uitgebracht. Deze versie is later uitgekomen. Verleng de licentie om deze herinnering weg te halen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twoja licencja obejmuje wersje wydane nie później niż %@. Ta wersja ukazała się później. Odnów licencję, aby usunąć to przypomnienie."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваша лицензия распространяется на версии, выпущенные не позже %@. Эта версия вышла позже. Продлите лицензию, чтобы убрать это напоминание."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваша ліцензія поширюється на версії, випущені не пізніше %@. Ця версія вийшла пізніше. Продовжте ліцензію, щоб прибрати це нагадування."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sua licença cobre as versões lançadas até %@. Esta versão saiu depois. Renove para remover este lembrete."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的许可证涵盖截至 %@ 发布的版本。此版本发布得更晚。续期即可移除此提醒。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的授權涵蓋截至 %@ 發佈的版本。此版本發佈得較晚。續訂即可移除此提醒。"
           }
         }
       }

@@ -13,6 +13,10 @@
     - The dirnex:// URL scheme (PLAN.md §M29): the license email's "Open in Dirnex" link,
       dirnex://license?key=…. Registered in every build; a build without the licensing switch
       ignores it (LicensingSwitch).
+    - The licensing switch and the release day (PLAN.md §M29), filled in from two build settings
+      that only the release workflow passes (scripts/build_app.sh): DIRNEX_LICENSING_ENABLED (YES
+      turns licensing on) and DIRNEX_RELEASE_DATE (YYYY-MM-DD, UTC). Any other build leaves both
+      empty: licensing off, and undated.
   Everything else — bundle name, version, principal class — is still generated from the build
   settings.
 -->
@@ -31,6 +35,10 @@
             <string>Viewer</string>
         </dict>
     </array>
+    <key>DirnexLicensingEnabled</key>
+    <string>$(DIRNEX_LICENSING_ENABLED)</string>
+    <key>DirnexReleaseDate</key>
+    <string>$(DIRNEX_RELEASE_DATE)</string>
     <key>NSAppleScriptEnabled</key>
     <true/>
     <key>OSAScriptingDefinition</key>

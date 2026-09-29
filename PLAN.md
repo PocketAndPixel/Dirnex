@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M28 shipped** (14 languages) · **M29 in progress** (licensing: Slices 1–3 landed) ·
+Status: **M0–M28 shipped** (14 languages) · **M29 in progress** (licensing: Slices 1–4 landed) ·
 **M30 planned** (bug reports) ·
 Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
@@ -365,6 +365,57 @@ generating the production key pair (below).
   A local Release build without the switch showed no License… or Buy a License…, only the four
   original Settings tabs, and ignored a license link without a word. The live run found one bug the
   tests could not: the key field had no visible placeholder (docs/NOTES.md ▸ AppKit).
+
+**2026-09-30: Slice 4 landed** (the switch, the release date, the reminder and the label).
+
+- **Pipeline.** `release.yml` takes one timestamp per run and derives both the app's
+  `DirnexReleaseDate` and the appcast's `<pubDate>` from it. It resolves the switch from the
+  repository variable `DIRNEX_LICENSING` (`off` by default, `beta`, or `all`; anything else fails the
+  run). `build_app.sh` passes both values as build settings that `Info.plist` expands, then reads
+  them back out of the exported app and fails if they differ. docs/RELEASING.md has the table and the
+  recipes.
+- **Core:** `LicenseReminderVariant` (`.buy`, or `.renew(until:)`) from a `LicenseStatus`.
+- **App:** `LicenseReminderController` (timing), `LicenseReminderSheet` (the sheet),
+  `LicenseTitlebarLabel` (its own leading titlebar accessory) and 8 new strings in 14 languages.
+- **Decided in the slice:**
+  - **The switch is a repository variable, not a per-run checkbox.** A checkbox would be easy to
+    forget on store day, and a tag push has no inputs. It stays `off` until Slice 6 sets `beta`.
+  - **`DirnexLicensingEnabled` is on only for the exact string `YES`**, the value a build setting
+    expands to. Every build outside the workflow carries both keys empty: licensing off, and undated.
+  - **Escape, Return, keypad Enter and ⌘. are swallowed silently.** A beep on every habitual Escape
+    would scold, and "do nothing" should mean nothing. No button has focus when the sheet opens, so
+    a stray Space doesn't buy anything either; Tab reaches every button, and Space presses the
+    focused one. Every button closes the sheet: Buy (or Renew) after opening the store, and Enter
+    License… after opening Settings ▸ License.
+  - **It never covers another sheet or a modal dialog.** It checks once a second until the window is
+    clear, then shows, if it's still due. At launch the first-run tour and the Full Disk Access prompt
+    can't meet it: both only appear on the first launch of any Dirnex, when the quiet period has just
+    begun. It counts as shown only once it's on screen.
+  - **The preview is two Debug-only launch arguments.** `-DirnexDebugLicenseDaysAhead <n>` turns
+    reminding on with the clock moved ahead; `-DirnexDebugLicenseBuildDate <day>` fakes this build's
+    release day, for the Renew version. Both are read from the argument domain only, so a value
+    written into preferences does nothing. A Debug build keeps the reminder's record in memory.
+  - **A release build keeps the record as two plain dates in preferences**, so a beta tester fakes
+    the 30 days with one `defaults write`.
+- **Tests:** the sheet (Escape, Return and Enter leave it up, OK closes it, no button has a key
+  equivalent, Tab and Space reach and press every button), the timing (the quiet period, once a day,
+  waiting behind another sheet, the record, the label), and the switch rule. The sheet's key test
+  passed vacuously at first: `NSWindow.sendEvent` skips key equivalents, which a negative control
+  caught (docs/NOTES.md ▸ Testing).
+- **Verified live** (2026-09-30, computer use, real keypresses). In the Debug build with
+  `-DirnexDebugLicenseDaysAhead 31`, in English and German:
+  - the reminder appears at launch, with Buy in the accent color once the window is active;
+  - Escape, Return, keypad Enter and a Space with nothing focused all leave it up, and Return does
+    nothing even with OK focused;
+  - Tab walks Buy → Enter License… → OK, and Space on OK closes it;
+  - switching away and back the same day doesn't bring it back;
+  - the titlebar label opens Settings ▸ License;
+  - with `-DirnexDebugLicenseBuildDate` and an ended key: the Renew text, button and label;
+  - entering a covering key removes the label at once, and Remove brings it back.
+
+  The live run found one bug the tests had passed over: the titlebar label never hid, because
+  `NSTitlebarAccessoryViewController.isHidden` does nothing on a leading accessory (docs/NOTES.md ▸
+  AppKit). A Debug build left no reminder record in the real preferences.
 
 ### M30 — Report a Bug, and a Help menu to hold it (S)
 
