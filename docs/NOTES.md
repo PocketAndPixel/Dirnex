@@ -7934,6 +7934,41 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   that's the row with teeth, since a fork left pointing at our feed would push official Dirnex
   builds onto its users.
 
+### License keys: one format, two languages (M29)
+
+The key is signed in TypeScript (the store's server) and checked in Swift (the app), and both sides
+must give the same answer for the same text. **Every library default that is lenient is lenient
+differently**, and none of it shows at build time. Measured 2026-09-29, and each one is now a shared
+vector (`Fixtures/license-vectors.json`) rather than a hope:
+
+- **Node's `Buffer.from(text, 'base64url')` skips characters outside the alphabet** (`ab!!cd`
+  decodes to 3 bytes) and accepts padding. **Foundation's `Data(base64Encoded:)` accepts non-zero
+  unused bits** (`QR==` reads as the same byte as `QQ==`). Both sides therefore carry a hand-written
+  strict decoder (`Base64URL`), so every key has exactly one spelling.
+- **`JSONDecoder` skips a leading UTF-8 byte-order mark; `JSON.parse` refuses it.** The app refuses
+  it before decoding. Malformed UTF-8 needs no such step: `JSONDecoder` refuses overlong forms,
+  surrogates, truncated sequences and stray bytes, as a strict `TextDecoder` does.
+- **`JSONSerialization` bridges `true` to the `Int` 1** (`object["v"] as? Int`), and `1.0` too.
+  `JSONDecoder` refuses a Bool where an `Int` is declared, so decode payloads with `Decodable`, never
+  with `as?` casts.
+- **Duplicate JSON keys: `JSONDecoder` keeps the first, `JSON.parse` the last.** Unreachable here,
+  since the payload is read only after the signature matched and the signer writes it with
+  `JSON.stringify`. That ordering (signature before JSON) is the reason it is unreachable, and the
+  reason to keep it.
+- **"Whitespace" differs.** `Character.isWhitespace` misses U+200B and U+FEFF, and JavaScript's `\s`
+  misses U+0085. The set of characters removed from a pasted key is an explicit list on both sides.
+- **`String.hasPrefix` compares by canonical equivalence**, so `"dnx1."` followed by U+0301 does not
+  have the prefix `"dnx1."` (the mark joins the dot), while JavaScript's `startsWith` says it does.
+  The envelope is parsed on UTF-8 bytes.
+- **`Date.UTC` maps the years 0–99 to 1900–1999**, so the two sides' leap-day rules only agree from
+  a floor up. Dates in a key are 2000–9999.
+- **CryptoKit's Ed25519 signatures are randomized; Node's are deterministic** (RFC 8032). They
+  interoperate (CryptoKit verifies Node's, and both refuse S + L). Only Node can regenerate the
+  vectors byte for byte, which is why they're generated there.
+- **A `LicenseDay` shown through a `Date` at midnight UTC prints as the day before** anywhere west of
+  Greenwich. `LicenseDay.date(in:)` returns noon of the day in the viewer's zone.
+- `String(validating:as:)` exists only from macOS 15; the core's floor is 14.
+
 ## macOS system gates
 
 - **App Intents only register from a Team-ID-signed app in a standard install location.** Two

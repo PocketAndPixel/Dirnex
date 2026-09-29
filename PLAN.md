@@ -4,7 +4,8 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M28 shipped** (14 languages) · **M29–M30 planned** (licensing, bug reports) ·
+Status: **M0–M28 shipped** (14 languages) · **M29 in progress** (licensing: Slices 1–2 landed) ·
+**M30 planned** (bug reports) ·
 Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
 [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)
@@ -285,6 +286,45 @@ overturn until Slice 4 puts the reminder in front of a user:
 
 and a self-built copy never reminds at all. Both suites green, both linters clean, every new string
 translated.
+
+#### Progress
+
+**2026-09-29: Slices 1 and 2 landed** (core only; the app is untouched). One step is still Oleg's:
+generating the production key pair (below).
+
+- **Slice 1, the contract.** The signer is `tools/license` in the private repo: TypeScript on Node
+  alone, with a `sign` command that never takes the private key as an argument. It generates
+  **27 vectors** (5 valid, 22 refused) deterministically from a test key derived from a fixed
+  phrase. They're committed here unchanged as `Fixtures/license-vectors.json`, and a test on the
+  signer's side fails if its committed copy drifts from what the generator builds. Beyond the
+  plan's list, the vectors pin every trap the probe found (docs/NOTES.md ▸ *License keys*): a
+  non-canonical base64url spelling, a malleated signature (S + L), a byte-order mark, a boolean
+  `v`, a byte that isn't UTF-8, an email-wrapped paste, and a `dnx2.` key.
+- **What the slice decided, on top of the plan:**
+  - The checks run in one order on both sides: whitespace removed, size (1024 UTF-8 bytes), prefix,
+    shape and strict base64url, **the signature**, and only then the payload JSON. So no JSON parser
+    ever sees bytes the store didn't sign.
+  - The refusals have names both sides share (`LicenseKeyError`): `empty`, `tooLong`, `wrongPrefix`,
+    `unsupportedVersion` (a `dnx2.` key, or a payload `v` above 1, which Slice 3 words as "needs a
+    newer Dirnex"), `malformed`, `badSignature` and `invalidPayload`.
+  - Key-pair halves are written `dnx1-public-…` and `dnx1-private-…`. `LicenseVerifier` takes only
+    the public prefix, so pasting the private half into this repo fails at once instead of
+    publishing it.
+  - Dates in a key are 2000–9999 (NOTES.md says why there's a floor).
+- **Slice 2, the core.** `LicenseKey` + `LicenseVerifier` (the vectors, a signature-skipping negative
+  control, every one-character mutation of a key refused, hostile and random text),
+  `LicenseDay` (UTC days compared without a `Date`, and `date(in:)` for display, which never shifts
+  the day), `LicenseStatus` / `covers(releaseDay:)` (an off-by-one negative control),
+  `LicenseReminderPolicy` (a grace-ignoring negative control) and `UpdateCoverageNotice`. Decided:
+  - The 30 days are elapsed time from the first launch with the switch on. A start in the future is
+    pulled back to now, so setting the clock back buys at most one more quiet period.
+  - "Once a day" means a *different* local calendar day from the last showing, not a later one, so
+    a clock set back doesn't silence it.
+  - The notice shows only when the update would *start* the reminder: the key covers the running
+    build and not the update. With no key, or a key that already doesn't cover the running build,
+    the reminder is there either way. That generalizes the plan's "no key, no notice".
+- **Still Oleg's (the rest of Slice 1):** run `keygen` once in his own terminal, keep the private
+  half in the password manager, and hand over the public half for Slice 3.
 
 ### M30 — Report a Bug, and a Help menu to hold it (S)
 
