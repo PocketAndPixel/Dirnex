@@ -28,8 +28,10 @@ import AppKit
 /// 2026-09-13, none of those overrides `canBecomeKeyView`: a `Toggle` in a `Form` is an `NSSwitch`
 /// subclass, a `Picker` an `NSPopUpButton` or `NSSegmentedControl` subclass, a `ColorPicker` an
 /// `NSColorWell` subclass and a `Stepper` an `NSStepper` subclass, so patching the AppKit
-/// class reaches them. The one exception is SwiftUI's *checkbox*-style `Toggle`, whose button answers
-/// `acceptsFirstResponder == false` outright; Dirnex's Settings draws none. `NSPopUpButton` has no
+/// class reaches them. The exceptions are SwiftUI's *checkbox*-style `Toggle`, whose button answers
+/// `acceptsFirstResponder == false` outright (Dirnex's Settings draws none), and a plain SwiftUI
+/// `Button`, which SwiftUI draws itself with no `NSButton` behind it (probed 2026-09-30), so Settings
+/// uses ``SettingsButton`` instead. `NSPopUpButton` has no
 /// override of its own either (adding one to it succeeds), so patching `NSButton` covers it —
 /// `KeyboardReachableControlsTests` fails if a later macOS gives either of them one.
 ///

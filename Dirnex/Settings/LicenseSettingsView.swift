@@ -38,7 +38,7 @@ struct LicenseSettingsView: View {
                 }
                 HStack {
                     Spacer()
-                    Button("Buy a License…") { NSWorkspace.shared.open(LicenseLinks.buy) }
+                    SettingsButton("Buy a License…") { NSWorkspace.shared.open(LicenseLinks.buy) }
                 }
             }
         case let .licensed(key):
@@ -70,13 +70,10 @@ struct LicenseSettingsView: View {
                     .textSelection(.enabled)
             }
             HStack {
-                Button("Remove License", role: .destructive) { store.remove() }
+                SettingsButton("Remove License", role: .destructive) { store.remove() }
                 Spacer()
-                if covered {
-                    Button("Renew…") { NSWorkspace.shared.open(LicenseLinks.renew(key)) }
-                } else {
-                    Button("Renew…") { NSWorkspace.shared.open(LicenseLinks.renew(key)) }
-                        .buttonStyle(.borderedProminent)
+                SettingsButton("Renew…", isProminent: !covered) {
+                    NSWorkspace.shared.open(LicenseLinks.renew(key))
                 }
             }
         }
@@ -104,7 +101,7 @@ struct LicenseSettingsView: View {
             }
             HStack {
                 Spacer()
-                Button("Activate", action: activate)
+                SettingsButton("Activate", action: activate)
                     .disabled(entry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         } header: {

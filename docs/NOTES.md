@@ -1581,6 +1581,18 @@ at build time.
   the browser window, where Tab is a pane key. A tab view joins before its selected page's controls,
   and its arrows and Space behave as they do with the system switch on. Verified live: the focus ring draws, Space opens a popup or flips a switch, and ↓ then Return
   picks an item without firing the sheet's default button.
+  - **A plain SwiftUI `Button` in a `Form` is not an `NSButton`, so the patch never reached
+    Settings' buttons.** Found by Oleg with a real keyboard in the M29 Slice 6 beta: Tab skipped
+    **Buy a License…** in Settings ▸ License, and the same held for all eight buttons in Settings.
+    Probed 2026-09-30 on macOS 26.7: a grouped `Form` holding a field, a switch, a picker and two
+    buttons had an `NSTextField`, an `NSSwitch` and an `NSPopUpButton` in its view tree and nothing
+    for either button, since SwiftUI draws them itself and keeps them off the loop while the system
+    switch is off. The 09-13 probe had covered the switch, pickers, color well and stepper, and never
+    a push button. `SettingsButton` wraps an `NSButton` in the `Form` instead, and the same patch then
+    puts it on the loop. `SettingsButtonTests` pins it with a negative control (the tab with Buy left
+    a SwiftUI `Button` fails), and pins the platform fact, so a macOS that backs SwiftUI buttons
+    with `NSButton` again says so. The buttons inside Settings' two `.alert`s were left alone and
+    not measured. An alert answers Return and Escape, so it works without Tab either way.
   - **A tab selector's focus ring vanishes on the selected tab, because it is the same accent drawn
     flush against an accent fill.** Plainly visible around an unselected tab, next to nothing around
     the selected one, which is where focus lands first. `NSTabView` draws the ring around

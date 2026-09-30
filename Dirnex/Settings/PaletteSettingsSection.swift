@@ -41,7 +41,7 @@ struct PaletteSettingsSection: View {
             if !preferences.palette.isFollowingSystem {
                 HStack {
                     Spacer()
-                    Button("Use System Colors") { preferences.resetPalette() }
+                    SettingsButton("Use System Colors") { preferences.resetPalette() }
                 }
             }
         } header: {
