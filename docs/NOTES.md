@@ -7989,6 +7989,28 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   - `SUAppcastItem.date` parses `pubDate` with an `en_US` formatter rather than `en_US_POSIX`. It
     parsed our real feed's dates correctly with 12- and 24-hour overrides and a Japanese locale, so
     the app reads the update's release day from it (`LicenseDay(_:in: .gmt)`).
+- **Dirnex's launch probe counts as Sparkle's last check, so a scheduled background check comes one
+  full interval after launch** (M29 Slice 6). `checkForUpdateInformation()` rewrites
+  `SULastCheckTime`. Passing an `SULastCheckTime` from 2020 as a launch argument did nothing: the
+  probe's check replaced it, and no background check followed. Sparkle's shortest interval is an
+  hour. Measured
+  2026-09-30 on the Debug build against `Tooling/fake-update-feed.py`, with
+  `-SUEnableAutomaticChecks '<true/>' -SUAutomaticallyUpdate '<true/>' -SUScheduledCheckInterval '<integer>3600</integer>'`:
+  the probe at 11:44:34 and the background check at **12:44:34**, to the second.
+  - That run is also the live proof behind the notice's promise. **With no key** (the control), the
+    background check asked for the DMG. **With a key the update doesn't cover**, it fetched the feed
+    and asked for nothing. The control's failed download (a 404) put nothing on screen.
+- **Launch arguments carry typed values only in plist syntax.** `-Key '<date>2020-01-01T00:00:00Z</date>'`
+  arrives as a `Date`, `'<true/>'` as a Bool and `'<integer>3600</integer>'` as a number. A bare
+  `-Key "2020-01-01 00:00:00 +0000"` arrives as a **string**, which Sparkle or `LicenseReminderRecords`
+  (`as? Date`) would ignore without a word. Checked with a two-line program reading
+  `UserDefaults.standard`.
+- **A `dirnex://` link opens whichever copy Launch Services picks, and on this Mac that was a
+  DerivedData Debug build**, not `/Applications/Dirnex.app`. A copy with licensing off ignores the
+  link without a word, and a Debug copy accepts test keys the build under test refuses. Either way
+  the test measures the wrong app. Ask Launch Services first:
+  `osascript -l JavaScript -e 'ObjC.import("AppKit"); $.NSWorkspace.sharedWorkspace.URLForApplicationToOpenURL($.NSURL.URLWithString("dirnex://license")).path.js'`.
+  `lsregister -f <app>` registers the copy under test, and `lsregister -u <app>` removes a stale one.
 - **A `GITHUB_TOKEN`-pushed tag does not re-trigger `on: push`** — which is exactly why the beta
   workflow calls `release.yml` as a reusable workflow instead of pushing a tag and hoping the tag
   trigger fires.

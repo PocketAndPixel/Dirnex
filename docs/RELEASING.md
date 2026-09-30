@@ -155,6 +155,38 @@ section).
   The next launch reminds. `Dirnex.pref.licenseReminderLastShown` holds the last time it appeared.
   Delete both keys to start the 30 days again.
 
+### Trying the update notice
+
+The notice appears before an update that the license held doesn't cover. To try it without
+releasing anything, serve a local feed offering Dirnex 1.4.0, released on a day after the key's
+last day:
+
+```sh
+python3 Tooling/fake-update-feed.py 8766 2027-04-01 /tmp/feed.log
+```
+
+Quit Dirnex, then launch it pointed at that feed. The feed is a launch argument, so the real
+preferences never gain it, and the next normal launch uses the real feed again:
+
+```sh
+open -n /Applications/Dirnex.app --args -SUFeedURL http://127.0.0.1:8766/appcast.xml
+```
+
+- **By hand.** With a key that covers the running build, the launch probe lights the titlebar
+  indicator. Clicking it, or Check for Updates…, brings the notice. **Update Anyway** brings
+  Sparkle's own update window; close it there. The feed answers the DMG with a 404, so nothing it
+  offers can install, and every request for it is logged with `"download": true`.
+- **In the background.** Add
+  `-SUEnableAutomaticChecks '<true/>' -SUAutomaticallyUpdate '<true/>' -SUScheduledCheckInterval '<integer>3600</integer>'`
+  and leave Dirnex running for more than an hour. Dirnex's own launch probe counts as Sparkle's last
+  check, and an hour is Sparkle's shortest interval, so the first background check comes an hour
+  after launch. With the key, the log shows the feed fetched again and no download. Run the same
+  launch once **without** a key as the control: that one asks for the DMG. Without the control, a
+  log with no download would also fit a background check that never ran.
+- A key can be a launch argument too (`-Dirnex.pref.licenseKey dnx1.…`), which keeps it out of the
+  real preferences. A release build accepts only keys signed with the production key; a Debug build
+  also accepts test keys.
+
 ## What the app does with it
 
 - **Check for Updates…** lives in the app menu (and the ⌘K palette as `app.checkForUpdates`); it
