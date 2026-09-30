@@ -52,18 +52,19 @@ enum AdministratorShell {
         process.standardError = errorPipe
         process.standardOutput = Pipe()
 
+        let awaitExit = ProcessWaiting.exitWaiter(for: process)
         do {
             try process.run()
         } catch {
             throw Failure.failed(error.localizedDescription)
         }
         let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
+        awaitExit()
         guard process.terminationStatus != 0 else { return }
 
         let message = String(data: errorData, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        // Cancelling the auth dialog is AppleScript error -128 ("User canceled") — a choice, not a
+        // Canceling the auth dialog is AppleScript error -128 ("User canceled") — a choice, not a
         // failure, so it closes nothing and shows no error.
         if message.contains("-128") { throw Failure.cancelled }
         throw Failure.failed(message)

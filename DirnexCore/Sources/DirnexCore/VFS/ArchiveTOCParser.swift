@@ -26,6 +26,9 @@ enum ArchiveTOCParser {
         let kind: FileEntry.Kind
         let byteSize: Int64
         let modificationDate: Date
+        let permissions: UInt16?
+        let ownerName: String
+        let groupName: String
         let symlinkDestination: String?
     }
 
@@ -51,9 +54,61 @@ enum ArchiveTOCParser {
                 kind: raw.kind,
                 byteSize: raw.byteSize,
                 modificationDate: raw.modificationDate,
+                permissions: raw.permissions,
+                ownerName: raw.ownerName,
+                groupName: raw.groupName,
                 symlinkDestination: raw.symlinkDestination
             )
             synthesizeAncestors(of: raw.components, into: &nodeByPath, directories: &isDirectory)
+        }
+
+        return assembleTree(nodeByPath: nodeByPath, isDirectory: isDirectory)
+    }
+
+    /// Build the same tree from headers libarchive read, for an archive being listed through
+    /// ``EncryptedArchiveReader`` rather than `bsdtar`.
+    ///
+    /// That happens for exactly one reason: the archive's names are in a code page the user has
+    /// declared (``ArchiveNameEncoding``), and `bsdtar` has no `--hdrcharset` — Apple's build
+    /// refuses the flag outright, measured — so the only reader that can apply the declaration is
+    /// the in-process one. Everything after this point is identical, which is the point: one tree
+    /// shape, one set of rules about synthesized ancestors, whichever engine read the headers.
+    ///
+    /// **Owner and group come back `nil` here where the text parser has them.** libarchive's entry
+    /// is read for its name, kind, size, mode and time, and a zip stores no owner *names* anyway —
+    /// `bsdtar` prints the bare numbers for one. A field with no answer is absent rather than
+    /// invented (``FileEntry/ownerName``), so those two columns draw their dash.
+    static func parse(entries: [EncryptedArchiveReader.Entry]) -> Result {
+        var nodeByPath: [String: ArchiveTOC.Entry] = [:]
+        var isDirectory: Set<String> = ["/"]
+
+        for entry in entries {
+            let components = pathComponents(of: entry.archivePath)
+            guard !components.isEmpty else { continue }
+            let innerPath = "/" + components.joined(separator: "/")
+            let kind: FileEntry.Kind
+            var symlinkDestination: String?
+            switch entry.kind {
+            case .directory:
+                kind = .directory
+            case let .symbolicLink(target):
+                kind = .symlink
+                symlinkDestination = target
+            case .regularFile:
+                kind = .file
+            }
+            if kind == .directory { isDirectory.insert(innerPath) }
+            nodeByPath[innerPath] = ArchiveTOC.Entry(
+                name: components[components.count - 1],
+                kind: kind,
+                byteSize: entry.byteSize,
+                modificationDate: entry.modificationDate,
+                permissions: entry.permissions & 0o7777,
+                ownerName: nil,
+                groupName: nil,
+                symlinkDestination: symlinkDestination
+            )
+            synthesizeAncestors(of: components, into: &nodeByPath, directories: &isDirectory)
         }
 
         return assembleTree(nodeByPath: nodeByPath, isDirectory: isDirectory)
@@ -76,7 +131,7 @@ enum ArchiveTOCParser {
                     name: ancestors[ancestors.count - 1],
                     kind: .directory,
                     byteSize: 0,
-                    modificationDate: .distantPast
+                    modificationDate: FileEntry.unknownDate
                 )
             }
             ancestors.removeLast()
@@ -102,7 +157,10 @@ enum ArchiveTOCParser {
                     name: entry.name,
                     kind: .directory,
                     byteSize: entry.byteSize,
-                    modificationDate: entry.modificationDate
+                    modificationDate: entry.modificationDate,
+                    permissions: entry.permissions,
+                    ownerName: entry.ownerName,
+                    groupName: entry.groupName
                 )
             } else {
                 resolved = entry
@@ -152,6 +210,15 @@ enum ArchiveTOCParser {
             kind: kind,
             byteSize: byteSize,
             modificationDate: date,
+            // Only when column 0 really is a mode field. This parser deliberately accepts *any*
+            // first column where `ColumnarListing.unixRow` requires one, so an unrecognized column
+            // has to answer `nil` rather than the `0` the bit reader would return — `0o000` is a
+            // legal mode, and reporting it would invent an unreadable file.
+            permissions: ColumnarListing.isModeField(columns[0])
+                ? ColumnarListing.permissions(fromMode: columns[0])
+                : nil,
+            ownerName: String(columns[2]),
+            groupName: String(columns[3]),
             symlinkDestination: symlinkDestination
         )
     }

@@ -61,9 +61,23 @@ public extension LocalBackend {
     }
 
     func createSymbolicLink(at destination: VFSPath, withDestination target: String) throws {
-        let cTarget = (target as NSString).fileSystemRepresentation
         let cDest = (destination.path as NSString).fileSystemRepresentation
-        guard symlink(cTarget, cDest) == 0 else {
+        // An **empty** target is passed to `symlink(2)` directly rather than through
+        // `fileSystemRepresentation`, which raises `NSInvalidArgumentException` for the empty string
+        // ("Cannot form file system representation of empty string") — an Objective-C exception
+        // nothing here can catch, so it terminates the process rather than failing this one copy.
+        //
+        // It is not a hypothetical input: `symlink("")` **succeeds** on macOS (measured 2026-08-28 —
+        // it returns 0 and leaves a 0-byte dangling link), so such a link can exist on any disk and
+        // duplicating it is this method's job. Until §M25 Slice 4 the engine also reached here with
+        // `""` for every link a remote listing could not read a target for, which made copying a
+        // folder of them off an SFTP server a crash rather than the silently-broken link the plan
+        // predicted; that half is now refused before it arrives (``CopyEngine``), and this half is
+        // what keeps a genuinely empty link copyable.
+        let created = target.isEmpty
+            ? symlink("", cDest)
+            : symlink((target as NSString).fileSystemRepresentation, cDest)
+        guard created == 0 else {
             throw VFSError.fromErrno(errno, path: destination)
         }
     }

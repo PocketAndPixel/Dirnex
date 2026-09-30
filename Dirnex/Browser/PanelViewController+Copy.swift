@@ -15,10 +15,15 @@ extension PanelViewController {
     // MARK: - Menu actions (dispatched to the focused pane via the responder chain)
 
     @objc func copyToOtherPane(_ sender: Any?) {
-        // F5 inside an archive is copy-*out*: extract the marked members to disk and copy them
+        // F5 on an archive member is copy-*out*: extract the marked members to disk and copy them
         // into the other pane (PLAN.md §M4). A move-out doesn't exist — the archive is read-only,
         // so there's nothing to remove — hence only Copy routes here; `moveToOtherPane` stays gated.
-        if isArchive {
+        //
+        // Asked of the *rows*, not of the pane, since M22: a search inside an archive lands its hits
+        // in a results tab whose container is `search:` while every row is an archive member, and
+        // routing on the pane sent those to the byte-copy queue, where the archive backend has no
+        // `copyFile` to answer with.
+        if isArchive || extractionArchivePath(for: selectionTargets()) != nil {
             beginArchiveExtraction()
         } else if let destPane = archiveDestinationPane() {
             // F5 into an archive is add-into: copy the marked local items into the archive pane.
@@ -30,7 +35,9 @@ extension PanelViewController {
 
     @objc func moveToOtherPane(_ sender: Any?) {
         // F6 into an archive is add-into with move semantics: copy the items in, then trash the
-        // originals. Move-*out* of an archive stays gated (`moveToOtherPane` requires `!isArchive`).
+        // originals. Move-*out* of an archive stays gated — including from a results tab holding
+        // archive members, which `isArchive` alone does not cover (the pane is a `search:` one).
+        guard extractionArchivePath(for: selectionTargets()) == nil else { return }
         if let destPane = archiveDestinationPane() {
             addSelectionToArchive(destPane, kind: .move)
         } else {
@@ -71,13 +78,11 @@ extension PanelViewController {
         let sources = recursiveTargets()
         guard !sources.isEmpty, let destPane = host?.panelCounterpart(of: self) else { return }
         let destination = destPane.panel.path
-        // The queue writes into a real directory — on disk (`.local`), or on a connected SFTP or
-        // FTP account (an upload through that backend's transfer primitive). A read-only nested
-        // archive or a search-results pane has no directory to receive files; a *writable* archive
-        // was already routed to add-into before reaching here.
-        guard destination.backend == .local
-            || destination.backend.isSFTP
-            || destination.backend.isFTP else {
+        // The queue writes into a real directory — on disk (`.local`), or on a remote account with
+        // an upload primitive behind it (`acceptsUploads`). A read-only nested archive or a
+        // search-results pane has no directory to receive files; a *writable* archive was already
+        // routed to add-into before reaching here.
+        guard destination.backend == .local || destination.backend.acceptsUploads else {
             presentOperationFailure(
                 message: transferFailureTitle(kind),
                 detail: String(
@@ -152,15 +157,17 @@ extension PanelViewController {
         let directories = intermediateDirectories(for: groups, under: destination)
         Task {
             do {
-                try await Task.detached(priority: .userInitiated) {
-                    for directory in directories {
-                        do {
-                            try backend.createDirectory(at: directory)
-                        } catch VFSError.alreadyExists {
-                            continue
+                try await BlockingWork.run {
+                    Result {
+                        for directory in directories {
+                            do {
+                                try backend.createDirectory(at: directory)
+                            } catch VFSError.alreadyExists {
+                                continue
+                            }
                         }
                     }
-                }.value
+                }.get()
             } catch {
                 presentOperationFailure(
                     message: transferFailureTitle(kind),
@@ -224,13 +231,23 @@ extension PanelViewController {
         sources: [FileEntry],
         destination: VFSPath
     ) {
+        submit(
+            FileOperation(
+                kind: kind,
+                sources: sources,
+                destinationDirectory: destination
+            )
+        )
+    }
+
+    /// Hand an already-built operation to the queue under the same policy and prompters
+    /// `submitTransfer` uses. Separate because a rename the backend refused in place
+    /// (`PanelViewController+RenameQueue`) is a job whose destination *name* differs from its
+    /// source's, which only ``FileOperation/init(renaming:to:in:)`` can express — and having two
+    /// spellings of "enqueue with the conflict and error prompters" is how the two drift.
+    func submit(_ operation: FileOperation) {
         let conflictPrompter = ConflictPrompter(window: view.window)
         let errorPrompter = ErrorPrompter(window: view.window)
-        let operation = FileOperation(
-            kind: kind,
-            sources: sources,
-            destinationDirectory: destination
-        )
         host?.enqueue(
             operation,
             conflictPolicy: .ask,

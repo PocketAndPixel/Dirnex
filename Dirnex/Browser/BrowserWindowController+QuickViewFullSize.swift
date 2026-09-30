@@ -16,7 +16,11 @@ extension BrowserWindowController {
     /// surface, and a name that fades out is one you have to wave at the screen to read.
     func ensureFullWindowPreview() -> QuickViewPreviewView {
         if let preview = fullWindowPreview { return preview }
-        let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .pinned)
+        let preview = QuickViewPreviewView(
+            backingColor: .textBackgroundColor,
+            header: .pinned,
+            findOptions: .standard
+        )
         let panes = panesSplitViewController.view
         install(preview, pinnedTo: panes)
         fullWindowPreview = preview
@@ -29,7 +33,11 @@ extension BrowserWindowController {
     /// viewing surface, and permanent chrome is the thing being escaped.
     func ensureFullScreenPreview() -> QuickViewPreviewView {
         if let preview = fullScreenPreview { return preview }
-        let preview = QuickViewPreviewView(backingColor: .black, header: .floating)
+        let preview = QuickViewPreviewView(
+            backingColor: .black,
+            header: .floating,
+            findOptions: .standard
+        )
         guard let content = window?.contentView else { return preview }
         // Without this the fading header never appears: a window does not post mouse-moved events
         // by default, so the tracking area that reveals the strip is never told the pointer moved.
@@ -110,7 +118,10 @@ extension BrowserWindowController {
             let preview = activeFullSizePreview,
             // Over the preview itself: in full-window mode the sidebar is still there beside it,
             // and scrolling *it* is the sidebar's business.
-            preview.bounds.contains(preview.convert(event.locationInWindow, from: nil))
+            preview.bounds.contains(preview.convert(event.locationInWindow, from: nil)),
+            // A photograph or a PDF zoomed wider than the surface pans instead, as Preview's does:
+            // the swipe only turns to the next file once what is on screen fits.
+            !preview.consumesHorizontalScroll
         else { return false }
 
         trackQuickViewSwipe(event, on: preview)
@@ -180,7 +191,7 @@ extension BrowserWindowController {
     }
 
     /// Finish a lifted swipe with the *keyboard's* flip — the same call ← / → make, so the two ways
-    /// of changing file are one behaviour rather than two that resemble each other.
+    /// of changing file are one behavior rather than two that resemble each other.
     ///
     /// Nothing is carried out of the surface first. The file was ~30 % dragged when the fingers
     /// left (measured across 17 swipes: 0.07–0.38 of a width, median 0.30), and running that
@@ -201,7 +212,7 @@ extension BrowserWindowController {
         let steps = lift < 0 ? 1 : -1
         // Belt to the dampening's braces: a dampened amount is pulled back towards the threshold
         // rather than clamped at it, so the end of the list is checked again here before anything
-        // is dealt. Nothing to flip to means the file goes back to centre.
+        // is dealt. Nothing to flip to means the file goes back to center.
         guard committing, focusedPanel.canStepCursor(by: steps) else {
             preview.returnSwipe(from: offset)
             return
@@ -274,8 +285,8 @@ extension BrowserWindowController {
 /// The two render styles (§M16) are the same shape, with one difference: they are *disabled* unless
 /// the previewed file genuinely offers both. That predicate is `previewedFileOffersBothStyles` —
 /// the same one the `1` / `2` monitor gates on, called rather than restated here, because a menu
-/// validator carrying its own hand-copied twin of a behaviour's predicate is how a shipped feature
-/// ends up greyed out with every test green (docs/NOTES.md).
+/// validator carrying its own hand-copied twin of a behavior's predicate is how a shipped feature
+/// ends up grayed out with every test green (docs/NOTES.md).
 extension BrowserWindowController: NSMenuItemValidation {
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         switch menuItem.action {
@@ -285,12 +296,33 @@ extension BrowserWindowController: NSMenuItemValidation {
             menuItem.state = quickViewMode == .fullWindow ? .on : .off
         case #selector(toggleQuickViewFullScreen(_:)):
             menuItem.state = quickViewMode == .fullScreen ? .on : .off
-        case #selector(showQuickViewSource(_:)):
-            menuItem.state = AppPreferences.shared.quickViewRenderStyle == .source ? .on : .off
-            return previewedFileOffersBothStyles
-        case #selector(showQuickViewRenderedPage(_:)):
-            menuItem.state = AppPreferences.shared.quickViewRenderStyle == .rendered ? .on : .off
-            return previewedFileOffersBothStyles
+        case #selector(showQuickViewSource(_:)), #selector(showQuickViewRenderedPage(_:)):
+            let style: QuickViewRenderStyle = menuItem.action == #selector(showQuickViewSource(_:))
+                ? .source : .rendered
+            let kind = previewedDualStyleKind
+            let current = AppPreferences.shared.quickViewRenderStyle(for: kind ?? .page)
+            menuItem.state = current == style ? .on : .off
+            return kind != nil
+        // The vault commands each name a target that may not be there. Each validator *calls* the
+        // predicate the command itself uses rather than restating it — a hand-copied twin is how a
+        // shipped feature ends up permanently grayed with every test green (docs/NOTES.md).
+        case #selector(newVault(_:)):
+            return canCreateVaultHere
+        case #selector(unlockVault(_:)):
+            return vaultImageUnderCursor != nil
+        case #selector(lockVault(_:)):
+            return vaultContainingFocusedPane != nil
+        // The placeholder card's Download button, from the keyboard — enabled exactly when the card
+        // is offering the button, by the one predicate the action itself checks.
+        case #selector(downloadQuickViewPreview(_:)):
+            return canDownloadQuickViewPreview
+        // Zoom, by the same predicate the actions reach the surface through — and one case for all
+        // three, because each extra case here counts against cyclomatic complexity (docs/NOTES.md).
+        case #selector(zoomInQuickView(_:)), #selector(zoomOutQuickView(_:)),
+             #selector(resetQuickViewZoom(_:)):
+            return canPerformQuickViewZoom(menuItem.action)
+        case #selector(filterQuickViewTable(_:)):
+            return validateQuickViewFilterItem(menuItem)
         default:
             break
         }

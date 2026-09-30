@@ -19,7 +19,7 @@ import Foundation
 /// Two more steps exist purely to *undo a side effect the user did not ask for*, both measured in the
 /// Slice 4 probe (2026-07-31) and both invisible without one — see ``preservedPermissions(...)`` and
 /// ``preservedCreationDate(...)``. They are the same shape as the unlock/relock above: the diff is the
-/// contract ("a field left alone is never written"), and a syscall that rewrites a neighbouring field
+/// contract ("a field left alone is never written"), and a syscall that rewrites a neighboring field
 /// breaks it unless the plan puts it back.
 ///
 /// The plan is deliberately about *order and content*, not execution: it names each step and the

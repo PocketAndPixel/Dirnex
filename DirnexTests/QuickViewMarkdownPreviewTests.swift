@@ -9,7 +9,7 @@ import WebKit
 /// and where each one lands. What the page then *looks like* — the inlined images and the
 /// stylesheet — is `QuickViewMarkdownPageTests`.
 ///
-/// What is deliberately *not* here is anything about WebKit's own behaviour — whether a `#fragment`
+/// What is deliberately *not* here is anything about WebKit's own behavior — whether a `#fragment`
 /// click still passes `decidePolicyFor`, whether a base URL reaches a sibling image. Those are
 /// claims about a framework, and they were settled where such claims can be settled: against a real
 /// web view in a throwaway harness, with the numbers recorded in `QuickViewWebView` and
@@ -77,11 +77,11 @@ struct QuickViewMarkdownPreviewTests {
     // MARK: - Where each style lands
 
     @Test("a Markdown file in source style shows the text view")
-    func sourceStyleUsesTheTextBackend() throws {
+    func sourceStyleUsesTheTextBackend() async throws {
         let tree = try TempDirectory()
         defer { tree.cleanup() }
         let url = try tree.write("README.md", contents: "# Title\n\ntext\n")
-        let preview = try QuickViewTextPreviewTests.loaded(url, style: .source)
+        let preview = try await QuickViewTextPreviewTests.loaded(url, style: .source)
 
         #expect(preview.webSurface == nil, "the web backend should not have been built")
         let hit = try #require(preview.hitTest(NSPoint(x: 200, y: 200)))
@@ -137,7 +137,11 @@ struct QuickViewMarkdownPreviewTests {
     // MARK: - Helpers
     /// compiled asynchronously on top of that (docs/NOTES.md ▸ Testing).
     private static func loadedRendered(_ url: URL) async throws -> QuickViewPreviewView {
-        let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
+        let preview = QuickViewPreviewView(
+            backingColor: .textBackgroundColor,
+            header: .none,
+            findOptions: QuickViewFindOptionsStore.scratch()
+        )
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 400),
             styleMask: [.titled],

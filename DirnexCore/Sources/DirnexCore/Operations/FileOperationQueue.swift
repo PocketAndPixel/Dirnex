@@ -22,14 +22,16 @@ import Foundation
 ///   aggregate byte total, throughput, and ETA — for the queue bar the app draws.
 ///
 /// It lives in `DirnexCore` because it drives the byte-moving engine ("if it touches
-/// bytes, it lives in DirnexCore and has tests" — §2). The heavy work runs on detached
-/// tasks; the actor only bookkeeps, so its methods never block on I/O.
+/// bytes, it lives in DirnexCore and has tests" — §2). The heavy work runs on threads of
+/// its own (`BlockingWork`, never the cooperative pool); the actor only bookkeeps, so its
+/// methods never block on I/O.
 public actor FileOperationQueue {
     private let backend: any VFSBackend
     private let maxConcurrent: Int
     private let now: @Sendable () -> Date
+    private let plainPackWriter: (any PlainPackWriting)?
 
-    /// Every job ever enqueued, keyed by id; finished and cancelled jobs stay so the
+    /// Every job ever enqueued, keyed by id; finished and canceled jobs stay so the
     /// snapshot can show their outcome until the caller clears them.
     private var jobs: [OperationJobID: Job] = [:]
     /// Enqueue order — the FIFO the scheduler scans, and the render order of the snapshot.
@@ -52,14 +54,21 @@ public actor FileOperationQueue {
     ///   - maxConcurrent: a ceiling on simultaneously-running jobs, on top of the volume
     ///     rule — a backstop so a machine with many volumes doesn't spawn unbounded work.
     ///   - now: the clock, injectable so throughput/ETA is testable.
+    ///   - plainPackWriter: the app's `bsdtar`, for `.plainPack` jobs. Injected here rather than
+    ///     carried on the job for the reason ``PlainPackWriting`` gives — a job is a description,
+    ///     and it must stay `Equatable`. `nil` is the honest default for a caller that has no such
+    ///     tool (every test that never packs), and a `.plainPack` job reaching a queue without one
+    ///     is reported as a failure rather than quietly doing nothing.
     public init(
         backend: any VFSBackend,
         maxConcurrent: Int = 8,
-        now: @escaping @Sendable () -> Date = { Date() }
+        now: @escaping @Sendable () -> Date = { Date() },
+        plainPackWriter: (any PlainPackWriting)? = nil
     ) {
         self.backend = backend
         self.maxConcurrent = max(1, maxConcurrent)
         self.now = now
+        self.plainPackWriter = plainPackWriter
     }
 
     // MARK: - Enqueue
@@ -154,46 +163,37 @@ public actor FileOperationQueue {
         let resolveConflict = job.resolveConflict
         let onError = job.onError
         let backend = backend
+        let plainPackWriter = plainPackWriter
         let (progressStream, progressContinuation) = AsyncStream<OperationProgress>.makeStream()
 
-        // The engine is synchronous and blocks its thread; run it detached so the actor
-        // stays responsive. `isCancelled` is the job's control hook — it reports
-        // cancellation *and* blocks the copy while the queue is paused.
+        // The engine is synchronous and blocks its thread, so it runs through `BlockingWork` — a
+        // thread it is allowed to block, which a detached task is *not*: see that type for why the
+        // cooperative pool is the wrong place and what it cost. `isCancelled` is the job's control
+        // hook — it reports cancellation *and* blocks the copy while the queue is paused, which is
+        // exactly the indefinite hold the pool must never be asked to absorb.
         //
         // Which engine is the *only* thing the kind decides here. Everything else the queue does —
         // the volume rule, pause, cancel, the aggregate bar — is engine-agnostic by construction,
         // which is why a checksum could join without a scheduler of its own.
         let runTask = Task.detached(priority: .userInitiated) { () -> OperationReport in
-            let report: OperationReport
-            switch operation.kind {
-            case .copy, .move:
-                report = CopyEngine.run(
-                    operation,
-                    using: backend,
-                    conflictPolicy: policy,
-                    resolveConflict: resolveConflict,
-                    onError: onError,
-                    onProgress: { progressContinuation.yield($0) },
-                    isCancelled: { control.checkpoint() }
+            await BlockingWork.run {
+                let report = FileOperationQueue.report(
+                    for: operation,
+                    in: Context(
+                        backend: backend,
+                        plainPackWriter: plainPackWriter,
+                        onProgress: { progressContinuation.yield($0) },
+                        isCancelled: { control.checkpoint() },
+                        resolvers: Resolvers(
+                            policy: policy,
+                            resolveConflict: resolveConflict,
+                            onError: onError
+                        )
+                    )
                 )
-            case let .attributes(job):
-                report = AttributeApplyRunner.run(
-                    job,
-                    sources: operation.sources,
-                    using: backend,
-                    onProgress: { progressContinuation.yield($0) },
-                    isCancelled: { control.checkpoint() }
-                )
-            case .checksum:
-                report = ChecksumRunner.run(
-                    operation,
-                    using: backend,
-                    onProgress: { progressContinuation.yield($0) },
-                    isCancelled: { control.checkpoint() }
-                )
+                progressContinuation.finish()
+                return report
             }
-            progressContinuation.finish()
-            return report
         }
 
         // Marshal progress and the final report back onto the actor. Detached (not an
@@ -218,7 +218,7 @@ public actor FileOperationQueue {
         guard var job = jobs[id] else { return }
         job.report = report
         // The engine sets `wasCancelled` when it unwound on a cancel — reflect that as a
-        // cancelled job rather than a finished one, even though it produced a report.
+        // canceled job rather than a finished one, even though it produced a report.
         job.status = report.wasCancelled ? .cancelled : .finished
         jobs[id] = job
         runningIDs.remove(id)
@@ -265,7 +265,7 @@ public actor FileOperationQueue {
 
     /// Cancel one job. A waiting job is dropped before it starts; a running (or paused) job
     /// is told to unwind — the engine cleans up any half-written file and reports back with
-    /// `wasCancelled`, at which point `complete` marks it cancelled.
+    /// `wasCancelled`, at which point `complete` marks it canceled.
     public func cancel(_ id: OperationJobID) {
         guard var job = jobs[id] else { return }
         switch job.status {
@@ -275,7 +275,7 @@ public actor FileOperationQueue {
             publish()
             checkIdle()
         case .running, .paused:
-            controls[id]?.cancel() // completion arrives via the engine's cancelled report
+            controls[id]?.cancel() // completion arrives via the engine's canceled report
         case .finished, .cancelled:
             break
         }
@@ -287,7 +287,7 @@ public actor FileOperationQueue {
 
     // MARK: - Housekeeping
 
-    /// Drop every finished or cancelled job from the queue, leaving waiting, running, and
+    /// Drop every finished or canceled job from the queue, leaving waiting, running, and
     /// paused jobs untouched. The aggregate rolls up *all* known jobs, so without this a
     /// later batch would inherit the bytes of jobs already done — its progress bar would
     /// start part-full. The app calls this once the queue drains, matching a queue bar that
@@ -441,17 +441,17 @@ extension FileOperationQueue {
 /// The engine polls one closure — its `isCancelled` — between chunks and items. We route
 /// that through `checkpoint`, which does double duty: it reports cancellation, and while
 /// the queue is paused it *blocks the copy thread* on a condition variable until the job
-/// is resumed or cancelled. That gives a real mid-flight pause without the engine needing
+/// is resumed or canceled. That gives a real mid-flight pause without the engine needing
 /// to know the queue exists. A plain lock-guarded flag pair, safe to touch from the actor
 /// and the copy thread alike.
 private final class JobControl: @unchecked Sendable {
     private let condition = NSCondition()
-    private var cancelled = false
+    private var canceled = false
     private var paused = false
 
     func cancel() {
         condition.lock()
-        cancelled = true
+        canceled = true
         condition.broadcast() // wake a parked checkpoint so it can unwind
         condition.unlock()
     }
@@ -468,7 +468,7 @@ private final class JobControl: @unchecked Sendable {
     func checkpoint() -> Bool {
         condition.lock()
         defer { condition.unlock() }
-        while paused, !cancelled { condition.wait() }
-        return cancelled
+        while paused, !canceled { condition.wait() }
+        return canceled
     }
 }

@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// The Panels tab's three colour wells (PLAN.md §M15 Slice 2) — accent, cursor and mark — each
+/// The Panels tab's three color wells (PLAN.md §M15 Slice 2) — accent, cursor and mark — each
 /// defaulting to Follow System.
 ///
 /// In its own file rather than inline in `PanelsSettingsView` for the same reason
 /// `LanguageSettingsSection` is: the other rows there are a toggle apiece, while each of these is a
 /// well *plus* the state of having been overridden at all, which needs a control of its own to get
-/// back out of. The three rows are one view used three times, so a colour cannot end up wired to
+/// back out of. The three rows are one view used three times, so a color cannot end up wired to
 /// the wrong preference by a copy-paste.
 struct PaletteSettingsSection: View {
     @ObservedObject var preferences: AppPreferences
@@ -60,13 +60,13 @@ struct PaletteSettingsSection: View {
     }
 }
 
-/// One colour: a well, and — once it has been overridden — the way back to the system's.
+/// One color: a well, and — once it has been overridden — the way back to the system's.
 private struct PaletteColorRow: View {
     let title: String
     @Binding var hex: String
-    /// What this colour resolves to while it is following the system, so the well shows the real
+    /// What this color resolves to while it is following the system, so the well shows the real
     /// starting point instead of an empty swatch. Resolved at render, which is also why the reset
-    /// button matters: there is no third "following" state a colour well can display.
+    /// button matters: there is no third "following" state a color well can display.
     let systemColor: NSColor
 
     var body: some View {
@@ -87,10 +87,10 @@ private struct PaletteColorRow: View {
         }
     }
 
-    /// Reads the stored hex, falling back to the resolved system colour so the well is never blank;
+    /// Reads the stored hex, falling back to the resolved system color so the well is never blank;
     /// writes hex back, which is what turns Follow System into an override. Picking the *same*
-    /// colour the system was already showing therefore counts as an override — which is honest:
-    /// nothing else distinguishes it from picking any other colour, and the reset button is right
+    /// color the system was already showing therefore counts as an override — which is honest:
+    /// nothing else distinguishes it from picking any other color, and the reset button is right
     /// there.
     private var binding: Binding<Color> {
         Binding(

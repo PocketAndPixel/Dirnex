@@ -22,18 +22,55 @@ final class SyncDirectoriesController: NSViewController {
 
     let leftDir: VFSPath
     let rightDir: VFSPath
-    private let backend: any VFSBackend
+    let backend: any VFSBackend
+    /// The comparison methods honest over this pair of sides, in picker order
+    /// (``SyncComparison/available(between:and:)``). Two locations can differ in what their listings
+    /// carry, so the control is built from this rather than from a fixed list of three.
+    let comparisons: [SyncComparison]
+    /// The reconciliations that can actually run here
+    /// (``SyncDirection/available(leftAcceptsChanges:rightAcceptsChanges:)``) — a read-only side
+    /// loses the directions that would write to it.
+    let directions: [SyncDirection]
     /// Handed the checked, actionable decisions when the user commits.
     var onApply: (([Decision]) -> Void)?
     /// Invoked to open two files in an external diff tool (Compare Contents…). The controller is a
     /// pure view; the panel owns process launching and error UI.
     var onCompare: ((VFSPath, VFSPath) -> Void)?
+    /// Invoked to bring a content comparison's candidate pairs down to real files on this disk, and
+    /// answered with the map an engine reads them back through — or `nil` when nothing came down.
+    ///
+    /// The controller stays a pure view, exactly as it does for ``onCompare``: weighing a set,
+    /// confirming it, queueing the transfer and reporting a failure are all the panel's, and what
+    /// crosses back is the one thing a comparison needs (PLAN.md §M25 Slice 5d). `nil` is an
+    /// ordinary answer rather than an error — the user declined the download, or stopped it — and
+    /// the sheet returns to the comparison it was showing.
+    var onPrepareContents: (
+        ([FileEntry], @escaping @MainActor (MaterializedPaths?) -> Void) -> Void
+    )?
 
-    private var direction: SyncDirection = .leftToRight
-    private var comparison: SyncComparison = .sizeAndDate
-    private var rows: [Row] = []
-    private var isScanning = false
-    private var scanError: String?
+    var direction: SyncDirection
+    /// The comparison currently **applied** — never the one a picker click is still asking for.
+    /// A content comparison can be declined at its download confirmation, and until it is answered
+    /// the sheet is still showing this one (`SyncDirectoriesController+Scan`).
+    var comparison: SyncComparison
+    /// Every row the walk produced, classified by size and including the identical ones — the raw
+    /// material each comparison is derived from (``DirnexCore/DirectorySync/survey(left:right:leftBackend:rightBackend:isCancelled:)``).
+    ///
+    /// Held because the walk is the expensive half and a comparison is a question about the *same*
+    /// snapshot: over a server it is a connection per directory, or one exec walk, or a billed
+    /// request. Switching the picker therefore re-derives rather than re-reading, which is also what
+    /// makes the content phase possible at all — the pairs it fetched and the pairs it then reads
+    /// have to be one list rather than two walks apart.
+    var scanned: [SyncEntry] = []
+    var rows: [Row] = []
+    var isScanning = false
+    /// Whether the scan is waiting on a download rather than reading folders — the two look the
+    /// same from here and cost wildly different amounts of the user's time.
+    var isDownloadingContents = false
+    var scanError: String?
+    /// Stop, for the sheet's own scan: set when the sheet goes away and polled by the walk and the
+    /// byte reads, both of which run off the main actor.
+    let scanControl = SyncScanControl()
 
     /// One diff row: the comparison entry, its current action under the chosen direction, and
     /// whether the user has it checked for the run.
@@ -44,19 +81,31 @@ final class SyncDirectoriesController: NSViewController {
     }
 
     // Controls
-    private let headerLabel = NSTextField(labelWithString: "")
-    private let directionControl = NSSegmentedControl()
-    private let comparisonControl = NSSegmentedControl()
+    let headerLabel = NSTextField(labelWithString: "")
+    let directionControl = NSSegmentedControl()
+    let comparisonControl = NSSegmentedControl()
     let tableView = NSTableView()
-    private let scrollView = NSScrollView()
-    private let spinner = NSProgressIndicator()
-    private let statusLabel = NSTextField(labelWithString: "")
-    private let syncButton = NSButton()
+    let scrollView = NSScrollView()
+    let spinner = NSProgressIndicator()
+    let statusLabel = NSTextField(labelWithString: "")
+    let syncButton = NSButton()
 
-    init(leftDir: VFSPath, rightDir: VFSPath, backend: any VFSBackend) {
+    init(
+        leftDir: VFSPath,
+        rightDir: VFSPath,
+        backend: any VFSBackend,
+        comparisons: [SyncComparison],
+        directions: [SyncDirection]
+    ) {
         self.leftDir = leftDir
         self.rightDir = rightDir
         self.backend = backend
+        self.comparisons = comparisons
+        self.directions = directions
+        // The opening choices come from the core's own rules rather than from a constant here, so
+        // the segment that is preselected is always one the control actually offers.
+        direction = directions.first ?? .leftToRight
+        comparison = SyncComparison.default(between: leftDir.backend, and: rightDir.backend)
         super.init(nibName: nil, bundle: nil)
         title = DialogTitle.ofCommand("file.syncDirectories")
     }
@@ -86,69 +135,17 @@ final class SyncDirectoriesController: NSViewController {
         startScan()
     }
 
-    // MARK: - Scan
-
-    /// Run the comparison off the main thread (content mode reads bytes), then rebuild the rows.
-    /// Called on load and whenever the comparison method changes; a direction change only
-    /// re-derives actions in memory (`recomputeActions`) without re-reading the folders.
-    private func startScan() {
-        isScanning = true
-        scanError = nil
-        spinner.startAnimation(nil)
-        updateChrome()
-        let backend = backend
-        let left = leftDir
-        let right = rightDir
-        let comparison = comparison
-        Task {
-            let outcome = await Task.detached(priority: .userInitiated) { () -> Result<
-                [SyncEntry],
-                any Error
-            > in
-                do {
-                    return .success(try DirectorySync.compare(
-                        left: left, right: right,
-                        leftBackend: backend, rightBackend: backend,
-                        comparison: comparison
-                    ))
-                } catch {
-                    return .failure(error)
-                }
-            }.value
-            finishScan(outcome)
-        }
-    }
-
-    private func finishScan(_ outcome: Result<[SyncEntry], any Error>) {
-        isScanning = false
-        spinner.stopAnimation(nil)
-        switch outcome {
-        case let .success(entries):
-            rows = entries.map { entry in
-                let action = DirectorySync.defaultAction(for: entry.status, direction: direction)
-                return Row(entry: entry, action: action, included: isActionable(action))
-            }
-        case let .failure(error):
-            rows = []
-            scanError = (error as? VFSError).map(describe) ?? String(
-                localized: "The folders couldn’t be compared.",
-                comment: "Sync error: the comparison failed for an unspecified reason."
-            )
-        }
-        tableView.reloadData()
-        updateChrome()
-    }
-
     // MARK: - Actions
 
-    @objc private func directionChanged(_ sender: NSSegmentedControl) {
-        direction = [.leftToRight, .bidirectional, .rightToLeft][max(0, sender.selectedSegment)]
+    @objc func directionChanged(_ sender: NSSegmentedControl) {
+        guard directions.indices.contains(sender.selectedSegment) else { return }
+        direction = directions[sender.selectedSegment]
         recomputeActions()
     }
 
-    @objc private func comparisonChanged(_ sender: NSSegmentedControl) {
-        comparison = sender.selectedSegment == 1 ? .content : .sizeAndDate
-        startScan()
+    @objc func comparisonChanged(_ sender: NSSegmentedControl) {
+        guard comparisons.indices.contains(sender.selectedSegment) else { return }
+        applyComparison(comparisons[sender.selectedSegment])
     }
 
     /// Re-derive every row's action for the new direction and reset the check state to that
@@ -193,66 +190,24 @@ final class SyncDirectoriesController: NSViewController {
         onCompare?(left, right)
     }
 
-    @objc private func cancel(_ sender: Any?) {
+    /// A scan outlives the sheet unless somebody stops it, and a content one can be reading
+    /// gigabytes. Here rather than in `cancel(_:)` so the window's own close button counts too.
+    override func viewDidDisappear() {
+        super.viewDidDisappear()
+        scanControl.stop()
+    }
+
+    @objc func cancel(_ sender: Any?) {
         dismiss(sender)
     }
 
-    @objc private func apply(_ sender: Any?) {
+    @objc func apply(_ sender: Any?) {
         let decisions = rows
             .filter { $0.included && isActionable($0.action) }
             .map { Decision(entry: $0.entry, action: $0.action) }
         guard !decisions.isEmpty else { return }
         onApply?(decisions)
         dismiss(sender)
-    }
-
-    // MARK: - Chrome
-
-    private func updateChrome() {
-        directionControl.isEnabled = !isScanning
-        comparisonControl.isEnabled = !isScanning
-        if isScanning {
-            setStatus(String(
-                localized: "Comparing folders…",
-                comment: "Sync status shown while the two folders are being compared."
-            ), isError: false)
-            syncButton.isEnabled = false
-            return
-        }
-        if let scanError {
-            setStatus(scanError, isError: true)
-            syncButton.isEnabled = false
-            return
-        }
-        if rows.isEmpty {
-            setStatus(String(
-                localized: "The folders are already in sync.",
-                comment: "Sync status: no differences were found."
-            ), isError: false)
-            syncButton.isEnabled = false
-            return
-        }
-        let checked = rows.filter { $0.included && isActionable($0.action) }
-        let copies = checked.count { isCopy($0.action) }
-        let deletes = checked.count - copies
-        let conflicts = rows.count { $0.action == .conflict }
-        var text = String(
-            localized: "\(copies) to copy, \(deletes) to delete",
-            comment: "Sync status summary; %1$lld files to copy, %2$lld to delete."
-        )
-        if conflicts > 0 {
-            text += " · " + String(
-                localized: "\(conflicts) conflicts skipped",
-                comment: "Sync status suffix; %lld conflicting items left unchanged. Plural."
-            )
-        }
-        setStatus(text, isError: false)
-        syncButton.isEnabled = !checked.isEmpty
-    }
-
-    private func setStatus(_ text: String, isError: Bool) {
-        statusLabel.stringValue = text
-        statusLabel.textColor = isError ? .systemRed : .secondaryLabelColor
     }
 
     // MARK: - Row model access (for the diff-table extension)
@@ -269,225 +224,20 @@ final class SyncDirectoriesController: NSViewController {
         action != .none && action != .conflict
     }
 
-    private func isCopy(_ action: SyncAction) -> Bool {
+    func isCopy(_ action: SyncAction) -> Bool {
         action == .copyToRight || action == .copyToLeft
     }
 
-    private func abbreviate(_ path: VFSPath) -> String {
-        (path.path as NSString).abbreviatingWithTildeInPath
-    }
-
-    private func describe(_ error: VFSError) -> String {
-        switch error {
-        case .notFound:
-            return String(
-                localized: "One of the folders no longer exists.",
-                comment: "Sync error: a compared folder was removed."
-            )
-        case .permissionDenied:
-            return String(
-                localized: "Permission was denied reading one of the folders.",
-                comment: "Sync error: no read permission on a compared folder."
-            )
-        default:
-            return String(
-                localized: "The folders couldn’t be compared.",
-                comment: "Sync error: the comparison failed for an unspecified reason."
-            )
+    /// What to call a side in the header, which since M25 Slice 5c may be on another machine.
+    ///
+    /// A tilde abbreviation is a fact about *this* home directory, so applying it to a server path
+    /// would silently rewrite `/Users/oleg/backup` on a NAS into `~/backup` — a plausible-looking
+    /// path naming the wrong place. A remote side is named the way the path bar names it, root
+    /// title first.
+    func abbreviate(_ path: VFSPath) -> String {
+        guard let root = path.backendRootTitle else {
+            return (path.path as NSString).abbreviatingWithTildeInPath
         }
-    }
-
-    private func label(_ text: String) -> NSTextField { NSTextField(labelWithString: text) }
-
-    private func segmentWidth(for title: String, in control: NSSegmentedControl) -> CGFloat {
-        let font = control.font ?? .systemFont(ofSize: NSFont.systemFontSize)
-        return ceil((title as NSString).size(withAttributes: [.font: font]).width) + 32
-    }
-
-    private func spacer(width: CGFloat) -> NSView {
-        let view = NSView()
-        if width > 0 {
-            view.widthAnchor.constraint(equalToConstant: width).isActive = true
-        } else {
-            view.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        }
-        return view
-    }
-}
-
-// MARK: - View construction
-
-private extension SyncDirectoriesController {
-    func makeHeader() -> NSView {
-        headerLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        headerLabel.textColor = .secondaryLabelColor
-        headerLabel.lineBreakMode = .byTruncatingMiddle
-        headerLabel.stringValue = "\(abbreviate(leftDir))   ⟷   \(abbreviate(rightDir))"
-        headerLabel.widthAnchor.constraint(equalToConstant: 680).isActive = true
-        return headerLabel
-    }
-
-    func makeControls() -> NSView {
-        let directions = [
-            String(
-                localized: "Left → Right",
-                comment: "Sync direction: mirror the left folder onto the right."
-            ),
-            String(localized: "Both Directions", comment: "Sync direction: reconcile both folders."),
-            String(
-                localized: "Right → Left",
-                comment: "Sync direction: mirror the right folder onto the left."
-            )
-        ]
-        directionControl.segmentCount = directions.count
-        for (index, title) in directions.enumerated() {
-            directionControl.setLabel(title, forSegment: index)
-            directionControl.setWidth(
-                segmentWidth(for: title, in: directionControl),
-                forSegment: index
-            )
-        }
-        directionControl.selectedSegment = 0
-        directionControl.target = self
-        directionControl.action = #selector(directionChanged(_:))
-
-        let comparisons = [
-            String(
-                localized: "Size & Date",
-                comment: "Sync comparison method: compare by size and modification date."
-            ),
-            String(localized: "Content", comment: "Sync comparison method: compare byte-for-byte.")
-        ]
-        comparisonControl.segmentCount = comparisons.count
-        for (index, title) in comparisons.enumerated() {
-            comparisonControl.setLabel(title, forSegment: index)
-        }
-        comparisonControl.selectedSegment = 0
-        comparisonControl.target = self
-        comparisonControl.action = #selector(comparisonChanged(_:))
-
-        let hint = label(String(
-            localized: "Right-click a row to change its action",
-            comment: "Sync sheet hint above the diff table."
-        ))
-        hint.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        hint.textColor = .tertiaryLabelColor
-        hint.lineBreakMode = .byTruncatingTail
-        // The hint is the one element that yields. It must truncate before either choice control
-        // loses a word in a longer translation.
-        hint.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
-        let directionRow = NSStackView(views: [
-            label(
-                String(
-                    localized: "Direction:",
-                    comment: "Sync sheet label before the direction control."
-                )
-            ),
-            directionControl, spacer(width: 0)
-        ])
-        directionRow.orientation = .horizontal
-        directionRow.spacing = 8
-        directionRow.widthAnchor.constraint(equalToConstant: 680).isActive = true
-
-        let comparisonRow = NSStackView(views: [
-            label(
-                String(
-                    localized: "Compare by:",
-                    comment: "Sync sheet label before the comparison-method control."
-                )
-            ),
-            comparisonControl, spacer(width: 0)
-        ])
-        comparisonRow.orientation = .horizontal
-        comparisonRow.spacing = 8
-        comparisonRow.widthAnchor.constraint(equalToConstant: 680).isActive = true
-
-        hint.widthAnchor.constraint(equalToConstant: 680).isActive = true
-
-        let controls = NSStackView(views: [directionRow, comparisonRow, hint])
-        controls.orientation = .vertical
-        controls.alignment = .leading
-        controls.spacing = 8
-        return controls
-    }
-
-    func makeTable() -> NSView {
-        addColumn("include", title: "", width: 26)
-        addColumn(
-            "name",
-            title: String(
-                localized: "Item",
-                comment: "Sync diff table column header: the item's relative path."
-            ),
-            width: 300
-        )
-        addColumn("left", title: leftDir.lastComponent, width: 130)
-        addColumn("action", title: "", width: 60)
-        addColumn("right", title: rightDir.lastComponent, width: 130)
-        tableView.rowHeight = 20
-        tableView.usesAlternatingRowBackgroundColors = true
-        tableView.allowsColumnResizing = true
-        tableView.dataSource = self
-        tableView.delegate = self
-
-        // Right-click a row to override its action (rebuilt per-click from the clicked row).
-        let rowMenu = NSMenu()
-        rowMenu.delegate = self
-        tableView.menu = rowMenu
-
-        scrollView.documentView = tableView
-        scrollView.hasVerticalScroller = true
-        scrollView.borderType = .bezelBorder
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.widthAnchor.constraint(equalToConstant: 680).isActive = true
-        scrollView.heightAnchor.constraint(greaterThanOrEqualToConstant: 300).isActive = true
-
-        spinner.style = .spinning
-        spinner.controlSize = .small
-        spinner.isDisplayedWhenStopped = false
-        spinner.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.addSubview(spinner)
-        NSLayoutConstraint.activate([
-            spinner.centerXAnchor.constraint(equalTo: scrollView.centerXAnchor),
-            spinner.centerYAnchor.constraint(equalTo: scrollView.centerYAnchor)
-        ])
-        return scrollView
-    }
-
-    func addColumn(_ identifier: String, title: String, width: CGFloat) {
-        let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(identifier))
-        column.title = title
-        column.width = width
-        tableView.addTableColumn(column)
-    }
-
-    func makeFooter() -> NSView {
-        statusLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        statusLabel.textColor = .secondaryLabelColor
-        statusLabel.lineBreakMode = .byTruncatingTail
-
-        let cancelButton = NSButton(
-            title: String(localized: "Cancel", comment: "Dismiss button."),
-            target: self,
-            action: #selector(cancel(_:))
-        )
-        cancelButton.bezelStyle = .rounded
-        cancelButton.keyEquivalent = "\u{1b}" // Esc
-
-        syncButton.title = String(
-            localized: "Synchronize",
-            comment: "Confirm button of the sync delete prompt and the sync sheet."
-        )
-        syncButton.bezelStyle = .rounded
-        syncButton.keyEquivalent = "\r"
-        syncButton.target = self
-        syncButton.action = #selector(apply(_:))
-
-        let footer = NSStackView(views: [statusLabel, spacer(width: 0), cancelButton, syncButton])
-        footer.orientation = .horizontal
-        footer.spacing = 10
-        footer.widthAnchor.constraint(equalToConstant: 680).isActive = true
-        return footer
+        return path.isRoot ? root : "\(root)\(path.path)"
     }
 }

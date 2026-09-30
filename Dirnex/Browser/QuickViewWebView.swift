@@ -1,4 +1,5 @@
 import AppKit
+import DirnexCore
 import WebKit
 
 /// The web view a Quick View *rendered* HTML preview draws into. A named subclass because two places
@@ -60,6 +61,13 @@ final class QuickViewWebView: NSView {
         /// fragment is wrapped afresh on every load, so the stylesheet is the one the current
         /// appearance calls for.
         case generated(QuickViewPreviewView.MarkdownScan, directory: URL)
+        /// An office document converted by macOS's own Quick Look generator
+        /// (`QuickViewPreviewView+Document`): `page` inside the bundle directory `bundle`, which is
+        /// also the read access, since a workbook's sheets and a document's images are its siblings.
+        /// `allowsJavaScript` is the **generator's** answer, not the user's preference — the only
+        /// scripts such a page carries are the generator's own tab strip (``DirnexCore/QuickLookPreviewBundle/Content``).
+        /// `fitWidth` is the width to scale the page to the surface from, when the generator allows it.
+        case converted(page: URL, bundle: URL, allowsJavaScript: Bool, fitWidth: Double?)
 
         /// The one navigation `decidePolicyFor` allows, fragments aside. For a generated page that
         /// is the base URL, because that is what the page's own links resolve against — measured:
@@ -68,16 +76,59 @@ final class QuickViewWebView: NSView {
             switch self {
             case let .file(url): url
             case let .generated(_, directory): directory
+            case let .converted(page, _, _, _): page
             }
+        }
+
+        /// Whether scripts run on this page: the user's switch for a file somebody wrote, the
+        /// generator's own request for a page it wrote.
+        @MainActor var allowsJavaScript: Bool {
+            switch self {
+            case .file, .generated: AppPreferences.quickViewJavaScriptValue
+            case let .converted(_, _, allowsJavaScript, _): allowsJavaScript
+            }
+        }
+
+        /// The directory an *embedded frame* may load from — a converted workbook shows each sheet
+        /// in an iframe the tab strip re-points. `nil` for everything else, which keeps the rule a
+        /// file-backed page has always had: nothing but the page itself.
+        var frameDirectory: URL? {
+            if case let .converted(_, bundle, _, _) = self { return bundle }
+            return nil
         }
     }
 
-    private let webView: QuickViewDocumentWebView
+    /// Internal, not private: `QuickViewWebView+Find` reads the page through it, and Swift's
+    /// `private` does not cross files.
+    let webView: QuickViewDocumentWebView
     /// What is on screen, which is the *one* navigation `decidePolicyFor` allows.
     private var page: Page?
 
     /// The view the surface must let the mouse reach for the page to scroll at all.
     var interactiveSubtree: NSView { webView }
+
+    /// Whether anything is rendered — what View ▸ Filter asks before offering to find in it.
+    var hasPage: Bool { page != nil }
+
+    // Finding in the page (`QuickViewWebView+Find`), stored here because an extension cannot.
+
+    /// The bar over the page, hidden until ⌥⌘F.
+    let filterBar: QuickViewTableFilterBar
+    /// The matches, the current one and the search in flight (`QuickViewFind`).
+    let find = QuickViewFind()
+    /// Every child frame this page has loaded, newest last — a converted workbook's sheets. Captured
+    /// in `decidePolicyFor`, which is the only place a `WKFrameInfo` for one can be had; a frame the
+    /// tab strip has since replaced answers nothing and is dropped when the text is read.
+    var childFrames: [WKFrameInfo] = []
+    /// The frames the last read of the text actually reached, in the order it joined them.
+    var findFrames: [WKFrameInfo] = []
+    /// How that joined text is cut back into the documents it came from.
+    var findSegments = TextSegmentMap(lengths: [])
+    /// The web view's top edge: against the surface, or under the bar while it is shown.
+    var filterTopToSurface: NSLayoutConstraint?
+    var filterTopToBar: NSLayoutConstraint?
+    /// Where the keyboard goes when the bar lets go of it: the file list the arrows walk.
+    var returnKeyboard: (() -> Void)?
 
     /// Block everything, then put `file://` back — the order matters, since
     /// `ignore-previous-rules` is what re-admits the page's own bytes and its local siblings.
@@ -96,7 +147,8 @@ final class QuickViewWebView: NSView {
     /// gate and a race.
     private static var compiledRules: WKContentRuleList?
 
-    private init(rules: WKContentRuleList) {
+    private init(rules: WKContentRuleList, findOptions: QuickViewFindOptionsStore) {
+        filterBar = QuickViewTableFilterBar(findOptions: findOptions)
         let configuration = WKWebViewConfiguration()
         // Nothing a preview touches should outlive it: no cookies, no cache, no local storage.
         configuration.websiteDataStore = .nonPersistent()
@@ -120,9 +172,12 @@ final class QuickViewWebView: NSView {
     /// hand over, which should not happen and must not degrade into rendering anyway. The caller
     /// falls back to showing the file as text, which is this milestone's default and loses the user
     /// nothing but the rendering.
-    static func withContentRules(_ completion: @escaping (QuickViewWebView?) -> Void) {
+    static func withContentRules(
+        findOptions: QuickViewFindOptionsStore,
+        _ completion: @escaping (QuickViewWebView?) -> Void
+    ) {
         if let compiledRules {
-            completion(QuickViewWebView(rules: compiledRules))
+            completion(QuickViewWebView(rules: compiledRules, findOptions: findOptions))
             return
         }
         guard let store = WKContentRuleListStore.default() else {
@@ -139,7 +194,7 @@ final class QuickViewWebView: NSView {
             MainActor.assumeIsolated {
                 if let list {
                     compiledRules = list
-                    completion(QuickViewWebView(rules: list))
+                    completion(QuickViewWebView(rules: list, findOptions: findOptions))
                 } else {
                     NSLog(
                         "Quick View: content rules failed to compile — \(String(describing: error))"
@@ -155,6 +210,7 @@ final class QuickViewWebView: NSView {
     /// Render `url`. The read access is scoped to the file's own directory, so a page reaches the
     /// sibling stylesheet and images that make it a saved page, and nothing above it.
     func show(_ url: URL) {
+        startNewPage()
         load(.file(url.standardizedFileURL))
     }
 
@@ -169,7 +225,80 @@ final class QuickViewWebView: NSView {
     /// gives the page a real URL, so a `#anchor` click resolves against something `isPermitted` can
     /// compare exactly and a link to a sibling file resolves to a path it can refuse by name.
     func showMarkdown(_ scan: QuickViewPreviewView.MarkdownScan, source: URL) {
+        startNewPage()
         load(.generated(scan, directory: source.deletingLastPathComponent().standardizedFileURL))
+    }
+
+    /// Render a page Quick Look's generator wrote for an office document, from inside its bundle.
+    func showConverted(page: URL, bundle: URL, allowsJavaScript: Bool, fitWidth: Double?) {
+        startNewPage()
+        load(.converted(
+            page: page.standardizedFileURL,
+            bundle: bundle.standardizedFileURL,
+            allowsJavaScript: allowsJavaScript,
+            fitWidth: fitWidth
+        ))
+    }
+
+    // MARK: - Zoom
+
+    /// ⌘+ / ⌘−'s level, relative to how the page first drew (``DirnexCore/QuickViewZoom``). A new
+    /// file starts back at 1, the way the text and PDF backends reset theirs — arriving on the next
+    /// file at the zoom somebody wanted for the last one is nobody's idea of a preview. A reload of
+    /// the *same* page (a changed JavaScript preference) keeps it.
+    private(set) var zoomLevel = 1.0
+
+    /// Whether the page is exactly as it opened: no ⌘+ / ⌘− step, and no pinch either.
+    var isAtStartingZoom: Bool {
+        abs(zoomLevel - 1) < 0.001 && abs(webView.magnification - 1) < 0.001
+    }
+
+    /// Show the page at `level` times its starting size.
+    func setZoomLevel(_ level: Double) {
+        zoomLevel = level
+        applyZoom()
+    }
+
+    /// Back to how the page opened — the ⌘+ / ⌘− level *and* a pinch, since ⌘0 is the one key that
+    /// promises "as it was".
+    func resetZoom() {
+        webView.magnification = 1
+        setZoomLevel(1)
+    }
+
+    private func startNewPage() {
+        zoomLevel = 1
+        webView.magnification = 1
+        // The matches were in the page being replaced, and the new one carries no highlight to take
+        // off — including the frames, whose infos belong to the document going away.
+        resetFindForNewPage()
+    }
+
+    /// Apply the page's starting size times ``zoomLevel`` as `pageZoom`.
+    ///
+    /// The starting size is 100 % for an HTML file or a Markdown page, and for a converted office page
+    /// that allows it, the surface's width over the generator's — the way Quick Look's own view draws
+    /// a Word page or a slide across its panel, within bounds, so a phone-width pane still gets a
+    /// readable page and a full-screen one does not get letters an inch high. `pageZoom` rather than
+    /// magnification because it lays the page out again at the new size: text stays sharp, a page
+    /// reflows like a browser's ⌘+, and the user's own pinch still magnifies on top of it.
+    private func applyZoom() {
+        var start: CGFloat = 1
+        if case let .converted(_, _, _, fitWidth?) = page, bounds.width > 0 {
+            start = min(
+                max(bounds.width / fitWidth, Self.fitZoomRange.lowerBound),
+                Self.fitZoomRange.upperBound
+            )
+        }
+        let zoom = start * zoomLevel
+        if abs(webView.pageZoom - zoom) > 0.001 { webView.pageZoom = zoom }
+    }
+
+    private static let fitZoomRange: ClosedRange<CGFloat> = 0.5...2
+
+    override func layout() {
+        super.layout()
+        applyZoom()
     }
 
     /// Load the current page again — what a changed JavaScript preference needs, since the answer
@@ -188,15 +317,19 @@ final class QuickViewWebView: NSView {
     /// empty document rather than merely stopping: a page that finished loading keeps its timers.
     func clearPage() {
         page = nil
+        resetFindForNewPage()
         webView.stopLoading()
         webView.loadHTMLString("", baseURL: nil)
     }
 
     private func load(_ page: Page) {
         self.page = page
+        applyZoom()
         switch page {
         case let .file(url):
             webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+        case let .converted(page, bundle, _, _):
+            webView.loadFileURL(page, allowingReadAccessTo: bundle)
         case let .generated(scan, directory):
             webView.loadHTMLString(
                 QuickViewMarkdownStyle.document(body: scan.html, isTruncated: scan.isTruncated),
@@ -212,12 +345,16 @@ final class QuickViewWebView: NSView {
         webView.navigationDelegate = self
         webView.allowsMagnification = true
         addSubview(webView)
+        let top = webView.topAnchor.constraint(equalTo: topAnchor)
+        filterTopToSurface = top
         NSLayoutConstraint.activate([
             webView.leadingAnchor.constraint(equalTo: leadingAnchor),
             webView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            webView.topAnchor.constraint(equalTo: topAnchor),
+            top,
             webView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
+        installFilterBar()
+        installFinding()
     }
 }
 
@@ -243,9 +380,24 @@ extension QuickViewWebView: WKNavigationDelegate {
         decidePolicyFor navigationAction: WKNavigationAction,
         preferences: WKWebpagePreferences
     ) async -> (WKNavigationActionPolicy, WKWebpagePreferences) {
-        preferences.allowsContentJavaScript = AppPreferences.quickViewJavaScriptValue
+        preferences.allowsContentJavaScript = page?.allowsJavaScript
+            ?? AppPreferences.quickViewJavaScriptValue
         guard let url = navigationAction.request.url else { return (.cancel, preferences) }
-        return (isPermitted(url) ? .allow : .cancel, preferences)
+        let inFrame = navigationAction.targetFrame.map { !$0.isMainFrame } ?? false
+        let allowed = isPermitted(url, inFrame: inFrame)
+        // The one place a `WKFrameInfo` for a child frame can be had, and the only way to search a
+        // converted workbook's sheet: a `file://` frame is a different origin, so no script running
+        // in the page can reach into it (`QuickViewWebView+Find`).
+        if allowed, inFrame, let frame = navigationAction.targetFrame {
+            childFrames.append(frame)
+        }
+        return (allowed ? .allow : .cancel, preferences)
+    }
+
+    /// A load finished. The DOM a reload rebuilds carries none of the highlights the search drew, so
+    /// they go back on rather than the user having to retype.
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        redrawFindAfterReload()
     }
 
     /// The empty document `clearPage` loads, and the page this preview is showing — compared
@@ -259,9 +411,17 @@ extension QuickViewWebView: WKNavigationDelegate {
     /// admitted only fragments was written and measured to change nothing else, so it was dropped
     /// rather than carried: it would have had to carve out the initial load and the reload, both of
     /// which arrive here too.
-    private func isPermitted(_ url: URL) -> Bool {
+    ///
+    /// An embedded frame is the one other thing a *converted* page may load: a sheet page from inside
+    /// its own bundle, and nothing outside it — a link in a workbook cell must no more replace a sheet
+    /// with a web page than it may replace the document.
+    private func isPermitted(_ url: URL, inFrame: Bool) -> Bool {
         if url.absoluteString.hasPrefix("about:") { return true }
         guard let page else { return false }
+        if inFrame, let directory = page.frameDirectory, url.isFileURL {
+            let candidate = url.standardizedFileURL.deletingFragment
+            return candidate.deletingLastPathComponent().path == directory.path
+        }
         return url.standardizedFileURL.deletingFragment == page.permittedURL
     }
 }

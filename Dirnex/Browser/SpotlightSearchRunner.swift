@@ -1,11 +1,11 @@
 import DirnexCore
 import Foundation
 
-/// Runs a `SpotlightQuery` by shelling out to `mdfind` off the main thread, then stats the
+/// Runs a `FileQuery` by shelling out to `mdfind` off the main thread, then stats the
 /// resulting paths into `FileEntry`s a virtual panel can render (PLAN.md §M4 "mdfind-backed …
 /// streamed results"). The non-hermetic I/O — spawning the subprocess, statting files — lives
 /// here in the app layer, mirroring `DirectoryLoader`; all the tested query logic stays in
-/// `DirnexCore.SpotlightQuery`.
+/// `DirnexCore.FileQuery`.
 enum SpotlightSearchRunner {
     /// The most results materialized into a panel. A broad query ("every image on disk") can
     /// return hundreds of thousands of paths; statting and rendering all of them would wedge the
@@ -22,7 +22,7 @@ enum SpotlightSearchRunner {
     /// `nil`. Stats each hit with `backend` — anything that vanished between the index and now is
     /// silently skipped. Runs entirely off the main thread.
     static func run(
-        _ query: SpotlightQuery,
+        _ query: FileQuery,
         scope: VFSPath?,
         backend: any VFSBackend
     ) async -> Results {
@@ -30,7 +30,7 @@ enum SpotlightSearchRunner {
     }
 
     /// Run Finder's **Recents** (PLAN.md §M8) — recently-used files everywhere — the same way a
-    /// search runs, but from `RecentsQuery`'s own predicate rather than a user's `SpotlightQuery`.
+    /// search runs, but from `RecentsQuery`'s own predicate rather than a user's `FileQuery`.
     /// The hits are all `.local`, so the caller's backend stats them exactly as it does search hits.
     static func runRecents(
         _ query: RecentsQuery,
@@ -49,7 +49,7 @@ enum SpotlightSearchRunner {
         let kept = paths.prefix(resultLimit)
         guard !kept.isEmpty else { return Results(entries: [], truncated: false) }
 
-        return await Task.detached(priority: .userInitiated) {
+        return await BlockingWork.run {
             var entries: [FileEntry] = []
             entries.reserveCapacity(kept.count)
             for path in kept {
@@ -58,7 +58,7 @@ enum SpotlightSearchRunner {
                 }
             }
             return Results(entries: entries, truncated: paths.count > kept.count)
-        }.value
+        }
     }
 
     /// The paths matching `query`, as `mdfind` reports them — unstatted and **uncapped**.
@@ -72,17 +72,17 @@ enum SpotlightSearchRunner {
     /// Empty for an empty query, and empty on any `mdfind` failure — callers cannot distinguish
     /// "no matches" from "the search didn't run", so this must not be the last word before something
     /// destructive. It isn't: nothing is deleted from a file that doesn't come back as a match.
-    static func paths(_ query: SpotlightQuery, scope: VFSPath? = nil) async -> [String] {
+    static func paths(_ query: FileQuery, scope: VFSPath? = nil) async -> [String] {
         await paths(arguments: query.mdfindArguments(scopePath: scope?.path))
     }
 
     /// The paths `mdfind` reports for a ready-made argument vector — the seam Recents runs through,
-    /// where a `SpotlightQuery` isn't the source. Empty for an empty vector or any `mdfind` failure.
+    /// where a `FileQuery` isn't the source. Empty for an empty vector or any `mdfind` failure.
     private static func paths(arguments: [String]) async -> [String] {
         guard !arguments.isEmpty else { return [] }
-        return await Task.detached(priority: .userInitiated) {
+        return await BlockingWork.run {
             runMdfind(arguments: arguments)
-        }.value
+        }
     }
 
     /// Spawn `mdfind` and collect its newline-delimited absolute paths. Returns an empty list on
@@ -96,6 +96,7 @@ enum SpotlightSearchRunner {
         process.standardOutput = pipe
         process.standardError = FileHandle.nullDevice
 
+        let awaitExit = ProcessWaiting.exitWaiter(for: process)
         do {
             try process.run()
         } catch {
@@ -103,7 +104,7 @@ enum SpotlightSearchRunner {
         }
         // Read to EOF before waiting so a large result set can't deadlock on a full pipe buffer.
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
+        awaitExit()
 
         guard let output = String(data: data, encoding: .utf8) else { return [] }
         return output.split(separator: "\n", omittingEmptySubsequences: true).map(String.init)

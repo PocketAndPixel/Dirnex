@@ -34,9 +34,9 @@ final class SettingsWindowController: NSWindowController {
     /// content only sizes the window once its hosting view lays out — which `showWindow` does too
     /// late — so force that layout and adopt the content's fitting size here, *then* place it,
     /// before the window is shown. Placing earlier (or after `showWindow`) lands a
-    /// placeholder-sized window off-centre, which is what a not-yet-laid-out window does.
+    /// placeholder-sized window off-center, which is what a not-yet-laid-out window does.
     ///
-    /// It takes the same placement as the dialogs — where the user last dragged it, else centred on
+    /// It takes the same placement as the dialogs — where the user last dragged it, else centered on
     /// the app's window. The window itself is not resizable, which is what makes the restore
     /// position-only (see ``DialogWindowPlacement``).
     func present() {

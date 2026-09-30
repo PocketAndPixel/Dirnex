@@ -1,8 +1,8 @@
 import DirnexCore
 import Foundation
 
-/// App-wide persistence for the file-type colour rules (PLAN.md §M15 Slice 3) — the ordered
-/// glob → colour list Settings ▸ Panels edits and every pane draws through. One shared list across
+/// App-wide persistence for the file-type color rules (PLAN.md §M15 Slice 3) — the ordered
+/// glob → color list Settings ▸ Panels edits and every pane draws through. One shared list across
 /// every window, stored as boring JSON in `UserDefaults` beside the user scripts
 /// (`UserScriptStore`), the saved searches and the workspaces (PLAN.md §2 "JSON/plist for config").
 ///

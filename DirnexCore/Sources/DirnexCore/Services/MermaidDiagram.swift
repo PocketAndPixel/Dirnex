@@ -19,7 +19,7 @@ enum MermaidDiagram: Equatable {
     case unsupported(String)
 }
 
-/// A flowchart: `graph`/`flowchart` with a direction, shaped nodes and labelled edges.
+/// A flowchart: `graph`/`flowchart` with a direction, shaped nodes and labeled edges.
 ///
 /// Nodes are held **in declaration order** rather than in a dictionary, because that order is what
 /// breaks every tie the layout has to break — which layer a node lands in when several are equally
@@ -63,8 +63,8 @@ struct MermaidFlowchart: Equatable {
         let shape: Shape
     }
 
-    /// A line's stroke. Not a colour — the emitter writes class names and `currentColor` only, so
-    /// the app's stylesheet colours a diagram in both appearances the way it colours everything else.
+    /// A line's stroke. Not a color — the emitter writes class names and `currentColor` only, so
+    /// the app's stylesheet colors a diagram in both appearances the way it colors everything else.
     enum Stroke: String, Equatable {
         case solid
         case dotted
@@ -73,7 +73,7 @@ struct MermaidFlowchart: Equatable {
 
     /// What an edge ends in. An enum rather than the two booleans it started as, because the
     /// vocabulary is genuinely three-valued — mermaid's `--x` and `--o` are a cross and a circle,
-    /// and modelling them as "an arrow, sort of" would draw the wrong picture rather than none.
+    /// and modeling them as "an arrow, sort of" would draw the wrong picture rather than none.
     enum Tip: String, Equatable {
         case none
         case arrow

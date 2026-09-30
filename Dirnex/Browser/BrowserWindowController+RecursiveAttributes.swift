@@ -20,7 +20,7 @@ extension BrowserWindowController {
         guard case .attributes = kind, let outcome = report.attributeApply else { return }
 
         // Journal before reporting, so ⌘Z is live by the time the user has read the sentence. A
-        // cancelled run still journals what it managed to change — there is no half-written file to
+        // canceled run still journals what it managed to change — there is no half-written file to
         // clean up here, only work done and work not done.
         if let record = UndoRecord.attributeBatchChange(outcome.changed) {
             recordUndoableAction(record)

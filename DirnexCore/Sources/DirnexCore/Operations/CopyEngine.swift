@@ -1,7 +1,7 @@
 import Foundation
 
 /// Executes a `FileOperation` (copy or move) against a backend, reporting progress and
-/// honouring cancellation — TC's queued, non-blocking file operations (PLAN.md §M2).
+/// honoring cancellation — TC's queued, non-blocking file operations (PLAN.md §M2).
 ///
 /// It lives in `DirnexCore` because it touches bytes ("if it touches bytes, it lives in
 /// DirnexCore and has tests" — §2) and is a plain synchronous entry point: the caller
@@ -24,11 +24,11 @@ public enum CopyEngine {
     ///   per-file "Skip / Retry / Abort" dialog. Like `resolveConflict` it runs synchronously
     ///   on the copy thread, so the caller may block it: `.retry` re-attempts the same source
     ///   (discarding any partial bytes first), `.skip` collects the failure and moves on, and
-    ///   `.abort` unwinds the whole operation as cancelled. A missing resolver behaves as
+    ///   `.abort` unwinds the whole operation as canceled. A missing resolver behaves as
     ///   `.skip`, so an unattended run still finishes and summarizes its failures.
     /// - `onProgress` is called periodically (throttled by byte volume and at each item
     ///   boundary) — never per chunk, so a 50 GB copy doesn't flood the caller.
-    /// - `isCancelled` is polled between chunks and items; cancelling leaves a report with
+    /// - `isCancelled` is polled between chunks and items; canceling leaves a report with
     ///   `wasCancelled == true` and cleans up any half-written file (a partially copied
     ///   directory tree is left in place for the user to remove).
     public static func run(
@@ -75,6 +75,19 @@ private final class CopyRun {
     private var skipped: [VFSPath] = []
     private var failures: [OperationItemFailure] = []
     private var outcomes: [OperationItemOutcome] = []
+    /// What each account this job touches had already failed to carry when the job started
+    /// (PLAN.md §M25 Slice 5b).
+    ///
+    /// Taken once, up front, because the answer this job owes is a **difference**: the accumulator
+    /// on a connection spans that connection's whole life, and a user told "the modification times
+    /// weren't kept" after their second transfer must not be being told about their first.
+    ///
+    /// Keyed per backend rather than summed into one number, and that is what keeps it correct under
+    /// the queue's own scheduling: jobs on *one* account serialize (they share a volume bucket), but
+    /// a job on account A runs happily beside one on account B — so a single process-wide reading
+    /// would fold B's losses into A's report. Quietly, and in the direction this milestone exists to
+    /// avoid.
+    private var startingTallies: [VFSBackendID: RemoteMetadataTally] = [:]
 
     init(
         operation: FileOperation,
@@ -95,17 +108,18 @@ private final class CopyRun {
     }
 
     func execute() -> OperationReport {
+        startingTallies = metadataTallies()
         let sized = preScan()
         totalBytes = sized.reduce(0) { $0 + $1.bytes }
         emit(current: nil, force: true)
 
         for item in sized {
-            if isCancelled() { return report(cancelled: true) }
+            if isCancelled() { return report(canceled: true) }
             if !transfer(item.entry, bytes: item.bytes) {
-                return report(cancelled: true) // cancelled mid-item
+                return report(canceled: true) // canceled mid-item
             }
         }
-        return report(cancelled: false)
+        return report(canceled: false)
     }
 
     // MARK: - Pre-scan
@@ -114,7 +128,10 @@ private final class CopyRun {
     /// the directory sizer for subtrees. A source we can't size counts as 0 rather than
     /// aborting the whole operation.
     private func preScan() -> [(entry: FileEntry, bytes: Int64)] {
-        operation.sources.map { entry in
+        // A marked symlink may have arrived from a listing that could not say what it points at, and
+        // recreating it needs that text. Asking here costs nothing when there are no links and one
+        // round trip when there are (PLAN.md §M25 Slice 4).
+        backend.resolvingSymlinkTargets(in: operation.sources).map { entry in
             let bytes: Int64
             if entry.kind == .directory {
                 bytes = (
@@ -142,7 +159,9 @@ private final class CopyRun {
     /// bytes discarded first), `.skip` it (collect and continue — the default), or `.abort`
     /// the whole operation. The loop re-attempts as long as the resolver keeps asking.
     private func transfer(_ entry: FileEntry, bytes: Int64) -> Bool {
-        let destination = operation.destinationDirectory.appending(entry.name)
+        // `landingName` rather than `entry.name`: a rename the backend refused in place arrives here
+        // as a one-source move that lands under a *different* name (`FileOperation.renamedTo`).
+        let destination = operation.destinationDirectory.appending(operation.landingName(for: entry))
         // The byte tally to roll back to before each attempt, so a failed-then-retried copy
         // doesn't double-count the bytes it wrote before failing.
         let bytesBefore = completedBytes
@@ -163,7 +182,7 @@ private final class CopyRun {
                     failures.append(OperationItemFailure(path: entry.path, error: failure))
                     return true
                 case .abort:
-                    return false // unwind the whole op, reported cancelled like a user cancel
+                    return false // unwind the whole op, reported canceled like a user cancel
                 }
             }
         }
@@ -252,22 +271,49 @@ private final class CopyRun {
         switch entry.kind {
         case .symlink:
             // Duplicate the link itself, never its target — preserved even when dangling.
-            try backend.createSymbolicLink(
-                at: target,
-                withDestination: entry.symlinkDestination ?? ""
-            )
+            //
+            // A `nil` target is **refused**, and the distinction from an *empty* one is the whole
+            // rule: empty is a link somebody really made (`symlink("")` succeeds on macOS — measured,
+            // it returns 0 and leaves a 0-byte dangling link), while `nil` means this listing could
+            // not read the target at all. `sftp`'s `ls` never prints one, so before §M25 Slice 4
+            // every remote link copied as `ln -s ""` — a broken link reported as a successful copy,
+            // which is the quiet failure this milestone exists to prevent. Where the exec channel can
+            // answer, `resolvingSymlinkTargets` has already filled it in; where it cannot, this says
+            // so. The same distinction §M25 Slice 1 draws for a `nil` mode: absent is not empty.
+            guard let destination = entry.symlinkDestination else {
+                throw VFSError.unsupported(.symbolicLinkTargetUnreadable(name: entry.name))
+            }
+            try backend.createSymbolicLink(at: target, withDestination: destination)
             completedBytes += entry.byteSize
         case .directory:
             try backend.createDirectory(at: target)
-            let children = (try? backend.listDirectory(at: entry.path)) ?? []
+            // Resolved as a batch, because the cost of learning a target is the *connection*
+            // rather than the row — twelve links in one exec measured 79 ms against 77 ms for one —
+            // so asking per child would turn a directory of links into a directory of round trips.
+            let children = backend.resolvingSymlinkTargets(
+                in: (try? backend.listDirectory(at: entry.path)) ?? []
+            )
             for child in children {
                 try copyManual(child, to: target.appending(child.name))
             }
-            try? backend.copyMetadata(at: entry.path, to: target)
+            // The listing already read the mode and the date, so carrying them costs nothing here
+            // and saves a remote backend a round trip it would otherwise have to spend asking
+            // (PLAN.md §M25 Slice 2).
+            try? backend.copyMetadata(
+                at: entry.path,
+                to: target,
+                sourceMetadata: RemoteSourceMetadata(entry)
+            )
         case .file, .other:
             try backend.copyFile(
                 at: entry.path,
                 to: target,
+                // The listing already read all of it, so the hint costs nothing: the size is what
+                // lets a remote backend split the transfer (docs/HISTORY.md ▸ After M19), and the mode and date are
+                // what make carrying them free in *both* directions (PLAN.md §M25 Slice 2) — an
+                // upload's source is local, and a download's would otherwise cost a whole connection
+                // to ask about. A backend with no use for either copies exactly as before.
+                hint: CopySourceHint(entry),
                 progress: { [self] delta in
                     completedBytes += delta
                     emit(current: entry.path, force: false)
@@ -297,15 +343,45 @@ private final class CopyRun {
         ))
     }
 
-    private func report(cancelled: Bool) -> OperationReport {
+    private func report(canceled: Bool) -> OperationReport {
         OperationReport(
             completedItems: completedItems,
             completedBytes: completedBytes,
             skipped: skipped,
             failures: failures,
-            wasCancelled: cancelled,
-            outcomes: outcomes
+            wasCancelled: canceled,
+            outcomes: outcomes,
+            metadataLoss: metadataLoss()
         )
+    }
+
+    /// Every account this job touches, and what it had already lost.
+    ///
+    /// The *distinct* backends of the sources and the destination — a relay has two and an ordinary
+    /// copy one, and asking each once is what makes reading it cheap: the tally is a lock and a
+    /// dictionary copy, never a round trip.
+    private func metadataTallies() -> [VFSBackendID: RemoteMetadataTally] {
+        var paths = operation.sources.map(\.path)
+        paths.append(operation.destinationDirectory)
+        var tallies: [VFSBackendID: RemoteMetadataTally] = [:]
+        for path in paths where tallies[path.backend] == nil {
+            tallies[path.backend] = backend.metadataTally(at: path)
+        }
+        return tallies
+    }
+
+    /// What **this run** could not carry, or `nil` when it carried everything — the good case, and
+    /// the one every local copy takes for free.
+    ///
+    /// Each account's delta, added up. A backend that appeared only at the end (nothing does today,
+    /// but a route that reached a third connection would) is measured against `.zero`, which counts
+    /// its whole tally — the safe direction, since the alternative is dropping a loss on the floor.
+    private func metadataLoss() -> RemoteMetadataLoss? {
+        var total = RemoteMetadataTally.zero
+        for (id, ending) in metadataTallies() {
+            total = total.adding(ending.since(startingTallies[id] ?? .zero))
+        }
+        return total.loss
     }
 }
 
@@ -339,7 +415,7 @@ private extension CopyRun {
     }
 
     /// Consult the operation's resolver for one conflict and translate its answer into a
-    /// `Plan`. A missing resolver degrades to the safe `.fail` behaviour; `.cancel` aborts
+    /// `Plan`. A missing resolver degrades to the safe `.fail` behavior; `.cancel` aborts
     /// the whole operation through the engine's normal cancellation path.
     func askPlan(for entry: FileEntry, existing: FileEntry, at destination: VFSPath) throws -> Plan {
         guard let resolveConflict else { throw VFSError.alreadyExists(destination) }

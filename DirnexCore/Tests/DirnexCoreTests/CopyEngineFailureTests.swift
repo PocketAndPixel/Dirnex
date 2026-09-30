@@ -3,7 +3,7 @@ import Testing
 
 @testable import DirnexCore
 
-/// The copy/move engine's behaviour under the failure modes PLAN.md §5 mandates for every
+/// The copy/move engine's behavior under the failure modes PLAN.md §5 mandates for every
 /// operation but that the happy-path/conflict suites don't reach: **permission denied**,
 /// **disk full** (`ENOSPC`), and the **source mutated during the op**. The theme is
 /// safety — a failed item is collected and the operation carries on, a failed copy never
@@ -144,7 +144,7 @@ struct CopyEngineFailureTests {
         #expect(try fs.listDirectory(at: tree.vfsPath("dest")).map(\.name) == ["a.txt"])
     }
 
-    @Test("cancelling mid-file unlinks the half-written destination")
+    @Test("canceling mid-file unlinks the half-written destination")
     func midFileCancelUnlinksPartial() throws {
         let tree = try TempTree()
         defer { tree.cleanup() }

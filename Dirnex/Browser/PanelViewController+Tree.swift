@@ -5,7 +5,7 @@ import DirnexCore
 /// place and show their children indented. The whole design bet is that this is **not a second
 /// surface** — it is the same `FileTableView` over the same `VFSPath` index space the flat list uses,
 /// with `DirnexCore.TreeProjection` supplying the rows (the sidebar's shape, HISTORY.md §M8). So the
-/// columns, the git gutter, marks, inline rename, drag/drop and the Quick View overlay all keep
+/// columns, the name cell's badges, marks, inline rename, drag/drop and the Quick View overlay keep
 /// working unchanged; this file only adds the mode toggle, the expand/collapse keys, the lazy
 /// per-level listing, and the one watcher over the whole expanded set.
 ///
@@ -22,12 +22,24 @@ extension PanelViewController {
         set { tabs[activeTabIndex].viewMode = newValue }
     }
 
-    /// Whether a tree can apply to what is on screen: a real, local, on-disk directory. A results
-    /// listing, an archive, or a remote volume stays a flat list — a per-level lazy listing needs a
-    /// real directory to read, the same gate the size bars use.
-    var canUseTreeMode: Bool {
-        panel.path.backend == .local
-    }
+    /// Whether a tree can apply to what is on screen — **everywhere**, which is a decision rather
+    /// than the absence of one.
+    ///
+    /// This read `panel.path.backend == .local` until 2026-08-17, on the stated reasoning that a
+    /// per-level lazy listing "needs a real directory to read". That is true of each *row*, and was
+    /// never true of the pane's own path — which is what the gate was testing. The rows are what get
+    /// expanded; `DirectoryLoader.list` goes through `CompositeBackend`, which routes per path; and
+    /// `TreeProjection` recurses into each entry's **own** path, never assuming it descends from the
+    /// root (its root level is just `listings[rootPath]`). So a merged iCloud row, a bucket, an SFTP
+    /// directory and a folder inside an archive all expand through machinery that was already there,
+    /// and the core needed no change to allow it.
+    ///
+    /// Kept as a named property with both of its readers — the toggle and the menu validator — rather
+    /// than deleted along with the restriction: the day something genuinely cannot be a tree, the
+    /// exclusion has to land in one place. One rule spelled twice is this codebase's most repeated
+    /// bug (docs/NOTES.md ▸ Design lessons), and the checkmark-and-gray dead end this replaces was
+    /// exactly that shape.
+    var canUseTreeMode: Bool { true }
 
     // MARK: - Command (dispatched to the focused pane via the responder chain)
 
@@ -68,16 +80,18 @@ extension PanelViewController {
     /// Apply this row's depth and disclosure state to its name cell, or reset a recycled cell back to
     /// the flat-list layout in list mode. Called per render from `PanelViewController+Table`. The
     /// disclosure toggle carries the row's own path, so clicking the triangle opens that folder
-    /// without moving the cursor (Finder's behaviour).
+    /// without moving the cursor (Finder's behavior).
     func applyTreeLayout(to cell: FileCellView, entry: FileEntry, entryIndex index: Int) {
         guard let tree = panel.tree, tree.rows.indices.contains(index) else {
             cell.isTreeRow = false
+            cell.activeTreeGuideLevel = nil
             cell.onDisclosureToggle = nil
             cell.applyTreeLayout()
             return
         }
         cell.isTreeRow = true
         cell.treeDepth = tree[index].depth
+        cell.activeTreeGuideLevel = activeTreeGuideLevel(forEntryIndex: index)
         if entry.isDirectoryLike {
             cell.treeDisclosure = tree.isExpanded(entry.path) ? .expanded : .collapsed
             let path = entry.path
@@ -87,6 +101,59 @@ extension PanelViewController {
             cell.onDisclosureToggle = nil
         }
         cell.applyTreeLayout()
+    }
+
+    // MARK: - Indent guides
+
+    /// Re-derive which indent guide is the active one and, if it moved, repaint the rows on screen.
+    ///
+    /// The focus is the **pointer** while it is over this pane and the **cursor** otherwise. That
+    /// order is the one thing here worth arguing: VS Code's guides are hover-driven because a tree
+    /// there is a mouse surface, and this pane is not — a user arrowing through a tree would never
+    /// see the highlight at all, so the cursor has to carry it. The pointer still wins while it is
+    /// in the pane, which is what makes the guide answer the question the *hand* is asking.
+    ///
+    /// Called from `updateChrome`, the funnel every cursor move already goes through, and from the
+    /// hover callback. Deriving it costs one scan of the rows, so it is done once here and read back
+    /// per row from `tableView.activeTreeGuide` rather than recomputed in the render path.
+    func updateTreeGuides() {
+        let guide = treeGuideFocusIndex.flatMap { panel.tree?.activeGuide(forRow: $0) }
+        guard guide != tableView.activeTreeGuide else { return }
+        tableView.activeTreeGuide = guide
+        repaintTreeGuides()
+    }
+
+    /// The row the active guide is derived from, as a `panel` entry index — the hovered row when the
+    /// pointer is over a real one, else the cursor. `nil` on `..` (hovered or the cursor), which is
+    /// not an entry and belongs to no folder in the tree.
+    private var treeGuideFocusIndex: Int? {
+        if let hovered = entryIndex(forRow: tableView.hoveredRow) { return hovered }
+        return cursorOnParentRow ? nil : panel.cursor
+    }
+
+    /// The guide level entry `index` should draw as the active one, or `nil` — read per row by
+    /// `applyTreeLayout(to:entry:entryIndex:)`, so a cell built while scrolling arrives correct.
+    func activeTreeGuideLevel(forEntryIndex index: Int) -> Int? {
+        guard let guide = tableView.activeTreeGuide, guide.rows.contains(index) else { return nil }
+        return guide.level
+    }
+
+    /// Push the new active level onto the name cells already on screen. A `reloadData` would do it
+    /// too and is far too much for a pointer moving one row: the cursor row's editor, the scroll
+    /// position and every badge would be rebuilt to change the color of one hairline.
+    ///
+    /// Reaches the cell through the row view's own subviews rather than `view(atColumn:row:)`, which
+    /// was measured to answer `nil` for a freshly built row (`FileTableView.disclosureCell`).
+    private func repaintTreeGuides() {
+        let rows = tableView.rows(in: tableView.visibleRect)
+        guard rows.length > 0 else { return }
+        for row in rows.lowerBound..<rows.upperBound {
+            guard let rowView = tableView.rowView(atRow: row, makeIfNecessary: false) else { continue }
+            let level = entryIndex(forRow: row).flatMap(activeTreeGuideLevel(forEntryIndex:))
+            for case let cell as FileCellView in rowView.subviews where cell.isNameCell {
+                cell.activeTreeGuideLevel = level
+            }
+        }
     }
 
     // MARK: - Keys (→ expand / step in, ← collapse / step out)
@@ -116,7 +183,7 @@ extension PanelViewController {
         if entry.isDirectoryLike, tree.isExpanded(entry.path) {
             collapseFolder(entry.path)
         } else {
-            stepOutToParent(of: entry)
+            stepOutToParent()
         }
         return true
     }
@@ -162,9 +229,19 @@ extension PanelViewController {
 
     /// Climb from a row to its parent folder's row, the way ← walks up an outline view. A no-op at
     /// depth 0, whose parent is the tree root and has no row.
-    private func stepOutToParent(of entry: FileEntry) {
-        guard let parent = entry.path.parent, parent != panel.path,
-              let parentRow = panel.tree?.index(ofID: parent) else { return }
+    ///
+    /// Answered from the **rows** — the nearest shallower one above the cursor — rather than by
+    /// looking up `entry.path.parent`, which is the same answer everywhere a child's path descends
+    /// from its parent's and no answer at all where it does not: a bucket's contents are on the
+    /// bucket's own backend, so the parent of `s3://bucket/docs` is `s3://bucket/`, and the row above
+    /// it is `s3account:/bucket`. Depth is what the tree actually draws, so it cannot disagree with
+    /// what ← looks like it should do.
+    private func stepOutToParent() {
+        guard let tree = panel.tree, tree.rows.indices.contains(panel.cursor) else { return }
+        let depth = tree[panel.cursor].depth
+        guard depth > 0,
+              let parentRow = tree.rows[..<panel.cursor].lastIndex(where: { $0.depth < depth })
+        else { return }
         moveTreeCursor(toEntryIndex: parentRow)
     }
 
@@ -199,11 +276,11 @@ extension PanelViewController {
         let tabIndex = activeTabIndex
         Task {
             defer { if duringRestore { finishRestoreTreeLoad(inTab: tabIndex) } }
-            guard let listing = try? await DirectoryLoader.list(backend, at: path) else { return }
+            guard let entries = await treeChildEntries(at: path) else { return }
             guard token == loadToken, panel.isTree, panel.path == root else { return }
             if deferRefreshIfRenaming() { return }
             reconcileCursorFromTable()
-            panel.setTreeChildListing(path, entries: listing.entries)
+            panel.setTreeChildListing(path, entries: entries)
             var anchoredCursor = false
             if duringRestore { anchoredCursor = applyPendingRestore(toTab: tabIndex) }
             renderTreeChange()
@@ -214,97 +291,18 @@ extension PanelViewController {
         }
     }
 
-    // MARK: - The watcher over the expanded set
-
-    /// Point the pane's single watcher at whatever the current mode needs: the whole listed-tree set
-    /// in tree mode, or the one directory on screen in list mode. Called wherever a navigation or a
-    /// tab switch (re-)establishes the watch.
-    func startPaneWatcher(_ path: VFSPath, force: Bool = false) {
-        if panel.isTree {
-            startWatchingTree(force: force)
-        } else {
-            startWatching(path)
-        }
-    }
-
-    /// Watch every listed tree directory (root + each loaded expanded folder) through one FSEvents
-    /// stream — one stream, not one per folder (PLAN.md §M15 Slice 4; the merged-listing lesson in
-    /// NOTES.md). Rebuilt only when the *set* changes, or when `force`d — a mode switch keeps the
-    /// same single path but must swap the callback from the list refresh to the tree one.
-    func startWatchingTree(force: Bool = false) {
-        guard panel.isTree, backend.capabilities.contains(.watch) else { return }
-        let sources = treeWatchSources
-        guard force || sources != watchedSources else { return }
-        let root = panel.path
-        watcher = DirectoryWatcher(paths: sources) { [weak self] in
-            Task { @MainActor in
-                guard let self, self.panel.isTree, self.panel.path == root else { return }
-                self.refreshTree()
-            }
-        }
-        watchedSources = sources
-    }
-
-    /// The directories a tree watches, sorted so the equality check against `watchedSources` is
-    /// stable (the core's set is unordered).
-    private var treeWatchSources: [VFSPath] {
-        (panel.tree?.listedDirectories ?? [panel.path]).sorted { $0.path < $1.path }
-    }
-
-    /// Re-list every directory the tree holds and update it in place, keeping the cursor and marks by
-    /// identity. The FSEvents event names nothing (`DirectoryWatcher` discards its paths), so this
-    /// refreshes the whole visible tree — which is a handful of listings, since trees are shallow.
-    /// Internal so a tab switch can reuse it for a stale tree tab.
+    /// What to draw beneath an expanded row — and what a refresh re-reads it with: ordinarily one
+    /// listing, and for a **bucket row in an S3 account pane** a connection, since
+    /// `S3AccountBackend` answers for its root and nothing deeper. See `s3BucketChildren(at:)` for
+    /// why that is a crossing rather than a walk, and why its rows keep their own `s3://` paths.
     ///
-    /// `selecting` is the tree analogue of `refreshCurrentDirectory(selecting:)`: after an operation
-    /// the app initiated (a rename, a New Folder, a delete), the target may live in a child directory
-    /// the *root* re-list would never touch, so the whole tree is re-listed and the cursor is landed
-    /// on the target by identity and scrolled to it — the way a list-mode refresh lands on a
-    /// just-created entry. A passive FSEvents/tab-switch refresh passes `nil` and leaves the scroll
-    /// position where it was.
-    func refreshTree(selecting target: VFSPath? = nil) {
-        guard let tree = panel.tree else { return }
-        let token = loadToken
-        let root = panel.path
-        let directories = tree.listedDirectories
-        Task {
-            var listings: [(VFSPath, [FileEntry])] = []
-            for directory in directories {
-                if let listing = try? await DirectoryLoader.list(backend, at: directory) {
-                    listings.append((directory, listing.entries))
-                }
-            }
-            guard token == loadToken, panel.isTree, panel.path == root else { return }
-            if deferRefreshIfRenaming() { return }
-            reconcileCursorFromTable()
-            for (directory, entries) in listings {
-                if directory == root {
-                    // The root goes through the model too — it stays the settings-of-record the tree
-                    // is re-seeded from — while a child touches only the tree.
-                    panel.setListing(DirectoryListing(path: directory, entries: entries))
-                } else {
-                    panel.setTreeChildListing(directory, entries: entries)
-                }
-            }
-            // A real change landed somewhere under the tree; the event names nothing, so evict every
-            // cached total on the root-to-leaf line (siblings survive) — the same honesty the flat
-            // watcher keeps, so a revisit re-walks what grew rather than trusting the cache. The tree
-            // keeps the totals it is already drawing (a stale total is an approximation, not a lie),
-            // and `renderRefresh` re-queues anything now genuinely unsized.
-            invalidateDirectorySizes(under: root)
-            if let target, let index = panel.displayedIndex(ofID: target) {
-                panel.moveCursor(to: index)
-                cursorOnParentRow = false
-                renderRefresh()
-                syncCursorToTable(scroll: true)
-            } else {
-                renderRefresh()
-            }
-            startWatchingTree()
-            updateGitStatus()
-            updateTagStatus()
-            updateSyncStatus()
+    /// `nil` for anything that failed to list — the folder stays childless, as an unreadable or
+    /// deleted one does.
+    func treeChildEntries(at path: VFSPath) async -> [FileEntry]? {
+        if path.isS3BucketRow {
+            return await s3BucketChildren(at: path)
         }
+        return try? await DirectoryLoader.list(backend, at: path).entries
     }
 
     // MARK: - Expansion persistence

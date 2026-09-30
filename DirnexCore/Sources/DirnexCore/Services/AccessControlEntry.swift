@@ -208,7 +208,7 @@ public struct ACLEntry: Sendable, Hashable, Codable {
     ///
     /// Always six fields, with an unresolved subject's name and id written **empty** — probed, that is
     /// both what the OS writes for such an entry and what `acl_from_text` accepts back, so an ACL
-    /// naming a deleted account survives an edit to its neighbours untouched.
+    /// naming a deleted account survives an edit to its neighbors untouched.
     func canonicalLine() -> String {
         var flagsField = [disposition.rawValue]
         for (token, option) in ACLInheritance.tokenTable where inheritance.contains(option) {

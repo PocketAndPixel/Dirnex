@@ -66,7 +66,7 @@ public struct TreeProjection: Sendable {
 
     /// Directories the user has opened, by identity. A path stays here while an ancestor is collapsed
     /// — collapsing hides a subtree without forgetting how it was arranged, so re-expanding the
-    /// ancestor brings the whole sub-tree back (Finder/Total Commander behaviour). A path with no
+    /// ancestor brings the whole sub-tree back (Finder/Total Commander behavior). A path with no
     /// listing yet renders as a childless expanded folder until its `setListing` arrives — the
     /// lazy-load window.
     public private(set) var expanded: Set<VFSPath>

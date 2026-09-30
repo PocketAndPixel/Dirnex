@@ -56,12 +56,42 @@ public enum TrashLocations {
     ///
     /// **A fourth place, and the same shape as iCloud's** (probed 2026-07-22, after a file deleted
     /// from Google Drive showed up in Finder's Trash and not in Dirnex's — the identical report that
-    /// found the iCloud trash a day earlier). Deleting inside a File Provider mount does not land in
-    /// `~/.Trash`: every mount keeps a `.Trash` of its own at its root, with no `<uid>` level, since
+    /// found the iCloud trash a day earlier). Deleting inside such a mount does not land in
+    /// `~/.Trash`: the mount keeps a `.Trash` of its own at its root, with no `<uid>` level, since
     /// a mount is already per-account. Finder merges them all into the one Trash it shows.
     ///
     /// There is **one per account, not one per provider** — two Google Drive accounts are two mounts
     /// and two trashes — which is why this takes a mount rather than computing a single path.
+    ///
+    /// **Not every provider does this, so the caller must filter on existence rather than trust the
+    /// path.** Measured 2026-08-17 against a live OneDrive mount: it has no `.Trash` and never grows
+    /// one (its domain answers Cocoa 3328, *"the feature is not supported"*, for its own trash
+    /// enumeration), and a `trashItem` there succeeds by moving the file out of the provider domain
+    /// into `~/.Trash` — which the merged listing already covers. `SidebarLocations.trashDirectories`
+    /// is where that filter lives; this function stays a pure path computation.
+    ///
+    /// **And existence is not sufficient either: Dropbox has the directory and does not use it.**
+    /// Measured 2026-08-18 — `Dropbox-Home` carries a `.Trash` at its root with the marker xattr
+    /// below *and* a live `.trash` node in its domain, so every signal this code keys on says the
+    /// provider keeps a trash; a `trashItem` on a file inside the mount nonetheless answers
+    /// `~/.Trash`, and so does Finder's own delete, which names that destination itself. The control
+    /// that makes it a claim about the provider rather than about the caller ran in the same binary
+    /// on the same afternoon: a streaming-mode Google Drive mount answers `<mount>/.Trash` for both.
+    /// So the row Dropbox contributes here is a directory that stays empty — one `readdir` on the
+    /// merged listing and nothing on screen, since the Trash is one row over many sources rather
+    /// than one row each. Nothing to fix; worth knowing before reading an empty Dropbox trash as a
+    /// bug in the merge.
+    ///
+    /// **And Box says the filter's answer is not even stable.** Measured 2026-08-18, minutes after
+    /// the domain was created: `Box-Box/.Trash` was on disk with the marker xattr, `SF_DATALESS`,
+    /// 65535 links and a reconciled `.trash` node — then thirteen minutes later that node had failed
+    /// `fetch-children-metadata` twice with the same Cocoa 3328 OneDrive gives, and the directory was
+    /// gone from the filesystem for good. A `stat` reaching into it during the changeover returned
+    /// `ETIMEDOUT`. So the caller filters a property that *changes*, and the window where it answers
+    /// yes is the first quarter-hour after somebody installs the client. It degrades correctly rather
+    /// than by luck: `ETIMEDOUT` has no case in `VFSError.fromErrno` and so lands on `.io`, which
+    /// `gatherTrash` drops with `continue` — had it mapped to `.permissionDenied` instead, a Box
+    /// trash timing out would have raised the Full Disk Access sheet at a user whose grant is fine.
     ///
     /// That these are the same species as iCloud's is not inference: all three carry the marker
     /// xattr `com.apple.fileprovider.trash`, and `~/.Trash` does not. They are constructed rather

@@ -30,9 +30,7 @@ struct AppUpdaterChannelTests {
 
     @Test("the off-main reader round-trips the persisted beta opt-in that Sparkle consults")
     func readerReflectsPersistedPreference() throws {
-        let suiteName = "AppUpdaterChannelTests.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let defaults = ScratchDefaults.fresh()
 
         // Default off — a fresh install rides the stable channel.
         #expect(AppPreferences.receiveBetaUpdatesValue(in: defaults) == false)

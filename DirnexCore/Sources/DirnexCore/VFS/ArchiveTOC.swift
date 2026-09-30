@@ -7,7 +7,7 @@ import Foundation
 ///
 /// Pure and hermetic: it never spawns a process or touches disk. The app's
 /// `ArchiveMounter` runs `bsdtar` off-main and hands the text here, mirroring how the
-/// pure `SpotlightQuery` pairs with the I/O-doing `SpotlightSearchRunner`. Keeping the
+/// pure `FileQuery` pairs with the I/O-doing `SpotlightSearchRunner`. Keeping the
 /// parsing here makes it independently unit-testable against captured real `bsdtar`
 /// output, and lets `ArchiveBackend` answer `list`/`stat` without any I/O.
 public struct ArchiveTOC: Sendable, Equatable {
@@ -19,6 +19,16 @@ public struct ArchiveTOC: Sendable, Equatable {
         public let kind: FileEntry.Kind
         public let byteSize: Int64
         public let modificationDate: Date
+        /// The member's stored mode, or `nil` for a directory this parser had to **synthesize**
+        /// because the archive omitted its entry — there is no row to read a mode from.
+        public let permissions: UInt16?
+        /// Owner and group as `bsdtar` printed them, or `nil` for a synthesized directory.
+        ///
+        /// Note these change *shape* with the archive format rather than with the tool: a tar stores
+        /// `uname`/`gname` and prints `oleg   wheel`, while a zip stores neither and falls back to
+        /// the bare numbers `501    0`. Text either way — see ``FileEntry/ownerName``.
+        public let ownerName: String?
+        public let groupName: String?
         public let symlinkDestination: String?
 
         public init(
@@ -26,12 +36,18 @@ public struct ArchiveTOC: Sendable, Equatable {
             kind: FileEntry.Kind,
             byteSize: Int64,
             modificationDate: Date,
+            permissions: UInt16? = nil,
+            ownerName: String? = nil,
+            groupName: String? = nil,
             symlinkDestination: String? = nil
         ) {
             self.name = name
             self.kind = kind
             self.byteSize = byteSize
             self.modificationDate = modificationDate
+            self.permissions = permissions
+            self.ownerName = ownerName
+            self.groupName = groupName
             self.symlinkDestination = symlinkDestination
         }
     }
@@ -45,20 +61,61 @@ public struct ArchiveTOC: Sendable, Equatable {
     /// contains the root "/".
     private let directoryPaths: Set<String>
 
+    /// At least one entry's name did not survive being decoded, so no path built from that row
+    /// addresses the member it names.
+    ///
+    /// This is the *reading* half of ``ArchiveNameEncoding``. A zip written before UTF-8 was usual
+    /// stores its names in an OEM code page with the zip's own UTF-8 flag clear, and `bsdtar`
+    /// renders them through `vis(3)` — measured 2026-09-09 on the CP866 fixture, under the pinned
+    /// `LC_CTYPE=UTF-8` every ordinary archive needs (``ChildProcessLocale``) the row comes back as
+    /// a *mix* of octal escapes and raw bytes, `\217` + `a0` + `\255` + `ae e0 a0 ac a0`, which is
+    /// not valid UTF-8. ``SubprocessText`` keeps the other ninety-nine rows visible by substituting
+    /// U+FFFD rather than answering `nil` for the whole listing, and this is what notices it did.
+    ///
+    /// So the substitution is the signal, and it is one this type can see and a caller cannot ask
+    /// for cheaply: `EncryptedArchiveReader.nameSamples(archiveAt:encoding: nil)` is the *exact*
+    /// detector and reads every header of an archive whose names are fine, which is the common case
+    /// and the wrong thing to spend on a menu validator. This costs one pass at mount time.
+    ///
+    /// It is deliberately a question about the **archive**, not about the directory somebody is
+    /// standing in: one declaration covers the whole file, so a folder whose own rows happen to be
+    /// ASCII must not read as an archive with nothing wrong with it.
+    ///
+    /// False for the libarchive route, which is the one a declared archive takes —
+    /// `archive_entry_pathname_utf8` answers NULL for an unmapped byte rather than substituting, and
+    /// that surfaces as ``EncryptedArchiveError/entryNameNotUTF8``. A name a user genuinely typed
+    /// U+FFFD into reads as unreadable here, which costs an offer nobody needed and loses nothing.
+    public let hasUnreadableNames: Bool
+
     /// Parse the text `bsdtar -tvf <archive>` prints. Malformed lines are skipped, tar's
     /// leading `./` is stripped, and any intermediate directory an entry implies but the
     /// archive didn't list explicitly is synthesized so the tree is always fully walkable.
     public init(verboseListing text: String) {
         let parsed = ArchiveTOCParser.parse(text)
-        childrenByDirectory = parsed.children
-        directoryPaths = parsed.directories
+        self.init(childrenByDirectory: parsed.children, directoryPaths: parsed.directories)
+    }
+
+    /// Build from headers libarchive read — the route an archive takes when its names are in a
+    /// declared code page, which `bsdtar` cannot be told about (``ArchiveNameEncoding``).
+    public init(entries: [EncryptedArchiveReader.Entry]) {
+        let parsed = ArchiveTOCParser.parse(entries: entries)
+        self.init(childrenByDirectory: parsed.children, directoryPaths: parsed.directories)
     }
 
     /// Direct constructor for tests and callers that already have a tree.
     init(childrenByDirectory: [String: [Entry]], directoryPaths: Set<String>) {
         self.childrenByDirectory = childrenByDirectory
         self.directoryPaths = directoryPaths.union(["/"])
+        // Stored rather than computed: the one caller is a menu validator, which AppKit asks on
+        // every menu open, and a scan of a hundred thousand entries there is a cost the pane pays
+        // for looking at its own File menu.
+        hasUnreadableNames = childrenByDirectory.values.contains { entries in
+            entries.contains { $0.name.contains(Self.replacementCharacter) }
+        }
     }
+
+    /// What ``SubprocessText/lossyUTF8(_:)`` leaves in place of a byte sequence that is not UTF-8.
+    private static let replacementCharacter: Character = "\u{FFFD}"
 
     /// Immediate children of the inner directory `path` ("/" = archive root), unsorted —
     /// the panel's `DirectoryModel` sorts. Empty for a leaf directory or an unknown path.
@@ -76,7 +133,9 @@ public struct ArchiveTOC: Sendable, Equatable {
     public func entry(atInnerPath path: String) -> Entry? {
         let normalized = normalize(path)
         if normalized == "/" {
-            return Entry(name: "/", kind: .directory, byteSize: 0, modificationDate: .distantPast)
+            return Entry(
+                name: "/", kind: .directory, byteSize: 0, modificationDate: FileEntry.unknownDate
+            )
         }
         let parent = parentInnerPath(of: normalized)
         let name = String(normalized.split(separator: "/").last ?? "")

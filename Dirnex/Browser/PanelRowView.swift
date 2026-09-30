@@ -1,16 +1,16 @@
 import AppKit
 
-/// A file pane's row, so the cursor's background can be a colour the user chose
+/// A file pane's row, so the cursor's background can be a color the user chose
 /// (PLAN.md §M15 Slice 2).
 ///
-/// AppKit draws the emphasized selection itself and exposes no colour to set, so the only way to own
-/// it is to draw it. **Installed unconditionally, not only when a custom colour is set** — probed
+/// AppKit draws the emphasized selection itself and exposes no color to set, so the only way to own
+/// it is to draw it. **Installed unconditionally, not only when a custom color is set** — probed
 /// rather than assumed: when the delegate declines to supply a row view, `NSTableView` makes a plain
 /// `NSTableRowView`, in every one of its five styles, so a subclass that hands the call to `super`
 /// is byte-for-byte the shipped drawing. Switching classes as the preference changes would leave a
 /// reuse pool of the other kind to reason about; deferring leaves nothing to get wrong.
 final class PanelRowView: NSTableRowView {
-    /// The cursor colour, or `nil` to let AppKit draw its own selection.
+    /// The cursor color, or `nil` to let AppKit draw its own selection.
     var cursorColor: NSColor? {
         didSet {
             guard cursorColor != oldValue else { return }
@@ -19,8 +19,8 @@ final class PanelRowView: NSTableRowView {
     }
 
     /// **Only the emphasized half is ours.** Measured in both appearances, AppKit's *unemphasized*
-    /// selection is a pure grey — `#DCDCDC` light, `#464646` dark, zero saturation in each — so it
-    /// discards the accent's hue on purpose. That grey is the platform saying "the focus moved"
+    /// selection is a pure gray — `#DCDCDC` light, `#464646` dark, zero saturation in each — so it
+    /// discards the accent's hue on purpose. That gray is the platform saying "the focus moved"
     /// (NOTES.md ▸ AppKit), and it is not even a fainter version of the emphasized fill to imitate:
     /// in dark mode it is *darker* than the emphasized one (L=0.0612 against 0.1175), not lighter.
     /// So there is nothing here to derive. Hand the inactive pane back to AppKit and both panes keep

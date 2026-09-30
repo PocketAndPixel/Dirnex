@@ -1,0 +1,276 @@
+import AppKit
+import SwiftUI
+import Testing
+
+@testable import Dirnex
+
+/// Tab reaching a dialog's popups, checkboxes, buttons and segmented controls with the system's
+/// Keyboard navigation switch off.
+///
+/// The observable is the key view loop itself — `selectKeyView(following:)` from a field, the call a
+/// Tab in a field editor ends in — rather than `canBecomeKeyView` alone, since a control that answers
+/// `true` and is still skipped would be the bug with a green test. The narrowness half is the browser
+/// window, which must keep its controls out of the loop, and a control nobody can use.
+///
+/// Everything here assumes the switch is off, which is the macOS default and the only state in which
+/// the opt-in changes anything; with it on, AppKit already answers `true` for every one of these.
+@Suite(
+    "Keyboard-reachable dialog controls",
+    .enabled { await MainActor.run { !NSApp.isFullKeyboardAccessEnabled } }
+)
+@MainActor
+struct KeyboardReachableControlsTests {
+    private final class PaneKeyController: NSWindowController, PaneKeyWindowController {}
+
+    private struct Fixture {
+        let window: NSWindow
+        let first: NSTextField
+        let popup: NSPopUpButton
+        let checkbox: NSButton
+        let segments: NSSegmentedControl
+        let toggle: NSSwitch
+        let well: NSColorWell
+        let stepper: NSStepper
+        let push: NSButton
+        /// Held here because a window does not retain its controller.
+        let controller: NSWindowController?
+    }
+
+    /// A field followed by one of each control, stacked in a window of its own.
+    private func form(controller: NSWindowController? = nil) -> Fixture {
+        KeyboardReachableControls.install()
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        let first = NSTextField(string: "host")
+        let popup = NSPopUpButton(frame: .zero, pullsDown: false)
+        popup.addItems(withTitles: ["SMB", "SFTP"])
+        let checkbox = NSButton(checkboxWithTitle: "Save", target: nil, action: nil)
+        let segments = NSSegmentedControl(
+            labels: ["A", "B"],
+            trackingMode: .selectOne,
+            target: nil,
+            action: nil
+        )
+        let toggle = NSSwitch()
+        let well = NSColorWell(frame: NSRect(x: 0, y: 0, width: 44, height: 24))
+        let stepper = NSStepper()
+        let push = NSButton(title: "Connect", target: nil, action: nil)
+        let stack = NSStackView(
+            views: [first, popup, checkbox, segments, toggle, well, stepper, push]
+        )
+        stack.orientation = .vertical
+        window.contentView = stack
+        if let controller { controller.window = window }
+        window.layoutIfNeeded()
+        window.recalculateKeyViewLoop()
+        return Fixture(
+            window: window,
+            first: first,
+            popup: popup,
+            checkbox: checkbox,
+            segments: segments,
+            toggle: toggle,
+            well: well,
+            stepper: stepper,
+            push: push,
+            controller: controller
+        )
+    }
+
+    /// The views Tab visits after `start`, in order, until the loop comes back round.
+    private func tabStops(in window: NSWindow, from start: NSView) -> [NSView] {
+        var stops: [NSView] = []
+        var current = start
+        for _ in 0..<16 {
+            window.selectKeyView(following: current)
+            guard var next = window.firstResponder as? NSView else { break }
+            if let editor = next as? NSTextView, editor.isFieldEditor, let field = editor.delegate as? NSView {
+                next = field
+            }
+            if next === start || stops.contains(where: { $0 === next }) { break }
+            stops.append(next)
+            current = next
+        }
+        return stops
+    }
+
+    @Test(
+        "Tab from a field reaches every control kind: popup, checkbox, segments, switch, well, stepper, button"
+    )
+    func tabReachesEveryControl() {
+        let form = form()
+        let stops = tabStops(in: form.window, from: form.first)
+        #expect(stops.contains { $0 === form.popup })
+        #expect(stops.contains { $0 === form.checkbox })
+        #expect(stops.contains { $0 === form.segments })
+        #expect(stops.contains { $0 === form.toggle })
+        #expect(stops.contains { $0 === form.well })
+        #expect(stops.contains { $0 === form.stepper })
+        #expect(stops.contains { $0 === form.push })
+    }
+
+    @Test("an NSAlert's accessory popup and its own buttons are on the Tab loop")
+    func alertAccessoryIsReachable() {
+        KeyboardReachableControls.install()
+        let alert = NSAlert()
+        alert.messageText = "Pack"
+        alert.addButton(withTitle: "Pack")
+        alert.addButton(withTitle: "Cancel")
+        let field = NSTextField(string: "archive")
+        let popup = NSPopUpButton(frame: .zero, pullsDown: false)
+        popup.addItems(withTitles: ["zip", "7z"])
+        let accessory = NSStackView(frame: NSRect(x: 0, y: 0, width: 300, height: 60))
+        accessory.orientation = .vertical
+        accessory.addArrangedSubview(field)
+        accessory.addArrangedSubview(popup)
+        alert.accessoryView = accessory
+        alert.layout()
+        let stops = tabStops(in: alert.window, from: field)
+        #expect(stops.contains { $0 === popup })
+        #expect(stops.contains { $0 === alert.buttons[0] })
+    }
+
+    /// Get Info's and Settings' tab selectors. Measured live: Tab goes Cancel → the selector → the
+    /// selected tab's first control, arrows move the highlight and Space selects, as they do with the
+    /// system switch on. The assertion is the order around the selector, since a selector that joins
+    /// the loop after its own content would read as Tab skipping into the page first.
+    @Test("a tab view's selector is a Tab stop, before the controls of the tab it shows")
+    func tabViewSelectorIsReachable() throws {
+        KeyboardReachableControls.install()
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        let above = NSTextField(string: "above")
+        let tabs = NSTabView()
+        let inner = NSTextField(string: "inner")
+        for label in ["General", "Permissions"] {
+            let item = NSTabViewItem()
+            item.label = label
+            let page = NSStackView(
+                views: label == "General" ? [inner] : [NSTextField(string: label)]
+            )
+            item.view = page
+            tabs.addTabViewItem(item)
+        }
+        tabs.heightAnchor.constraint(equalToConstant: 160).isActive = true
+        tabs.widthAnchor.constraint(equalToConstant: 300).isActive = true
+        let stack = NSStackView(views: [above, tabs])
+        stack.orientation = .vertical
+        window.contentView = stack
+        window.layoutIfNeeded()
+        window.recalculateKeyViewLoop()
+
+        #expect(tabs.canBecomeKeyView)
+        let stops = tabStops(in: window, from: above)
+        let selector = try #require(stops.firstIndex { $0 === tabs })
+        let content = try #require(stops.firstIndex { $0 === inner })
+        #expect(selector < content)
+    }
+
+    @Test("NSPopUpButton inherits the opt-in rather than overriding canBecomeKeyView itself")
+    func popupInheritsFromButton() {
+        let form = form()
+        #expect(form.popup.canBecomeKeyView)
+    }
+
+    @Test("the browser window keeps its controls off the Tab loop, where Tab is a pane key")
+    func paneKeyWindowIsLeftAlone() {
+        let form = form(controller: PaneKeyController())
+        #expect(form.window.windowController is PaneKeyWindowController)
+        let stops = tabStops(in: form.window, from: form.first)
+        #expect(!stops.contains { $0 === form.popup })
+        #expect(!stops.contains { $0 === form.checkbox })
+        #expect(!stops.contains { $0 === form.push })
+        #expect(!stops.contains { $0 === form.toggle })
+        #expect(!stops.contains { $0 === form.well })
+        #expect(!stops.contains { $0 === form.stepper })
+        #expect(!form.segments.canBecomeKeyView)
+    }
+
+    /// The Settings window's shapes: a `Toggle` in a grouped `Form` draws as a switch, each picker
+    /// style is its own AppKit class, and `ColorPicker` and `Stepper` are a color well and a stepper.
+    /// All of them are private SwiftUI subclasses, so this is the check that the patch still reaches
+    /// what SwiftUI builds.
+    private struct SettingsShapes: View {
+        @State private var isOn = true
+        @State private var choice = 0
+        @State private var color = Color.red
+
+        var body: some View {
+            Form {
+                Toggle("Switch", isOn: $isOn)
+                Picker("Menu", selection: $choice) {
+                    Text("One").tag(0)
+                    Text("Two").tag(1)
+                }
+                Picker("Segments", selection: $choice) {
+                    Text("One").tag(0)
+                    Text("Two").tag(1)
+                }
+                .pickerStyle(.segmented)
+                ColorPicker("Color", selection: $color, supportsOpacity: false)
+                Stepper("Count", value: $choice)
+            }
+            .formStyle(.grouped)
+        }
+    }
+
+    @Test("SwiftUI's switch, pickers, color picker and stepper join the Tab loop in Settings")
+    func swiftUIControlsAreReachable() async throws {
+        KeyboardReachableControls.install()
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: SettingsShapes())
+        func controls() -> [NSControl] {
+            func all(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(all) }
+            return window.contentView.map(all)?.compactMap { $0 as? NSControl } ?? []
+        }
+        let deadline = Date().addingTimeInterval(10)
+        let kinds: [NSControl.Type] = [
+            NSSwitch.self, NSPopUpButton.self, NSSegmentedControl.self, NSColorWell.self,
+            NSStepper.self
+        ]
+        func built() -> Bool {
+            let present = controls()
+            return kinds.allSatisfy { kind in present.contains { type(of: $0).isSubclass(of: kind) } }
+        }
+        while Date() < deadline, !built() {
+            window.contentView?.layoutSubtreeIfNeeded()
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        let toggle = try #require(controls().first { $0 is NSSwitch })
+        let popup = try #require(controls().first { $0 is NSPopUpButton })
+        let segments = try #require(controls().first { $0 is NSSegmentedControl })
+        let well = try #require(controls().first { $0 is NSColorWell })
+        let stepper = try #require(controls().first { $0 is NSStepper })
+        #expect(toggle.canBecomeKeyView)
+        #expect(popup.canBecomeKeyView)
+        #expect(segments.canBecomeKeyView)
+        #expect(well.canBecomeKeyView)
+        #expect(stepper.canBecomeKeyView)
+    }
+
+    @Test("a disabled or hidden control is not a Tab stop")
+    func unusableControlsAreSkipped() {
+        let form = form()
+        form.popup.isEnabled = false
+        form.checkbox.isHidden = true
+        #expect(!form.popup.canBecomeKeyView)
+        #expect(!form.checkbox.canBecomeKeyView)
+        #expect(form.push.canBecomeKeyView)
+    }
+}

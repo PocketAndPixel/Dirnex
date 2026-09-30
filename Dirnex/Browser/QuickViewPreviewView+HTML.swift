@@ -67,7 +67,7 @@ extension QuickViewPreviewView {
             completion(webSurface)
             return
         }
-        QuickViewWebView.withContentRules { [weak self] surface in
+        QuickViewWebView.withContentRules(findOptions: findOptions) { [weak self] surface in
             guard let self, let surface else {
                 completion(nil)
                 return

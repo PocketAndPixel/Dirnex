@@ -13,13 +13,23 @@ enum AttributeFormatting {
 
     /// What the item is — and, for a symlink, that everything shown describes the **link**.
     static func kindDescription(of snapshot: AttributesSnapshot) -> String {
-        if snapshot.isSymlink {
+        kindDescription(of: snapshot.entry.kind, isSymlink: snapshot.isSymlink)
+    }
+
+    /// The same rule from a listing alone, for an item this Mac cannot `lstat` (PLAN.md §M24 Slice
+    /// 7). Split out rather than copied: the remote panel names the same four kinds, and two
+    /// spellings of one vocabulary is how a translation ends up applied to only one of them.
+    ///
+    /// A remote listing states a symlink in its mode column, so `isSymlink` is `kind == .symlink`
+    /// there, where locally it comes from an `lstat` that may disagree with a stale entry.
+    static func kindDescription(of kind: FileEntry.Kind, isSymlink: Bool) -> String {
+        if isSymlink {
             return String(
                 localized: "Symbolic link",
                 comment: "Info panel item kind. Everything shown describes the link, not its target."
             )
         }
-        switch snapshot.entry.kind {
+        switch kind {
         case .directory:
             return String(localized: "Folder", comment: "Info panel item kind: a directory.")
         case .file:
@@ -177,7 +187,7 @@ enum AttributeFormatting {
 
     /// One right's label for an item of this kind.
     ///
-    /// The four aliased bits are relabelled on a directory — `read` reads as "List", `write` as "Add
+    /// The four aliased bits are relabeled on a directory — `read` reads as "List", `write` as "Add
     /// File" and so on — because that is what `ls -le` and `chmod +a` call them there, and a folder
     /// whose ACL says "read" would not match what every other tool on the Mac shows. The *stored*
     /// token never changes; this is only the word (docs/NOTES.md).

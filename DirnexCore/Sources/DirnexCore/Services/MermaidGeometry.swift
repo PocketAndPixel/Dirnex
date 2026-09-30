@@ -23,9 +23,9 @@ struct MermaidRect: Equatable {
     var center: MermaidPoint { MermaidPoint(x: midX, y: midY) }
 }
 
-/// Where a line leaving a node's centre crosses that node's outline.
+/// Where a line leaving a node's center crosses that node's outline.
 ///
-/// An edge drawn centre-to-centre disappears under both boxes; clipping it to the outline is what
+/// An edge drawn center-to-center disappears under both boxes; clipping it to the outline is what
 /// puts the arrowhead on the border where it belongs. Each shape has a closed-form answer along the
 /// ray, so there is nothing to iterate and nothing to get within a tolerance of:
 ///
@@ -40,10 +40,10 @@ enum MermaidOutline {
         shape: MermaidFlowchart.Shape,
         toward target: MermaidPoint
     ) -> MermaidPoint {
-        let centre = frame.center
-        let dx = target.x - centre.x
-        let dy = target.y - centre.y
-        guard dx != 0 || dy != 0 else { return centre }
+        let center = frame.center
+        let dx = target.x - center.x
+        let dy = target.y - center.y
+        guard dx != 0 || dy != 0 else { return center }
         let halfWidth = frame.width / 2
         let halfHeight = frame.height / 2
         let scale: Double
@@ -57,6 +57,6 @@ enum MermaidOutline {
         case .rectangle, .rounded, .subroutine:
             scale = 1 / max(abs(dx) / halfWidth, abs(dy) / halfHeight)
         }
-        return MermaidPoint(x: centre.x + dx * scale, y: centre.y + dy * scale)
+        return MermaidPoint(x: center.x + dx * scale, y: center.y + dy * scale)
     }
 }

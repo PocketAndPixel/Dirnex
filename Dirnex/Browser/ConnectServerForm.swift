@@ -1,13 +1,13 @@
 import AppKit
 import DirnexCore
 
-/// The editable body of the Connect-to-Server dialog: a protocol picker (SFTP | FTP | SMB) over
-/// three per-protocol field sets. This owns the picker, the SFTP rows and their auth toggle, the
-/// shared "Save as" row, and the layout; `ConnectServerFTPFields` and `ConnectServerSMBFields` own
-/// theirs, in their own files — three protocols' worth of stored controls does not fit in one type
-/// under SwiftLint's `type_body_length`.
+/// The editable body of the Connect-to-Server dialog: a protocol picker (SMB | SFTP | FTP | S3) over
+/// four per-protocol field sets. This owns the picker, the SFTP rows and their auth toggle, the
+/// shared "Save as" row, and the layout; `ConnectServerFTPFields`, `ConnectServerSMBFields` and
+/// `ConnectServerS3Fields` own theirs, in their own files — four protocols' worth of stored controls
+/// does not fit in one type under SwiftLint's `type_body_length`.
 ///
-/// The three protocols keep independent field sets (rather than sharing host/user) so switching
+/// The four protocols keep independent field sets (rather than sharing host/user) so switching
 /// protocols never carries one's values — or one's defaults, like SFTP's `NSUserName()` — into
 /// another. Only the rows for the selected protocol are shown, and the sheet re-fits its height to
 /// whichever protocol is selected — the width is reserved once (the widest layout) so switching only
@@ -31,7 +31,7 @@ final class ConnectServerForm: NSObject {
 
     // SFTP auth toggle: a Tab-reachable switch flanked by its two mode labels. Off = password
     // (the default), on = private key; the active label is emphasized and the inactive one dimmed.
-    private let authSwitch = KeyNavigableSwitch()
+    private let authSwitch = NSSwitch()
     private let authKeyLabel = ConnectFormFactory.label(ConnectText.privateKey)
     private let authPasswordLabel = ConnectFormFactory.label(ConnectText.authPassword)
     private lazy var authControlView = ConnectFormFactory.authToggle(
@@ -50,9 +50,11 @@ final class ConnectServerForm: NSObject {
     private var sftpKeyRow: NSGridRow!
     private var sftpPasswordRow: NSGridRow!
 
-    /// The FTP and SMB field sets, each in its own object and its own file (see the type comment).
+    /// The FTP, SMB and S3 field sets, each in its own object and its own file (see the type
+    /// comment).
     private let ftp = ConnectServerFTPFields()
     private let smb = ConnectServerSMBFields()
+    private let s3 = ConnectServerS3Fields()
 
     init(prefill: ServerConnection?) {
         let grid = NSGridView(views: [[
@@ -87,22 +89,25 @@ final class ConnectServerForm: NSObject {
         )
         let ftpControls = ftp.buildRows(in: grid)
         ftp.onLayoutChanged = { [weak self] in self?.onLayoutChanged?() }
+        let s3Controls = s3.buildRows(in: grid)
+        s3.onLayoutChanged = { [weak self] in self?.onLayoutChanged?() }
         grid.addRow(with: [ConnectFormFactory.label(ConnectText.saveAs), saveName])
 
         grid.column(at: 0).xPlacement = .trailing
         grid.rowAlignment = .firstBaseline
         let controls: [NSView] = [
             protocolControl, sftpHost, sftpPort, sftpUser, keyFile, sftpSecret, saveName
-        ] + ftpControls + smbControls
+        ] + ftpControls + smbControls + s3Controls
         for control in controls {
             control.widthAnchor.constraint(equalToConstant: 364).isActive = true
         }
     }
 
     private func wireControls() {
-        // SMB, SFTP, FTP — the dropdown's order, and SMB is the initial selection: connecting to a
-        // share on the local network is the most common reason to open this dialog.
-        protocolControl.addItems(withTitles: ["SMB", "SFTP", "FTP"])
+        // SMB, SFTP, FTP, S3 — the dropdown's order, and SMB is the initial selection: connecting
+        // to a share on the local network is the most common reason to open this dialog. S3 is
+        // last because it is the one entry that is not a machine on a network.
+        protocolControl.addItems(withTitles: ["SMB", "SFTP", "FTP", "S3"])
         protocolControl.selectItem(at: Protocols.smb.rawValue)
         protocolControl.target = self
         protocolControl.action = #selector(protocolChanged)
@@ -159,7 +164,12 @@ final class ConnectServerForm: NSObject {
         let ftpWidth = grid.fittingSize.width
         setRows(ftp.allRows, hidden: true)
 
-        return max(sftpWidth, max(smbWidth, ftpWidth))
+        setRows(s3.allRows, hidden: false)
+        grid.layoutSubtreeIfNeeded()
+        let s3Width = grid.fittingSize.width
+        setRows(s3.allRows, hidden: true)
+
+        return max(max(sftpWidth, smbWidth), max(ftpWidth, s3Width))
     }
 
     // MARK: - Toggles & sync
@@ -171,13 +181,13 @@ final class ConnectServerForm: NSObject {
         case smb = 0
         case sftp = 1
         case ftp = 2
+        case s3 = 3
     }
 
     private var selectedProtocol: Protocols {
         Protocols(rawValue: protocolControl.indexOfSelectedItem) ?? .sftp
     }
 
-    private var isFTP: Bool { selectedProtocol == .ftp }
     /// Whether SFTP key auth is selected (switch on); password auth is the default off state.
     private var usingKey: Bool { authSwitch.state == .on }
 
@@ -188,6 +198,7 @@ final class ConnectServerForm: NSObject {
 
     @objc private func authChanged() {
         updateVisibility()
+        onLayoutChanged?()
     }
 
     /// Show only the rows relevant to the current protocol and, for SFTP, the current auth method:
@@ -200,16 +211,19 @@ final class ConnectServerForm: NSObject {
         sftpKeyRow.isHidden = selected != .sftp || !usingKey
         sftpPasswordRow.isHidden = selected != .sftp || usingKey
         ftp.setHidden(selected != .ftp)
+        s3.setHidden(selected != .s3)
         updateAuthEmphasis()
         switch selected {
         case .smb: initialFirstResponder = smb.firstResponder
         case .ftp: initialFirstResponder = ftp.firstResponder
+        case .s3: initialFirstResponder = s3.firstResponder
         case .sftp: initialFirstResponder = sftpHost
         }
     }
 
-    /// Raised when a toggle changes the layout's height, so the sheet can re-fit around it — the
-    /// plain-FTP note appears and disappears with the security picker.
+    /// Raised when a toggle changes which rows are showing, so the sheet can re-fit around them and
+    /// rebuild its Tab order — the plain-FTP note appears and disappears with the security picker, and
+    /// the SFTP auth switch trades the password row for the key-file row at the same height.
     var onLayoutChanged: (() -> Void)?
 
     private func setRows(_ rows: [NSGridRow], hidden: Bool) {
@@ -240,14 +254,26 @@ final class ConnectServerForm: NSObject {
                 keyFile.stringValue = identityFile
             case .password:
                 authSwitch.state = .off
-                sftpSecret.stringValue = ServerKeychain.password(for: location) ?? ""
+                sftpSecret.stringValue = SecretKeychain.password(for: location) ?? ""
             }
-        case let .ftp(location, authentication, _):
+        case let .ftp(location, authentication, trustedPublicKey):
             protocolControl.selectItem(at: Protocols.ftp.rawValue)
-            ftp.apply(location: location, authentication: authentication)
+            // The pin has no row of its own, so it is handed over to be carried rather than shown —
+            // a `_` here is what erased it from every edited FTPS server until 2026-08-13.
+            ftp.apply(
+                location: location,
+                authentication: authentication,
+                trustedPublicKey: trustedPublicKey
+            )
         case let .smb(location):
             protocolControl.selectItem(at: Protocols.smb.rawValue)
             smb.apply(location: location)
+        case let .s3(location):
+            protocolControl.selectItem(at: Protocols.s3.rawValue)
+            s3.apply(location: location)
+        case let .s3Account(account):
+            protocolControl.selectItem(at: Protocols.s3.rawValue)
+            s3.apply(account: account)
         }
     }
 
@@ -261,6 +287,7 @@ final class ConnectServerForm: NSObject {
         switch selectedProtocol {
         case .smb: return smb.readForm(saveName: name)
         case .ftp: return ftp.readForm(saveName: name)
+        case .s3: return s3.readForm(saveName: name)
         case .sftp: return readSFTPForm(saveName: name)
         }
     }
@@ -339,15 +366,14 @@ enum ConnectFormFactory {
 
     /// Keep an entry field to a single, horizontally-scrolling line. A long value — a full
     /// `smb://user@host/share` address is easily wider than the 364 pt field — otherwise wraps and
-    /// grows the row, which pushed the grid apart and made the field read as empty. Single-line mode
-    /// scrolls to follow the cursor instead; `.byTruncatingHead` keeps the business end (host and
-    /// share) visible when the field isn't being edited. Set the break mode *after* single-line mode,
-    /// which forces `.byTruncatingTail` of its own.
+    /// grows the row, which pushed the grid apart and made the field read as empty. `.byTruncatingHead`
+    /// keeps the business end (host and share) visible when the field isn't being edited.
+    ///
+    /// This form is where the fix was first worked out; ``NSTextField/keepToOneLine(truncating:)``
+    /// is that same code, lifted so every other dialog gets it too — minus the `isScrollable = true`
+    /// this file used to set, which the following `lineBreakMode` assignment had always cleared.
     private static func configureSingleLine(_ field: NSTextField) {
-        field.usesSingleLineMode = true
-        field.cell?.wraps = false
-        field.cell?.isScrollable = true
-        field.cell?.lineBreakMode = .byTruncatingHead
+        field.keepToOneLine(truncating: .byTruncatingHead)
     }
 
     static func label(_ text: String) -> NSTextField {
@@ -356,7 +382,7 @@ enum ConnectFormFactory {
         return field
     }
 
-    /// A small secondary-colour explanatory line under a control — used for the plain-FTP cleartext
+    /// A small secondary-color explanatory line under a control — used for the plain-FTP cleartext
     /// note. Wraps, so a longer translation grows downward instead of being clipped.
     static func note(_ text: String) -> NSTextField {
         let field = NSTextField(wrappingLabelWithString: text)
@@ -380,12 +406,4 @@ enum ConnectFormFactory {
         stack.translatesAutoresizingMaskIntoConstraints = false
         return stack
     }
-}
-
-/// An `NSSwitch` that always joins the window's key-view loop, so Tab reaches it even when the
-/// system's "Full Keyboard Access" setting is off — AppKit otherwise keeps non-text controls out of
-/// the loop. Returning `acceptsFirstResponder` (true while enabled) is what the base class does, but
-/// only under Full Keyboard Access; overriding makes it unconditional.
-private final class KeyNavigableSwitch: NSSwitch {
-    override var canBecomeKeyView: Bool { acceptsFirstResponder }
 }

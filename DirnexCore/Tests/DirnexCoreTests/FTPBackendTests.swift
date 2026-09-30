@@ -179,7 +179,7 @@ struct FTPBackendTests {
         }
     }
 
-    /// FTP has no verb that creates a symbolic link, so the default refusal is the right behaviour.
+    /// FTP has no verb that creates a symbolic link, so the default refusal is the right behavior.
     @Test("creating a symbolic link is unsupported")
     func symbolicLinksAreUnsupported() {
         let transport = FakeFTPTransport()

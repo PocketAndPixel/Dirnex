@@ -93,4 +93,93 @@ struct VFSPathTests {
         #expect(!VFSPath(backend: VFSBackendID("zip"), path: "/Volumes/Temp/x")
             .isSelfOrDescendant(of: mount))
     }
+
+    // MARK: - Remote predicates
+
+    /// The predicate five app sites used to spell out by naming backends, which is how a freshly
+    /// connected FTP server's path bar came to read "Results for /" (docs/NOTES.md ▸ AppKit).
+    @Test("every connected remote account answers isRemoteConnection")
+    func remoteConnectionCoversEveryRemote() {
+        let sftp = SFTPLocation(host: "example.com", username: "oleg").backendID
+        let ftp = FTPLocation(host: "nas.local", username: "oleg", security: .explicit).backendID
+        let s3 = S3Location(
+            host: "s3.eu-central-1.amazonaws.com",
+            bucket: "photos",
+            region: "eu-central-1",
+            accessKeyID: "AKIAEXAMPLE"
+        ).backendID
+        for remote in [sftp, ftp, s3] {
+            #expect(remote.isRemoteConnection)
+        }
+    }
+
+    /// The other half, and the one that matters: a *virtual* listing must never be mistaken for a
+    /// remote one — it is not re-listable, so a back/forward trail and a post-operation refresh are
+    /// both wrong there.
+    @Test("nothing local or virtual answers isRemoteConnection")
+    func remoteConnectionExcludesLocalAndVirtual() {
+        let virtual: [VFSBackendID] = [
+            .local, .search, .trash, .icloud, .archive(forArchiveAt: "/Users/oleg/pkg.zip")
+        ]
+        for id in virtual {
+            #expect(!id.isRemoteConnection)
+            #expect(!id.acceptsUploads)
+        }
+    }
+
+    /// With M21's write half landed, S3 answers both — it is browsable *and* a destination.
+    ///
+    /// The two predicates stay separate all the same, which is what this pins: they answer
+    /// different questions, and S3 spent a milestone being the backend that distinguished them.
+    /// Collapsing them now that every backend agrees is the tempting simplification, and it would
+    /// put the next read-only backend straight back into failing *inside the queue* rather than
+    /// saying up front that the other panel cannot receive files.
+    @Test("every remote connection is now also a destination, by two separate questions")
+    func s3IsReadableAndWritable() {
+        let s3 = S3Location(
+            host: "s3.eu-central-1.amazonaws.com",
+            bucket: "photos",
+            region: "eu-central-1",
+            accessKeyID: "AKIAEXAMPLE"
+        ).backendID
+        #expect(s3.isRemoteConnection)
+        #expect(s3.acceptsUploads)
+        #expect(SFTPLocation(host: "example.com", username: "oleg").backendID.acceptsUploads)
+        #expect(FTPLocation(host: "nas.local", username: "o", security: .explicit)
+            .backendID.acceptsUploads)
+    }
+
+    /// `receivesFiles` — the union M23 needed, and the one place it differs from `.write`.
+    ///
+    /// It exists so ⌘V, a drop and F5 ask one question instead of three spelling `local || upload`
+    /// by hand. The **S3 account** is the whole reason it is not the same as being writable: F7
+    /// there creates a *bucket*, so every capability-shaped gate says yes while a pasted file has
+    /// nowhere to go — and without this the paste is enabled and fails inside the queue instead of
+    /// the menu item being gray.
+    @Test("a file can land on this disk and on any account that takes uploads")
+    func receivesFilesWhereBytesCanLand() {
+        #expect(VFSBackendID.local.receivesFiles)
+        #expect(SFTPLocation(host: "example.com", username: "oleg").backendID.receivesFiles)
+        #expect(FTPLocation(host: "nas.local", username: "o", security: .explicit)
+            .backendID.receivesFiles)
+        let bucket = S3Location(
+            host: "s3.eu-central-1.amazonaws.com",
+            bucket: "photos",
+            region: "eu-central-1",
+            accessKeyID: "AKIAEXAMPLE"
+        )
+        #expect(bucket.backendID.receivesFiles)
+        // The account holding that same bucket: browsable, writable, and not a destination.
+        #expect(!VFSBackendID.s3Account(bucket.account).receivesFiles)
+    }
+
+    @Test("nothing virtual receives files — a results listing has no directory of its own")
+    func virtualListingsReceiveNothing() {
+        let virtual: [VFSBackendID] = [
+            .search, .trash, .icloud, .archive(forArchiveAt: "/Users/oleg/pkg.zip")
+        ]
+        for id in virtual {
+            #expect(!id.receivesFiles, "\(id) must not be a transfer destination")
+        }
+    }
 }

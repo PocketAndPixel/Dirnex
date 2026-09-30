@@ -11,7 +11,7 @@ import DirnexCore
 /// table anyone can read; the list stays a list, and the selected row's rights get the room they need.
 ///
 /// The matrix switches on the item's kind rather than showing everything, which is a correctness
-/// property and not a tidiness one: the four aliased bits are *relabelled* on a directory (`read` is
+/// property and not a tidiness one: the four aliased bits are *relabeled* on a directory (`read` is
 /// "List", `write` is "Add File"), so a folder offering "Read" would name a bit that every other tool
 /// on the Mac calls something else, and `delete_child` does not apply to a file at all.
 @MainActor
@@ -209,7 +209,7 @@ final class AccessControlEntryEditor {
     /// Any control changed: rebuild the entry from *all* of them at once and hand it back whole.
     ///
     /// The unrecognized rights and flags ride along untouched — a right this build does not model
-    /// must survive an edit to its neighbours, or writing the ACL back silently strips a bit a later
+    /// must survive an edit to its neighbors, or writing the ACL back silently strips a bit a later
     /// macOS added, which is unacceptable for security metadata.
     @objc private func controlChanged(_ sender: Any?) {
         guard var edited = entry, !edited.isInherited else { return }

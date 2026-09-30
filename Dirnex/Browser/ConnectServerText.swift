@@ -9,7 +9,143 @@ import Foundation
 @MainActor
 enum ConnectText {
     static var proto: String {
-        String(localized: "Protocol:", comment: "Connect field label: SFTP, FTP or SMB.")
+        String(localized: "Protocol:", comment: "Connect field label: SMB, SFTP, FTP or S3.")
+    }
+
+    // MARK: - S3
+
+    static var service: String {
+        String(
+            localized: "Service:",
+            comment: "Connect field label: Amazon S3 or another server that speaks its protocol."
+        )
+    }
+
+    /// The two services, in the order the picker shows them. Brand names on purpose — "Amazon S3"
+    /// is what the console calls it, and a user looking for it is looking for that word.
+    static var amazonS3: String {
+        String(localized: "Amazon S3", comment: "S3 service picker: Amazon's own S3.")
+    }
+
+    static var s3Compatible: String {
+        String(
+            localized: "S3-Compatible",
+            comment: "S3 service picker: another server speaking the S3 protocol (R2, B2, MinIO)."
+        )
+    }
+
+    static var endpoint: String {
+        String(
+            localized: "Endpoint:",
+            comment: "Connect field label: the address of an S3-compatible server."
+        )
+    }
+
+    static var region: String {
+        String(localized: "Region:", comment: "Connect field label: the S3 region to sign for.")
+    }
+
+    static var bucket: String {
+        String(localized: "Bucket:", comment: "Connect field label: the S3 bucket to browse.")
+    }
+
+    /// The placeholder carries the empty-bucket path, because a blank field that *does* something
+    /// and says nothing is a feature nobody finds (PLAN.md §M21 Slice 9). It is the only always-on
+    /// surface for it: the picker button beside the field explains itself only once clicked, and
+    /// only for a key allowed to list — which is the same key this hint is for.
+    static var bucketHint: String {
+        String(
+            localized: "bucket name — leave blank to browse all",
+            comment: """
+            Placeholder in the Connect dialog's S3 bucket field. A blank bucket connects to the \
+            whole account and lists its buckets, so the hint is the feature's only visible sign.
+            """
+        )
+    }
+
+    static var accessKeyID: String {
+        String(
+            localized: "Access key:",
+            comment: "Connect field label: the S3 access key id, which is not a secret."
+        )
+    }
+
+    static var secretKey: String {
+        String(
+            localized: "Secret key:",
+            comment: "Connect field label: the S3 secret access key, kept in the Keychain."
+        )
+    }
+
+    static var secretKeyHint: String {
+        String(
+            localized: "secret access key",
+            comment: "Placeholder in the Connect dialog's S3 secret-key field."
+        )
+    }
+
+    // MARK: - The bucket picker
+
+    /// The picker button's tooltip and its accessibility label — the button itself is a glyph, for
+    /// the reason docs/NOTES.md gives for the shortcut recorder's pill: it sits in a row whose width
+    /// belongs to the bucket field, and prose in a control that cannot grow either overruns or
+    /// clips. A tooltip has no width to overrun, so the words live there in all fourteen languages.
+    static var listBuckets: String {
+        String(
+            localized: "Show the buckets this key can see",
+            comment: "Tooltip on the S3 connect sheet's bucket-picker button."
+        )
+    }
+
+    static var bucketListEmpty: String {
+        String(
+            localized: "No buckets in this account",
+            comment: "Shown in the S3 bucket picker when the account has none."
+        )
+    }
+
+    /// Not an error, and it must not read as one: a key scoped to a single bucket is the ordinary
+    /// way these are issued, so this is the picker explaining itself rather than reporting a fault.
+    /// It names the way forward, because typing the bucket is still the thing to do.
+    static var bucketListNotPermitted: String {
+        String(
+            localized: "This key can’t list buckets — type the name",
+            comment: "Shown in the S3 bucket picker when the key lacks s3:ListAllMyBuckets."
+        )
+    }
+
+    static var bucketListBadCredentials: String {
+        String(
+            localized: "The access key or secret wasn’t accepted",
+            comment: "Shown in the S3 bucket picker when the credentials themselves are refused."
+        )
+    }
+
+    /// Deliberately *not* the refusal sentence above, though the same button raises both. Nothing
+    /// has been sent yet when this shows, so "wasn't accepted" would claim a server said no to
+    /// something it never saw — and it points at the fields rather than at the credentials, which is
+    /// where the user has to go next.
+    static var bucketListNeedsCredentials: String {
+        String(
+            localized: "Fill in the access key and secret first",
+            comment: "Shown in the S3 bucket picker when the form has no credentials to send yet."
+        )
+    }
+
+    static var bucketListFailed: String {
+        String(
+            localized: "Couldn’t reach the endpoint",
+            comment: "Shown in the S3 bucket picker when the request never got a usable answer."
+        )
+    }
+
+    /// The checkbox for servers that cannot be addressed `<bucket>.<host>` — a MinIO container, a
+    /// NAS, anything reached by IP. Named after what the user's own documentation calls it.
+    static var pathStyle: String {
+        String(
+            localized: "Path-style addressing",
+            comment: "S3 checkbox: put the bucket in the URL path (MinIO, a NAS, anything by IP)."
+        )
     }
 
     static var security: String {

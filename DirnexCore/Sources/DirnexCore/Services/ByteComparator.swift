@@ -213,7 +213,7 @@ public enum ByteComparator {
     ///
     /// `lstat` rather than `stat`, unlike `ChecksumEngine`: `FileManager.attributesOfItem` did not
     /// traverse symlinks either, so a symlink stays a non-regular file the comparator declines and
-    /// the caller falls back to metadata comparison — the behaviour `DirectorySync.fileStatus`
+    /// the caller falls back to metadata comparison — the behavior `DirectorySync.fileStatus`
     /// already documents and relies on.
     static func subject(_ path: VFSPath) throws -> ComparisonSubject {
         var status = stat()

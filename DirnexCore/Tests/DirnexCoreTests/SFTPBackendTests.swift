@@ -248,8 +248,13 @@ extension SFTPBackendTests {
         #expect(reported == 64)
     }
 
-    @Test("copyFile refuses a remote-to-remote transfer it can't express")
+    @Test("copyFile refuses a same-account copy the server cannot perform, staging nothing itself")
     func copyFileRemoteToRemoteUnsupported() {
+        // The fake's default is a server with no `copy-data` extension, which is the state this
+        // backend was in for its whole life before M25 Slice 3. It still refuses, and it still
+        // refuses *without* moving bytes: the relay through this disk belongs to the caller holding
+        // both ends, and a backend quietly doing it here would be a second definition of the route
+        // (``RelayCopy``, ``SFTPServerSideCopyTests``).
         let transport = FakeSFTPTransport()
         #expect(throws: (any Error).self) {
             try backend(transport).copyFile(
@@ -262,7 +267,7 @@ extension SFTPBackendTests {
         #expect(transport.downloads.isEmpty && transport.uploads.isEmpty)
     }
 
-    @Test("copyFile honours cancellation before transferring")
+    @Test("copyFile honors cancellation before transferring")
     func copyFileCancels() {
         let transport = FakeSFTPTransport()
         #expect(throws: CancellationError.self) {
@@ -395,76 +400,5 @@ extension SFTPBackendTests {
         let download = try #require(transport.downloads.first)
         #expect(!download.resume)
         #expect(reported == 128)
-    }
-}
-
-/// A canned `SFTPTransport`: returns per-path `ls -la` text and records every write call (or throws
-/// a configured error), so the backend's browse *and* write logic is exercised without a live
-/// server (PLAN.md §2 "the app is a thin client").
-private final class FakeSFTPTransport: SFTPTransport, @unchecked Sendable {
-    var listings: [String: String] = [:]
-    var error: SFTPTransportError?
-
-    // Recorded write calls, in the order the backend issued them.
-    private(set) var madeDirectories: [String] = []
-    private(set) var renames: [(String, String)] = []
-    private(set) var removedFiles: [String] = []
-    private(set) var removedDirectories: [String] = []
-    private(set) var symlinks: [(link: String, target: String)] = []
-    private(set) var downloads: [RecordedTransfer] = []
-    private(set) var uploads: [RecordedTransfer] = []
-
-    /// One recorded `get`/`put`, carrying both endpoints and the resume flag (a struct rather than a
-    /// tuple to stay under SwiftLint's two-member `large_tuple` limit).
-    struct RecordedTransfer {
-        let local: String
-        let remote: String
-        let resume: Bool
-    }
-
-    // Byte counts the transfer methods report back for progress accounting.
-    var downloadBytes: Int64 = 0
-    var uploadBytes: Int64 = 0
-
-    func listDirectory(_ remotePath: String) throws -> String {
-        if let error { throw error }
-        return listings[remotePath] ?? ""
-    }
-
-    func makeDirectory(_ remotePath: String) throws {
-        if let error { throw error }
-        madeDirectories.append(remotePath)
-    }
-
-    func rename(_ source: String, to destination: String) throws {
-        if let error { throw error }
-        renames.append((source, destination))
-    }
-
-    func removeFile(_ remotePath: String) throws {
-        if let error { throw error }
-        removedFiles.append(remotePath)
-    }
-
-    func removeDirectory(_ remotePath: String) throws {
-        if let error { throw error }
-        removedDirectories.append(remotePath)
-    }
-
-    func createSymbolicLink(_ remotePath: String, target: String) throws {
-        if let error { throw error }
-        symlinks.append((remotePath, target))
-    }
-
-    func download(_ remotePath: String, to localPath: String, resume: Bool) throws -> Int64 {
-        if let error { throw error }
-        downloads.append(RecordedTransfer(local: localPath, remote: remotePath, resume: resume))
-        return downloadBytes
-    }
-
-    func upload(_ localPath: String, to remotePath: String, resume: Bool) throws -> Int64 {
-        if let error { throw error }
-        uploads.append(RecordedTransfer(local: localPath, remote: remotePath, resume: resume))
-        return uploadBytes
     }
 }

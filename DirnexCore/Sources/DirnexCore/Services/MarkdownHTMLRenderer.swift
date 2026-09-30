@@ -5,7 +5,7 @@ import Foundation
 /// The output is a **fragment**, not a document: no `<html>`, no `<head>`, no `<style>`. The
 /// stylesheet is the app's, because the app is the only side that knows which appearance is on
 /// screen and what `SyntaxTheme` resolves to in it — the same division M17 draws between what a
-/// span *is* and what colour it takes. A core that emitted colours would be a core that could not
+/// span *is* and what color it takes. A core that emitted colors would be a core that could not
 /// follow a user switching to dark mode.
 ///
 /// Class names, likewise, are the whole of this side's vocabulary. Every one of them is a *kind*,
@@ -88,7 +88,7 @@ enum MarkdownHTMLRenderer {
         }
 
         /// A fenced block keeps its info string as a class, in the `language-…` spelling every
-        /// other tool uses, and its body is coloured by M17's own scanner
+        /// other tool uses, and its body is colored by M17's own scanner
         /// (`MarkdownCodeHighlighting`) when that info names a language.
         private func codeBlock(info: String?, code: String) -> String {
             // A `mermaid` fence is a picture, not a listing — and when it cannot be drawn it is a

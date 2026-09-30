@@ -118,7 +118,7 @@ enum ChecksumManifestParser {
     /// practice.
     private static func parseLine(_ line: String, implicitName: String?) -> Parsed? {
         parseLeadingDigest(line, implicitName: implicitName)
-            ?? parseLabelled(line)
+            ?? parseLabeled(line)
             ?? parseTrailingDigest(line)
     }
 
@@ -170,7 +170,7 @@ enum ChecksumManifestParser {
     ///
     /// The *last* `)` closes the name, not the first: a name may contain parentheses, and a hex
     /// digest never can.
-    private static func parseLabelled(_ line: String) -> Parsed? {
+    private static func parseLabeled(_ line: String) -> Parsed? {
         guard let open = line.firstIndex(of: "("),
               let close = line.lastIndex(of: ")"),
               open < close,

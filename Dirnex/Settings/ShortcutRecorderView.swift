@@ -33,7 +33,7 @@ struct ShortcutRecorder: NSViewRepresentable {
     /// Both placeholder states are drawn as a **glyph with the words in the tooltip**, never as
     /// prose in the pill: the pill is a fixed 148 pt (it lines up with the shortcut column), and
     /// measured in its own font "Aggiungi abbreviazione da tastiera" is 252 pt, "Додати
-    /// клавіатурне скорочення" 215 pt — and a centred label with no width constraint overruns
+    /// клавіатурне скорочення" 215 pt — and a centered label with no width constraint overruns
     /// rather than truncating, so the text spilled out of the rounded rect on both sides in 7 of
     /// the 14 shipped languages. A glyph fits every language by construction.
     final class RecorderView: NSView {
@@ -107,7 +107,7 @@ struct ShortcutRecorder: NSViewRepresentable {
             switch event.keyCode {
             // Escape — cancel without changing the binding. The `EscapeKeyConsuming` conformance
             // below is what keeps the Settings window's own Escape-to-close off this key while the
-            // pill is recording; without it, cancelling a recording would close the window instead.
+            // pill is recording; without it, canceling a recording would close the window instead.
             case 53:
                 endRecording()
             case 51, 117: // Delete / Forward Delete — clear the binding.

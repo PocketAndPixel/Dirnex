@@ -10,6 +10,26 @@ extension PanelViewController {
     /// file with its default app.
     func openCurrentEntry() {
         guard let entry = panel.currentEntry else { return }
+        // Before the directory branch, because a `.sparsebundle` *is* a directory: entering one shows
+        // `bands/`, `Info.plist` and `token` — the container's machinery — while the files the user
+        // came for are on a mounted volume somewhere else entirely. An unlocked vault therefore read
+        // as locked from the pane, and the only way in was the sidebar (user-reported 2026-08-10).
+        if let vault = savedVault(for: entry) {
+            host?.panelRequestsVaultOpen(vault, showingIn: self)
+            return
+        }
+        // Also before the directory branch, and for the same shape of reason: a bucket row *is* a
+        // directory, and the path it points at is one this backend deliberately refuses to list
+        // (`S3AccountBackend` is depth 0 — everything below a bucket is reached by connecting to
+        // it). Walking in is a backend crossing, so it is a connect (PLAN.md §M21 Slice 9).
+        //
+        // Asked of the **row**, not of the pane: a tree rooted on an account draws each expanded
+        // bucket's contents beneath it on the `s3://` backend, and those are ordinary folders that
+        // navigate (`VFSPath.isS3BucketRow`).
+        if let bucket = s3BucketToEnter(for: entry) {
+            enterS3Bucket(at: bucket)
+            return
+        }
         if let target = panel.openTarget(for: entry) {
             // A folder opened from a results tab must not replace the results in place — route it
             // elsewhere so the listing survives (PLAN.md §M4 search, §M8 Recents and Trash).
@@ -51,9 +71,46 @@ extension PanelViewController {
                     self?.refreshCurrentDirectory(selecting: entry.path)
                 }
             }
+        } else if entry.path.backend.isArchive {
+            // A plain file member — it has no local URL to hand `NSWorkspace`, so extract it to
+            // temp and open *that* with its default app, the Total Commander gesture. Read-only,
+            // because nothing writes an edit back into the archive (PLAN.md §M4).
+            beginArchiveMemberOpen(for: entry)
+        } else if let archive = remoteArchiveToBrowse(for: entry) {
+            // An archive on a server — fetch the whole file and browse the copy (PLAN.md §M24
+            // Slice 6). Before the plain remote branch below, which would hand the same `.zip` to
+            // Archive Utility instead: ⏎ on something folder-shaped means *go inside it*, and that
+            // it happens to be on a server is not a reason for the key to mean something else.
+            beginRemoteArchiveEntry(for: archive)
+        } else if entry.path.backend.isRemoteConnection {
+            // A file on a server, for the same reason and by the same route: download it to temp and
+            // open *that*, registering the copy so a save is offered back up (PLAN.md §M21 Slice
+            // 10). Until this existed ⏎ fell off the end of this chain and did nothing whatsoever —
+            // not even a message, which is the one outcome worse than a refusal.
+            beginRemoteFileOpen(for: entry)
         }
-        // Any other non-directory entry inside an archive (a plain file member) can't be launched
-        // in place, so it's a no-op rather than opening a meaningless local URL.
+    }
+
+    /// The saved vault `entry` is the image of, if it is one.
+    ///
+    /// The store read is behind the suffix test rather than beside it: this runs on every Enter, and
+    /// the overwhelming majority of them are on ordinary folders.
+    private func savedVault(for entry: FileEntry) -> VaultLocation? {
+        savedVault(for: entry, in: VaultStore.load())
+    }
+
+    /// The decision half, with the store handed in — so the rule is testable without a test writing
+    /// a fake vault into the user's own `Dirnex.vaults`, which is the sidebar they are looking at.
+    ///
+    /// **Saved vaults only**, deliberately narrower than the Unlock command's `vaultImageUnderCursor`,
+    /// which takes any image because the user named it. Enter is what you press to look inside things,
+    /// so widening it to every `.dmg` would attach a stranger's disk image, ask for a passphrase, and
+    /// file it in the sidebar's Vaults section — none of which anyone requested. An image Dirnex has
+    /// no record of goes on browsing as the directory (or file) it is.
+    func savedVault(for entry: FileEntry, in vaults: SavedVaults) -> VaultLocation? {
+        guard entry.path.backend == .local, !isVirtualDirectory,
+              DiskImageArguments.Kind.isImageName(entry.name) else { return nil }
+        return vaults.vault(atPath: entry.path.path)
     }
 
     /// Open a directory picked from a results tab (search hits, Recents, or the Trash). The listing
@@ -77,6 +134,34 @@ extension PanelViewController {
         }
     }
 
+    /// Whether this pane can walk up from where it is — the **one** definition of that question.
+    ///
+    /// Three places ask it and each used to spell it out: the synthetic `..` row's
+    /// ``parentRowCount``, ``goToParent()`` itself, and the Go menu's validator. All three read
+    /// `backend == .local`, which is the shape docs/NOTES.md warns about — one rule, three
+    /// spellings, and the compiler checks none of them. It cost every *remote* pane its way up:
+    /// SFTP since M5, FTP since M13 and S3 since M21 had no `..` row, a dead Backspace and a grayed
+    /// Go Up, and since both remote listing parsers strip the server's own `..` there was no row to
+    /// fall back on either. Verified live 2026-08-13 standing inside an empty S3 folder — no rows at
+    /// all, so the crumb was the only way out.
+    ///
+    /// A *virtual* pane is still excluded and that is the distinction the property exists to keep: a
+    /// search snapshot's synthetic parent is not a browsable directory, while a connected account's
+    /// is (`isRemoteConnection` — re-listable, and not on this disk).
+    /// A bucket root is the one place where "up" is not a path at all: its path is `/`, so
+    /// `parentPath` is `nil` and always will be, while the place above it — the account that holds
+    /// it — is a different backend (`leavesBucketForItsAccount`). The row is offered even for a key
+    /// that turns out not to be allowed to list buckets, because the alternative is asking the
+    /// service on every listing to decide whether to draw a row; the walk itself probes once and
+    /// says so where the user is standing (PLAN.md §M21 Slice 9).
+    var canGoToParent: Bool {
+        if isArchive { return true }
+        if leavesBucketForItsAccount { return true }
+        let backend = panel.path.backend
+        guard backend == .local || backend.isRemoteConnection else { return false }
+        return panel.parentPath != nil
+    }
+
     /// Walk up one level, landing the cursor on the directory we came from. Inside an archive
     /// this walks the inner tree and, at the archive root, exits to the containing folder. A
     /// no-op on a virtual results pane — its synthetic parent isn't a browsable directory.
@@ -85,7 +170,13 @@ extension PanelViewController {
             _ = goUpWithinArchive()
             return
         }
-        guard panel.path.backend == .local else { return }
+        // Before the `parentPath` walk, because a bucket root has no parent to walk to — the place
+        // above it is the account, which is a connect (`PanelViewController+S3Account`).
+        if leavesBucketForItsAccount {
+            leaveBucketForItsAccount()
+            return
+        }
+        guard canGoToParent else { return }
         let current = panel.path
         // Up out of iCloud Drive is the merged listing, not the container machinery that holds it:
         // the real parent of an app library's `Documents` is a one-child folder nobody asked to see,
@@ -111,5 +202,133 @@ extension PanelViewController {
         guard let index = entryIndex(forRow: row) else { return }
         panel.moveCursor(to: index)
         openCurrentEntry()
+    }
+
+    // MARK: - Loading a directory
+
+    // Moved here from `PanelViewController` when the remote poll pushed that file past SwiftLint's
+    // 500-line ceiling: this is the navigation the small actions above all funnel into, so the seam
+    // is the concept's, not a line count's (docs/NOTES.md ▸ Lint ceilings and file splitting).
+
+    /// Load `path` and install it in the active tab. When `focus` names a child that
+    /// still exists (used when walking up), the cursor lands on it — the expected "go up,
+    /// land on where I came from" behavior. A successful load records the visit in the tab's
+    /// back/forward history (PLAN.md §M3) unless `recordHistory` is `false` — the flag
+    /// back/forward/jump navigation passes so walking the trail doesn't append to it.
+    /// Internal so `PanelViewController+Tabs` can load a freshly opened tab.
+    ///
+    /// `unasked` marks the **one** navigation nobody performed: the launch activation of a restored
+    /// tab. It decides two things and only for that case — whether a restored server tab may open
+    /// its connection (Settings ▸ Panels promises a floor of 0 means "never contact a server
+    /// unasked"), and whether a failure is worth an alert (`presentLoadFailure`'s own rule: with
+    /// nobody waiting for the answer, the pane is where it goes). Every gesture leaves it `false`,
+    /// which is what gives a tab that came back disconnected a way out — clicking it, clicking a
+    /// crumb, ⌘L, back/forward all connect.
+    func navigate(
+        to path: VFSPath,
+        focus child: VFSPath? = nil,
+        recordHistory: Bool = true,
+        unasked: Bool = false
+    ) {
+        // A refusal here has already rendered the pane and invalidated whatever was in flight, so
+        // there is nothing left for this navigation to do.
+        guard canListAfterReconnecting(to: path, unasked: unasked) else { return }
+        loadToken += 1
+        // Whatever this pane was paying a server to measure, it has stopped looking at. A local
+        // walk is untracked and deliberately survives — see `PanelViewController+Sizing`.
+        cancelUnwatchedDirectorySizeWalks()
+        let token = loadToken
+        let tabIndex = activeTabIndex
+        // Captured before the async load: was this tab showing a *non-re-listable* virtual pane
+        // when we left? A `.search` results listing (and a browsed archive) can't be re-entered
+        // from a history trail, so leaving one starts fresh. A connected remote *is* re-listable,
+        // so it keeps a normal back/forward trail like a local directory.
+        let wasVirtual = panel.path.backend != .local && !panel.path.backend.isRemoteConnection
+        // Captured alongside it: was this tab showing a *results* listing? Its chip label and the
+        // query behind "Save Search…" describe the results, not a place, so arriving at a real
+        // directory has to drop them — otherwise clicking Home out of the Trash lands in the home
+        // folder with the tab still chipped "Trash".
+        let wasResults = isResultsListing
+        // Captured before the load (`setListing` makes `panel.path` the destination): the departed
+        // directory and its marks, so leaving a folder with marks records the loss against *that*
+        // folder — undo restores them on return; a same-directory reload keeps marks, so it no-ops.
+        let departed = panel.path
+        let departedMarks = panel.selection
+        Task {
+            do {
+                // Sort the fresh listing off the main thread (PLAN.md §M7 perf pass): a 100k
+                // directory's ~350 ms `localizedStandardCompare` pass must not jank the pane.
+                // Built with an empty filter, so entering a directory starts fresh — a quick-filter
+                // from the folder we just left shouldn't silently hide the new folder's contents —
+                // and with no computed sizes, since a directory we're arriving at has none yet.
+                // Hidden files come from the app-wide toggle rather than the departed model: a
+                // results listing forces them *on* (see `ResultsPresentation.showsHidden`), and
+                // carrying that into a real directory would show dotfiles with the eye toggled off.
+                let model = try await DirectoryLoader.model(
+                    backend,
+                    at: path,
+                    sort: panel.model.sort,
+                    showHidden: AppPreferences.shared.showHidden
+                )
+                guard token == loadToken else { return }
+                panel.setModel(model)
+                // Bring the pane into the tab's shape (PLAN.md §M15 Slice 4) before the render: a
+                // fresh model is an all-collapsed tree, so this seeds `panel.tree` when the tab wants
+                // one, and flattens back where a tree can't apply.
+                applyViewMode()
+                resetMouseSelectionAnchor()
+                recordMarkChange(since: departedMarks, in: departed, label: .clearSelection)
+                if let child, let index = panel.displayedIndex(ofID: child) {
+                    panel.moveCursor(to: index)
+                }
+                // Land on a real entry; only an empty directory parks the cursor on `..`. Asked
+                // through `canGoToParent` rather than through `parentPath`, so the flag cannot claim
+                // the cursor is on a row the pane does not draw — which it did for an empty results
+                // listing, whose synthetic path has a parent that is not somewhere to go.
+                cursorOnParentRow = panel.isEmpty && canGoToParent
+                // A restored tab's first listing: re-open the folders a restored tree had expanded,
+                // listing each lazily…
+                restorePendingTreeExpansion()
+                // …then re-anchor its saved cursor and re-mark its saved selection, overriding the
+                // defaults just set. Second, because a cursor or mark *inside* one of those folders
+                // can only be anchored once that folder's rows exist — this pass takes whatever the
+                // root already shows, and each expansion's landing re-runs it for the rest. A no-op
+                // for every other navigation.
+                applyPendingRestore(toTab: tabIndex)
+                tabs[tabIndex].hasLoaded = true
+                // Whatever the pane was explaining is now answered by the rows themselves.
+                tabs[tabIndex].offlineReason = nil
+                if wasResults { tabs[tabIndex].clearResultsIdentity() }
+                if wasVirtual {
+                    // Leaving a virtual results pane for a real directory starts a fresh trail —
+                    // the synthetic `.search` path can't be re-listed, so it must never enter the
+                    // back/forward history. Frecency still records the real destination.
+                    tabs[tabIndex].history = NavigationHistory(initialPath: path)
+                    recordVisit(path, tab: tabIndex, recordHistory: false)
+                } else {
+                    recordVisit(path, tab: tabIndex, recordHistory: recordHistory)
+                }
+                // The directory we just left has a scan queued against it that nobody will render.
+                DirectorySizeProvider.shared.cancelScan(for: departed)
+                reloadEverything()
+                refreshTabBar()
+                startPaneWatcher(path, force: true)
+                updateGitStatus()
+                updateTagStatus()
+                updateSyncStatus()
+                updateSizeVisualization()
+                persistState()
+                host?.panelDidNavigate(self)
+            } catch {
+                guard token == loadToken else { return }
+                // An unasked load is a restore, and a restore has nobody waiting for its answer —
+                // so it reports on the pane rather than over a window that may still be coming up.
+                if unasked {
+                    recordRestoreFailure(error, in: tabs[tabIndex])
+                } else {
+                    presentLoadFailure(error, path: path)
+                }
+            }
+        }
     }
 }

@@ -72,10 +72,10 @@ struct SyncBadgeTests {
 
     /// The cloud hangs past the cell on purpose, into the table's intercell gutter: its ink is 16pt
     /// against a dot's 9pt, so aligning the two *edges* — which the obvious layout does — leaves the
-    /// cloud's centre 7pt left of the dot's, and the eye reads the centre. Measured against the live
+    /// cloud's center 7pt left of the dot's, and the eye reads the center. Measured against the live
     /// table, this lands both on the same spot, under the header's sort arrow.
-    @Test("the badge hangs into the gutter so its centre matches a dot's")
-    func badgeOverhangsTheCellToCentreOnTheDotSlot() throws {
+    @Test("the badge hangs into the gutter so its center matches a dot's")
+    func badgeOverhangsTheCellToCenterOnTheDotSlot() throws {
         let cell = FileCellView(showsImage: true, identifier: .init("name"))
         cell.frame = NSRect(x: 0, y: 0, width: 293.5, height: 22)
         cell.syncStatus = .notDownloaded

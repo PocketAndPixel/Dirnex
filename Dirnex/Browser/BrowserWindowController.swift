@@ -5,7 +5,7 @@ import DirnexCore
 /// one of them active at a time. Owns focus routing (Tab switches panes) and the
 /// active-pane bookkeeping the panes themselves stay ignorant of.
 @MainActor
-final class BrowserWindowController: NSWindowController, PanelHost {
+final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindowController {
     let leftPanel: PanelViewController
     let rightPanel: PanelViewController
     // Internal for `BrowserWindowController+Sidebar` (⌥⌘S focus reveals then focuses); both set in `loadView`.
@@ -60,7 +60,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// already full-screen before they ever pressed the key.
     var didEnterFullScreenForQuickView = false
 
-    /// How far a two-finger swipe had travelled when the fingers left the trackpad, held only for
+    /// How far a two-finger swipe had traveled when the fingers left the trackpad, held only for
     /// the frame or two it takes to read which way the system then moves — see
     /// `trackQuickViewSwipe`. `nil` whenever no gesture is being finished.
     var quickViewSwipeAmountAtLift: CGFloat?
@@ -68,6 +68,19 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// Archive members extracted for preview (Quick Look ⌘Y / Quick View ⌃Q inside a browsed
     /// archive), shared across both panes and both surfaces (PLAN.md §M4 "Quick Look inside").
     let archivePreviewCache = ArchivePreviewCache()
+
+    /// The passphrases given for encrypted archives this session, so previewing, opening and
+    /// extracting from one asks once rather than once per gesture (PLAN.md §M19). In memory only.
+    let archivePassphrases = ArchivePassphraseStore()
+
+    /// Archive members and remote files the user has opened for editing, watched so a save can be
+    /// offered back where it came from (PLAN.md §M4 write-back, §M21 Slice 10). Wired to its handler
+    /// in `windowDidLoad`.
+    let editedFiles = EditedFileRegistry()
+
+    /// Remote files pulled down for preview, opening or editing (PLAN.md §M21 Slice 10), shared
+    /// across both panes and every surface — so ⌘Y then ⏎ then F4 on one object costs one transfer.
+    let remoteFileCache = RemoteFileCache()
 
     /// Where each nested-archive mount was extracted from, shared across both panes so walking out
     /// of and breadcrumbing an archive-inside-an-archive resolves its outer chain (PLAN.md §M4
@@ -104,7 +117,9 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     let undoController: UndoController
     /// The window-bottom progress readout, collapsed to zero height while the queue is idle.
     let queueBar = QueueBarView()
-    private var queueBarHeight: NSLayoutConstraint!
+    /// Internal, not private: `BrowserWindowController+ContainerLayout` builds it, and Swift's
+    /// `private` is per-file.
+    var queueBarHeight: NSLayoutConstraint!
 
     /// The Total-Commander-style function-key bar (PLAN.md §M6), pinned along the very bottom
     /// below the queue bar. Collapsed to zero height when `AppPreferences.showFunctionBar` is off
@@ -118,6 +133,28 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// Jobs already reacted to (panes re-listed, failures reported), so a repeat snapshot of
     /// the same finished job doesn't refresh twice. Cleared when the queue drains.
     var finalizedJobs: Set<OperationJobID> = []
+    /// Where a queued `.materialize` job's report meets the gesture that asked for it
+    /// (PLAN.md §M24 Slice 3) — see `BrowserWindowController+Materialize`.
+    let materializeDeliveries = JobDeliveries()
+    /// The same, for a queued `.writeBack` batch (PLAN.md §4 ▸ *Still open*, taken 2026-09-01) —
+    /// see `BrowserWindowController+WriteBackBatch`. Its own instance rather than sharing the one
+    /// above: they are keyed by job id and could not collide, and two names say which flow is
+    /// waiting where one would leave a reader guessing.
+    let writeBackDeliveries = JobDeliveries()
+    /// Saves waiting to join the next write-back batch, and whether a gather is already running.
+    ///
+    /// Two properties rather than a type, because between them they *are* the pacing rule and it is
+    /// three lines long: a save appends here, the gather takes everything and runs a batch, and
+    /// whatever arrived meanwhile is waiting when it comes back round. The flag is what stops a
+    /// second gather starting beside the first — with two, the same copy could be written back
+    /// twice.
+    ///
+    /// **`EditedFile`, not a destination-specific pair**, because the split into "up to a server"
+    /// and "back into an archive" happens *after* gathering: both endings were paying for a
+    /// forty-file script one save at a time, so both wanted the same pacing and neither should own
+    /// a copy of it (`+WriteBack`).
+    var pendingWriteBacks: [EditedFile] = []
+    var isGatheringWriteBacks = false
     /// The last observed pause state, so the queue bar's button knows which way to toggle.
     var lastPaused = false
 
@@ -148,8 +185,8 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         // to a lazily-mounted read-only `ArchiveBackend`) while every local path still runs
         // through `LocalBackend` unchanged — including the shared queue and undo journal.
         let backend = CompositeBackend(local: LocalBackend())
-        queue = FileOperationQueue(backend: backend)
-        undoController = UndoController(backend: backend)
+        queue = FileOperationQueue(backend: backend, plainPackWriter: ArchivePacker())
+        undoController = UndoController(backend: backend, defaults: .standard)
         let home = VFSPath.local(NSHomeDirectory())
         // Each pane restores its own tabs from the last session, keyed by side — unless the
         // user has turned session restore off (General settings), in which case both panes
@@ -158,13 +195,13 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         let restoreSession = AppPreferences.shared.restoreSession
         leftPanel = PanelViewController(
             backend: backend,
-            restoration: restoreSession ? TabPersistence.load(paneKey: "left") : nil,
+            restoration: restoreSession ? TabPersistence.load(paneKey: "left", from: .standard) : nil,
             defaultPath: home,
             restorationKey: "left"
         )
         rightPanel = PanelViewController(
             backend: backend,
-            restoration: restoreSession ? TabPersistence.load(paneKey: "right") : nil,
+            restoration: restoreSession ? TabPersistence.load(paneKey: "right", from: .standard) : nil,
             defaultPath: home,
             restorationKey: "right"
         )
@@ -259,8 +296,10 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         queueBar.onPreferredHeightChanged = { [weak self] in self?.updateQueueBarHeight() }
         startObservingQueue()
         installQuickViewSupport()
+        installQuickLookSheetGuard()
         observeVolumeUnmount()
         installFunctionBar()
+        editedFiles.onEdited = { [weak self] edit in self?.offerWriteBack(edit) }
     }
 
     /// Put a sidebar show/hide button immediately to the right of the traffic lights, in
@@ -268,7 +307,7 @@ final class BrowserWindowController: NSWindowController, PanelHost {
     /// *that*. A `.leading` titlebar accessory is the standard slot for both; the sidebar button
     /// drives the split controller's `toggleSidebar`, the same action as View ▸ Show Sidebar (⌃⌘S).
     ///
-    /// Assumes `installUpdateIndicator` has already prepared its button (behaviour + size); this
+    /// Assumes `installUpdateIndicator` has already prepared its button (behavior + size); this
     /// only places it. The row is pinned at its *leading* edge so the sidebar toggle keeps its spot
     /// beside the traffic lights whether or not an update is waiting, and the indicator — hidden at
     /// rest, and `NSStackView` detaches hidden arranged subviews — leaves no gap behind it.
@@ -397,6 +436,10 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         if panel === focusedPanel { syncTerminalToActivePanel() }
     }
 
+    func recordFrecencyVisit(_ path: VFSPath) {
+        FrecencyStore.shared.recordVisit(path)
+    }
+
     /// The other pane — the one a copy/move lands in, and the one Quick View previews into.
     /// Internal (not private) so `BrowserWindowController+QuickView` can reach it.
     func counterpart(of panel: PanelViewController) -> PanelViewController {
@@ -427,72 +470,5 @@ final class BrowserWindowController: NSWindowController, PanelHost {
         // The preview always sits opposite the active pane, so a focus switch swaps which pane
         // shows its list and which shows the preview.
         if isQuickViewEnabled { updateQuickView() }
-    }
-}
-
-// MARK: - Container layout
-
-// In a same-file extension so the two view-builders don't count toward the class's
-// `type_body_length`; they still share the type's `private` scope and reach its stored properties.
-private extension BrowserWindowController {
-    /// Stack the sidebar-and-panes split over the queue bar, both full width. The function bar is
-    /// *not* here — it lives inside the panes column (`makePaneColumnController`) so it aligns with
-    /// the panes rather than spanning under the sidebar. `setQueueBar(visible:)` collapses the queue
-    /// bar to zero while idle, handing its height back to the panes.
-    func makeContainerViewController() -> NSViewController {
-        let container = NSViewController()
-        container.view = NSView()
-        container.addChild(splitViewController)
-
-        let splitView = splitViewController.view
-        splitView.translatesAutoresizingMaskIntoConstraints = false
-        queueBar.translatesAutoresizingMaskIntoConstraints = false
-        queueBar.isHidden = true
-        container.view.addSubview(splitView)
-        container.view.addSubview(queueBar)
-
-        queueBarHeight = queueBar.heightAnchor.constraint(equalToConstant: 0)
-        NSLayoutConstraint.activate([
-            splitView.topAnchor.constraint(equalTo: container.view.topAnchor),
-            splitView.leadingAnchor.constraint(equalTo: container.view.leadingAnchor),
-            splitView.trailingAnchor.constraint(equalTo: container.view.trailingAnchor),
-            splitView.bottomAnchor.constraint(equalTo: queueBar.topAnchor),
-            queueBar.leadingAnchor.constraint(equalTo: container.view.leadingAnchor),
-            queueBar.trailingAnchor.constraint(equalTo: container.view.trailingAnchor),
-            queueBar.bottomAnchor.constraint(equalTo: container.view.bottomAnchor),
-            queueBarHeight
-        ])
-        return container
-    }
-
-    /// The right-hand column of the outer sidebar split: the pane stack (two panes over the
-    /// terminal drawer) with the function-key bar pinned along its bottom. Wrapping them together
-    /// as the split's second item is what keeps the bar off the sidebar — the sidebar is the split's
-    /// *first* item and stays full height beside this whole column. The window controller owns
-    /// `functionBarHeight` and collapses it to zero when the feature is off.
-    func makePaneColumnController() -> NSViewController {
-        let column = NSViewController()
-        column.view = NSView()
-        column.addChild(paneStackSplitViewController)
-
-        let paneStack = paneStackSplitViewController.view
-        paneStack.translatesAutoresizingMaskIntoConstraints = false
-        functionBar.translatesAutoresizingMaskIntoConstraints = false
-        functionBar.isHidden = true
-        column.view.addSubview(paneStack)
-        column.view.addSubview(functionBar)
-
-        functionBarHeight = functionBar.heightAnchor.constraint(equalToConstant: 0)
-        NSLayoutConstraint.activate([
-            paneStack.topAnchor.constraint(equalTo: column.view.topAnchor),
-            paneStack.leadingAnchor.constraint(equalTo: column.view.leadingAnchor),
-            paneStack.trailingAnchor.constraint(equalTo: column.view.trailingAnchor),
-            paneStack.bottomAnchor.constraint(equalTo: functionBar.topAnchor),
-            functionBar.leadingAnchor.constraint(equalTo: column.view.leadingAnchor),
-            functionBar.trailingAnchor.constraint(equalTo: column.view.trailingAnchor),
-            functionBar.bottomAnchor.constraint(equalTo: column.view.bottomAnchor),
-            functionBarHeight
-        ])
-        return column
     }
 }

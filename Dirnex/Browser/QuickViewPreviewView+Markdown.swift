@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 /// Quick View's rendered-Markdown backend: which files it takes, and how their bytes become a page
 /// (PLAN.md §M18 ▸ Slice 3).
 ///
-/// The second **dual-style** type, after HTML. `1` keeps the source, coloured by M17's Markdown
+/// The second **dual-style** type, after HTML. `1` keeps the source, colored by M17's Markdown
 /// scanner; `2` shows the document those bytes describe. A `.md` is the format most likely to be
 /// *read* in a file manager rather than opened, and what Quick Look shows for one today is plain
 /// text with the syntax on display.
@@ -39,9 +39,9 @@ extension QuickViewPreviewView {
         loadToken += 1
         let token = loadToken
         Task { [weak self] in
-            let scan = await Task.detached(priority: .userInitiated) {
+            let scan = await BlockingWork.run {
                 MarkdownScan.read(url)
-            }.value
+            }
             guard let self, token == loadToken else { return }
             guard let scan else {
                 showText(url)

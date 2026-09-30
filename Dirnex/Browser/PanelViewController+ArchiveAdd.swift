@@ -9,7 +9,8 @@ import DirnexCore
 /// which copies the items into the extracted tree). A same-named member is a *replace*, so any
 /// collisions are confirmed up front before the archive is touched. Add is a copy: F6 "move" adds
 /// the items and then trashes the local originals (recoverable + undoable via the standard Trash
-/// journal, even though the archive rewrite itself isn't undoable).
+/// journal), and the rewrite itself is undoable too — one ⌘Z per half, since they are two
+/// operations on two different files.
 ///
 /// `self` is always the *destination* archive pane. Paste enters here on the pane the ⌘V lands on;
 /// F5/F6 route from the local source pane to the archive counterpart via `PanelViewController+Copy`.
@@ -29,9 +30,9 @@ extension PanelViewController {
         Task {
             // Gather the destination's real member names (unfiltered — a hidden member still
             // collides on disk) to warn before overwriting anything.
-            let existingNames = await Task.detached(priority: .userInitiated) { () -> [String] in
+            let existingNames = await BlockingWork.run { () -> [String] in
                 ((try? backend.listDirectory(at: destination)) ?? []).map(\.name)
-            }.value
+            }
             let collisions = ArchiveMutation.collidingNames(
                 addingNames: localSources.map(\.name),
                 existingNames: existingNames
@@ -70,9 +71,9 @@ extension PanelViewController {
 
         let backend = backend
         Task {
-            let sources = await Task.detached(priority: .userInitiated) { () -> [FileEntry] in
+            let sources = await BlockingWork.run { () -> [FileEntry] in
                 urls.compactMap { try? backend.stat(at: VFSPath.local($0.path)) }
-            }.value
+            }
             guard !sources.isEmpty else { return }
             beginArchiveAdd(localSources: sources, kind: .copy, from: nil)
             // The paste makes this the active pane, matching the local paste/drop flows.
@@ -94,14 +95,30 @@ extension PanelViewController {
         alert.messageText = names.count == 1
             ? String(localized: "Replace “\(names[0])” in “\(archiveName)”?")
             : String(localized: "Replace \(names.count) items in “\(archiveName)”?")
-        alert.informativeText = String(
-            localized: """
-            An item with the same name is already in the archive. Replacing rewrites the archive \
-            and can’t be undone.
-            """
-        )
+        alert.informativeText = ArchiveUndoStorage.willBeUndoable(archiveAt: archivePath)
+            ? String(
+                localized: """
+                An item with the same name is already in the archive. Replacing rewrites the \
+                archive; Undo puts it back.
+                """,
+                comment: """
+                Body of the replace-in-archive confirmation when the rewrite will be undoable — \
+                Dirnex keeps a copy of the archive as it was.
+                """
+            )
+            : String(
+                localized: """
+                An item with the same name is already in the archive. Replacing rewrites the \
+                archive and can’t be undone.
+                """,
+                comment: """
+                Body of the replace-in-archive confirmation when the archive is too large for \
+                Dirnex to keep a copy of, so the rewrite cannot be reversed.
+                """
+            )
         alert.addButton(withTitle: String(localized: "Replace"))
         alert.addButton(withTitle: String(localized: "Cancel"))
+        alert.enableEscapeToCancel()
 
         let handler: (NSApplication.ModalResponse) -> Void = { response in
             if response == .alertFirstButtonReturn { proceed() }
@@ -124,30 +141,41 @@ extension PanelViewController {
     ) {
         let localPaths = sources.map(\.path.path)
         let name = (archivePath as NSString).lastPathComponent
-        Task {
-            do {
-                try await Task.detached(priority: .userInitiated) {
+        let encoding = declaredNameEncoding(forArchiveAt: archivePath)
+        // As with delete: an encrypted archive rewrites through libarchive, and the passphrase comes
+        // from the one funnel that asks once per archive and retries on a typo.
+        withArchivePassphrase(forArchiveAt: archivePath) { passphrase in
+            try await BlockingWork.run {
+                Result {
                     try ArchiveWriter.add(
                         localPaths: localPaths,
                         toInnerDirectory: innerDirectory,
-                        ofArchiveAt: archivePath
+                        ofArchiveAt: archivePath,
+                        passphrase: passphrase,
+                        undo: ArchiveUndoStorage.request(),
+                        nameEncoding: encoding
                     )
-                }.value
-                // The mounted TOC is now stale — drop it so the re-list re-reads the rewritten archive.
-                (backend as? CompositeBackend)?.invalidateMountedArchive(at: archivePath)
-                panel.clearSelection()
-                refreshArchiveDirectory()
-                focusTable()
-                // F6 move: the archive add is a copy, so remove the originals now that it succeeded.
-                if kind == .move { sourcePane?.removeArchiveMoveOriginals(sources) }
-            } catch {
-                presentOperationFailure(
-                    message: sources.count == 1
-                        ? String(localized: "Couldn’t add “\(sources[0].name)”")
-                        : String(localized: "Couldn’t add \(sources.count) items to “\(name)”"),
-                    detail: describe(error)
-                )
-            }
+                }
+            }.get()
+        } onSuccess: { [weak self] snapshot in
+            guard let self else { return }
+            // The mounted TOC is now stale — drop it so the re-list re-reads the rewritten archive.
+            (backend as? CompositeBackend)?.invalidateMountedArchive(at: archivePath)
+            journalArchiveRewrite(snapshot)
+            panel.clearSelection()
+            refreshArchiveDirectory()
+            focusTable()
+            // F6 move: the archive add is a copy, so remove the originals now that it succeeded.
+            if kind == .move { sourcePane?.removeArchiveMoveOriginals(sources) }
+        } onFailure: { [weak self] error in
+            guard let self else { return }
+            guard !offerNameEncoding(after: error, forArchiveAt: archivePath) else { return }
+            presentOperationFailure(
+                message: sources.count == 1
+                    ? String(localized: "Couldn’t add “\(sources[0].name)”")
+                    : String(localized: "Couldn’t add \(sources.count) items to “\(name)”"),
+                detail: describe(error)
+            )
         }
     }
 
@@ -155,22 +183,69 @@ extension PanelViewController {
     /// "move" half (add-into-archive is a copy, so the sources are removed here). To the Trash, so
     /// it's recoverable, and journaled, so this half is undoable even though the rewrite isn't.
     /// Runs on the *source* pane.
+    ///
+    /// **A volume that keeps no Trash refuses this, and that used to make F6 silently mean F5.**
+    /// The originals were trashed through a `try?`, so a network share's refusal
+    /// (``LocalBackend/trashFailure(_:path:)``, reported 2026-08-25) removed nothing and said
+    /// nothing — the archive held the items and so did the folder they came from. Now the refusal
+    /// is offered as the permanent delete that would finish the move, and a "no" is *reported*
+    /// rather than left to be discovered: the gesture really did end as a copy.
+    ///
+    /// Note what makes the question safe to ask here. The archive rewrite has already succeeded, so
+    /// the items exist in two places and declining is a good outcome rather than a lost one — the
+    /// opposite of F8, where declining leaves the user where they started.
     func removeArchiveMoveOriginals(_ entries: [FileEntry]) {
         let paths = entries.map(\.path)
         let backend = backend
         Task {
-            let restorations = await Task.detached(priority: .userInitiated) {
-                () -> [(VFSPath, VFSPath)] in
-                var out: [(VFSPath, VFSPath)] = []
-                for path in paths {
-                    if let trashed = try? backend.trashItem(at: path) { out.append((path, trashed)) }
-                }
-                return out
-            }.value
+            let outcome = await BlockingWork.run {
+                DeletePass.run(paths, using: backend, permanent: false)
+            }
             panel.clearSelection()
             refreshCurrentDirectory()
             focusTable()
-            if let record = UndoRecord.trash(restorations) { host?.recordUndoableAction(record) }
+            noteTrashed(outcome.restorations)
+            // A real failure (a permission problem, a read-only folder) is reported for the same
+            // reason F8 reports one: the originals are still there, and only the user can act on it.
+            if !outcome.failures.isEmpty {
+                presentDeletionFailures(outcome.failures, permanent: false)
+            }
+            offerPermanentDelete(
+                forVolumeWithoutTrash: outcome.refused,
+                confirmed: { [weak self] refused in self?.runDelete(refused, permanent: true) },
+                declined: { [weak self] in self?.reportArchiveMoveKeptOriginals(outcome.refused) }
+            )
         }
+    }
+
+    /// Say that the move ended as a copy. The status line rather than an alert: nothing failed, the
+    /// archive holds everything it was asked to hold, and the user has just answered a question — a
+    /// second sheet to acknowledge their own answer is noise.
+    ///
+    /// One sentence, because this label truncates its *tail* in silence when it overruns and the
+    /// tail is where an explanation lives (docs/NOTES.md ▸ Localization). No file name is
+    /// interpolated for the same reason: a name here is unbounded, and the count is what the user
+    /// needs. Measured in the label's own font across all fourteen catalogs: 310 pt for the single
+    /// form (widest, ja) and 332 pt for the plural (ru, at a three-digit count), against a pane of
+    /// ~542 pt.
+    private func reportArchiveMoveKeptOriginals(_ paths: [VFSPath]) {
+        showTransientStatus(
+            paths.count == 1
+                ? String(
+                    localized: "Copied into the archive — the original is still here.",
+                    comment: """
+                    Status line after an F6 move into an archive whose single original could not be \
+                    moved to the Trash (the volume keeps none) and the user declined to delete it.
+                    """
+                )
+                : String(
+                    localized: "Copied into the archive — \(paths.count) originals are still here.",
+                    comment: """
+                    Status line after an F6 move into an archive whose originals could not be moved \
+                    to the Trash (the volume keeps none) and the user declined to delete them; \
+                    %lld is the count. Plural.
+                    """
+                )
+        )
     }
 }

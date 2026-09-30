@@ -17,11 +17,34 @@ import Foundation
 public struct FTPBackend: RemoteTransportBackend {
     /// The remote account this backend is connected to — its identity.
     public let location: FTPLocation
-    private let transport: any FTPTransport
+    // Internal rather than private: the segmented download lives in `FTPBackend+Segmented.swift`,
+    // and Swift's `private` does not cross files (docs/NOTES.md ▸ file splitting).
+    let transport: any FTPTransport
+    /// What this connection has learned about splitting a download into several logins. A reference
+    /// held by a value type on purpose: the backend is copied freely, and what it knows about the
+    /// *server* must not be copied away with it (``SegmentedDownloadSupport``).
+    let segmentation = SegmentedDownloadSupport()
+    /// What this connection has learned about carrying a source's mode and times, and what it has
+    /// failed to carry so far — held by reference for the reason ``segmentation`` is, so a fact
+    /// about the *server* is not copied away with this value type (``RemoteMetadataSupport``).
+    let metadata: RemoteMetadataSupport
+    /// The most entries the subtree shortcut may gather before it stops and reports itself
+    /// incomplete (``FTPBackend/subtreeListing(at:isCancelled:)``).
+    ///
+    /// A cap is not optional: the shortcut holds a whole tree in memory, and a level of a large
+    /// server's home directory can be very wide. The same 50 000 `SFTPBackend` uses, for the same
+    /// arithmetic and for one more reason — it is a `var` so a test can lower it, since a constant
+    /// chosen never to be met in practice makes its own rule untestable, which is a lesson this
+    /// project has already paid for once (docs/NOTES.md ▸ The SSH exec channel).
+    public var subtreeRowLimit = SSHFindCommand.defaultRowLimit
 
     public init(location: FTPLocation, transport: any FTPTransport) {
         self.location = location
         self.transport = transport
+        // What the *transport* declares, never what FTP could do in principle: a transport that has
+        // not implemented the carry reports `[]`, so every plan asks for nothing and reports the
+        // loss instead of claiming a mode it never wrote (PLAN.md §M25).
+        metadata = RemoteMetadataSupport(offering: transport.metadataCapabilities)
     }
 
     public var id: VFSBackendID { .ftp(location) }
@@ -38,7 +61,7 @@ public struct FTPBackend: RemoteTransportBackend {
     ///
     /// Symbolic links are absent from the write set too, and that is a protocol fact rather than a
     /// choice: FTP has no standard verb that creates one. The default `createSymbolicLink` refusal
-    /// is therefore the correct behaviour, and a mirrored tree containing a link reports it.
+    /// is therefore the correct behavior, and a mirrored tree containing a link reports it.
     public var capabilities: VFSCapabilities { [.read, .write, .rename] }
 
     public func listDirectory(at path: VFSPath) throws -> [FileEntry] {
@@ -76,10 +99,12 @@ public struct FTPBackend: RemoteTransportBackend {
             name: location.host,
             kind: .directory,
             byteSize: 0,
-            modificationDate: .distantPast,
-            creationDate: .distantPast,
+            modificationDate: FileEntry.unknownDate,
+            creationDate: FileEntry.unknownDate,
             isHidden: false,
-            permissions: 0o755,
+            // Nothing is asked of the server for a root, so nothing about it has been reported —
+            // including its mode. `0o755` here was a guess with no row behind it.
+            permissions: nil,
             inode: 0,
             symlinkDestination: nil,
             symlinkTargetKind: nil
@@ -93,13 +118,25 @@ public struct FTPBackend: RemoteTransportBackend {
     // walk. Only the byte transfer below is protocol-specific.
 
     /// Copy one file's bytes between this account and the local disk — a **download** (remote source
-    /// → local destination) or an **upload**. The whole file transfers as one `curl` invocation, so
-    /// `progress` is reported once with the byte count and `isCancelled` is honoured at the file
-    /// boundary, matching `SFTPBackend`; the queue's pause/cancel still acts between files.
+    /// → local destination) or an **upload**. Any other pair of ends is refused: FTP has no copy
+    /// verb, so a duplicate within one account is as unexpressible here as one between two, and a
+    /// caller holding both ends stages it through this disk instead (``RelayCopy``). The whole file
+    /// transfers as one `curl` invocation, and
+    /// `isCancelled` is honored at the file boundary as well as inside the transfer; the queue's
+    /// pause/cancel still acts between files.
     ///
-    /// (Measured 2026-07-25: `curl`'s own progress meter updates about once a second and rounds to
-    /// `k`/`M`, so it could drive a bar but not the accounting. Reporting the exact count once per
-    /// file keeps FTP and SFTP identical and byte-honest — PLAN.md §7, resolved.)
+    /// **`progress` reports as the bytes move, and still settles on the exact count.** The two are
+    /// separate claims because what arrives mid-transfer is an estimate: a download watches its own
+    /// destination file grow (exact, and free), while an upload has only `curl`'s percentage meter
+    /// at one-per-cent resolution. Either way the tail below reports the *remainder* against the
+    /// figure `curl` measured, so the number the job ends on is never a sum of estimates.
+    ///
+    /// (PLAN.md §7 settled this the other way in 2026-07-25 — one exact count per file, on the
+    /// ground that the meter is too coarse to account with. That was right about the accounting and
+    /// wrong about the silence: a *slow* transfer then reports nothing at all until it is over,
+    /// measured 2026-08-16 as 8 seconds of a motionless bar for an 8 MB upload, and 99 seconds on
+    /// the S3 twin that reported it as the copy not working. The estimate drives the bar; the exact
+    /// figure still decides the total.)
     ///
     /// **Resume**: when the destination already holds a nonzero *proper prefix* of the source, the
     /// transfer picks up where it left off rather than re-sending — proven live in both directions,
@@ -111,17 +148,94 @@ public struct FTPBackend: RemoteTransportBackend {
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws {
+        try copyFile(
+            at: source,
+            to: destination,
+            expectedSize: nil,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    /// The same copy, told how big the file is (docs/HISTORY.md ▸ After M19).
+    ///
+    /// **The hint decides whether a download is split**, and it is a hint rather than a probe for a
+    /// measured reason: FTP's own `SIZE` is a round trip, and paying it on every small file to
+    /// answer a question that only matters above 16 MiB would slow the common case to speed up the
+    /// rare one. Both real callers already hold the number from the listing they made
+    /// (`CopyEngine`'s `entry.byteSize`, `RemoteFileCache`'s entry), so it costs no extra request
+    /// anywhere; with no hint, behaviour is exactly what it was.
+    ///
+    /// It is deliberately consulted **only** for the download direction. An upload's shape is
+    /// decided by the local file's own size, which this backend reads for itself and which cannot be
+    /// stale.
+    public func copyFile(
+        at source: VFSPath,
+        to destination: VFSPath,
+        expectedSize: Int64?,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws {
+        try copyFile(
+            at: source,
+            to: destination,
+            hint: CopySourceHint(expectedSize: expectedSize),
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    /// The same copy, also carrying the source's mode and modification time (PLAN.md §M25 Slice 2).
+    ///
+    /// FTP has no preserve flag, so **everything** rides on explicit steps after the bytes land —
+    /// and where they land decides what is possible. A download finishes on this machine with plain
+    /// syscalls, so it can carry the whole hint; an upload has to ask the server, where `SITE CHMOD`
+    /// and `MFMT` are extensions it need not implement.
+    ///
+    /// An upload's steps run as **their own invocation**, which is measured rather than tidy: a
+    /// quote command sent alongside the transfer is refused as `curl` exit 21, failing the whole
+    /// invocation after the bytes have already landed — a successful upload reported as a failed
+    /// copy. On its own, the reply code attributes the refusal exactly (500 for a verb this server
+    /// lacks, 550 for that file's own problem).
+    public func copyFile(
+        at source: VFSPath,
+        to destination: VFSPath,
+        hint: CopySourceHint,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws {
         if isCancelled() { throw CancellationError() }
+        var tally = TransferProgressTally()
+        let streamed = { (delta: Int64) in
+            tally.add(delta)
+            progress(delta)
+        }
         let transferred: Int64
         if source.backend == id, destination.backend == .local {
-            transferred = try downloadFile(remote: source, toLocal: destination.path)
+            transferred = try downloadFile(
+                FTPDownloadRequest(
+                    remotePath: source.path,
+                    localPath: destination.path,
+                    source: source,
+                    expectedSize: hint.expectedSize
+                ),
+                progress: streamed,
+                isCancelled: isCancelled
+            )
+            carryOntoLocal(hint.metadata, at: destination.path)
         } else if source.backend == .local, destination.backend == id {
-            transferred = try uploadFile(fromLocal: source.path, remote: destination)
+            transferred = try uploadFile(
+                fromLocal: source.path,
+                remote: destination,
+                progress: streamed,
+                isCancelled: isCancelled
+            )
+            try carryOntoRemote(hint.metadata ?? .ofLocalFile(source.path), at: destination)
         } else {
             throw VFSError.unsupported(.remoteToRemoteCopy)
         }
         if isCancelled() { throw CancellationError() }
-        progress(transferred)
+        if let remainder = tally.remainder(against: transferred) { progress(remainder) }
     }
 
     /// Uploads at or below this size skip resume detection: re-sending a small file is cheaper than
@@ -129,14 +243,73 @@ public struct FTPBackend: RemoteTransportBackend {
     /// threshold — they gate on the local partial's size, which is free to read.)
     private static let resumeUploadThreshold: Int64 = 1 << 20 // 1 MiB
 
-    /// Download `remote` to `localPath`, resuming from a local partial when one is a proper prefix.
-    private func downloadFile(remote source: VFSPath, toLocal localPath: String) throws -> Int64 {
-        let existingLocal = localFileSize(localPath)
+    /// Download to `localPath` — in several ranges at once when that is worth doing, in one stream
+    /// when it is not.
+    ///
+    /// The fork has three conditions and each excludes a case the segmented path cannot serve. A
+    /// **partial already on disk** takes the resuming route untouched, because segments are fetched
+    /// into files of their own and have nothing to continue from; no **size hint** means no plan,
+    /// since asking for one would cost the `SIZE` round trip this avoids; and a connection that has
+    /// already shown it **will not serve a split download** is not asked again, which on a server
+    /// capping concurrent logins is the difference between paying for one wasted attempt and paying
+    /// for one per file.
+    ///
+    /// **The retry after a refused run reports nothing**, and that is the one subtlety worth
+    /// stating: whatever pieces landed have already been handed to `progress`. Reporting them again
+    /// would count one file twice in a job total that only adds, leaving a queue's bar permanently
+    /// ahead of the work. The tail in ``copyFile`` still tops the count up to whatever the stream
+    /// actually moved.
+    private func downloadFile(
+        _ request: FTPDownloadRequest,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        let existingLocal = localFileSize(request.localPath)
+        if existingLocal == 0,
+           let hint = request.expectedSize,
+           SegmentedDownloadPlan.isWorthwhile(totalSize: hint, limits: .ftp),
+           !segmentation.isRefused,
+           let plan = SegmentedDownloadPlan(totalSize: hint, limits: .ftp) {
+            if let moved = try downloadInSegments(
+                request,
+                plan: plan,
+                progress: progress,
+                isCancelled: isCancelled
+            ) {
+                return moved
+            }
+            return try downloadWholeFile(
+                request,
+                resume: false,
+                progress: { _ in },
+                isCancelled: isCancelled
+            )
+        }
         // Only when a local partial exists is a remote size worth fetching; `>` short-circuits so a
         // fresh download (the norm) never pays for the round trip.
-        let resume = existingLocal > 0 && remoteFileSize(source) > existingLocal
-        return try mapErrors(source) {
-            try transport.download(source.path, to: localPath, resume: resume)
+        return try downloadWholeFile(
+            request,
+            resume: existingLocal > 0 && remoteFileSize(request.source) > existingLocal,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    /// One `curl`, the whole file, resuming from a local partial when the caller asks it to.
+    private func downloadWholeFile(
+        _ request: FTPDownloadRequest,
+        resume: Bool,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        try mapErrors(request.source) {
+            try transport.download(
+                request.remotePath,
+                to: request.localPath,
+                resume: resume,
+                progress: progress,
+                isCancelled: isCancelled
+            )
         }
     }
 
@@ -145,12 +318,23 @@ public struct FTPBackend: RemoteTransportBackend {
     /// The remote size is checked here rather than left to `curl -C -`, which would query it too:
     /// `curl` cannot distinguish "no partial to resume" from "the file isn't there at all", so
     /// asking first keeps a fresh upload on the plain path.
-    private func uploadFile(fromLocal localPath: String, remote destination: VFSPath) throws -> Int64 {
+    private func uploadFile(
+        fromLocal localPath: String,
+        remote destination: VFSPath,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
         let sourceSize = localFileSize(localPath)
         let existingRemote = sourceSize > Self.resumeUploadThreshold ? remoteFileSize(destination) : 0
         let resume = existingRemote > 0 && existingRemote < sourceSize
         return try mapErrors(destination) {
-            try transport.upload(localPath, to: destination.path, resume: resume)
+            try transport.upload(
+                localPath,
+                to: destination.path,
+                resume: resume,
+                progress: progress,
+                isCancelled: isCancelled
+            )
         }
     }
 
@@ -191,10 +375,10 @@ public struct FTPBackend: RemoteTransportBackend {
                 throw VFSError.permissionDenied(path)
             // The certificate and TLS-mode cases surface on the connect probe, where the app can
             // act on them (trust the cert, or tell the user to change the security mode); reaching
-            // one down here means a server changed behaviour mid-session, which is an I/O failure
+            // one down here means a server changed behavior mid-session, which is an I/O failure
             // from this layer's point of view.
             case .certificateUntrusted, .certificateChanged, .unreachable, .timedOut,
-                 .tlsNotAvailable, .tlsRequired, .failure:
+                 .tlsNotAvailable, .tlsRequired, .commandNotImplemented, .failure:
                 throw VFSError.io(path: path, code: EIO)
             }
         } catch let error as FTPQuoteCommand.UnsafePath {
@@ -205,7 +389,11 @@ public struct FTPBackend: RemoteTransportBackend {
         }
     }
 
-    private func entry(from parsed: FTPListingParser.Entry, in directory: VFSPath) -> FileEntry {
+    // Internal rather than private: the subtree shortcut lives in `FTPBackend+Subtree.swift` and
+    // builds its entries through this, so the two routes cannot drift into producing different
+    // rows for the same listing bytes. Swift's `private` does not cross files (docs/NOTES.md ▸ file
+    // splitting).
+    func entry(from parsed: FTPListingParser.Entry, in directory: VFSPath) -> FileEntry {
         entry(from: parsed, at: directory.appending(parsed.name), name: parsed.name)
     }
 
@@ -225,6 +413,8 @@ public struct FTPBackend: RemoteTransportBackend {
             creationDate: parsed.modificationDate,
             isHidden: name.hasPrefix("."),
             permissions: parsed.permissions,
+            ownerName: parsed.ownerName,
+            groupName: parsed.groupName,
             inode: 0,
             symlinkDestination: parsed.symlinkDestination,
             // The target's kind is not knowable without another round trip; report a nominal file

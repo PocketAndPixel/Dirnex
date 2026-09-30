@@ -5,6 +5,12 @@ import DirnexCore
 /// the controller proper stays focused on the panel/table plumbing; nothing here
 /// touches the `Panel` model, only the view and the error.
 extension PanelViewController {
+    /// Report a failed listing on the pane it happened in — and *only* there.
+    ///
+    /// This is an alert the app raises **unasked**: `viewDidLoad` → `activateTab()` → `navigate`
+    /// lists a path nobody has just clicked, so a pane with no window has nobody to tell.
+    /// ``NSAlert/beginSheetIfVisible(over:completionHandler:)`` is where that rule and the
+    /// measurement behind it live; the failure is still reported wherever it can be seen.
     func presentLoadFailure(_ error: Error, path: VFSPath) {
         let alert = NSAlert()
         alert.messageText = String(localized: "Can’t open “\(path.displayName)”")
@@ -12,11 +18,7 @@ extension PanelViewController {
         alert.alertStyle = .warning
         alert.addButton(withTitle: String(localized: "OK"))
         alert.enableEscapeToCancel()
-        if let window = view.window {
-            alert.beginSheetModal(for: window)
-        } else {
-            alert.runModal()
-        }
+        alert.beginSheetIfVisible(over: view.window)
     }
 
     /// A human-readable sentence for an error. Internal (not private) so the file-op
@@ -29,9 +31,52 @@ extension PanelViewController {
 /// dialog (`ErrorDialog`). Free of any view state so it can run on any actor.
 enum VFSErrorText {
     static func sentence(for error: Error) -> String {
+        // The encrypted-archive vocabulary reaches the screen through the same `describe(_:)` calls
+        // a `VFSError` does, and its `localizedDescription` is the useless synthesized one
+        // ("…error 1."). Joined here, once, so no call site has to know which family it caught.
+        if let archiveError = error as? EncryptedArchiveError {
+            return LocalizedCatalog.sentence(for: archiveError)
+        }
         guard let vfsError = error as? VFSError else { return error.localizedDescription }
         switch vfsError {
-        case .permissionDenied:
+        case let .permissionDenied(path):
+            // **Full Disk Access is a macOS grant, and on a server it is advice about the wrong
+            // machine.** This sentence had no idea which backend it was describing, so every remote
+            // refusal — an S3 bucket policy, an SFTP mode, an FTP account — sent the user to a
+            // System Settings pane that cannot affect the file, and had done since those backends
+            // shipped. The path carries its backend, so the split costs nothing and needs no change
+            // to `VFSError` (found 2026-08-18 by an archived S3 object, PLAN.md §M21).
+            // **Photos is the one place where System Settings *is* the remedy** (PLAN.md §M28). The
+            // library is read through PhotoKit behind a privacy grant of its own — not Full Disk
+            // Access, which cannot open it, and not a server, which is not involved — so it is named
+            // ahead of the remote test the library answers.
+            if path.backend.isPhotos {
+                return String(localized: """
+                Dirnex isn’t allowed to read your Photos library. You can allow it in System Settings \
+                under Privacy & Security ▸ Photos.
+                """)
+            }
+            if path.backend.isRemoteConnection {
+                return String(localized: """
+                The server refused that. This account may not have permission for it.
+                """)
+            }
+            // **The same rule, arriving on a path that *is* on this Mac.** A sync client's mount
+            // under `~/Library/CloudStorage` is an ordinary local path with an ordinary local
+            // backend, so the remote test above cannot see it — and Full Disk Access does not gate
+            // that tree at all (probed 2026-07-21), so the sentence below is advice about a switch
+            // that is already on and could not help if it were off. Reachable today rather than in
+            // theory: a Google Drive mount root is `dr-x------`, so every refusal it hands back is
+            // `EACCES` → `.permissionDenied` (measured 2026-08-31, PLAN.md §M26 Slice 3).
+            //
+            // `~/Library/Mobile Documents` deliberately keeps the Full Disk Access sentence: it
+            // *is* TCC-gated, so there the advice is right. The two provider roots are opposites
+            // for this question even though they are twins for the trash route.
+            if CloudStorageMounts.isInsideCloudStorage(path) {
+                return String(localized: """
+                The sync client refused that. This account may not have permission for it.
+                """)
+            }
             return String(localized: """
             You don’t have permission. Dirnex may need Full Disk Access in System Settings.
             """)

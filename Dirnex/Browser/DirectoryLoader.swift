@@ -5,15 +5,29 @@ import Foundation
 /// the UI without ever blocking the main thread (PLAN.md §1 "listing must never
 /// block the UI").
 ///
-/// The backend's read methods are documented as safe off the main thread, so the
-/// blocking `readdir` walk runs on a detached task; only the resulting `Sendable`
-/// `DirectoryListing` crosses back to the caller's actor.
+/// The backend's read methods are documented as safe off the main thread, so the blocking walk
+/// runs through `BlockingWork` — a thread it is *allowed* to block — and only the resulting
+/// `Sendable` value crosses back to the caller's actor.
+///
+/// **Not `Task.detached`, which is the cooperative pool.** A listing is a blocking call whatever
+/// the backend: `readdir` on this disk, and a real network round trip on a remote one (0.601–0.699 s
+/// per `ListObjectsV2`, measured — docs/NOTES.md ▸ curl for S3). A detached task that blocks parks
+/// one of the pool's workers, and the pool's width is the machine's core count and does not
+/// over-commit — measured here at 16 blocked bodies on a 16-core Mac and **1** under
+/// `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1`. That is the shape `BlockingWork`'s own doc comment was
+/// written for, and the one that failed a CI release build once already.
+///
+/// `sorted` is the deliberate exception: it reads nothing, so the pool is exactly where it belongs.
 enum DirectoryLoader {
     static func list(_ backend: any VFSBackend, at path: VFSPath) async throws -> DirectoryListing {
-        try await Task.detached(priority: .userInitiated) {
-            let entries = try backend.listDirectory(at: path)
-            return DirectoryListing(path: path, entries: entries)
-        }.value
+        // `BlockingWork.run` is deliberately non-throwing, so the backend's error rides back as a
+        // `Result` — the shape `RemoteFileCache.fetch` already uses.
+        try await BlockingWork.run { () -> Result<DirectoryListing, any Error> in
+            Result {
+                let entries = try backend.listDirectory(at: path)
+                return DirectoryListing(path: path, entries: entries)
+            }
+        }.get()
     }
 
     /// List `path` **and** sort it into a ready-to-render `DirectoryModel`, both off the main
@@ -31,21 +45,28 @@ enum DirectoryLoader {
         showHidden: Bool,
         directorySizes: [VFSPath: Int64] = [:]
     ) async throws -> DirectoryModel {
-        try await Task.detached(priority: .userInitiated) {
-            let entries = try backend.listDirectory(at: path)
-            let listing = DirectoryListing(path: path, entries: entries)
-            return DirectoryModel(
-                listing: listing,
-                sort: sort,
-                showHidden: showHidden,
-                directorySizes: directorySizes
-            )
-        }.value
+        try await BlockingWork.run { () -> Result<DirectoryModel, any Error> in
+            Result {
+                let entries = try backend.listDirectory(at: path)
+                let listing = DirectoryListing(path: path, entries: entries)
+                return DirectoryModel(
+                    listing: listing,
+                    sort: sort,
+                    showHidden: showHidden,
+                    directorySizes: directorySizes
+                )
+            }
+        }.get()
     }
 
     /// Re-project an **already-loaded** listing under a new sort/hidden setting off the main
     /// thread — the column-header re-sort and the show-hidden toggle, which change the row order
     /// without re-reading the directory. Same filter/sizes contract as `model`.
+    ///
+    /// **Stays on `Task.detached`, deliberately.** This reads nothing: it is ~350 ms of
+    /// `localizedStandardCompare` on a 100k directory and never blocks on I/O, which is precisely
+    /// the work the cooperative pool exists to run. Sending it to `BlockingWork` would buy nothing
+    /// and give up the pool's core-count parallelism.
     static func sorted(
         _ listing: DirectoryListing,
         sort: FileSort,
@@ -67,9 +88,7 @@ enum DirectoryLoader {
     /// on any failure (not found, permission, …), so the caller treats a missing path the
     /// same as an un-stattable one.
     static func stat(_ backend: any VFSBackend, at path: VFSPath) async -> FileEntry? {
-        await Task.detached(priority: .userInitiated) {
-            try? backend.stat(at: path)
-        }.value
+        await BlockingWork.run { try? backend.stat(at: path) }
     }
 
     /// Recursively total a directory's size off the main thread (Space-on-dir sizing).
@@ -77,17 +96,22 @@ enum DirectoryLoader {
     /// skipped inside `DirectorySizer`, not fatal. Runs at `.utility` — sizing is a
     /// background nicety and must never contend with an interactive listing.
     ///
-    /// **Detached, so it outlives its caller's cancellation** — deliberate for Space-on-dir, where
-    /// the walk the user explicitly asked for should finish and land in the cache even if they
-    /// arrow onward. Size-visualization mode wants the opposite and uses `cancellableSize`.
+    /// **It outlives its caller's cancellation** — deliberate for Space-on-dir, where the walk the
+    /// user explicitly asked for should finish and land in the cache even if they arrow onward.
+    /// Size-visualization mode wants the opposite and uses `cancellableSize`.
+    ///
+    /// `BlockingWork` keeps that property and strengthens it: `withCheckedContinuation` does not
+    /// carry cancellation, so the walk is uncancellable *by construction* rather than by relying on
+    /// a detached task not inheriting it. Nothing here reads a cancellation flag — `DirectorySizer`
+    /// is called with its default `isCancelled`, which is why this one converts with no bridge.
     static func size(
         _ backend: any VFSBackend,
         of path: VFSPath,
         excluding isExcluded: @escaping @Sendable (VFSPath) -> Bool = { _ in false }
     ) async -> Int64? {
-        await Task.detached(priority: .utility) {
+        await BlockingWork.run(qos: .utility) {
             try? DirectorySizer.size(of: path, using: backend, excluding: isExcluded)
-        }.value
+        }
     }
 
     /// The same walk, but abandonable **mid-walk** rather than merely discarded on completion.
@@ -98,8 +122,14 @@ enum DirectoryLoader {
     /// task (this is not detached), it inherits cancellation from the scan queue's task group, and
     /// `DirectorySizer` checks the flag at every directory it pops.
     ///
-    /// Returns `nil` when cancelled, exactly as it does when the walk fails — both mean "no total",
-    /// and the cache stores neither.
+    /// Reports **what it spent** as well as what it found, because the caller holds one allowance
+    /// across a whole set of these (`DirectorySizeBudget.forSet(ofBackend:)`) and cannot charge it
+    /// from the total: a folder of one enormous file and a folder of ten thousand small ones are
+    /// the same bytes and a thousand-fold difference in requests.
+    ///
+    /// `isAbandoned` is the second way in, beside task cancellation, and it is what makes
+    /// ``DirectorySizeBudget/abandonsWhenUnwatched`` reach an individual walk: the queue runs these
+    /// in a task group, so cancelling *one* of them is not something a task handle can express.
     ///
     /// `isExcluded` prunes subtrees out of the total — `.gitignore`-aware sizing, whose predicate is
     /// `GitStatusSnapshot.isExcludedFromSize`. It is `@Sendable` because it crosses onto the walk's
@@ -107,13 +137,91 @@ enum DirectoryLoader {
     static func cancellableSize(
         _ backend: any VFSBackend,
         of path: VFSPath,
+        budget: DirectorySizeBudget = .unbounded,
+        excluding isExcluded: @escaping @Sendable (VFSPath) -> Bool = { _ in false },
+        isAbandoned: @escaping @Sendable () -> Bool = { false }
+    ) async -> ScanResult {
+        do {
+            let measured = try DirectorySizer.measure(
+                of: path,
+                using: backend,
+                budget: budget,
+                excluding: isExcluded,
+                isCancelled: { Task.isCancelled || isAbandoned() }
+            )
+            return ScanResult(outcome: .total(measured.bytes), requestsMade: measured.requestsMade)
+        } catch let exceeded as DirectorySizeBudgetExceeded {
+            return ScanResult(outcome: .gaveUp, requestsMade: exceeded.directoriesListed)
+        } catch {
+            // Cancelled, or the listing failed. A cancelled walk is charged **nothing**: the only
+            // thing that cancels one is the pane having stopped looking, at which point its scan is
+            // dropped and there is no allowance left to protect.
+            return .cancelled
+        }
+    }
+
+    /// How a budgeted walk ended. Three outcomes rather than an `Int64?`, because a walk that
+    /// **gave up** and one that failed look identical from outside and mean opposite things to the
+    /// person watching: one says "this folder is bigger than we will count over a network", the
+    /// other says "we could not read it". Collapsing them puts the same dash on both and invites
+    /// the user to press Space again on the one that will cost another thousand requests.
+    enum SizeOutcome: Sendable, Equatable {
+        case total(Int64)
+        /// The walk reached its ``DirectorySizeBudget``. Deliberately carries no partial — see that
+        /// type for why a partial rendered as the answer is a claim about the wrong thing.
+        case gaveUp
+        /// Cancelled, or the top-level listing failed. Both mean "no total" and the cache stores
+        /// neither, which is the pre-existing meaning of this function's `nil`.
+        case unavailable
+    }
+
+    /// How a scan-queue walk ended, and what it spent — see ``DirectorySizeMeasurement``.
+    ///
+    /// Three outcomes rather than an `Int64?` for the same reason `SizeOutcome` has them, one layer
+    /// along: a walk that **gave up** at the set's allowance and one that failed look identical
+    /// from outside and mean opposite things to the pane, which draws the first as a marked row
+    /// with a reason and the second as the dash it already had.
+    ///
+    /// The cost is carried on **every** ending, including the give-up, because the allowance is
+    /// what a give-up proves was spent.
+    struct ScanResult: Sendable, Equatable {
+        let outcome: SizeOutcome
+        let requestsMade: Int
+
+        static let cancelled = ScanResult(outcome: .unavailable, requestsMade: 0)
+    }
+
+    /// The Space-on-dir walk for a backend whose listings are **billed round trips** (PLAN.md §M21
+    /// Slice 11) — bounded by `budget`, and abandonable through the returned task's own handle.
+    ///
+    /// It is `Task.detached` for the same reason `size` is: the walk blocks, so it must not run on
+    /// the caller's main actor. What differs is that the caller *keeps* the handle. A detached task
+    /// does not inherit cancellation, which is exactly right here — nothing should cancel this
+    /// except the pane deciding it has stopped looking, and it says so by calling `cancel()`.
+    ///
+    /// Measured against the live endpoint before it was written: cancelling lands within one
+    /// listing (~0.6 s there), because `DirectorySizer` reads the flag once per directory popped.
+    static func budgetedSize(
+        _ backend: any VFSBackend,
+        of path: VFSPath,
+        budget: DirectorySizeBudget,
         excluding isExcluded: @escaping @Sendable (VFSPath) -> Bool = { _ in false }
-    ) async -> Int64? {
-        try? DirectorySizer.size(
-            of: path,
-            using: backend,
-            excluding: isExcluded,
-            isCancelled: { Task.isCancelled }
-        )
+    ) -> Task<SizeOutcome, Never> {
+        Task.detached(priority: .utility) {
+            do {
+                let total = try DirectorySizer.size(
+                    of: path,
+                    using: backend,
+                    budget: budget,
+                    excluding: isExcluded,
+                    isCancelled: { Task.isCancelled }
+                )
+                return .total(total)
+            } catch is DirectorySizeBudgetExceeded {
+                return .gaveUp
+            } catch {
+                return .unavailable
+            }
+        }
     }
 }

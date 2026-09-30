@@ -7,6 +7,11 @@ import DirnexCore
 /// a marked set opens the multi-selection sheet, which edits the fields that make sense in bulk
 /// (mode, flags, group, dates) as a per-item patch. Which one is a marks-over-cursor decision, the
 /// same rule every file operation uses.
+///
+/// A row that is **not on this Mac** takes a third route (PLAN.md §M24 Slice 7):
+/// ``RemoteAttributesController``, read-only, showing what the listing actually reported and
+/// saying plainly what it did not. The decision is made per row rather than per pane, because a
+/// results tab holds hits from anywhere and a tree draws several directories at once.
 extension PanelViewController {
     @objc func showAttributes(_ sender: Any?) {
         let targets = attributesTargets()
@@ -14,11 +19,63 @@ extension PanelViewController {
             presentNothingToShow()
             return
         }
-        if targets.count == 1 {
-            showSingleAttributes(first)
-        } else {
-            showMultipleAttributes(targets)
+        switch AttributesRoute.decide(for: targets) {
+        case .single: showSingleAttributes(first)
+        case .multiple: showMultipleAttributes(targets)
+        case .remote: showRemoteAttributes(first)
+        case .bulkUnavailable: presentBulkNotAvailable()
         }
+    }
+
+    // MARK: - A row that is not on this Mac
+
+    /// The read-only panel M24 Slice 7 shipped, with whatever this connection will let the user
+    /// change (PLAN.md §M25 Slice 5).
+    ///
+    /// The capability question is asked of the **backend for this row's path**, not of the pane's:
+    /// a results tab holds hits from anywhere and a tree draws several connections at once, which is
+    /// the per-row rule `AttributesRoute` already settled for the read half. Asking the pane instead
+    /// would offer a control from the wrong account, or withhold one from the right account.
+    private func showRemoteAttributes(_ entry: FileEntry) {
+        presentAsMovableWindow(remoteAttributesController(for: entry))
+    }
+
+    /// The panel over `entry`, wired to this pane and this window.
+    ///
+    /// Split from presenting it for the reason `remoteEditability(for:)` is: the wiring is the part
+    /// worth pinning and a test that presents a real window in the test host makes the pane do real
+    /// pane work and destabilizes its neighbours (docs/NOTES.md ▸ Testing). It earns the split twice
+    /// over now that there are **two** hooks, because a missing one is invisible in every direction
+    /// — a panel that journaled nothing would save exactly as it does today, and every remote change
+    /// would silently be a one-way door again (PLAN.md §4 ▸ *Still open*, taken 2026-09-01).
+    ///
+    /// The same two hooks the local panel gets, and for the same reasons: journaling a commit is the
+    /// window's job (⌘Z spans both panes), re-listing after one lands is this pane's.
+    func remoteAttributesController(for entry: FileEntry) -> RemoteAttributesController {
+        let controller = RemoteAttributesController(
+            entry: entry,
+            backend: backend,
+            editability: remoteEditability(for: entry)
+        )
+        controller.recordUndo = { [weak self] record in
+            self?.host?.recordUndoableAction(record)
+        }
+        controller.onApplied = { [weak self] in self?.refreshCurrentDirectory() }
+        return controller
+    }
+
+    /// What the panel over `entry` will let the user change.
+    ///
+    /// Split from `showRemoteAttributes` for the reason `AttributesRoute` is split from presenting a
+    /// panel: this is the part worth pinning, and a test that presents a real window in the test
+    /// host makes it do real pane work and destabilizes its neighbours (docs/NOTES.md ▸ Testing). It
+    /// is also the one line a regression would fail silently — a pane that always answered
+    /// `.readOnly` would show every remote panel exactly as M24 shipped it, with nothing to see.
+    func remoteEditability(for entry: FileEntry) -> RemoteAttributeEditability {
+        RemoteAttributeEditability.decide(
+            for: entry,
+            capabilities: backend.editableMetadata(at: entry.path)
+        )
     }
 
     // MARK: - Single item
@@ -115,11 +172,33 @@ extension PanelViewController {
             ),
             detail: String(
                 localized: """
-                Put the cursor on a file or folder on this Mac. Permissions, flags and \
-                access-control lists are read from the disk itself, so a server or an archive \
-                has none to show.
+                Put the cursor on a file or folder. The parent row and the app folders in the \
+                merged iCloud Drive listing are the only rows Get Info cannot describe.
                 """,
-                comment: "Get Info failure detail; states the local-only limitation."
+                comment: "Get Info failure detail; names the rows that have nothing to describe."
+            )
+        )
+    }
+
+    /// A marked set that is not all on this Mac.
+    ///
+    /// The bulk panel is an **editor** — it applies a per-item patch — and a remote row has nothing
+    /// editable yet (writing is M25's). Refusing says so; the two alternatives are both quiet
+    /// failures. Opening it over the local subset would edit fewer items than the user marked
+    /// without mentioning it, which is what the old local-only filter did to a mixed selection; and
+    /// describing the cursor row alone would ignore marks that every other gesture in the app obeys.
+    private func presentBulkNotAvailable() {
+        presentOperationFailure(
+            message: String(
+                localized: "Get Info describes one item at a time here",
+                comment: "Get Info failure title for a multi-selection that is not all local."
+            ),
+            detail: String(
+                localized: """
+                The multiple-item panel edits permissions, flags and dates, and an item that is \
+                not on this Mac cannot be edited yet. Clear the selection to see one item on its own.
+                """,
+                comment: "Get Info failure detail for a non-local multi-selection."
             )
         )
     }
@@ -130,11 +209,22 @@ extension PanelViewController {
     /// on marks over the cursor), otherwise the single cursor entry. The synthetic `..` row is never a
     /// target.
     ///
-    /// Local-only, and that is structural rather than an oversight: a mode, a BSD flags word and an
-    /// ACL are things a real inode has. An archive member and an SFTP listing have none, so a remote
-    /// or virtual pane yields nothing and the menu item greys out.
+    /// **Any** row Get Info can describe, local or not (PLAN.md §M24 Slice 7).
+    ///
+    /// This filtered to `backend == .local` until M24 Slice 7, on the reasoning that a mode, a flags
+    /// word and an ACL are things a real inode has. The first half of that is wrong — `sftp` and
+    /// FTP's Unix `LIST` print a real mode, and an archive stores one — and the second is a reason
+    /// to show *less* about a remote row, not nothing about it. What replaced it is a routing
+    /// decision made per row rather than a filter, so a search hit and a row inside an expanded
+    /// folder are judged on where **they** live rather than on what container drew them.
+    ///
+    /// The one row still excluded is the one whose name is not its path's: ``ICloudDrive`` puts an
+    /// **app's** name over its `Documents` folder, so a panel opened on it would describe a folder
+    /// under a name that is not the folder's. That is ``FileEntry/nameMatchesPath``, which is the
+    /// honest form of the `!isVirtualDirectory` gate this used to carry — that one refused every
+    /// ordinary file standing beside those rows, and every hit in a results tab, for the sake of a
+    /// handful of synthetic ones.
     func attributesTargets() -> [FileEntry] {
-        guard !isVirtualDirectory else { return [] }
         let candidates: [FileEntry]
         if panel.selectionCount > 0 {
             candidates = panel.selectedEntries
@@ -143,7 +233,7 @@ extension PanelViewController {
         } else {
             candidates = []
         }
-        return candidates.filter { $0.path.backend == .local }
+        return candidates.filter(\.nameMatchesPath)
     }
 
     /// Whether Get Info should be enabled.

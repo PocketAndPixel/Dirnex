@@ -14,7 +14,7 @@ import DirnexCore
 /// - **When a file is both tagged and not downloaded, Finder draws the dots first and the cloud
 ///   outermost.** So this view is the last thing in the cell, after `TagDotsView`.
 ///
-/// An SF Symbol rather than a hand-drawn path (unlike the dots, where the content *is* the colour):
+/// An SF Symbol rather than a hand-drawn path (unlike the dots, where the content *is* the color):
 /// the cloud-with-arrow glyph is a system idiom people already read, and Apple ships it.
 final class SyncBadgeView: NSView {
     /// The row's status, or `nil` for a file with nothing to report — which is every ordinary file
@@ -64,7 +64,7 @@ final class SyncBadgeView: NSView {
     }
 
     /// What this badge is saying, in words — the cell hands it to the row's tooltip. A cloud glyph
-    /// is recognisable but not self-explaining, and "not downloaded" versus "failed" is exactly the
+    /// is recognizable but not self-explaining, and "not downloaded" versus "failed" is exactly the
     /// distinction a small monochrome icon is worst at.
     var accessibilityText: String? {
         status.map(SyncBadgeStyle.label(for:))
@@ -75,7 +75,7 @@ final class SyncBadgeView: NSView {
 /// words — the same core-decides-meaning / app-decides-look split as `GitStatusStyle` and
 /// `TagDotStyle`.
 enum SyncBadgeStyle {
-    /// The glyph for a status, tinted. System symbols and system colours throughout, so the badge
+    /// The glyph for a status, tinted. System symbols and system colors throughout, so the badge
     /// tracks the user's appearance and accessibility settings rather than freezing literals.
     ///
     /// `.upToDate` never reaches here — it draws nothing, and the snapshot doesn't even store it —
@@ -110,7 +110,7 @@ enum SyncBadgeStyle {
         switch status {
         // The quiet states are the *normal* ones — a placeholder is not a problem, and a file on its
         // way up is not either. Secondary keeps them legible without turning a cloud folder into a
-        // wall of colour, which is the failure mode Finder avoids by drawing nothing at all here.
+        // wall of color, which is the failure mode Finder avoids by drawing nothing at all here.
         case .upToDate, .notDownloaded, .excluded: .secondaryLabelColor
         case .downloading, .uploading: .systemBlue
         case .conflicted: .systemOrange

@@ -8,14 +8,27 @@ import DirnexCore
 /// pane one.
 extension BrowserWindowController {
     /// Reveal the sidebar if it's collapsed, then hand it keyboard focus with the cursor on the
-    /// active pane's current location (if that place is pinned). Focusing an invisible list would be
-    /// a dead keystroke, so the reveal comes first; it is not animated, because the user asked to
-    /// *use* the sidebar now, not to watch it slide in.
+    /// place the active pane is in. Focusing an invisible list would be a dead keystroke, so the
+    /// reveal comes first; it is not animated, because the user asked to *use* the sidebar now, not
+    /// to watch it slide in.
     @objc func focusSidebar(_ sender: Any?) {
         if sidebarSplitItem.isCollapsed {
             sidebarSplitItem.isCollapsed = false
         }
-        sidebar.focusFromKeyboard(preferring: focusedPanel.panel.path)
+        sidebar.focusFromKeyboard(showing: focusedPanel.sidebarLocation)
+    }
+
+    /// Open a place picked from **Go ▸ Places** (PLAN.md §M20). Dispatched here through the responder
+    /// chain rather than to a target, because the menu bar is one object shared by every window and
+    /// the place has to open in whichever one is in front.
+    ///
+    /// It hands straight over to the sidebar's own `activate(_:)` — the one definition of what a
+    /// place *does* — rather than repeating the eleven-way switch. The sidebar being collapsed changes
+    /// nothing: the view controller is alive either way, and it is the delegate callbacks (which are
+    /// this file) that do the work.
+    @objc func openPlace(_ sender: Any?) {
+        guard let box = (sender as? NSMenuItem)?.representedObject as? PlaceBox else { return }
+        sidebar.activate(box.place)
     }
 }
 
@@ -28,6 +41,13 @@ extension BrowserWindowController: SidebarViewControllerDelegate {
         let target = activePanel ?? leftPanel
         target.navigate(to: path)
         target.focusTable()
+    }
+
+    /// A pinned folder opens in the active pane through the pane's own jump — the same funnel the
+    /// ⌘F popup uses, so a row and a keystroke cannot come to disagree about what a favorite means,
+    /// and so a pin on a server reconnects from either. It focuses the pane itself.
+    func sidebar(_ sidebar: SidebarViewController, didActivateFavorite entry: FavoriteEntry) {
+        (activePanel ?? leftPanel).jumpToFavorite(entry)
     }
 
     /// A saved search re-runs its query in the active pane, opening the hits in a virtual
@@ -61,6 +81,14 @@ extension BrowserWindowController: SidebarViewControllerDelegate {
     func sidebarDidActivateICloud(_ sidebar: SidebarViewController) {
         let target = activePanel ?? leftPanel
         target.showICloudDrive()
+        target.focusTable()
+    }
+
+    /// The Photos library opens in the active pane as years, months and originals (PLAN.md §M28),
+    /// asking macOS for access on the first click; focus goes back to the pane either way.
+    func sidebarDidActivatePhotos(_ sidebar: SidebarViewController) {
+        let target = activePanel ?? leftPanel
+        target.showPhotosLibrary()
         target.focusTable()
     }
 
@@ -101,7 +129,7 @@ extension BrowserWindowController: SidebarViewControllerDelegate {
 
 /// The window's split controller, subclassed only to keep keyboard focus alive across a sidebar
 /// collapse (PLAN.md §M8). When the source list holds first responder and the sidebar is hidden, its
-/// table goes with it and AppKit drops focus to the bare window — both panes grey, and Tab dead
+/// table goes with it and AppKit drops focus to the bare window — both panes gray, and Tab dead
 /// because Tab is a pane key that only fires while a pane is first responder.
 ///
 /// `toggleSidebar(_:)` is the one funnel both the menu/palette (via the `toggleSidebar:` selector)

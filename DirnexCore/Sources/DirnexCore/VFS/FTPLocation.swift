@@ -138,10 +138,17 @@ public extension FTPLocation {
     ///
     /// `remotePath` is appended as given; a directory must end in `/` or the server answers with the
     /// file of that name instead of a listing.
-    func url(forRemotePath remotePath: String) -> String {
+    /// `host` names what to *dial*, which is the account's own host unless a Bonjour fallback
+    /// resolved where it did not (``HostNameFallback``). It is a parameter rather than a read of
+    /// ``FTPLocation/host`` because the two answer different questions: the location's host is the
+    /// account's **identity** — it keys the descriptor, the Keychain item and the saved record, and
+    /// must stay what the user typed — while this is the name the resolver found. Keeping them
+    /// apart is what lets `nas` reach `nas.local` without the saved server, its password, or a
+    /// restored tab quietly moving to a different id.
+    func url(forRemotePath remotePath: String, host: String? = nil) -> String {
         let scheme = security == .implicit ? "ftps://" : "ftp://"
         let path = remotePath.hasPrefix("/") ? remotePath : "/\(remotePath)"
-        return "\(scheme)\(host):\(port)\(path)"
+        return "\(scheme)\(host ?? self.host):\(port)\(path)"
     }
 
     /// The Keychain service every FTP password is filed under (a generic-password item's service).

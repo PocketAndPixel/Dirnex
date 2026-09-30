@@ -31,7 +31,7 @@ final class DirectoryScanCache<Input: Sendable, Snapshot: Sendable> {
     /// `willReplay` is true when a request arrived mid-scan and this key is about to be re-read.
     /// Every provider posts its notification either way — the snapshot just stored is real, and a
     /// pane should paint it rather than wait — but work that *schedules* something (the cloud
-    /// follow-up poll) must sit out, or it would be cancelled by the replay a line later while
+    /// follow-up poll) must sit out, or it would be canceled by the replay a line later while
     /// still counting against its own budget.
     typealias Completion = (VFSPath, Snapshot?, _ willReplay: Bool) -> Void
 
@@ -55,7 +55,7 @@ final class DirectoryScanCache<Input: Sendable, Snapshot: Sendable> {
     /// The input for each key, as of its most recent request — kept so a debounced or replayed run
     /// uses the *latest* listing rather than the one that happened to schedule it.
     private var requested: [VFSPath: Input] = [:]
-    /// The pending debounce timer per key — cancelled and replaced by each new request.
+    /// The pending debounce timer per key — canceled and replaced by each new request.
     private var scheduled: [VFSPath: Task<Void, Never>] = [:]
     /// Keys with a scan in flight, and those whose changes arrived while it ran (so the snapshot we
     /// are about to store is already known to be stale and must be re-read once).
@@ -78,8 +78,23 @@ final class DirectoryScanCache<Input: Sendable, Snapshot: Sendable> {
 
     // MARK: - Reading
 
-    /// The snapshot already in hand for `key`, or `nil` when none has been read yet. Synchronous and
-    /// O(1) — this is what a pane calls while rendering rows.
+    /// The snapshot already in hand for `key`, or `nil` when none is. Synchronous and O(1) — this is
+    /// what a pane calls while rendering rows.
+    ///
+    /// **`nil` means "not known here", never "this directory has nothing".** The two read alike and
+    /// are not: a key that was scanned perfectly well ages out of the LRU below whenever `cacheLimit`
+    /// others are stored, and nothing tells its readers. So a caller holding its own copy must treat
+    /// a miss as *no news* and keep drawing what it has — the scan its `requestRefresh` just started
+    /// will publish, and that is what may replace it. Adopting the miss instead erases whatever the
+    /// caller was showing and then draws it again a moment later, which for a pane is two full
+    /// `reloadData` passes and a visible flicker over a directory nothing happened to.
+    ///
+    /// Not hypothetical, and not only a test's problem: eight is two panes of four tabs, so a fifth
+    /// tab anywhere evicts a directory that is still on screen. Measured 2026-08-27 in the test host,
+    /// where a pane's own fixture was evicted for another suite's — by `/Users/oleg`, by
+    /// `/iCloud Drive`, and once by a sibling pane in the same suite — and the miss that followed
+    /// repainted a pane inside `PanelPassiveRefreshTests`' measurement window, failing it about one
+    /// full run in six.
     func cachedSnapshot(for key: VFSPath) -> Snapshot? {
         snapshots[key]
     }

@@ -28,7 +28,7 @@ extension BrowserWindowController {
     // MARK: - Observation
 
     /// Drain the queue's snapshot stream into the UI for the window's lifetime. The task is
-    /// cancelled in `deinit`; `[weak self]` with a per-iteration re-bind keeps the window
+    /// canceled in `deinit`; `[weak self]` with a per-iteration re-bind keeps the window
     /// from being pinned alive by the loop while it waits for the next snapshot.
     func startObservingQueue() {
         queueObservation = Task { [weak self] in
@@ -47,30 +47,37 @@ extension BrowserWindowController {
         // the final completion still refreshes the panes even as the bar collapses.
         finalizeCompletedJobs(in: snapshot)
 
-        if snapshot.isIdle {
-            setQueueBar(visible: false)
-            // Batch drained: forget it so the next batch's bar starts from zero rather than
-            // inheriting the finished jobs' bytes.
-            if !snapshot.jobs.isEmpty {
-                finalizedJobs.removeAll()
-                let queue = queue
-                Task { await queue.clearFinished() }
-            }
-        } else {
-            setQueueBar(visible: true)
-            queueBar.update(with: snapshot)
+        // Visibility first, then the render — because an idle snapshot *resets* the bar, and the
+        // reset has to happen while it is off screen. Every snapshot goes through `update`,
+        // idle included, so there is one call site and nothing to remember to do on the way out.
+        setQueueBar(visible: !snapshot.isIdle)
+        queueBar.update(with: snapshot)
+
+        // Batch drained: forget it so the next batch's bar starts from zero rather than
+        // inheriting the finished jobs' bytes.
+        if snapshot.isIdle, !snapshot.jobs.isEmpty {
+            finalizedJobs.removeAll()
+            let queue = queue
+            Task { await queue.clearFinished() }
         }
     }
 
-    /// For each newly-finished (or cancelled) job, re-list both panes so the source (for a
+    /// For each newly-finished (or canceled) job, re-list both panes so the source (for a
     /// move) and destination reflect the change at once, and surface any failures. The
     /// FSEvents watchers would catch up on their own, but an explicit refresh is immediate.
     private func finalizeCompletedJobs(in snapshot: QueueSnapshot) {
         for job in snapshot.jobs where job.status == .finished || job.status == .cancelled {
             guard finalizedJobs.insert(job.id).inserted else { continue }
+            // Two kinds hand their report back to the gesture that queued them and take nothing
+            // from the tail below — see `reportsToItsGesture(_:)` for why, and for the reason that
+            // question is a function rather than two `if case`s.
+            if Self.reportsToItsGesture(job.kind) {
+                deliverJobReport(job.report ?? .empty, kind: job.kind, id: job.id)
+                continue
+            }
             refreshPanes()
             guard let report = job.report else { continue }
-            // Journal whatever landed (even a cancelled job's partial work) so Cmd+Z can
+            // Journal whatever landed (even a canceled job's partial work) so Cmd+Z can
             // reverse it; `transfer` returns nil when nothing is reversible.
             if let record = UndoRecord.transfer(kind: job.kind, outcomes: report.outcomes) {
                 undoController.record(record)
@@ -87,9 +94,103 @@ extension BrowserWindowController {
                 presentAttributeApplyOutcome(of: report, kind: job.kind)
                 continue
             }
+            // A pack owns its finish the same way: it moves nothing, so `report.failures` is empty
+            // even when it wrote no archive, and everything that can go wrong is an
+            // `EncryptedArchiveError` about the job rather than a `VFSError` about a path.
+            if case .pack = job.kind {
+                presentPackOutcome(of: report)
+                continue
+            }
+            // A **plain** pack reports its success the same way and its failures the ordinary way,
+            // which is why it does not `continue` here. Its writer is `bsdtar` rather than
+            // libarchive, so what goes wrong is a `VFSError` about the archive's path — the tool
+            // missing, the write refused, the upload declined — and those belong in the failure
+            // alert below rather than in a vocabulary invented for the encrypted path.
+            if case .plainPack = job.kind {
+                presentPackOutcome(of: report)
+            }
+            sweepStagedTrees(of: job.kind)
+            // What the copy could not carry besides bytes (PLAN.md §M25 Slice 5b). Said on the
+            // status line and never in a dialog, and said whether or not the job also failed: the
+            // two are different facts — a job can move every byte of every file and still have
+            // dropped their modification times, which is what a same-account SFTP duplicate does by
+            // construction.
+            if let loss = report.metadataLoss {
+                presentMetadataLoss(loss, of: report)
+            }
             if !report.failures.isEmpty {
                 reportFailures(report, kind: job.kind)
             }
+        }
+    }
+
+    /// Whether a finished job reports through the **gesture that queued it** rather than through
+    /// the pane refresh and copy/move wording every other kind takes.
+    ///
+    /// Two kinds do, for the same reason worded twice. A **materialize** changes nothing either
+    /// pane is showing — its destination is a temp root, so re-listing would spend a request per
+    /// remote pane to redraw rows that cannot have moved — and a **save-back** re-baselines exactly
+    /// what landed and refreshes only the directories it wrote into, which a blanket refresh cannot
+    /// know. Both would also be *worded* wrongly by the tail: a refused upload of forty files is
+    /// not "Couldn't move 40 items".
+    ///
+    /// A function with an exhaustive `switch` rather than two `if case`s in the loop, and that is
+    /// the point: this is the seam whose **absence** nothing else can see. A kind that never
+    /// reaches its deliverer leaves the gesture waiting on a report that will not come — for a
+    /// save-back, a batch that never finishes and, because the gather is serialized, no further
+    /// save-back for the life of the window. Naming the rule makes it assertable with no window,
+    /// and makes the next kind added a compile error here.
+    static func reportsToItsGesture(_ kind: FileOperation.Kind) -> Bool {
+        switch kind {
+        case .materialize, .writeBack: true
+        case .copy, .move, .checksum, .attributes, .pack, .plainPack: false
+        }
+    }
+
+    /// Hand a finished job's report to whichever gesture is waiting for it.
+    private func deliverJobReport(
+        _ report: OperationReport,
+        kind: FileOperation.Kind,
+        id: OperationJobID
+    ) {
+        switch kind {
+        case .materialize: deliverMaterializeReport(report, for: id)
+        case .writeBack: deliverWriteBackReport(report, for: id)
+        default: break // `reportsToItsGesture` already said no
+        }
+    }
+
+    /// Remove any **staged subtree** a finished pack was reading.
+    ///
+    /// A folder that is not on this disk is brought down whole before it can be packed (PLAN.md §4 ▸
+    /// *Smaller than a milestone*), and unlike a staged *file* it is deliberately not adopted into
+    /// `RemoteFileCache` — a tree cannot be checked for staleness by a size and a date, and it can be
+    /// gigabytes. So nothing else would ever remove it: the cache clears its root at **launch**,
+    /// which for a copy nobody may reuse is a whole session of somebody's disk.
+    ///
+    /// The job carries the answer, so this needs no bookkeeping and no id to pair against: a source
+    /// that is a **directory** *and* sits under the fetch root is one this app staged, where a local
+    /// folder the user packed is a directory somewhere else entirely and a staged file is a file.
+    private func sweepStagedTrees(of kind: FileOperation.Kind) {
+        let sources: [PackSource]
+        switch kind {
+        case let .pack(job): sources = job.sources
+        case let .plainPack(job): sources = job.sources
+        default: return
+        }
+        let root = RemoteFileCache.temporaryRoot.standardizedFileURL.path
+        for source in sources {
+            let path = URL(fileURLWithPath: source.onDiskPath).standardizedFileURL.path
+            var isDirectory: ObjCBool = false
+            guard path.hasPrefix(root + "/"),
+                  FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
+                  isDirectory.boolValue else { continue }
+            // The holder above it, not the tree itself: `MaterializeRunner` gives every source a
+            // directory of its own so two folders called `docs` from two accounts cannot collide,
+            // and leaving the empty holder behind would be the same leak one level up.
+            try? FileManager.default.removeItem(
+                at: URL(fileURLWithPath: path).deletingLastPathComponent()
+            )
         }
     }
 
@@ -105,7 +206,16 @@ extension BrowserWindowController {
         let name = report.failures[0].path.lastComponent
         let count = report.failures.count
         let single = count == 1
-        if case .checksum = kind {
+        if case .plainPack = kind {
+            // One sentence whatever went wrong, because a pack has exactly one product: there is
+            // no list of items here, and the archive either landed or did not. Without this the
+            // `else` below would call it a failed *move*, which is this project's own warning
+            // about a fallback branch being the most misleading option available.
+            alert.messageText = String(
+                localized: "Couldn’t create the archive “\(name)”",
+                comment: "Pack failure title; %@ is the archive's name."
+            )
+        } else if case .checksum = kind {
             // A checksum's only failure path is the manifest file itself — it moves nothing, so
             // there is never a list of items here, and `presentChecksumOutcome` has already said
             // what the job produced.
@@ -141,7 +251,8 @@ extension BrowserWindowController {
             comment: "Dismiss button on a file-operation failure alert."
         ))
         alert.enableEscapeToCancel()
-        if let window { alert.beginSheetModal(for: window) } else { alert.runModal() }
+        // A job that finished minutes after it was queued — see `beginSheetIfVisible`.
+        alert.beginSheetIfVisible(over: window)
     }
 
     // MARK: - Queue-bar controls

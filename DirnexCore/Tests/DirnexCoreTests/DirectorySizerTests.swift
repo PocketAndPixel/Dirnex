@@ -96,7 +96,7 @@ struct DirectorySizerTests {
         let total = try DirectorySizer.size(
             of: tree.vfsPath(),
             using: backend,
-            // Labelled rather than trailing, at every call site: `size` now takes two closures, and
+            // Labeled rather than trailing, at every call site: `size` now takes two closures, and
             // a bare trailing one binds to `isCancelled`.
             excluding: { $0.lastComponent == "debug.log" }
         )

@@ -84,8 +84,17 @@ public struct MountedVolume: Sendable, Hashable, Identifiable {
     /// the mount-table flags can't tell an optical disc from a read-only disk image (both are
     /// ejectable + read-only + non-removable), so guessing a third glyph would misfire.
     public var symbolName: String {
-        isRoot || isInternal ? "internaldrive" : "externaldrive"
+        isRoot || isInternal ? Self.internalSymbolName : Self.externalSymbolName
     }
+
+    /// Built-in storage's glyph, named because a second surface draws it for a volume it has no
+    /// `MountedVolume` for: the path bar's leading glyph marks a local trail with it, that trail
+    /// being rooted at the boot volume's crumb whatever disk the directory itself sits on
+    /// (PLAN.md §M20). A second spelling of the string is a drift nothing would catch — the two
+    /// would simply stop matching, in the one place they are meant to say "the same disk".
+    public static let internalSymbolName = "internaldrive"
+    /// Everything that is not built-in storage; see `symbolName`.
+    public static let externalSymbolName = "externaldrive"
 }
 
 /// Enumerates the two kinds of sidebar destinations — standard user folders and
@@ -233,6 +242,31 @@ public enum SidebarLocations {
             if lhs.isRoot != rhs.isRoot { return lhs.isRoot }
             return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
         }
+    }
+
+    /// `volumes` with any vault's own volume removed — the sidebar's Volumes section, given where
+    /// the unlocked vaults are mounted.
+    ///
+    /// A vault has its own section, and it must appear in exactly one: a row that moved between
+    /// sections as it was unlocked would be the one place the user goes to unlock it, and a Volumes
+    /// duplicate carries a plain eject button that detaches the image with none of the bookkeeping
+    /// Lock does.
+    ///
+    /// This used to be true for free. A vault is attached `-nobrowse`, and `mountedVolumeURLs(
+    /// options: [.skipHiddenVolumes])` skips a hidden volume — so the sections could not overlap
+    /// however they were assembled. The app's **Show unlocked vaults in Finder** preference is
+    /// exactly the withdrawal of that flag, which makes the vault's volume browsable and therefore
+    /// *enumerable* (verified against a live one: it came back from `mountedVolumeURLs` the moment it
+    /// was shown). So the rule needs stating, and stating somewhere it can be tested — the shape
+    /// docs/NOTES.md keeps recording, where one question has two spellings and the compiler checks
+    /// neither. It is load-bearing for the ordinary case rather than an edge one, since that
+    /// preference ships **on**.
+    public static func hidingVaults(
+        in volumes: [MountedVolume],
+        mountedAt vaultMountPoints: Set<String>
+    ) -> [MountedVolume] {
+        guard !vaultMountPoints.isEmpty else { return volumes }
+        return volumes.filter { !vaultMountPoints.contains($0.path.path) }
     }
 
     /// The standard home subfolders, in the order Finder lists them. One table, read by both

@@ -30,7 +30,7 @@ extension PanelViewController {
         // A user script has no AppKit selector to send; resolve it and run it here. This pane is
         // the first responder (the press came from its table), so it needs none of the focus
         // restoration `BrowserWindowController.runCommand(id:)` does for a click or an Apple event
-        // — both paths converge on `runScript`, which is where the one behaviour lives.
+        // — both paths converge on `runScript`, which is where the one behavior lives.
         if let name = UserScript.name(fromCommandID: slot.commandID) {
             guard let script = scripts.script(named: name) else { return false }
             runScript(script)

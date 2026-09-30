@@ -77,8 +77,8 @@ struct ExternalTerminalTests {
         #expect(installed.map(\.identifier) == ["iterm", "terminal"])
     }
 
-    @Test("preferred honours the user's choice when it is installed, else falls back")
-    func preferredHonoursChoice() {
+    @Test("preferred honors the user's choice when it is installed, else falls back")
+    func preferredHonorsChoice() {
         let all = probe(installed: [
             "/System/Applications/Utilities/Terminal.app",
             "/Applications/iTerm.app"

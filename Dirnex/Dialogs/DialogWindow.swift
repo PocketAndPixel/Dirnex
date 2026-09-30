@@ -27,7 +27,7 @@ import DirnexCore
 /// The one thing it gets wrong for us is the resize corner: every one of these controllers pins its
 /// container to a fixed width *and* height, and the localization work behind them (measured label
 /// columns, a checkbox grid budgeted against all 14 languages) is sized to exactly those numbers.
-/// A window advertising a resize corner that Auto Layout then refuses to honour is a worse lie than
+/// A window advertising a resize corner that Auto Layout then refuses to honor is a worse lie than
 /// no corner at all, so `.resizable` comes straight back off.
 extension NSViewController {
     /// Present `controller` as a movable, app-modal window — the sheet replacement.
@@ -51,10 +51,10 @@ extension NSViewController {
     }
 }
 
-/// Where a dialog window opens: where the user last dragged it, else centred on the app's own
+/// Where a dialog window opens: where the user last dragged it, else centered on the app's own
 /// window.
 ///
-/// Centring on the *app* rather than the screen is the point — on a large display a screen-centred
+/// Centering on the *app* rather than the screen is the point — on a large display a screen-centered
 /// dialog can land nowhere near the window that raised it. AppKit's `NSWindow` frame autosave does
 /// the remembering, so there is nothing to observe and nothing to tear down; that matters here
 /// because a modal-window presentation **posts no `willCloseNotification`** (probed), so the obvious
@@ -67,7 +67,7 @@ extension NSViewController {
 /// arithmetic has to be written by hand. On a resizable window the same call would restore the stale
 /// size too.
 enum DialogWindowPlacement {
-    /// Restore `window` to its remembered position under `key`, or centre it over `parent` when
+    /// Restore `window` to its remembered position under `key`, or center it over `parent` when
     /// there is nothing remembered — or when what is remembered is on a display the app is no longer
     /// using. Registers the autosave either way, so wherever the user drags it next is what returns.
     static func place(_ window: NSWindow, key: String, centeredOver parent: NSWindow?) {
@@ -84,16 +84,16 @@ enum DialogWindowPlacement {
     /// window over to it would otherwise leave every dialog opening back on the laptop screen —
     /// far from the window that raised it, with nothing on screen to explain why. AppKit's own
     /// constraining cannot catch this: the saved frame is perfectly valid, just somewhere else. The
-    /// test is the window's centre rather than an intersection, so a dialog straddling two displays
+    /// test is the window's center rather than an intersection, so a dialog straddling two displays
     /// counts as being on the one it mostly occupies.
     private static func isNear(_ parent: NSWindow?, _ window: NSWindow) -> Bool {
         guard let visible = parent?.screen?.visibleFrame else { return true }
         return visible.contains(NSPoint(x: window.frame.midX, y: window.frame.midY))
     }
 
-    /// Dead centre of `parent`, or of the screen when there is no window to centre on.
+    /// Dead center of `parent`, or of the screen when there is no window to center on.
     ///
-    /// Dead centre rather than AppKit's `center()`, which biases above the midpoint — the same
+    /// Dead center rather than AppKit's `center()`, which biases above the midpoint — the same
     /// choice `centerOnScreen` makes, for the same reason. No screen clamping: probed,
     /// `setFrameOrigin` and `setFrame(_:display:)` both constrain the result onto a screen
     /// themselves, keeping the title bar reachable, so a hand-rolled clamp would only second-guess

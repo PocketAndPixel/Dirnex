@@ -61,7 +61,7 @@ struct FileOperationQueueChecksumTests {
         #expect(snapshot.jobs.allSatisfy { $0.status == .finished })
     }
 
-    @Test("a cancelled checksum job unwinds through the queue's own cancel")
+    @Test("a canceled checksum job unwinds through the queue's own cancel")
     func cancelsChecksumJob() async throws {
         let tree = try TempTree()
         defer { tree.cleanup() }
@@ -80,7 +80,7 @@ struct FileOperationQueueChecksumTests {
 
         let job = try #require(await queue.snapshot().jobs.first { $0.id == id })
         #expect(job.status == .cancelled || job.status == .finished)
-        // Whichever side of the race it lands on, a cancelled run must not leave a manifest that
+        // Whichever side of the race it lands on, a canceled run must not leave a manifest that
         // covers a fraction of the tree while verifying clean.
         if job.status == .cancelled {
             #expect(!FileManager.default.fileExists(atPath: tree.path("files.sha256")))

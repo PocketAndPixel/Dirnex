@@ -19,14 +19,40 @@ final class QuickViewDocumentTextView: NSTextView {}
 /// `NSTextView` implements those itself.
 @MainActor
 final class QuickViewTextView: NSView {
-    private let scrollView = NSScrollView()
-    private let textView = QuickViewDocumentTextView()
+    let scrollView = NSScrollView()
+    let textView = QuickViewDocumentTextView()
     /// Shown only for a file too big to read whole — a preview that stops early without saying so
     /// is a preview that lies about where the file ends.
     private let truncationNotice = NSVisualEffectView()
 
     /// The view the surface must let the mouse reach for a selection drag to work at all.
     var interactiveSubtree: NSView { scrollView }
+
+    // Finding in the text (`QuickViewTextView+Find`), stored here because an extension cannot.
+
+    /// The bar over the text, hidden until ⌥⌘F.
+    let filterBar: QuickViewTableFilterBar
+    /// The text on screen as a value a search can read off the main actor: the text storage is mutable
+    /// and belongs to the main actor, so a search never reads it.
+    var searchableText = ""
+    /// The matches, the current one and the search in flight — the state every finding surface keeps
+    /// (`QuickViewFind`).
+    let find = QuickViewFind()
+    /// The matches drawn highlighted — those around what is on screen, not all of them.
+    var highlightedMatches: Range<Int> = 0..<0
+    /// Each highlighted match's own colors, put back when its highlight comes off.
+    var highlightOriginals: [Int: [OriginalColors]] = [:]
+    /// Set while a highlight update for a scroll is waiting for the next turn.
+    var isHighlightUpdateScheduled = false
+    /// Bumped by every reveal of a match, so the corrections an older one scheduled stand down.
+    var revealGeneration = 0
+    /// The bar shortens the scroll view (`QuickViewFilterHost`).
+    var filterContentView: NSView { scrollView }
+    /// The scroll view's top edge: against the surface, or under the bar while it is shown.
+    var filterTopToSurface: NSLayoutConstraint?
+    var filterTopToBar: NSLayoutConstraint?
+    /// Where the keyboard goes when the bar lets go of it: the file list the arrows walk.
+    var returnKeyboard: (() -> Void)?
 
     /// Set on the view *and* into the attributed string: `setAttributedString` replaces every
     /// attribute, so the font the view carries stops governing the moment a document is installed
@@ -36,11 +62,14 @@ final class QuickViewTextView: NSView {
         weight: .regular
     )
 
-    init() {
+    init(findOptions: QuickViewFindOptionsStore) {
+        filterBar = QuickViewTableFilterBar(findOptions: findOptions)
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
         buildTextView()
         buildNotice()
+        installFilterBar()
+        installFinding()
     }
 
     @available(*, unavailable)
@@ -50,21 +79,67 @@ final class QuickViewTextView: NSView {
 
     // MARK: - Content
 
-    /// Show a decoded file, coloured by `tokens` — which is empty for a file no grammar claims, and
+    /// Show a decoded file, colored by `tokens` — which is empty for a file no grammar claims, and
     /// that case is not special: an empty loop leaves the document in the view's own `.textColor`,
-    /// exactly as it rendered before M17 existed.
-    func show(_ preview: TextPreview, tokens: [SyntaxToken]) {
-        textView.textStorage?.setAttributedString(attributed(preview.text, tokens: tokens))
-        // Back to the top for each new file: the surface is reused as the cursor walks the list, and
-        // arriving at line 4000 of a file you have never opened is nobody's idea of a preview.
-        textView.scroll(.zero)
+    /// exactly as it rendered before M17 existed. A CSV or TSV file is colored by `columns` instead.
+    func show(_ preview: TextPreview, tokens: [SyntaxToken], columns: [DelimitedFieldSpan] = []) {
+        let text = attributed(preview.text, tokens: tokens)
+        colorColumns(columns, in: text)
+        present(text, searchable: preview.text, asDocument: false)
         truncationNotice.isHidden = !preview.isTruncated
     }
 
-    /// The document as one attributed string: the view's font and default colour over the whole of
-    /// it, then a foreground colour per token.
+    /// Show a formatted document — RTF, RTFD, OpenDocument text — with its own fonts and colors.
+    func showRichText(_ document: NSAttributedString) {
+        // A native copy, so the search reads its own value rather than the document's string.
+        var searchable = document.string
+        searchable.makeContiguousUTF8()
+        present(document, searchable: searchable, asDocument: true)
+        truncationNotice.isHidden = true
+    }
+
+    /// Install `text` and reset everything a previous file may have left behind, the find bar included:
+    /// its matches were in the previous file.
     ///
-    /// `textStorage` is measured safe here, which is worth stating because the neighbouring rule is
+    /// A document's colors were chosen on white paper, so black body text would vanish on a dark
+    /// background: adaptive color mapping — what TextEdit does — maps them into the appearance.
+    /// It is **off** for source text, whose colors are the syntax theme's own and already resolve per
+    /// appearance, where a second mapping over them would shift every hue.
+    private func present(_ text: NSAttributedString, searchable: String, asDocument: Bool) {
+        resetFind()
+        searchableText = searchable
+        textView.usesAdaptiveColorMappingForDarkAppearance = asDocument
+        textView.textContainerInset = asDocument ? Self.documentInset : Self.sourceInset
+        textView.textStorage?.setAttributedString(text)
+        // Back to the top and back to full size for each new file: the surface is reused as the
+        // cursor walks the list, and arriving at line 4000 of a file you have never opened, or at
+        // the zoom somebody pinched on the last one, is nobody's idea of a preview.
+        scrollView.magnification = 1
+        textView.scroll(.zero)
+    }
+
+    /// ⌘+ / ⌘−'s level — the scroll view's magnification, which a pinch moves too, so the two stay
+    /// one zoom rather than two stacked ones.
+    var zoomLevel: Double { Double(scrollView.magnification) }
+
+    /// Magnify to `level`, keeping the middle of what is on screen in the middle: a step that threw
+    /// the reader back to the top of a long log would make the key useless for the files it is for.
+    func setZoomLevel(_ level: Double) {
+        let visible = scrollView.documentVisibleRect
+        scrollView.setMagnification(
+            CGFloat(level),
+            centeredAt: NSPoint(x: visible.midX, y: visible.midY)
+        )
+    }
+
+    /// Source text is read by column, close to the edge; a document wants the margin a page has.
+    private static let sourceInset = NSSize(width: 8, height: 8)
+    private static let documentInset = NSSize(width: 24, height: 20)
+
+    /// The document as one attributed string: the view's font and default color over the whole of
+    /// it, then a foreground color per token.
+    ///
+    /// `textStorage` is measured safe here, which is worth stating because the neighboring rule is
     /// the opposite: reading `.layoutManager` drops the view back to TextKit 1, where forcing layout
     /// on a large document takes seconds (docs/NOTES.md), and `NSTextView.textStorage` is
     /// historically `layoutManager.textStorage`. Probed on a real window before this was written —
@@ -80,20 +155,37 @@ final class QuickViewTextView: NSView {
         for token in tokens {
             // The core promises in-range, ordered, non-overlapping offsets and its tests pin all
             // three — but an out-of-range `NSRange` here would *raise*, so a mismatched pair (a
-            // string and tokens scanned from a different one) has to fail as a missing colour
+            // string and tokens scanned from a different one) has to fail as a missing color
             // rather than as a crash in a preview. Ordered, so the first miss ends the loop.
             guard token.end <= length else { break }
-            guard let colour = SyntaxTheme.color(for: token.kind) else { continue }
+            guard let color = SyntaxTheme.color(for: token.kind) else { continue }
             attributed.addAttribute(
                 .foregroundColor,
-                value: colour,
+                value: color,
                 range: NSRange(location: token.offset, length: token.length)
             )
         }
         return attributed
     }
 
+    /// A foreground color per field, by its column (`DelimitedColumnTheme`), with the same guard the
+    /// token loop has: a span past the end fails as a missing color rather than raising.
+    private func colorColumns(_ columns: [DelimitedFieldSpan], in text: NSMutableAttributedString) {
+        let length = text.length
+        for span in columns {
+            guard span.offset + span.length <= length else { break }
+            guard let color = DelimitedColumnTheme.color(forColumn: span.column) else { continue }
+            text.addAttribute(
+                .foregroundColor,
+                value: color,
+                range: NSRange(location: span.offset, length: span.length)
+            )
+        }
+    }
+
     func clearText() {
+        resetFind()
+        searchableText = ""
         textView.string = ""
         truncationNotice.isHidden = true
     }
@@ -113,7 +205,7 @@ final class QuickViewTextView: NSView {
         // Monospaced, like Quick Look's own text preview: a preview of a log or a config file is
         // read by column as often as by sentence.
         textView.font = Self.documentFont
-        textView.textContainerInset = NSSize(width: 8, height: 8)
+        textView.textContainerInset = Self.sourceInset
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.autoresizingMask = [.width]
@@ -128,18 +220,27 @@ final class QuickViewTextView: NSView {
         scrollView.autohidesScrollers = true
         scrollView.drawsBackground = true
         scrollView.backgroundColor = .textBackgroundColor
+        // Pinch to zoom, like the PDF and web backends beside it. The text view tracks the clip
+        // view's width, so zooming in re-wraps larger text to the visible width rather than running
+        // lines off the edge.
+        scrollView.allowsMagnification = true
+        // The keyboard ladder's own ends, so ⌘+ and a pinch reach exactly the same range.
+        scrollView.minMagnification = CGFloat(QuickViewZoom.levels.first ?? 1)
+        scrollView.maxMagnification = CGFloat(QuickViewZoom.levels.last ?? 1)
         scrollView.documentView = textView
         addSubview(scrollView)
+        let top = scrollView.topAnchor.constraint(equalTo: topAnchor)
+        filterTopToSurface = top
         NSLayoutConstraint.activate([
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            scrollView.topAnchor.constraint(equalTo: topAnchor),
+            top,
             scrollView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
     }
 
     /// The "first N of this file" strip, floating over the bottom of the text. A vibrant bar for the
-    /// same reason the header is one: it sits over the user's own content, where any fixed colour is
+    /// same reason the header is one: it sits over the user's own content, where any fixed color is
     /// wrong against half of it.
     private func buildNotice() {
         truncationNotice.material = .hudWindow

@@ -18,8 +18,8 @@ extension SidebarViewController {
     func favoriteCell(for entry: FavoriteEntry) -> NSView {
         let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
         cell.configure(
-            name: entry.name,
-            image: Self.favoriteIcon(for: entry.path),
+            name: SidebarPlacePresentation.title(for: .favorite(entry)),
+            image: Self.favoriteIcon(for: entry),
             canEject: false,
             tooltip: entry.path.path
         )
@@ -27,33 +27,13 @@ extension SidebarViewController {
         return cell
     }
 
-    /// The glyph for a pinned folder: its standard-place symbol when the path is one of the
-    /// well-known folders, otherwise a plain folder — or a protocol glyph for a pin that lives
-    /// outside the local filesystem, so a remote or in-archive favorite doesn't pretend to be a
-    /// local directory.
-    private static func favoriteIcon(for path: VFSPath) -> NSImage {
-        if let kind = SidebarLocations.standardKind(for: path) {
-            return templateSymbol(symbolName(for: kind), pointSize: 15)
-        }
-        guard path.backend == .local else {
-            return templateSymbol(path.backend.isArchive ? "doc.zipper" : "network", pointSize: 15)
-        }
-        return templateSymbol("folder", pointSize: 15)
-    }
-
-    /// A monochrome SF Symbol standing in for each standard folder, so Documents, Downloads,
-    /// Music and the rest read at a glance instead of all sharing the generic folder icon.
-    private static func symbolName(for kind: FavoritePlace.Kind) -> String {
-        switch kind {
-        case .home: "house"
-        case .desktop: "menubar.dock.rectangle"
-        case .documents: "doc"
-        case .downloads: "arrow.down.circle"
-        case .pictures: "photo"
-        case .music: "music.note"
-        case .movies: "film"
-        case .applications: "square.grid.3x3.fill"
-        }
+    /// The glyph for a pinned folder, rendered at the source list's size. *Which* symbol it is —
+    /// a standard place's own, a plain folder, or a protocol glyph for a pin outside the local
+    /// filesystem — is `SidebarPlacePresentation`'s, so the Go ▸ Places menu marks the same pin
+    /// the same way (PLAN.md §M20).
+    private static func favoriteIcon(for entry: FavoriteEntry) -> NSImage {
+        let symbol = SidebarPlacePresentation.symbolName(for: .favorite(entry)) ?? "folder"
+        return templateSymbol(symbol, pointSize: 15)
     }
 
     // MARK: - Right-click menu
@@ -72,7 +52,9 @@ extension SidebarViewController {
         menu.addItem(favoriteMenuItem(
             String(
                 localized: "Rename…",
-                comment: "Sidebar favorite context-menu item: rename the row."
+                // Verbatim at all three sidebar sites that key this string — see the note in
+                // `SidebarViewController+Vaults`.
+                comment: "Sidebar context-menu item: the Rename verb."
             ),
             #selector(renameFavoriteItem(_:)),
             entry.path
@@ -97,25 +79,37 @@ extension SidebarViewController {
         return item
     }
 
+    /// Open goes through `activate(_:)` — the same funnel a click on the row uses — rather than
+    /// handing the delegate a bare path of its own. It is one rule with two spellings otherwise,
+    /// and the second one silently loses what a pin on a server needs to reconnect.
+    ///
+    /// The entry is re-read from the store by its path, mirroring `renameFavoriteItem` right below:
+    /// the item deliberately carries the path rather than the entry so a mid-open store change acts
+    /// on the right row. A pin unpinned while the menu was open falls back to the bare path, which
+    /// is what this did for every pin before the endpoint existed.
     @objc private func openFavoriteItem(_ sender: NSMenuItem) {
         guard let path = sender.representedObject as? VFSPath else { return }
-        delegate?.sidebar(self, didActivate: path)
+        let stored = FavoritesStore.load().entries.first { $0.path == path }
+        activate(.favorite(stored ?? FavoriteEntry(path: path)))
     }
 
     @objc private func renameFavoriteItem(_ sender: NSMenuItem) {
         guard let path = sender.representedObject as? VFSPath,
-              let current = FavoritesStore.load().entries.first(where: { $0.path == path })?.name,
-              let newName = promptForFavoriteRename(current: current), newName != current else {
-            return
+              let current = FavoritesStore.load().entries.first(where: { $0.path == path })?.name
+        else { return }
+        // The prompt is a sheet, so it is awaited rather than run inline.
+        Task { @MainActor in
+            guard let newName = await promptForFavoriteRename(current: current),
+                  newName != current else { return }
+            var favorites = FavoritesStore.load()
+            favorites.rename(path: path, to: newName)
+            FavoritesStore.save(favorites)
         }
-        var favorites = FavoritesStore.load()
-        favorites.rename(path: path, to: newName)
-        FavoritesStore.save(favorites)
     }
 
     /// Remove a pin. No confirmation: unlike deleting a saved search — which discards a query the
     /// user composed and cannot get back — this discards a pointer to a folder that is still
-    /// exactly where it was, and re-adding it is one drag. A sheet here would be theatre.
+    /// exactly where it was, and re-adding it is one drag. A sheet here would be theater.
     @objc private func removeFavoriteItem(_ sender: NSMenuItem) {
         guard let path = sender.representedObject as? VFSPath else { return }
         var favorites = FavoritesStore.load()
@@ -123,7 +117,7 @@ extension SidebarViewController {
     }
 
     /// Ask for a new label, prefilled with the current one; `nil` on cancel or an empty name.
-    private func promptForFavoriteRename(current: String) -> String? {
+    private func promptForFavoriteRename(current: String) async -> String? {
         let alert = NSAlert()
         alert.messageText = String(
             localized: "Rename Favorite",
@@ -138,13 +132,16 @@ extension SidebarViewController {
             comment: "Confirm button of a rename dialog."
         ))
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
+        field.keepToOneLine()
         field.stringValue = current
         alert.accessoryView = field
         alert.window.initialFirstResponder = field
 
-        guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+        let response = await alert.runSheet(over: view.window) { field.selectText(nil) }
+        guard response == .alertFirstButtonReturn else { return nil }
         let name = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         return name.isEmpty ? nil : name
     }

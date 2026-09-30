@@ -139,8 +139,8 @@ struct FTPBackendTransferTests {
         }
     }
 
-    @Test("a cancelled copy throws before transferring")
-    func honoursCancellation() {
+    @Test("a canceled copy throws before transferring")
+    func honorsCancellation() {
         let transport = FakeFTPTransport()
         #expect(throws: CancellationError.self) {
             try backend(transport).copyFile(

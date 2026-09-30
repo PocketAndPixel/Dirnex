@@ -11,24 +11,42 @@ import DirnexCore
 extension PanelViewController {
     // MARK: - Snapshot / restore (one pane)
 
-    /// This pane's tabs frozen into a `WorkspacePane` — the directory and sort of each tab plus
-    /// which one is active. Column geometry is intentionally left out (see `WorkspaceTab`).
+    /// This pane's tabs frozen into a `WorkspacePane` — the directory, sort and (for a tab on a
+    /// connected account) reconnect coordinates of each tab, plus which one is active. Column
+    /// geometry is intentionally left out (see `WorkspaceTab`).
+    ///
+    /// The endpoint is the one field here that is not a view nicety: without it a workspace saved on
+    /// a server opens somewhere else. It rides through the same `reconnectEndpoint(for:)` session
+    /// restore uses, so the two cannot disagree about what a live connection was made with.
     func workspaceSnapshot() -> WorkspacePane {
-        let snapshotTabs = tabs.map { WorkspaceTab(path: $0.panel.path, sort: $0.panel.model.sort) }
+        let snapshotTabs = tabs.map {
+            WorkspaceTab(
+                path: $0.panel.path,
+                sort: $0.panel.model.sort,
+                endpoint: reconnectEndpoint(for: $0)
+            )
+        }
         return WorkspacePane(tabs: snapshotTabs, activeTabIndex: activeTabIndex)
     }
 
-    /// Replace this pane's tabs with a saved workspace pane and show its active tab. Directories
-    /// that have since vanished are dropped (matching relaunch restoration); if every one is
-    /// gone, the pane keeps its current directory rather than ending up tab-less.
+    /// Replace this pane's tabs with a saved workspace pane and show its active tab. Places that
+    /// have since gone are dropped — a deleted directory, an archive that is no longer a file, a
+    /// server the workspace has no way back to — matching relaunch restoration through the same
+    /// `TabRestorePolicy`; if every one is gone, the pane keeps its current directory rather than
+    /// ending up tab-less.
+    ///
+    /// Applying a workspace is a **gesture**, so the tab it opens onto connects at any refresh floor:
+    /// `activateTab()` here leaves `unasked` false, unlike the launch activation. Picking a workspace
+    /// off a menu is asking for the place it names.
     func restore(workspacePane pane: WorkspacePane) {
-        let restored: [PanelTab] = pane.tabs.compactMap { tab in
-            let path = tab.path
-            var isDirectory: ObjCBool = false
-            guard path.backend == .local,
-                  FileManager.default.fileExists(atPath: path.path, isDirectory: &isDirectory),
-                  isDirectory.boolValue else { return nil }
-            return PanelTab(path: path, sort: tab.sort)
+        let restored: [PanelTab] = pane.tabs.compactMap { saved in
+            guard let requirement = TabRestorePolicy.requirement(
+                for: saved.path,
+                endpoint: saved.serverEndpoint
+            ), Self.canRestore(requirement, at: saved.path) else { return nil }
+            let tab = PanelTab(path: saved.path, sort: saved.sort)
+            if case let .connection(endpoint) = requirement { tab.pendingConnection = endpoint }
+            return tab
         }
         tabs = restored.isEmpty
             ? [PanelTab(path: panel.path, sort: panel.model.sort)]
@@ -51,12 +69,15 @@ extension PanelViewController {
     /// "Save Workspace…" — prompt for a name, then snapshot both panes under it. Re-using an
     /// existing name updates that workspace in place after a replace confirmation.
     @objc func saveWorkspace(_ sender: Any?) {
-        guard let name = promptForWorkspaceName() else { return }
-        var store = WorkspaceStore.load()
-        if store.contains(name: name), !confirmReplaceWorkspace(named: name) { return }
-        guard let host else { return }
-        store.save(host.captureWorkspace(named: name))
-        WorkspaceStore.save(store)
+        // The prompts are sheets, so they are awaited rather than run inline.
+        Task { @MainActor in
+            guard let name = await promptForWorkspaceName() else { return }
+            var store = WorkspaceStore.load()
+            if store.contains(name: name), await !confirmReplaceWorkspace(named: name) { return }
+            guard let host else { return }
+            store.save(host.captureWorkspace(named: name))
+            WorkspaceStore.save(store)
+        }
     }
 
     // MARK: - Popup menu
@@ -159,7 +180,7 @@ extension PanelViewController {
 
     /// Ask for a workspace name, returning the trimmed non-empty result, or `nil` on cancel /
     /// an empty name.
-    private func promptForWorkspaceName() -> String? {
+    private func promptForWorkspaceName() async -> String? {
         let alert = NSAlert()
         alert.messageText = String(
             localized: "Save Workspace",
@@ -174,8 +195,10 @@ extension PanelViewController {
             comment: "Confirm button of the Save Workspace prompt."
         ))
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
+        field.keepToOneLine()
         field.placeholderString = String(
             localized: "Workspace name",
             comment: "Placeholder in the Save Workspace name field."
@@ -183,14 +206,15 @@ extension PanelViewController {
         alert.accessoryView = field
         alert.window.initialFirstResponder = field
 
-        guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+        let response = await alert.runSheet(over: view.window) { field.selectText(nil) }
+        guard response == .alertFirstButtonReturn else { return nil }
         let name = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         return name.isEmpty ? nil : name
     }
 
     /// Confirm overwriting a workspace that already uses this name, so a Save never silently
     /// clobbers a saved layout.
-    private func confirmReplaceWorkspace(named name: String) -> Bool {
+    private func confirmReplaceWorkspace(named name: String) async -> Bool {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = String(
@@ -206,6 +230,7 @@ extension PanelViewController {
             comment: "Confirm button of the replace-workspace prompt."
         ))
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
-        return alert.runModal() == .alertFirstButtonReturn
+        alert.enableEscapeToCancel()
+        return await alert.runSheet(over: view.window) == .alertFirstButtonReturn
     }
 }

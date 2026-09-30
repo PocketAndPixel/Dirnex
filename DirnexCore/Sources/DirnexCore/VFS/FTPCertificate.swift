@@ -82,8 +82,8 @@ public extension FTPCertificate {
 // MARK: - Reading curl's output
 
 public extension FTPCertificate {
-    /// Parse the block `curl -w '%{certs}'` writes: labelled `Key:value` lines followed by the
-    /// PEM-armoured certificate. When a chain is present the **leaf comes first**, which is the one
+    /// Parse the block `curl -w '%{certs}'` writes: labeled `Key:value` lines followed by the
+    /// PEM-armored certificate. When a chain is present the **leaf comes first**, which is the one
     /// being pinned, so parsing stops at the first complete certificate.
     ///
     /// Returns `nil` when no PEM block is present — the labels alone are not a certificate, and
@@ -91,10 +91,10 @@ public extension FTPCertificate {
     static func parse(curlCertificateBlock block: String) -> FTPCertificate? {
         guard let der = firstCertificateDER(in: block) else { return nil }
         return FTPCertificate(
-            subject: labelledValue("Subject", in: block),
-            issuer: labelledValue("Issuer", in: block),
-            notBefore: labelledValue("Start date", in: block),
-            notAfter: labelledValue("Expire date", in: block),
+            subject: labeledValue("Subject", in: block),
+            issuer: labeledValue("Issuer", in: block),
+            notBefore: labeledValue("Start date", in: block),
+            notAfter: labeledValue("Expire date", in: block),
             der: der
         )
     }
@@ -102,7 +102,7 @@ public extension FTPCertificate {
     /// The value of the first `Label:value` line, trimmed. `curl` prints these unlocalized and one
     /// per line; a missing label yields "" rather than failing the whole parse, since the digests —
     /// the part that matters — come from the PEM.
-    private static func labelledValue(_ label: String, in block: String) -> String {
+    private static func labeledValue(_ label: String, in block: String) -> String {
         for line in block.split(whereSeparator: \.isNewline) {
             let text = line.trimmingCharacters(in: .whitespaces)
             guard text.hasPrefix("\(label):") else { continue }

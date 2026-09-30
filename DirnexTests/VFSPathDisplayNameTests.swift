@@ -1,4 +1,5 @@
 import DirnexCore
+import Foundation
 import Testing
 @testable import Dirnex
 
@@ -39,8 +40,99 @@ struct VFSPathDisplayNameTests {
         #expect(path.displayName == "oleg@example.com")
     }
 
-    @Test("a local path keeps its last component")
+    /// The case that was missing, and the one live run showed it twice over: a bucket root drew a
+    /// bare `"/"` on the tab chip directly above a crumb reading `probe — 127.0.0.1`, and F7 offered
+    /// «Create a folder in "/"». A bucket is named by itself rather than by the key that reaches it,
+    /// with the endpoint alongside, since two providers can hold a bucket of the same name.
+    @Test("an S3 root is named by the bucket and its endpoint")
+    func s3Root() {
+        let path = VFSPath(backend: .s3(Self.bucket), path: "/")
+
+        #expect(path.displayName == "probe — 127.0.0.1")
+    }
+
+    @Test("inside a bucket the key's own last component is already right")
+    func insideBucket() {
+        let path = VFSPath(backend: .s3(Self.bucket), path: "/docs/api")
+
+        #expect(path.displayName == "api")
+    }
+
+    /// `displayName` answers only at a root, while the path bar needs the same title at every depth
+    /// — which is why the title has one definition and both read it. Pinning the deep case is what
+    /// says the two cannot drift back apart.
+    @Test("the root title is the same string at every depth, which is what the crumb needs")
+    func rootTitleAtDepth() {
+        let root = VFSPath(backend: .s3(Self.bucket), path: "/")
+        let deep = VFSPath(backend: .s3(Self.bucket), path: "/docs/api")
+
+        #expect(deep.backendRootTitle == root.backendRootTitle)
+        #expect(deep.backendRootTitle == "probe — 127.0.0.1")
+    }
+
+    /// The same gap one level up, and the next backend to arrive with a root of its own: an account
+    /// pane's path is `/` and nothing else, so this title is the *entire* crumb trail and the whole
+    /// tab chip. It is the endpoint alone — a key id is characters the user never typed, and it read
+    /// as noise where the one thing on screen should say where the pane is standing. Two accounts on
+    /// one endpoint are told apart in the sidebar, which carries the user's own names and the full
+    /// descriptor as a subtitle.
+    @Test("an S3 account root is named by its endpoint alone, with no key id")
+    func s3AccountRoot() {
+        let path = VFSPath(backend: .s3Account(Self.bucket.account), path: "/")
+
+        #expect(path.displayName == "127.0.0.1")
+        #expect(!path.displayName.contains("AKIAPROBEKEYEXAMPLE"))
+    }
+
+    /// And it is not the bucket's title, which is what would happen if the two shared a branch: an
+    /// account pane would then name whichever bucket the descriptor happened to parse as.
+    @Test("an account and a bucket on one endpoint name themselves differently")
+    func accountAndBucketNamesDiffer() {
+        let bucket = VFSPath(backend: .s3(Self.bucket), path: "/")
+        let account = VFSPath(backend: .s3Account(Self.bucket.account), path: "/")
+
+        #expect(bucket.displayName != account.displayName)
+    }
+
+    /// An app library's `Documents` folder is the row iCloud Drive calls "Pages", so a tab chip or a
+    /// sentence naming it says what the path bar's crumb says: F7 one level inside the row offered
+    /// «Create a folder in “Documents”» until 2026-09-16. Compared with the crumb rather than with
+    /// "Pages", because which source answers (the cached metadata, the system's name, the bundle id)
+    /// depends on this Mac's iCloud state and its Full Disk Access — and whichever it is, the two
+    /// must agree and neither may be the folder's real name.
+    @Test("an iCloud app library's Documents folder is named as its crumb names it")
+    func iCloudLibraryFolder() throws {
+        let containers = VFSPath.local(NSHomeDirectory()).appending("Library").appending(
+            "Mobile Documents"
+        )
+        let documents = containers.appending("com~apple~Pages").appending("Documents")
+        let crumb = try #require(
+            ICloudLocation.trail(for: documents, fallbackName: \.systemName)?.first
+        )
+
+        #expect(documents.displayName == crumb.title)
+        #expect(documents.displayName != "Documents")
+        // Inside the library, and a loose folder that happens to be called `Documents`, keep their
+        // own names.
+        #expect(documents.appending("Drafts").displayName == "Drafts")
+        #expect(
+            containers.appending("com~apple~CloudDocs").appending("Documents").displayName == "Documents"
+        )
+    }
+
+    @Test("a local path keeps its last component, and has no root title of its own")
     func localPath() {
         #expect(VFSPath.local("/Users/oleg/Dev").displayName == "Dev")
+        #expect(VFSPath.local("/").backendRootTitle == nil)
     }
+
+    private static let bucket = S3Location(
+        host: "127.0.0.1",
+        port: 9599,
+        bucket: "probe",
+        region: "us-east-1",
+        accessKeyID: "AKIAPROBEKEYEXAMPLE",
+        addressing: .path,
+        usesTLS: false
+    )
 }

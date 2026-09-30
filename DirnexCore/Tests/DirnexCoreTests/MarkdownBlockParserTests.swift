@@ -103,7 +103,7 @@ struct MarkdownBlockParserTests {
 
     @Test("an indented line under a paragraph is a wrapped line, not a code block")
     func indentedContinuation() {
-        // The carve-out in `startsBlock`: a hanging indent must not turn half a sentence grey.
+        // The carve-out in `startsBlock`: a hanging indent must not turn half a sentence gray.
         #expect(blocks("A sentence\n    that wrapped") == [.paragraph("A sentence\nthat wrapped")])
     }
 

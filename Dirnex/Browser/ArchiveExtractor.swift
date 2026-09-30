@@ -15,6 +15,10 @@ enum ArchiveExtractor {
     /// One extraction's result: the temp directory it wrote into and the on-disk location of each
     /// requested inner path, in the same order (a member `bsdtar` couldn't find is simply absent
     /// on disk — the caller stats each and drops the misses).
+    ///
+    /// Both routes now place the requested members and nothing else, so there is no "this one
+    /// happens to hold the whole archive" case for a caller to exploit. It used to carry that flag,
+    /// and `ArchivePreviewCache` kept a second cache keyed on it; the member filter retired both.
     struct Extraction {
         let directory: URL
         let extractedPaths: [String]
@@ -26,20 +30,148 @@ enum ArchiveExtractor {
             .appendingPathComponent("DirnexExtract", isDirectory: true)
     }
 
+    /// Whether the archive's data is encrypted, and so whether extracting it needs a passphrase.
+    ///
+    /// Reads headers only — a zip's central directory is never encrypted — so it costs nothing worth
+    /// caching: **3–4 ms for a 600 MB, 301-entry archive**, measured, against 0.1 ms for a small
+    /// one. That is what lets every extraction ask unconditionally.
+    ///
+    /// **It takes no code page, and used to.** Derived from ``DirnexCore/EncryptedArchiveReader``'s
+    /// `inspect`, this could not answer for an archive that is *both* encrypted and legacy: the
+    /// inspection throws on the first name it cannot decode, and the `try?` in front of it read that
+    /// throw as "no passphrase needed". Threading the declaration through fixed the archives someone
+    /// had already declared and left the state every gesture is in *before* the chooser is answered
+    /// — where the wrong answer sent an AES-256 archive to `bsdtar`, which wrote a file of zeros
+    /// under the right name (PLAN.md §M27). ``DirnexCore/EncryptedArchiveReader/holdsEncryptedEntries(archiveAt:)``
+    /// reads the flag off the raw header instead, so no name has to be representable for the
+    /// question to have an answer, and there is no parameter left to pass wrongly.
+    static func needsPassphrase(forArchiveAt archiveOnDiskPath: String) -> Bool {
+        (try? EncryptedArchiveReader.holdsEncryptedEntries(archiveAt: archiveOnDiskPath)) ?? false
+    }
+
     /// Extract `innerPaths` of the archive at `archiveOnDiskPath` into a fresh temp directory and
     /// return where each landed. `bsdtar` best-effort extracts what it finds — a missing member
     /// makes it exit non-zero without stopping the rest — so this throws only when *nothing*
     /// landed (a corrupt archive, or every member missing); a partial extract still returns, and
-    /// the caller reports whatever it then can't stat. Blocks on `bsdtar`, so call it off-main.
+    /// the caller reports whatever it then can't stat. Blocks, so call it off-main.
+    ///
+    /// **An encrypted archive never reaches `bsdtar`, and that guard is not optional.** Measured
+    /// directly: `bsdtar -xf` on an AES-256 zip with stdin closed writes **170 KB of
+    /// `Enter passphrase:` in eight seconds** and never exits — closing stdin does not stop it,
+    /// because it re-prompts on EOF. So a spawn here would hang a busy process forever with
+    /// `waitUntilExit()` never returning and nothing on screen to say why. Such an archive goes
+    /// through `EncryptedArchiveReader` instead, which takes the passphrase in memory; without one
+    /// it throws ``EncryptedArchiveError/passphraseRequired`` rather than trying.
+    ///
+    /// **Both routes extract the requested members and nothing else.** The encrypted one used to
+    /// extract the whole archive, because libarchive is read sequentially and the reader had no
+    /// member filter — so previewing one file inside a 600 MB archive decrypted all 600 MB.
+    /// ``DirnexCore/ArchiveMemberFilter`` is that filter, and it agrees with the `bsdtar` route's
+    /// member matching (a directory member takes its subtree), which matters because a user cannot
+    /// see which engine ran. Measured on a 600 MB AES-256 archive: **1.48 s → 0.001 s** to reach one
+    /// small member, since an entry nobody asked for is stepped over rather than decrypted.
+    ///
+    /// **Both routes end on the same guard, and the encrypted one used not to.** The check that
+    /// something actually landed sat only in the `bsdtar` branch, while both callers carried a
+    /// comment resting on it — so a member the reader placed *somewhere else* came back as a path
+    /// that had never existed, and the caller found out by mounting it. See
+    /// ``DirnexCore/ArchiveNamePrivacy/requestsWrapper(_:)`` for the case where that happened.
     static func extract(
         innerPaths: [String],
-        fromArchiveAt archiveOnDiskPath: String
+        fromArchiveAt archiveOnDiskPath: String,
+        passphrase: ArchivePassphrase? = nil,
+        nameEncoding: ArchiveNameEncoding? = nil
     ) throws -> Extraction {
         let directory = temporaryRoot.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
+        do {
+            try unpack(
+                innerPaths: innerPaths,
+                fromArchiveAt: archiveOnDiskPath,
+                into: directory,
+                passphrase: passphrase,
+                nameEncoding: nameEncoding
+            )
+        } catch {
+            try? FileManager.default.removeItem(at: directory)
+            throw error
+        }
+
+        let extractedPaths = locations(of: innerPaths, in: directory)
+        guard extractedPaths.contains(where: { FileManager.default.fileExists(atPath: $0) }) else {
+            try? FileManager.default.removeItem(at: directory)
+            throw reasonNothingLanded(forArchiveAt: archiveOnDiskPath)
+        }
+        return Extraction(directory: directory, extractedPaths: extractedPaths)
+    }
+
+    /// Why an extraction placed nothing — a damaged archive, or one whose names nobody has declared
+    /// a code page for.
+    ///
+    /// `bsdtar` cannot be handed a member it could not decode: the pane drew that row as `���.txt`,
+    /// which is the name the extraction then asks for, and no entry is called that. So an extraction
+    /// that placed nothing out of a **legacy** archive is the name refusal rather than a damaged
+    /// archive, and reporting it as one is what puts the chooser in front of the user instead of an
+    /// error naming the wrong thing. HISTORY.md listed F5 copy-out as a route to that chooser from
+    /// the day it shipped; measured 2026-09-09, it was not one, because this branch reported
+    /// `archiveExtractFailed` and `offerNameEncoding` matches on the case.
+    ///
+    /// Asked only once nothing landed, so the ordinary failure — a member that is genuinely absent
+    /// from an ordinary archive — costs no extra read at all.
+    private static func reasonNothingLanded(forArchiveAt archiveOnDiskPath: String) -> Error {
+        let name = (archiveOnDiskPath as NSString).lastPathComponent
+        do {
+            _ = try EncryptedArchiveReader.inspect(archiveAt: archiveOnDiskPath)
+        } catch {
+            if PanelViewController.isNameEncodingRefusal(error) { return error }
+        }
+        return VFSError.unsupported(.archiveExtractFailed(archive: name))
+    }
+
+    /// Unpack into `directory` by whichever engine the archive's format needs. Leaves the directory
+    /// in place; the caller owns it, including cleaning it up when this throws.
+    ///
+    /// **A declared code page takes the libarchive route whether or not the archive is encrypted**,
+    /// for the same reason the listing does: `bsdtar` cannot be told what the names are in, and
+    /// under any locale it fails to *create* them — measured, `Can't create '\217\240…':
+    /// Illegal byte sequence`, exit 1, because APFS refuses a file name that is not valid UTF-8.
+    /// So for these archives the in-process reader is not the faster route, it is the only one.
+    ///
+    /// **So does a 7z carried by a Windows self-extractor**, for the reason the listing gives: `bsdtar`
+    /// cannot find it behind a small stub and cannot be handed it in place, and the in-process reader
+    /// opens it where it starts (``DirnexCore/SelfExtractingArchive``).
+    private static func unpack(
+        innerPaths: [String],
+        fromArchiveAt archiveOnDiskPath: String,
+        into directory: URL,
+        passphrase: ArchivePassphrase?,
+        nameEncoding: ArchiveNameEncoding? = nil
+    ) throws {
+        let isEncrypted = needsPassphrase(forArchiveAt: archiveOnDiskPath)
+        let isWindowed = SelfExtractingArchive.inspect(fileAt: archiveOnDiskPath)?.sevenZipOffset != nil
+        if isEncrypted || nameEncoding != nil || isWindowed {
+            if isEncrypted, passphrase == nil { throw EncryptedArchiveError.passphraseRequired }
+            try EncryptedArchiveReader.extract(
+                archiveAt: archiveOnDiskPath,
+                into: directory.path,
+                passphrase: passphrase,
+                members: .members(innerPaths),
+                nameEncoding: nameEncoding,
+                // Asked for the wrapper by name, hand over the wrapper. Unwrapping is right for
+                // every other caller and is what makes an encrypted archive extract to the files
+                // the user packed; for the one row a hidden-names archive lists, it places the
+                // payload and deletes the very file that was requested.
+                unwrappingHiddenNames: !ArchiveNamePrivacy.requestsWrapper(innerPaths)
+            )
+            return
+        }
+
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/bsdtar")
+        // Member names go out as arguments and come back as files on disk, so both directions
+        // need the locale settled (``ChildProcessLocale``).
+        process.environment = ChildProcessLocale.inherited()
         process.arguments = ArchiveExtraction.extractionArguments(
             archiveOnDiskPath: archiveOnDiskPath,
             innerPaths: innerPaths,
@@ -50,23 +182,22 @@ enum ArchiveExtractor {
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
 
+        let awaitExit = ProcessWaiting.exitWaiter(for: process)
         do {
             try process.run()
         } catch {
-            try? FileManager.default.removeItem(at: directory)
             throw VFSError.unsupported(.archiveToolUnavailableForExtract)
         }
-        process.waitUntilExit()
+        awaitExit()
+    }
 
-        let extractedPaths = innerPaths.map {
+    /// Where each requested member landed. Both routes place an entry at its own archive-relative
+    /// path under the temp directory, so one mapping covers them — including a name-privacy archive,
+    /// whose inner tar the reader has already unwrapped by this point.
+    private static func locations(of innerPaths: [String], in directory: URL) -> [String] {
+        innerPaths.map {
             ArchiveExtraction.extractedLocation(ofInnerPath: $0, inDirectory: directory.path)
         }
-        guard extractedPaths.contains(where: { FileManager.default.fileExists(atPath: $0) }) else {
-            try? FileManager.default.removeItem(at: directory)
-            let name = (archiveOnDiskPath as NSString).lastPathComponent
-            throw VFSError.unsupported(.archiveExtractFailed(archive: name))
-        }
-        return Extraction(directory: directory, extractedPaths: extractedPaths)
     }
 
     /// Remove every extraction temp directory. Called once at launch, before anything can be

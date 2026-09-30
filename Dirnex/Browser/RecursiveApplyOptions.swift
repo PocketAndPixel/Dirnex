@@ -25,7 +25,7 @@ final class RecursiveApplyOptions {
     var isRecursive: Bool { checkbox.state == .on }
 
     /// Which enclosed items are in scope. Meaningless while ``isRecursive`` is false, and the popup
-    /// is disabled then so it cannot be set to something the run will not honour.
+    /// is disabled then so it cannot be set to something the run will not honor.
     var target: AttributeApplyScope.Target {
         AttributeApplyScope.Target.allCases.first { $0.tag == targetPopup.selectedTag() }
             ?? .everything
@@ -85,7 +85,7 @@ extension AttributeApplyScope.Target {
     /// language that inflects the object cannot build one from the other (docs/NOTES.md).
     var title: String {
         switch self {
-        // These three keys are shared with the M15 colour-rule targets (`FileColorTarget.title`),
+        // These three keys are shared with the M15 color-rule targets (`FileColorTarget.title`),
         // which mean the same thing about the same two kinds of item. The comments must therefore be
         // repeated **verbatim** at both sites: `String(localized:comment:)` takes a `StaticString`,
         // so a shared comment cannot be hoisted, and two sites keying one string with different

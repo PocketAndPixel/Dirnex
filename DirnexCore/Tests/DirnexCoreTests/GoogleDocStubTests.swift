@@ -17,7 +17,7 @@ struct GoogleDocStubTests {
             #""resource_key":"","email":"someone@gmail.com"}"#).utf8
     )
 
-    // MARK: - Recognising a stub by its name
+    // MARK: - Recognizing a stub by its name
 
     @Test("each Drive suffix maps to its editor")
     func kindsComeFromTheExtension() {

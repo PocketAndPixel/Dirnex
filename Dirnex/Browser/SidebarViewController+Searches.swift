@@ -41,8 +41,13 @@ extension SidebarViewController {
                 comment: "Tooltip on a saved search with no scope folder — it searches the whole Mac."
             )
         }
+        // `displayName`, not `lastComponent`: a saved search can now be scoped to a *backend root*
+        // (a bucket, a server's home, an archive — PLAN.md §M22 Slice 5), whose `lastComponent` is
+        // the bare "/" that names nothing. The same trap the tab chip and the New Folder sheet each
+        // hit once (docs/NOTES.md ▸ AppKit), arriving at the one surface that says where a saved
+        // search runs.
         return String(
-            localized: "Search in “\(scope.lastComponent)”",
+            localized: "Search in “\(scope.displayName)”",
             comment: "Tooltip on a scoped saved search; %@ is the scope folder's name."
         )
     }
@@ -61,7 +66,9 @@ extension SidebarViewController {
         ))
         menu.addItem(.separator())
         menu.addItem(savedSearchMenuItem(
-            String(localized: "Rename…", comment: "Saved-search context-menu item: rename it."),
+            // Comment verbatim at all three sidebar sites keying this string — see the note in
+            // `SidebarViewController+Vaults`.
+            String(localized: "Rename…", comment: "Sidebar context-menu item: the Rename verb."),
             #selector(renameSavedSearchItem(_:)),
             search.name
         ))
@@ -88,13 +95,17 @@ extension SidebarViewController {
     }
 
     @objc private func renameSavedSearchItem(_ sender: NSMenuItem) {
-        guard let name = sender.representedObject as? String,
-              let newName = promptForSavedSearchRename(current: name), newName != name else { return }
-        var store = SavedSearchStore.load()
-        if store.rename(name: name, to: newName) {
-            SavedSearchStore.save(store)
-        } else {
-            presentSavedSearchRenameCollision(newName)
+        guard let name = sender.representedObject as? String else { return }
+        // The prompt is a sheet, so it is awaited rather than run inline.
+        Task { @MainActor in
+            guard let newName = await promptForSavedSearchRename(current: name),
+                  newName != name else { return }
+            var store = SavedSearchStore.load()
+            if store.rename(name: name, to: newName) {
+                SavedSearchStore.save(store)
+            } else {
+                presentSavedSearchRenameCollision(newName)
+            }
         }
     }
 
@@ -121,6 +132,7 @@ extension SidebarViewController {
             comment: "Confirm button that deletes a saved search."
         ))
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
 
         let commit = { [weak self] (response: NSApplication.ModalResponse) in
             guard response == .alertFirstButtonReturn else { return }
@@ -136,7 +148,7 @@ extension SidebarViewController {
     }
 
     /// Ask for a new name, prefilled with the current one; `nil` on cancel or an empty name.
-    private func promptForSavedSearchRename(current: String) -> String? {
+    private func promptForSavedSearchRename(current: String) async -> String? {
         let alert = NSAlert()
         alert.messageText = String(
             localized: "Rename Saved Search",
@@ -146,13 +158,16 @@ extension SidebarViewController {
             withTitle: String(localized: "Rename", comment: "Confirm button of a rename dialog.")
         )
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
+        field.keepToOneLine()
         field.stringValue = current
         alert.accessoryView = field
         alert.window.initialFirstResponder = field
 
-        guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+        let response = await alert.runSheet(over: view.window) { field.selectText(nil) }
+        guard response == .alertFirstButtonReturn else { return nil }
         let name = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         return name.isEmpty ? nil : name
     }
@@ -170,6 +185,7 @@ extension SidebarViewController {
             localized: "Another saved search already uses that name. Pick a different one.",
             comment: "Body of the saved-search rename-collision alert."
         )
+        alert.enableEscapeToCancel() // ⎋ → OK; the only button, so it dismisses either way.
         if let window = view.window {
             alert.beginSheetModal(for: window)
         } else {

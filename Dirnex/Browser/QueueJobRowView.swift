@@ -199,6 +199,26 @@ final class QueueJobRowView: NSView {
                 localized: "Change permissions of \(name)",
                 comment: "Queue row label; %@ is the item whose attributes are being changed."
             )
+        case .pack:
+            return String(
+                localized: "Encrypt \(name)",
+                comment: "Queue row label; %@ is the file being added to an encrypted archive."
+            )
+        case .plainPack:
+            return String(
+                localized: "Pack \(name)",
+                comment: "Queue row label; %@ is the file being added to an archive."
+            )
+        case .materialize:
+            return String(
+                localized: "Download \(name)",
+                comment: "Queue row label; %@ is the remote file being downloaded."
+            )
+        case .writeBack:
+            return String(
+                localized: "Upload \(name)",
+                comment: "Queue row label; %@ is the edited file being uploaded back to its server."
+            )
         }
     }
 
@@ -223,6 +243,26 @@ final class QueueJobRowView: NSView {
             return String(
                 localized: "Change permissions…",
                 comment: "Queue row label for an attributes job with no current item yet."
+            )
+        case .pack:
+            return String(
+                localized: "Encrypt…",
+                comment: "Queue row label for an encrypted-archive job with no current item yet."
+            )
+        case .plainPack:
+            return String(
+                localized: "Pack…",
+                comment: "Queue row label for an archive job with no current item yet."
+            )
+        case .materialize:
+            return String(
+                localized: "Download…",
+                comment: "Queue row label for a remote-download job with no current item yet."
+            )
+        case .writeBack:
+            return String(
+                localized: "Upload…",
+                comment: "Queue row label for a save-back job with no current item yet."
             )
         }
     }

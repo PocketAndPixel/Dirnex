@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>framework</key>
+	<string>683.100.3</string>
+	<key>images</key>
+	<array>
+		<dict>
+			<key>autodiskmount</key>
+			<true/>
+			<key>blockcount</key>
+			<integer>409600</integer>
+			<key>blocksize</key>
+			<integer>512</integer>
+			<key>diskimages2</key>
+			<false/>
+			<key>hdid-pid</key>
+			<integer>88020</integer>
+			<key>icon-path</key>
+			<string>/System/Library/PrivateFrameworks/DiskImages.framework/Resources/CDiskImage.icns</string>
+			<key>image-encrypted</key>
+			<true/>
+			<key>image-path</key>
+			<string>/private/tmp/vaultprobe/v.sparsebundle</string>
+			<key>image-type</key>
+			<string>sparse bundle disk image</string>
+			<key>owner-mode</key>
+			<integer>448</integer>
+			<key>owner-uid</key>
+			<integer>501</integer>
+			<key>removable</key>
+			<true/>
+			<key>system-entities</key>
+			<array>
+				<dict>
+					<key>content-hint</key>
+					<string>GUID_partition_scheme</string>
+					<key>dev-entry</key>
+					<string>/dev/disk16</string>
+				</dict>
+				<dict>
+					<key>content-hint</key>
+					<string>7C3457EF-0000-11AA-AA11-00306543ECAC</string>
+					<key>dev-entry</key>
+					<string>/dev/disk16s1</string>
+				</dict>
+				<dict>
+					<key>content-hint</key>
+					<string>EF57347C-0000-11AA-AA11-00306543ECAC</string>
+					<key>dev-entry</key>
+					<string>/dev/disk17</string>
+				</dict>
+				<dict>
+					<key>content-hint</key>
+					<string>41504653-0000-11AA-AA11-00306543ECAC</string>
+					<key>dev-entry</key>
+					<string>/dev/disk17s1</string>
+					<key>mount-point</key>
+					<string>/Volumes/ProbeVault</string>
+				</dict>
+			</array>
+			<key>writeable</key>
+			<true/>
+		</dict>
+	</array>
+	<key>revision</key>
+	<string>683.100.3</string>
+	<key>vendor</key>
+	<string>Apple</string>
+</dict>
+</plist>

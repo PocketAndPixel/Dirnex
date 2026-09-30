@@ -18,8 +18,8 @@ extension PathBarView {
             // `CloudStorageMounts.mount(containing:)`.
             if let mount = CloudStorageMounts.mount(containing: path) {
                 rebuildCrumbs(for: path, under: mount)
-            } else if let trail = ICloudLocation.trail(for: path, fallbackName: Self.localizedName) {
-                // Same judgement one level over: a folder opened from the merged iCloud listing is
+            } else if let trail = ICloudLocation.trail(for: path, fallbackName: \.systemName) {
+                // Same judgment one level over: a folder opened from the merged iCloud listing is
                 // a real local directory, but its real path runs through container machinery
                 // (`com~apple~Pages/Documents`) the user never asked to see (PLAN.md §M9).
                 rebuildICloudCrumbs(trail)
@@ -33,16 +33,27 @@ extension PathBarView {
             rebuildICloudCrumbs([])
         } else if path.backend.isArchive {
             rebuildArchiveLabel(for: path, ancestry: archiveAncestry)
-        } else if let location = path.backend.sftpLocation {
-            // A remote SFTP location is re-listable, so it gets clickable breadcrumbs rooted at the
-            // account (`oleg@mac › Users › oleg › Dev`), like a local path — not the dead-end
-            // "results" label a search snapshot gets.
-            rebuildCrumbs(for: path, rootTitle: "\(location.username)@\(location.host)")
-        } else if let location = path.backend.ftpLocation {
-            // An FTP account is re-listable for the same reason and gets the same treatment. Without
-            // this branch it fell through to `rebuildVirtualLabel` and drew "Results for /" — the
-            // search phrasing, on a remote server nobody searched (caught only by connecting).
-            rebuildCrumbs(for: path, rootTitle: "\(location.username)@\(location.host)")
+        } else if path.backend.isPhotos {
+            // Crumbs, like any re-listable location — but not all of them are path components: the
+            // root is the library's name, and `Undated` is a translated title over a path that stays
+            // English (PLAN.md §M28). So it is named ahead of the remote branch it would fall into.
+            let names = cloudPlaceNames()
+            installCrumbs(
+                path.ancestorsFromRoot.map { Crumb(
+                    title: PhotosPresentation.title(for: $0, names: names),
+                    target: $0
+                ) },
+                leadingSymbol: Self.rootSymbolName(for: path)
+            )
+        } else if path.backend.isRemoteConnection, let rootTitle = path.backendRootTitle {
+            // A connected account is re-listable, so it gets clickable breadcrumbs rooted at
+            // whatever names it (`oleg@mac › Users › oleg › Dev`), like a local path — not the
+            // dead-end "results" label a search snapshot gets. SFTP had this branch first and FTP
+            // fell through to `rebuildVirtualLabel` for a while, drawing "Results for /" — the
+            // search phrasing, on a remote server nobody searched (caught only by connecting). One
+            // predicate and one title source now, so the next backend is named in
+            // `backendRootTitle` and arrives here already correct.
+            rebuildCrumbs(for: path, rootTitle: rootTitle)
         } else {
             rebuildVirtualLabel(for: path)
         }
@@ -62,19 +73,20 @@ extension PathBarView {
     }
 
     /// Render a location inside a cloud provider's mount, with the trail rooted at the mount under
-    /// the provider's name — `Google Drive › My Drive › Job`.
+    /// the provider's name — `Google Drive › My Drive › Job` — or the one the user gave its row.
     ///
     /// Still fully clickable, unlike the merged iCloud Drive's dead-end label: every crumb here is a
     /// real directory, so the breadcrumb affordance tells the truth. The trail simply *starts*
     /// lower. Walking above the mount is what the pane's Go Up does, not something the path bar has
     /// to keep a crumb for — the machinery under `~/Library/CloudStorage` is not a place the user
-    /// asked to see, the same judgement the merged iCloud listing makes about its containers.
+    /// asked to see, the same judgment the merged iCloud listing makes about its containers.
     func rebuildCrumbs(for path: VFSPath, under mount: CloudStorageMount) {
         let trail = path.ancestorsFromRoot.filter { $0.isSelfOrDescendant(of: mount.path) }
+        let rootTitle = CloudPlaceTitle.mount(mount, names: cloudPlaceNames())
         installCrumbs(
             trail.map { ancestor in
                 Crumb(
-                    title: ancestor == mount.path ? mount.name : ancestor.lastComponent,
+                    title: ancestor == mount.path ? rootTitle : ancestor.lastComponent,
                     target: ancestor
                 )
             },
@@ -82,18 +94,6 @@ extension PathBarView {
             // the same `cloud` symbol its sidebar row carries.
             leadingSymbol: mount.symbolName
         )
-    }
-
-    /// What the OS calls a directory — "Pages" for an app library's `Documents` folder, which is
-    /// the name Finder shows for it.
-    ///
-    /// The non-hermetic half of the library-name lookup, which is why it lives here and is handed
-    /// to the core rather than called by it: it only answers for a real iCloud item, so no test can
-    /// synthesize it. Asked only when `bird`'s cached plist could not be read, which on a build
-    /// without Full Disk Access is exactly when the container itself is still listable.
-    static func localizedName(of directory: VFSPath) -> String? {
-        try? URL(fileURLWithPath: directory.path)
-            .resourceValues(forKeys: [.localizedNameKey]).localizedName
     }
 
     /// Render a location inside iCloud Drive, rooted at the merged listing — `iCloud Drive ›
@@ -105,12 +105,10 @@ extension PathBarView {
     /// instead of somewhere you can only arrive from the sidebar.
     func rebuildICloudCrumbs(_ trail: [ICloudLocation.Step]) {
         // The crumb's *target* is the core's stable synthetic path; its *title* is the displayed
-        // name, so it localizes rather than borrowing `mergedName`, which is an identity.
+        // name, so it localizes — and follows a rename — rather than borrowing `mergedName`, which
+        // is an identity.
         let root = Crumb(
-            title: String(
-                localized: "iCloud Drive",
-                comment: "Apple's iCloud Drive: the sidebar row, the tab title, and the path bar's root crumb."
-            ),
+            title: CloudPlaceTitle.iCloudDrive(names: cloudPlaceNames()),
             target: ICloudLocation.mergedPath
         )
         installCrumbs(
@@ -127,11 +125,18 @@ extension PathBarView {
     /// it takes its tint rather than reading `isActive`: the label owns the whole row and follows the
     /// pane's active state, while the trail's glyph sits beside secondary-colored crumbs and matches
     /// those instead.
-    func makeLocationGlyph(
+    ///
+    /// It is a **button onto Places** (PLAN.md §M20 Slice 3), and it is in every location the bar can
+    /// render — which is what makes it the mouse face of the place list. The root crumb could not be:
+    /// `installVirtualLabel` replaces the whole crumb row for the Trash, Recents and search results,
+    /// so a control hung there would be missing from exactly the locations you most want to leave.
+    /// Swapping the `NSImageView` this used to be for a borderless button was measured to move
+    /// nothing — same frame, same ink, to the pixel, in the row's real shape.
+    func makePlacesButton(
         named symbolName: String,
         describedAs description: String,
         tint: NSColor
-    ) -> NSImageView {
+    ) -> NSButton {
         let configuration = NSImage.SymbolConfiguration(
             pointSize: NSFont.smallSystemFontSize,
             weight: .regular
@@ -139,13 +144,54 @@ extension PathBarView {
         let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: description)?
             .withSymbolConfiguration(configuration)
         symbol?.isTemplate = true
-        let glyph = NSImageView(image: symbol ?? NSImage())
+        let glyph = NSButton(image: symbol ?? NSImage(), target: self, action: #selector(showPlaces))
+        glyph.isBordered = false
+        glyph.bezelStyle = .inline
+        glyph.setButtonType(.momentaryChange)
+        glyph.imagePosition = .imageOnly
         glyph.contentTintColor = tint
+        glyph.toolTip = Self.placesTitle
+        // A glyph-only control is silent to VoiceOver, and what it *does* is open the place list —
+        // the location it also marks is spoken by the crumbs and the label beside it.
+        glyph.setAccessibilityLabel(Self.placesTitle)
         // The glyph is the one thing in the row that must never be squeezed — it is what names the
         // kind of location, and a symbol compressed to nothing is worse than no symbol at all.
         glyph.setContentCompressionResistancePriority(.required, for: .horizontal)
         glyph.setContentHuggingPriority(.required, for: .horizontal)
         return glyph
+    }
+
+    /// The tooltip and accessibility label, drawn from the same catalog entry the Go ▸ Places
+    /// submenu titles itself with — a display string that exists twice gets localized once
+    /// (docs/NOTES.md). The `comment:` is repeated verbatim rather than hoisted because
+    /// `String(localized:comment:)` takes a `StaticString`, and two sites keying one string with
+    /// different comments hand the translator whichever `xcstringstool` kept.
+    static var placesTitle: String {
+        String(
+            localized: "Places",
+            comment: "Every sidebar destination: the Go-menu submenu, and the path bar's glyph."
+        )
+    }
+
+    /// The glyph for a location whose trail is rooted in a filesystem rather than in a *place* —
+    /// a plain local path, a browsed archive (whose crumbs start at the archive's local ancestors),
+    /// and a connected server.
+    ///
+    /// The two remote answers are the saved-server row's own symbols, asked for by protocol, so a
+    /// server browsed and a server listed wear one mark. Local takes the **boot volume's** glyph,
+    /// which is not a guess about the disk the directory sits on: `rebuildCrumbs` titles the root
+    /// crumb "Macintosh HD" for every local path, `/Volumes/…` included, so the glyph marks the
+    /// trail's own root and matches the crumb beside it.
+    static func rootSymbolName(for path: VFSPath) -> String {
+        if path.backend.isPhotos { return PhotosPresentation.symbolName }
+        if path.backend.isSFTP { return SidebarPlacePresentation.serverSymbolName(for: .sftp) }
+        if path.backend.isFTP { return SidebarPlacePresentation.serverSymbolName(for: .ftp) }
+        // An account and a bucket are one service, so they wear one glyph — the same one their
+        // sidebar rows carry, which is what `ServerKind` collapsing the two is for.
+        if path.backend.isS3 || path.backend.isS3Account {
+            return SidebarPlacePresentation.serverSymbolName(for: .s3)
+        }
+        return MountedVolume.internalSymbolName
     }
 
     /// Render a virtual location (Spotlight results, Recents, the merged Trash) as a single,
@@ -192,7 +238,30 @@ extension PathBarView {
     /// archive to that folder, the archive-name crumb re-enters its root, an inner crumb jumps
     /// within it — the same affordance the local path bar gives.
     func rebuildArchiveLabel(for path: VFSPath, ancestry: [VFSPath] = []) {
-        installCrumbs(Self.archiveCrumbs(for: path, ancestry: ancestry))
+        // The archive's own ancestors are what the trail is rooted at — the crumb row opens on
+        // "Macintosh HD" here exactly as a plain local path does — so the leading glyph names the
+        // *first* crumbs rather than the archive, which is the last of them. A remote archive roots
+        // at its server instead, and takes that server's glyph for the same reason.
+        let origin = Self.remoteContainer(in: ancestry)
+        installCrumbs(
+            Self.archiveCrumbs(for: path, ancestry: ancestry),
+            leadingSymbol: Self.rootSymbolName(for: origin ?? .local("/"))
+        )
+    }
+
+    /// The **server** the outermost archive really lives on, when this mount is a copy of a file
+    /// that is not on this disk (PLAN.md §M24 Slice 6) — `nil` for every local and nested archive.
+    ///
+    /// It is `ancestry.first` and only ever that: `NestedArchiveMap.ancestry` stops walking the
+    /// moment an origin has no enclosing archive, so a non-archive origin can only be the outermost
+    /// one. Requiring a **root title** as well is what keeps the remote trail from being drawn for a
+    /// backend whose root has no name — there is nothing to call the first crumb then, and calling
+    /// it "Macintosh HD" would be a plain lie about where the file is. Every real remote connection
+    /// has one, which is what the branch above this already assumes.
+    static func remoteContainer(in ancestry: [VFSPath]) -> VFSPath? {
+        guard let origin = ancestry.first, !origin.backend.isArchive,
+              origin.backendRootTitle != nil else { return nil }
+        return origin
     }
 
     /// The crumb chain for a browsed archive, outermost local folder → current inner directory.
@@ -205,31 +274,48 @@ extension PathBarView {
     ///
     /// `static` and pure (no view state) so it's unit-testable without instantiating the view.
     static func archiveCrumbs(for path: VFSPath, ancestry: [VFSPath]) -> [Crumb] {
-        // The outermost archive's real on-disk path — the local file the whole chain roots at.
-        guard let outerOnDisk = ancestry.first?.backend.archivePath ?? path.backend.archivePath else {
+        // Where the outermost archive really lives, and what it is called there. A **remote**
+        // archive is browsed from a temp copy of the whole file (PLAN.md §M24 Slice 6), so its
+        // origin is on a server and `archivePath` answers `nil` for it — root the trail at the
+        // server, not at the extraction: the crumbs the user must be able to click their way back
+        // through are the ones the file actually came from, and `Macintosh HD › private › tmp ›
+        // DirnexRemote › <uuid>` is a directory nobody asked to see.
+        //
+        // **It is a container, never a *frame*.** Everything in `ancestry` after it is an enclosing
+        // archive whose `path` is an archive-inner path, which is what the loop below walks; a
+        // remote origin is a path on a server and walking it as a frame draws its components twice
+        // (`… › srv › backup.zip › srv › backup.zip › docs`). So it supplies the root trail and the
+        // outermost archive's *name*, and then steps out of the way.
+        let remoteOrigin = remoteContainer(in: ancestry)
+        let frames = remoteOrigin == nil ? ancestry : Array(ancestry.dropFirst())
+        guard let outerOnDisk = remoteOrigin?.path
+            ?? frames.first?.backend.archivePath
+            ?? path.backend.archivePath else {
             let name = (path.backend.archivePath as NSString?)?.lastPathComponent ?? "Archive"
             return [Crumb(title: name, target: path)]
         }
 
         // 1. The archive file's containing folders, so the trail reads as a full path before it
         //    crosses into the archive. Drop the file itself — it becomes the first archive crumb.
-        var crumbs = VFSPath.local(outerOnDisk).ancestorsFromRoot.dropLast().map { ancestor in
-            Crumb(title: ancestor.isRoot ? "Macintosh HD" : ancestor.lastComponent, target: ancestor)
+        let container = remoteOrigin ?? .local(outerOnDisk)
+        let rootTitle = remoteOrigin?.backendRootTitle ?? "Macintosh HD"
+        var crumbs = container.ancestorsFromRoot.dropLast().map { ancestor in
+            Crumb(title: ancestor.isRoot ? rootTitle : ancestor.lastComponent, target: ancestor)
         }
 
         // 2. Each archive in the chain, outermost → current.
-        let backends = ancestry.map(\.backend) + [path.backend]
+        let backends = frames.map(\.backend) + [path.backend]
         for (index, backend) in backends.enumerated() {
             // The archive-name crumb — its own filename, navigating to this archive's root.
             let name = index == 0
                 ? (outerOnDisk as NSString).lastPathComponent
-                : (ancestry[index - 1].path as NSString).lastPathComponent
+                : (frames[index - 1].path as NSString).lastPathComponent
             crumbs.append(Crumb(title: name, target: VFSPath(backend: backend, path: "/")))
 
             // The inner directories browsed within this archive: down to (but not including) the
             // nested-archive file for an outer frame, the full browsed location for the current one.
-            let isCurrentFrame = index == ancestry.count
-            let innerPath = isCurrentFrame ? path.path : ancestry[index].path
+            let isCurrentFrame = index == frames.count
+            let innerPath = isCurrentFrame ? path.path : frames[index].path
             var components = innerPath.split(separator: "/", omittingEmptySubsequences: true).map(
                 String.init
             )

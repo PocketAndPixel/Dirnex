@@ -159,7 +159,7 @@ enum MermaidFlowchartLink {
         return nil
     }
 
-    /// The closing half of a labelled operator: `-->` for solid, `.->` for dotted, `==>` for thick.
+    /// The closing half of a labeled operator: `-->` for solid, `.->` for dotted, `==>` for thick.
     private static func closer(
         _ characters: [Character],
         at index: Int,

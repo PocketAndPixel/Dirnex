@@ -15,10 +15,13 @@ extension SidebarViewController {
     /// No eject or delete affordance — like iCloud it is a system row, not a user-owned pin.
     func recentsCell() -> NSView {
         let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
-        let recents = String(localized: "Recents", comment: "Sidebar row: recently used files.")
+        // Name and glyph both come from `SidebarPlacePresentation`, so this row and its Go ▸ Places
+        // twin cannot come to say different things (PLAN.md §M20).
+        let recents = SidebarPlacePresentation.title(for: .recents)
+        let symbol = SidebarPlacePresentation.symbolName(for: .recents) ?? "clock"
         cell.configure(
             name: recents,
-            image: Self.templateSymbol("clock", pointSize: 15, describedAs: recents),
+            image: Self.templateSymbol(symbol, pointSize: 15, describedAs: recents),
             canEject: false,
             tooltip: String(
                 localized: "Recently used files",

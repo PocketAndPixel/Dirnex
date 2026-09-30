@@ -1,6 +1,6 @@
 import Foundation
 
-/// An ordered list of colour rules — Total Commander's signature "define colours by file type"
+/// An ordered list of color rules — Total Commander's signature "define colors by file type"
 /// (PLAN.md §M15 Slice 3). A pure value type with no persistence and no AppKit: the app owns the
 /// `UserDefaults` store and the editor, this owns the ordering and the matching, so both stay
 /// unit-testable headless (matching `UserScripts`, `SavedSearches` and `Workspaces`).
@@ -49,8 +49,8 @@ public struct FileColorRules: Sendable, Equatable, Codable {
         rules.first { $0.target.admits(isDirectory: isDirectory) && $0.matches(name: name) }
     }
 
-    /// The same, for a listing row. Uses `isDirectoryLike`, so a symlink to a folder is coloured as
-    /// the folder it opens into — matching what every other pane behaviour does with it.
+    /// The same, for a listing row. Uses `isDirectoryLike`, so a symlink to a folder is colored as
+    /// the folder it opens into — matching what every other pane behavior does with it.
     public func firstMatch(for entry: FileEntry) -> FileColorRule? {
         firstMatch(name: entry.name, isDirectory: entry.isDirectoryLike)
     }

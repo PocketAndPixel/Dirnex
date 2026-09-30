@@ -29,25 +29,48 @@ extension PanelViewController {
         VFSPath(backend: .archive(forArchiveAt: entry.path.path), path: "/")
     }
 
-    /// Walk up one level from inside an archive: to the parent inner directory, or — at the
-    /// archive root — out to wherever this archive came from, landing the cursor on the entry we
-    /// came from. For a nested archive that's the outer archive's inner directory (§M4 "nested
-    /// archives"); for a top-level archive it's the on-disk folder containing the archive file.
+    /// Walk up one level from inside an archive, landing the cursor on the entry we came from.
     /// Returns `false` if this isn't an archive path.
     func goUpWithinArchive() -> Bool {
-        guard let archivePath = panel.path.backend.archivePath else { return false }
-        if let parent = panel.parentPath, !panel.path.isRoot {
-            navigate(to: parent, focus: panel.path)
-        } else if let origin = host?.nestedArchiveRegistry.origin(ofMountAt: archivePath),
-                  let container = origin.parent {
-            // A nested mount — go back to the outer archive's inner directory, onto the member.
-            navigate(to: container, focus: origin)
-        } else {
-            // A top-level archive — exit to the containing local directory.
-            let archiveFile = VFSPath.local(archivePath)
-            guard let container = archiveFile.parent else { return true }
-            navigate(to: container, focus: archiveFile)
+        guard isArchive else { return false }
+        if let step = archiveParent() {
+            navigate(to: step.destination, focus: step.focus)
         }
         return true
+    }
+
+    /// Where `..` leads from the archive location on screen, and the row to land on there: the
+    /// parent inner directory, or — at the archive root — wherever this archive came from. For a
+    /// nested archive that's the outer archive's inner directory (§M4 "nested archives"); for a
+    /// top-level archive it's the on-disk folder containing the archive file. `nil` outside an
+    /// archive. One answer for the walk and for the `..` row's Copy Path, so the two cannot name
+    /// different places.
+    func archiveParent() -> (destination: VFSPath, focus: VFSPath)? {
+        guard let archivePath = panel.path.backend.archivePath else { return nil }
+        if let parent = panel.parentPath, !panel.path.isRoot {
+            return (parent, panel.path)
+        }
+        if let origin = host?.nestedArchiveRegistry.origin(ofMountAt: archivePath),
+           let container = origin.parent {
+            // A mount whose bytes are a temp copy — go back to wherever the file really lives,
+            // onto it. For a nested archive that is the outer archive's inner directory; for one on
+            // a server it is the server's own directory (PLAN.md §M24 Slice 6), which is exactly
+            // what keeps the temp extraction out of the user's way up.
+            return (container, origin)
+        }
+        // A top-level archive — exit to the containing local directory.
+        let archiveFile = VFSPath.local(archivePath)
+        guard let container = archiveFile.parent else { return nil }
+        return (container, archiveFile)
+    }
+
+    /// The text Copy Path writes for `location` — what ``CopyPathText`` answers, handed the chain of
+    /// the location's *own* archive mount. Asking per location rather than reading the pane's chain
+    /// is what keeps a search hit inside a nested archive from naming its temp extraction.
+    func copyPathText(for location: VFSPath) -> String {
+        let ancestry = location.backend.archivePath.map {
+            host?.nestedArchiveRegistry.ancestry(ofMountAt: $0) ?? []
+        } ?? []
+        return CopyPathText.text(for: location, archiveAncestry: ancestry)
     }
 }

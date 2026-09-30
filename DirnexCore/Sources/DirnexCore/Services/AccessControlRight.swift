@@ -7,13 +7,13 @@ import Foundation
 /// *file* names even on a directory — `list`≡`read`, `add_file`≡`write`, `search`≡`execute`,
 /// `add_subdirectory`≡`append` — so `acl_to_text` (and therefore this parser) only ever sees
 /// `read/write/execute/append`, while `ls -le` shows the directory spellings for the same bits. Only
-/// `delete_child` is a genuinely directory-only token in canonical text. Modelling the *bits*
+/// `delete_child` is a genuinely directory-only token in canonical text. Modeling the *bits*
 /// (13 of them) rather than `chmod`'s 17 input tokens is what keeps a directory ACL from carrying the
 /// same bit twice under two names.
 ///
 /// So the count the panel shows still works out: a file offers the 12 that apply to it, a directory
 /// offers 13 (adding `delete_child`) plus the four inheritance flags from ``ACLInheritance`` — the 17
-/// checkboxes a folder shows. The four ``dataRights`` are relabelled per kind at the display layer
+/// checkboxes a folder shows. The four ``dataRights`` are relabeled per kind at the display layer
 /// (``directoryAlias``), which is a presentation choice, not a second right.
 ///
 /// The raw value is the exact canonical token, so a parsed right round-trips to the identical
@@ -62,7 +62,7 @@ public enum ACLRight: String, Sendable, Hashable, CaseIterable, Codable {
     }
 
     /// The directory spelling `ls -le` and `chmod +a` use for a ``dataRights`` bit, or `nil` for a
-    /// right that is not relabelled on a directory. The stored token never changes; this is only how
+    /// right that is not relabeled on a directory. The stored token never changes; this is only how
     /// a folder's editor and a hand-off `chmod` command name the same bit.
     public var directoryAlias: String? {
         switch self {

@@ -23,6 +23,9 @@ struct SFTPProcessTransport: SFTPTransport {
     var password: String?
     /// Seconds to wait for the connection before giving up — a dead host must not hang the pane.
     var connectTimeout: Int = 15
+    /// Resolves the name to dial once per connection — the Bonjour fallback that lets a bare `nas`
+    /// reach a server, and the record that keeps an mDNS name from costing five seconds a request.
+    let dialer: HostDialer
     /// Overall wall-clock bound (seconds) on a single *password* command, so an unresponsive or
     /// non-standard server can't hang the pane on a read that never ends (some servers hold the
     /// channel open after the reply). Generous enough for browse/metadata and small transfers; large
@@ -34,12 +37,43 @@ struct SFTPProcessTransport: SFTPTransport {
         location: SFTPLocation,
         authentication: SFTPAuthentication,
         password: String? = nil,
-        connectTimeout: Int = 15
+        connectTimeout: Int = 15,
+        dialer: HostDialer? = nil
     ) {
         self.location = location
         self.authentication = authentication
         self.password = password
         self.connectTimeout = connectTimeout
+        self.dialer = dialer ?? HostDialer(host: location.host)
+    }
+
+    /// The `sftp -b -` argv this connection spawns — one definition, shared by the batch runner and
+    /// the segmented uploader.
+    ///
+    /// A property rather than four inline calls so that *which host is dialed* has a single answer
+    /// here as it does in the core, and so the forward can be asserted without spawning anything.
+    /// The seam it protects is the one this codebase keeps paying for: a call site that quietly kept
+    /// the location's own host would lose the Bonjour fallback on whichever verb it served, with
+    /// nothing on screen to say so.
+    var batchArguments: [String] {
+        SFTPProcessArguments.batch(
+            location: location,
+            dial: dialer.dialed,
+            authentication: authentication,
+            connectTimeout: connectTimeout
+        )
+    }
+
+    /// The `ssh` argv for one exec channel — ``batchArguments``' twin, and deliberately built from
+    /// the same dial so the exec channel cannot drift into contacting a different host.
+    func execArguments(command: String) -> [String] {
+        SFTPProcessArguments.exec(
+            location: location,
+            dial: dialer.dialed,
+            authentication: authentication,
+            connectTimeout: connectTimeout,
+            command: command
+        )
     }
 
     func listDirectory(_ remotePath: String) throws -> String {
@@ -50,6 +84,16 @@ struct SFTPProcessTransport: SFTPTransport {
 
     func makeDirectory(_ remotePath: String) throws {
         _ = try run(batch: SFTPBatchCommand.makeDirectory(remotePath))
+    }
+
+    /// Create an empty file by `put`-ing a zero-byte local one — `sftp` has no `touch`, and no
+    /// create-exclusive of any kind (``RemoteWriteTransport/createEmptyFile(_:)`` carries the three
+    /// candidates that were measured and rejected). `resume: false`, because `put -a` cannot create
+    /// a file that is not already there.
+    func createEmptyFile(_ remotePath: String) throws {
+        let scratch = try EmptyUploadFile()
+        defer { scratch.remove() }
+        _ = try run(batch: SFTPBatchCommand.upload(scratch.path, to: remotePath, resume: false))
     }
 
     func rename(_ source: String, to destination: String) throws {
@@ -68,20 +112,177 @@ struct SFTPProcessTransport: SFTPTransport {
         _ = try run(batch: SFTPBatchCommand.createSymbolicLink(remotePath, target: target))
     }
 
+    /// Progress is the destination file's own growth, which is exact and costs nothing — and is the
+    /// only thing available, since `sftp` prints no meter a spawned process can read
+    /// (`SFTPTransport.upload`).
     @discardableResult
-    func download(_ remotePath: String, to localPath: String, resume: Bool) throws -> Int64 {
-        _ = try run(batch: SFTPBatchCommand.download(remotePath, to: localPath, resume: resume))
+    func download(
+        _ remotePath: String,
+        to localPath: String,
+        resume: Bool,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        _ = try run(
+            batch: SFTPBatchCommand.download(remotePath, to: localPath, resume: resume),
+            watching: .destinationFile(path: localPath),
+            progress: progress,
+            isCancelled: isCancelled
+        )
         // `sftp get`/`get -a` leaves the whole file on disk, so its final size is the total
         // transferred; the backend derives the resumed remainder from the pre-existing length.
         return localFileSize(localPath)
     }
 
+    /// **`progress` is never called here**, and that is `sftp`'s doing rather than an omission: an
+    /// upload changes nothing on this machine to watch, and OpenSSH draws its progress meter only
+    /// for a foreground process group on a controlling terminal — probed six ways over a 1 GiB
+    /// transfer, including with the `progress` batch command explicitly enabling it, and it printed
+    /// nothing every time. The backend reports the whole count when this returns. The alternative,
+    /// polling the *remote* size, is a fresh connection and handshake per tick on a transport with
+    /// no session (`SFTPTransport.upload` carries the measurement).
     @discardableResult
-    func upload(_ localPath: String, to remotePath: String, resume: Bool) throws -> Int64 {
-        _ = try run(batch: SFTPBatchCommand.upload(localPath, to: remotePath, resume: resume))
+    func upload(
+        _ localPath: String,
+        to remotePath: String,
+        resume: Bool,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        _ = try run(
+            batch: SFTPBatchCommand.upload(localPath, to: remotePath, resume: resume),
+            isCancelled: isCancelled
+        )
         // The local source's size is the remote file's total size after `put`/`put -a` — cheaper
         // and safer than re-statting the remote (which would cost another round trip).
         return localFileSize(localPath)
+    }
+
+    // MARK: - Metadata carry (PLAN.md §M25 Slice 2)
+
+    /// What an OpenSSH account can be asked before anything has been refused: `-p` on the transfer
+    /// verbs, and an explicit `chmod`. There is no batch verb that sets a time, which is why
+    /// ``RemoteMetadataCapabilities/sftp`` omits it — an SFTP upload carries a modification time
+    /// only through `-p`, and never on its own.
+    ///
+    /// Declaring this is an obligation to implement the carrying verbs below; the empty default is
+    /// what keeps a transport that has not done so honest.
+    var metadataCapabilities: RemoteMetadataCapabilities { .sftp }
+
+    /// The download, carrying what the plan asks — **one connection**, because `sftp` reads one
+    /// command per line and a second invocation would be a fresh TCP connect, key exchange and
+    /// authentication (71 ms measured on loopback, a real round trip over a network).
+    @discardableResult
+    func download(
+        _ remotePath: String,
+        to localPath: String,
+        options: RemoteTransferOptions,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> RemoteTransferOutcome {
+        // Only the flag rides the wire: a download's follow-up steps act on the *local* file, so
+        // sending them as batch lines would aim them at the server's copy. The backend applies them.
+        let result = try runCarrying(
+            batch: SFTPBatchCommand.download(
+                remotePath,
+                to: localPath,
+                resume: options.resume,
+                preserve: options.carry.usesPreserveFlag
+            ),
+            watching: .destinationFile(path: localPath),
+            progress: progress,
+            isCancelled: isCancelled
+        )
+        return RemoteTransferOutcome(bytes: localFileSize(localPath), refusals: result.refusals)
+    }
+
+    /// The upload, carrying what the plan asks: `put -p` for the nine bits and both timestamps, plus
+    /// an allowed-to-fail `chmod` for the three special bits `-p` silently drops.
+    @discardableResult
+    func upload(
+        _ localPath: String,
+        to remotePath: String,
+        options: RemoteTransferOptions,
+        progress _: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> RemoteTransferOutcome {
+        let result = try runCarrying(
+            batch: SFTPBatchCommand.batch(
+                [SFTPBatchCommand.upload(
+                    localPath,
+                    to: remotePath,
+                    resume: options.resume,
+                    preserve: options.carry.usesPreserveFlag
+                )] + SFTPBatchCommand.metadataFollowUp(options.carry.followUp, on: remotePath)
+            ),
+            isCancelled: isCancelled
+        )
+        return RemoteTransferOutcome(bytes: localFileSize(localPath), refusals: result.refusals)
+    }
+
+    /// Duplicate one remote file **on the server**, with the corrective `chmod` in the same batch
+    /// (PLAN.md §M25 Slice 3).
+    ///
+    /// `cp` is OpenSSH's `copy-data` extension, and the client refuses it on its own when the server
+    /// did not advertise one — `Server does not support copy-data extension`, which
+    /// ``SFTPTransportError`` classifies into its own case so the backend can latch it for the
+    /// connection rather than re-deriving a sentence. Reproduced on demand with
+    /// `sftp-server -P copy-data`: exit 1, that line on stderr, nothing created.
+    ///
+    /// The follow-up rides this batch allowed to fail, exactly as a transfer's does and for the same
+    /// measured reason: a refused `chmod` must not turn a duplicate that exists into a failure.
+    func copyRemoteFile(
+        _ source: String,
+        to destination: String,
+        carrying plan: RemoteMetadataPlan,
+        isCancelled: () -> Bool
+    ) throws -> [RemoteMetadataRefusal] {
+        try runCarrying(
+            batch: SFTPBatchCommand.batch(
+                [SFTPBatchCommand.copy(source, to: destination)]
+                    + SFTPBatchCommand.metadataFollowUp(plan.followUp, on: destination)
+            ),
+            isCancelled: isCancelled
+        ).refusals
+    }
+
+    /// Apply metadata with no transfer to ride on — the directory `copyMetadata` finishes.
+    func applyMetadata(
+        _ steps: [RemoteMetadataStep],
+        to remotePath: String
+    ) throws -> [RemoteMetadataRefusal] {
+        let lines = SFTPBatchCommand.metadataFollowUp(steps, on: remotePath)
+        guard !lines.isEmpty else { return [] }
+        return try runCarrying(batch: SFTPBatchCommand.batch(lines)).refusals
+    }
+
+    /// Run one command on the server's own shell over an SSH **exec** channel — the search
+    /// shortcut's route (PLAN.md §M22 Slice 4), and the one verb here that does not speak SFTP.
+    ///
+    /// `nil` means *the command could not be asked at all* — `ssh` would not launch, or the server
+    /// held the channel past the timeout. It does **not** mean "this account has no exec channel",
+    /// and that distinction is the probe's finding rather than a preference: an account confined to
+    /// the `sftp` subsystem answers an exec request with an ordinary-looking reply — the sentence
+    /// "This service allows sftp connections only." on *stdout*, exit 1, empty stderr — so from here
+    /// it is indistinguishable from a shell that ran something. Only the core's
+    /// `SSHFindListingParser` can tell, because only it knows what a good answer looks like, and it
+    /// falls back to the walk when it does not see one.
+    ///
+    /// That is also why there is no memo of accounts that refused. It would have to be fed by the
+    /// core rather than learned here, and it would save exactly **one** handshake in front of a walk
+    /// that is about to spend one per directory — a saving too small to be worth a second place for
+    /// this decision to live.
+    ///
+    /// Cancellation travels rather than degrading to `nil`: it is the caller's own instruction, not
+    /// a property of the server.
+    func runCommand(_ command: String, isCancelled: () -> Bool) throws -> String? {
+        do {
+            return try run(exec: command, isCancelled: isCancelled)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            return nil
+        }
     }
 
     private func localFileSize(_ path: String) -> Int64 {
@@ -107,105 +308,5 @@ struct SFTPProcessTransport: SFTPTransport {
             }
         }
         return "/"
-    }
-
-    // MARK: - Process
-
-    /// Run one `sftp` batch command and return its stdout. `sftp` prints the `sftp>` prompt echo and
-    /// the `ls` rows to stdout (the parser ignores the echo) and errors to stderr, exiting non-zero
-    /// on a failed command — so a non-zero status is classified from stderr. Blocks on `sftp`; call
-    /// it off the main thread.
-    private func run(batch command: String, tolerateChannelHold: Bool = false) throws -> String {
-        let isPassword: Bool
-        if case .password = authentication { isPassword = true } else { isPassword = false }
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/sftp")
-        process.arguments = SFTPProcessArguments.batch(
-            location: location,
-            authentication: authentication,
-            connectTimeout: connectTimeout
-        )
-        if isPassword {
-            process.environment = try passwordEnvironment()
-        }
-
-        let input = Pipe()
-        let output = Pipe()
-        let errorPipe = Pipe()
-        process.standardInput = input
-        process.standardOutput = output
-        process.standardError = errorPipe
-
-        do {
-            try process.run()
-        } catch {
-            throw SFTPTransportError.failure(String(
-                localized: "Couldn’t launch sftp.",
-                comment: "SFTP failure: the sftp binary could not be spawned."
-            ))
-        }
-
-        // Feed the single batch command, then EOF so sftp runs it and exits.
-        input.fileHandleForWriting.write(Data((command + "\n").utf8))
-        try? input.fileHandleForWriting.close()
-
-        // Drain both pipes on background queues — so neither can fill and deadlock the other on a
-        // large listing — and join them through a group, which lets a password session bound its
-        // wait (an unresponsive server must not hang the pane).
-        var outputData = Data()
-        var errorData = Data()
-        let group = DispatchGroup()
-        let ioQueue = DispatchQueue(label: "com.dirnex.sftp.io", attributes: .concurrent)
-        group.enter()
-        ioQueue.async {
-            outputData = output.fileHandleForReading.readDataToEndOfFile()
-            group.leave()
-        }
-        group.enter()
-        ioQueue.async {
-            errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-            group.leave()
-        }
-
-        if isPassword, group.wait(timeout: .now() + .seconds(passwordTimeout)) == .timedOut {
-            process.terminate() // SIGTERM closes the pipes so the drains unblock
-            group.wait() // terminate closed the pipes, so the readers finish promptly
-            if tolerateChannelHold {
-                // The server replied but never closed the channel; the reply is complete, so hand it
-                // back (only the single-line connect probe opts in — a multi-row listing must not be
-                // read partially, hence the default-throw below).
-                return String(bytes: outputData, encoding: .utf8) ?? ""
-            }
-            throw SFTPTransportError.failure(String(
-                localized: "The SFTP server stopped responding.",
-                comment: "SFTP failure: the server held the channel open past the timeout."
-            ))
-        }
-        group.wait()
-        process.waitUntilExit()
-
-        let stderrText = String(bytes: errorData, encoding: .utf8) ?? ""
-        if process.terminationStatus != 0 {
-            throw SFTPTransportError.classify(stderr: stderrText)
-        }
-        // An interactive (password) session exits zero even on a failed command, so its errors live
-        // only in stderr — scan for them; key auth's `-b -` already fails non-zero above.
-        if isPassword, let error = SFTPTransportError.detect(stderr: stderrText) {
-            throw error
-        }
-        return String(bytes: outputData, encoding: .utf8) ?? ""
-    }
-
-    /// The `sftp` child's environment for password auth: the parent environment (so `HOME`, `PATH`,
-    /// and the rest survive — `ssh` needs `HOME` to find `known_hosts`) plus the `SSH_ASKPASS`
-    /// wiring that feeds the password without a TTY. `SSH_ASKPASS_REQUIRE=force` makes modern OpenSSH
-    /// use the helper even with no controlling terminal.
-    private func passwordEnvironment() throws -> [String: String] {
-        var environment = ProcessInfo.processInfo.environment
-        environment["SSH_ASKPASS"] = try SFTPAskpassHelper.scriptPath()
-        environment["SSH_ASKPASS_REQUIRE"] = "force"
-        environment[SFTPAskpassHelper.passwordEnvironmentKey] = password ?? ""
-        return environment
     }
 }

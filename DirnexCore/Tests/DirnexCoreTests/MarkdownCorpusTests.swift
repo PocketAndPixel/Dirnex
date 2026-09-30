@@ -37,7 +37,7 @@ struct MarkdownCorpusTests {
         "h1", "h2", "h3", "h4", "h5", "h6", "p", "hr", "pre", "code", "blockquote",
         "ul", "ol", "li", "input", "table", "thead", "tbody", "tr", "th", "td",
         "em", "strong", "del", "a", "img", "br",
-        // Slice 2: `nav` is `[[_TOC_]]`'s outline, `span` is one token of a coloured fence.
+        // Slice 2: `nav` is `[[_TOC_]]`'s outline, `span` is one token of a colored fence.
         "nav", "span"
     ]
 
@@ -188,14 +188,14 @@ struct MarkdownCorpusTests {
         #expect(html[..<nav].components(separatedBy: "<ul>").count > 2)
     }
 
-    /// The other half of Slice 2's exit: a fence in the rendered page is coloured by the **same**
+    /// The other half of Slice 2's exit: a fence in the rendered page is colored by the **same**
     /// scanner as the file in source mode.
     ///
     /// README.md is the corpus document that carries a tagged fence — two ```` ```bash ```` blocks,
     /// which is worth naming because PLAN.md's four fences carry no info string at all and would
     /// have made this assertion unfailable (the trap the suite's own `notesStructure` comment
     /// already records once).
-    @Test("README's bash fences are coloured by M17's scanner, token for token")
+    @Test("README's bash fences are colored by M17's scanner, token for token")
     func fencesAreHighlighted() throws {
         let source = try source("README.md")
         let html = MarkdownDocument.render(source).html

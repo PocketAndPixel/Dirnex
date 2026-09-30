@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 /// How large the Quick View preview is, and therefore what it is anchored over (PLAN.md §M11).
 /// Owned by `BrowserWindowController` — the mode spans both panes and follows the active one, so
 /// no single pane can hold it. Every size drives the same `QuickViewPreviewView`; only the anchor,
-/// the backing colour and the header differ.
+/// the backing color and the header differ.
 enum QuickViewMode {
     /// No preview anywhere; the two panes show their file lists.
     case off
@@ -46,10 +46,11 @@ final class QuickViewPreviewView: NSView {
         case floating
     }
 
-    /// The solid colour behind a preview that doesn't fill the view — a small image, a failed
-    /// preview. Dynamic colours are honoured: this is re-resolved at draw time, where a captured
+    /// The solid color behind a preview that doesn't fill the view — a small image, a failed
+    /// preview. Dynamic colors are honored: this is re-resolved at draw time, where a captured
     /// `cgColor` would freeze at whichever appearance was current when it was taken.
-    private let backingColor: NSColor
+    /// Internal, not private: the PDF backend paints behind its pages with it, from its own file.
+    let backingColor: NSColor
     private let headerStyle: Header
     private let headerView: QuickViewHeaderView?
 
@@ -59,22 +60,71 @@ final class QuickViewPreviewView: NSView {
     /// does not cross files.
     let content = NSView()
 
-    private var previewView: QLPreviewView?
-    private var pdfView: PDFView?
+    /// Internal, not private: built and driven from `QuickViewPreviewView+QuickLook`, and Swift's
+    /// `private` does not cross files.
+    var previewView: QLPreviewView?
+    /// Internal, not private: built and driven from `QuickViewPreviewView+PDF`, and Swift's `private`
+    /// does not cross files.
+    var pdfSurface: QuickViewPDFSurface?
+    /// The `PDFView` itself — what everything that zooms, scrolls or reads the document asks for. It
+    /// gained a container when the find bar arrived (`QuickViewPDFSurface`); this keeps that a
+    /// detail of the PDF backend rather than something every caller has to know.
+    var pdfView: PDFView? { pdfSurface?.pdfView }
+    /// Whether the PDF on screen opened fitted to the surface or at its own size — what ⌘0 goes back
+    /// to. Internal, from `QuickViewPreviewView+PDF`.
+    var pdfFitsWidth = true
     /// Internal, not private: built and driven from `QuickViewPreviewView+Image`, and Swift's
     /// `private` does not cross files.
     var imageView: NSImageView?
+    /// The scroll view `imageView` sits in, so a zoomed image can be panned. Internal for the same
+    /// reason as the image view.
+    var imageScrollView: QuickViewImageScrollView?
     /// Internal, not private: built and driven from `QuickViewPreviewView+Text`, and Swift's
     /// `private` does not cross files.
     var textSurface: QuickViewTextView?
     /// Internal for the same reason, from `QuickViewPreviewView+HTML`.
     var webSurface: QuickViewWebView?
+    /// Internal for the same reason, from `QuickViewPreviewView+Table`.
+    var tableSurface: QuickViewTableView?
+    /// Where the table surface keeps the height its strip was dragged to. Set before the first CSV
+    /// is shown; a test hands over a scratch domain so it neither reads nor writes the real one.
+    var tableLayoutDefaults: UserDefaults = .standard
+    /// Case Sensitive and Whole Word, shared by every surface this preview builds and by every other
+    /// preview in the app (`QuickViewFindOptionsStore`). An init argument rather than a settable
+    /// property with a `.standard` default, because unlike the layout domain it is *read* on the way
+    /// in: a test that let it default would assert about whoever ran it.
+    let findOptions: QuickViewFindOptionsStore
+    /// What reads a PDF's scanned pages, for the PDF surface to use when one is built.
+    let pageRecognizer: PDFPageTextRecognizing
+    /// Internal for the same reason, from `QuickViewPreviewView+Tree`; its strip's dragged height is
+    /// kept in `tableLayoutDefaults` too.
+    var treeSurface: QuickViewTreeView?
+    /// Whether the JSON or XML file last shown was a list of records, drawn in the table
+    /// (`captionForHeader`).
+    var treeShowsRecords = false
+    /// The caption as last handed over, so it can be drawn again once a JSON file's shape is known.
+    private var shownCaption: QuickViewCaption?
+    /// Internal for the same reason, from `QuickViewPreviewView+Placeholder`.
+    var placeholderCard: QuickViewPlaceholderCard?
+    /// The office-document conversion in flight, so the next one — or putting the surface away —
+    /// stops the `qlmanage` it spawned rather than letting it finish for nobody. Internal, from
+    /// `QuickViewPreviewView+Document`.
+    var documentConversion: CancellationFlag?
+    /// What the placeholder card's controls do, set just before each `show`. Deliberately not part
+    /// of `RemotePreviewPlaceholder`, which is half of what "already showing this" means
+    /// (`loadedPlaceholder`) and so has to stay `Equatable`.
+    var placeholderActions: RemotePreviewActions?
     /// The URL currently loaded, so an unrelated refresh that re-drives the same file is skipped
     /// instead of flickering the preview.
     private var loadedURL: URL?
     /// The style it was loaded in, which is the other half of that identity: the same file in the
     /// other style is a different thing to show, not the same thing again.
     private var loadedStyle = QuickViewRenderStyle.default
+    /// The placeholder it was last showing, which is the *third* half of that identity — and the one
+    /// the guard cannot do without once placeholders exist. Every un-fetched remote file resolves to
+    /// a `nil` URL, so without this a step from one to the next is "already showing that" and the
+    /// card would go on naming the file the cursor has left.
+    private var loadedPlaceholder: RemotePreviewPlaceholder?
     /// Set once the first `show` has run, so `show(nil)` on a fresh view still blanks the backends
     /// rather than being mistaken for "already showing nil".
     private var hasLoaded = false
@@ -92,8 +142,23 @@ final class QuickViewPreviewView: NSView {
     /// Internal, not private: `QuickViewPreviewView+Text` bumps it too.
     var loadToken = 0
 
-    init(backingColor: NSColor, header: Header) {
+    /// The page turn's wait for the file it is dealing — see `QuickViewPreviewView+Swipe`, which
+    /// owns every rule about it. One stored property because a Swift extension cannot hold state,
+    /// not because the concept belongs here.
+    var flipGate = FlipGate()
+
+    /// `pageRecognizer` is what reads a PDF's scanned pages, handed on to the PDF surface when one
+    /// is built. Defaulted, unlike `findOptions`, because it writes nothing outside the process —
+    /// a test that does not care cannot leak into anything, and one that does hands over a fake.
+    init(
+        backingColor: NSColor,
+        header: Header,
+        findOptions: QuickViewFindOptionsStore,
+        pageRecognizer: PDFPageTextRecognizing = VisionPageTextRecognizer.shared
+    ) {
         self.backingColor = backingColor
+        self.findOptions = findOptions
+        self.pageRecognizer = pageRecognizer
         headerStyle = header
         headerView = switch header {
         case .none: nil
@@ -123,15 +188,47 @@ final class QuickViewPreviewView: NSView {
     /// The style is part of what is being shown, not a setting beside it: the guard below skips a
     /// re-drive of the file already on screen, and pressing `2` on the file you are looking at is
     /// exactly that call with a different answer expected (PLAN.md §M16).
-    func show(_ url: URL?, style: QuickViewRenderStyle) {
-        guard url != loadedURL || style != loadedStyle || !hasLoaded else { return }
+    func show(
+        _ url: URL?,
+        style: QuickViewRenderStyle,
+        placeholder: RemotePreviewPlaceholder? = nil
+    ) {
+        guard url != loadedURL || style != loadedStyle || placeholder != loadedPlaceholder
+            || !hasLoaded else { return }
         loadedURL = url
         loadedStyle = style
+        loadedPlaceholder = placeholder
         hasLoaded = true
+        // The table and the tree are put away here rather than by every other backend, for the reason
+        // the card below is: a sixth hand-written list is six chances to forget one. Each stays up while
+        // the next file is data too, so stepping between two keeps the old one on screen until the new
+        // one lands; a JSON or XML file says which of the two it takes only once it has been read.
+        let isTable = url.map(Self.isDelimitedTable) == true
+        let showsData = style == .rendered
+            && (isTable || url.map { Self.isJSON($0) || Self.isXML($0) } == true)
+        if !showsData {
+            standDownTable()
+            standDownTree()
+        }
+        // The one funnel every render goes through, which is why the card is raised and lowered here
+        // rather than at each backend: a fifth stand-down in four hand-written lists is four chances
+        // to forget one, and the one forgotten leaves the card drawn over a real preview.
+        if url == nil, let placeholder {
+            showPlaceholder(placeholder)
+            return
+        }
+        standDownPlaceholder()
+        // Here for the same reason: whichever backend takes the surface next, a document still being
+        // converted for the previous file is converting for nobody.
+        cancelDocumentConversion()
         if let url, Self.isPDF(url) {
             showPDF(url)
         } else if let url, Self.isImage(url) {
             showImage(url)
+        } else if let url, showsData, isTable {
+            showTable(url)
+        } else if let url, showsData {
+            showTree(url)
         } else if let url, Self.isRenderableHTML(url), style == .rendered {
             showRenderedHTML(url)
         } else if let url, Self.isRenderableMarkdown(url), style == .rendered {
@@ -142,21 +239,19 @@ final class QuickViewPreviewView: NSView {
             // needs no such exception: `isText` takes it already, which is what made `1` work on a
             // `.md` before this milestone existed.
             showText(url)
+        } else if let url, Self.isConvertibleDocument(url) {
+            showConvertedDocument(url)
+        } else if let url, Self.isRichTextDocument(url) {
+            showRichText(url)
+        } else if let url, Self.isUnclaimed(url) || Self.isMistypedSource(url) {
+            // `VERSION`, `.gitignore`, `nginx.conf`: no type says what they are, so their bytes do,
+            // and a binary goes on to Quick Look as it did before. A `.ts` reaches the same test from
+            // the other side — macOS types it as an MPEG-2 transport stream, and its bytes are what
+            // separate the TypeScript file from the video (`isMistypedSource`).
+            showText(url, refusingPlaceholders: true)
         } else {
             showQuickLook(url)
         }
-    }
-
-    /// Whether `url` is a file Quick View can honestly draw two ways — the one predicate behind the
-    /// `1` / `2` keys, the header's hint, and the routing above (PLAN.md §M18 ▸ Slice 3).
-    ///
-    /// One place, deliberately. Until this milestone the same question was spelled `isRenderableHTML`
-    /// at three sites, and adding a second dual-style type meant finding all three by hand with the
-    /// compiler checking none of them — the trap docs/NOTES.md names for a new VFS backend, in a
-    /// different shape. The failure available here is quiet: `2` doing nothing on a `.md` while the
-    /// header says it should, or the digit being swallowed on a file that has one rendering.
-    static func offersBothStyles(_ url: URL) -> Bool {
-        isRenderableHTML(url) || isRenderableMarkdown(url)
     }
 
     /// Release both backends' loaded documents so nothing lingers in memory while the mode is off.
@@ -164,23 +259,39 @@ final class QuickViewPreviewView: NSView {
     func clear() {
         loadedURL = nil
         loadedStyle = .default
+        loadedPlaceholder = nil
         hasLoaded = false
+        standDownPlaceholder()
+        cancelDocumentConversion()
         previewView?.previewItem = nil
+        pdfSurface?.documentDidChange()
         pdfView?.document = nil
         // Retire any pending fade-out: the surface is going away, and a stray one landing on the
         // next file would blank the header the moment it was shown.
         headerFadeGeneration += 1
         // A surface put away mid-swipe must not come back still shifted, or the next file opens
-        // hanging off its edge with no gesture to bring it home.
+        // hanging off its edge with no gesture to bring it home. A page turn still waiting on a
+        // decode goes with it, for the same reason and one step earlier: it would slide a file the
+        // surface is no longer showing.
+        cancelPendingFlip()
         resetSwipe()
-        imageView?.image = nil
+        imageScrollView?.show(nil)
         textSurface?.clearText()
         webSurface?.clearPage()
+        tableSurface?.clearTable()
+        treeSurface?.clearDocument()
+        treeShowsRecords = false
     }
 
     /// The file the header names. Ignored when this surface has no header.
     func setCaption(_ caption: QuickViewCaption?) {
-        headerView?.caption = caption
+        shownCaption = caption
+        refreshCaption()
+    }
+
+    /// Draw the caption again, as `captionForHeader` adjusts it for what is on screen now.
+    func refreshCaption() {
+        headerView?.caption = captionForHeader(shownCaption)
     }
 
     // MARK: - Appearance
@@ -219,8 +330,8 @@ final class QuickViewPreviewView: NSView {
         dirtyRect.intersection(bounds).fill()
     }
 
-    /// Take the mouse for the whole surface, so nothing underneath can be clicked or dragged
-    /// through it.
+    /// Take the mouse for the whole surface, so nothing underneath can be clicked or dragged through
+    /// it.
     ///
     /// Winning the hit test is *not* enough on its own, which is the trap here. `QLPreviewView`
     /// renders out of process, and its `QLLayerBasedPreviewContainerView` answers `hitTest` and then
@@ -232,17 +343,31 @@ final class QuickViewPreviewView: NSView {
     /// The in-process backends are the deliberate exceptions, each because the mouse is the whole
     /// reason it exists: `PDFView` scrolls and pinch-zooms a document, the text view is where a drag
     /// *selects* — the thing Quick Look's preview cannot offer — and the web view is where a page
-    /// taller than the surface **scrolls at all**, which is the whole of §M16. All three consume
-    /// what they handle, which is what separates them from the remote view. The header keeps the
-    /// mouse too — it is this surface's own chrome.
+    /// taller than the surface **scrolls at all**, which is the whole of §M16. An image's scroll view
+    /// joined them with zoom (2026-09-15): a zoomed photograph has to be panned and pinched, and a
+    /// click it does not use travels up its responder chain to this view's own swallowing handlers.
+    /// The find bar over the text is exempt beside it; a hidden bar is not, so the exemption lasts as
+    /// long as the bar is up.
+    /// All of them consume what they handle, which is what separates them from the remote view. The header keeps the
+    /// mouse too — as do the placeholder card's Download and Stop buttons, which are the only way to
+    /// ask for a large remote file or call one off. The *buttons* are exempt and not the card, so the
+    /// exemption is exactly as large as the affordance.
     override func hitTest(_ point: NSPoint) -> NSView? {
         guard !isHidden, frame.contains(point) else { return nil }
         if let hit = super.hitTest(point), hit.isInteractiveQuickViewBackend(
             among: [
                 pdfView,
+                pdfSurface?.filterBar,
+                webSurface?.filterBar,
+                imageScrollView,
                 textSurface?.interactiveSubtree,
+                textSurface?.filterBar,
                 webSurface?.interactiveSubtree,
-                headerView
+                tableSurface,
+                treeSurface,
+                headerView,
+                placeholderCard?.downloadButton,
+                placeholderCard?.stopButton
             ]
         ) {
             return hit
@@ -260,92 +385,6 @@ final class QuickViewPreviewView: NSView {
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
         needsDisplay = true
-    }
-
-    // MARK: - Backends
-
-    /// Show `url` in the Quick Look backend, standing the others down.
-    /// Internal: `QuickViewPreviewView+Text` falls back here for a file that isn't text after all.
-    func showQuickLook(_ url: URL?) {
-        guard let preview = ensureQuickLookPreview() else { return }
-        standDownPDF()
-        standDownImage()
-        standDownText()
-        standDownWeb()
-        preview.isHidden = false
-        preview.previewItem = url as NSURL?
-    }
-
-    // The three stand-downs are internal for the same reason `showQuickLook` is: the text backend
-    // lives in its own file and has to put the others away when it takes the surface.
-
-    func standDownQuickLook() {
-        previewView?.isHidden = true
-        previewView?.previewItem = nil
-    }
-
-    func standDownPDF() {
-        pdfView?.isHidden = true
-        pdfView?.document = nil
-    }
-
-    /// Show `url` in the PDFKit backend, standing down the Quick Look one. `autoScales` refits the
-    /// page to the surface for each new document; the user can then pinch to zoom in or out.
-    private func showPDF(_ url: URL) {
-        let pdfView = ensurePDFView()
-        standDownQuickLook()
-        standDownImage()
-        standDownText()
-        standDownWeb()
-        pdfView.isHidden = false
-        let document = PDFDocument(url: url)
-        pdfView.document = document
-        pdfView.autoScales = true
-        // Rasterize page one *now* rather than letting PDFKit do it lazily. Parsing a PDF is
-        // nearly free (measured 0.2 ms) but the first page render is not, and lazily it landed
-        // ~30 ms into the swipe's flip animation and cost four frames of it — the judder was
-        // reproducible on every flip into a PDF. Paid here it costs the same 3–8 ms while nothing
-        // is moving. The thumbnail itself is discarded; warming the page cache is the point.
-        _ = document?.page(at: 0)?.thumbnail(of: bounds.size, for: .mediaBox)
-    }
-
-    /// Whether `url` is a PDF, so it routes to `PDFView`. Prefers the file's real content type
-    /// (catches an odd extension) and falls back to the extension when that can't be read.
-    private static func isPDF(_ url: URL) -> Bool {
-        if let type = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType {
-            return type.conforms(to: .pdf)
-        }
-        return url.pathExtension.caseInsensitiveCompare("pdf") == .orderedSame
-    }
-
-    /// Build the Quick Look backend on first use. `.compact` style drops Quick Look's
-    /// title/controls chrome, which suits an always-on embedded preview. `init(frame:style:)` is
-    /// failable, so this returns `nil` on the rare miss and the caller shows nothing.
-    private func ensureQuickLookPreview() -> QLPreviewView? {
-        if let preview = previewView { return preview }
-        guard let preview = QLPreviewView(frame: .zero, style: .compact) else { return nil }
-        // Closes automatically when the window goes away; this surface lives as long as the
-        // window, so there is nothing to tear down by hand.
-        preview.shouldCloseWithWindow = true
-        pin(preview, inside: content)
-        previewView = preview
-        return preview
-    }
-
-    /// Build the PDFKit backend on first use. Continuous single-page layout scrolls a multi-page
-    /// document naturally, and `PDFView` handles pinch-to-zoom itself.
-    private func ensurePDFView() -> PDFView {
-        if let pdfView { return pdfView }
-        let view = PDFView()
-        view.autoScales = true
-        view.displayMode = .singlePageContinuous
-        view.displaysPageBreaks = true
-        // The full-screen surface is deliberately black behind the page; the others follow the
-        // window. Reusing this view's own backing keeps the two consistent for free.
-        view.backgroundColor = backingColor
-        pin(view, inside: content)
-        pdfView = view
-        return view
     }
 
     // MARK: - Layout
@@ -431,40 +470,6 @@ final class QuickViewPreviewView: NSView {
             try? await Task.sleep(for: .seconds(Self.headerFadeDelay))
             guard let self, headerFadeGeneration == generation else { return }
             headerView.animator().alphaValue = 0
-        }
-    }
-}
-
-// MARK: - Where focus is
-
-/// In an extension rather than the class body, which sits at SwiftLint's `type_body_length`
-/// ceiling — and this is a separate concept from the rendering above: not what the surface draws,
-/// but whether the keyboard is currently inside one.
-extension QuickViewPreviewView {
-    /// Whether `responder` is focus sitting *inside* one of `surfaces` — the state in which a key
-    /// the file list owns has gone to a preview backend instead.
-    ///
-    /// The in-process backends take first responder the moment the user clicks into one: the text
-    /// view to select a line, `PDFView` to scroll a document. From there they consume the arrows the
-    /// mode navigates with, which is what `BrowserWindowController`'s key monitor asks this before
-    /// undoing. Every surface is offered rather than the current mode's alone — a mode change hides
-    /// a surface without moving focus out of it.
-    static func hasFocus(_ responder: NSResponder?, among surfaces: [QuickViewPreviewView?]) -> Bool {
-        guard let focused = responder as? NSView else { return false }
-        return surfaces.contains { surface in
-            guard let surface else { return false }
-            return focused.isDescendant(of: surface)
-        }
-    }
-}
-
-private extension NSView {
-    /// Whether this hit belongs to one of the Quick View parts that should keep the mouse — a
-    /// backend that handles it in-process, or the surface's own header.
-    func isInteractiveQuickViewBackend(among parts: [NSView?]) -> Bool {
-        parts.contains { part in
-            guard let part, !part.isHidden else { return false }
-            return isDescendant(of: part)
         }
     }
 }

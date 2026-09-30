@@ -9,8 +9,10 @@ struct ArchivePackingTests {
     func packingArguments() {
         let argv = ArchivePacking.packingArguments(
             archiveOnDiskPath: "/Users/me/out.zip",
-            sourceDirectory: "/Users/me/src",
-            sourceNames: ["alpha.txt", "a file with spaces.txt", "sub"],
+            sources: PackSource.all(
+                inDirectory: "/Users/me/src",
+                names: ["alpha.txt", "a file with spaces.txt", "sub"]
+            ),
             format: .zip,
             level: .normal
         )
@@ -26,12 +28,60 @@ struct ArchivePackingTests {
         // as literal filesystem paths, so a name with glob metacharacters is left untouched.
         let argv = ArchivePacking.packingArguments(
             archiveOnDiskPath: "/p/out.zip",
-            sourceDirectory: "/p/src",
-            sourceNames: ["weird[1].txt", "*.log"],
+            sources: PackSource.all(
+                inDirectory: "/p/src",
+                names: ["weird[1].txt", "*.log"]
+            ),
             format: .zip,
             level: .normal
         )
         #expect(argv.suffix(2) == ["weird[1].txt", "*.log"])
+    }
+
+    // MARK: - Sources that are not in one directory
+
+    @Test("a set gathered from several directories gets a -C before each change")
+    func scatteredSourcesEachNameTheirDirectory() {
+        // What a staged pack looks like: `MaterializeRunner` gives every downloaded object its own
+        // directory so two objects called `report.pdf` from different prefixes cannot collide, so a
+        // set fetched off a server is N directories of one file each (PLAN.md §M24 Slice 6).
+        let argv = ArchivePacking.packingArguments(
+            archiveOnDiskPath: "/tmp/out.zip",
+            sources: [
+                PackSource(directory: "/tmp/stage/1", name: "alpha.txt"),
+                PackSource(directory: "/tmp/stage/2", name: "beta.txt")
+            ],
+            format: .zip,
+            level: .normal
+        )
+        #expect(argv == [
+            "-a", "-c", "-f", "/tmp/out.zip",
+            "-C", "/tmp/stage/1", "alpha.txt",
+            "-C", "/tmp/stage/2", "beta.txt"
+        ])
+    }
+
+    @Test("consecutive sources sharing a directory collapse back to one -C")
+    func oneDirectoryStillSendsOneFlag() {
+        // The property that makes the general form safe to adopt everywhere: an ordinary pack of a
+        // flat listing, and an archive rewrite's extracted tree, send exactly what they always did.
+        let scattered = ArchivePacking.packingArguments(
+            archiveOnDiskPath: "/p/out.zip",
+            sources: [
+                PackSource(directory: "/p/src", name: "a.txt"),
+                PackSource(directory: "/p/src", name: "b.txt"),
+                PackSource(directory: "/p/other", name: "c.txt"),
+                PackSource(directory: "/p/other", name: "d.txt")
+            ],
+            format: .zip,
+            level: .normal
+        )
+        #expect(scattered == [
+            "-a", "-c", "-f", "/p/out.zip",
+            "-C", "/p/src", "a.txt", "b.txt",
+            "-C", "/p/other", "c.txt", "d.txt"
+        ])
+        #expect(scattered.count(where: { $0 == "-C" }) == 2)
     }
 
     // MARK: - Compression level
@@ -43,8 +93,7 @@ struct ArchivePackingTests {
         for (level, value) in [(ArchivePacking.CompressionLevel.fast, "1"), (.maximum, "9")] {
             let argv = ArchivePacking.packingArguments(
                 archiveOnDiskPath: "/p/out.zip",
-                sourceDirectory: "/p/src",
-                sourceNames: ["a.txt"],
+                sources: PackSource.all(inDirectory: "/p/src", names: ["a.txt"]),
                 format: .zip,
                 level: level
             )
@@ -61,8 +110,7 @@ struct ArchivePackingTests {
         for format in ArchivePacking.Format.allCases {
             let argv = ArchivePacking.packingArguments(
                 archiveOnDiskPath: "/p/out\(format.suffix)",
-                sourceDirectory: "/p/src",
-                sourceNames: ["a.txt"],
+                sources: PackSource.all(inDirectory: "/p/src", names: ["a.txt"]),
                 format: format,
                 level: .normal
             )
@@ -79,8 +127,7 @@ struct ArchivePackingTests {
         for level in ArchivePacking.CompressionLevel.allCases {
             let argv = ArchivePacking.packingArguments(
                 archiveOnDiskPath: "/p/out.tar",
-                sourceDirectory: "/p/src",
-                sourceNames: ["a.txt"],
+                sources: PackSource.all(inDirectory: "/p/src", names: ["a.txt"]),
                 format: .tar,
                 level: level
             )

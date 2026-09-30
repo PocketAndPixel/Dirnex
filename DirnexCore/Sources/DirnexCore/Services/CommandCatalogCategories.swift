@@ -79,7 +79,7 @@ extension CommandCatalog {
                 "largest", "what is taking up"
             ],
             // ⌃B for "bars", on the ⌃-letter layer the app's own panel modes already use (⌃Q quick
-            // view, ⌃T tags, ⌃D favorites). No conflict with the terminal drawer's reasoning: that one
+            // view, ⌃T tags). No conflict with the terminal drawer's reasoning: that one
             // fled to ⌃` precisely because its keystrokes belong to a shell, and this mode's do not.
             shortcut: CommandShortcut(key: "b", modifiers: .control)
         ),
@@ -157,13 +157,93 @@ extension CommandCatalog {
             shortcut: nil
         ),
         Command(
+            id: "view.downloadPreview",
+            title: "Download Preview",
+            category: .view,
+            keywords: [
+                "quick view", "download", "fetch", "remote", "server", "s3", "sftp", "ftp", "large",
+                "placeholder"
+            ],
+            // The placeholder card's Download button, from the keyboard — the preview surface refuses
+            // first responder so the arrows keep driving the list, which left the mouse as the only
+            // way to press it. ⌘D rather than the ⌃-letter layer ⌃Q lives on: a menu key equivalent
+            // is searched before the field editor's `keyDown:`, so ⌃D would take delete-forward out
+            // of every text field in the app, enabled or not (docs/NOTES.md ▸ AppKit). ⌘D has no
+            // text-system meaning to lose.
+            shortcut: CommandShortcut(key: "d", modifiers: .command)
+        ),
+        // The preview's zoom, on the keys every Mac browser and viewer uses. A menu key equivalent
+        // with ⌘ has no text-system meaning to take away, and the three are disabled whenever the
+        // preview on screen cannot zoom (a photograph, Quick Look's own view, no preview at all).
+        // ⌘+ is the binding a user sees and can change; a plain ⌘= press is caught by a hidden
+        // alias in the menu, because an item bound to "+" measurably does not match it
+        // (`MainMenuBuilder`).
+        Command(
+            id: "view.quickViewZoomIn",
+            title: "Zoom In",
+            category: .view,
+            keywords: [
+                "quick view",
+                "preview",
+                "zoom",
+                "larger",
+                "bigger",
+                "magnify",
+                "enlarge",
+                "cmd +"
+            ],
+            shortcut: CommandShortcut(key: "+", modifiers: .command)
+        ),
+        Command(
+            id: "view.quickViewZoomOut",
+            title: "Zoom Out",
+            category: .view,
+            keywords: ["quick view", "preview", "zoom", "smaller", "shrink", "reduce", "cmd -"],
+            shortcut: CommandShortcut(key: "-", modifiers: .command)
+        ),
+        Command(
+            id: "view.quickViewResetZoom",
+            title: "Reset Zoom",
+            category: .view,
+            keywords: [
+                "quick view",
+                "preview",
+                "zoom",
+                "actual size",
+                "fit",
+                "original",
+                "100",
+                "cmd 0"
+            ],
+            // "Reset" rather than Safari's "Actual Size": a Word page opens fitted to the surface and
+            // a sheet at its own size, and ⌘0 goes back to whichever it was — not to an absolute 100 %.
+            shortcut: CommandShortcut(key: "0", modifiers: .command)
+        ),
+        Command(
+            // The id keeps "Table" from when only a CSV could be filtered: it is a translation key.
+            id: "view.quickViewFilterTable",
+            title: "Filter",
+            category: .view,
+            keywords: [
+                "quick view", "preview", "csv", "tsv", "table", "rows", "json", "xml", "plist",
+                "tree", "keys", "names", "values", "text", "source", "matches",
+                "page", "html", "markdown", "pdf", "document",
+                "filter", "search", "find", "narrow", "option cmd f"
+            ],
+            // ⌥⌘F beside the ⌘F that Favorites keeps (Total Commander muscle memory): Find-shaped, and
+            // free. A ⌘ chord takes nothing from a text field, and the item is disabled whenever the
+            // preview is showing none of a table, a tree, a text, a rendered page or a PDF; over the
+            // last three it finds in place (`BrowserWindowController+QuickViewFilter`).
+            shortcut: CommandShortcut(key: "f", modifiers: [.command, .option])
+        ),
+        Command(
             id: "view.terminal",
             title: "Terminal Drawer",
             category: .view,
             keywords: ["shell", "console", "command", "line", "zsh", "bash", "prompt", "drawer"],
-            // ⌃` rather than the ⌃-letter layer the app's own popups use (⌃T tags, ⌃D favorites,
-            // ⌃Q quick view): every one of those letters means something to a shell — ⌃D is EOF,
-            // ⌃Q is XON — and the drawer is the one surface where the user's keystrokes are meant
+            // ⌃` rather than the ⌃-letter layer the app's own popups use (⌃T tags, ⌃B size bars,
+            // ⌃Q quick view): every one of those letters means something to a shell — ⌃Q is XON,
+            // ⌃B moves back — and the drawer is the one surface where the user's keystrokes are meant
             // to belong to somebody else. ⌃` is VS Code's gesture for exactly this drawer, and no
             // shell wants it.
             shortcut: CommandShortcut(key: "`", modifiers: .control)
@@ -205,6 +285,37 @@ extension CommandCatalog {
             keywords: [
                 "sftp", "ssh", "smb", "share", "mount", "nas", "remote", "network",
                 "server", "connect", "host"
+            ]
+        ),
+        // The vault commands sit beside Connect to Server because they are the same kind of thing:
+        // a place that has to be opened before it can be browsed (PLAN.md §M19). No shortcuts —
+        // creating one is rare and deliberate, and a stray chord that unmounts a volume somebody is
+        // working in is exactly the gesture not to hand out by default. All three are rebindable.
+        Command(
+            id: "go.newVault",
+            title: "New Vault…",
+            category: .navigation,
+            keywords: [
+                "vault", "encrypt", "encrypted", "password", "passphrase", "secure", "private",
+                "safe", "disk image", "sparsebundle", "dmg", "hide", "protect"
+            ]
+        ),
+        Command(
+            id: "go.unlockVault",
+            title: "Unlock Vault",
+            category: .navigation,
+            keywords: [
+                "vault", "unlock", "open", "mount", "attach", "decrypt", "passphrase", "password",
+                "sparsebundle", "dmg", "disk image"
+            ]
+        ),
+        Command(
+            id: "go.lockVault",
+            title: "Lock Vault",
+            category: .navigation,
+            keywords: [
+                "vault", "lock", "close", "unmount", "eject", "detach", "secure", "sparsebundle",
+                "dmg", "disk image"
             ]
         ),
         Command(
@@ -249,11 +360,29 @@ extension CommandCatalog {
             shortcut: CommandShortcut(key: "↓", modifiers: [.option, .function])
         ),
         Command(
+            id: "go.places",
+            title: "Places…",
+            category: .navigation,
+            keywords: [
+                "places", "sidebar", "locations", "volumes", "servers", "vaults", "tags",
+                "recents", "icloud", "cmd g"
+            ],
+            // ⌘G, beside ⌘F for the favorites sub-list it generalizes. The pair is macOS's
+            // Find / Find Next, which this app spends elsewhere on purpose: Dirnex's search is
+            // ⌥F7 and it declares no Find menu, so neither chord is claimed. Both are free of the
+            // field-editor problem the old ⌃D/⌃G pair had to reason about — the text system binds
+            // no ⌘-letter of its own (a ⌘ chord only reaches a field editor through a menu item's
+            // key equivalent), so this needs no carve-out and means one thing everywhere.
+            shortcut: CommandShortcut(key: "g", modifiers: .command)
+        ),
+        Command(
             id: "go.favorites",
             title: "Favorites…",
             category: .navigation,
-            keywords: ["favorites", "bookmarks", "pinned", "jump", "ctrl d"],
-            shortcut: CommandShortcut(key: "d", modifiers: .control)
+            keywords: ["favorites", "bookmarks", "pinned", "jump", "cmd f"],
+            // ⌘F, with ⌘G on the Places menu that contains it — see `go.places` for why the Find
+            // pair is available here.
+            shortcut: CommandShortcut(key: "f", modifiers: .command)
         ),
         Command(
             id: "go.addToFavorites",

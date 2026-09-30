@@ -78,7 +78,7 @@ struct FileAttributeIOTests {
             var locked = unlocked
             locked.flags = [.userImmutable]
             try applyChange(from: unlocked, to: locked, on: path)
-            #expect(try FileAttributeIO.read(at: path).attributes.flags.isLocked)
+            #expect(try FileAttributeIO.read(at: path).attributes.flags.contains(.userImmutable))
 
             // Change its mode while it is locked — the plan unlocks, applies, relocks.
             let current = try FileAttributeIO.read(at: path).attributes
@@ -92,7 +92,7 @@ struct FileAttributeIOTests {
 
             let after = try FileAttributeIO.read(at: path).attributes
             #expect(after.permissions.rawValue == 0o600)
-            #expect(after.flags.isLocked)
+            #expect(after.flags.contains(.userImmutable))
 
             // Unlock so the tree can be torn down (removeItem fails on an immutable file).
             var cleared = after
@@ -140,7 +140,7 @@ struct FileAttributeIOTests {
 
             let after = try FileAttributeIO.read(at: path).attributes
             #expect(after.permissions.rawValue == 0o600)
-            #expect(after.flags.isLocked)
+            #expect(after.flags.contains(.userImmutable))
             let readBack = try AccessControlListIO.read(at: path)
             #expect(readBack.entries.count == 1)
             #expect(readBack.entries[0].disposition == .deny)

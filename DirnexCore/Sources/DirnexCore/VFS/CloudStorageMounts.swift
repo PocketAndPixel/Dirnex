@@ -23,7 +23,7 @@ public struct CloudStorageMount: Sendable, Hashable, Identifiable {
     public let providerID: String
     /// Which account this mount belongs to — the part after the first hyphen, an email address
     /// for Google Drive and a tenant or plan name for the others. `nil` for a provider that
-    /// mounts one unlabelled folder.
+    /// mounts one unlabeled folder.
     public let accountLabel: String?
     /// What the sidebar row is called, already disambiguated against the other mounts.
     public let name: String
@@ -75,7 +75,7 @@ public struct CloudStorageMount: Sendable, Hashable, Identifiable {
 ///
 /// Every File Provider-based sync client macOS 12+ hosts puts its folder here under a
 /// `<Provider>-<account>` name, so one scan covers Google Drive and everything alongside it.
-/// The scan is deliberately provider-agnostic: recognising only `GoogleDrive-*` would be the
+/// The scan is deliberately provider-agnostic: recognizing only `GoogleDrive-*` would be the
 /// same code with a narrower answer, and would need rewriting the first time Dropbox is
 /// installed.
 public enum CloudStorageMounts {
@@ -86,6 +86,29 @@ public enum CloudStorageMounts {
     /// never seen the onboarding sheet.
     public static func cloudStorage(home: String = NSHomeDirectory()) -> VFSPath {
         VFSPath.local(home).appending("Library").appending("CloudStorage")
+    }
+
+    /// Whether `path` is `~/Library/CloudStorage` or anything inside it — a pure string test, no
+    /// I/O, so it is free to ask on an error path.
+    ///
+    /// **This is the "is a macOS grant even relevant here" question**, which is why it names the
+    /// directory rather than a mount: a refusal on `CloudStorage` itself is as far outside TCC's
+    /// reach as one three levels into somebody's Drive. Full Disk Access does not gate this tree
+    /// (probed 2026-07-21, ▸ ``cloudStorage(home:)``), so a permission failure here is the sync
+    /// client's answer about the account's own sharing and **not** something System Settings can
+    /// change — the same "a sentence naming a remedy on *this machine* is making a claim about
+    /// where the failure happened" rule that already splits the remote case (PLAN.md §M26 Slice 3).
+    ///
+    /// Deliberately **not** ``TrashLanding/providerRoots``, which lists this directory alongside
+    /// `~/Library/Mobile Documents` because both refuse `FileManager.trashItem`. They are opposites
+    /// for *this* question: `Mobile Documents` is TCC-gated, so Full Disk Access is exactly the
+    /// right advice for an iCloud path and exactly the wrong advice for a `CloudStorage` one. One
+    /// pair of roots, two questions, and only a name keeps them from being merged.
+    public static func isInsideCloudStorage(
+        _ path: VFSPath,
+        home: String = NSHomeDirectory()
+    ) -> Bool {
+        path.backend == .local && path.isSelfOrDescendant(of: cloudStorage(home: home))
     }
 
     /// Every provider mount that exists right now, ordered by display name, each pointing at the
@@ -200,16 +223,33 @@ public enum CloudStorageMounts {
 
     /// Splits `GoogleDrive-someone@gmail.com` into its provider and its account.
     ///
-    /// The split is at the **first** hyphen, which matters: a Google account label is an email
-    /// address and those routinely contain hyphens (`some-one@gmail.com`), so splitting at the
-    /// last one would hand back a truncated address and a provider that is not one. The
-    /// assumption this does rest on is that no provider's own name contains a hyphen — true of
-    /// every client that ships one of these folders today.
+    /// The fallback split is at the **first** hyphen, which matters: a Google account label is an
+    /// email address and those routinely contain hyphens (`some-one@gmail.com`), so splitting at
+    /// the last one would hand back a truncated address and a provider that is not one.
+    ///
+    /// That rule alone assumes no provider's own name contains a hyphen, and OneDrive breaks it:
+    /// it mounts a SharePoint document library as `OneDrive-SharedLibraries-<tenant>`, where the
+    /// first hyphen falls *inside* the provider's name. Taking it there yields the account
+    /// `SharedLibraries-Contoso`, which reaches the sidebar two ways and is wrong both times — as a
+    /// bare "OneDrive" when it is the only OneDrive-family mount (it is not the user's own drive),
+    /// and otherwise as an internal English token in a sidebar that ships in fourteen languages.
+    ///
+    /// So a known provider id wins over the hyphen, longest first — `OneDrive-SharedLibraries`
+    /// before `OneDrive`, which is the whole reason the order matters. Everything not in the table
+    /// falls back to the hyphen exactly as before.
     static func split(directoryName: String) -> (providerID: String, accountLabel: String?) {
+        for providerID in knownProviderIDs where directoryName.hasPrefix("\(providerID)-") {
+            let account = String(directoryName.dropFirst(providerID.count + 1))
+            return (providerID, account.isEmpty ? nil : account)
+        }
         guard let hyphen = directoryName.firstIndex(of: "-") else { return (directoryName, nil) }
         let account = String(directoryName[directoryName.index(after: hyphen)...])
         return (String(directoryName[..<hyphen]), account.isEmpty ? nil : account)
     }
+
+    /// The provider ids that must be matched whole rather than cut at the first hyphen, longest
+    /// first so a prefix never shadows the longer id it is a prefix *of*.
+    private static let knownProviderIDs = providerNames.keys.sorted { $0.count > $1.count }
 
     /// The row's label: the provider's name, or — when a second account of the same provider
     /// would otherwise make two rows identical — the **account first**, then the provider.
@@ -240,11 +280,23 @@ public enum CloudStorageMounts {
 
     /// Providers whose directory name is not how the product is written.
     ///
-    /// Only one entry, and that is the point rather than an omission: `Dropbox`, `OneDrive` and
-    /// `Box` all name their folder exactly as they name themselves, so falling back to the raw
-    /// prefix is *correct* for them, not a degradation. Google is the exception — its folder is
-    /// `GoogleDrive`, and the product is "Google Drive".
-    private static let providerNames = ["GoogleDrive": "Google Drive"]
+    /// Deliberately short: `Dropbox`, `OneDrive` and `Box` all name their folder exactly as they
+    /// name themselves, so falling back to the raw prefix is *correct* for them, not a degradation.
+    /// Two are not. Google's folder is `GoogleDrive` and the product is "Google Drive"; and
+    /// `OneDrive-SharedLibraries-<tenant>` is not OneDrive at all but a SharePoint document
+    /// library, which is a different product the user reaches for by a different name.
+    ///
+    /// These are brand names and are never translated, which is what makes the table the right
+    /// home for them rather than the string catalog — the same rule the section already follows by
+    /// leaving "Dropbox" and "Box" untranslated.
+    ///
+    /// The table doubles as ``knownProviderIDs``, so an entry added here also stops being cut at
+    /// its first hyphen. That is why `OneDrive` itself is absent: its folder name already reads
+    /// correctly, and adding it would only shadow the longer id.
+    private static let providerNames = [
+        "GoogleDrive": "Google Drive",
+        "OneDrive-SharedLibraries": "SharePoint"
+    ]
 
     private static func isDirectory(_ path: String, _ fileManager: FileManager) -> Bool {
         var isDirectory: ObjCBool = false

@@ -70,7 +70,7 @@ final class PanelTab {
     /// produced them — retained so "Save Search…" can persist a re-runnable saved search
     /// (PLAN.md §M4). `nil` for a normal directory tab. Session-scoped: a restored tab is never
     /// a results tab (search results aren't persisted), so this is never encoded.
-    var searchQuery: SpotlightQuery?
+    var searchQuery: FileQuery?
     var searchScope: VFSPath?
     /// The Git working tree this tab's directory belongs to, and the snapshot its rows are painted
     /// from (PLAN.md §M6) — both `nil` outside a repository, and the snapshot also `nil` until the
@@ -87,6 +87,11 @@ final class PanelTab {
     /// scan lands — and empty, not `nil`, in the ordinary folder the scan skipped. UI-only and
     /// session-scoped like the pairs above. Managed by `PanelViewController+SyncStatus`.
     var syncSnapshot: CloudSyncSnapshot?
+    /// Whether this tab's directory is a cloud directory, read once per directory off the main thread
+    /// — `isCloud` is `nil` while the read is in flight. Kept apart from `syncSnapshot` because the
+    /// badges can be switched off and Download Now / Remove Download must not go with them. UI-only
+    /// and session-scoped like the snapshots above. Managed by `PanelViewController+CloudLocalCopy`.
+    var cloudDirectoryReading: (path: VFSPath, isCloud: Bool?)?
     /// Whether this tab shows ncdu-style size bars, and the projection they are drawn from (PLAN.md
     /// §M6). Per tab rather than app-wide because the mode *spends* something to be on — measured,
     /// ~16 s of background walking for one `~` — so it belongs to the tab you pointed at a tree, not
@@ -117,6 +122,17 @@ final class PanelTab {
     /// always describes what is actually on screen. Session-scoped like the snapshots above.
     var mergedSources: [VFSPath] = []
 
+    /// Where each expanded **bucket row** in this tab's tree had its children listed from: the
+    /// `s3://` root the connection settled on, keyed by the `s3account:` row it hangs under.
+    ///
+    /// `mergedSources`' shape one level down — the tab's record of where rows on screen were
+    /// gathered from, recorded by the gather that produced them. A tree refresh re-reads every
+    /// listed directory through the same funnel the expansion used, so without this an open bucket
+    /// would be re-*connected* on every file operation: a second billed probe, a Keychain write and
+    /// a re-registration, to arrive at the root already recorded here. Session-scoped — a restored
+    /// tab has no live connection, and no bucket expansion to restore either.
+    var s3BucketRoots: [VFSPath: VFSPath] = [:]
+
     /// Drop everything that describes *results* rather than a place: the chip label and the query
     /// behind "Save Search…". Called when the tab stops showing a results listing — navigating a
     /// Trash or search tab to a real folder — because those three outlive the listing otherwise,
@@ -128,6 +144,27 @@ final class PanelTab {
         searchScope = nil
         mergedSources = []
     }
+
+    /// The account this **restored** tab has to reconnect before it can list, for a tab that came
+    /// back on a connected server (docs/LOCATION-SUPPORT.md ▸ "Session restore and workspaces drop
+    /// remote tabs"). `nil` for every local and archive tab, and for one whose connection is
+    /// already live.
+    ///
+    /// Kept after a successful reconnect rather than consumed, and that is deliberate: it costs
+    /// nothing (`CompositeBackend.isConnected` short-circuits ahead of it) and it is what the next
+    /// `persistState` writes back down for a tab the user never activated — otherwise a session
+    /// with five server tabs, of which one was looked at, would come back with one.
+    var pendingConnection: ServerEndpoint?
+    /// Why this tab is showing nothing, drawn on the status line until it lists — set only when a
+    /// **restored** tab could not be brought back and the app therefore has nobody to tell.
+    ///
+    /// A restore is a load the app performs on its own schedule, so the load-failure sheet is
+    /// withheld for it: nobody is waiting for the answer, and an alert over a window that is still
+    /// coming up is the shape docs/NOTES.md calls out as the one to withhold rather than relocate.
+    /// The pane is where it can be seen, and it is not transient — a sentence that clears itself
+    /// after four seconds would be gone before the window finished opening. Cleared by the load
+    /// that succeeds, so re-entering the tab and connecting removes it with nothing to reset.
+    var offlineReason: TabOfflineReason?
 
     /// Whether this tab still has a restored cursor or marks waiting to be anchored.
     var hasPendingRestore: Bool {

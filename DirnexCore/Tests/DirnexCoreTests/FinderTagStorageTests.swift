@@ -62,10 +62,10 @@ struct FinderTagStorageTests {
         #expect(try FinderTagStorage.tags(at: tree.vfsPath("plain.txt")).isEmpty)
     }
 
-    /// The crux of the read path: colours, which the documented `tagNamesKey` reader drops entirely
+    /// The crux of the read path: colors, which the documented `tagNamesKey` reader drops entirely
     /// (it answers `["Red"]` for a file the system stored as `Red\n6`). A column that cannot show a
-    /// colour is the whole reason this reads the attribute by hand.
-    @Test("reads names and colours the system wrote")
+    /// color is the whole reason this reads the attribute by hand.
+    @Test("reads names and colors the system wrote")
     func readsSystemWrittenTags() throws {
         let tree = try TempTree()
         defer { tree.cleanup() }
@@ -77,7 +77,7 @@ struct FinderTagStorageTests {
         #expect(tags.map(\.color) == [.red, .blue, FinderTagColor.none])
 
         // For contrast, the reader the obvious implementation would have used. It agrees on the
-        // names and cannot express a colour at all — which is what rules it out for the column.
+        // names and cannot express a color at all — which is what rules it out for the column.
         let viaResourceValues = try URL(fileURLWithPath: file).resourceValues(
             forKeys: [.tagNamesKey]
         ).tagNames
@@ -135,14 +135,14 @@ struct FinderTagStorageTests {
     }
 
     /// The reason this type writes the attribute by hand. `URLResourceValues.tagNames` takes bare
-    /// names and looks each colour up in a global database that a write of ours never registers
-    /// into, so expressing an edit through it strips the colour off every custom tag — probed:
+    /// names and looks each color up in a global database that a write of ours never registers
+    /// into, so expressing an edit through it strips the color off every custom tag — probed:
     /// after storing a purple `Zebra`, setting `tagNames = ["Zebra"]` writes `Zebra\n0`.
     ///
     /// The failure cannot be asserted here, because that setter is macOS 26+ and this package
     /// targets 14 — it would not compile. What *is* asserted is the property that matters: an edit
-    /// preserves the colour of a tag the system itself has no colour for.
-    @Test("a custom tag's colour survives an unrelated edit")
+    /// preserves the color of a tag the system itself has no color for.
+    @Test("a custom tag's color survives an unrelated edit")
     func customColorSurvivesRewrite() throws {
         let tree = try TempTree()
         defer { tree.cleanup() }
@@ -167,10 +167,10 @@ struct FinderTagStorageTests {
         let path = tree.vfsPath("a.txt")
 
         try FinderTagStorage.add(FinderTag(name: "Work", color: .blue), to: path)
-        // The same tag, in a different spelling and colour.
+        // The same tag, in a different spelling and color.
         try FinderTagStorage.add(FinderTag(name: "work", color: .red), to: path)
         #expect(try FinderTagStorage.tags(at: path) == [FinderTag(name: "Work")])
-        #expect(try FinderTagStorage.tags(at: path).first?.color == .blue) // the first write's colour stands
+        #expect(try FinderTagStorage.tags(at: path).first?.color == .blue) // the first write's color stands
     }
 
     @Test("removing a tag leaves the others, removing an absent one is a no-op")
@@ -222,7 +222,7 @@ struct FinderTagStorageTests {
         try FinderTagStorage.setTags([FinderTag(name: "Red", color: .red)], at: path)
         #expect(legacyLabel(file) == 6)
 
-        // Last coloured tag wins — the rule read off the system's own writes.
+        // Last colored tag wins — the rule read off the system's own writes.
         try FinderTagStorage.setTags(
             [FinderTag(name: "Red", color: .red), FinderTag(name: "Orange", color: .orange)],
             at: path
@@ -231,7 +231,7 @@ struct FinderTagStorageTests {
     }
 
     /// Matches the system: a file tagged only `Work` has no FinderInfo record at all.
-    @Test("a colourless tag does not conjure a FinderInfo record")
+    @Test("a colorless tag does not conjure a FinderInfo record")
     func colorlessTagLeavesNoRecord() throws {
         let tree = try TempTree()
         defer { tree.cleanup() }
@@ -241,7 +241,7 @@ struct FinderTagStorageTests {
     }
 
     /// FinderInfo's other 31 bytes are type/creator codes and flags belonging to whoever wrote
-    /// them; setting a colour must not zero them.
+    /// them; setting a color must not zero them.
     @Test("the rest of the FinderInfo record survives a label change")
     func preservesOtherFinderInfoBytes() throws {
         let tree = try TempTree()
@@ -269,7 +269,7 @@ struct FinderTagStorageTests {
         var after = [UInt8](repeating: 0, count: 32)
         _ = getxattr(file, FinderTagStorage.finderInfoAttribute, &after, 32, 0, 0)
         #expect(Array(after[0..<8]) == [0x54, 0x45, 0x58, 0x54, 0x74, 0x74, 0x78, 0x74])
-        #expect(after[9] & 0b1000_0000 == 0b1000_0000) // the neighbouring bit is untouched
+        #expect(after[9] & 0b1000_0000 == 0b1000_0000) // the neighboring bit is untouched
         #expect((after[9] >> 1) & 7 == 4) // and the label is Blue
     }
 

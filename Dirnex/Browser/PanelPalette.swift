@@ -1,6 +1,6 @@
 import AppKit
 
-/// The three colours a Dirnex user owns (PLAN.md §M15 Slice 2), resolved against the system's own
+/// The three colors a Dirnex user owns (PLAN.md §M15 Slice 2), resolved against the system's own
 /// for whichever ones they have left alone.
 ///
 /// Pure presentation, so it lives in the app rather than in `DirnexCore` — the core picks the state,
@@ -8,8 +8,8 @@ import AppKit
 /// below are the one place that decides what "the system's own" is, so an untouched install draws
 /// through the identical `NSColor`s it did before this type existed.
 ///
-/// Deliberately three and no more. Finder tag dots have to match Finder's own colours, and the Git
-/// status letters and sync badges are *information* rather than decoration — recolouring them would
+/// Deliberately three and no more. Finder tag dots have to match Finder's own colors, and the Git
+/// status letters and sync badges are *information* rather than decoration — recoloring them would
 /// be letting the user rename the alphabet.
 struct PanelPalette: Equatable {
     /// Overrides `.controlAccentColor` at the path bar's current crumb, the active tab chip and the
@@ -27,12 +27,12 @@ struct PanelPalette: Equatable {
     /// the relationship between them is not one to re-derive.
     var cursor: NSColor?
 
-    /// The marked-row text colour — the hardcoded `.systemRed` in `FileCellView` before this
+    /// The marked-row text color — the hardcoded `.systemRed` in `FileCellView` before this
     /// existed. Unlike the selection blue this one was always Dirnex's decision rather than the
     /// system's, which is what makes it the most worthwhile of the three.
     var mark: NSColor?
 
-    /// An untouched install: every colour the system's.
+    /// An untouched install: every color the system's.
     static let followSystem = PanelPalette()
 
     /// Whether nothing has been overridden — the state in which every drawing site below hands back
@@ -42,10 +42,10 @@ struct PanelPalette: Equatable {
     var resolvedAccent: NSColor { accent ?? .controlAccentColor }
     var resolvedMark: NSColor { mark ?? .systemRed }
 
-    /// What text and glyphs draw in **on the cursor row**: white or black against a custom colour,
+    /// What text and glyphs draw in **on the cursor row**: white or black against a custom color,
     /// and — untouched — the system's own `.alternateSelectedControlTextColor`, verbatim.
     ///
-    /// Falling back to the system colour rather than deriving one for the default case is the whole
+    /// Falling back to the system color rather than deriving one for the default case is the whole
     /// reason "Follow System renders byte-identically" is a claim and not an aspiration. It is also
     /// necessary: see `foreground(on:)` for the measurement that shows a derivation would *not*
     /// reproduce what AppKit does on its own blue.
@@ -63,7 +63,7 @@ struct PanelPalette: Equatable {
     /// White or black on `background`, whichever the user can actually read.
     ///
     /// **The rule is "white unless it drops below 3:1", not "whichever contrasts more", and the
-    /// difference is not academic.** Measured against the real system colours in both appearances:
+    /// difference is not academic.** Measured against the real system colors in both appearances:
     ///
     /// - AppKit's own emphasized selection `#0064E1` has a relative luminance of 0.1455, where white
     ///   scores 5.37:1 and black 3.91:1 — white, and both rules agree.
@@ -80,13 +80,13 @@ struct PanelPalette: Equatable {
     /// choices are legible.
     ///
     /// Literal white and black rather than a dynamic pair: the contrast was computed against one
-    /// specific colour, and a foreground that flipped with the appearance would walk away from it.
+    /// specific color, and a foreground that flipped with the appearance would walk away from it.
     static func foreground(on background: NSColor) -> NSColor {
         contrastRatio(between: .white, and: background) >= 3 ? .white : .black
     }
 
-    /// WCAG 2.1 relative luminance, over sRGB. `0` for a colour that cannot be converted (a pattern
-    /// image colour), which is not a case the picker can produce.
+    /// WCAG 2.1 relative luminance, over sRGB. `0` for a color that cannot be converted (a pattern
+    /// image color), which is not a case the picker can produce.
     static func relativeLuminance(of color: NSColor) -> Double {
         guard let srgb = color.usingColorSpace(.sRGB) else { return 0 }
         func linear(_ channel: CGFloat) -> Double {
@@ -107,10 +107,10 @@ struct PanelPalette: Equatable {
 
     // MARK: - Persistence
 
-    /// `#RRGGBB`, sRGB, or `nil` for a colour with no such representation. Hex rather than an
+    /// `#RRGGBB`, sRGB, or `nil` for a color with no such representation. Hex rather than an
     /// archived `NSColor` because a preference someone may have to inspect or hand-edit should be
     /// readable (PLAN.md §2, "boring and debuggable") — and probed to be lossless: every system
-    /// colour the app draws round-trips through eight bits a channel within 1/255.
+    /// color the app draws round-trips through eight bits a channel within 1/255.
     static func hex(from color: NSColor) -> String? {
         guard let srgb = color.usingColorSpace(.sRGB) else { return nil }
         func channel(_ value: CGFloat) -> Int { Int((min(max(value, 0), 1) * 255).rounded()) }
@@ -125,7 +125,7 @@ struct PanelPalette: Equatable {
     /// The inverse, tolerant on the way in and strict about what it accepts: a leading `#` is
     /// optional, case is ignored, and **anything else is `nil`** — which the preference reads as
     /// Follow System. A hand-edited or newer-build value therefore degrades to the shipped default
-    /// rather than to a colour nobody chose, the same way `AppPreferences` reads `rowDensity`.
+    /// rather than to a color nobody chose, the same way `AppPreferences` reads `rowDensity`.
     static func color(fromHex hex: String) -> NSColor? {
         var text = Substring(hex.trimmingCharacters(in: .whitespaces))
         if text.hasPrefix("#") { text = text.dropFirst() }

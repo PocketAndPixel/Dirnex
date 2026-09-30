@@ -163,6 +163,89 @@ struct TextPreviewTests {
         #expect(!preview.isTruncated)
     }
 
+    /// `FileHandle.read(upToCount:)` answers `nil` rather than empty data at the end of a file, and
+    /// for an empty file that is the first read, so an empty `.txt` used to go to Quick Look.
+    @Test("an empty file reads as empty text")
+    func readsEmptyFile() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.writeFile("empty.txt", contents: "")
+
+        let preview = try #require(
+            TextPreview.read(contentsOf: tree.root.appendingPathComponent("empty.txt"))
+        )
+        #expect(preview.text.isEmpty)
+        #expect(!preview.isTruncated)
+    }
+
+    @Test("a binary is refused having read only the first sniffLength bytes")
+    func binaryStopsAtTheSniff() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        let url = tree.root.appendingPathComponent("blob")
+        // A Mach-O's shape: the magic, then a NUL four bytes in, then a long body.
+        var bytes = Data([0xCF, 0xFA, 0xED, 0xFE, 0x00])
+        bytes += Data(repeating: 0x41, count: 64 * 1024)
+        try bytes.write(to: url)
+
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        #expect(TextPreview.read(from: handle, byteLimit: TextPreview.byteLimit) == nil)
+        #expect(handle.offsetInFile == UInt64(TextPreview.sniffLength))
+    }
+
+    @Test("a text file longer than the sniff is read whole")
+    func textPastTheSniffIsReadWhole() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        let body = String(repeating: "line of text\n", count: 2000)
+        try tree.writeFile("long.conf", contents: body)
+
+        let preview = try #require(
+            TextPreview.read(contentsOf: tree.root.appendingPathComponent("long.conf"))
+        )
+        #expect(preview.text.utf8.count > TextPreview.sniffLength)
+        #expect(preview.text == body)
+    }
+
+    @Test("a NUL past the sniff still means binary")
+    func nulPastTheSniff() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        let url = tree.root.appendingPathComponent("late-nul")
+        let bytes = Data(repeating: 0x61, count: TextPreview.sniffLength * 2) + Data([0x00, 0x61])
+        try bytes.write(to: url)
+
+        #expect(TextPreview.read(contentsOf: url) == nil)
+    }
+
+    /// The sniff reads one byte past a small limit, and that byte is not one the decode would see.
+    @Test("a NUL just past the byte limit is not read as binary")
+    func nulPastTheLimit() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        let url = tree.root.appendingPathComponent("cut")
+        try (Data(repeating: 0x61, count: 1000) + Data([0x00]) + Data(repeating: 0x61, count: 999))
+            .write(to: url)
+
+        let preview = try #require(TextPreview.read(contentsOf: url, byteLimit: 1000))
+        #expect(preview.text.count == 1000)
+        #expect(preview.isTruncated)
+    }
+
+    /// UTF-16 is full of NULs, and its byte-order mark is what tells it from a binary.
+    @Test("UTF-16 with a byte-order mark and longer than the sniff is read, not refused")
+    func utf16PastTheSniff() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        let text = String(repeating: Self.cyrillic, count: 200)
+        let url = tree.root.appendingPathComponent("wide.txt")
+        try (Data([0xFF, 0xFE]) + #require(text.data(using: .utf16LittleEndian))).write(to: url)
+
+        let preview = try #require(TextPreview.read(contentsOf: url))
+        #expect(preview.text == text)
+    }
+
     @Test("an unreadable path is nil, so the caller falls back to Quick Look")
     func missingFile() throws {
         let tree = try TempTree()

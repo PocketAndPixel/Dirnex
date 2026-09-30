@@ -6,7 +6,7 @@ import DirnexCore
 ///
 /// It is its own object rather than more stored properties on `ConnectServerForm` because that class
 /// already sits at SwiftLint's `type_body_length` with two protocols in it; a third would not fit,
-/// and the FTP rows have enough behaviour of their own (the security picker retargets the port, the
+/// and the FTP rows have enough behavior of their own (the security picker retargets the port, the
 /// anonymous checkbox hides the credential rows) to be worth reading in one place.
 ///
 /// **The security picker defaults to FTPS**, which is the resolution of PLAN.md §7's open question:
@@ -43,6 +43,20 @@ final class ConnectServerFTPFields {
     /// Whether FTP is the currently selected protocol, so the conditional rows stay hidden for the
     /// other two even as the security mode or the anonymous checkbox change.
     private var ftpSelected = false
+
+    /// The certificate pin a prefilled server arrived with, and the location it was pinned *for*.
+    ///
+    /// It has no row of its own — trust is answered in a dialog, not typed — and that is exactly why
+    /// it needs carrying by hand: everything else the record holds is a field the form can read
+    /// back, so a pin left out of ``readForm(saveName:)`` is silently erased by any edit. It was,
+    /// until 2026-08-13, and the erasure is quiet in the way this project keeps finding: the record
+    /// still connects, because the connect flow simply asks the user to trust the certificate again.
+    ///
+    /// Paired with its location so it can be **dropped when the server changes**. A pin belongs to
+    /// one endpoint's certificate, so re-pointing a record at another host must not carry the old
+    /// answer over — the new server deserves ordinary verification, and a mismatched pin would
+    /// present it as a *changed* certificate, which is the one alarm that must mean something.
+    private var trusted: (publicKey: String, location: FTPLocation)?
 
     /// The field to focus when FTP is the selected protocol.
     var firstResponder: NSView { host }
@@ -152,7 +166,12 @@ final class ConnectServerFTPFields {
 
     // MARK: - Prefill
 
-    func apply(location: FTPLocation, authentication: FTPAuthentication) {
+    func apply(
+        location: FTPLocation,
+        authentication: FTPAuthentication,
+        trustedPublicKey: String? = nil
+    ) {
+        trusted = trustedPublicKey.map { (publicKey: $0, location: location) }
         host.stringValue = location.host
         port.stringValue = String(location.port)
         user.stringValue = location.username
@@ -164,7 +183,7 @@ final class ConnectServerFTPFields {
         if case .anonymous = authentication {
             anonymousCheckbox.state = .on
         } else {
-            password.stringValue = ServerKeychain.password(for: location) ?? ""
+            password.stringValue = SecretKeychain.password(for: location) ?? ""
         }
         syncAnonymousField()
     }
@@ -187,7 +206,11 @@ final class ConnectServerFTPFields {
                 security: security
             )
             return ConnectServerPrompt.Form(
-                endpoint: .ftp(location: location, authentication: .anonymous),
+                endpoint: .ftp(
+                    location: location,
+                    authentication: .anonymous,
+                    trustedPublicKey: pin(for: location)
+                ),
                 password: nil,
                 saveName: saveName
             )
@@ -207,9 +230,32 @@ final class ConnectServerFTPFields {
             security: security
         )
         return ConnectServerPrompt.Form(
-            endpoint: .ftp(location: location, authentication: .password),
+            endpoint: .ftp(
+                location: location,
+                authentication: .password,
+                trustedPublicKey: pin(for: location)
+            ),
             password: secretValue,
             saveName: saveName
         )
+    }
+
+    /// The prefilled certificate pin, kept only while the form still describes the server it was
+    /// pinned for.
+    ///
+    /// The comparison is over the whole ``FTPLocation`` — host, port *and* security mode — because
+    /// each of the three changes which certificate is presented, or whether there is one at all.
+    /// The username is part of that value and is the one component that cannot matter, so a pure
+    /// credential edit deliberately compares equal on everything else and is handled by rebuilding
+    /// the location with the stored user before asking.
+    private func pin(for location: FTPLocation) -> String? {
+        guard let trusted else { return nil }
+        let sameServer = FTPLocation(
+            host: trusted.location.host,
+            port: trusted.location.port,
+            username: location.username,
+            security: trusted.location.security
+        )
+        return sameServer == location ? trusted.publicKey : nil
     }
 }

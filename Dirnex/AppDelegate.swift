@@ -34,16 +34,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // what makes AppKit ask `PanelViewController.validRequestor` at all.
         NSApp.registerServicesMenuSendTypes([.fileURL], returnTypes: [])
 
-        // Clear any archive copy-out temp files and rewrite scratch dirs left by a previous session
-        // (PLAN.md §M4 F5 copy-out / F8 delete). Safe here — nothing is extracting or rewriting yet,
-        // so there's no in-flight operation to race.
+        // Clear any archive copy-out temp files, rewrite scratch dirs and downloaded remote copies
+        // left by a previous session (PLAN.md §M4 F5 copy-out / F8 delete, §M21 Slice 10). Safe here
+        // — nothing is extracting, rewriting or fetching yet, so there's no in-flight operation to
+        // race. The remote one also matters for what it *removes*: a session's downloads are the
+        // user's files sitting in a temp directory, so they do not outlive the session that fetched
+        // them any longer than the OS makes unavoidable.
         ArchiveExtractor.purgeTemporaries()
         ArchiveWriter.purgeTemporaries()
+        RemoteFileCache.purgeTemporaries()
+        CompositeBackend.purgeTemporaries()
+        // Quick View's converted office documents: copies of the user's documents as HTML and PDF.
+        QuickLookDocumentConverter.purgeTemporaries()
+        // And the copies that make an archive rewrite undoable — pruned rather than purged, since
+        // the journal that names them survives relaunch too. Here for the same reason as the
+        // others: nothing is rewriting yet, and the persisted journal *is* the live set until a
+        // window exists to change it.
+        ArchiveUndoStorage.purgeUnreferenced()
 
         // Merge the standard places into the pin list before any window builds its sidebar
         // (PLAN.md §M8) — the Favorites section reads the favorites now, so an un-seeded store
         // would render an empty section for one launch.
         FavoritesStore.seedStandardPlacesIfNeeded()
+
+        // Start watching which volumes are unlocked vaults (PLAN.md §M19) before the first window
+        // restores its tabs, so a session restored *into* a vault that is still mounted is guarded
+        // by the first navigation rather than by the second.
+        VaultMounts.start()
+
+        // And start listening for the Show-unlocked-vaults-in-Finder preference changing, so
+        // flipping it in Settings reaches the vaults that are already open rather than only the
+        // next unlock (PLAN.md §M19).
+        VaultVisibility.start()
 
         // Rebuild the registry-driven menu whenever the user rebinds a shortcut, so the new
         // key equivalents take effect immediately (PLAN.md §M3 "rebindable shortcuts").
@@ -73,8 +95,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DisplacedScriptKeysNotice.presentIfNeeded(over: controller.window)
     }
 
+    /// Closing the browser window quits Dirnex — but only once there *is* one.
+    ///
+    /// AppKit does not answer this question at the moment a window closes: it schedules a deferred
+    /// check on a main-run-loop **timer**, and asks whenever that run loop is next pumped. So the
+    /// question can arrive while `applicationDidFinishLaunching` is still on the stack — before
+    /// `showWindow`, when the browser window exists but is not yet visible and every other window
+    /// AppKit knows about (a test bundle's, a SwiftUI `TUINSWindow`) is invisible too. A bare `true`
+    /// answers "no windows left, quit" to what is really "no windows *yet*", and the app terminates
+    /// itself mid-launch, cleanly, with exit code 0.
+    ///
+    /// That is what made `xcodebuild test` fail roughly half the time: the test bundle is injected
+    /// during launch and XCTest runs its own run loop, so the timer landed inside the launch window
+    /// and quit the host mid-suite — `_scheduleCheckForTerminateAfterLastWindowClosed` →
+    /// `NSApplication.terminate:` → `exit(0)`, which is why it left no crash report and why the
+    /// tests that were still in flight were reported as failures they never actually were.
+    /// Deferring to `browserWindowController` closes the window of exposure at its source: it is nil
+    /// for exactly the stretch between launch starting and the window being on screen.
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
+        browserWindowController != nil
     }
 
     /// Unmount only the SMB shares *we* mounted, leaving any Finder-mounted share as the user had it
@@ -86,6 +125,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         browserWindowController?.persistTabState()
         SMBMounter.shared.unmountOwnedMounts()
         browserWindowController?.terminateTerminalShell()
+        // A converted GoPro RAW is ~23 MB of temporary DNG per file previewed, so a session's worth
+        // of them is worth taking with us rather than leaving for whenever macOS next sweeps its
+        // temporary directory.
+        GPRConverter.shared.purge()
     }
 
     @objc private func rebuildMainMenu() {

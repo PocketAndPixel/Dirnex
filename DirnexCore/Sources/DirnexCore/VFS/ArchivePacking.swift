@@ -9,8 +9,9 @@ import Foundation
 /// directly. `bsdtar -a -c -f <archive> -C <sourceDir> <name>…` creates the archive with the
 /// format inferred from the archive's own suffix (`-a`) and stores each source under its bare
 /// name relative to `<sourceDir>` (`-C`), so the archive holds `docs/…`, not the source's
-/// absolute path. Every selected item shares one parent — the pane's current directory — so a
-/// single `-C` covers them all. Unlike extraction, the create-side arguments are literal file
+/// absolute path. Each source names its own directory (``PackSource``) because a staged set is one
+/// directory per file and a tree can mark rows at two depths; where they agree, the flag collapses
+/// to the single `-C` this always sent. Unlike extraction, the create-side arguments are literal file
 /// paths, not glob patterns (validated against bsdtar 3.5.3 / libarchive 3.7.4), so no member
 /// escaping is needed.
 public enum ArchivePacking {
@@ -95,11 +96,19 @@ public enum ArchivePacking {
         }
     }
 
-    /// The `bsdtar` argv that packs `sourceNames` (bare names under `sourceDirectory`) into a new
-    /// archive at `archiveOnDiskPath`. `-a` infers the format from the archive suffix, `-c`
-    /// creates (overwriting any existing file — the app resolves that collision first), and `-C`
-    /// makes the names archive-relative. Names are passed verbatim: `bsdtar` reads them as literal
-    /// filesystem paths on create, so a name with glob metacharacters needs no escaping.
+    /// The `bsdtar` argv that packs `sources` into a new archive at `archiveOnDiskPath`. `-a`
+    /// infers the format from the archive suffix, `-c` creates (overwriting any existing file — the
+    /// app resolves that collision first), and `-C` makes each name archive-relative. Names are
+    /// passed verbatim: `bsdtar` reads them as literal filesystem paths on create, so a name with
+    /// glob metacharacters needs no escaping.
+    ///
+    /// **`-C` is emitted only where the directory changes**, which is what makes a staged set
+    /// expressible without changing what the ordinary pack sends. `bsdtar` accepts the flag
+    /// interleaved with the names in create mode (measured against libarchive 3.7.4), so a set
+    /// gathered from N directories is `-C d1 a -C d2 b`; a set that shares one directory — a flat
+    /// listing, an archive rewrite's extracted tree — collapses back to the single `-C dir a b`
+    /// this has always sent, byte for byte. Absolute directories, always: a *relative* `-C` is
+    /// resolved against the previous one, so a second one would land somewhere nobody named.
     ///
     /// `format` is passed alongside the path it already determines because the *level* is only
     /// legal for some formats, and getting that wrong fails the whole pack rather than degrading
@@ -109,8 +118,7 @@ public enum ArchivePacking {
     /// Unprefixed, libarchive offers it to whichever module is running.
     public static func packingArguments(
         archiveOnDiskPath: String,
-        sourceDirectory: String,
-        sourceNames: [String],
+        sources: [PackSource],
         format: Format,
         level: CompressionLevel
     ) -> [String] {
@@ -118,7 +126,15 @@ public enum ArchivePacking {
         if format.supportsCompressionLevel, let value = level.optionValue {
             argv += ["--options", "compression-level=\(value)"]
         }
-        return argv + ["-C", sourceDirectory] + sourceNames
+        var directory: String?
+        for source in sources {
+            if source.directory != directory {
+                argv += ["-C", source.directory]
+                directory = source.directory
+            }
+            argv.append(source.name)
+        }
+        return argv
     }
 
     /// The archive base name the pack dialog pre-fills: a single source's name minus its extension

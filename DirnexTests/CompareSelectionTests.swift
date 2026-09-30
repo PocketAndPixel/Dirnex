@@ -57,8 +57,8 @@ struct CompareSelectionTests {
             marked: ["c.txt", "a.txt"]
         )
         let pair = try #require(vc.comparablePair())
-        #expect(pair.0 == VFSPath.local("/dir/a.txt"))
-        #expect(pair.1 == VFSPath.local("/dir/c.txt"))
+        #expect(pair.0.path == VFSPath.local("/dir/a.txt"))
+        #expect(pair.1.path == VFSPath.local("/dir/c.txt"))
     }
 
     @Test("Two marks answer even with nothing under the other pane's cursor")
@@ -83,8 +83,12 @@ struct CompareSelectionTests {
         #expect(vc.comparablePair() == nil)
     }
 
-    @Test("A marked pair outside the local filesystem is refused")
-    func markedRemotePairRefused() {
+    /// **Inverted by M24 Slice 4**, which is the point of keeping it: two archive members used to
+    /// be refused by a `backend == .local` gate, and nothing about comparing two files ever needed
+    /// them to be on this disk — only to *be files*. The bytes are brought down by the gesture and
+    /// `ByteComparator` still only ever sees local paths.
+    @Test("A marked pair inside an archive is a pair, not a refusal")
+    func markedArchivePairIsAPair() throws {
         let backend = VFSBackendID.archive(forArchiveAt: "/dir/pkg.zip")
         let members = ["one.txt", "two.txt"].map { name in
             FileEntry(
@@ -100,6 +104,32 @@ struct CompareSelectionTests {
             )
         }
         let vc = Self.pane(listing: members, marked: ["one.txt", "two.txt"])
+        let pair = try #require(vc.comparablePair())
+        #expect(pair.0.path == VFSPath(backend: backend, path: "/one.txt"))
+        #expect(pair.1.path == VFSPath(backend: backend, path: "/two.txt"))
+        #expect(vc.canCompareByContents)
+    }
+
+    /// The narrowness control for the line above: what `comparableEntries` still refuses is a row
+    /// with no contents to compare, whichever backend it is on. Without it, "an archive member is
+    /// comparable" would quietly become "anything is".
+    @Test("A folder inside an archive is still refused")
+    func markedArchiveFolderRefused() {
+        let backend = VFSBackendID.archive(forArchiveAt: "/dir/pkg.zip")
+        let rows = [("one.txt", FileEntry.Kind.file), ("sub", .directory)].map { name, kind in
+            FileEntry(
+                path: VFSPath(backend: backend, path: "/\(name)"),
+                name: name,
+                kind: kind,
+                byteSize: 0,
+                modificationDate: Date(timeIntervalSince1970: 0),
+                creationDate: Date(timeIntervalSince1970: 0),
+                isHidden: false,
+                permissions: 0o644,
+                inode: 0
+            )
+        }
+        let vc = Self.pane(listing: rows, marked: ["one.txt", "sub"])
         #expect(vc.comparablePair() == nil)
     }
 

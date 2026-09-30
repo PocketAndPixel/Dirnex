@@ -111,7 +111,7 @@ public enum FullDiskAccess {
     /// A denied `Data(contentsOf:)` or `FileManager` read arrives as Cocoa
     /// `NSFileReadNoPermissionError`; a raw POSIX failure (e.g. from `open(2)`) as
     /// `NSPOSIXErrorDomain` with `EPERM`/`EACCES`. Anything else — a code in some other domain, or an
-    /// unrecognised code — is `.otherFailure`, which the fold above reads as "tells us nothing."
+    /// unrecognized code — is `.otherFailure`, which the fold above reads as "tells us nothing."
     public static func outcome(domain: String, code: Int) -> SentinelReadOutcome {
         switch domain {
         case NSCocoaErrorDomain:

@@ -84,7 +84,7 @@ struct AttributePatchTests {
         #expect(patch.diff(against: item(mode: 0o4755)).permissions == nil)
     }
 
-    @Test("clearing a bit forces it off while leaving neighbours alone")
+    @Test("clearing a bit forces it off while leaving neighbors alone")
     func clearingABit() {
         var patch = AttributePatch()
         patch.permissionMask[.other, .write] = true

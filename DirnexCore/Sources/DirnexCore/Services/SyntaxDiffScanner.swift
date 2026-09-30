@@ -9,7 +9,7 @@ import Foundation
 /// **Order is the whole correctness argument.** `--- a/file` and `+++ b/file` begin with the same
 /// characters as a removed and an added line, so the file headers have to be tested first; written
 /// the other way round, every diff's own header reads as a deletion followed by an insertion. That
-/// is a wrong colour in the one place a reader looks to orient themselves.
+/// is a wrong color in the one place a reader looks to orient themselves.
 ///
 /// `.inserted` and `.deleted` are this scanner's reason for existing as kinds — see
 /// `SyntaxToken.Kind`, which argues why they are not borrowed from `.comment` and `.string`.
@@ -32,7 +32,7 @@ enum SyntaxDiffScanner {
     }
 
     /// Headers that name a file or a mode. `git`'s extended headers are included because a
-    /// `git diff` capture is the common case and they otherwise sit uncoloured between two hunks.
+    /// `git diff` capture is the common case and they otherwise sit uncolored between two hunks.
     private static let headers = [
         "diff ", "index ", "--- ", "+++ ", "Index: ", "==========",
         "old mode ", "new mode ", "new file mode ", "deleted file mode ",

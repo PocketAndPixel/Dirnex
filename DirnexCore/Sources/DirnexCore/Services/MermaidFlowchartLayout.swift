@@ -17,7 +17,7 @@ struct MermaidFlowchartDrawing: Equatable {
         /// boxes between its ends.
         let points: [MermaidPoint]
         let label: String?
-        let labelCentre: MermaidPoint
+        let labelCenter: MermaidPoint
         let stroke: MermaidFlowchart.Stroke
         let tail: MermaidFlowchart.Tip
         let head: MermaidFlowchart.Tip
@@ -57,7 +57,7 @@ enum MermaidFlowchartLayout {
         )
         let ranking = MermaidFlowchartRanking.rank(chart, index: index)
         // A dummy is a point the line passes through, so it takes no depth along the rank axis and
-        // just enough across it that the line clears its neighbours.
+        // just enough across it that the line clears its neighbors.
         var sizes = chart.nodes.map { size(of: $0, metric: metric) }
         sizes.append(contentsOf: repeatElement(
             (width: 1.0, height: 0.0),
@@ -72,7 +72,7 @@ enum MermaidFlowchartLayout {
     /// A node's box, sized to hold its label.
     ///
     /// The two shapes that taper need more than padding, and the amount is geometry rather than
-    /// taste: a rhombus of width `W` and height `H` contains a centred `w × h` box exactly when
+    /// taste: a rhombus of width `W` and height `H` contains a centered `w × h` box exactly when
     /// `w/W + h/H ≤ 1`, so doubling both dimensions is the smallest diamond that fits its text. A
     /// circle takes the longer of the two so it stays a circle.
     private static func size(
@@ -98,7 +98,7 @@ enum MermaidFlowchartLayout {
 
     // MARK: - Position
 
-    /// Layers stacked along the rank axis, each centred against the widest.
+    /// Layers stacked along the rank axis, each centered against the widest.
     ///
     /// Written once in rank/cross terms and mapped to x/y at the end, because the four directions
     /// are two axes and a flip rather than four layouts — which is what `Direction.isHorizontal`
@@ -194,7 +194,7 @@ enum MermaidFlowchartLayout {
         // Measured over what is **drawn**, which is not the same as over the diagram's own nodes: a
         // routed edge bends through dummies that sit outside every box, and sizing the canvas from
         // the boxes alone sent a back edge off the right-hand side of the picture and back. An edge
-        // label reaches further still, since it is centred on a line rather than inside a shape.
+        // label reaches further still, since it is centered on a line rather than inside a shape.
         let reach = edges.flatMap(\.points) + nodes.flatMap {
             [MermaidPoint(x: $0.frame.maxX, y: $0.frame.maxY)]
         }
@@ -232,14 +232,14 @@ enum MermaidFlowchartLayout {
         return MermaidFlowchartDrawing.Edge(
             points: points,
             label: edge.label,
-            labelCentre: middle(of: points),
+            labelCenter: middle(of: points),
             stroke: edge.stroke,
             tail: edge.tail,
             head: edge.head
         )
     }
 
-    /// The midpoint of the polyline's **middle segment**, which for a straight edge is its centre
+    /// The midpoint of the polyline's **middle segment**, which for a straight edge is its center
     /// and for a bent one is a place the label can actually sit. Measuring along arc length instead
     /// would put a label on a corner.
     private static func middle(of points: [MermaidPoint]) -> MermaidPoint {
@@ -251,7 +251,7 @@ enum MermaidFlowchartLayout {
 
     /// How far right the widest edge label reaches.
     ///
-    /// The canvas has to hold it: a label centred between two layers can be wider than either of
+    /// The canvas has to hold it: a label centered between two layers can be wider than either of
     /// them, and one clipped at the edge of the SVG reads as a bug in the diagram rather than in
     /// its box.
     private static func labelReach(
@@ -260,7 +260,7 @@ enum MermaidFlowchartLayout {
     ) -> Double {
         edges.reduce(0.0) { widest, edge in
             guard let label = edge.label else { return widest }
-            return max(widest, edge.labelCentre.x + metric.width(label) / 2 + margin)
+            return max(widest, edge.labelCenter.x + metric.width(label) / 2 + margin)
         }
     }
 }

@@ -11,7 +11,7 @@ import Testing
 /// real 300-row `NSTableView` found that `reloadData` empties the reuse pool outright — so a
 /// density change happens to hand out freshly built cells today, and the stale-icon bug this guards
 /// cannot currently be reproduced through the table. That is exactly why it is pinned at the
-/// *cell*: the behaviour is undocumented, and if a macOS ever kept the pool the failure would be
+/// *cell*: the behavior is undocumented, and if a macOS ever kept the pool the failure would be
 /// silent — 16 pt icons in a 28 pt row, nothing logged.
 @Suite("Row density")
 @MainActor
@@ -87,9 +87,7 @@ struct RowDensityTests {
 
     @Test("the preference defaults to regular and round-trips through UserDefaults")
     func preferenceRoundTrips() throws {
-        let suiteName = "RowDensityTests.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let defaults = ScratchDefaults.fresh()
 
         // A fresh install is the shipped 22 pt row.
         #expect(AppPreferences(defaults: defaults).rowDensity == .regular)
@@ -105,9 +103,7 @@ struct RowDensityTests {
 
     @Test("changing the density posts the notification open panes re-render on")
     func changePostsNotification() throws {
-        let suiteName = "RowDensityTests.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let defaults = ScratchDefaults.fresh()
 
         let preferences = AppPreferences(defaults: defaults)
         var posts = 0

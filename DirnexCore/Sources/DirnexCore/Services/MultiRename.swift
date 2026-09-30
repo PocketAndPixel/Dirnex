@@ -195,7 +195,7 @@ public enum MultiRename {
     ) -> [RenameProposal] {
         // Attribute the one name set to every directory the items live in. For a genuinely
         // single-directory batch that is one key; the directory-aware planner then reduces to the
-        // flat behaviour exactly.
+        // flat behavior exactly.
         let byDirectory = Dictionary(grouping: items, by: { $0.path.parent ?? $0.path })
             .mapValues { _ in existingNames }
         return plan(for: items, spec: spec, existingNamesByDirectory: byDirectory)

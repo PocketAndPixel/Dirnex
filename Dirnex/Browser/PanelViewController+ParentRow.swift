@@ -10,12 +10,12 @@ import DirnexCore
 /// helpers here. All of this is read-only with respect to `Panel`.
 extension PanelViewController {
     /// 1 when a `..` row is shown, else 0 — also the offset between a table row and its entry
-    /// index. Shown on any non-root local directory, and inside an archive at every level: the
-    /// `..` walks up the inner tree and, at the archive root, exits to the containing folder. A
+    /// index. Shown wherever the pane can actually walk up (``canGoToParent``): any non-root
+    /// directory, local or on a connected account, and inside an archive at every level, where the
+    /// `..` walks up the inner tree and at the archive root exits to the containing folder. A
     /// virtual *search-results* pane never shows one — its synthetic parent isn't browsable.
     var parentRowCount: Int {
-        if isArchive { return 1 }
-        return panel.path.backend == .local && panel.parentPath != nil ? 1 : 0
+        canGoToParent ? 1 : 0
     }
 
     func isParentRow(_ row: Int) -> Bool {
@@ -42,8 +42,14 @@ extension PanelViewController {
             ?? FileCellView(showsImage: column == .name, identifier: identifier)
         cell.marked = false
         cell.dimmed = false
-        cell.accentColor = nil
-        // Never type-coloured (PLAN.md §M15 Slice 3), for the same reason it never carries a size
+        // No tag dots, no cloud badge, no Git letter: `..` is not an entry, so there is nothing to
+        // report about it. Cleared rather than left alone because this cell comes out of the *same*
+        // reuse pool as the real name cells — `makeView(withIdentifier:)` keys on the column — so a
+        // tagged file scrolled off the top would otherwise lend the way out of the folder its dots.
+        // Only reachable by scrolling: a `reloadData` empties the pool (see `FileCellView.density`),
+        // which is why it survived until a third badge made it worth looking for.
+        cell.clearBadges()
+        // Never type-colored (PLAN.md §M15 Slice 3), for the same reason it never carries a size
         // bar: `..` is a way out, not an entry. `Panel` has never heard of it, so there is nothing to
         // match a rule against — and a `*` rule painting the way out of the folder would be reading
         // the row as a file called "..".
@@ -60,6 +66,9 @@ extension PanelViewController {
         cell.isTreeRow = panel.isTree
         cell.treeDepth = 0
         cell.treeDisclosure = nil
+        // Depth 0 draws no indent guide, and a recycled cell arrives carrying whichever level it
+        // last drew as active — the same reuse-pool trap `clearBadges` above exists for.
+        cell.activeTreeGuideLevel = nil
         cell.onDisclosureToggle = nil
         cell.applyTreeLayout()
         switch column {
@@ -67,9 +76,8 @@ extension PanelViewController {
             cell.imageView?.image = FileIconProvider.parentIcon
             cell.textField?.stringValue = ".."
             cell.textField?.alignment = .natural
-        // `..` is a way out, not a file: it has no size, no date, and no Git status — the folder it
-        // points at may not even be in this repository.
-        case .size, .date, .git:
+        // `..` is a way out, not a file: it has no size and no date.
+        case .size, .date:
             cell.textField?.stringValue = ""
         // Unreachable: the bar column is answered by `sizeBarCell` before the parent row is ever
         // considered, because its cell is not a `FileCellView`. Listed for exhaustiveness.

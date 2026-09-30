@@ -67,6 +67,59 @@ public enum UndoStep: Sendable, Equatable, Codable {
         reverse: AccessControlList
     )
 
+    /// Undo/redo an attribute change on an item that is **not on this Mac** — a mode over SFTP, a
+    /// mode or a modification time over FTP (PLAN.md §4 ▸ *Still open*, taken 2026-09-01).
+    ///
+    /// The sibling of ``restoreAttributes(path:actsOnLink:apply:reverse:)`` and the opposite of it
+    /// in the one way that matters: that step deliberately ignores the backend and runs local
+    /// syscalls, and this one is *nothing but* a backend verb — ``VFSBackend/applyMetadata(_:at:)``,
+    /// the same one the panel's Save sends, so there is one definition of what a remote metadata
+    /// write is rather than a second spelling of it for undo.
+    ///
+    /// `apply` is the patch this direction sends and `reverse` its counterpart, so `inverse` is a
+    /// plain swap exactly as the local step's is. Both are **patches**: only the fields the edit
+    /// actually moved are named, so an undo writes nothing else on the item — which is what stands
+    /// in for the clobber refusal the path-shaped steps get for free, and is why this needs no
+    /// ``ArchiveUndoWitness`` of its own. An archive swap replaces a whole container and has to ask
+    /// whether anything else changed it since; a two-field patch is the same exposure the local
+    /// attributes step has carried since M14, and inventing a guard for one of the two panels would
+    /// be a second rule for one half of a pair.
+    ///
+    /// **What it does not inherit from the local step is trusting the write.** A server's clean
+    /// answer is not proof a mode landed (``RemoteAttributeVerdict``), so the executor re-reads the
+    /// item and reports a refusal as a failed step rather than as a completed undo.
+    case restoreRemoteAttributes(
+        path: VFSPath,
+        apply: RemoteAttributeChange,
+        reverse: RemoteAttributeChange
+    )
+
+    /// Undo/redo an archive rewrite: exchange the archive with the copy of itself taken before
+    /// the rewrite ran (F8 delete inside an archive, ⌘V/F5/F6 add, an edited member saved back).
+    ///
+    /// The one step here that is **its own inverse**, and that is the whole design rather than a
+    /// coincidence. A rewrite has no diff to journal — the container is repacked whole, so the only
+    /// exact reversal is the container as it was — and a one-way "put the old bytes back" would
+    /// destroy the rewrite a Redo would need. Swapping the two files keeps both versions alive at
+    /// all times and makes ⇧⌘Z fall out of the same code, with no second copy stored.
+    ///
+    /// `expected` is what the archive must look like for *this* direction to be allowed to run, and
+    /// `restored` what it will look like afterwards; `inverse` swaps them. That guard is what stands
+    /// in for the clobber check every other step gets from its paths: the destination of an archive
+    /// swap is always occupied, by the file being replaced, so "has anything else changed this
+    /// archive since?" has to be asked of its contents (see ``ArchiveUndoWitness``).
+    ///
+    /// Executed through ``ArchiveUndoStore/exchange(archiveAt:snapshotAt:)`` — local file
+    /// primitives — rather than the `VFSBackend`, for the reason ``restoreAttributes`` is: an
+    /// archive being browsed is a real file on this disk whatever backend is showing its insides,
+    /// and the swap needs an atomic same-directory rename no backend verb offers.
+    case restoreArchive(
+        archive: VFSPath,
+        snapshot: VFSPath,
+        expected: ArchiveUndoWitness,
+        restored: ArchiveUndoWitness
+    )
+
     /// The step that reverses this one — the heart of Redo (see `UndoRecord.inverted`).
     var inverse: UndoStep {
         switch self {
@@ -88,6 +141,15 @@ public enum UndoStep: Sendable, Equatable, Codable {
                 actsOnLink: actsOnLink,
                 apply: reverse,
                 reverse: apply
+            )
+        case let .restoreRemoteAttributes(path, apply, reverse):
+            return .restoreRemoteAttributes(path: path, apply: reverse, reverse: apply)
+        case let .restoreArchive(archive, snapshot, expected, restored):
+            return .restoreArchive(
+                archive: archive,
+                snapshot: snapshot,
+                expected: restored,
+                restored: expected
             )
         }
     }
@@ -169,7 +231,17 @@ public extension UndoRecord {
         switch kind {
         case .copy: label = .copy
         case .move: label = .move
-        case .checksum, .attributes: return nil
+        // `.materialize` joins the three that produce no `outcomes`, and for the strongest of the
+        // four reasons: the others changed something the user cannot see back; this one moved bytes
+        // into a temp directory and changed nothing at all.
+        //
+        // `.writeBack` is the one whose `nil` is a *refusal* rather than a shrug. It really does
+        // change something the user would want back — the server's previous copy — and that copy is
+        // what the upload destroyed, so there is nothing to put back rather than nowhere to put it.
+        // Every write-back confirmation has said so since M21 Slice 10 ("uploading replaces the
+        // copy on the server and can't be undone"), which is what makes this the marked
+        // non-reversible operation PLAN.md §6 requires rather than a silently dropped one.
+        case .checksum, .attributes, .pack, .plainPack, .materialize, .writeBack: return nil
         }
         var steps: [UndoStep] = []
         var nonReversible = 0
@@ -218,6 +290,31 @@ public extension UndoRecord {
         return UndoRecord(label: .rename, date: date, steps: steps)
     }
 
+    /// Undo an archive rewrite by exchanging the archive with the copy of itself taken before the
+    /// rewrite ran. One step, whichever gesture asked for it — deleting members, adding items and
+    /// saving an edited member back all produce exactly one new container.
+    ///
+    /// Built by ``ArchiveUndoSnapshot/record(date:)`` rather than called directly, because half of
+    /// it — `expected` — can only be read once the rewrite has landed.
+    static func archiveRewrite(
+        archive: VFSPath,
+        snapshot: VFSPath,
+        expected: ArchiveUndoWitness,
+        restored: ArchiveUndoWitness,
+        date: Date = Date()
+    ) -> UndoRecord {
+        UndoRecord(
+            label: .changeArchive,
+            date: date,
+            steps: [.restoreArchive(
+                archive: archive,
+                snapshot: snapshot,
+                expected: expected,
+                restored: restored
+            )]
+        )
+    }
+
     /// Undo a Move-to-Trash by restoring each item from the Trash location it landed at back
     /// to where it came from. Returns `nil` if nothing was actually trashed (e.g. the backend
     /// reported no Trash location for any item).
@@ -228,6 +325,21 @@ public extension UndoRecord {
         let steps = items.map { UndoStep.restore(from: $0.trashed, to: $0.original) }
         guard !steps.isEmpty else { return nil }
         return UndoRecord(label: .moveToTrash, date: date, steps: steps)
+    }
+}
+
+public extension UndoRecord {
+    /// Every archive snapshot this record's steps still point at.
+    ///
+    /// The store prunes against the union of these over both stacks: a snapshot no record names is
+    /// holding the user's disk for nobody (``ArchiveUndoStore/prune(live:)``). Paths rather than
+    /// ids, because the step already carries the path and a second spelling of the same fact is how
+    /// the two drift.
+    var archiveSnapshotPaths: Set<String> {
+        Set(steps.compactMap { step in
+            guard case let .restoreArchive(_, snapshot, _, _) = step else { return nil }
+            return snapshot.path
+        })
     }
 }
 
@@ -315,184 +427,5 @@ public struct UndoJournal: Sendable, Equatable {
     /// Drop the oldest entries so a stack never exceeds `capacity`.
     private func trimmed(_ stack: [UndoEntry]) -> [UndoEntry] {
         stack.count > capacity ? Array(stack.suffix(capacity)) : stack
-    }
-
-    // MARK: - Reversal executor
-
-    /// Apply a record's inverse steps against `backend`, collecting per-step failures rather
-    /// than aborting on the first — so undoing a five-item move that hits one reoccupied slot
-    /// still restores the other four. Pure with respect to the journal; the caller pops the
-    /// record and runs this off the main thread.
-    public static func revert(_ record: UndoRecord, using backend: any VFSBackend) -> UndoReport {
-        var failures: [OperationItemFailure] = []
-        for step in record.steps {
-            switch step {
-            case let .restore(from, to):
-                restore(from: from, to: to, using: backend, failures: &failures)
-            case let .removeCopy(_, copy):
-                removeCopy(at: copy, using: backend, failures: &failures)
-            case let .makeCopy(source, copy):
-                makeCopy(source: source, copy: copy, using: backend, failures: &failures)
-            case let .removeCreatedFolder(path):
-                removeCreatedFolder(at: path, using: backend, failures: &failures)
-            case let .createFolder(path):
-                createFolder(at: path, using: backend, failures: &failures)
-            case let .restoreAttributes(path, actsOnLink, apply, _):
-                restoreAttributes(apply, at: path, actsOnLink: actsOnLink, failures: &failures)
-            case let .restoreAccessControlList(path, actsOnLink, apply, _):
-                restoreAccessControlList(
-                    apply, at: path, actsOnLink: actsOnLink, failures: &failures
-                )
-            }
-        }
-        return UndoReport(failures: failures)
-    }
-
-    /// Move `from` back to `to`. Refuses to overwrite a reoccupied `to` (undo must never
-    /// destroy data the user created since), and — because a cross-volume move was undone by
-    /// copy-then-delete originally — falls back to the copy engine when a plain rename can't
-    /// cross the volume boundary.
-    private static func restore(
-        from: VFSPath,
-        to: VFSPath,
-        using backend: any VFSBackend,
-        failures: inout [OperationItemFailure]
-    ) {
-        if (try? backend.stat(at: to)) != nil {
-            failures.append(.init(path: to, error: .alreadyExists(to)))
-            return
-        }
-        do {
-            try backend.moveItem(at: from, to: to)
-        } catch let VFSError.io(_, code) where code == EXDEV {
-            crossVolumeRestore(from: from, to: to, using: backend, failures: &failures)
-        } catch let error as VFSError {
-            failures.append(.init(path: from, error: error))
-        } catch {
-            failures.append(.init(path: from, error: .io(path: from, code: 0)))
-        }
-    }
-
-    /// The cross-volume fallback for `restore`: reverse a copy-then-delete move by moving the
-    /// item back through the copy engine. Only reachable for a move (name preserved, so it
-    /// lands back at exactly `to`); a rename never crosses volumes, so it never gets here.
-    private static func crossVolumeRestore(
-        from: VFSPath,
-        to: VFSPath,
-        using backend: any VFSBackend,
-        failures: inout [OperationItemFailure]
-    ) {
-        guard from.lastComponent == to.lastComponent, let parent = to.parent,
-              let entry = try? backend.stat(at: from) else {
-            failures.append(.init(path: from, error: .io(path: from, code: EXDEV)))
-            return
-        }
-        let report = CopyEngine.run(
-            FileOperation(kind: .move, sources: [entry], destinationDirectory: parent),
-            using: backend,
-            conflictPolicy: .fail
-        )
-        failures.append(contentsOf: report.failures)
-    }
-
-    /// Remove a copy the operation created. Already gone → nothing to do (treat as undone).
-    private static func removeCopy(
-        at path: VFSPath,
-        using backend: any VFSBackend,
-        failures: inout [OperationItemFailure]
-    ) {
-        guard (try? backend.stat(at: path)) != nil else { return }
-        do {
-            try backend.removeItem(at: path)
-        } catch let error as VFSError {
-            failures.append(.init(path: path, error: error))
-        } catch {
-            failures.append(.init(path: path, error: .io(path: path, code: 0)))
-        }
-    }
-
-    /// Re-create a copy that Undo removed (Redo of a Copy): copy `source` back to exactly
-    /// `copy`. Refuses to overwrite a reoccupied `copy` — redo, like undo, never destroys data
-    /// the user created since. Runs the tested copy engine with `keepBoth` (so it always lands
-    /// somewhere without clobbering), then renames the landing to the exact recorded path, so a
-    /// keep-both original ("file copy.txt") is reproduced faithfully rather than as `source`'s
-    /// bare name.
-    private static func makeCopy(
-        source: VFSPath,
-        copy: VFSPath,
-        using backend: any VFSBackend,
-        failures: inout [OperationItemFailure]
-    ) {
-        if (try? backend.stat(at: copy)) != nil {
-            failures.append(.init(path: copy, error: .alreadyExists(copy)))
-            return
-        }
-        guard let entry = try? backend.stat(at: source), let parent = copy.parent else {
-            failures.append(.init(path: source, error: .notFound(source)))
-            return
-        }
-        let report = CopyEngine.run(
-            FileOperation(kind: .copy, sources: [entry], destinationDirectory: parent),
-            using: backend,
-            conflictPolicy: .keepBoth
-        )
-        guard report.failures.isEmpty else {
-            failures.append(contentsOf: report.failures)
-            return
-        }
-        guard let landed = report.outcomes.first?.landedAt else {
-            failures.append(.init(path: source, error: .notFound(source)))
-            return
-        }
-        guard landed != copy else { return }
-        do {
-            try backend.moveItem(at: landed, to: copy)
-        } catch let error as VFSError {
-            failures.append(.init(path: copy, error: error))
-        } catch {
-            failures.append(.init(path: copy, error: .io(path: copy, code: 0)))
-        }
-    }
-
-    /// Remove a folder New Folder created — but only if it's still an empty directory.
-    /// A folder the user has since filled, or one already replaced by something else, is
-    /// left untouched: undo protects existing data over completing the reversal.
-    private static func removeCreatedFolder(
-        at path: VFSPath,
-        using backend: any VFSBackend,
-        failures: inout [OperationItemFailure]
-    ) {
-        guard let entry = try? backend.stat(at: path), entry.kind == .directory else { return }
-        guard let children = try? backend.listDirectory(at: path), children.isEmpty else { return }
-        do {
-            try backend.removeItem(at: path)
-        } catch let error as VFSError {
-            failures.append(.init(path: path, error: error))
-        } catch {
-            failures.append(.init(path: path, error: .io(path: path, code: 0)))
-        }
-    }
-
-    /// Re-create a folder Undo removed (Redo of New Folder). An existing directory at `path`
-    /// means the redo is already satisfied — a no-op success. Anything *else* now occupying the
-    /// path is refused rather than clobbered, mirroring `makeCopy`/`restore`.
-    private static func createFolder(
-        at path: VFSPath,
-        using backend: any VFSBackend,
-        failures: inout [OperationItemFailure]
-    ) {
-        if let existing = try? backend.stat(at: path) {
-            if existing.kind != .directory {
-                failures.append(.init(path: path, error: .alreadyExists(path)))
-            }
-            return
-        }
-        do {
-            try backend.createDirectory(at: path)
-        } catch let error as VFSError {
-            failures.append(.init(path: path, error: error))
-        } catch {
-            failures.append(.init(path: path, error: .io(path: path, code: 0)))
-        }
     }
 }

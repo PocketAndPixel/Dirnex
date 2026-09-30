@@ -47,10 +47,31 @@ struct ColumnarListingTests {
         #expect(ColumnarListing.permissions(fromMode: "-rwxrwxrwx") == 0o777)
     }
 
-    @Test("a set-uid/sticky character counts as the bit being set")
-    func specialBitsCountAsSet() {
-        #expect(ColumnarListing.permissions(fromMode: "-rwsr-xr-x") == 0o755)
-        #expect(ColumnarListing.permissions(fromMode: "drwxrwxrwt") == 0o777)
+    /// `ls(1)` overloads each class's execute column, so the glyph carries two bits at once. This
+    /// used to flatten all four spellings to a plain execute bit, which was invisible while nothing
+    /// drew a remote mode; M24 Slice 7's Get Info draws it, and `rwsr-xr-x` shown as `rwxr-xr-x`
+    /// disclaims the one bit anybody inspects a remote binary for.
+    @Test("set-uid, set-gid and sticky are read exactly, execute bit and all")
+    func specialBitsAreExact() {
+        // Lowercase: the special bit *and* execute.
+        #expect(ColumnarListing.permissions(fromMode: "-rwsr-xr-x") == 0o4755)
+        #expect(ColumnarListing.permissions(fromMode: "-rwxr-sr-x") == 0o2755)
+        #expect(ColumnarListing.permissions(fromMode: "drwxrwxrwt") == 0o1777)
+        // Uppercase: the special bit *without* execute — the case the old reader could not express
+        // at all, since it inferred execute from the glyph being non-`-`.
+        #expect(ColumnarListing.permissions(fromMode: "-rwSr--r--") == 0o4644)
+        #expect(ColumnarListing.permissions(fromMode: "-rw-r-Sr--") == 0o2644)
+        #expect(ColumnarListing.permissions(fromMode: "drwxrwxrwT") == 0o1776)
+        // All three at once, to prove they are independent rather than one shared slot.
+        #expect(ColumnarListing.permissions(fromMode: "-rwsrwsrwt") == 0o7777)
+    }
+
+    /// The narrowness control: an ordinary mode must gain nothing from the special-bit pass.
+    @Test("a mode with no special glyph is unchanged by the special-bit pass")
+    func ordinaryModesGainNothing() {
+        for field in ["-rw-r--r--", "drwxr-xr-x", "-rwxrwxrwx", "----------"] {
+            #expect(ColumnarListing.permissions(fromMode: field[...]) & 0o7000 == 0)
+        }
     }
 
     @Test("a too-short mode field yields no bits rather than reading past its end")
@@ -99,6 +120,37 @@ struct ColumnarListingTests {
     func unparsableIsDistantPast() {
         let formatters = ColumnarListing.formatters(for: ["MMM d yyyy"])
         #expect(ColumnarListing.date(from: "not a date", formatters: formatters) == .distantPast)
+    }
+
+    /// The half `defaultDate = Date()` got wrong: it supplies **every** component the format does
+    /// not name, and `MMM d HH:mm` names no seconds — so each parse was stamped with the second and
+    /// millisecond it happened to run at. Asserted as a property of the result rather than by timing
+    /// anything, so it cannot drift with the machine.
+    @Test("a year-less stamp parses with no seconds of its own")
+    func yearLessStampCarriesNoSeconds() {
+        let formatters = ColumnarListing.unixDateFormatters()
+        let parsed = ColumnarListing.date(from: "Jul 25 20:55", formatters: formatters)
+        let parts = Calendar(identifier: .gregorian)
+            .dateComponents([.second, .nanosecond], from: parsed)
+        #expect(parts.second == 0)
+        #expect(parts.nanosecond == 0)
+    }
+
+    /// The claim the property above exists to serve, stated directly. Equality alone would be a weak
+    /// test and was measured to be one: two `formatters(for:)` calls a few microseconds apart can
+    /// land on the same anchor by luck, so the broken version passes this roughly as often as not.
+    /// The seconds assertion is what makes it fail for the right reason every time — the equality is
+    /// kept beside it because it is what a reader is actually looking for.
+    @Test("two separately built formatter sets read one stamp identically")
+    func repeatedParsesAgree() {
+        let first = ColumnarListing.date(
+            from: "Jul 25 20:55", formatters: ColumnarListing.unixDateFormatters()
+        )
+        let second = ColumnarListing.date(
+            from: "Jul 25 20:55", formatters: ColumnarListing.unixDateFormatters()
+        )
+        #expect(first == second)
+        #expect(Calendar(identifier: .gregorian).component(.second, from: first) == 0)
     }
 
     /// A "Dec 30 12:00" entry read on Jan 2 means *last* December, and the day of slack also absorbs

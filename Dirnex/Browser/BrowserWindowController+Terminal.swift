@@ -102,7 +102,7 @@ extension BrowserWindowController: TerminalDrawerDelegate {
     }
 
     /// Kill the drawer's shell as the app goes away. The pseudo-terminal closing would hang it up
-    /// on its own, but only once the master descriptor is actually released — signalling it is the
+    /// on its own, but only once the master descriptor is actually released — signaling it is the
     /// difference between a shell that ends when the user quits and one that lingers, reparented,
     /// holding a directory open behind their back.
     func terminateTerminalShell() {

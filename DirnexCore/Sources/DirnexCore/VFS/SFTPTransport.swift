@@ -36,312 +36,323 @@ public protocol SFTPTransport: RemoteWriteTransport {
     /// download picks up from the local file's current length instead of restarting, so `sftp`
     /// fetches only the bytes past that offset — the caller computes the transferred delta from the
     /// pre-existing size (see `SFTPBackend.copyFile`).
+    ///
+    /// `isCancelled` is polled **while the bytes move**, and only the two byte-moving verbs take it
+    /// — see ``upload(_:to:resume:progress:isCancelled:)``. `progress` rides the same poll and
+    /// reports **deltas** as they land, read from the destination file on this machine growing:
+    /// exact, free, and available whatever `sftp` chooses to print.
     @discardableResult
-    func download(_ remotePath: String, to localPath: String, resume: Bool) throws -> Int64
+    func download(
+        _ remotePath: String,
+        to localPath: String,
+        resume: Bool,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Int64
+
+    /// Download several byte ranges of one remote file **at once**, each into its own file, for the
+    /// caller to join (``SegmentAssembly``).
+    ///
+    /// **Not SFTP at all, and it cannot be**: the system `curl` is built without libssh2 — its
+    /// protocol list carries no `sftp` and no `scp` — and `sftp(1)` has no range verb (`get -a`
+    /// resumes to EOF, with no way to stop). So the one-`curl -Z`-with-N-sections shape that serves
+    /// S3 and FTP does not exist here, and each segment is an SSH **exec** channel running
+    /// ``SSHSegmentCommand``: the second thing this project asks an SSH account to do, after §M22's
+    /// subtree search. That brings §M22's caveat with it — an account confined to the `sftp`
+    /// subsystem has no exec channel and answers with prose, on *stdout*, where a piece's bytes
+    /// would go — so this can be refused by a perfectly healthy server and the caller has to be
+    /// ready to fall back.
+    ///
+    /// It **throws on any failure of the run** rather than reporting per segment, for a reason of
+    /// its own: a pipeline's exit status is its last stage's, so a `tail` that could not open the
+    /// file is masked by a `head` that exits 0 — measured, a missing remote path gives `ssh` exit 0
+    /// and a zero-byte piece. The pieces' lengths are the evidence, and ``SegmentAssembly`` weighs
+    /// them.
+    ///
+    /// Additive, with a default that **forwards** to the plain download: a single stream produces
+    /// the identical file, so a transport that has not implemented this is slow and never wrong.
+    @discardableResult
+    func downloadSegments(
+        _ segments: [DownloadSegment],
+        of remotePath: String,
+        to localPath: String,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> SegmentedDownloadOutcome
 
     /// Upload the local file at `localPath` to a remote path (`put`, or `put -a` to **resume**),
     /// returning the local source's size (which is the remote file's total size once the transfer
     /// finishes). When `resume` is true the upload picks up from the remote file's current length,
     /// so `sftp` sends only the bytes past that offset.
-    @discardableResult
-    func upload(_ localPath: String, to remotePath: String, resume: Bool) throws -> Int64
-}
-
-/// A remote operation's failure, in the few shapes the backend needs to distinguish so it can map
-/// them onto the shared `VFSError` vocabulary (a missing path, a denied path, or everything else).
-/// `classify(stderr:)` turns a nonzero `sftp` invocation's stderr into one of these, tested here so
-/// the app transport stays a thin spawn-and-classify shell.
-public enum SFTPTransportError: Error, Sendable, Equatable {
-    /// The remote path does not exist (`sftp`: `Can't ls: "…" not found`).
-    case notFound
-    /// The remote account may not read the path (`sftp`: `remote readdir("…"): Permission denied`).
-    case permissionDenied
-    /// The server presented a host key that differs from the one pinned in `known_hosts` — OpenSSH's
-    /// "REMOTE HOST IDENTIFICATION HAS CHANGED" refusal. Carries the parsed details so the app can
-    /// show the new fingerprint and, on the user's explicit confirmation, drop the stale pin and
-    /// reconnect. Usually a reinstalled or replaced server, but it *can* be a man-in-the-middle — so
-    /// it's a distinct case that drives a warning, never a silent retry.
-    case hostKeyChanged(SFTPHostKeyChange)
-    /// Any other failure — a dropped connection, an auth failure, an unexpected error — carrying
-    /// the server's own text, verbatim.
     ///
-    /// **Empty when the server said nothing**, deliberately: this is the remote's words, not ours,
-    /// and the core has no business authoring a sentence it cannot translate (PLAN.md §M12
-    /// Slice 11). The app supplies a localized stand-in for the empty case, exactly as it already
-    /// owns the wording for ``notFound``, ``permissionDenied`` and ``hostKeyChanged``.
-    case failure(String)
+    /// **`isCancelled` is polled while the transfer runs, and a metadata verb deliberately has no
+    /// such parameter.** A transfer is one `sftp` that may run for an hour, so a caller's Stop has
+    /// to reach inside it; a listing is over before anyone could press anything. Measured
+    /// 2026-08-14 on the S3 transport, whose shape this one shares exactly: without it, Stop on a
+    /// 16-second download returned after the full 16 seconds having downloaded the whole file and
+    /// then discarded it (docs/NOTES.md ▸ curl for S3).
+    ///
+    /// **`progress` is here for symmetry with ``download(_:to:resume:progress:isCancelled:)`` and
+    /// the shipped transport does not call it, because `sftp` gives an upload no observable at
+    /// all.** Nothing local changes while bytes go out, and — unlike `curl` — `sftp` prints no
+    /// meter a spawned process can read. Probed 2026-08-16 against a real `sshd` over a 1 GiB
+    /// transfer, six ways: `-b -` and interactive, stdout on a pipe and on a PTY, and with the
+    /// `progress` batch command explicitly enabling it (`Progress meter enabled`, then silence).
+    /// Every one of them printed the echoed command and nothing else for the whole three seconds.
+    /// OpenSSH draws the meter only for a foreground process group on a controlling terminal, which
+    /// a spawned child is not. The remaining route — polling the *remote* size — is a fresh
+    /// connection and handshake per tick on a transport with no session, so an upload reports once,
+    /// at the end, and says so rather than inventing a number.
+    @discardableResult
+    func upload(
+        _ localPath: String,
+        to remotePath: String,
+        resume: Bool,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Int64
 
-    /// Classify a failed `sftp` batch invocation's stderr. The two recoverable shapes a browse
-    /// hits — a vanished path and an unreadable one — get their own semantic cases so the panel
-    /// reacts correctly; anything else is surfaced verbatim.
-    public static func classify(stderr: String) -> SFTPTransportError {
-        // A changed host key is the most specific, security-critical shape — match it before the
-        // generic permission/not-found text so the app can offer to re-trust the new key rather than
-        // showing a dead-end error.
-        if let change = SFTPHostKeyChange.parse(stderr: stderr) {
-            return .hostKeyChanged(change)
-        }
-        let text = stderr.lowercased()
-        // Permission denied is checked first: a failed key-auth attempt prints both an
-        // "identity file … no such file" warning *and* "Permission denied", and the latter is the
-        // actionable diagnosis (check the username/key), not a vanished remote path.
-        if text.contains("permission denied") {
-            return .permissionDenied
-        }
-        if text.contains("not found") || text.contains("no such file") {
-            return .notFound
-        }
-        return .failure(stderr.trimmingCharacters(in: .whitespacesAndNewlines))
-    }
+    /// Whether ``uploadParts(_:progress:isCancelled:)`` really does send them at once.
+    ///
+    /// **A declaration, not an inference, and the reason is that this route is worth nothing
+    /// without it.** A segmented upload buys concurrency and a progress bar that moves; it *costs* a
+    /// slice on this disk, one connection per part, the destination's size again in scratch on the
+    /// server, and two more round trips for the join and the rename. Sent one part at a time that is
+    /// a worse deal than the single `put` it replaced — so a transport that has not implemented the
+    /// concurrent send must not be handed the route at all, and only it can say whether it has.
+    ///
+    /// The same shape ``RemoteWriteTransport/metadataCapabilities`` already has, for the same
+    /// reason: declaring it is an obligation to implement the verb below, and the `false` default is
+    /// what keeps a transport that has not done so honest. It is read *before* the exec probe, being
+    /// free and a fact about this build rather than about the server.
+    var sendsPartsConcurrently: Bool { get }
 
-    /// An error found in the stderr of an interactive (password-auth) session that *exited zero*, or
-    /// `nil` if the stderr shows no failure. `sftp` in interactive mode doesn't abort on a bad
-    /// command — it prints one error line and carries on — so the transport can't rely on the exit
-    /// code there and scans for `sftp`'s error lines instead. Benign lines (`Connected to …`, a
-    /// server banner, a `Warning: Permanently added …` host-key note) match none of these and yield
-    /// `nil`, so a successful command isn't mistaken for a failure.
-    public static func detect(stderr: String) -> SFTPTransportError? {
-        // Match the changed-key refusal first, for the same reason `classify` does. (A host-key
-        // failure aborts the connection so `sftp` exits non-zero — `classify`'s path — but scanning
-        // here too keeps both entry points consistent if a session ever surfaces it exit-zero.)
-        if let change = SFTPHostKeyChange.parse(stderr: stderr) {
-            return .hostKeyChanged(change)
-        }
-        let lowered = stderr.lowercased()
-        if lowered.contains("permission denied") { return .permissionDenied }
-        if lowered.contains("not found") || lowered.contains("no such file") { return .notFound }
-        // `sftp` prints one failed-command line per error; these forms cover the write verbs
-        // (mkdir/rename/rm/get/put) whose failure text ends in ": Failure" or starts "Couldn't …".
-        for line in stderr.split(whereSeparator: \.isNewline) {
-            let text = line.trimmingCharacters(in: .whitespaces).lowercased()
-            if text.hasPrefix("can't ") || text.hasPrefix("couldn't ") || text.hasPrefix("cannot ")
-                || text.hasPrefix("remote ") || text.hasSuffix(": failure") {
-                return .failure(line.trimmingCharacters(in: .whitespaces))
-            }
-        }
-        return nil
-    }
+    /// Send several parts of one local file **at once**, each to its own remote name, for the
+    /// server to join afterwards (``SSHAssembleCommand``).
+    ///
+    /// The upload twin of ``downloadSegments(_:of:to:progress:isCancelled:)``, and unlike that one
+    /// it *is* SFTP: each part is an ordinary `put` of a slice this machine cut, so a part that
+    /// cannot be written reports the server's own reason rather than arriving as a short file. What
+    /// needs the exec channel is only the join, which is why the caller asks for one **before**
+    /// sending anything — the parts cross the network first, so a refusal discovered afterwards
+    /// would have cost the whole upload.
+    ///
+    /// `progress` reports a part's length **as that part lands**, which is the finest granularity
+    /// this protocol allows: `sftp` prints no meter a spawned process can read, so a single-stream
+    /// upload can only report once at the end, and a split one reports once per part. That is the
+    /// second thing splitting buys, after the parallelism, and it is the one a user sees.
+    ///
+    /// It **throws on any failure of the run**, since a part that did not land makes the join
+    /// meaningless and the caller is about to fall back to one stream, whose error is the one worth
+    /// reporting.
+    ///
+    /// Additive, with a default that sends the parts **one at a time**: the file the server joins is
+    /// identical either way, so a transport that has not implemented this is slow and never wrong.
+    @discardableResult
+    func uploadParts(
+        _ parts: [UploadSegment],
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Int64
+
+    /// Run `command` on the server through an SSH **exec** channel and hand back its standard
+    /// output — or `nil` when this connection has no exec channel to run it on (PLAN.md §M22
+    /// Slice 4).
+    ///
+    /// This is the one verb that is not SFTP at all: it is the *other* thing an SSH connection can
+    /// do, and it exists so a search can have the server walk its own tree with `find` rather than
+    /// paying a connection per directory. It is therefore allowed to be unavailable in a way no
+    /// other verb is — an account confined to the `sftp` subsystem (`ForceCommand internal-sftp`)
+    /// refuses exec requests while browsing and transferring perfectly.
+    ///
+    /// **Neither `nil` nor the exit status detects that**, and the difference matters because the
+    /// natural design gets it backwards. Probed 2026-08-16 against a real `sshd`: an `sftp`-only
+    /// account answers an exec request with prose on **stdout**, exit 1 and an empty stderr, which
+    /// from a transport's side is indistinguishable from a shell that ran something — while `find`
+    /// answers exit 1 *with correct rows* whenever one subdirectory was unreadable. So the status
+    /// is not returned at all, `nil` means only "could not ask" (nothing launched, or the server
+    /// never replied), and deciding whether an answer is an answer is ``SSHFindListingParser``'s
+    /// job, since it is the only thing here that knows what one looks like.
+    ///
+    /// `isCancelled` is polled while the command runs, for the same reason the two byte-moving verbs
+    /// take it: a `find` over a large tree is a single long-running child, and a Stop that could
+    /// only be noticed once it finished would not be a Stop.
+    ///
+    /// The default answers `nil`, so a transport that has no use for this — and every existing test
+    /// double — inherits "there is no shortcut here" and the caller walks.
+    func runCommand(_ command: String, isCancelled: () -> Bool) throws -> String?
+
+    /// The same download, carrying the source's metadata as `plan` describes it.
+    ///
+    /// **One invocation, not two.** `sftp` reads one command per line, so `-p` rides the `get`
+    /// itself and any follow-up `chmod` is another line in the same batch — where a second call
+    /// would be a fresh TCP connect, key exchange and authentication, measured at **71 ms** against
+    /// a loopback server and a real round trip over a network.
+    ///
+    /// The follow-up lines are sent **allowed to fail** (`sftp`'s `-` prefix), which is what keeps a
+    /// refused `chmod` from failing a transfer whose bytes already landed: measured 2026-08-28, a
+    /// plain batch aborts on the first failed command and exits 1, so without the prefix a
+    /// successful copy is reported as a failure. With it the run exits 0 and the refusal still
+    /// reaches stderr, which is what makes the loss reportable rather than merely swallowed.
+    ///
+    /// Additive, and its default **forwards while carrying nothing** — honest only because a
+    /// transport that has not implemented it also reports no ``RemoteWriteTransport/metadataCapabilities``,
+    /// so the plan it is handed is empty and the two paths produce the identical file.
+    @discardableResult
+    func download(
+        _ remotePath: String,
+        to localPath: String,
+        options: RemoteTransferOptions,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> RemoteTransferOutcome
+
+    /// The same upload, carrying the source's metadata as `plan` describes it — with exactly the
+    /// batch shape and the allowed-to-fail rule ``download(_:to:resume:carrying:progress:isCancelled:)``
+    /// documents, measured in this direction too.
+    @discardableResult
+    func upload(
+        _ localPath: String,
+        to remotePath: String,
+        options: RemoteTransferOptions,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> RemoteTransferOutcome
+
+    /// Duplicate one remote file to another path **on the same account, server-side** — the bytes
+    /// never cross this machine (PLAN.md §M25 Slice 3).
+    ///
+    /// `sftp`'s `cp`, over OpenSSH's `copy-data` extension. It is the one verb here whose absence is
+    /// ordinary rather than exceptional: the client refuses on its own after reading what the server
+    /// advertised, so it must be **attempted** and the refusal read — nothing can ask in advance.
+    /// That refusal arrives as ``SFTPTransportError/copyExtensionUnavailable`` and the backend
+    /// latches it for the connection, then stages the copy through this disk as it always did.
+    ///
+    /// `plan.followUp` rides the **same batch**, allowed to fail, for both of the reasons the
+    /// transfer verbs already document: a second invocation would be a fresh connect, key exchange
+    /// and authentication, and a refused `chmod` must not fail a copy whose bytes have landed. It is
+    /// wanted even for an ordinary mode here, unlike on a transfer — measured 2026-08-28, `cp` onto
+    /// an **occupied** destination overwrites the bytes and leaves that file's *own* mode standing.
+    ///
+    /// Answers the metadata steps that did not take, exactly as the transfer verbs do; the copy
+    /// itself either happened or threw. Note what it can never carry: `cp` stamps the copy with
+    /// *now*, and this language has no verb that sets a time, so a plan built for this route counts
+    /// the modification time as dropped and the caller reports it.
+    ///
+    /// The default **throws** rather than forwarding, which is the test this project applies before
+    /// letting a default stand in: staging is not something a transport can do, and answering
+    /// success would report a duplicate that does not exist. Throwing the same refusal a server
+    /// without the extension gives sends the caller down the route it already has.
+    func copyRemoteFile(
+        _ source: String,
+        to destination: String,
+        carrying plan: RemoteMetadataPlan,
+        isCancelled: () -> Bool
+    ) throws -> [RemoteMetadataRefusal]
 }
 
-/// The parsed details of an OpenSSH "REMOTE HOST IDENTIFICATION HAS CHANGED" refusal: enough to warn
-/// the user which key changed and to what fingerprint, and to repair the stale pin afterwards. Pure
-/// and tested so this security-sensitive parsing is verified without a server, like the rest of this
-/// file. Every field is best-effort — a missing one is left empty/zero rather than failing the whole
-/// parse — so the app still reaches the re-trust path even if OpenSSH's wording drifts.
-public struct SFTPHostKeyChange: Sendable, Equatable {
-    /// The host whose key changed, as OpenSSH names it (usually the address the user connected to).
-    public let host: String
-    /// The key algorithm, e.g. `ED25519` or `RSA`; empty if the message didn't name it.
-    public let keyType: String
-    /// The key the server now presents, e.g. `SHA256:HAuu…`; empty if it couldn't be parsed.
-    public let fingerprint: String
-    /// The `known_hosts` file holding the stale pin, as OpenSSH reported it; empty if not found.
-    public let knownHostsFile: String
-    /// The 1-based line of the offending entry in `knownHostsFile`, or 0 if not reported.
-    public let line: Int
+public extension SFTPTransport {
+    func runCommand(_ command: String, isCancelled: () -> Bool) throws -> String? { nil }
 
-    public init(
-        host: String,
-        keyType: String,
-        fingerprint: String,
-        knownHostsFile: String,
-        line: Int
-    ) {
-        self.host = host
-        self.keyType = keyType
-        self.fingerprint = fingerprint
-        self.knownHostsFile = knownHostsFile
-        self.line = line
+    func copyRemoteFile(
+        _: String,
+        to _: String,
+        carrying _: RemoteMetadataPlan,
+        isCancelled _: () -> Bool
+    ) throws -> [RemoteMetadataRefusal] {
+        throw SFTPTransportError.copyExtensionUnavailable
     }
 
-    /// Parse `sftp`/`ssh` stderr into a host-key-change descriptor, or `nil` when it is not a
-    /// changed-key refusal. Only the unambiguous "REMOTE HOST IDENTIFICATION HAS CHANGED" banner
-    /// triggers a match: the app connects with `StrictHostKeyChecking=accept-new`, so an *unknown*
-    /// host is pinned silently and never reaches here — only a *changed* key does.
-    public static func parse(stderr: String) -> SFTPHostKeyChange? {
-        guard stderr.lowercased().contains("remote host identification has changed") else {
-            return nil
+    @discardableResult
+    func download(
+        _ remotePath: String,
+        to localPath: String,
+        options: RemoteTransferOptions,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> RemoteTransferOutcome {
+        RemoteTransferOutcome(bytes: try download(
+            remotePath,
+            to: localPath,
+            resume: options.resume,
+            progress: progress,
+            isCancelled: isCancelled
+        ))
+    }
+
+    @discardableResult
+    func upload(
+        _ localPath: String,
+        to remotePath: String,
+        options: RemoteTransferOptions,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> RemoteTransferOutcome {
+        RemoteTransferOutcome(bytes: try upload(
+            localPath,
+            to: remotePath,
+            resume: options.resume,
+            progress: progress,
+            isCancelled: isCancelled
+        ))
+    }
+
+    /// A transport says nothing about concurrency until it implements the verb below.
+    ///
+    /// `false` is what keeps the route off a transport that cannot serve it — see
+    /// ``sendsPartsConcurrently``.
+    var sendsPartsConcurrently: Bool { false }
+
+    /// The additive half of ``uploadParts(_:progress:isCancelled:)``: a transport that predates
+    /// segmented uploads keeps compiling and keeps working.
+    ///
+    /// It forwards rather than throwing, by the test this project applies before letting a default
+    /// stand in — the caller cannot tell it was not honoured, because the parts land under the same
+    /// names holding the same bytes and the server joins the identical file. It is nonetheless
+    /// **unreachable in the shipped app**, and deliberately so: `sendsPartsConcurrently` is `false`
+    /// alongside it, so the backend never offers the route to a transport running on this. What it
+    /// loses is the concurrency, which is not merely the point of the route — without it the route
+    /// is *worse* than the single `put` it replaces, since the costs are all still paid.
+    @discardableResult
+    func uploadParts(
+        _ parts: [UploadSegment],
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        var moved: Int64 = 0
+        for part in parts.sorted(by: { $0.number < $1.number }) {
+            moved += try upload(
+                part.localPath,
+                to: part.remotePath,
+                resume: false,
+                progress: { _ in },
+                isCancelled: isCancelled
+            )
+            progress(part.length)
         }
-        let (file, line) = offendingEntry(in: stderr)
-        return SFTPHostKeyChange(
-            host: value(in: stderr, between: "Host key for ", and: " has changed"),
-            keyType: keyType(in: stderr),
-            fingerprint: fingerprint(in: stderr),
-            knownHostsFile: file,
-            line: line
-        )
+        return moved
     }
 
-    /// The substring between the first `prefix` and the next `suffix` after it, or "" if either is
-    /// absent. The markers sit on one line in OpenSSH's message, so the result never spans lines.
-    private static func value(in text: String, between prefix: String, and suffix: String) -> String {
-        guard let start = text.range(of: prefix),
-              let end = text.range(of: suffix, range: start.upperBound..<text.endIndex) else {
-            return ""
-        }
-        return String(text[start.upperBound..<end.lowerBound])
-    }
-
-    /// The key algorithm, preferring the "Offending <type> key in …" line and falling back to the
-    /// "for the <type> key sent by …" line.
-    private static func keyType(in text: String) -> String {
-        let offending = value(in: text, between: "Offending ", and: " key in ")
-        return offending.isEmpty ? value(in: text, between: "for the ", and: " key sent by") : offending
-    }
-
-    /// The SHA256 (or MD5) fingerprint token, stripped of the sentence's trailing period.
-    private static func fingerprint(in text: String) -> String {
-        for prefix in ["SHA256:", "MD5:"] {
-            guard let range = text.range(of: prefix) else { continue }
-            let token = text[range.lowerBound...].prefix { !$0.isWhitespace }
-            return String(token).trimmingCharacters(in: CharacterSet(charactersIn: "."))
-        }
-        return ""
-    }
-
-    /// The stale entry's file and 1-based line from "Offending … key in <file>:<line>".
-    private static func offendingEntry(in text: String) -> (file: String, line: Int) {
-        for raw in text.split(whereSeparator: \.isNewline) {
-            let lineText = raw.trimmingCharacters(in: .whitespaces)
-            // Anchor on the "Offending … key in …" line specifically: another line ("Add correct
-            // host key in …") also contains " key in " but isn't the stale entry's location.
-            guard lineText.lowercased().hasPrefix("offending "),
-                  let range = lineText.range(of: " key in ") else { continue }
-            let location = String(lineText[range.upperBound...])
-            guard let colon = location.lastIndex(of: ":"),
-                  let number = Int(location[location.index(after: colon)...]) else {
-                return (location, 0)
-            }
-            return (String(location[..<colon]), number)
-        }
-        return ("", 0)
-    }
-}
-
-/// Formats the `ssh-keygen -R` target for a host, matching how OpenSSH keys `known_hosts` entries: a
-/// bare host on the default port, or the bracketed `[host]:port` form otherwise. Pure and tested so
-/// the app's repair (dropping a stale pin) aims at exactly the entry OpenSSH refused on.
-public enum SFTPKnownHosts {
-    public static func removalTarget(host: String, port: Int) -> String {
-        port == SFTPLocation.defaultPort ? host : "[\(host)]:\(port)"
-    }
-}
-
-/// Builds the `sftp` batch commands the transport feeds on stdin. Pure and tested so the escaping —
-/// the one place a remote path with spaces or quotes could break the command — is verified without
-/// a server. `sftp`'s batch parser splits on whitespace but honours double quotes and backslash
-/// escapes, so a path is wrapped in quotes with `\` and `"` escaped.
-public enum SFTPBatchCommand {
-    /// The batch line that lists (or stats) `remotePath`: `ls -la "…"`.
-    public static func list(_ remotePath: String) -> String {
-        "ls -la \(quote(remotePath))"
-    }
-
-    /// The batch line that creates a remote directory: `mkdir "…"`.
-    public static func makeDirectory(_ remotePath: String) -> String {
-        "mkdir \(quote(remotePath))"
-    }
-
-    /// The batch line that renames/moves a remote item: `rename "src" "dst"`.
-    public static func rename(_ source: String, to destination: String) -> String {
-        "rename \(quote(source)) \(quote(destination))"
-    }
-
-    /// The batch line that removes a remote file or symlink: `rm "…"`.
-    public static func removeFile(_ remotePath: String) -> String {
-        "rm \(quote(remotePath))"
-    }
-
-    /// The batch line that removes an empty remote directory: `rmdir "…"`.
-    public static func removeDirectory(_ remotePath: String) -> String {
-        "rmdir \(quote(remotePath))"
-    }
-
-    /// The batch line that creates a remote symbolic link: `ln -s "target" "link"` (`sftp`'s `ln`
-    /// takes the existing target first, the new link path second, like `ln(1)`).
-    public static func createSymbolicLink(_ remotePath: String, target: String) -> String {
-        "ln -s \(quote(target)) \(quote(remotePath))"
-    }
-
-    /// The batch line that downloads a remote file to a local path: `get "remote" "local"`, or
-    /// `get -a "remote" "local"` to **resume** — `sftp` seeks to the local file's current length and
-    /// fetches only the remainder, instead of restarting from zero.
-    public static func download(_ remotePath: String, to localPath: String, resume: Bool = false) -> String {
-        "get \(resume ? "-a " : "")\(quote(remotePath)) \(quote(localPath))"
-    }
-
-    /// The batch line that uploads a local file to a remote path: `put "local" "remote"`, or
-    /// `put -a "local" "remote"` to **resume** — `sftp` seeks past the remote file's current length
-    /// and sends only the remainder.
-    public static func upload(_ localPath: String, to remotePath: String, resume: Bool = false) -> String {
-        "put \(resume ? "-a " : "")\(quote(localPath)) \(quote(remotePath))"
-    }
-
-    /// The batch line that prints the remote working directory (`pwd`), used to discover the home
-    /// directory to land in on connect.
-    public static let printWorkingDirectory = "pwd"
-
-    static func quote(_ path: String) -> String {
-        let escaped = path
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-        return "\"\(escaped)\""
-    }
-}
-
-/// How the CLI-driven transport authenticates against a server. Carries no secret for `.password`:
-/// the password is resolved from the Keychain by the app and fed to `sftp` out-of-band via an
-/// `SSH_ASKPASS` helper (never on the command line, never in this value, never on disk), so an auth
-/// *method* is safe to describe and thread around like an `SFTPLocation`.
-public enum SFTPAuthentication: Sendable, Hashable, Codable {
-    /// Public-key auth with the private key at `identityFile` — `sftp`'s native non-interactive path.
-    case key(identityFile: String)
-    /// Password auth; the password is supplied out-of-band, never held here.
-    case password
-}
-
-/// Builds the `sftp` process arguments (after the executable path) for a one-command session. Pure
-/// and tested so the security-sensitive flag assembly — which auth methods are offered, and crucially
-/// whether the interactive password prompt is enabled — is verified without spawning `sftp`, the
-/// same reason `SFTPBatchCommand` is pure.
-///
-/// The two modes differ fundamentally, verified live against OpenSSH 10:
-/// - **Key auth uses `-b -`**: quiet, fail-fast batch semantics (no `sftp>` echo, a non-zero exit on
-///   a failed command). `-b` also forces `-oBatchMode=yes` onto `ssh`, which is what makes key auth
-///   fully non-interactive. This is the shipped, verified browse/transfer path — left untouched.
-/// - **Password auth cannot use `-b`**: it forces `BatchMode=yes`, which disables the password prompt
-///   entirely (`ssh` would report "no more authentication methods"). So password auth runs `sftp`
-///   *interactively* over a piped stdin — the prompt is answered out-of-band by `SSH_ASKPASS` — which
-///   means stdout carries `sftp>` echo lines (`SFTPListingParser` skips them) and a failed command
-///   exits zero (so the transport must scan stderr with `detect(stderr:)`, not just the exit code).
-///   Only the `password` method is offered: `keyboard-interactive` stalls for a minute on a *wrong*
-///   password when `SSH_ASKPASS` auto-answers it (macOS PAM), which would hang the pane on a typo;
-///   and `PubkeyAuthentication=no` stops a machine's stray authorized key from bypassing the choice.
-public enum SFTPProcessArguments {
-    public static func batch(
-        location: SFTPLocation,
-        authentication: SFTPAuthentication,
-        connectTimeout: Int
-    ) -> [String] {
-        let common = [
-            "-o", "ConnectTimeout=\(connectTimeout)",
-            // Trust-on-first-use: a fresh host is added to known_hosts, a *changed* key still fails.
-            "-o", "StrictHostKeyChecking=accept-new",
-            "-P", String(location.port)
-        ]
-        let target = "\(location.username)@\(location.host)"
-        switch authentication {
-        case let .key(identityFile):
-            return ["-i", identityFile, "-o", "BatchMode=yes"] + common + ["-b", "-", target]
-        case .password:
-            // No `-b`: it would disable the prompt. Interactive over piped stdin; `SSH_ASKPASS`
-            // answers the prompt (wired by the transport's environment).
-            return [
-                "-o", "PreferredAuthentications=password",
-                "-o", "PubkeyAuthentication=no",
-                // One attempt, so a wrong password fails fast instead of re-prompting three times.
-                "-o", "NumberOfPasswordPrompts=1"
-            ] + common + [target]
-        }
+    /// The additive half of ``downloadSegments(_:of:to:progress:isCancelled:)``: a transport that
+    /// predates segmented downloads keeps compiling and keeps working.
+    ///
+    /// It forwards rather than throwing — the test this project applies before letting a default
+    /// stand in is whether the caller can tell it was not honoured, and here the two paths produce
+    /// the identical file.
+    @discardableResult
+    func downloadSegments(
+        _ segments: [DownloadSegment],
+        of remotePath: String,
+        to localPath: String,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> SegmentedDownloadOutcome {
+        .whole(bytes: try download(
+            remotePath,
+            to: localPath,
+            resume: false,
+            progress: progress,
+            isCancelled: isCancelled
+        ))
     }
 }

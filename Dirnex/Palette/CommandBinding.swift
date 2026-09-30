@@ -20,9 +20,14 @@ enum CommandBinding {
         "file.closeTab": #selector(PanelViewController.closeCurrentTab(_:)),
         "file.openWith": #selector(PanelViewController.showOpenWithMenu(_:)),
         "file.share": #selector(PanelViewController.shareSelection(_:)),
+        "file.showInFinder": #selector(PanelViewController.showInFinder(_:)),
+        "file.downloadNow": #selector(PanelViewController.downloadNow(_:)),
+        "file.removeDownload": #selector(PanelViewController.removeDownload(_:)),
         "file.copy": #selector(PanelViewController.copyToOtherPane(_:)),
         "file.move": #selector(PanelViewController.moveToOtherPane(_:)),
         "file.pack": #selector(PanelViewController.packSelection(_:)),
+        "file.archiveNameEncoding":
+            #selector(PanelViewController.chooseArchiveNameEncoding(_:)),
         "file.syncDirectories": #selector(PanelViewController.synchronizeDirectories(_:)),
         "file.compareByContents": #selector(PanelViewController.compareByContents(_:)),
         "file.attributes": #selector(PanelViewController.showAttributes(_:)),
@@ -83,12 +88,28 @@ enum CommandBinding {
         "view.quickViewSource": #selector(BrowserWindowController.showQuickViewSource(_:)),
         "view.quickViewRenderedPage":
             #selector(BrowserWindowController.showQuickViewRenderedPage(_:)),
+        // The window controller, which builds the placeholder card's actions: the key has to run
+        // the very closure the card's Download button runs, not a second spelling of it.
+        "view.downloadPreview": #selector(BrowserWindowController.downloadQuickViewPreview(_:)),
+        // The window controller, for the reason the sizes above are: the full-size surface is a
+        // sibling of the panes, so a pane-hosted zoom would find no target once the document has focus.
+        "view.quickViewZoomIn": #selector(BrowserWindowController.zoomInQuickView(_:)),
+        "view.quickViewZoomOut": #selector(BrowserWindowController.zoomOutQuickView(_:)),
+        "view.quickViewResetZoom": #selector(BrowserWindowController.resetQuickViewZoom(_:)),
+        // The window controller, for the same reason: the table filtered is the preview's.
+        "view.quickViewFilterTable": #selector(BrowserWindowController.filterQuickViewTable(_:)),
         // The window controller, not a pane: the drawer spans both panes, and this is the one
         // command that must also fire while the *terminal* holds focus — where no pane is in the
         // responder chain, but the window controller still is.
         "view.terminal": #selector(BrowserWindowController.toggleTerminalDrawer(_:)),
         "go.openInTerminal": #selector(PanelViewController.openInTerminal(_:)),
         "go.connectServer": #selector(PanelViewController.connectToServer(_:)),
+        // The window controller, not a pane: a vault spans both panes and the sidebar — the image
+        // is written where you stand, the volume opens in the other pane, and the row appears in
+        // the source list. Like `view.focusSidebar`.
+        "go.newVault": #selector(BrowserWindowController.newVault(_:)),
+        "go.unlockVault": #selector(BrowserWindowController.unlockVault(_:)),
+        "go.lockVault": #selector(BrowserWindowController.lockVault(_:)),
         "go.editLocation": #selector(PanelViewController.editLocation(_:)),
         "go.search": #selector(PanelViewController.findFiles(_:)),
         "go.saveSearch": #selector(PanelViewController.saveCurrentSearch(_:)),
@@ -96,6 +117,7 @@ enum CommandBinding {
         "go.back": #selector(PanelViewController.goBack(_:)),
         "go.forward": #selector(PanelViewController.goForward(_:)),
         "go.history": #selector(PanelViewController.showHistory(_:)),
+        "go.places": #selector(PanelViewController.showPlaces(_:)),
         "go.favorites": #selector(PanelViewController.showFavorites(_:)),
         "go.addToFavorites": #selector(PanelViewController.addToFavorites(_:)),
         "workspace.list": #selector(PanelViewController.showWorkspaces(_:)),

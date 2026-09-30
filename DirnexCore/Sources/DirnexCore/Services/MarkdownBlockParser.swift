@@ -137,7 +137,7 @@ enum MarkdownBlockParser {
     ///
     /// An **indented code block is deliberately absent**: four spaces under a paragraph is a wrapped
     /// line somebody indented, not code, and reading it as code is how a hanging indent turns half a
-    /// sentence into a grey box.
+    /// sentence into a gray box.
     static func startsBlock(_ lines: [String], at index: Int) -> Bool {
         let line = lines[index]
         guard MarkdownLine.indentation(of: line) < 4 else { return false }

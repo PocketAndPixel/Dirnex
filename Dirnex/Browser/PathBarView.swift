@@ -14,6 +14,10 @@ protocol PathBarViewDelegate: AnyObject {
     func pathBar(_ bar: PathBarView, didCommit rawText: String, resolved: VFSPath)
     /// Editing was abandoned (Esc) — the pane should take keyboard focus back.
     func pathBarDidCancel(_ bar: PathBarView)
+    /// The leading glyph was clicked — the pane should drop its Places menu (PLAN.md §M20). Reported
+    /// rather than done here for the reason at the top of this file: the bar states intent, and
+    /// which pane a place opens in is the pane's business, not the bar's.
+    func pathBarDidRequestPlaces(_ bar: PathBarView)
     /// Text editing began — the pane should become the active one.
     func pathBarDidBeginEditing(_ bar: PathBarView)
     /// Directory names contained directly in `directory`, for path completion. Called
@@ -54,6 +58,12 @@ final class PathBarView: NSView, NSTextFieldDelegate {
     private var crumbTargets: [VFSPath] = []
 
     private var path: VFSPath?
+    /// The archive trail the location was last drawn with, kept so `reloadLocation` can redraw it
+    /// without the pane having to hand it over again.
+    private var archiveAncestry: [VFSPath] = []
+    /// What the user named the Cloud rows, read by each rebuild that draws one of their names. A seam
+    /// rather than a store read inline, so a test never draws the developer's own renames.
+    var cloudPlaceNames: () -> SidebarItemNames = { CloudPlaceNameStore.load() }
     var isEditing = false
 
     /// The location Cmd+L started from — the base for resolving relative/`~` input.
@@ -113,8 +123,9 @@ final class PathBarView: NSView, NSTextFieldDelegate {
         editField.delegate = self
         editField.isHidden = true
         editField.translatesAutoresizingMaskIntoConstraints = false
-        editField.usesSingleLineMode = true
-        editField.lineBreakMode = .byTruncatingHead
+        // All four properties, not just single-line mode: with that alone a path longer than the bar
+        // still wraps to a hidden second line and ⌘L cannot reach its end (docs/NOTES.md).
+        editField.keepToOneLine(truncating: .byTruncatingHead)
 
         addSubview(crumbStack)
         addSubview(editField)
@@ -145,16 +156,28 @@ final class PathBarView: NSView, NSTextFieldDelegate {
     func setPath(_ path: VFSPath, archiveAncestry: [VFSPath] = []) {
         guard self.path != path else { return }
         self.path = path
+        self.archiveAncestry = archiveAncestry
         if isEditing { endEditing(restoreFocus: false) }
+        rebuildContents(for: path, archiveAncestry: archiveAncestry)
+    }
+
+    /// Redraw the location already on screen, for a change `setPath` cannot see because the path did
+    /// not move — a Cloud row renamed while the pane stands inside it. An open ⌘L edit is left
+    /// alone: the crumbs sit hidden under the field and are simply rebuilt there.
+    func reloadLocation() {
+        guard let path else { return }
         rebuildContents(for: path, archiveAncestry: archiveAncestry)
     }
 
     /// Internal, not private: `rebuildContents` drives it from `PathBarView+Location`, and Swift's
     /// `private` does not reach across files.
     func rebuildCrumbs(for path: VFSPath, rootTitle: String = "Macintosh HD") {
-        installCrumbs(path.ancestorsFromRoot.map { ancestor in
-            Crumb(title: ancestor.isRoot ? rootTitle : ancestor.lastComponent, target: ancestor)
-        })
+        installCrumbs(
+            path.ancestorsFromRoot.map { ancestor in
+                Crumb(title: ancestor.isRoot ? rootTitle : ancestor.lastComponent, target: ancestor)
+            },
+            leadingSymbol: Self.rootSymbolName(for: path)
+        )
     }
 
     private func makeCrumb(title: String, tag: Int, isCurrent: Bool) -> NSButton {
@@ -217,6 +240,12 @@ final class PathBarView: NSView, NSTextFieldDelegate {
         guard crumbTargets.indices.contains(sender.tag) else { return }
         delegate?.pathBar(self, didActivate: crumbTargets[sender.tag])
     }
+
+    /// The leading glyph was clicked. Internal, not private, because `makePlacesButton` names it in
+    /// a `#selector` from `PathBarView+Location` and Swift's `private` does not cross files.
+    @objc func showPlaces(_ sender: Any?) {
+        delegate?.pathBarDidRequestPlaces(self)
+    }
 }
 
 // MARK: - Crumb row installation
@@ -240,20 +269,23 @@ extension PathBarView {
     /// `installVirtualLabel` does for the Trash and iCloud Drive. It is tinted like the leading
     /// crumbs it sits beside rather than like the current one, so it reads as part of the root
     /// rather than competing with the directory the pane is actually in.
-    func installCrumbs(_ crumbs: [Crumb], leadingSymbol: String? = nil) {
+    ///
+    /// It is required, not optional, as of §M20 Slice 3: the slot is now the button onto Places, so
+    /// a render path that passed nothing would be a mode with no mouse route to the place list —
+    /// and, since every location *has* a kind, there was never anything to say by leaving it out.
+    /// `PathBarView+Location.rootSymbolName` names the kind for the paths that had none.
+    func installCrumbs(_ crumbs: [Crumb], leadingSymbol: String) {
         clearCrumbStack()
         crumbTargets = crumbs.map(\.target)
-        if let leadingSymbol {
-            let glyph = makeLocationGlyph(
-                named: leadingSymbol,
-                describedAs: crumbs.first?.title ?? "",
-                tint: .secondaryLabelColor
-            )
-            crumbStack.addArrangedSubview(glyph)
-            // `crumbStack` is spaced at 1 pt for the `›` separators, which would leave the glyph
-            // touching the first crumb — the same reason the virtual label nests its own row.
-            crumbStack.setCustomSpacing(5, after: glyph)
-        }
+        let glyph = makePlacesButton(
+            named: leadingSymbol,
+            describedAs: crumbs.first?.title ?? "",
+            tint: .secondaryLabelColor
+        )
+        crumbStack.addArrangedSubview(glyph)
+        // `crumbStack` is spaced at 1 pt for the `›` separators, which would leave the glyph
+        // touching the first crumb — the same reason the virtual label nests its own row.
+        crumbStack.setCustomSpacing(5, after: glyph)
         for (index, crumb) in crumbs.enumerated() {
             if index > 0 {
                 crumbStack.addArrangedSubview(makeSeparator())
@@ -292,7 +324,7 @@ extension PathBarView {
         clearCrumbStack()
         let color: NSColor = isActive ? .labelColor : .secondaryLabelColor
 
-        let glyph = makeLocationGlyph(named: symbolName, describedAs: text, tint: color)
+        let glyph = makePlacesButton(named: symbolName, describedAs: text, tint: color)
 
         let label = NSTextField(labelWithString: text)
         label.font = .boldSystemFont(ofSize: NSFont.smallSystemFontSize)
@@ -349,6 +381,11 @@ extension PathBarView {
     /// A right-click menu for a single crumb: copy the location it points at as text. Built per
     /// crumb so the path travels with the button — a background refresh that rebuilds the row can't
     /// leave the menu aimed at a stale location.
+    ///
+    /// The text goes through ``CopyPathText``, not the target's bare path: an archive crumb's path is
+    /// inner to the archive, so the archive's own crumb copied `/`. The stored `archiveAncestry` is
+    /// the chain of the location this row was built for, because `setPath` stores it before every
+    /// rebuild and `reloadLocation` redraws with it.
     private func crumbMenu(for target: VFSPath) -> NSMenu {
         let menu = NSMenu()
         let title = String(
@@ -357,7 +394,7 @@ extension PathBarView {
         )
         let item = NSMenuItem(title: title, action: #selector(copyCrumbPath(_:)), keyEquivalent: "")
         item.target = self
-        item.representedObject = target.path
+        item.representedObject = CopyPathText.text(for: target, archiveAncestry: archiveAncestry)
         menu.addItem(item)
         return menu
     }

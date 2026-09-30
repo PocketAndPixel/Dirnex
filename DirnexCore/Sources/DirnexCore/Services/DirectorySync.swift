@@ -15,18 +15,6 @@ import Foundation
 // snapshot; exact content equality is delegated to an injected comparator (defaulting to
 // `ByteComparator.localFilesEqual`) so the engine needs no file-read primitive of its own.
 
-// MARK: - Comparison method
-
-/// How two same-named files are judged equal.
-public enum SyncComparison: Sendable, Equatable {
-    /// Equal when byte sizes match *and* modification times agree within the tolerance.
-    /// Fast — reads no file contents — but blind to an edit that preserved size and mtime.
-    case sizeAndDate
-    /// Equal only when the bytes are identical (via the content comparator). Exact, but
-    /// reads both files; still short-circuits on a size mismatch.
-    case content
-}
-
 // MARK: - Status
 
 /// Where one item stands between the two trees — the classification a diff row shows.
@@ -183,13 +171,38 @@ public enum DirectorySync {
         ) }
     ) throws -> [SyncEntry] {
         var results: [SyncEntry] = []
+        // Whether either side's stamp may be believed is a fact about the **pair**, derived here
+        // rather than asked of the caller: `compare` already holds both roots, so there is no
+        // parameter for anybody to get wrong and no second spelling of the rule the sheet applies
+        // when it withdraws `.sizeAndDate` (``SyncComparison/believesModificationDates(between:and:)``).
+        let believesClock = comparison.believesModificationDates(
+            between: left.backend,
+            and: right.backend
+        )
+        // Asked once per side, before anything is walked: a backend with a subtree shortcut answers
+        // the whole tree in one request and the walk below is served from that instead of listing a
+        // directory at a time. A backend without one answers `nil` and nothing changes (``SyncSide``).
+        let leftSide = try SyncSide.gather(under: left, using: leftBackend, isCancelled: isCancelled)
+        let rightSide = try SyncSide.gather(
+            under: right,
+            using: rightBackend,
+            isCancelled: isCancelled
+        )
         // Work stack of directory pairs that both exist, plus their shared relative prefix.
         var stack = [DirectoryPair(left: left, right: right, prefix: "")]
 
         while let node = stack.popLast() {
             if isCancelled() { throw CancellationError() }
-            let leftByName = try childrenByName(of: node.left, using: leftBackend)
-            let rightByName = try childrenByName(of: node.right, using: rightBackend)
+            let leftByName = try leftSide.children(
+                at: node.left,
+                relative: node.prefix,
+                using: leftBackend
+            )
+            let rightByName = try rightSide.children(
+                at: node.right,
+                relative: node.prefix,
+                using: rightBackend
+            )
 
             for name in Set(leftByName.keys).union(rightByName.keys) {
                 let relative = node.prefix.isEmpty ? name : node.prefix + "/" + name
@@ -200,6 +213,7 @@ public enum DirectorySync {
                     rightEntry: rightByName[name],
                     comparison: comparison,
                     tolerance: tolerance,
+                    believesClock: believesClock,
                     includingIdentical: includingIdentical,
                     contentsEqual: contentsEqual,
                     into: &results,
@@ -254,6 +268,7 @@ public enum DirectorySync {
         rightEntry: FileEntry?,
         comparison: SyncComparison,
         tolerance: TimeInterval,
+        believesClock: Bool,
         includingIdentical: Bool,
         contentsEqual: (VFSPath, VFSPath) throws -> Bool,
         into results: inout [SyncEntry],
@@ -279,7 +294,8 @@ public enum DirectorySync {
             } else {
                 let status = try fileStatus(
                     leftEntry, rightEntry,
-                    comparison: comparison, tolerance: tolerance, contentsEqual: contentsEqual
+                    comparison: comparison, tolerance: tolerance,
+                    believesClock: believesClock, contentsEqual: contentsEqual
                 )
                 append(name, relative, leftEntry, rightEntry, status, includingIdentical, &results)
             }
@@ -308,33 +324,65 @@ public enum DirectorySync {
         )
     }
 
+    // One argument past SwiftLint's ceiling, and it is `believesClock` — the pair's answer to
+    // whether either listing's stamp may be read, which the doc comment below argues for.
+    // swiftlint:disable function_parameter_count
+
     /// Classify two same-named non-directory items (files, symlinks, specials).
-    private static func fileStatus(
+    ///
+    /// Internal rather than private so ``recompare(_:between:and:comparison:tolerance:includingIdentical:contentsEqual:)``
+    /// in the companion file can re-answer a row without walking anything — Swift's `private` does
+    /// not cross files, and two spellings of what a comparison *means* is the one thing the second
+    /// phase must not introduce.
+    ///
+    /// `believesClock` is the pair's answer, not the comparison's: see
+    /// ``SyncComparison/believesModificationDates(between:and:)``.
+    static func fileStatus(
         _ left: FileEntry,
         _ right: FileEntry,
         comparison: SyncComparison,
         tolerance: TimeInterval,
+        believesClock: Bool,
         contentsEqual: (VFSPath, VFSPath) throws -> Bool
     ) throws -> SyncStatus {
         let equal: Bool
         switch comparison {
-        case .sizeAndDate:
+        case .size:
             equal = left.byteSize == right.byteSize
-                && abs(left.modificationDate.timeIntervalSince(right.modificationDate)) <= tolerance
+        case .sizeAndDate:
+            equal = sizeAndDateAgree(left, right, tolerance: tolerance)
         case .content:
-            // Different sizes can't be equal; only read bytes when sizes match. Content mode
-            // applies to regular files — fall back to size+date for symlinks/specials.
-            if left.kind != .file || right.kind != .file {
-                equal = left.byteSize == right.byteSize
-                    && abs(left.modificationDate.timeIntervalSince(right.modificationDate)) <= tolerance
-            } else if left.byteSize != right.byteSize {
-                equal = false
-            } else {
+            // Only the pairs whose bytes decide it are read — the same rule
+            // ``contentCandidates(in:)`` selects by, so what the gesture fetched and what the scan
+            // reads are one definition rather than two. Everything else falls back to metadata, and
+            // to *size alone* where the clock cannot be believed: over a coarse listing a symlink
+            // pair would otherwise report a difference on every scan.
+            if contentReadsBytes(left, right) {
                 equal = try contentsEqual(left.path, right.path)
+            } else if believesClock {
+                equal = sizeAndDateAgree(left, right, tolerance: tolerance)
+            } else {
+                equal = left.byteSize == right.byteSize
             }
         }
         if equal { return .identical }
+        // A comparison that cannot believe the clock must not rank with it either: `.differ` is
+        // "these are not the same and nothing here can say which came later", which the mirror
+        // directions still act on and the bidirectional one correctly refuses to guess at.
+        guard believesClock else { return .differ }
         return newerSide(left, right, tolerance: tolerance)
+    }
+
+    // swiftlint:enable function_parameter_count
+
+    /// The metadata equality both date-aware comparisons rest on.
+    private static func sizeAndDateAgree(
+        _ left: FileEntry,
+        _ right: FileEntry,
+        tolerance: TimeInterval
+    ) -> Bool {
+        left.byteSize == right.byteSize
+            && abs(left.modificationDate.timeIntervalSince(right.modificationDate)) <= tolerance
     }
 
     /// For two items known to differ, which side is newer (or neither, within tolerance).
@@ -343,14 +391,6 @@ public enum DirectorySync {
         if delta > tolerance { return .leftNewer }
         if delta < -tolerance { return .rightNewer }
         return .differ
-    }
-
-    private static func childrenByName(
-        of directory: VFSPath,
-        using backend: some VFSBackend
-    ) throws -> [String: FileEntry] {
-        let entries = try backend.listDirectory(at: directory)
-        return Dictionary(entries.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
     // MARK: - Action derivation

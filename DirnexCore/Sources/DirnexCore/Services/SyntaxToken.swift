@@ -1,6 +1,6 @@
 import Foundation
 
-/// One coloured span in a previewed text file (PLAN.md §M17).
+/// One colored span in a previewed text file (PLAN.md §M17).
 ///
 /// Offsets are plain `Int` counts of **UTF-16 code units**, which is what an `NSRange` indexes. The
 /// core imports no AppKit and never sees an `NSAttributedString`, but handing back offsets in any
@@ -8,12 +8,12 @@ import Foundation
 /// AppKit-shaped decision the core does make is the unit its offsets are measured in.
 public struct SyntaxToken: Equatable, Sendable {
     /// What a span *is*, semantically. Six kinds and no more, which is the milestone's one open
-    /// question closed at open (PLAN.md §7): a small vocabulary maps onto system dynamic colours,
+    /// question closed at open (PLAN.md §7): a small vocabulary maps onto system dynamic colors,
     /// which resolve in both appearances for free, and keeps the whole feature out of Settings.
     ///
     /// The scanner never emits `.plain` — an unclaimed run of text already renders in the text
     /// view's own `.textColor`, so a token for it would be a span that changes nothing. It exists
-    /// because the *theme* needs a name for that colour.
+    /// because the *theme* needs a name for that color.
     public enum Kind: String, Equatable, Sendable, CaseIterable {
         /// A reserved word, a preprocessor directive, an annotation — the language's own vocabulary.
         case keyword
@@ -30,13 +30,13 @@ public struct SyntaxToken: Equatable, Sendable {
         ///
         /// The two kinds PLAN.md's "six and no more" grew by, added with Slice 2's diff scanner and
         /// **not** a reopening of the question §7 closed — that question was how much of a theme the
-        /// *user* owns, and the answer is unchanged: system dynamic colours, no Settings surface.
+        /// *user* owns, and the answer is unchanged: system dynamic colors, no Settings surface.
         /// These are two more entries in the same dictionary.
         ///
-        /// The alternative was to borrow — colour an added line `.comment` and a removed one
-        /// `.string`, which renders correctly against the colours Slice 3 is likely to pick. It is
+        /// The alternative was to borrow — color an added line `.comment` and a removed one
+        /// `.string`, which renders correctly against the colors Slice 3 is likely to pick. It is
         /// rejected because it **couples** the diff to a decision made about something else: the day
-        /// `.comment` becomes grey, as many themes have it, a diff silently loses its green and
+        /// `.comment` becomes gray, as many themes have it, a diff silently loses its green and
         /// nothing in the code says why.
         case inserted
         case deleted

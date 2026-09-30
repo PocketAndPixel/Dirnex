@@ -56,7 +56,7 @@ final class QueueBarView: NSView {
 
     private let disclosureButton = NSButton()
     private let statusLabel = NSTextField(labelWithString: "")
-    private let detailLabel = NSTextField(labelWithString: "")
+    let detailLabel = NSTextField(labelWithString: "")
     private let bar = NSProgressIndicator()
     private let pauseButton = NSButton()
     private let cancelButton = NSButton()
@@ -76,23 +76,21 @@ final class QueueBarView: NSView {
     /// The byte/throughput/ETA readout arrives many times a second; refreshing the label that
     /// fast makes it a blur. We coalesce it to at most once a second (with an immediate refresh
     /// when the paused state flips) — see `update(with:)`.
-    private static let detailRefreshInterval: TimeInterval = 1
-    private var lastDetailRefresh: Date = .distantPast
-    private var lastPausedState: Bool?
-
-    private static let byteFormatter: ByteCountFormatter = {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        return formatter
-    }()
-
-    private static let etaFormatter: DateComponentsFormatter = {
-        let formatter = DateComponentsFormatter()
-        formatter.allowedUnits = [.hour, .minute, .second]
-        formatter.unitsStyle = .abbreviated
-        formatter.maximumUnitCount = 2
-        return formatter
-    }()
+    static let detailRefreshInterval: TimeInterval = 1
+    var lastDetailRefresh: Date = .distantPast
+    var lastPausedState: Bool?
+    /// The most recent readout that arrived too soon to draw, and the timer that will draw it.
+    ///
+    /// **Coalescing has to defer the update, never drop it.** Dropping is what shipped, and it
+    /// latches: a job publishes when it is enqueued (nothing scanned yet, so the readout is
+    /// genuinely `Zero KB of Zero KB`) and again microseconds later carrying the real total — and
+    /// that second update lands inside the first one's second and is thrown away. If nothing
+    /// publishes afterwards there is no later update to correct it, so the stale text stays until
+    /// the job ends. A local copy hides this by publishing every 8 MiB; a remote transfer, which
+    /// reports about once a second at best, sat on `Zero KB of Zero KB` for its whole duration while
+    /// the status line beside it correctly named the file being copied (reported 2026-08-14).
+    var pendingDetail: (aggregate: AggregateProgress, paused: Bool)?
+    var detailFlushTimer: Timer?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -247,7 +245,15 @@ final class QueueBarView: NSView {
     /// Render the current state of the queue. The window controller decides overall
     /// visibility (it hides the bar when the queue is idle); this fills in the aggregate
     /// header, refreshes the per-job list, and re-reports its height if the list grew or shrank.
+    ///
+    /// An **idle** snapshot draws nothing and resets instead: the bar has no live state of its own
+    /// beyond what a snapshot puts there, so a drained queue has to take that state back off it. See
+    /// ``reset()`` for why leaving it is visible.
     func update(with snapshot: QueueSnapshot) {
+        guard !snapshot.isIdle else {
+            reset()
+            return
+        }
         let aggregate = snapshot.aggregate
         bar.doubleValue = aggregate.fraction
         statusLabel.stringValue = statusText(for: snapshot)
@@ -256,9 +262,9 @@ final class QueueBarView: NSView {
         // it immediately when the run pauses or resumes so that transition never looks stuck.
         let pausedChanged = lastPausedState != snapshot.isPaused
         if pausedChanged || Date().timeIntervalSince(lastDetailRefresh) >= Self.detailRefreshInterval {
-            detailLabel.stringValue = detailText(for: aggregate, paused: snapshot.isPaused)
-            lastDetailRefresh = Date()
-            lastPausedState = snapshot.isPaused
+            drawDetail(aggregate, paused: snapshot.isPaused)
+        } else {
+            deferDetail(aggregate, paused: snapshot.isPaused)
         }
 
         let symbol = snapshot.isPaused ? "play.fill" : "pause.fill"
@@ -279,6 +285,39 @@ final class QueueBarView: NSView {
         syncHeight()
     }
 
+    /// Put the bar back to the state it was born in, for the next batch to fill.
+    ///
+    /// **A hidden bar keeps the value it was last drawn with, and that value is what the user sees
+    /// first the next time it appears.** Nothing here is a live reading — the fraction, the byte
+    /// readout and the status line are all a snapshot's, held until the next snapshot replaces them
+    /// — so a drained queue leaves the *previous* batch's numbers standing on a bar that is merely
+    /// off screen. The next batch then reveals them a frame before its own first snapshot lands:
+    /// measured in the running app, the second copy of a file unhid the bar still holding
+    /// `1.0` before setting it to `0` (reported 2026-08-19 as a bar that "starts at 100 %, drops to
+    /// zero, and only then runs"). Which fraction is inherited is whatever the last batch was last
+    /// *drawn* at, so it is not always full: a transfer that reports its final bytes together with
+    /// its completion — an S3 upload does, the exact remainder arriving with the terminal snapshot
+    /// nobody draws — hands the next batch something nearer half.
+    ///
+    /// The coalescer's memo goes too, and for the second half of the same bug: `lastDetailRefresh`
+    /// is what decides whether the next batch's first readout is drawn or deferred, so a copy
+    /// started within a second of the last one would otherwise open on the previous batch's byte
+    /// count for up to a second (see ``pendingDetail``).
+    func reset() {
+        detailFlushTimer?.invalidate()
+        detailFlushTimer = nil
+        pendingDetail = nil
+        bar.doubleValue = 0
+        statusLabel.stringValue = ""
+        detailLabel.stringValue = ""
+        lastDetailRefresh = .distantPast
+        lastPausedState = nil
+    }
+
+    /// How full the aggregate bar is drawn, in `0...1`. The assertion surface for ``reset()``, which
+    /// is otherwise only observable by watching the window at the moment a second batch starts.
+    var progressFraction: Double { bar.doubleValue }
+
     // MARK: - Actions
 
     @objc private func pauseClicked() { onPauseToggle?() }
@@ -291,7 +330,7 @@ final class QueueBarView: NSView {
     }
 }
 
-// MARK: - Status and detail text
+// MARK: - Status text
 
 extension QueueBarView {
     /// The aggregate one-line status: what's happening now (`Copying <name>`), a paused prefix, and
@@ -332,88 +371,6 @@ extension QueueBarView {
             )
         }
         return text
-    }
-
-    /// What a running job is doing, named by kind.
-    ///
-    /// Whole sentences per branch rather than a verb spliced into a template: a language that
-    /// inflects the object or reorders the clause cannot build "Copying <name>" from a bare verb
-    /// (docs/NOTES.md). Verifying and computing share one phrasing — from the bar's point of view
-    /// both are "reading this file to hash it", and the sheet that follows says which it was.
-    private static func activeStatus(kind: FileOperation.Kind, name: String) -> String {
-        switch kind {
-        case .copy:
-            return String(
-                localized: "Copying \(name)",
-                comment: "Queue-bar status; %@ is the file being copied."
-            )
-        case .move:
-            return String(
-                localized: "Moving \(name)",
-                comment: "Queue-bar status; %@ is the file being moved."
-            )
-        case .checksum:
-            return String(
-                localized: "Checksumming \(name)",
-                comment: "Queue-bar status; %@ is the file being hashed."
-            )
-        case .attributes:
-            return String(
-                localized: "Changing \(name)",
-                comment: "Queue-bar status; %@ is the item whose attributes are being changed."
-            )
-        }
-    }
-
-    private static func preparingStatus(kind: FileOperation.Kind) -> String {
-        switch kind {
-        case .copy:
-            return String(
-                localized: "Copying…",
-                comment: "Queue-bar status while a copy is being prepared."
-            )
-        case .move:
-            return String(
-                localized: "Moving…",
-                comment: "Queue-bar status while a move is being prepared."
-            )
-        case .checksum:
-            return String(
-                localized: "Checksumming…",
-                comment: "Queue-bar status while a checksum run is being prepared."
-            )
-        case .attributes:
-            return String(
-                localized: "Changing permissions…",
-                comment: "Queue-bar status while a recursive attributes change is being prepared."
-            )
-        }
-    }
-
-    /// The byte/throughput/ETA readout beneath the status line, `·`-joined.
-    func detailText(for aggregate: AggregateProgress, paused: Bool) -> String {
-        let done = Self.byteFormatter.string(fromByteCount: aggregate.completedBytes)
-        let total = Self.byteFormatter.string(fromByteCount: aggregate.totalBytes)
-        var parts = [String(
-            localized: "\(done) of \(total)",
-            comment: "Queue-bar byte readout: %1$@ transferred of %2$@ total."
-        )]
-        if !paused, aggregate.bytesPerSecond > 0 {
-            let rate = Self.byteFormatter.string(fromByteCount: Int64(aggregate.bytesPerSecond))
-            parts.append(String(
-                localized: "\(rate)/s",
-                comment: "Queue-bar throughput readout; %@ is a byte count, e.g. “1.2 MB/s”."
-            ))
-            if let eta = aggregate.estimatedTimeRemaining, let text = Self.etaFormatter.string(
-                from: eta
-            ) {
-                parts.append(String(
-                    localized: "\(text) left",
-                    comment: "Queue-bar ETA readout; %@ is a formatted duration, e.g. “2 min left”."
-                ))
-            }
-        }
-        return parts.joined(separator: " · ")
     }
 }
 

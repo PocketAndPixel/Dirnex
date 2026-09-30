@@ -9,6 +9,10 @@ import DirnexCore
 extension BrowserWindowController {
     func recordUndoableAction(_ record: UndoRecord) {
         undoController.record(record)
+        // Every rename, move, multi-rename and sync reports through here, which is what makes this
+        // the one place a saved vault's image can be followed when the user moves the file itself
+        // (`+VaultMoves`). Undo and redo need the same call below — they move things too.
+        followVaultImageMoves(in: record)
     }
 
     /// A pane reports a completed marking change; journal it as a `SelectionChange` so Cmd+Z can
@@ -49,6 +53,12 @@ extension BrowserWindowController {
                 // once; the FSEvents watchers would catch up anyway, but this is immediate.
                 leftPanel.refreshCurrentDirectory()
                 rightPanel.refreshCurrentDirectory()
+                refreshPanesShowingRewrittenArchives(in: record)
+                // A reverted move puts a vault's image back where it was, so the saved list has to
+                // come back with it. The record names both ends and the disk decides which one is
+                // real, so undo needs no inverse of its own — and a partial revert still lands
+                // each vault on wherever its own image actually ended up.
+                followVaultImageMoves(in: record)
                 presentUndoOutcome(record: record, report: report)
             case let .selection(change):
                 applySelectionChange(change)
@@ -64,10 +74,29 @@ extension BrowserWindowController {
             case let .fileOperation(record, report):
                 leftPanel.refreshCurrentDirectory()
                 rightPanel.refreshCurrentDirectory()
+                refreshPanesShowingRewrittenArchives(in: record)
+                followVaultImageMoves(in: record)
                 presentRedoOutcome(record: record, report: report)
             case let .selection(change):
                 applySelectionChange(change)
             }
+        }
+    }
+
+    /// Re-list any pane standing *inside* an archive this record just swapped.
+    ///
+    /// `refreshCurrentDirectory` deliberately skips a virtual pane, and an archive pane is one — so
+    /// the two calls above leave a pane inside the archive drawing the members of a container that
+    /// no longer exists, with a mounted table of contents to match. Undo is the third gesture that
+    /// needs this after the rewrite itself and the write-back, which is why the write-back's
+    /// `refreshPanesShowingArchive` is the shared funnel rather than a fourth copy.
+    ///
+    /// Keyed on the record's own steps: a journal full of moves names no archive and this does
+    /// nothing at all.
+    private func refreshPanesShowingRewrittenArchives(in record: UndoRecord) {
+        for step in record.steps {
+            guard case let .restoreArchive(archive, _, _, _) = step else { continue }
+            refreshPanesShowingArchive(at: archive.path)
         }
     }
 
@@ -128,7 +157,10 @@ extension BrowserWindowController {
     }
 
     /// Internal rather than private: the recursive attributes apply reports through the same alert,
-    /// and Swift's `private` does not cross files (docs/NOTES.md §"Lint ceilings").
+    /// and Swift's `private` does not cross files (docs/NOTES.md §"Lint ceilings"). That second
+    /// caller is why this reports through `beginSheetIfVisible` — it lands from a **queued job**
+    /// finishing, where ⌘Z's own report lands from a keystroke; with no window neither has anybody
+    /// to tell, so the two need no different answer.
     func presentIssues(title: String, lines: [String]) {
         let alert = NSAlert()
         alert.alertStyle = .warning
@@ -136,6 +168,6 @@ extension BrowserWindowController {
         alert.informativeText = lines.joined(separator: "\n")
         alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
-        if let window { alert.beginSheetModal(for: window) } else { alert.runModal() }
+        alert.beginSheetIfVisible(over: window)
     }
 }

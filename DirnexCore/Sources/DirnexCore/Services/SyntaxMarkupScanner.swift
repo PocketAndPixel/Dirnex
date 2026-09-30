@@ -4,7 +4,7 @@ import Foundation
 ///
 /// The one Slice 2 scanner that is load-bearing rather than a nicety: M16 made **source** the
 /// default rendering for a file that has two, so an `.html` a user steps onto now shows its markup
-/// by default — this is what stops that being a wall of one colour.
+/// by default — this is what stops that being a wall of one color.
 ///
 /// It fits no `LanguageGrammar` because markup has no keywords, no numbers and no line comments;
 /// what it has is a *shape*. So it is its own ~150 lines, which is the trade the milestone named.
@@ -77,7 +77,7 @@ enum SyntaxMarkupScanner {
                 )
             }
             // A doctype: `<!DOCTYPE html>`. Its internal subset (`[ … ]`) can contain a `>`, which
-            // this ends early on — a wrong colour on a construct almost nothing carries, and the
+            // this ends early on — a wrong color on a construct almost nothing carries, and the
             // alternative is bracket counting.
             if matches(SyntaxMarkupScanner.declarationOpen) {
                 return scanDelimited(
@@ -107,7 +107,7 @@ enum SyntaxMarkupScanner {
         /// An element: `<name`, then its attributes, then `>` or `/>`.
         ///
         /// A `<` with no name after it is **not** a tag — which is what leaves `a < b` in a script
-        /// or in prose alone rather than colouring the rest of the document as an element.
+        /// or in prose alone rather than coloring the rest of the document as an element.
         private mutating func scanTag() -> Bool {
             var nameStart = index + 1
             if nameStart < units.count, units[nameStart] == Unit.slash { nameStart += 1 }
@@ -187,7 +187,7 @@ enum SyntaxMarkupScanner {
         }
 
         /// `&amp;`, `&#160;`, `&#x1F600;` — bounded by a `;` within a plausible length, so a bare
-        /// ampersand in prose (which is invalid markup and extremely common) colours nothing.
+        /// ampersand in prose (which is invalid markup and extremely common) colors nothing.
         private mutating func scanEntity() -> Bool {
             guard units[index] == Unit.ampersand else { return false }
             var probe = index + 1

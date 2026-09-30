@@ -1,14 +1,14 @@
 import AppKit
 import DirnexCore
 
-/// Colour rules by file type (PLAN.md §M15 Slice 3) — Total Commander's signature ordered
-/// glob → colour list, resolved at the point of drawing.
+/// Color rules by file type (PLAN.md §M15 Slice 3) — Total Commander's signature ordered
+/// glob → color list, resolved at the point of drawing.
 ///
 /// App-wide like the palette and row density rather than per tab, and shaped as the twin of
 /// `PanelViewController+Palette` so there is one pattern for "an app-wide View preference a pane must
 /// follow" rather than a new one per preference. The core owns *which* rule claims a row
 /// (`FileColorRules.firstMatch`); this owns the pixels — the split `FinderTag` already makes, where
-/// the colour rides as data and the app maps it.
+/// the color rides as data and the app maps it.
 extension PanelViewController {
     /// Subscribe to `FileColorRuleStore.didChangeNotification` so this pane repaints live while the
     /// Settings editor is open. Called once from `viewDidLoad`; the observer is torn down by the
@@ -32,20 +32,20 @@ extension PanelViewController {
     /// observers both give: nothing *moved*, so the cursor is re-applied without scrolling and the
     /// row the user was reading stays under their eye. It also carries the `syncCursorToTable` tail
     /// that a bare `reloadData` drops — the bug NOTES.md records as having been found live three
-    /// times. Nothing outside the table draws a type colour, so unlike `applyPalette` there is no
+    /// times. Nothing outside the table draws a type color, so unlike `applyPalette` there is no
     /// path bar or tab strip to restyle alongside it.
     func applyFileColorRules() {
         if deferRefreshIfRenaming() { return }
         renderRefresh()
     }
 
-    /// The colour a rule gives `entry`, or `nil` when no rule claims it — the answer for every row
+    /// The color a rule gives `entry`, or `nil` when no rule claims it — the answer for every row
     /// on an untouched install, where the list is empty and the lookup is free.
     ///
-    /// A rule whose stored hex is unusable draws **no colour** rather than a colour nobody chose:
+    /// A rule whose stored hex is unusable draws **no color** rather than a color nobody chose:
     /// `PanelPalette.color(fromHex:)` is deliberately strict on the way in (a hand-edited or
     /// newer-build value returns `nil`), and the row simply falls through to `.labelColor` — the
-    /// same degradation the three palette colours already make.
+    /// same degradation the three palette colors already make.
     func typeColor(for entry: FileEntry) -> NSColor? {
         guard let rule = FileColorRuleStore.rules.firstMatch(for: entry) else { return nil }
         return PanelPalette.color(fromHex: rule.colorHex)

@@ -24,6 +24,13 @@ extension PanelViewController: FileTableViewInput {
         contextMenu(forRow: row)
     }
 
+    /// Hovering changes nothing but the tree's active indent guide — never the cursor, never the
+    /// marks. A pane where the pointer resting somewhere moved the target of F5 would be a
+    /// different application.
+    func fileTable(_ tableView: FileTableView, didHoverRow row: Int) {
+        updateTreeGuides()
+    }
+
     func fileTableBackspace(_ tableView: FileTableView) {
         if panel.model.filter.isEmpty {
             goToParent()
@@ -105,7 +112,22 @@ extension PanelViewController: FileTableViewInput {
             previewPanel.makeKeyAndOrderFront(nil)
             // Opening on an archive member: it has no on-disk file yet, so extract it on demand
             // and reload the panel once it lands. A no-op for a local file or empty selection.
-            prepareArchivePreview { [weak self] in self?.refreshQuickLookIfVisible() }
+            // The *open* spelling, because this is the key the user pressed — an encrypted archive
+            // asks for its passphrase here rather than showing nothing (PLAN.md §M19).
+            openArchivePreview { [weak self] in self?.refreshQuickLookIfVisible() }
+            // The same, one kind of elsewhere further out (PLAN.md §M21 Slice 10) — and this is the
+            // key that resolves a Quick View placeholder, so the landing fetch re-drives that
+            // surface too rather than leaving the card up until the cursor next moves.
+            let redrawPreviews: @MainActor () -> Void = { [weak self] in
+                guard let self else { return }
+                refreshQuickLookIfVisible()
+                // The bytes the Quick View placeholder was standing in for have arrived — or have
+                // started arriving — so the surface showing that card has to be re-driven. This is
+                // the same funnel a cursor step uses (`updateChrome`), which is where "re-deliver
+                // the preview for this pane" already lives.
+                host?.panelCursorDidChange(self)
+            }
+            openRemotePreview(onStarted: redrawPreviews, onReady: redrawPreviews)
         }
     }
 
@@ -138,13 +160,19 @@ extension PanelViewController: FileTableViewInput {
 
 // MARK: - Rendering helpers
 
-private extension PanelViewController {
+extension PanelViewController {
+    /// Repaint one row in place. Internal rather than file-private because `+Sizing` repaints a
+    /// single row when a server-side size walk starts, lands or gives up — Swift's `private` does
+    /// not cross files (docs/NOTES.md ▸ file splitting), and a second copy of two lines is how the
+    /// two would drift.
     func redrawRow(_ row: Int) {
         guard row >= 0, row < tableView.numberOfRows else { return }
         let columns = IndexSet(integersIn: 0..<tableView.numberOfColumns)
         tableView.reloadData(forRowIndexes: IndexSet(integer: row), columnIndexes: columns)
     }
+}
 
+private extension PanelViewController {
     /// Replace the type-to-filter and re-render. `Panel`/`DirectoryModel` re-anchor the
     /// cursor by identity across the change, so the cursor stays on the same file when
     /// it survives the narrowing.

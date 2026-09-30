@@ -82,7 +82,7 @@ struct AttributeApplyReportTests {
         let result = try fixture.outcome(report)
 
         #expect(report.wasCancelled)
-        #expect(result.changedCount < 6, "a cancelled run must not have finished the tree")
+        #expect(result.changedCount < 6, "a canceled run must not have finished the tree")
         #expect(result.changed.count == result.changedCount)
         #expect(result.isUndoable, "a partial run is still one Cmd+Z")
     }

@@ -30,16 +30,122 @@ public struct FileOperation: Sendable {
         /// its answer, *including the undo material*, rides home on
         /// ``OperationReport/attributeApply``.
         case attributes(AttributeApplyJob)
+        /// Write an encrypted archive from the sources (PLAN.md §M19 Slice 2).
+        ///
+        /// Only the *encrypted* path comes here — every other format is still one `bsdtar` spawn on
+        /// the caller's own thread. The split is not tidiness: the reason M19 links libarchive at
+        /// all is that `bsdtar` cannot be handed a passphrase without putting it in `argv`, and the
+        /// reason this work needs a queue is that AES-256 over a folder of photographs is minutes
+        /// during which the user must be able to change their mind. A `.tar.gz` has neither problem.
+        ///
+        /// Like `.checksum` and `.attributes` it produces no `outcomes` — there is nothing to move,
+        /// so nothing to undo — and its answer rides home on ``OperationReport/pack``.
+        case pack(PackJob)
+        /// Write an **unencrypted** archive from the sources — every format `bsdtar` knows
+        /// (PLAN.md §4 ▸ *Smaller than a milestone*).
+        ///
+        /// A second kind rather than a field on ``pack(_:)`` because the two write through
+        /// different machinery: libarchive linked into this process, which can take a passphrase
+        /// and can only write zip, against a `bsdtar` spawn, which can write every format and
+        /// cannot be handed a passphrase safely. ``PlainPackJob`` says the rest.
+        ///
+        /// It came to the queue on 2026-08-30, two milestones after its encrypted twin, and for the
+        /// half of the work the split never covered: a pack bound for a server has an upload, and
+        /// the upload had no bar and no Stop. Like `.pack` it produces no `outcomes` and rides its
+        /// answer home on ``OperationReport/pack``.
+        case plainPack(PlainPackJob)
+        /// Pull a set of rows that are not on this disk down to real paths, so a gesture that only
+        /// speaks in paths can run over them (PLAN.md §M24 Slice 2).
+        ///
+        /// Moves bytes like a copy and is deliberately **not** one: its destination is a temp root,
+        /// so it produces no `outcomes` and there is nothing to undo — reversing it would mean
+        /// putting back a copy the user never saw. That is also why it is not expressed as a `.copy`
+        /// into that root, which `UndoJournal` would dutifully record as a transfer.
+        ///
+        /// No payload, unlike the three kinds above it: `destinationDirectory` already means "where
+        /// this job puts things", and the only other thing the runner needs — which rows — is
+        /// `sources`. What the set is *for* stays with the gesture, along with the decision, made
+        /// before anything was queued, that the total was worth spending (`MaterializationPlan`).
+        case materialize
+        /// Put a set of edited copies back where they came from — the mirror of ``materialize``
+        /// (PLAN.md §4 ▸ *Still open*, taken 2026-09-01).
+        ///
+        /// It moves bytes like a copy and is deliberately not one, for the opposite reason
+        /// ``materialize`` is not: there the *destination* was a temp root, here the **source** is,
+        /// and what the destination already holds is exactly what this write replaces. So it
+        /// produces no `outcomes` and there is nothing to undo — an upload has already destroyed
+        /// the version a reversal would need, which is what every write-back confirmation has said
+        /// since M21 Slice 10. What it does produce rides home on ``OperationReport/writtenBack``,
+        /// because the caller has to re-baseline exactly the items that landed.
+        case writeBack(WriteBackJob)
     }
 
     public let kind: Kind
     public let sources: [FileEntry]
     public let destinationDirectory: VFSPath
 
-    public init(kind: Kind, sources: [FileEntry], destinationDirectory: VFSPath) {
+    /// The name the single source lands under, when this job is a **rename** the backend could not
+    /// perform in place. `nil` — every other job — lands each source under its own name.
+    ///
+    /// It is a field on a `.move` rather than a `Kind` of its own because a rename that reaches the
+    /// queue *is* a move: the only reason it is here is that the backend answered `EXDEV`, which is
+    /// exactly the signal ``CopyEngine`` already turns into a recursive copy-then-delete. A
+    /// `.rename` kind would fork every `switch` over ``Kind`` — four label sites in the app, the
+    /// undo journal's label map, and `CopyEngine`'s own `kind == .move` tests — to change a caption
+    /// on a job whose behavior is identical. What the user is told about the difference belongs in
+    /// the confirmation that raised it, which is where the app says it.
+    ///
+    /// Only ``init(renaming:to:in:)`` sets it, so "several sources under one new name" is
+    /// unrepresentable rather than merely undocumented.
+    public let renamedTo: String?
+
+    /// Which file on this disk stands for each row that was not already on it (PLAN.md §M24
+    /// Slice 4). Empty for every job over ordinary local files, which is the common case and the
+    /// default.
+    ///
+    /// A field on the operation rather than on a `Kind`'s payload, because it is one fact about how
+    /// this job **reads** bytes and not a fact about what the job *is*: a checksum, a user script
+    /// and a pack each want the same answer, and the kinds that move bytes themselves have no use
+    /// for it at all.
+    ///
+    /// It is deliberately not derived from ``sources``. A verification's rows are discovered by
+    /// walking the manifest's own directory, so the set that needs standing in for is not the set
+    /// the job was handed — and a map keyed to `sources` would be right only for whichever gesture
+    /// happened to be written first.
+    public let materialized: MaterializedPaths
+
+    public init(
+        kind: Kind,
+        sources: [FileEntry],
+        destinationDirectory: VFSPath,
+        materialized: MaterializedPaths = MaterializedPaths()
+    ) {
         self.kind = kind
         self.sources = sources
         self.destinationDirectory = destinationDirectory
+        self.materialized = materialized
+        renamedTo = nil
+    }
+
+    /// A rename that has to run as a job: `source` keeps its directory and takes `newName`.
+    ///
+    /// The caller reaches for this only after ``VFSBackend/moveItem(at:to:)`` has refused with
+    /// `EXDEV` — an S3 prefix today, since a "folder" there is N objects and renaming it is N
+    /// server-side copies and N deletes. Everything that makes that bearable is the queue's
+    /// already: a determinate bar, Stop, the conflict policy, per-item failures, and an undo
+    /// record built from the outcomes.
+    public init(renaming source: FileEntry, to newName: String, in directory: VFSPath) {
+        kind = .move
+        sources = [source]
+        destinationDirectory = directory
+        materialized = MaterializedPaths()
+        renamedTo = newName
+    }
+
+    /// The name `entry` lands under in ``destinationDirectory`` — its own, unless this job is a
+    /// rename. The one place the distinction is read, so a second spelling cannot drift from it.
+    public func landingName(for entry: FileEntry) -> String {
+        renamedTo ?? entry.name
     }
 }
 
@@ -104,14 +210,14 @@ public enum ConflictResolution: Sendable, Equatable {
     /// Transfer under a fresh non-colliding name (like `ConflictPolicy.keepBoth`).
     case keepBoth
     /// Stop the whole operation now, leaving already-completed items in place — the engine
-    /// reports it as cancelled, exactly like a mid-copy cancel.
+    /// reports it as canceled, exactly like a mid-copy cancel.
     case cancel
 }
 
 /// One item's error handed to `CopyEngine.run(onError:)` when a source can't be transferred —
 /// the hook behind TC's per-file "Skip / Retry / Abort" error dialog. Delivered synchronously
 /// on the engine's copy thread (like `ConflictContext`), so the resolver may block it while a
-/// prompt is on screen. A missing resolver means the engine keeps its default behaviour:
+/// prompt is on screen. A missing resolver means the engine keeps its default behavior:
 /// collect the failure and carry on to the remaining sources.
 public struct OperationErrorContext: Sendable, Equatable {
     /// Whether the operation is a copy or a move, for the dialog's wording.
@@ -137,7 +243,7 @@ public enum ErrorResolution: Sendable, Equatable {
     /// resolver is supplied, so an unattended run still finishes and summarizes.
     case skip
     /// Stop the whole operation now, leaving already-completed items in place. Reported as
-    /// cancelled, exactly like a mid-copy cancel or a conflict `.cancel`.
+    /// canceled, exactly like a mid-copy cancel or a conflict `.cancel`.
     case abort
 }
 
@@ -209,7 +315,7 @@ public struct OperationItemOutcome: Sendable, Equatable {
 }
 
 /// The outcome of running an operation: what got through, what was skipped by the
-/// conflict policy, what failed, and whether the user cancelled partway.
+/// conflict policy, what failed, and whether the user canceled partway.
 public struct OperationReport: Sendable, Equatable {
     public let completedItems: Int
     public let completedBytes: Int64
@@ -234,6 +340,48 @@ public struct OperationReport: Sendable, Equatable {
     /// only way back.
     public let attributeApply: AttributeApplyOutcome?
 
+    /// What a `.pack` job wrote, or why it wrote nothing. `nil` for every other kind. Rides home on
+    /// the report for the same reason the two above it do — the queue's snapshot stream is the one
+    /// path the window already watches for a job reaching a terminal state.
+    public let pack: PackOutcome?
+
+    /// What this job could not carry besides bytes, or `nil` when it carried everything it was asked
+    /// to — which is every local copy and the great majority of remote ones (PLAN.md §M25 Slice 5b).
+    ///
+    /// A **per-job** answer, not a per-connection one: it is the difference between what each
+    /// account this job touched had already failed to carry when the job started and what it has
+    /// failed to carry now. The distinction is the whole point — the accumulator behind it spans a
+    /// connection's whole life, so reporting *that* would tell a user about their previous transfer
+    /// every time.
+    ///
+    /// It rides home on the report for the reason `checksum`, `pack` and `materialized` do: the
+    /// queue's snapshot stream is the one path the window already watches for a job reaching a
+    /// terminal state, and a second result channel would be a second place for a finished job to be
+    /// missed.
+    public let metadataLoss: RemoteMetadataLoss?
+
+    /// Where a `.materialize` job's bytes landed, one entry per row that made it. `nil` for every
+    /// other kind, and **empty for a materialize that landed nothing** — the two are different
+    /// answers and a caller reading the copies has to be able to tell them apart.
+    ///
+    /// No outcome wrapper, unlike its three neighbours, because there is nothing else to say: the
+    /// failures ride on ``failures`` where every other kind's per-path failures already do, and a
+    /// struct holding one array would be a type whose only field is the answer.
+    public let materialized: [MaterializedFile]?
+
+    /// Which of a `.writeBack` job's destinations actually took the bytes. `nil` for every other
+    /// kind, and **empty for a batch that landed nothing** — the two are different answers.
+    ///
+    /// A list rather than a count, and that is what it is for: after an upload the caller has to
+    /// re-read each destination and re-baseline the revision a *second* save will compare against,
+    /// and leaving a stale one would have our own write read back as "someone else has edited it".
+    /// A cancelled batch is the case that makes a count useless — some items landed and some did
+    /// not, and only naming them says which.
+    ///
+    /// No outcome wrapper, for ``materialized``'s reason: the failures ride on ``failures`` where
+    /// every other kind's already do.
+    public let writtenBack: [VFSPath]?
+
     public init(
         completedItems: Int,
         completedBytes: Int64,
@@ -242,7 +390,11 @@ public struct OperationReport: Sendable, Equatable {
         wasCancelled: Bool,
         outcomes: [OperationItemOutcome] = [],
         checksum: ChecksumOutcome? = nil,
-        attributeApply: AttributeApplyOutcome? = nil
+        attributeApply: AttributeApplyOutcome? = nil,
+        pack: PackOutcome? = nil,
+        materialized: [MaterializedFile]? = nil,
+        writtenBack: [VFSPath]? = nil,
+        metadataLoss: RemoteMetadataLoss? = nil
     ) {
         self.completedItems = completedItems
         self.completedBytes = completedBytes
@@ -252,6 +404,10 @@ public struct OperationReport: Sendable, Equatable {
         self.outcomes = outcomes
         self.checksum = checksum
         self.attributeApply = attributeApply
+        self.pack = pack
+        self.materialized = materialized
+        self.writtenBack = writtenBack
+        self.metadataLoss = metadataLoss
     }
 
     public var succeeded: Bool { failures.isEmpty && !wasCancelled }

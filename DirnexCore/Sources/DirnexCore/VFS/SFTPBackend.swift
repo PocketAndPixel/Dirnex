@@ -19,11 +19,57 @@ import Foundation
 public struct SFTPBackend: RemoteTransportBackend {
     /// The remote account this backend is connected to — its identity.
     public let location: SFTPLocation
-    private let transport: any SFTPTransport
+    /// Internal rather than private so `SFTPBackend+Subtree` can reach it — Swift's `private` does
+    /// not cross files (docs/NOTES.md ▸ Lint ceilings and file splitting).
+    let transport: any SFTPTransport
+    /// How many rows the server-side subtree `find` may print before it is cut off — see
+    /// ``SSHFindCommand/defaultRowLimit``, which is where the number and its reasoning live.
+    ///
+    /// Settable so the cap is *reachable*: it is the one branch of the shortcut that cannot be
+    /// exercised at 50 000 rows, and a rule with no test is a rule nobody has watched fail. Left at
+    /// its default everywhere in the app.
+    public var subtreeRowLimit = SSHFindCommand.defaultRowLimit
+    /// The limits a segmented **upload** plans against — ``SegmentedUploadLimits/sftp`` everywhere in
+    /// the app.
+    ///
+    /// Settable for the reason ``subtreeRowLimit`` is: it is what makes the route *reachable* in a
+    /// test. The shipped threshold is 32 MiB, so exercising the fork, the batching and the join at
+    /// real sizes would mean a fixture of tens of megabytes per test — and a rule with no test is a
+    /// rule nobody has watched fail.
+    public var segmentedUploadLimits = SegmentedUploadLimits.sftp
+    /// What this connection has learned about splitting a download into several exec channels. A
+    /// reference held by a value type on purpose: the backend is copied freely, and what it knows
+    /// about the *server* must not be copied away with it (``SegmentedDownloadSupport``).
+    let segmentation = SegmentedDownloadSupport()
+    /// What this connection has learned about carrying a source's mode and times, and what it has
+    /// failed to carry so far. A reference held by a value type for exactly the reason
+    /// ``segmentation`` is: the backend is copied freely, and a fact about the *server* must not be
+    /// copied away with it (``RemoteMetadataSupport``).
+    let metadata: RemoteMetadataSupport
+    /// What this connection has learned about copying a file **server-side** — a reference held by a
+    /// value type for the same reason ``segmentation`` and ``metadata`` are: the backend is copied
+    /// freely, and what it knows about the *server* must not be copied away with it
+    /// (``ServerSideCopySupport``).
+    let serverSideCopy = ServerSideCopySupport()
+    /// What this connection has learned about joining an upload's parts **on the server** — a
+    /// reference held by a value type for the same reason the others here are: the backend is copied
+    /// freely, and what it knows about the *server* must not be copied away with it
+    /// (``SegmentedUploadSupport``).
+    let segmentedUpload = SegmentedUploadSupport()
+    /// What this connection has learned about reading a symlink's **target** over the exec channel —
+    /// a reference held by a value type for the same reason the three above are: the backend is
+    /// copied freely, and what it knows about the *server* must not be copied away with it
+    /// (``LinkTargetSupport``).
+    let links = LinkTargetSupport()
 
     public init(location: SFTPLocation, transport: any SFTPTransport) {
         self.location = location
         self.transport = transport
+        // What the *transport* declares, never what SFTP could do in principle. A transport that has
+        // not implemented the carry reports `[]`, so every plan asks for nothing and reports the
+        // loss — which is the failure direction this milestone chooses (PLAN.md §M25). Assuming
+        // `.sftp` here would make such a transport claim a mode it never wrote.
+        metadata = RemoteMetadataSupport(offering: transport.metadataCapabilities)
     }
 
     public var id: VFSBackendID { .sftp(location) }
@@ -78,13 +124,26 @@ public struct SFTPBackend: RemoteTransportBackend {
         ) }
     }
 
-    /// Copy one file's bytes between this remote account and the local disk — a **download**
-    /// (remote source → local destination, via `get`) or an **upload** (local source → remote
-    /// destination, via `put`). The whole file transfers as one `sftp` command, so `progress` is
-    /// reported once with the transferred byte count and `isCancelled` is honoured at the file
-    /// boundary (the queue's pause/cancel still acts between files). A copy that is neither
-    /// direction — remote-to-remote, or between two different accounts — has no `sftp` expression
-    /// yet and is refused.
+    /// Copy one file's bytes — a **download** (remote source → local destination, via `get`), an
+    /// **upload** (local source → remote destination, via `put`), or a **duplicate within this
+    /// account**, which the server performs itself (`cp`, PLAN.md §M25 Slice 3). The whole file
+    /// transfers as one `sftp` command, and `isCancelled` is honored inside it as well as at the
+    /// file boundary (the queue's pause/cancel still acts between files).
+    ///
+    /// Only a pair of ends on **two different** accounts is refused here, and it is not refused to
+    /// the user: a caller holding both connections stages such a copy through this disk
+    /// (``RelayCopy``), which is what the app's composite backend does with that pair. The
+    /// same-account case is refused too once this connection has shown it cannot copy server-side,
+    /// which puts it back on exactly that route — see
+    /// ``mayAttemptInternalCopy(from:to:)``.
+    ///
+    /// **`progress` reports as a download runs and only at the end of an upload, and the asymmetry
+    /// is `sftp`'s rather than a decision.** A download's destination is a file on this machine, so
+    /// watching it grow is exact and free; an upload changes nothing here, and `sftp` — unlike
+    /// `curl` — prints no meter a spawned process can read, probed six ways over a 1 GiB transfer
+    /// (``SFTPTransport/upload(_:to:resume:progress:isCancelled:)``). Either way the tail below
+    /// reports the *remainder* against the measured count, so an upload behaves exactly as it always
+    /// did and a download's estimates never decide the total.
     ///
     /// **Resume**: when the destination already holds a nonzero *proper prefix* of the source
     /// (a partial from an interrupted transfer), the copy picks up where it left off via
@@ -100,53 +159,153 @@ public struct SFTPBackend: RemoteTransportBackend {
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws {
+        try copyFile(
+            at: source,
+            to: destination,
+            expectedSize: nil,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    /// The same copy, told how big the file is (docs/HISTORY.md ▸ After M19).
+    ///
+    /// **The hint decides whether a download is split**, and it is a hint rather than a probe
+    /// because asking would cost a whole connection: `sftp` has no session to reuse, so a remote
+    /// `stat` is a fresh TCP connect, key exchange and authentication. Both real callers already
+    /// hold the number from the listing they made (`CopyEngine`'s `entry.byteSize`,
+    /// `RemoteFileCache`'s entry), so it costs no extra round trip anywhere; with no hint, behaviour
+    /// is exactly what it was.
+    ///
+    /// It is deliberately consulted **only** for the download direction. An upload's shape is
+    /// decided by the local file's own size, which this backend reads for itself and which cannot be
+    /// stale.
+    ///
+    /// **Correction, 2026-09-01**: this comment used to go on to say that an upload could not be
+    /// split at all, "since a segment's route here is the server *reading* a range, and nothing
+    /// symmetrical exists for writing one". The first half is true — `sftp` has no verb that writes
+    /// at an offset — and the conclusion does not follow: the parts go under names of their own and
+    /// the server joins them with `cat`, measured at 16.85 s against 4.32 s for 32 MiB over a
+    /// throttled link (``SFTPBackend/uploadInSegments(fromLocal:remote:carrying:plan:progress:isCancelled:)``).
+    public func copyFile(
+        at source: VFSPath,
+        to destination: VFSPath,
+        expectedSize: Int64?,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws {
+        try copyFile(
+            at: source,
+            to: destination,
+            hint: CopySourceHint(expectedSize: expectedSize),
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    /// The same copy, also carrying the source's mode and modification time (PLAN.md §M25 Slice 2).
+    ///
+    /// **Both directions are free, and which of them is being served decides what may be carried.**
+    /// The plan's capabilities describe the *destination*: an upload lands on the server, so it is
+    /// bounded by what this account still honours, while a download lands on this machine, where
+    /// `chmod` and `utimes` always work — so a download can carry everything the hint holds even
+    /// though the wire under it offers less.
+    ///
+    /// With no hint the transfer still asks for `-p`, which costs nothing and carries the nine mode
+    /// bits and both timestamps on its own; the hint only adds what `-p` cannot express.
+    public func copyFile(
+        at source: VFSPath,
+        to destination: VFSPath,
+        hint: CopySourceHint,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws {
         if isCancelled() { throw CancellationError() }
+        var tally = TransferProgressTally()
+        let streamed = { (delta: Int64) in
+            tally.add(delta)
+            progress(delta)
+        }
         let transferred: Int64
         if source.backend == id, destination.backend == .local {
-            transferred = try downloadFile(remote: source, toLocal: destination.path)
+            transferred = try downloadFile(
+                SFTPDownloadRequest(
+                    remotePath: source.path,
+                    localPath: destination.path,
+                    source: source,
+                    expectedSize: hint.expectedSize
+                ),
+                carrying: downloadPlan(for: hint.metadata),
+                progress: streamed,
+                isCancelled: isCancelled
+            )
         } else if source.backend == .local, destination.backend == id {
-            transferred = try uploadFile(fromLocal: source.path, remote: destination)
+            transferred = try uploadFile(
+                fromLocal: source.path,
+                remote: destination,
+                source: hint.metadata ?? .ofLocalFile(source.path),
+                progress: streamed,
+                isCancelled: isCancelled
+            )
+        } else if source.backend == id, destination.backend == id {
+            transferred = try copyWithinAccount(
+                from: source,
+                to: destination,
+                hint: hint,
+                isCancelled: isCancelled
+            )
         } else {
             throw VFSError.unsupported(.remoteToRemoteCopy)
         }
         if isCancelled() { throw CancellationError() }
-        progress(transferred)
+        if let remainder = tally.remainder(against: transferred) { progress(remainder) }
     }
 
-    /// Uploads at or below this size skip resume detection: re-sending a small file is cheaper than
-    /// the extra remote `stat` round trip that finding a resumable partial would cost. (Downloads
-    /// need no threshold — they gate resume on the local partial's size, which is free to read.)
-    private static let resumeUploadThreshold: Int64 = 1 << 20 // 1 MiB
-
-    /// Download `remote` to `localPath`, resuming from a local partial when one is a proper prefix.
-    /// Returns the bytes actually transferred (the whole file, or just the remainder on resume).
-    private func downloadFile(remote source: VFSPath, toLocal localPath: String) throws -> Int64 {
-        let existingLocal = localFileSize(localPath)
-        // Only when a local partial exists is a remote size worth fetching; `>` short-circuits so a
-        // fresh download (the norm) never pays for the `stat`.
-        let resume = existingLocal > 0 && remoteFileSize(source) > existingLocal
-        let finalSize = try mapErrors(source) {
-            try transport.download(source.path, to: localPath, resume: resume)
-        }
-        return resume ? max(0, finalSize - existingLocal) : finalSize
+    /// Whether ``copyFile(at:to:hint:progress:isCancelled:)`` should be handed a pair of ends that
+    /// are both on this account — true until this connection has shown it cannot copy server-side.
+    ///
+    /// It answers for the *router*, which needs to know before it calls: a `true` here is an
+    /// invitation to try, and a caller acting on it owes a fallback, because the refusal cannot be
+    /// anticipated (``ServerSideCopySupport``). After one refusal this goes false for the life of
+    /// the connection and every later copy is staged with no wasted round trip.
+    public func mayAttemptInternalCopy(from source: VFSPath, to destination: VFSPath) -> Bool {
+        source.backend == id && destination.backend == id && !serverSideCopy.isRefused
     }
 
-    /// Upload `localPath` to `remote`, resuming from a remote partial when one is a proper prefix.
-    /// Returns the bytes actually transferred (the whole file, or just the remainder on resume).
-    private func uploadFile(fromLocal localPath: String, remote destination: VFSPath) throws -> Int64 {
-        let sourceSize = localFileSize(localPath)
-        // The remote size costs a round trip, so only look when resuming could pay off (a big file).
-        let existingRemote = sourceSize > Self.resumeUploadThreshold ? remoteFileSize(destination) : 0
-        let resume = existingRemote > 0 && existingRemote < sourceSize
-        let finalSize = try mapErrors(destination) {
-            try transport.upload(localPath, to: destination.path, resume: resume)
-        }
-        return resume ? max(0, finalSize - existingRemote) : finalSize
+    /// What a download may carry: everything the local disk can take, plus `get -p` when this
+    /// transport offers it. Nothing is latched here — a local `chmod` failing says nothing about the
+    /// server, and there is no verb to stop attempting.
+    private func downloadPlan(for hint: RemoteSourceMetadata?) -> RemoteMetadataPlan {
+        let capabilities = RemoteMetadataCapabilities.localDestination
+            .union(metadata.capabilities.intersection(.preserveFlag))
+        return (hint ?? RemoteSourceMetadata(permissions: nil, modificationTime: nil))
+            .plan(with: capabilities)
+    }
+
+    /// What an upload may carry: whatever this connection still honours, over the local source's own
+    /// metadata.
+    ///
+    /// The hint is resolved by the caller — read from the local file when none was supplied, because
+    /// here that is free: an upload's source is on this machine, so its mode and times are one
+    /// `lstat`, and leaving them out would drop a carry for want of a parameter.
+    func uploadPlan(for source: RemoteSourceMetadata) -> RemoteMetadataPlan {
+        metadata.plan(for: source)
+    }
+
+    /// What a **segmented** upload may carry, which is strictly less.
+    ///
+    /// Its destination is created by a server-side `cat` rather than by `put`, so there is no
+    /// transfer verb for `-p` to ride on: the mode goes as its own batch afterwards and the times
+    /// have no route at all over this protocol, exactly as they have none for a server-side `cp`
+    /// (PLAN.md §M25 Slice 3). Subtracting the flag is what makes the plan *report* that rather than
+    /// claim a carry with no mechanism behind it.
+    func segmentedUploadPlan(for source: RemoteSourceMetadata) -> RemoteMetadataPlan {
+        metadata.planWithoutTransferFlag(for: source)
     }
 
     /// The size of a local regular file, or 0 when it is absent or unreadable (so a missing
     /// destination reads as "no partial", i.e. a full transfer).
-    private func localFileSize(_ path: String) -> Int64 {
+    func localFileSize(_ path: String) -> Int64 {
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: path),
               let size = attributes[.size] as? Int64 else { return 0 }
         return size
@@ -154,7 +313,7 @@ public struct SFTPBackend: RemoteTransportBackend {
 
     /// The size of a remote file via one `stat`, or 0 when it can't be stat'd (missing/unreadable →
     /// no resumable partial). Costs a round trip, so callers gate it behind a cheaper check first.
-    private func remoteFileSize(_ path: VFSPath) -> Int64 {
+    func remoteFileSize(_ path: VFSPath) -> Int64 {
         (try? stat(at: path))?.byteSize ?? 0
     }
 
@@ -179,7 +338,12 @@ public struct SFTPBackend: RemoteTransportBackend {
             case .permissionDenied: throw VFSError.permissionDenied(path)
             // A changed host key surfaces on the connect probe (handled by the app's re-trust flow),
             // not here; if one ever reaches a deeper op it maps to a generic I/O error like .failure.
-            case .hostKeyChanged, .failure: throw VFSError.io(path: path, code: EIO)
+            // `copyExtensionUnavailable` is intercepted by `copyWithinAccount` before it can arrive
+            // here — it is a route to fall back from, not a failure to report — and reaching this
+            // point at all would mean some other verb produced it, where a generic I/O error is the
+            // honest answer.
+            case .copyExtensionUnavailable, .hostKeyChanged, .failure:
+                throw VFSError.io(path: path, code: EIO)
             }
         }
     }
@@ -205,6 +369,8 @@ public struct SFTPBackend: RemoteTransportBackend {
             creationDate: parsed.modificationDate,
             isHidden: name.hasPrefix("."),
             permissions: parsed.permissions,
+            ownerName: parsed.ownerName,
+            groupName: parsed.groupName,
             inode: 0,
             symlinkDestination: parsed.symlinkDestination,
             // `sftp` doesn't resolve a symlink's target; report a nominal file target so it renders

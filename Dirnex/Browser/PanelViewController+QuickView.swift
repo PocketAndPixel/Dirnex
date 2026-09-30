@@ -15,10 +15,16 @@ extension PanelViewController {
     ///
     /// The style is handed in rather than read here, so the window that owns the mode is the one
     /// place that answers "which style are we in" for every surface it drives.
-    func showQuickViewPreview(of url: URL?, style: QuickViewRenderStyle) {
+    func showQuickViewPreview(
+        of url: URL?,
+        style: QuickViewRenderStyle,
+        placeholder: RemotePreviewPlaceholder? = nil,
+        actions: RemotePreviewActions? = nil
+    ) {
         let preview = ensureQuickViewPreview()
         preview.isHidden = false
-        preview.show(url, style: style)
+        preview.placeholderActions = actions
+        preview.show(url, style: style, placeholder: placeholder)
     }
 
     /// Uncover the file list, restoring the normal pane. Safe to call when Quick View was never
@@ -26,15 +32,24 @@ extension PanelViewController {
     func hideQuickViewPreview() {
         quickViewPreview?.isHidden = true
         quickViewPreview?.clear()
+        // Released with the content, not kept: the closures hold the pane they were built for, and a
+        // surface put away still holding them would fetch on behalf of a preview nobody is looking at.
+        quickViewPreview?.placeholderActions = nil
     }
 
     /// The file under this pane's cursor as a URL, for another surface to preview — `nil` on the
     /// `..` row or in an empty directory. A local entry resolves at once; an archive member
     /// resolves to its extracted temp file once cached (nil until `prepareArchivePreview` lands
     /// it), so the window re-drives the preview when the extraction finishes.
+    ///
+    /// A **remote** file resolves the same way and never fetches here (PLAN.md §M21 Slice 10): this
+    /// is read on every cursor movement, and a transfer on an arrow key would spend a billed request
+    /// because the cursor passed over a row. Until somebody presses the key, `nil` is the honest
+    /// answer and the surface draws `remotePreviewPlaceholder` instead of a blank.
     var quickViewSourceURL: URL? {
         guard !cursorOnParentRow, let entry = panel.currentEntry else { return nil }
         if entry.path.backend == .local { return entry.path.localURL }
+        if entry.path.backend.isRemoteConnection { return cachedRemoteFileURL }
         guard let member = previewableArchiveMember else { return nil }
         return host?.archivePreviewCache.cachedURL(for: member)
     }
@@ -84,7 +99,11 @@ extension PanelViewController {
     /// bleed through.
     private func ensureQuickViewPreview() -> QuickViewPreviewView {
         if let preview = quickViewPreview { return preview }
-        let preview = QuickViewPreviewView(backingColor: .textBackgroundColor, header: .none)
+        let preview = QuickViewPreviewView(
+            backingColor: .textBackgroundColor,
+            header: .none,
+            findOptions: .standard
+        )
         view.addSubview(preview)
         NSLayoutConstraint.activate([
             preview.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),

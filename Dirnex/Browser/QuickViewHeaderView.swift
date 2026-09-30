@@ -15,6 +15,9 @@ struct QuickViewCaption: Equatable {
     /// rendering — which is most files. Set by the window controller, since the style is app-wide
     /// and the pane that builds the caption does not know it (PLAN.md §M16).
     var style: QuickViewRenderStyle?
+    /// Which family that style belongs to, which is what names the rendered one — "Page" or "Table".
+    /// Only meaningful alongside `style`.
+    var styleKind = QuickViewDualStyleKind.page
     /// Whether the page on screen was rendered with scripts refused — the shipped default, and the
     /// one thing about a rendered page that is invisible in the page itself: a report that needs
     /// its scripts simply shows less, with nothing to say why. Only meaningful alongside `style`,
@@ -32,7 +35,7 @@ struct QuickViewCaption: Equatable {
 
 /// The name-and-position strip a full-size Quick View draws across its top. A vibrant bar rather
 /// than a flat one because it sits over arbitrary content — a white page in full window, a photo
-/// bled to the edges in full screen — where any fixed colour is wrong against half of it.
+/// bled to the edges in full screen — where any fixed color is wrong against half of it.
 @MainActor
 final class QuickViewHeaderView: NSVisualEffectView {
     static let height: CGFloat = 30
@@ -53,6 +56,7 @@ final class QuickViewHeaderView: NSVisualEffectView {
             positionLabel.stringValue = caption?.positionText ?? ""
             styleLabel.attributedStringValue = Self.styleText(
                 for: caption?.style,
+                kind: caption?.styleKind ?? .page,
                 javaScriptDisabled: caption?.javaScriptDisabled == true
             )
         }
@@ -120,6 +124,7 @@ final class QuickViewHeaderView: NSVisualEffectView {
     /// would have run either way, so the mark would be true and meaningless.
     private static func styleText(
         for style: QuickViewRenderStyle?,
+        kind: QuickViewDualStyleKind,
         javaScriptDisabled: Bool
     ) -> NSAttributedString {
         guard let style else { return NSAttributedString() }
@@ -131,10 +136,10 @@ final class QuickViewHeaderView: NSVisualEffectView {
                     attributes: [.foregroundColor: NSColor.tertiaryLabelColor]
                 ))
             }
-            let colour = candidate == style ? NSColor.labelColor : .secondaryLabelColor
+            let color = candidate == style ? NSColor.labelColor : .secondaryLabelColor
             text.append(NSAttributedString(
-                string: "\(candidate.digit) \(candidate.headerLabel)",
-                attributes: [.foregroundColor: colour]
+                string: "\(candidate.digit) \(candidate.headerLabel(for: kind))",
+                attributes: [.foregroundColor: color]
             ))
         }
         if style == .rendered, javaScriptDisabled {

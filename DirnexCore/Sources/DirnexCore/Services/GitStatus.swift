@@ -23,7 +23,7 @@ public enum GitFileStatus: Sendable, Hashable, CaseIterable {
 
     /// Git's own one-letter vocabulary for the state, or `nil` when there is nothing to show. The
     /// letters are Git's, not a Dirnex invention, so they live here rather than in the app — the app
-    /// picks the colour, this picks the character.
+    /// picks the color, this picks the character.
     public var code: String? {
         switch self {
         case .unmodified: nil
@@ -53,7 +53,7 @@ public enum GitFileStatus: Sendable, Hashable, CaseIterable {
         }
     }
 
-    /// Whether a descendant carrying this status should colour its ancestor directories.
+    /// Whether a descendant carrying this status should color its ancestor directories.
     ///
     /// Everything actionable rolls up — a folder should advertise the modified file buried inside it.
     /// `.ignored` deliberately does **not**: a normal source folder holding one ignored `debug.log`

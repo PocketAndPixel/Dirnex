@@ -14,6 +14,14 @@ import Foundation
 /// original with it (`FileManager.replaceItemAt`, a same-volume swap). The original is never touched
 /// until the repack has fully succeeded, so a failure or crash mid-rewrite leaves it intact — the
 /// "journal-safe temp file" the plan calls for.
+///
+/// **An encrypted archive takes the same shape through libarchive instead of `bsdtar`** (PLAN.md
+/// §M19), for the reason the whole `CArchiveShim` exception exists: `bsdtar` has nowhere safe to put
+/// a passphrase. Measured on a real AES-256 zip, `bsdtar -x` over the whole archive does not prompt
+/// and does not hang — it exits 1 having written nothing — so before this route existed, F8 delete
+/// and F5/paste add inside an encrypted archive failed outright. They failed *safely* (the rewrite
+/// throws before the original is touched), which is why it read as "not supported yet" rather than
+/// as damage. `ArchiveRewriteFormat` decides which route runs, off one header read.
 enum ArchiveWriter {
     /// The shared scratch root every rewrite extracts beneath, under the user's temp directory.
     /// Purged at launch like the extractor's, since a rewrite fully finishes (or fails) before
@@ -23,74 +31,51 @@ enum ArchiveWriter {
             .appendingPathComponent("DirnexArchiveWrite", isDirectory: true)
     }
 
-    /// Delete `innerPaths` (VFS inner paths like `/docs/api/x.md`, a directory removing its whole
-    /// subtree) from the archive at `archiveOnDiskPath`, rewriting it in place. Throws — leaving the
-    /// original untouched — when the archive can't be read, the repack fails, or the swap fails.
-    /// Blocks on `bsdtar`, so call it off-main.
-    static func delete(innerPaths: [String], fromArchiveAt archiveOnDiskPath: String) throws {
-        try rewrite(archiveOnDiskPath: archiveOnDiskPath) { workingDirectory in
-            // Remove each target by its exact extracted path. A member that isn't there (already
-            // gone, or a stale selection) is not a failure — the rewrite still drops it.
-            for innerPath in innerPaths {
-                let location = ArchiveMutation.workingLocation(
-                    ofInnerPath: innerPath,
-                    inWorkingDirectory: workingDirectory
-                )
-                try? FileManager.default.removeItem(atPath: location)
-            }
-        }
-    }
-
-    /// Add the on-disk items at `localPaths` into the archive's inner directory `innerDirectory`
-    /// (`/` = the archive root), rewriting the archive at `archiveOnDiskPath` in place. Each item is
-    /// copied under its own last path component; a same-named member already there is replaced (the
-    /// app confirms that overwrite first). Throws — leaving the original untouched — when the archive
-    /// can't be read, a copy fails, the repack fails, or the swap fails. Blocks on `bsdtar` and does
-    /// file copies, so call it off-main.
-    static func add(
-        localPaths: [String],
-        toInnerDirectory innerDirectory: String,
-        ofArchiveAt archiveOnDiskPath: String
-    ) throws {
-        let name = (archiveOnDiskPath as NSString).lastPathComponent
-        try rewrite(archiveOnDiskPath: archiveOnDiskPath) { workingDirectory in
-            // The destination directory exists already when adding into a browsed folder, but make
-            // sure — the archive could have been emptied, or the add could target a fresh path.
-            let destinationDirectory = ArchiveMutation.additionDirectory(
-                forInnerDirectory: innerDirectory,
-                inWorkingDirectory: workingDirectory
-            )
-            try FileManager.default.createDirectory(
-                atPath: destinationDirectory,
-                withIntermediateDirectories: true
-            )
-            for localPath in localPaths {
-                let sourceURL = URL(fileURLWithPath: localPath)
-                let destinationURL = URL(fileURLWithPath: destinationDirectory)
-                    .appendingPathComponent(sourceURL.lastPathComponent)
-                // Replace a same-named member (the overwrite was confirmed) — `copyItem` would
-                // otherwise fail if the destination already exists.
-                try? FileManager.default.removeItem(at: destinationURL)
-                do {
-                    try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
-                } catch {
-                    throw VFSError.unsupported(
-                        .archiveAddFailed(item: sourceURL.lastPathComponent, archive: name)
-                    )
-                }
-            }
-        }
-    }
-
     /// The shared rewrite: make a scratch directory, extract the whole archive into it, let `edit`
     /// mutate the extracted tree by real filesystem paths, then repack + atomically swap. Both
     /// `delete` and `add` are just different `edit` closures over this one flow (see the type doc).
-    private static func rewrite(
+    ///
+    /// **Undo is a copy of the archive taken here and nowhere else** (HISTORY.md ▸ After M19,
+    /// 2026-09-01). A rewrite repacks the container whole, so there is no
+    /// diff to journal and the only exact reversal is the container as it was; this is the last
+    /// moment it exists. The copy is taken *after* the repack has succeeded, so a rewrite that
+    /// fails costs nothing at all, and is discarded again if the swap then fails — the store must
+    /// never hold a snapshot of an archive that was never replaced.
+    ///
+    /// `nil` back means the rewrite happened and is not undoable: the archive is larger than the
+    /// whole budget, or the copy could not be made. The gesture has already told the user which it
+    /// will be, from `ArchiveUndoStorage.willBeUndoable(archiveAt:)`.
+    /// Internal rather than `private` because the three edits that ride it live in
+    /// `ArchiveWriter+Edits.swift`, and Swift's `private` does not cross files.
+    static func rewrite(
         archiveOnDiskPath: String,
+        passphrase: ArchivePassphrase?,
+        undo: ArchiveUndoStorage.Request,
+        nameEncoding: ArchiveNameEncoding? = nil,
         edit: (_ workingDirectory: String) throws -> Void
-    ) throws {
+    ) throws -> ArchiveUndoSnapshot? {
         let archiveURL = URL(fileURLWithPath: archiveOnDiskPath)
         let name = archiveURL.lastPathComponent
+
+        // A self-extractor is a Windows program with the archive appended, and everything below
+        // repacks the archive alone — it would write a bare archive over the program, and under a
+        // `.zip` name `bsdtar -a` would turn a 7z into a zip. The pane's gates already keep every
+        // write gesture away from one (`archiveAcceptsWrites`); this is what makes that true of the
+        // writer itself, whatever reaches it.
+        if SelfExtractingArchive.inspect(fileAt: archiveOnDiskPath) != nil {
+            throw VFSError.unsupported(.selfExtractingArchiveReadOnly(archive: name))
+        }
+
+        // Headers only — no passphrase needed to learn whether one is needed, which is what lets the
+        // caller be asked before any work starts rather than after the extract has failed.
+        let format = ArchiveRewriteFormat.inferred(
+            from: try EncryptedArchiveReader.inspect(
+                archiveAt: archiveOnDiskPath, nameEncoding: nameEncoding
+            )
+        )
+        if format.needsPassphrase, passphrase == nil || passphrase?.isEmpty == true {
+            throw EncryptedArchiveError.passphraseRequired
+        }
 
         let workingDirectory = temporaryRoot
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -100,12 +85,13 @@ enum ArchiveWriter {
         )
         defer { try? FileManager.default.removeItem(at: workingDirectory) }
 
-        try run(
-            ArchiveMutation.extractAllArguments(
-                archiveOnDiskPath: archiveOnDiskPath,
-                into: workingDirectory.path
-            ),
-            failure: .archiveUnreadable(archive: name)
+        try extractAll(
+            archiveOnDiskPath: archiveOnDiskPath,
+            into: workingDirectory.path,
+            format: format,
+            passphrase: passphrase,
+            name: name,
+            nameEncoding: nameEncoding
         )
 
         try edit(workingDirectory.path)
@@ -116,24 +102,110 @@ enum ArchiveWriter {
         let rewrittenURL = archiveURL.deletingLastPathComponent().appendingPathComponent(
             ArchiveMutation.temporaryArchiveName(forArchiveNamed: name, token: UUID().uuidString)
         )
+        var snapshot: ArchiveUndoSnapshot?
         do {
-            try run(
-                ArchiveMutation.repackAllArguments(
-                    newArchiveOnDiskPath: rewrittenURL.path,
-                    from: workingDirectory.path
-                ),
-                failure: .archiveRewriteFailed(archive: name)
+            try repackAll(
+                from: workingDirectory.path,
+                into: rewrittenURL.path,
+                format: format,
+                passphrase: passphrase,
+                name: name
             )
             guard FileManager.default.fileExists(atPath: rewrittenURL.path) else {
                 throw VFSError.unsupported(.archiveRewriteFailed(archive: name))
             }
+            snapshot = undo.store?.capture(archiveAt: archiveOnDiskPath, live: undo.live)
             _ = try FileManager.default.replaceItemAt(archiveURL, withItemAt: rewrittenURL)
         } catch {
             try? FileManager.default.removeItem(at: rewrittenURL)
-            throw error is VFSError ? error : VFSError.unsupported(
-                .archiveUpdateFailed(archive: name)
-            )
+            snapshot.map { undo.store?.discard($0.snapshot) }
+            throw error is VFSError || error is EncryptedArchiveError
+                ? error
+                : VFSError.unsupported(.archiveUpdateFailed(archive: name))
         }
+        return snapshot
+    }
+
+    /// Unpack the whole archive into the scratch directory, by whichever engine its format needs.
+    ///
+    /// A hidden-names archive unwraps here transparently — `EncryptedArchiveReader` undoes the
+    /// wrapper — so `edit` always sees the real tree, and `repackAll` puts the wrapper back. That
+    /// symmetry is what keeps every caller ignorant of name privacy.
+    ///
+    /// **A declared code page forces the libarchive route even for an unencrypted archive**, and
+    /// only the *extract* half needs it: once the names have been decoded they are ordinary UTF-8
+    /// on disk, so `repackAll` stays on `bsdtar` — which is what keeps the container format (a
+    /// `.tar.gz` stays a `.tar.gz`) rather than being rewritten as the one zip the in-process writer
+    /// can produce. The archive comes back with its names flagged UTF-8, readable everywhere; that
+    /// is a real change to the user's file and the gesture says so before it runs.
+    private static func extractAll(
+        archiveOnDiskPath: String,
+        into workingDirectory: String,
+        format: ArchiveRewriteFormat,
+        passphrase: ArchivePassphrase?,
+        name: String,
+        nameEncoding: ArchiveNameEncoding? = nil
+    ) throws {
+        guard format.needsPassphrase || nameEncoding != nil else {
+            try run(
+                ArchiveMutation.extractAllArguments(
+                    archiveOnDiskPath: archiveOnDiskPath,
+                    into: workingDirectory
+                ),
+                failure: .archiveUnreadable(archive: name)
+            )
+            return
+        }
+        _ = try EncryptedArchiveReader.extract(
+            archiveAt: archiveOnDiskPath,
+            into: workingDirectory,
+            passphrase: passphrase,
+            nameEncoding: nameEncoding
+        )
+    }
+
+    /// Pack the edited tree back into a new archive, re-stating what the original was.
+    ///
+    /// The unencrypted route packs `.` through `bsdtar`, which is what preserves the container
+    /// format from the new archive's suffix. The encrypted route enumerates the working directory's
+    /// top level instead — **including dot-files**, since a rewrite that quietly dropped a
+    /// `.gitignore` somebody packed would be a data loss nobody would notice until much later.
+    private static func repackAll(
+        from workingDirectory: String,
+        into newArchiveOnDiskPath: String,
+        format: ArchiveRewriteFormat,
+        passphrase: ArchivePassphrase?,
+        name: String
+    ) throws {
+        guard format.needsPassphrase else {
+            try run(
+                ArchiveMutation.repackAllArguments(
+                    newArchiveOnDiskPath: newArchiveOnDiskPath,
+                    from: workingDirectory
+                ),
+                failure: .archiveRewriteFailed(archive: name)
+            )
+            return
+        }
+        let names = try FileManager.default.contentsOfDirectory(atPath: workingDirectory)
+        guard !names.isEmpty else {
+            // `EncryptedArchiveWriter` refuses an empty item list by design (`nothingToArchive`),
+            // and deleting the last member of an archive is a legitimate thing to have just done.
+            throw VFSError.unsupported(.archiveRewriteFailed(archive: name))
+        }
+        try EncryptedArchiveWriter.write(
+            items: try ArchiveSourceEnumerator.items(
+                inDirectory: workingDirectory,
+                names: names,
+                // The bytes are already on local disk in our own scratch directory: nothing here can
+                // be an un-materialized cloud placeholder, so the guard has nothing to protect.
+                allowDataless: true
+            ),
+            toArchiveAt: newArchiveOnDiskPath,
+            encryption: format.encryption,
+            passphrase: passphrase,
+            namePrivacy: format.namePrivacy
+        )
     }
 
     /// Remove every rewrite scratch directory. Called once at launch, before anything can be
@@ -150,16 +222,20 @@ enum ArchiveWriter {
     private static func run(_ arguments: [String], failure reason: VFSUnsupportedReason) throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/bsdtar")
+        // A rewrite re-packs every member, so it writes names as well as reading them — both
+        // halves of ``ChildProcessLocale``'s finding apply.
+        process.environment = ChildProcessLocale.inherited()
         process.arguments = arguments
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
 
+        let awaitExit = ProcessWaiting.exitWaiter(for: process)
         do {
             try process.run()
         } catch {
             throw VFSError.unsupported(reason)
         }
-        process.waitUntilExit()
+        awaitExit()
         guard process.terminationStatus == 0 else { throw VFSError.unsupported(reason) }
     }
 }

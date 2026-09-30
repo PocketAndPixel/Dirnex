@@ -7,11 +7,11 @@ import Testing
 struct FinderTagColorTests {
     /// The mapping is the whole point of the type and the easiest thing to get subtly wrong, so it
     /// is pinned outright. These indices are not a guess: each was read back off a real file after
-    /// letting macOS assign the colour itself from the bare tag name.
-    @Test("colour indices are the ones macOS actually assigns")
+    /// letting macOS assign the color itself from the bare tag name.
+    @Test("color indices are the ones macOS actually assigns")
     func indices() {
         #expect(FinderTagColor.none.rawValue == 0)
-        #expect(FinderTagColor.grey.rawValue == 1)
+        #expect(FinderTagColor.gray.rawValue == 1)
         #expect(FinderTagColor.green.rawValue == 2)
         #expect(FinderTagColor.purple.rawValue == 3)
         #expect(FinderTagColor.blue.rawValue == 4)
@@ -21,7 +21,7 @@ struct FinderTagColorTests {
     }
 
     /// Guards against "fixing" these indices into Finder's `FavoriteTagNames` display order, which
-    /// runs Red, Orange, Yellow, Green, Blue, Purple, Grey and looks far more like a sensible
+    /// runs Red, Orange, Yellow, Green, Blue, Purple, Gray and looks far more like a sensible
     /// enumeration than the real thing does.
     @Test("indices are not Finder's display order")
     func notDisplayOrder() {
@@ -30,23 +30,26 @@ struct FinderTagColorTests {
 
     /// The order itself, pinned: it is what the sidebar and the tag menu list, and the whole reason
     /// it exists is that reaching for `allCases` instead is both easy and wrong.
-    @Test("display order is Finder's rainbow, and covers every colour exactly once")
+    @Test("display order is Finder's rainbow, and covers every color exactly once")
     func displayOrder() {
         #expect(
-            FinderTagColor.displayOrder == [.red, .orange, .yellow, .green, .blue, .purple, .grey]
+            FinderTagColor.displayOrder == [.red, .orange, .yellow, .green, .blue, .purple, .gray]
         )
-        // Every real colour, none twice, and never `.none` — which is a stored value, not a choice.
+        // Every real color, none twice, and never `.none` — which is a stored value, not a choice.
         #expect(Set(FinderTagColor.displayOrder).count == FinderTagColor.displayOrder.count)
         #expect(
             Set(FinderTagColor.displayOrder) == Set(FinderTagColor.allCases).subtracting([.none])
         )
     }
 
-    @Test("every colour but none names a stock system tag")
+    @Test("every color but none names a stock system tag")
     func systemTagNames() {
         #expect(FinderTagColor.none.systemTagName == nil)
         #expect(FinderTagColor.red.systemTagName == "Red")
-        #expect(FinderTagColor.grey.systemTagName == "Grey")
+        // Not "Gray": the stock tag's name on disk is macOS's spelling, and `title` — the word
+        // Dirnex shows — is the American one. The two deliberately differ for this case alone.
+        #expect(FinderTagColor.gray.systemTagName == "Grey")
+        #expect(FinderTagColor.gray.title == "Gray")
         for color in FinderTagColor.allCases where color != .none {
             #expect(color.systemTagName != nil)
         }
@@ -57,13 +60,13 @@ struct FinderTagColorTests {
 struct FinderTagTests {
     // MARK: - The stock tags
 
-    @Test("the stock tags are the seven system ones, in Finder's order, each in its own colour")
+    @Test("the stock tags are the seven system ones, in Finder's order, each in its own color")
     func systemTags() {
         #expect(FinderTag.systemTags.map(\.name) == [
             "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Grey"
         ])
         #expect(FinderTag.systemTags.map(\.color) == FinderTagColor.displayOrder)
-        // Each carries the colour it is named after — the property that lets the sidebar draw a
+        // Each carries the color it is named after — the property that lets the sidebar draw a
         // swatch from the tag alone.
         for tag in FinderTag.systemTags {
             #expect(tag.color.systemTagName == tag.name)
@@ -72,9 +75,9 @@ struct FinderTagTests {
 
     /// The gate on Delete Tag: a custom tag can be deleted (strip it off its carriers and it is
     /// gone), a stock one cannot (`systemTags` is a constant — it would be back on the next
-    /// rebuild). It rides on `==`, so it folds case and ignores colour like every other identity
+    /// rebuild). It rides on `==`, so it folds case and ignores color like every other identity
     /// question here.
-    @Test("the stock seven are system tags, by name, whatever their case or colour")
+    @Test("the stock seven are system tags, by name, whatever their case or color")
     func systemTagMembership() {
         for tag in FinderTag.systemTags {
             #expect(tag.isSystem)
@@ -83,7 +86,8 @@ struct FinderTagTests {
         #expect(FinderTag(name: "RED", color: .blue).isSystem)
         #expect(!FinderTag(name: "Urgent", color: .red).isSystem)
         #expect(!FinderTag(name: "Work").isSystem)
-        // `Grey` is a stock name and `Gray` is not — the same spelling trap `systemTagName` carries.
+        // `Grey` is a stock name and `Gray` is not — the same spelling trap `systemTagName` carries,
+        // and the reason the case is named `.gray` while its stored name stays macOS's spelling.
         #expect(FinderTag(name: "Grey").isSystem)
         #expect(!FinderTag(name: "Gray").isSystem)
     }
@@ -91,7 +95,7 @@ struct FinderTagTests {
     // MARK: - Identity
 
     /// macOS folds case to identify a tag while storing the user's spelling: writing `red` stores
-    /// the name `red` but resolves it to Red's colour 6. So case-insensitive identity is the
+    /// the name `red` but resolves it to Red's color 6. So case-insensitive identity is the
     /// system's rule, not a convenience.
     @Test("identity is the name, case-insensitively")
     func caseInsensitiveIdentity() {
@@ -100,9 +104,9 @@ struct FinderTagTests {
         #expect(FinderTag(name: "Work") != FinderTag(name: "Works"))
     }
 
-    /// A file holding one name in two colours is malformed, not two tags — so the colour must stay
+    /// A file holding one name in two colors is malformed, not two tags — so the color must stay
     /// out of identity, or a `Set` would keep both and the column would render the name twice.
-    @Test("colour is not part of identity")
+    @Test("color is not part of identity")
     func colorExcludedFromIdentity() {
         #expect(FinderTag(name: "Work", color: .red) == FinderTag(name: "Work", color: .blue))
         #expect(
@@ -119,9 +123,9 @@ struct FinderTagTests {
         #expect(tag?.color == .red)
     }
 
-    /// The system emits `Zebra\n0` for a colourless tag, but a bare name with no newline at all
+    /// The system emits `Zebra\n0` for a colorless tag, but a bare name with no newline at all
     /// round-trips through its own reader, so both must parse.
-    @Test("a colourless tag, spelled either way")
+    @Test("a colorless tag, spelled either way")
     func parsesColorless() {
         #expect(FinderTag(storedString: "Zebra\n0")?.color == FinderTagColor.none)
         #expect(FinderTag(storedString: "Zebra\n0")?.name == "Zebra")
@@ -139,8 +143,8 @@ struct FinderTagTests {
         #expect(tag?.color == .red)
     }
 
-    /// The name is what carries meaning; a nonsense colour byte should cost the colour, not the tag.
-    @Test("a malformed colour degrades to none rather than dropping the tag")
+    /// The name is what carries meaning; a nonsense color byte should cost the color, not the tag.
+    @Test("a malformed color degrades to none rather than dropping the tag")
     func malformedColorDegrades() {
         #expect(FinderTag(storedString: "Work\nrubbish")?.color == FinderTagColor.none)
         #expect(FinderTag(storedString: "Work\nrubbish")?.name == "Work")
@@ -157,7 +161,7 @@ struct FinderTagTests {
 
     // MARK: - Serializing
 
-    /// The colour field is always written, `\n0` included, because that is what the system emits.
+    /// The color field is always written, `\n0` included, because that is what the system emits.
     @Test("round-trips through the stored spelling")
     func roundTrips() {
         #expect(FinderTag(name: "Red", color: .red).storedString == "Red\n6")
@@ -191,7 +195,7 @@ struct FinderTagPayloadTests {
     }
 
     /// The golden fixture: the exact bytes macOS wrote for a file tagged `Red` plus a custom
-    /// colourless `Important`, captured off a real tagged file rather than constructed here. If the
+    /// colorless `Important`, captured off a real tagged file rather than constructed here. If the
     /// stored format is ever not what this pass measured, this is the test that says so.
     @Test("decodes the real bytes macOS writes")
     func decodesCapturedBytes() throws {
@@ -258,9 +262,9 @@ struct FinderTagPayloadTests {
 
     // MARK: - The legacy label
 
-    /// All four cases were read off real files. The rule is last-coloured-wins, and every plausible
+    /// All four cases were read off real files. The rule is last-colored-wins, and every plausible
     /// alternative — first, lowest — is wrong on at least one of them.
-    @Test("the legacy label is the last coloured tag's index")
+    @Test("the legacy label is the last colored tag's index")
     func legacyLabelLastColorWins() {
         #expect(
             FinderTagPayload.legacyLabel(
@@ -279,8 +283,8 @@ struct FinderTagPayloadTests {
         )
     }
 
-    /// A trailing colourless tag must not clear the label — the system skips past it.
-    @Test("a colourless tag does not clear the label")
+    /// A trailing colorless tag must not clear the label — the system skips past it.
+    @Test("a colorless tag does not clear the label")
     func legacyLabelSkipsColorless() {
         #expect(
             FinderTagPayload.legacyLabel(
@@ -294,7 +298,7 @@ struct FinderTagPayloadTests {
         )
     }
 
-    @Test("no colours anywhere means no label")
+    @Test("no colors anywhere means no label")
     func legacyLabelNone() {
         #expect(FinderTagPayload.legacyLabel(for: []) == 0)
         #expect(
@@ -307,27 +311,27 @@ struct FinderTagPayloadTests {
 struct FinderTagIndexTests {
     /// The bug this type exists for, in one test: iCloud stores `Red\n1` on every tagged file in the
     /// drive — Finder's own UI does it too — and the dot must still come out red.
-    @Test("a stock tag mangled by iCloud still resolves to its real colour")
+    @Test("a stock tag mangled by iCloud still resolves to its real color")
     func resolvesStockTagNormalizedByICloud() {
         let index = FinderTagIndex()
-        #expect(index.resolve(FinderTag(name: "Red", color: .grey)).color == .red)
-        #expect(index.resolve(FinderTag(name: "Blue", color: .grey)).color == .blue)
-        // Colour 1 is not special-cased: any wrong byte on a stock name loses to the name.
+        #expect(index.resolve(FinderTag(name: "Red", color: .gray)).color == .red)
+        #expect(index.resolve(FinderTag(name: "Blue", color: .gray)).color == .blue)
+        // Color 1 is not special-cased: any wrong byte on a stock name loses to the name.
         #expect(index.resolve(FinderTag(name: "Green", color: .orange)).color == .green)
     }
 
-    /// The system folds case to identify a tag, so a file spelling it `red` gets Red's colour — and
+    /// The system folds case to identify a tag, so a file spelling it `red` gets Red's color — and
     /// keeps its own spelling, because that half belongs to the user.
     @Test("resolution is case-insensitive and preserves the file's spelling")
     func resolvePreservesSpelling() {
-        let resolved = FinderTagIndex().resolve(FinderTag(name: "red", color: .grey))
+        let resolved = FinderTagIndex().resolve(FinderTag(name: "red", color: .gray))
         #expect(resolved.name == "red")
         #expect(resolved.color == .red)
     }
 
-    /// A name nothing knows about keeps its stored colour: it is the only evidence there is, and off
+    /// A name nothing knows about keeps its stored color: it is the only evidence there is, and off
     /// iCloud it is the right one.
-    @Test("an unknown name keeps the colour the file carries")
+    @Test("an unknown name keeps the color the file carries")
     func resolveUnknownName() {
         #expect(FinderTagIndex().resolve(FinderTag(name: "Zebra", color: .purple)).color == .purple)
         #expect(FinderTagIndex().resolve(FinderTag(name: "Zebra")).color == .none)
@@ -337,9 +341,9 @@ struct FinderTagIndexTests {
     @Test("a sighting never overwrites a stock tag")
     func learnRefusesStockTags() {
         var index = FinderTagIndex()
-        index.learn(FinderTag(name: "Red", color: .grey))
+        index.learn(FinderTag(name: "Red", color: .gray))
         index.learn(FinderTag(name: "red", color: .none))
-        #expect(index.resolve(FinderTag(name: "Red", color: .grey)).color == .red)
+        #expect(index.resolve(FinderTag(name: "Red", color: .gray)).color == .red)
         #expect(index.tags.count == FinderTag.systemTags.count)
     }
 
@@ -347,34 +351,34 @@ struct FinderTagIndexTests {
     func learnCustomTag() {
         var index = FinderTagIndex()
         index.learn(FinderTag(name: "Zebra", color: .purple))
-        #expect(index.resolve(FinderTag(name: "Zebra", color: .grey)).color == .purple)
+        #expect(index.resolve(FinderTag(name: "Zebra", color: .gray)).color == .purple)
     }
 
-    /// The regression this guard exists to prevent: `Zebra` is purple on the Desktop and grey in
+    /// The regression this guard exists to prevent: `Zebra` is purple on the Desktop and gray in
     /// iCloud Drive. Whichever folder is browsed last must not decide — the Desktop's dot is correct
     /// today and has to stay correct.
-    @Test("a grey sighting does not displace a colour already known")
-    func greySightingDoesNotDowngrade() {
+    @Test("a gray sighting does not displace a color already known")
+    func graySightingDoesNotDowngrade() {
         var index = FinderTagIndex()
         index.learn(FinderTag(name: "Zebra", color: .purple))
-        index.learn(FinderTag(name: "Zebra", color: .grey))
-        #expect(index.resolve(FinderTag(name: "Zebra", color: .grey)).color == .purple)
+        index.learn(FinderTag(name: "Zebra", color: .gray))
+        #expect(index.resolve(FinderTag(name: "Zebra", color: .gray)).color == .purple)
     }
 
-    /// The guard is only about grey, and only in that direction: a real recolour to any other colour
+    /// The guard is only about gray, and only in that direction: a real recolor to any other color
     /// is still the newest evidence and wins.
-    @Test("a non-grey sighting still wins, and grey is learned when nothing is known")
-    func learnStillTracksRealRecolours() {
+    @Test("a non-gray sighting still wins, and gray is learned when nothing is known")
+    func learnStillTracksRealRecolors() {
         var index = FinderTagIndex()
         index.learn(FinderTag(name: "Zebra", color: .purple))
         index.learn(FinderTag(name: "Zebra", color: .blue))
         #expect(index.resolve(FinderTag(name: "Zebra")).color == .blue)
 
-        // A genuinely grey tag, never seen in any other colour, is grey.
+        // A genuinely gray tag, never seen in any other color, is gray.
         var fresh = FinderTagIndex()
-        fresh.learn(FinderTag(name: "Work", color: .grey))
-        #expect(fresh.resolve(FinderTag(name: "Work")).color == .grey)
-        // …and a colourless sighting is not a colour, so it does not lock grey out either.
+        fresh.learn(FinderTag(name: "Work", color: .gray))
+        #expect(fresh.resolve(FinderTag(name: "Work")).color == .gray)
+        // …and a colorless sighting is not a color, so it does not lock gray out either.
         fresh.learn(FinderTag(name: "Work", color: .green))
         #expect(fresh.resolve(FinderTag(name: "Work")).color == .green)
     }
@@ -384,8 +388,8 @@ struct FinderTagIndexTests {
         var index = FinderTagIndex()
         index.learn(FinderTag(name: "Zebra", color: .purple))
         let resolved = index.resolve([
-            FinderTag(name: "Red", color: .grey),
-            FinderTag(name: "Zebra", color: .grey),
+            FinderTag(name: "Red", color: .gray),
+            FinderTag(name: "Zebra", color: .gray),
             FinderTag(name: "Unseen", color: .yellow)
         ])
         #expect(resolved.map(\.name) == ["Red", "Zebra", "Unseen"])
@@ -407,10 +411,10 @@ struct FinderTagIndexTests {
         index.learn(FinderTag(name: "Zebra", color: .purple))
         index.forget(FinderTag(name: "Zebra"))
         #expect(!index.names.contains("Zebra"))
-        // Forgotten means unknown, so the file's own colour is all that is left.
-        #expect(index.resolve(FinderTag(name: "Zebra", color: .grey)).color == .grey)
+        // Forgotten means unknown, so the file's own color is all that is left.
+        #expect(index.resolve(FinderTag(name: "Zebra", color: .gray)).color == .gray)
 
         index.forget(FinderTag(name: "Red"))
-        #expect(index.resolve(FinderTag(name: "Red", color: .grey)).color == .red)
+        #expect(index.resolve(FinderTag(name: "Red", color: .gray)).color == .red)
     }
 }

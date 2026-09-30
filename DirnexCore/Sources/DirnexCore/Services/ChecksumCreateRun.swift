@@ -7,6 +7,13 @@ import Foundation
 /// Pack does. That is forced by the formats rather than chosen: every one of them spells names
 /// relative to the checksum file's own location, so a manifest written anywhere else describes
 /// files that are not there.
+///
+/// **Which is why a checksum of a bucket's objects writes into the bucket** (M24 Slice 4). The
+/// invariant above is the whole argument: there is no third option where the names still resolve.
+/// So the *names* are the remote ones, computed here from each row's own path before anything is
+/// substituted, and the *bytes* come from wherever the gesture put them — a split that lives one
+/// layer down, in `ChecksumRunContext.digest`, so this walk never learns about temp directories at
+/// all.
 struct ChecksumCreateRun {
     let context: ChecksumRunContext
 
@@ -35,7 +42,7 @@ struct ChecksumCreateRun {
         let contents = ChecksumManifest(algorithm: algorithm, entries: entries)
             .serialized(format: algorithm.manifestFormat)
         do {
-            try Data(contents.utf8).write(to: URL(fileURLWithPath: manifest.path), options: .atomic)
+            try write(contents, to: manifest)
         } catch {
             context.recordFailure(manifest, error)
             return context.report(outcome: nil)
@@ -49,6 +56,46 @@ struct ChecksumCreateRun {
                     skipped: skipped
                 )
             )
+        )
+    }
+
+    /// Write the manifest where it belongs, whichever backend that is.
+    ///
+    /// A local manifest is written in place, atomically, exactly as it always was. A manifest on a
+    /// server is staged into a temp file and handed to the backend's own transfer — the same verb
+    /// F5 uses, and the same one `MaterializeRunner` uses in the other direction. It is a few
+    /// kilobytes, so it is reported as no progress at all rather than as a second bar nobody
+    /// watches.
+    ///
+    /// **Whether the destination may already exist is the caller's question, not this one's.** The
+    /// gesture `stat`s and asks before it queues anything, and past that point every transport here
+    /// replaces: a `PUT` overwrites, `sftp`'s `put` truncates, `STOR` truncates. Deleting first
+    /// would turn a refused write into a lost file.
+    ///
+    /// A backend with no upload — a browsed archive — throws its own refusal, and that is why there
+    /// is no pre-flight guard for it: the sentence a user reads should be the one the thing that
+    /// declined actually said (`ChecksumRunContext.recordFailure` keeps a `VFSError` intact).
+    private func write(_ contents: String, to manifest: VFSPath) throws {
+        let data = Data(contents.utf8)
+        guard manifest.backend != .local else {
+            try data.write(to: URL(fileURLWithPath: manifest.path), options: .atomic)
+            return
+        }
+        let holder = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: holder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: holder) }
+        // Its real name inside a directory of its own, for `MaterializeRunner`'s reason read
+        // backwards: a transport told a destination path is free to look at the local file's name,
+        // and there is nothing to gain from letting the two disagree.
+        let staged = holder.appendingPathComponent(manifest.lastComponent)
+        try data.write(to: staged, options: .atomic)
+        try context.backend.copyFile(
+            at: .local(staged.path),
+            to: manifest,
+            expectedSize: Int64(data.count),
+            progress: { _ in },
+            isCancelled: { context.isCancelled() }
         )
     }
 

@@ -42,9 +42,9 @@ struct MermaidLayoutTests {
         #expect(tops[1] < tops[2])
         // Longest-path layering: each layer is one node's height plus the gap below it.
         #expect(tops[1] - tops[0] == tops[2] - tops[1])
-        // A vertical chart puts every node on the same centre line.
-        let centres = Set(drawing.nodes.map(\.frame.midX))
-        #expect(centres.count == 1)
+        // A vertical chart puts every node on the same center line.
+        let centers = Set(drawing.nodes.map(\.frame.midX))
+        #expect(centers.count == 1)
     }
 
     @Test("longest path, not shortest: a node waits for its deepest predecessor")
@@ -119,7 +119,7 @@ struct MermaidLayoutTests {
     @Test("the two tapering shapes are sized by geometry, not by taste")
     func taperedShapes() {
         let drawing = flowchart("graph TD\nA{abcd} --> B((abcd))")
-        // A rhombus of width W and height H holds a centred w x h box exactly when w/W + h/H <= 1,
+        // A rhombus of width W and height H holds a centered w x h box exactly when w/W + h/H <= 1,
         // so doubling both is the smallest diamond that fits its text.
         let diamond = drawing.nodes[0].frame
         #expect(diamond.width == 2 * (4 * 7 + 12))
@@ -146,7 +146,7 @@ struct MermaidLayoutTests {
     func diamondClipping() {
         let drawing = flowchart("graph TD\nA{yes} --> B")
         let diamond = drawing.nodes[0].frame
-        // Straight down from the centre, the rhombus boundary is its bottom vertex.
+        // Straight down from the center, the rhombus boundary is its bottom vertex.
         #expect(drawing.edges[0].start.y == diamond.maxY)
         #expect(drawing.edges[0].start.x == diamond.midX)
     }
@@ -190,11 +190,11 @@ struct MermaidLayoutTests {
 
     @Test("the canvas holds an edge label wider than the nodes it sits between")
     func canvasHoldsWideLabel() {
-        // A label centred between two small nodes overhangs both, and a canvas sized from the
+        // A label centered between two small nodes overhangs both, and a canvas sized from the
         // nodes alone would clip it — which reads as a bug in the diagram, not in its box.
         let drawing = flowchart("graph TD\nA -->|a very long edge label indeed| B")
         let label = drawing.edges[0]
-        #expect(label.labelCentre.x + metric.width(label.label ?? "") / 2 <= drawing.width)
+        #expect(label.labelCenter.x + metric.width(label.label ?? "") / 2 <= drawing.width)
     }
 
     // MARK: - Sequence diagrams

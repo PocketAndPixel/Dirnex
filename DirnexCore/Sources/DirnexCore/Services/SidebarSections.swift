@@ -25,6 +25,11 @@ public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
     /// user-visible title widened.
     case icloud
     case volumes
+    /// Encrypted disk images the user has opened (PLAN.md §M19). Between the local volumes and the
+    /// remote servers because that is what a vault *is* — a local volume that has to be unlocked
+    /// before it exists — and a row here is the one place both its locked and unlocked states are
+    /// visible, since a locked vault has no mount point to appear under Volumes.
+    case vaults
     case servers
     case tags
 
@@ -35,6 +40,7 @@ public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
         case .favorites: "Favorites"
         case .icloud: "Cloud"
         case .volumes: "Volumes"
+        case .vaults: "Vaults"
         case .servers: "Servers"
         case .tags: "Tags"
         }
@@ -46,7 +52,7 @@ public enum SidebarSection: String, CaseIterable, Sendable, Hashable {
 /// install would hide the feature that put the rows there.
 ///
 /// **Collapsed sections are stored as raw strings, not as `SidebarSection` values.** Decoding a
-/// `Set<SidebarSection>` throws on the first name it doesn't recognise, and a throwing decode
+/// `Set<SidebarSection>` throws on the first name it doesn't recognize, and a throwing decode
 /// resets *every* section's state — so one unknown name would silently unfold the whole sidebar.
 /// Section names come *and go* (Recents and Trash were both sections through M15 and are now
 /// headerless rows, so their names are unknown to this build) and betas do get rolled back, so the

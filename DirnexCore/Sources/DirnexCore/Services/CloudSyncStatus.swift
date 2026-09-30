@@ -60,7 +60,7 @@ public enum CloudSyncStatus: Sendable, Hashable, CaseIterable {
 public enum CloudDownloadingStatus: String, Sendable, Hashable, CaseIterable {
     /// The newest version is local.
     case current = "NSURLUbiquitousItemDownloadingStatusCurrent"
-    /// A local version exists but a newer one is in the cloud. Apple deprecated this in favour of
+    /// A local version exists but a newer one is in the cloud. Apple deprecated this in favor of
     /// `.current`, and it is treated as "the bytes are here" — which is what a file manager's reader
     /// wants to know, and the only thing this status still reliably means.
     case downloaded = "NSURLUbiquitousItemDownloadingStatusDownloaded"
@@ -91,7 +91,7 @@ public enum CloudTransferError: Sendable, Hashable, CaseIterable {
     case quotaExceeded
     /// The bytes are on no device the provider can reach, so the download cannot be satisfied.
     case itemUnavailable
-    /// Anything else, including any error from a domain other than Cocoa's. Unrecognised is treated
+    /// Anything else, including any error from a domain other than Cocoa's. Unrecognized is treated
     /// as real: the states worth suppressing are the ones proven to be noise, and this one isn't.
     case other
 

@@ -5,6 +5,10 @@ import DirnexCore
 /// extended by §M13 with FTP). Prompts for a remote server, connects it, and — when named — saves it
 /// to the sidebar's Servers section. Three protocols share one entry point:
 ///
+/// - **S3** browses through a `VFSBackend` over the system `curl`, which signs SigV4 itself; its
+///   connect and its wrong-region correction live in `PanelViewController+ConnectS3` (§M21). A
+///   blank bucket connects to the *account* instead and lists its buckets as rows
+///   (`PanelViewController+S3Account`), which is a second root and never the only one.
 /// - **SFTP** browses through a `VFSBackend`: a throwaway transport probes the connection (resolving
 ///   the remote home doubles as an auth/host test), then the same config is registered on the pane's
 ///   `CompositeBackend` so listings route to it. Password auth feeds `sftp` via `SSH_ASKPASS`.
@@ -36,12 +40,12 @@ extension PanelViewController {
     func connect(to server: ServerConnection) {
         switch server.endpoint {
         case let .sftp(location, authentication):
-            if case .password = authentication, ServerKeychain.password(for: location) == nil {
+            if case .password = authentication, SecretKeychain.password(for: location) == nil {
                 editServer(server)
                 return
             }
-            let stored = ServerKeychain.password(for: location)
-            runSidebarConnect(host: location.host) { [self] in
+            let stored = SecretKeychain.password(for: location)
+            runConnect(host: location.host) { [self] in
                 await connectSFTP(SFTPConnectRequest(
                     location: location,
                     authentication: authentication,
@@ -53,28 +57,63 @@ extension PanelViewController {
         case let .ftp(location, authentication, trustedPublicKey):
             // A named account whose password was never saved (or has been cleared) falls back to the
             // prefilled sheet rather than failing silently. Anonymous needs no secret at all.
-            if case .password = authentication, ServerKeychain.password(for: location) == nil {
+            if case .password = authentication, SecretKeychain.password(for: location) == nil {
                 editServer(server)
                 return
             }
-            let storedFTP = ServerKeychain.password(for: location) ?? ""
-            runSidebarConnect(host: location.host) { [self] in
+            let storedFTP = SecretKeychain.password(for: location) ?? ""
+            runConnect(host: location.host) { [self] in
                 await connectFTP(FTPConnectRequest(
                     location: location,
                     authentication: authentication,
                     password: storedFTP,
                     trustedPublicKey: trustedPublicKey,
                     saveName: nil,
+                    activityName: server.name,
+                    savedServerName: server.name
+                ))
+            }
+        case let .s3(location):
+            // The secret access key is the only way in — there is no anonymous or key-file variant
+            // to fall back to — so a saved bucket whose secret was never stored (or has been
+            // cleared) opens the prefilled sheet rather than failing.
+            guard let secret = SecretKeychain.password(for: location) else {
+                editServer(server)
+                return
+            }
+            runConnect(host: location.host) { [self] in
+                await connectS3(S3ConnectRequest(
+                    location: location,
+                    secretAccessKey: secret,
+                    saveName: nil,
+                    activityName: server.name,
+                    // Already saved, so an addressing correction has a record to land in — without
+                    // this the next click on this row would re-discover the same failure.
+                    savedServerName: server.name
+                ))
+            }
+        case let .s3Account(account):
+            // Same rule one level up: an account has no anonymous variant either, so a saved one
+            // whose secret is gone opens the prefilled sheet rather than failing.
+            guard let secret = SecretKeychain.password(for: account) else {
+                editServer(server)
+                return
+            }
+            runConnect(host: account.host) { [self] in
+                await connectS3Account(S3AccountConnectRequest(
+                    account: account,
+                    secretAccessKey: secret,
+                    saveName: nil,
                     activityName: server.name
                 ))
             }
         case let .smb(location):
-            if location.username != nil, ServerKeychain.password(for: location) == nil {
+            if location.username != nil, SecretKeychain.password(for: location) == nil {
                 editServer(server)
                 return
             }
-            let stored = location.username == nil ? nil : ServerKeychain.password(for: location)
-            runSidebarConnect(host: location.host) { [self] in
+            let stored = location.username == nil ? nil : SecretKeychain.password(for: location)
+            runConnect(host: location.host) { [self] in
                 await mountSMB(
                     location: location, password: stored, saveName: nil, activityName: server.name
                 )
@@ -82,30 +121,9 @@ extension PanelViewController {
         }
     }
 
-    /// Re-open the connect sheet prefilled from a saved server (the sidebar's "Edit…"). A rename
-    /// removes the old entry once the connection succeeds, so editing updates in place rather than
-    /// duplicating — and a failed edit leaves the original saved server untouched.
-    func editServer(_ server: ServerConnection) {
-        guard let window = view.window else { return }
-        ConnectServerPrompt.present(
-            over: window,
-            prefill: server,
-            attempt: { [weak self] form in
-                guard let self else { return .failed(Self.genericConnectError) }
-                let result = await apply(form)
-                if case .succeeded = result, let newName = form.saveName, newName != server.name {
-                    var store = ServerConnectionStore.load()
-                    if store.remove(name: server.name) { ServerConnectionStore.save(store) }
-                }
-                return result
-            },
-            onSucceeded: { [weak self] in self?.focusTable() }
-        )
-    }
-
     // MARK: - Dispatch
 
-    private func apply(_ form: ConnectServerPrompt.Form) async -> ConnectServerPrompt.Attempt {
+    func apply(_ form: ConnectServerPrompt.Form) async -> ConnectServerPrompt.Attempt {
         switch form.endpoint {
         case let .sftp(location, authentication):
             return await connectSFTP(SFTPConnectRequest(
@@ -122,6 +140,28 @@ extension PanelViewController {
                 password: form.password ?? "",
                 trustedPublicKey: trustedPublicKey,
                 saveName: form.saveName,
+                activityName: nil,
+                // The sheet's own `saveName` is the record to write, when there is one — a re-trust
+                // reaches the store through the success branch's `saveFTPServer`.
+                savedServerName: nil
+            ))
+        case let .s3(location):
+            return await connectS3(S3ConnectRequest(
+                location: location,
+                secretAccessKey: form.password ?? "",
+                saveName: form.saveName,
+                activityName: nil,
+                // The sheet's own `saveName` is the record to write, when there is one — a corrected
+                // addressing mode reaches the store through the success branch's `saveS3Server`.
+                savedServerName: nil
+            ))
+        case let .s3Account(account):
+            // The form's bucket field was left blank, which is the answer "browse the account"
+            // rather than a field forgotten (`ConnectServerS3Fields.readForm`).
+            return await connectS3Account(S3AccountConnectRequest(
+                account: account,
+                secretAccessKey: form.password ?? "",
+                saveName: form.saveName,
                 activityName: nil
             ))
         case let .smb(location):
@@ -132,9 +172,11 @@ extension PanelViewController {
         }
     }
 
-    /// Run a saved-server connect launched from the sidebar (no sheet to keep open): success hands
-    /// focus to the pane, a failure surfaces the standard error alert.
-    private func runSidebarConnect(
+    /// Run a connect launched from outside the sheet — a saved server clicked in the sidebar, or a
+    /// pane gesture that crosses into another backend (entering a bucket from an S3 account pane,
+    /// or walking up out of one). There is no sheet to keep open, so success hands focus to the pane
+    /// and a failure surfaces the standard error alert.
+    func runConnect(
         host: String,
         _ attempt: @escaping () async -> ConnectServerPrompt.Attempt
     ) {
@@ -159,6 +201,11 @@ extension PanelViewController {
         let password: String?
         let saveName: String?
         let activityName: String?
+        /// Whether a changed host key has already been put to the user in this attempt. The branch
+        /// retries once the stale pin is removed, so a refusal that outlives the removal — a pin the
+        /// repair could not reach — would otherwise raise the same question for as long as the user
+        /// kept accepting it. The FTPS twin is `FTPConnectRequest.hasWeighedCertificate`.
+        var hasWeighedHostKey = false
     }
 
     private func connectSFTP(_ request: SFTPConnectRequest) async -> ConnectServerPrompt.Attempt {
@@ -176,25 +223,25 @@ extension PanelViewController {
         let token = loadToken
         // A saved server clicked in the sidebar spins a busy indicator on its row until the probe
         // resolves; `defer` clears it at every exit below.
-        if let activityName = request.activityName { ServerConnectionActivity.shared.begin(
+        if let activityName = request.activityName { SidebarRowActivity.shared.begin(
             activityName
         ) }
-        defer { if let activityName = request.activityName { ServerConnectionActivity.shared.end(
+        defer { if let activityName = request.activityName { SidebarRowActivity.shared.end(
             activityName
         ) } }
 
-        let result = await Task.detached(priority: .userInitiated) { () -> Result<String, Error> in
+        let result = await BlockingWork.run { () -> Result<String, Error> in
             do { return .success(try transport.resolveHomeDirectory()) } catch { return .failure(
                 error
             ) }
-        }.value
+        }
         guard token == loadToken else { return .succeeded } // the pane moved on while we probed
 
         switch result {
         case let .success(home):
             // Only persist a password once it actually authenticated, so a typo isn't cached.
             if case .password = authentication, let password {
-                ServerKeychain.store(password: password, for: location)
+                SecretKeychain.store(password: password, for: location)
             }
             composite.connectSFTP(
                 location: location,
@@ -213,13 +260,20 @@ extension PanelViewController {
             // A changed host key isn't a dead end — offer to re-trust the new key and reconnect,
             // preserving the auth and save name so the retry behaves exactly like the first try.
             if case let .hostKeyChanged(change)? = error as? SFTPTransportError {
-                guard confirmHostKeyChange(location: location, change: change) else {
+                // One question per connect: a refusal that survives the repair is reported, since
+                // asking again could only loop.
+                guard !request.hasWeighedHostKey else {
+                    return .failed(Self.knownHostsRepairFailed(file: change.knownHostsFile))
+                }
+                guard await confirmHostKeyChange(location: location, change: change) else {
                     return .failed(Self.connectFailureDetail(error))
                 }
                 guard await repairKnownHosts(location: location, change: change) else {
                     return .failed(Self.knownHostsRepairFailed(file: change.knownHostsFile))
                 }
-                return await connectSFTP(request)
+                var retry = request
+                retry.hasWeighedHostKey = true
+                return await connectSFTP(retry)
             }
             return .failed(Self.connectFailureDetail(error))
         }
@@ -247,32 +301,52 @@ extension PanelViewController {
                 localized: "The server’s host key has changed (new fingerprint \(change.fingerprint)).",
                 comment: "SFTP connect failure detail; %@ is the new host-key fingerprint."
             )
+        case .copyExtensionUnavailable:
+            // Unreachable from a connect, and answered rather than asserted: only `cp` produces it
+            // and the probe here is a `pwd`. It gets the same generic sentence an empty failure
+            // does, because a wording of its own would put a string no user can reach in front of
+            // fourteen translators.
+            return Self.unexplainedServerError
         case let .failure(message):
             // The server's own words when it said anything; ours when it said nothing, since
             // `classify` leaves the payload empty rather than authoring an untranslatable
             // sentence in the core (PLAN.md §M12 Slice 11).
-            return message.isEmpty
-                ? String(
-                    localized: "The SFTP server reported an error.",
-                    comment: "SFTP connect failure detail when the server gave no reason."
-                )
-                : message
+            return message.isEmpty ? Self.unexplainedServerError : message
         }
     }
+
+    /// What a connect failure says when the server gave no reason of its own. One constant because
+    /// two sites need it and `String(localized:comment:)` takes a `StaticString`, so a shared comment
+    /// would have to be repeated verbatim to key the same entry (docs/NOTES.md ▸ Localization).
+    private static let unexplainedServerError = String(
+        localized: "The SFTP server reported an error.",
+        comment: "SFTP connect failure detail when the server gave no reason."
+    )
 
     // MARK: - Host key changed
 
     /// Warn that a host's key no longer matches the one pinned in `known_hosts`, and ask whether to
-    /// re-trust it. Presented app-modally (over the connect sheet, when one is open) as a critical
-    /// alert whose default and rightmost button is the safe "Cancel", so re-trusting a changed key —
-    /// usually a reinstalled server, but possibly a man-in-the-middle — is always a deliberate click.
-    /// Returns `true` when the user chose to trust the new key.
-    private func confirmHostKeyChange(location: SFTPLocation, change: SFTPHostKeyChange) -> Bool {
+    /// re-trust it. A critical alert whose default and rightmost button is the safe "Cancel", so
+    /// re-trusting a changed key — usually a reinstalled server, but possibly a man-in-the-middle —
+    /// is always a deliberate click. Returns `true` when the user chose to trust the new key.
+    ///
+    /// Presented on `NSAlert.sheetHost`: the Connect sheet when the connect came from there, the
+    /// browser window when it came from the sidebar. It used to be `runModal()`, which lands in the
+    /// center of the *display* rather than the app — the sheet host is what makes attaching it
+    /// possible without queueing it invisibly behind the Connect sheet (see `AlertSheet`).
+    private func confirmHostKeyChange(
+        location: SFTPLocation,
+        change: SFTPHostKeyChange
+    ) async -> Bool {
         let alert = NSAlert()
         alert.alertStyle = .critical
         alert.messageText = String(
             localized: "The identity of “\(location.host)” has changed",
-            comment: "Host-key-change alert title; %@ is the host name."
+            // Shared verbatim with the FTPS changed-certificate alert, which asks the same question
+            // about a TLS key. `String(localized:comment:)` takes a `StaticString`, so a shared
+            // comment cannot be hoisted and two spellings would hand the translator whichever one
+            // `xcstringstool` kept (docs/NOTES.md).
+            comment: "Alert title when a server’s identity (host key or TLS certificate) changed; %@ is the host."
         )
         alert.informativeText = Self.hostKeyChangeDetail(change)
         // "Cancel" is added first so it's the rightmost and answers Escape. AppKit gives it Escape
@@ -284,7 +358,7 @@ extension PanelViewController {
             comment: "Host-key-change alert: accept the new key and reconnect."
         ))
         alert.enableEscapeToCancel(safe: .alertFirstButtonReturn)
-        return alert.runModal() == .alertSecondButtonReturn
+        return await alert.runSheet(over: view.window) == .alertSecondButtonReturn
     }
 
     private static func hostKeyChangeDetail(_ change: SFTPHostKeyChange) -> String {
@@ -324,11 +398,17 @@ extension PanelViewController {
     /// Drop the stale `known_hosts` pin (via `ssh-keygen -R`) so the reconnect pins the server's
     /// current key as if it were a fresh host. Returns `false` when the old key couldn't be removed.
     private func repairKnownHosts(location: SFTPLocation, change: SFTPHostKeyChange) async -> Bool {
-        let target = SFTPKnownHosts.removalTarget(host: location.host, port: location.port)
+        // The name OpenSSH refused on, not the location's: a saved `nas` is dialed as `nas.local`, and
+        // removing `nas` removes nothing while `ssh-keygen` still exits 0.
+        let target = SFTPKnownHosts.removalTarget(
+            for: change,
+            host: location.host,
+            port: location.port
+        )
         let file = change.knownHostsFile
-        return await Task.detached(priority: .userInitiated) {
+        return await BlockingWork.run {
             SFTPKnownHostsRepair.removeKey(target: target, knownHostsFile: file)
-        }.value
+        }
     }
 
     private static func knownHostsRepairFailed(file: String) -> String {
@@ -353,8 +433,8 @@ extension PanelViewController {
         let token = loadToken
         // Mounting an SMB share is async and slow enough to look unresponsive; spin the sidebar row's
         // busy indicator until the mount resolves. `defer` clears it on every exit.
-        if let activityName { ServerConnectionActivity.shared.begin(activityName) }
-        defer { if let activityName { ServerConnectionActivity.shared.end(activityName) } }
+        if let activityName { SidebarRowActivity.shared.begin(activityName) }
+        defer { if let activityName { SidebarRowActivity.shared.end(activityName) } }
         do {
             let mountPoint = try await SMBMounter.shared.mount(
                 location,
@@ -365,7 +445,7 @@ extension PanelViewController {
             // Persist the password only once the mount succeeded, and only for an authenticated
             // share — a guest mount has no secret to keep.
             if location.username != nil, let password {
-                ServerKeychain.store(password: password, for: location)
+                SecretKeychain.store(password: password, for: location)
             }
             if let saveName { saveServer(name: saveName, endpoint: .smb(location)) }
             navigate(to: .local(mountPoint.path))
@@ -379,14 +459,16 @@ extension PanelViewController {
 
     // MARK: - Shared
 
-    private static var genericConnectError: String {
+    /// `internal` rather than `private` because Swift's `private` does not cross files and the Edit…
+    /// half lives in one of its own (docs/NOTES.md ▸ Lint ceilings).
+    static var genericConnectError: String {
         String(
             localized: "The connection couldn’t be set up.",
             comment: "Generic server-connect failure with no more specific reason."
         )
     }
 
-    private func connectFailureTitle(_ host: String) -> String {
+    func connectFailureTitle(_ host: String) -> String {
         String(
             localized: "Couldn’t connect to “\(host)”.",
             comment: "Error when a server connection fails; %@ is the host name."

@@ -15,7 +15,13 @@ UserDefaults.standard.register(
 )
 UserDefaults.standard.set(false, forKey: "NSSplitViewItemSidebarDefaultsToFloatingAppearance")
 
+// Let Tab reach a dialog's popups, checkboxes and buttons even with the system's Keyboard
+// navigation switch off — before any window is built, so the first dialog's key view loop has them.
+KeyboardReachableControls.install()
+
 let application = NSApplication.shared
+// ⌘1–⌘9 pick a dialog's tabs, and holding ⌘ shows the numbers.
+TabShortcuts.install()
 let delegate = AppDelegate()
 application.delegate = delegate
 application.run()

@@ -5,11 +5,11 @@ import Testing
 
 @testable import Dirnex
 
-/// Colour rules by file type (PLAN.md §M15 Slice 3), on the app side: the precedence a rule takes in
+/// Color rules by file type (PLAN.md §M15 Slice 3), on the app side: the precedence a rule takes in
 /// a cell, and the store the panes read it through. The matching itself is the core's and is tested
 /// in `FileColorRulesTests`; what is here is the presentation, the way `PanelPaletteTests` and
 /// `SyncBadgeTests` already are.
-@Suite("File colour rules — rendering")
+@Suite("File color rules — rendering")
 @MainActor
 struct FileColorRuleRenderingTests {
     private func cell() -> FileCellView {
@@ -23,11 +23,11 @@ struct FileColorRuleRenderingTests {
 
     // MARK: - Precedence
 
-    /// The whole point of giving the type colour a slot of its own rather than reusing
-    /// `accentColor`: **a marked file must stay unmistakably marked.** If the type colour outranked
+    /// The whole point of giving the type color a slot of its own rather than reusing
+    /// `accentColor`: **a marked file must stay unmistakably marked.** If the type color outranked
     /// the mark, a marked photograph in a folder of photographs would look exactly like an unmarked
     /// one at the moment F5 is aimed at it — silent, and in the expensive direction.
-    @Test("the mark outranks a type colour")
+    @Test("the mark outranks a type color")
     func markOutranksTypeColor() {
         let view = cell()
         view.palette = PanelPalette(mark: .systemRed)
@@ -39,21 +39,29 @@ struct FileColorRuleRenderingTests {
         #expect(textColor(of: view) == .systemTeal)
     }
 
-    /// Git keeps the top slot it already had: the letter *is* the information, and there is nowhere
-    /// else on the row to put it. A modified `.jpg` in a repository still shows its orange `M`.
-    @Test("Git status outranks both the mark and a type colour")
-    func gitOutranksEverything() {
+    /// Git used to hold the slot *above* the mark, because in the status gutter the colored letter
+    /// was the whole cell and there was nowhere else to put it. Now that the letter is a badge with
+    /// a color of its own (`GitBadgeView`), it competes with nothing: a marked, modified `.jpg`
+    /// keeps the mark's red on its name *and* shows its orange `M`, where before the mark's color
+    /// was the thing that gave way.
+    @Test("Git status no longer claims the row's text color")
+    func gitDoesNotTouchTheText() {
         let view = cell()
         view.palette = PanelPalette(mark: .systemRed)
         view.typeColor = .systemTeal
         view.marked = true
-        view.accentColor = GitStatusStyle.color(for: .modified)
-        #expect(textColor(of: view) == GitStatusStyle.color(for: .modified))
+        view.gitStatus = .modified
+        #expect(textColor(of: view) == .systemRed)
+
+        view.marked = false
+        #expect(textColor(of: view) == .systemTeal)
+        // …and the status is still on the row, in the badge that owns it.
+        #expect(view.gitStatus == .modified)
     }
 
-    /// And the cursor still wins over all three, with the foreground derived from whatever colour the
-    /// cursor row is drawn in — otherwise a pale cursor under a pale type colour is an invisible row.
-    @Test("the cursor row's derived foreground outranks a type colour")
+    /// And the cursor still wins over all three, with the foreground derived from whatever color the
+    /// cursor row is drawn in — otherwise a pale cursor under a pale type color is an invisible row.
+    @Test("the cursor row's derived foreground outranks a type color")
     func cursorOutranksTypeColor() {
         let view = cell()
         view.typeColor = .systemTeal
@@ -64,16 +72,16 @@ struct FileColorRuleRenderingTests {
     }
 
     /// The untouched install, and the state every row is in when the rule list is empty.
-    @Test("no rule leaves the row in the standard label colour")
+    @Test("no rule leaves the row in the standard label color")
     func noRuleIsLabelColor() {
         let view = cell()
         view.typeColor = nil
         #expect(textColor(of: view) == .labelColor)
     }
 
-    /// A type colour does not change the mark's *weight*, only the mark's colour claim — a marked
+    /// A type color does not change the mark's *weight*, only the mark's color claim — a marked
     /// row is bold whatever else is true of it.
-    @Test("a type colour leaves the marked row bold")
+    @Test("a type color leaves the marked row bold")
     func typeColorKeepsMarkBold() {
         let view = cell()
         view.typeColor = .systemTeal
@@ -86,11 +94,11 @@ struct FileColorRuleRenderingTests {
     // MARK: - Resolving a rule to pixels
 
     /// The degradation the core deliberately leaves to the app: a hex it cannot parse draws **no**
-    /// colour, never a colour nobody chose. Same call the three palette colours already make.
-    @Test("an unusable colour hex draws no colour rather than a wrong one")
+    /// color, never a color nobody chose. Same call the three palette colors already make.
+    @Test("an unusable color hex draws no color rather than a wrong one")
     func unusableHexDrawsNothing() {
         #expect(PanelPalette.color(fromHex: "") == nil)
-        #expect(PanelPalette.color(fromHex: "not a colour") == nil)
+        #expect(PanelPalette.color(fromHex: "not a color") == nil)
         #expect(PanelPalette.color(fromHex: "#12345") == nil)
         #expect(PanelPalette.color(fromHex: "#008080") != nil)
     }
@@ -146,7 +154,7 @@ struct FileColorRuleRenderingTests {
         // A file the folders rule's `*` matches by name is still not a folder, so nothing claims it.
         #expect(reloaded.firstMatch(name: "Pictures", isDirectory: false) == nil)
         // And first-match-wins is about *order*, not about specificity: a folder that happens to be
-        // named like an image takes the Images colour, because that rule is above and accepts both
+        // named like an image takes the Images color, because that rule is above and accepts both
         // kinds. Surprising the first time, and exactly what the ordered list promises.
         #expect(reloaded.firstMatch(name: "photo.PNG", isDirectory: true)?.colorHex == "#008080")
     }
@@ -157,7 +165,7 @@ struct FileColorRuleRenderingTests {
     /// reason NOTES.md gives — a presentation decision in the core is a string that can never be
     /// translated. Asserting they are non-empty and distinct is what catches a case added to the core
     /// enum without a title here, which would otherwise render as a blank menu item.
-    @Test("every colour-rule target has a distinct, non-empty title")
+    @Test("every color-rule target has a distinct, non-empty title")
     func everyTargetIsNamed() {
         let titles = FileColorTarget.allCases.map(\.title)
         #expect(titles.allSatisfy { !$0.isEmpty })

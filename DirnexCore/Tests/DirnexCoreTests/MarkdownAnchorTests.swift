@@ -3,7 +3,7 @@ import Testing
 
 @testable import DirnexCore
 
-/// Heading anchors, `[[_TOC_]]` and coloured fences (PLAN.md §M18 ▸ Slice 2).
+/// Heading anchors, `[[_TOC_]]` and colored fences (PLAN.md §M18 ▸ Slice 2).
 ///
 /// The slug cases are not invented: each one is a shape that appeared in the 211-file corpus the
 /// rule was probed against (`MarkdownSlug`), and the two that look like bugs — a leading hyphen from
@@ -149,7 +149,7 @@ struct MarkdownAnchorTests {
         #expect(html("[[_TOC_]]\n\nJust prose.") == "\n<p>Just prose.</p>")
     }
 
-    // MARK: - Coloured fences
+    // MARK: - Colored fences
 
     @Test("a fence's tokens are spans of the kind M17's scanner named")
     func fenceSpans() {

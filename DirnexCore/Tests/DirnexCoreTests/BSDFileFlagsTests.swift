@@ -33,13 +33,6 @@ struct BSDFileFlagsTests {
         }
     }
 
-    @Test("Locked is the owner immutable bit")
-    func locked() {
-        #expect(BSDFileFlags.userImmutable.isLocked)
-        #expect(!BSDFileFlags.hidden.isLocked)
-        #expect(BSDFileFlags([.userImmutable, .hidden]).isLocked)
-    }
-
     @Test("either immutable bit blocks modification")
     func blocksModification() {
         #expect(BSDFileFlags.userImmutable.blocksModification)

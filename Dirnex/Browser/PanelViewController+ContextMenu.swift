@@ -9,7 +9,7 @@ import DirnexCore
 /// choice: a right-click offers what you'd do to the thing under the pointer, not everything.
 ///
 /// Items carry a nil target and dispatch through the responder chain, which means `validateMenuItem`
-/// greys them out exactly as it does in the menu bar — a read-only location, an archive, a results
+/// grays them out exactly as it does in the menu bar — a read-only location, an archive, a results
 /// pane all degrade for free rather than needing a second set of rules here.
 extension PanelViewController {
     /// The menu for a right-click on `row` (`-1` in the empty space below the rows).
@@ -24,7 +24,7 @@ extension PanelViewController {
         let onParentRow = isParentRow(row)
         retargetSelection(forClickedRow: row)
         let onEntry = row >= 0 && !onParentRow
-        // The Trash gets its own pair. Not a matter of greying the ordinary menu down: what a
+        // The Trash gets its own pair. Not a matter of graying the ordinary menu down: what a
         // trashed file offers is a *different* list — there is no folder to make something in, no
         // in-place rename (the merged container advertises no `.rename`), and the one delete that
         // means anything here is the permanent one, which "Move to Trash" would have named wrong.
@@ -32,8 +32,11 @@ extension PanelViewController {
         if onEntry { return entryMenu() }
         // The `..` row and the empty space below the list both get the folder menu. Its Copy Path
         // copies the folder the menu is *about*: the parent that `..` points at, or the pane's own
-        // directory for the empty space.
-        let directory = onParentRow ? (panel.parentPath ?? panel.path) : panel.path
+        // directory for the empty space. At an archive's root `..` leaves the archive, which
+        // `parentPath` cannot see, so the archive answers for itself.
+        let directory = onParentRow
+            ? (archiveParent()?.destination ?? panel.parentPath ?? panel.path)
+            : panel.path
         return backgroundMenu(directory: directory)
     }
 
@@ -79,6 +82,14 @@ extension PanelViewController {
     /// and separated, where a mis-aimed click won't land on it.
     private func entryMenu() -> NSMenu {
         let menu = NSMenu()
+        // A row inside a network share's `#recycle` gets Put Back first, for the same reason the
+        // Trash's own menu does: it is what the bin is *for*, and the one item here that cannot be
+        // reached any other way. This menu is only ever built outside a `trash:` listing, so the
+        // property can only be answering about a recycle bin.
+        if !putBackTargets.isEmpty {
+            add(["file.putBack"], to: menu)
+            menu.addSeparator()
+        }
         let open = NSMenuItem(
             title: String(localized: "Open", comment: "Context-menu item: open the file or folder."),
             action: #selector(openContextEntry(_:)),
@@ -88,6 +99,7 @@ extension PanelViewController {
         menu.addItem(open)
         menu.addItem(openWithMenuItem())
         add(["view.quickLook"], to: menu)
+        add(whereItLivesCommandIDs(), to: menu)
         menu.addSeparator()
         addShareItem(to: menu)
         add(["file.copy", "file.move"], to: menu)
@@ -97,11 +109,27 @@ extension PanelViewController {
         menu.addItem(scriptsMenuItem())
         menu.addSeparator()
         add(["edit.copy"], to: menu)
-        menu.addItem(copyPathItem(for: selectionTargets().map(\.path.path)))
+        menu.addItem(copyPathItem(for: selectionTargets().map(\.path)))
         add(["edit.paste", "file.pack"], to: menu)
         menu.addSeparator()
         add(["file.trash"], to: menu)
         return menu
+    }
+
+    /// The registry commands about where the selection *lives*, which sit with Quick Look above the
+    /// first rule: Show in Finder, and — over a cloud item — Download Now and Remove Download.
+    ///
+    /// Each is left out rather than grayed where it cannot mean anything, the way Share changes shape
+    /// for a row that is not on this disk: there is no Finder window for a server's file, and two gray
+    /// cloud items on every ordinary file would be noise on the most common right-click there is.
+    /// Over a cloud item the pair validates like everything else here, so a downloaded file shows
+    /// Download Now grayed beside a live Remove Download. Not in a Trash listing, where evicting a
+    /// thrown-away file is nobody's errand.
+    func whereItLivesCommandIDs() -> [String] {
+        var ids: [String] = []
+        if canShowInFinder { ids.append("file.showInFinder") }
+        if offersCloudLocalCopy, !isTrashListing { ids += ["file.downloadNow", "file.removeDownload"] }
+        return ids
     }
 
     /// The menu over a trashed file. Same spine as `entryMenu` — look at it, move it somewhere,
@@ -125,12 +153,13 @@ extension PanelViewController {
         menu.addItem(open)
         menu.addItem(openWithMenuItem())
         add(["view.quickLook"], to: menu)
+        add(whereItLivesCommandIDs(), to: menu)
         menu.addSeparator()
         addShareItem(to: menu)
         add(["file.copy", "file.move"], to: menu)
         menu.addSeparator()
         add(["edit.copy"], to: menu)
-        menu.addItem(copyPathItem(for: selectionTargets().map(\.path.path)))
+        menu.addItem(copyPathItem(for: selectionTargets().map(\.path)))
         menu.addSeparator()
         add(["file.deletePermanently"], to: menu)
         return menu
@@ -175,17 +204,20 @@ extension PanelViewController {
     private func backgroundMenu(directory: VFSPath) -> NSMenu {
         let menu = NSMenu()
         add(["file.newFolder", "edit.paste"], to: menu)
-        menu.addItem(copyPathItem(for: [directory.path]))
+        menu.addItem(copyPathItem(for: [directory]))
         menu.addSeparator()
         add(["go.addToFavorites", "file.syncDirectories"], to: menu)
         menu.addItem(scriptsMenuItem())
         return menu
     }
 
-    /// A "Copy Path" item that writes `paths` to the pasteboard as text when chosen. The paths are
+    /// A "Copy Path" item that writes `locations` to the pasteboard as text when chosen. The text is
     /// captured here, as the menu is built, so it copies exactly what was under the pointer at
     /// right-click time even if a background refresh reshuffles the pane before the click lands.
-    private func copyPathItem(for paths: [String]) -> NSMenuItem {
+    /// It is ``copyPathText(for:)``'s, never a bare `VFSPath.path`, which inside an archive is the
+    /// inner path and read `/` for the archive's own root.
+    func copyPathItem(for locations: [VFSPath]) -> NSMenuItem {
+        let paths = locations.map(copyPathText(for:))
         let item = NSMenuItem(
             title: paths.count > 1
                 ? String(
@@ -267,12 +299,27 @@ extension PanelViewController {
     }
 
     /// The system's Share item, which brings its own submenu of services and its own icons.
-    /// Skipped entirely for rows that have no local URL to share (an archive member, an SFTP file)
-    /// rather than shown disabled — a "Share…" that can never light up is just noise in the menu.
+    ///
+    /// It can only be that item when every row is **already** a file on this disk: AppKit derives
+    /// the submenu from the items themselves, so there is nothing to build for a selection whose
+    /// bytes are still on a server. Such a selection gets the registry's own **Share…** command
+    /// instead, which fetches and then presents the picker (`shareSelection`) — one plain item where
+    /// the system would have nested a submenu, rather than the gesture disappearing inside an
+    /// archive the way it used to.
     private func addShareItem(to menu: NSMenu) {
-        let targets = handoffTargets()
-        guard !targets.isEmpty else { return }
-        menu.addItem(shareMenuItem(for: targets))
+        let rows = handoffEntries()
+        guard !rows.isEmpty else { return }
+        let local = handoffTargets()
+        if local.count == rows.count {
+            menu.addItem(shareMenuItem(for: local))
+        } else if let item = MainMenuBuilder.commandItem(for: "file.share") {
+            // The registry's own item, so the title is the one the menu bar and the ⌘K palette use
+            // and is translated once. Its key equivalent comes off for the reason every context-menu
+            // command's does — the menu shouldn't fire shortcuts while it is open.
+            item.keyEquivalent = ""
+            item.keyEquivalentModifierMask = []
+            menu.addItem(item)
+        }
         menu.addSeparator()
     }
 
@@ -296,9 +343,6 @@ extension PanelViewController {
         openCurrentEntry()
     }
 
-    /// Put the paths captured by `copyPathItem` on the pasteboard. A real target rather than a
-    /// responder-chain command because it acts on what the menu captured, not on the pane's live
-    /// selection — the `..` row and the empty space have no selection to dispatch against.
     /// "Empty Trash…" from the pane's own background menu — the same flow the sidebar row runs, so
     /// the confirmation counts the merged set both of them browse rather than a second idea of it.
     /// A real target for the same reason "Open" is one: emptying isn't a registry command.
@@ -312,6 +356,9 @@ extension PanelViewController {
         restoreAllFromTrash()
     }
 
+    /// Put the paths captured by `copyPathItem` on the pasteboard. A real target rather than a
+    /// responder-chain command because it acts on what the menu captured, not on the pane's live
+    /// selection — the `..` row and the empty space have no selection to dispatch against.
     @objc private func copyContextPath(_ sender: NSMenuItem) {
         guard let paths = sender.representedObject as? [String] else { return }
         PathClipboard.copy(paths)

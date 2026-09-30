@@ -26,27 +26,72 @@ struct ArchiveMember: Hashable {
 @MainActor
 final class ArchivePreviewCache {
     private var extracted: [ArchiveMember: URL] = [:]
+    /// Which archive each cached extraction came out of, so a path that has since been given a
+    /// different archive drops its entries instead of previewing bytes that are no longer in it.
+    private var identities: [String: ArchiveIdentity] = [:]
 
     /// The extracted on-disk URL for `member` if it has already been extracted this session,
     /// else `nil` — a synchronous lookup the preview surfaces use to resolve the file to show.
     func cachedURL(for member: ArchiveMember) -> URL? {
-        extracted[member]
+        dropExtractionsIfReplaced(archivePath: member.archivePath)
+        return extracted[member]
     }
 
-    /// Extract `member` to disk (off-main via `bsdtar`) and cache it, returning its on-disk URL.
-    /// Reuses the cached copy when the same member is requested again. Throws when extraction
-    /// fails (a damaged or missing member) — the caller then simply leaves it unpreviewable.
-    func extractedURL(for member: ArchiveMember) async throws -> URL {
+    /// Forget everything extracted from `archivePath` when the file there is not the archive those
+    /// extractions came out of — deleting an archive and packing a new one under the same name is
+    /// the ordinary way to redo one, and the entries left behind would otherwise show the previous
+    /// archive's contents under the new archive's members. Worse than the stale *listing* the same
+    /// replacement causes in `CompositeBackend`, because here the user is looking at file bytes.
+    ///
+    /// One `stat` per cursor movement over an archive member, which is the same order as the
+    /// listing already costs and far below the extraction it guards.
+    private func dropExtractionsIfReplaced(archivePath: String) {
+        let identity = ArchiveIdentity.current(ofFileAt: archivePath)
+        guard identities[archivePath] != identity else { return }
+        identities[archivePath] = identity
+        extracted = extracted.filter { $0.key.archivePath != archivePath }
+    }
+
+    /// Extract `member` to disk (off-main) and cache it, returning its on-disk URL. Reuses the
+    /// cached copy when the same member is requested again.
+    ///
+    /// It used to keep a second cache beside this one, holding where an *encrypted* archive's
+    /// whole-archive extraction landed, because the reader had no member filter and extracting one
+    /// member decrypted them all — so the sibling members were free once anyone had paid for the
+    /// first. ``DirnexCore/ArchiveMemberFilter`` retired it: one member of a 600 MB archive now
+    /// costs 0.001 s rather than 1.48 s, so there is nothing left to amortize and arrowing through
+    /// five members pays five times almost nothing instead of once for all of it.
+    ///
+    /// `passphrase` is required for an encrypted archive and ignored otherwise, so a caller holding
+    /// one may pass it speculatively; without one, an encrypted archive throws
+    /// ``EncryptedArchiveError/passphraseRequired`` rather than reaching `bsdtar`, whose interactive
+    /// prompt cannot be answered from here at all (see `ArchiveExtractor.extract`). Throws too when
+    /// extraction fails, and the caller then leaves the member unpreviewable.
+    ///
+    /// `nameEncoding` is the code page the caller has been told this archive's names are in, and is
+    /// threaded for the same reason as the passphrase: without it a declared archive's member is
+    /// looked for under a name `bsdtar` cannot read, so previewing or opening one would fail on an
+    /// archive whose listing is perfectly readable.
+    func extractedURL(
+        for member: ArchiveMember,
+        passphrase: ArchivePassphrase? = nil,
+        nameEncoding: ArchiveNameEncoding? = nil
+    ) async throws -> URL {
+        dropExtractionsIfReplaced(archivePath: member.archivePath)
         if let url = extracted[member] { return url }
-        let url = try await Task.detached(priority: .userInitiated) { () throws -> URL in
-            let extraction = try ArchiveExtractor.extract(
-                innerPaths: [member.innerPath],
-                fromArchiveAt: member.archivePath
-            )
-            // A single member extracts to exactly one location; `ArchiveExtractor` already threw
-            // if nothing landed, so this file exists.
-            return URL(fileURLWithPath: extraction.extractedPaths[0])
-        }.value
+        let extraction = try await BlockingWork.run {
+            Result {
+                try ArchiveExtractor.extract(
+                    innerPaths: [member.innerPath],
+                    fromArchiveAt: member.archivePath,
+                    passphrase: passphrase,
+                    nameEncoding: nameEncoding
+                )
+            }
+        }.get()
+        // A single member extracts to exactly one location; `ArchiveExtractor` already threw if
+        // nothing landed, so this file exists.
+        let url = URL(fileURLWithPath: extraction.extractedPaths[0])
         extracted[member] = url
         return url
     }

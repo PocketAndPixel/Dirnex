@@ -243,7 +243,9 @@ struct PanelTreeTests {
         panel.expand(docs)
         #expect(rowNames(panel) == ["docs", "a.txt", "b.txt", "c.txt"])
 
-        panel.setSort(FileSort(key: .name, ascending: false))
+        var resorted = panel.model
+        resorted.sort = FileSort(key: .name, ascending: false)
+        panel.setModel(resorted)
         #expect(rowNames(panel) == ["docs", "c.txt", "b.txt", "a.txt"])
     }
 

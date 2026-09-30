@@ -7,6 +7,7 @@ public enum ServerKind: String, Sendable, Codable, CaseIterable {
     case sftp
     case ftp
     case smb
+    case s3
 }
 
 /// A saved server's coordinates and auth *method* — everything needed to reconnect, and nothing
@@ -29,6 +30,24 @@ public enum ServerEndpoint: Sendable, Hashable, Codable {
         trustedPublicKey: String? = nil
     )
     case smb(SMBLocation)
+    /// One bucket on one endpoint. There is no authentication *method* to carry beside it the way
+    /// SFTP and FTP have: SigV4 is the only way in, and the access key id — which is an identifier,
+    /// not a secret — already lives in the `S3Location`. The secret access key stays in the
+    /// Keychain, filed under ``S3Location/keychainAccount``.
+    case s3(S3Location)
+    /// A whole S3 **account** — the same endpoint, region and key with no bucket named — browsed as
+    /// a flat list of the buckets that key can see (PLAN.md §M21 Slice 9).
+    ///
+    /// A case of its own rather than an optional bucket on ``s3(_:)``, because the two are different
+    /// *places* rather than one place with a field missing: they carry different backend ids, they
+    /// are reached by different requests, and a saved server has to come back as the one it was
+    /// saved as. An optional bucket would make every existing reader of a saved connection ask a
+    /// question that has only ever had one answer.
+    ///
+    /// The secret access key is filed exactly as a bucket's is, under
+    /// ``S3Account/keychainAccount`` — which is a bucket key's without the trailing `/<bucket>`, so
+    /// an account and every bucket in it keep separate items.
+    case s3Account(S3Account)
 }
 
 /// A named, re-connectable remote server — the model behind the sidebar's **Servers** section
@@ -59,19 +78,62 @@ public struct ServerConnection: Sendable, Hashable, Identifiable, Codable {
         case .sftp: return .sftp
         case .ftp: return .ftp
         case .smb: return .smb
+        // An account and a bucket are one protocol, so they wear one glyph and take one branch in
+        // every switch that asks "which service is this". What differs between them is the *place*,
+        // which is the endpoint's business and not the kind's.
+        case .s3, .s3Account: return .s3
         }
     }
 
     /// A compact human-readable address for the sidebar subtitle / tooltip: the SFTP descriptor
-    /// (`sftp://user@host:port`), the FTP descriptor (whose scheme names the security mode), or the
-    /// SMB URL (`smb://[user@]host[/share]`).
+    /// (`sftp://user@host:port`), the FTP descriptor (whose scheme names the security mode), the
+    /// SMB URL (`smb://[user@]host[/share]`), or — for S3 — the *place*: `host (region)`, with the
+    /// bucket in front when the connection names one.
+    ///
+    /// **S3 is the one that is not its descriptor**, and the difference is the access key id. The
+    /// other three carry a user name the user typed and can read; an S3 descriptor leads with 20+
+    /// characters of key that identify nothing to a person, and it was the first thing in the
+    /// tooltip. The region rides along because it is not decorative — it is signed into every
+    /// request's credential scope, and it is the `<LocationConstraint>` that decides where F7
+    /// creates a bucket — and because it is what separates two saved connections to one endpoint.
+    ///
+    /// What the display form drops is recoverable where it is acted on rather than read: the key id
+    /// is in the Edit sheet and in ``S3Account/connectionDescriptor`` (which errors use), and the
+    /// addressing mode is the sheet's own checkbox. The **descriptor** is untouched and remains the
+    /// identity — anything asserting round-trips or a re-addressing must read it, not this.
     public var address: String {
         switch endpoint {
         case let .sftp(location, _): return location.descriptor
         case let .ftp(location, _, _): return location.descriptor
         case let .smb(location): return location.url
+        case let .s3(location):
+            // The same `bucket — host` the path bar's root crumb draws, so a saved row and the pane
+            // it opens name the place identically.
+            return "\(location.bucket) — \(Self.s3Place(location.account))"
+        case let .s3Account(account): return Self.s3Place(account)
         }
     }
+
+    /// An S3 endpoint and its region, with the region omitted when there is none to state.
+    ///
+    /// The empty case is the point: a connection to a server whose regions are fiction carries no
+    /// region at all (``S3Region``), and `host ()` would be the app inventing a fact — the same one
+    /// the record deliberately does not keep.
+    private static func s3Place(_ account: S3Account) -> String {
+        guard S3Region.isStated(account.region) else { return account.displayEndpoint }
+        return "\(account.displayEndpoint) (\(account.region))"
+    }
+}
+
+/// What happened to an edit handed to ``ServerConnections/commitEdit(of:as:)``.
+///
+/// A refusal carries the name so the caller can say which one is taken — the user is looking at a
+/// sheet with two names in play (the one they opened and the one they typed), so "that name is in
+/// use" without the name is a sentence they have to guess at.
+public enum ServerEditOutcome: Sendable, Equatable {
+    case committed
+    /// A *different* saved server already has this name; nothing was changed.
+    case nameTaken(String)
 }
 
 /// An ordered, name-de-duplicated collection of saved servers — the model behind the sidebar's
@@ -113,6 +175,68 @@ public struct ServerConnections: Sendable, Equatable, Codable {
         return false
     }
 
+    /// Replace the trusted certificate pin of the FTP connection named `name`, keeping everything
+    /// else about it. Returns whether anything changed — the caller persists only then.
+    ///
+    /// This exists because a re-trusted certificate has to reach the *saved* server, or the next
+    /// connect from the sidebar presents the old pin and the user is asked the same question again,
+    /// forever. It is deliberately narrow: it will not create a record, will not touch a connection
+    /// of another kind, and answers `false` when the pin already matches, so a caller that re-pins
+    /// on every successful connect writes nothing on the ordinary path.
+    @discardableResult
+    public mutating func repinFTP(name: String, trustedPublicKey: String?) -> Bool {
+        guard let index = connections.firstIndex(where: { $0.name == name }),
+              case let .ftp(location, authentication, storedKey) = connections[index].endpoint,
+              storedKey != trustedPublicKey else { return false }
+        connections[index].endpoint = .ftp(
+            location: location,
+            authentication: authentication,
+            trustedPublicKey: trustedPublicKey
+        )
+        return true
+    }
+
+    /// Replace the addressing mode of the S3 server named `name` — a bucket's or a whole account's —
+    /// keeping everything else about it. Returns whether anything changed; the caller persists only
+    /// then.
+    ///
+    /// The twin of ``repinFTP(name:trustedPublicKey:)``, and it exists for the same reason: a
+    /// correction the connect flow worked out has to reach the *saved* server, or the next click on
+    /// that sidebar row re-discovers it. What is corrected here is TLS-reachability — under
+    /// virtual-host addressing the bucket is part of the host name, and a wildcard certificate is
+    /// only one label deep, so an endpoint can be perfectly trustworthy and still unreachable that
+    /// way. The connect retries path-style; this is where the answer is kept.
+    ///
+    /// Both S3 cases, because the correction is a fact about the **endpoint** rather than about one
+    /// bucket: entering a bucket from a saved account is how it is usually discovered, and the record
+    /// worth fixing is then the account's.
+    ///
+    /// Deliberately narrow, exactly as `repinFTP` is: it will not create a record, will not touch a
+    /// connection of another kind, and answers `false` when the mode already matches — so a caller
+    /// that calls it on every successful connect writes nothing on the ordinary path.
+    @discardableResult
+    public mutating func readdressS3(name: String, to addressing: S3Addressing) -> Bool {
+        guard let index = connections.firstIndex(where: { $0.name == name }) else { return false }
+        switch connections[index].endpoint {
+        case let .s3(location) where location.addressing != addressing:
+            connections[index].endpoint = .s3(location.addressed(addressing))
+        case let .s3Account(account) where account.addressing != addressing:
+            connections[index].endpoint = .s3Account(account.addressed(addressing))
+        default:
+            return false
+        }
+        return true
+    }
+
+    /// The name of the saved server that *is* `endpoint`, or `nil` when none is.
+    ///
+    /// The inverse of ``connection(named:)``, and needed because a **pane** knows its coordinates and
+    /// not the name they were saved under: a correction discovered while browsing has to find the
+    /// record to write it into. Identity is the name, so at most one connection can match.
+    public func name(of endpoint: ServerEndpoint) -> String? {
+        connections.first { $0.endpoint == endpoint }?.name
+    }
+
     /// Delete the connection named `name`, if present. Returns whether one was removed.
     @discardableResult
     public mutating func remove(name: String) -> Bool {
@@ -125,6 +249,38 @@ public struct ServerConnections: Sendable, Equatable, Codable {
     public mutating func remove(at index: Int) {
         guard connections.indices.contains(index) else { return }
         connections.remove(at: index)
+    }
+
+    /// Write an **edited** connection back over the one named `previousName`, name included.
+    ///
+    /// The sidebar's Edit… has no update path of its own — it re-opens the Connect sheet and the
+    /// record is whatever the form reads back — so this is the one operation that means "this row,
+    /// but different". Three rules, each of which is a way the obvious `remove` + ``save(_:)`` pair
+    /// gets it wrong:
+    ///
+    /// - **In place.** `save` appends a name it has never seen, so a rename through remove-and-save
+    ///   drops the row to the bottom of the sidebar — a reorder nobody asked for, from an edit that
+    ///   may only have fixed a typo.
+    /// - **A name already taken by a *different* record is refused**, exactly as ``rename(name:to:)``
+    ///   refuses it. The pair would silently overwrite that record and then delete this one, so a
+    ///   mistyped name costs the user a saved server they never touched.
+    /// - **An unknown `previousName` appends**, so this is also the honest answer for "save what the
+    ///   form holds" when the record has since been removed elsewhere.
+    @discardableResult
+    public mutating func commitEdit(
+        of previousName: String,
+        as connection: ServerConnection
+    ) -> ServerEditOutcome {
+        if connection.name != previousName,
+           connections.contains(where: { $0.name == connection.name }) {
+            return .nameTaken(connection.name)
+        }
+        if let index = connections.firstIndex(where: { $0.name == previousName }) {
+            connections[index] = connection
+        } else {
+            connections.append(connection)
+        }
+        return .committed
     }
 
     /// Rename the connection named `name` to `newName` — the sidebar's inline rename. Rejected
@@ -166,5 +322,24 @@ public struct ServerConnections: Sendable, Equatable, Codable {
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(connections, forKey: .connections)
+    }
+}
+
+public extension ServerEndpoint {
+    /// The ``VFSBackendID`` a pane standing on this endpoint carries — the join between a saved
+    /// place and a `VFSPath`, and what lets a restored tab say *which* connection it is waiting for.
+    ///
+    /// `nil` for **SMB**, and that is not an omission: SMB rides the OS mounter, so a share is an
+    /// ordinary `/Volumes/…` tree and a pane on it is `.local`. There is no backend to name, which
+    /// is also why an unmounted share is a restore problem of a completely different shape (a local
+    /// path that is not there) rather than a connection to re-establish.
+    var backendID: VFSBackendID? {
+        switch self {
+        case let .sftp(location, _): return location.backendID
+        case let .ftp(location, _, _): return location.backendID
+        case let .s3(location): return location.backendID
+        case let .s3Account(account): return account.backendID
+        case .smb: return nil
+        }
     }
 }

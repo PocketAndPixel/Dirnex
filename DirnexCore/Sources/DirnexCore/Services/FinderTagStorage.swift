@@ -12,24 +12,24 @@ import Foundation
 /// is the documented API and the obvious first choice — two independent reasons, either sufficient:
 ///
 /// 1. **Its setter is macOS 26+, and Dirnex targets 14** (§2). It is not an option here at all.
-/// 2. **It cannot express a colour.** It takes bare names and looks each colour up itself, in a
-///    global name → colour database that only the seven stock tags are in — and that a write of
+/// 2. **It cannot express a color.** It takes bare names and looks each color up itself, in a
+///    global name → color database that only the seven stock tags are in — and that a write of
 ///    ours does *not* register into. Probed: after storing a purple `Zebra` directly, setting
 ///    `tagNames = ["Zebra"]` writes `Zebra\n0` and the purple is gone. So even where it exists,
-///    routing an edit through it would strip the colour off every custom tag on the file each time
+///    routing an edit through it would strip the color off every custom tag on the file each time
 ///    the user added or removed an unrelated one — a data-loss bug wearing the documented API's
 ///    clothes.
 ///
-/// Writing the attribute ourselves preserves each tag's stored colour verbatim, which is why
+/// Writing the attribute ourselves preserves each tag's stored color verbatim, which is why
 /// `setTags` takes `FinderTag`s and not names. The *getter* (`tagNamesKey`) is available on 14 and
-/// is what the tests read back through, but it drops colours, so it is no use for the column.
+/// is what the tests read back through, but it drops colors, so it is no use for the column.
 ///
 /// The one thing `tagNames` does that we then have to do ourselves is keep the legacy Finder label
 /// byte in sync — see `writeLegacyLabel`.
 public enum FinderTagStorage {
-    /// The extended attribute Finder tags live in. A binary plist array of `name\ncolour` strings.
+    /// The extended attribute Finder tags live in. A binary plist array of `name\ncolor` strings.
     static let tagsAttribute = "com.apple.metadata:_kMDItemUserTags"
-    /// The legacy 32-byte Finder info record. Byte 9 carries the pre-tags label colour.
+    /// The legacy 32-byte Finder info record. Byte 9 carries the pre-tags label color.
     static let finderInfoAttribute = "com.apple.FinderInfo"
     private static let finderInfoSize = 32
     /// Byte 9's bits 1–3 hold the label index, i.e. the index shifted left by one.
@@ -78,7 +78,7 @@ public enum FinderTagStorage {
 
     /// Add a tag, keeping the file's existing ones. Adding a tag the file already carries — under
     /// any spelling, since tags are case-insensitively identified — is a no-op rather than a
-    /// duplicate row or a silent re-colouring.
+    /// duplicate row or a silent re-coloring.
     public static func add(_ tag: FinderTag, to path: VFSPath) throws {
         let existing = try tags(at: path)
         guard !existing.contains(tag) else { return }
@@ -105,10 +105,10 @@ public enum FinderTagStorage {
     /// worth making for a few lines.
     ///
     /// Read-modify-write: the other 31 bytes are type/creator codes and flags belonging to whoever
-    /// wrote them, and clobbering them to zero to set a colour would be its own data loss.
+    /// wrote them, and clobbering them to zero to set a color would be its own data loss.
     private static func writeLegacyLabel(_ label: Int, at path: VFSPath) throws {
         let existing = try attribute(finderInfoAttribute, at: path)
-        // Nothing there and nothing to say: a colourless tag should not conjure the record, which
+        // Nothing there and nothing to say: a colorless tag should not conjure the record, which
         // is exactly what the system does — a file tagged only `Work` has no FinderInfo at all.
         if existing == nil, label == 0 { return }
 

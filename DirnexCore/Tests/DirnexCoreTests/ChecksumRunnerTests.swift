@@ -193,8 +193,11 @@ struct ChecksumRunnerTests {
 
     // MARK: - Guards
 
-    @Test("a non-local job fails fast rather than half-working")
-    func refusesNonLocalPaths() {
+    /// A verification with no copy of its own manifest — which since M24 Slice 4 is the only way a
+    /// non-local manifest can still refuse, since one the gesture *did* bring down verifies fine.
+    /// The claim it pins is that a dispatch mistake is answered rather than trapped on.
+    @Test("a verify with no copy of its manifest fails fast rather than half-working")
+    func refusesAManifestItCannotRead() {
         let operation = FileOperation(
             kind: .checksum(
                 .verify(
@@ -246,7 +249,7 @@ struct ChecksumRunnerTests {
         #expect(seen.last?.fraction == 1)
     }
 
-    @Test("cancelling a create leaves no manifest behind")
+    @Test("canceling a create leaves no manifest behind")
     func cancelledCreateWritesNothing() throws {
         let tree = try TempTree()
         defer { tree.cleanup() }

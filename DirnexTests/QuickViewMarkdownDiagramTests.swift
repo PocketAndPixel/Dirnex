@@ -7,7 +7,7 @@ import Testing
 /// The app's half of a mermaid diagram (PLAN.md §M18 ▸ Slice 4): the metric, the sentence, and the
 /// stylesheet.
 ///
-/// The suite's centre of gravity is the **join** between the core and the page, because that is
+/// The suite's center of gravity is the **join** between the core and the page, because that is
 /// where this feature can fail with every other signal green. The core emits class names; the app
 /// writes rules for them; nothing in the compiler relates the two. A class the core starts emitting
 /// and the stylesheet never hears about is an invisible shape — a diagram with a missing box, no
@@ -22,7 +22,7 @@ struct QuickViewMarkdownDiagramTests {
     ```mermaid
     graph TD
         A[Square] --> B{Diamond}
-        B -->|labelled| C(Rounded)
+        B -->|labeled| C(Rounded)
         B -. dotted .-> D((Circle))
         C ==> E[[Subroutine]]
         D --x F

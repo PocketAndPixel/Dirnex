@@ -190,4 +190,28 @@ struct FTPListingParserTests {
         let entry = try #require(entries.first)
         #expect(entry.modificationDate == .distantPast)
     }
+
+    /// FTP's twin of the SFTP case, and it fails the same way for the same reason: a coarse
+    /// timestamp is still compared for *equality* by `isSuperseded(by:)`, which knows nothing about
+    /// how coarse it was. So a parser that stamped each read with the current second told every FTP
+    /// save that somebody else had edited the file.
+    @Test("one row parsed twice yields revisions that do not supersede each other")
+    func repeatedParsesDoNotReadAsAnEdit() throws {
+        let row = "-rw------- 1 sa users          6 Jul 25 20:55 dash-file.txt"
+        let first = try #require(FTPListingParser.parse(row).first)
+        let second = try #require(FTPListingParser.parse(row).first)
+        let recorded = RemoteFileRevision(
+            byteSize: first.byteSize, modified: first.modificationDate
+        )
+        let current = RemoteFileRevision(
+            byteSize: second.byteSize, modified: second.modificationDate
+        )
+        #expect(!recorded.isSuperseded(by: current))
+        // Deterministic for the same reason `ColumnarListingTests` spells out: two
+        // parses can agree by luck, and a stamp carrying no seconds cannot.
+        #expect(
+            Calendar(identifier: .gregorian)
+                .component(.second, from: first.modificationDate) == 0
+        )
+    }
 }

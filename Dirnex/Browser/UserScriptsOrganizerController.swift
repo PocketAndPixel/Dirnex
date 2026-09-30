@@ -29,10 +29,10 @@ final class UserScriptsOrganizerController: NSViewController {
     let addButton = NSButton()
     private let removeButton = NSButton()
 
-    private let nameField = NSTextField()
+    private let nameField = NSTextField.singleLine()
     private let runModePopUp = NSPopUpButton()
     private let functionKeyPopUp = NSPopUpButton()
-    private let keywordsField = NSTextField()
+    private let keywordsField = NSTextField.singleLine()
     private let commandTextView = NSTextView()
     private let commandScrollView = NSScrollView()
     private let detailStack = NSStackView()

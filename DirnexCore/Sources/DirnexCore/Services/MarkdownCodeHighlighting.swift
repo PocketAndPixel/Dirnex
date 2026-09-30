@@ -1,9 +1,9 @@
 import Foundation
 
-/// A fenced code block's body, coloured by M17's scanner (PLAN.md §M18 ▸ Slice 2).
+/// A fenced code block's body, colored by M17's scanner (PLAN.md §M18 ▸ Slice 2).
 ///
 /// The point of routing through `SyntaxHighlighter` rather than writing a second scanner is that the
-/// fence in the *rendered* page and the same file in *source* mode are then coloured by one grammar
+/// fence in the *rendered* page and the same file in *source* mode are then colored by one grammar
 /// table and one scanner. Two would drift, and the drift would show up as the same `.swift` snippet
 /// looking different on `1` and on `2` — which reads as one of the two being broken.
 ///

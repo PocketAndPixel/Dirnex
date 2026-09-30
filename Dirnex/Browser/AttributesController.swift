@@ -309,7 +309,7 @@ private extension AttributesController {
     /// A read-only panel closes with a single **Done**; an editable one commits with **Save** and
     /// discards with **Cancel**. Save is the default button (⏎) but starts disabled — there is nothing
     /// to save until a box is toggled — and Cancel doubles as the Escape target the whole sheet
-    /// already honours (``EscapeDismissingView``), so discarding an edit is the same gesture as
+    /// already honors (``EscapeDismissingView``), so discarding an edit is the same gesture as
     /// closing a read-only view.
     func makeFooter() -> NSView {
         let spacer = NSView()

@@ -62,7 +62,7 @@ final class TerminalDrawerViewController: NSViewController {
         // fine font and the wrong one: this is the surface where the user's own terminal habits
         // live, so it should look like the terminal they already have.
         if let menlo = NSFont(name: "Menlo", size: 12) { terminalView.font = menlo }
-        // Follow the system's text colours (and therefore Dark Mode) rather than SwiftTerm's
+        // Follow the system's text colors (and therefore Dark Mode) rather than SwiftTerm's
         // built-in black-on-white, so the drawer belongs to the window it's docked in.
         terminalView.configureNativeColors()
         terminalView.onOutput = { [weak self] in self?.checkShellDirectory() }
@@ -292,11 +292,11 @@ extension TerminalDrawerViewController: @preconcurrency LocalProcessTerminalView
 
 /// The drawer's container, which exists to paint the padding strip beside the terminal.
 ///
-/// It asks the terminal for its background rather than holding a colour of its own, because the
+/// It asks the terminal for its background rather than holding a color of its own, because the
 /// strip has to be indistinguishable from the console it is part of — and the console's background
 /// moves: `configureNativeColors` follows the system's `textBackgroundColor` (so, Dark Mode), and a
 /// program can repaint it out from under us with OSC 11. `nativeBackgroundColor` is where SwiftTerm
-/// tracks both; a colour copied once here would be right until the first time either happened.
+/// tracks both; a color copied once here would be right until the first time either happened.
 private final class TerminalContainerView: NSView {
     weak var terminalView: DrawerTerminalView?
 

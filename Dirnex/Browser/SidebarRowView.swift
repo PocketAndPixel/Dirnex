@@ -1,7 +1,7 @@
 import AppKit
 
-/// A sidebar row, so its selection reads in the user's own cursor colour rather than the system
-/// accent (PLAN.md §M15 Slice 2 — the colour the file panes' cursor already draws in).
+/// A sidebar row, so its selection reads in the user's own cursor color rather than the system
+/// accent (PLAN.md §M15 Slice 2 — the color the file panes' cursor already draws in).
 ///
 /// The pane's `PanelRowView` fills a plain rectangle, because that is exactly what AppKit draws
 /// there. A source list does not: it draws a **pill**, and the shape is the sidebar's whole visual
@@ -16,15 +16,15 @@ import AppKit
 ///   measured and came out half a point wide on each side.
 ///
 /// **Only the emphasized half is filled**, for the same reason `PanelRowView` gives: AppKit's
-/// unemphasized selection is a pure grey that says "the focus moved", and flattening the two makes
+/// unemphasized selection is a pure gray that says "the focus moved", and flattening the two makes
 /// every pane and the sidebar read as permanently unfocused. What the unemphasized state *does* take
 /// from the palette is its **glyph** — a selected-but-unfocused source-list row draws its icon in the
-/// accent, and that is the second place the cursor colour belongs (see
-/// `SidebarCellView.glyphForeground`). The **label** deliberately stays out of it: the colour it
-/// takes on the filled pill is a derived, legible foreground, never the cursor colour itself, so a
-/// custom palette never recolours the sidebar's text.
+/// accent, and that is the second place the cursor color belongs (see
+/// `SidebarCellView.glyphForeground`). The **label** deliberately stays out of it: the color it
+/// takes on the filled pill is a derived, legible foreground, never the cursor color itself, so a
+/// custom palette never recolors the sidebar's text.
 final class SidebarRowView: NSTableRowView {
-    /// The cursor colour, or `nil` to let AppKit draw and tint its own selection.
+    /// The cursor color, or `nil` to let AppKit draw and tint its own selection.
     var cursorColor: NSColor? {
         didSet {
             guard cursorColor != oldValue else { return }
@@ -45,7 +45,7 @@ final class SidebarRowView: NSTableRowView {
         didSet { applySelectionForeground() }
     }
 
-    /// The cell view arrives *after* the controller has handed this row its colour, so the push has
+    /// The cell view arrives *after* the controller has handed this row its color, so the push has
     /// to happen here as well as in the setters above.
     override func didAddSubview(_ subview: NSView) {
         super.didAddSubview(subview)
@@ -68,12 +68,12 @@ final class SidebarRowView: NSTableRowView {
         ).fill()
     }
 
-    /// Hand each cell the colours its glyph and its label should draw in.
+    /// Hand each cell the colors its glyph and its label should draw in.
     ///
     /// The **glyph** is what carries the palette: the derived foreground on top of the filled pill,
-    /// the cursor colour itself on the unfocused row AppKit would have tinted with the accent, and
+    /// the cursor color itself on the unfocused row AppKit would have tinted with the accent, and
     /// `nil` — AppKit's own — everywhere else. The **label** takes only the derived foreground, which
-    /// is not the cursor colour but the colour that stays legible *on* it; off the filled pill it is
+    /// is not the cursor color but the color that stays legible *on* it; off the filled pill it is
     /// left to AppKit, so the sidebar's text reads the same whatever palette is set.
     private func applySelectionForeground() {
         var glyph: NSColor?

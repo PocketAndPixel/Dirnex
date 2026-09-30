@@ -39,7 +39,12 @@ enum FTPListingParser {
         /// by; it is not good enough to compare two files with, which is why `DirectorySync` must
         /// not compare an FTP side by `.sizeAndDate`. An exact value needs a per-file `MDTM`.
         let modificationDate: Date
-        let permissions: UInt16
+        /// The mode, or `nil` from the DOS/IIS dialect, which prints none.
+        let permissions: UInt16?
+        /// Owner and group as the *server* spelled them, `nil` in the DOS dialect, which has no such
+        /// columns — see ``FileEntry/ownerName``.
+        let ownerName: String?
+        let groupName: String?
         let symlinkDestination: String?
     }
 
@@ -74,6 +79,8 @@ enum FTPListingParser {
             byteSize: row.byteSize,
             modificationDate: row.modificationDate,
             permissions: row.permissions,
+            ownerName: row.ownerName,
+            groupName: row.groupName,
             symlinkDestination: row.symlinkDestination
         )
     }
@@ -97,9 +104,13 @@ enum FTPListingParser {
             modificationDate: ColumnarListing.date(
                 from: "\(columns[0]) \(columns[1])", formatters: formatters
             ),
-            // A DOS listing reports no mode at all. Report a plausible default rather than 0, which
-            // would render every remote row as unreadable in the permissions column.
-            permissions: isDirectory ? 0o755 : 0o644,
+            // A DOS listing reports no mode, no owner and no group — the columns do not exist. This
+            // used to answer `0o755`/`0o644` "rather than 0, which would render every remote row as
+            // unreadable in the permissions column"; there is no permissions column, so the invented
+            // value reached nothing until Get Info, which would have drawn it as the server's own.
+            permissions: nil,
+            ownerName: nil,
+            groupName: nil,
             symlinkDestination: nil
         )
     }

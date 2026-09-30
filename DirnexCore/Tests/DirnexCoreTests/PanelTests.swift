@@ -257,7 +257,9 @@ struct PanelTests {
     func sortPreservesCursor() {
         var subject = panel(["a", "b", "c"], sort: flatSort)
         subject.moveCursor(to: 0) // on "a"
-        subject.setSort(FileSort(key: .name, ascending: false, directoriesFirst: false))
+        var resorted = subject.model
+        resorted.sort = FileSort(key: .name, ascending: false, directoriesFirst: false)
+        subject.setModel(resorted)
         #expect(subject.currentEntry?.name == "a") // now last row
         #expect(subject.cursor == 2)
     }

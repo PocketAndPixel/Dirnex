@@ -258,6 +258,7 @@ extension WorkspaceOrganizerController: NSTableViewDelegate {
         cell.imageView = imageView
 
         let textField = NSTextField()
+        textField.keepToOneLine()
         textField.isEditable = true
         textField.isBordered = false
         textField.drawsBackground = false

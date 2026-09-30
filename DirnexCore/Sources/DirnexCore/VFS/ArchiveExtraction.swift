@@ -2,7 +2,7 @@ import Foundation
 
 /// Builds the `bsdtar` command that extracts specific members of an archive into a directory —
 /// the pure, tested half of F5 copy-out (PLAN.md §M4 "copy out with F5"), mirroring how
-/// `SpotlightQuery` builds `mdfind` arguments and `ArchiveTOCParser` parses `bsdtar` output.
+/// `FileQuery` builds `mdfind` arguments and `ArchiveTOCParser` parses `bsdtar` output.
 /// The app's `ArchiveExtractor` runs the process; this touches no disk and spawns nothing, so
 /// it stays unit-testable.
 ///

@@ -152,4 +152,42 @@ struct SMBLocationTests {
         let other = SMBLocation(host: "nas.local", share: "backup", username: "oleg")
         #expect(location.keychainAccount != other.keychainAccount)
     }
+
+    // MARK: - The mount URL's encoding
+
+    /// A share name reaches `URL(string:)`, and on the deployment target that parser is strict.
+    ///
+    /// Measured 2026-09-09 through `CFURLCreateWithString` (the parser macOS 14's `URL(string:)`
+    /// uses): `smb://nas.local/My Share` and `smb://nas.local/Панорама` both return **nil**, while
+    /// the percent-encoded spellings parse. A nil there is a mount that fails before it is
+    /// attempted — and a share name containing a **space** is far commoner than a non-ASCII one.
+    @Test("a share name is percent-encoded for the mount URL")
+    func mountShareIsEncoded() {
+        #expect(SMBLocation.percentEncodedShare("My Share") == "My%20Share")
+        #expect(SMBLocation.percentEncodedShare("Панорама")
+            == "%D0%9F%D0%B0%D0%BD%D0%BE%D1%80%D0%B0%D0%BC%D0%B0")
+        // The ones that would end or restructure the URL rather than sit in it.
+        #expect(SMBLocation.percentEncodedShare("a#b") == "a%23b")
+        #expect(SMBLocation.percentEncodedShare("a?b") == "a%3Fb")
+        #expect(SMBLocation.percentEncodedShare("a/b") == "a%2Fb")
+        #expect(SMBLocation.percentEncodedShare("100%") == "100%25")
+    }
+
+    /// The narrowness control: encoding more than necessary would change spellings NetFS already
+    /// accepts, and the two that matter are a Windows admin share and an ordinary ampersand name.
+    @Test("but an ordinary share name is left exactly as it was")
+    func ordinaryShareNamesAreUntouched() {
+        for share in ["media", "C$", "R&D", "home", "Time_Machine", "a.b-c~d"] {
+            #expect(SMBLocation.percentEncodedShare(share) == share)
+        }
+    }
+
+    /// The address field and the sidebar keep the *unencoded* string, which is the other half of the
+    /// split: it is what the user typed and it has to round-trip through ``SMBLocation/init(url:)``.
+    @Test("the displayed url is not encoded, so it still round-trips")
+    func displayedURLIsUnencoded() {
+        let location = SMBLocation(host: "nas.local", share: "My Share")
+        #expect(location.url == "smb://nas.local/My Share")
+        #expect(SMBLocation(url: location.url)?.share == "My Share")
+    }
 }

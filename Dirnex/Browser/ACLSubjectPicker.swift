@@ -17,7 +17,7 @@ import DirnexCore
 ///   actually enumerated, which is what keeps an entry from naming nobody.
 @MainActor
 enum ACLSubjectPicker {
-    /// Fill a popup with every user and group worth offering, in two labelled sections, and select
+    /// Fill a popup with every user and group worth offering, in two labeled sections, and select
     /// the one `subject` names.
     ///
     /// An entry's current subject is added to the top when the roster does not contain it — an

@@ -39,7 +39,7 @@ extension MarkdownHTMLRenderer.Context {
     /// The fence as it looked before any of this existed: escaped source in a `<pre><code>`.
     ///
     /// Deliberately *not* routed through `SyntaxHighlighter` — no grammar claims mermaid, and
-    /// colouring it with a neighbouring language's would be a confident wrong answer where plain
+    /// coloring it with a neighboring language's would be a confident wrong answer where plain
     /// text is a correct one.
     private func fallback(_ code: String) -> String {
         "<pre>" + MarkdownHTML.element(

@@ -122,7 +122,7 @@ final class LanguageSettings: ObservableObject {
         waiter.executableURL = URL(fileURLWithPath: "/bin/sh")
         waiter.arguments = [
             "-c",
-            // `kill -0` probes for liveness without signalling. Quote the path — an app installed
+            // `kill -0` probes for liveness without signaling. Quote the path — an app installed
             // under a directory with a space is ordinary.
             "while kill -0 \(getpid()) 2>/dev/null; do sleep 0.1; done; open \(shellQuoted(bundlePath))"
         ]

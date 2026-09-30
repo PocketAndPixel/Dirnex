@@ -55,7 +55,7 @@ struct CapabilityDegradationTests {
         #expect(router.capabilities(for: virtual).deleteStrategy == .unsupported)
     }
 
-    // MARK: - CopyEngine honours the per-path clone capability
+    // MARK: - CopyEngine honors the per-path clone capability
 
     @Test("CopyEngine skips the clone attempt on a backend without .clone")
     func copyEngineSkipsCloneWhenUnsupported() throws {

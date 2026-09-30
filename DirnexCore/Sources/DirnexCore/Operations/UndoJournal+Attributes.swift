@@ -8,6 +8,9 @@ import Foundation
 // The whole reason this is a *separate* concept is the last line of `UndoStep.restoreAttributes`'s
 // doc: an attribute change is undone through `FileAttributeIO`'s syscalls, not through a `VFSBackend`
 // verb, so its executor sits beside the backend-driven ones but does not use the backend at all.
+//
+// Everything here is therefore about an item **on this Mac**. Its mirror image — the same gesture
+// on a server's row, which is nothing but a backend verb — is `UndoJournal+RemoteAttributes.swift`.
 
 public extension UndoRecord {
     /// Undo an attributes change (mode bits and BSD flags this pass; owner, group and times later)

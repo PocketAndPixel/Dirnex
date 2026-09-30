@@ -15,11 +15,11 @@ extension SidebarViewController {
     func serverCell(for connection: ServerConnection) -> NSView {
         let cell = reuse(SidebarCellView.identifier) as? SidebarCellView ?? SidebarCellView()
         cell.configure(
-            name: connection.name,
-            image: Self.serverIcon(for: connection.kind),
+            name: SidebarPlacePresentation.title(for: .server(connection)),
+            image: Self.serverIcon(for: connection),
             canEject: false,
             tooltip: connection.address,
-            isBusy: ServerConnectionActivity.shared.isConnecting(connection.name)
+            isBusy: SidebarRowActivity.shared.isWorking(connection.name)
         )
         cell.onEject = nil
         return cell
@@ -29,13 +29,8 @@ extension SidebarViewController {
     /// glyph for SFTP, a connected-drive glyph for an SMB share, and an up/down transfer glyph for
     /// FTP — the protocol's own name, and unmistakable against the other two at 14 pt.
     /// Template so the source list tints it with the row's text color like the other sidebar glyphs.
-    private static func serverIcon(for kind: ServerKind) -> NSImage {
-        let symbol: String
-        switch kind {
-        case .smb: symbol = "externaldrive.connected.to.line.below"
-        case .ftp: symbol = "arrow.up.arrow.down.circle"
-        case .sftp: symbol = "network"
-        }
+    private static func serverIcon(for connection: ServerConnection) -> NSImage {
+        let symbol = SidebarPlacePresentation.symbolName(for: .server(connection)) ?? "network"
         return templateSymbol(symbol, pointSize: 14, describedAs: String(
             localized: "Server",
             comment: "Accessibility label for a saved-server sidebar row's glyph."
@@ -119,6 +114,7 @@ extension SidebarViewController {
             comment: "Confirm button that removes a saved server."
         ))
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
 
         let commit = { [weak self] (response: NSApplication.ModalResponse) in
             guard response == .alertFirstButtonReturn else { return }
@@ -138,11 +134,20 @@ extension SidebarViewController {
     private static func forgetSecret(for server: ServerConnection) {
         switch server.endpoint {
         case let .sftp(location, authentication):
-            if case .password = authentication { ServerKeychain.removePassword(for: location) }
+            if case .password = authentication { SecretKeychain.removePassword(for: location) }
         case let .ftp(location, authentication, _):
-            if case .password = authentication { ServerKeychain.removePassword(for: location) }
+            if case .password = authentication { SecretKeychain.removePassword(for: location) }
         case let .smb(location):
-            if location.username != nil { ServerKeychain.removePassword(for: location) }
+            if location.username != nil { SecretKeychain.removePassword(for: location) }
+        case let .s3(location):
+            // Unconditional: a saved bucket always has a secret filed, since SigV4 is the only way
+            // in and there is no anonymous variant to skip.
+            SecretKeychain.removePassword(for: location)
+        case let .s3Account(account):
+            // The account's own item, which is a bucket's key without the trailing `/<bucket>` —
+            // so removing a saved account leaves the buckets reached from it able to reconnect,
+            // which is right: each of those was a connection the user made on its own.
+            SecretKeychain.removePassword(for: account)
         }
     }
 }

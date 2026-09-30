@@ -27,6 +27,12 @@ enum MainMenuBuilder {
 
     // MARK: - Layout
 
+    /// The Go ▸ Places submenu, built once and kept: it is its own menu's delegate, so a fresh one
+    /// per rebuild — and the menu bar is rebuilt whenever a key binding changes — would leak one
+    /// delegate per rebuild and leave the stale menus observing nothing. The same instance the ⌘G
+    /// popup and the path bar's glyph fill from, so the three faces cannot be handed different lists.
+    private static let places = PlacesMenu.shared
+
     private enum Item {
         case command(String)
         /// A command shown indented under the one above it, for a setting that only qualifies
@@ -35,6 +41,12 @@ enum MainMenuBuilder {
         case subcommand(String)
         /// The standard AppKit Cut item — not a registry command; see `cutItem()`.
         case cut
+        /// The Places submenu — live data rather than a registry command, so it fills itself when
+        /// opened; see `PlacesMenu`.
+        case placesSubmenu
+        /// A hidden second key equivalent for the command, when its binding has another spelling a
+        /// menu item cannot match; see `keyAliasItem(for:bindings:)`.
+        case keyAlias(String)
         case separator
     }
 
@@ -60,8 +72,16 @@ enum MainMenuBuilder {
             // Get Info sits with Open With and Share: all three are about the item under the
             // cursor rather than about moving bytes around.
             .command("file.openWith"), .command("file.share"), .command("file.attributes"),
-            .separator,
+            .command("file.showInFinder"), .separator,
+            // The cloud pair gets a group of its own: it is about where an item's bytes are, which
+            // is neither the item itself nor moving it anywhere.
+            .command("file.downloadNow"), .command("file.removeDownload"), .separator,
             .command("file.copy"), .command("file.move"), .command("file.pack"),
+            // Archive Name Encoding sits beside Pack because those two are the archive items:
+            // one makes an archive, the other says how to read the names in one. It is also the
+            // only route to the chooser that does not require a gesture to have *failed* first
+            // (PLAN.md §M27) — somebody who merely wants to read the names had none.
+            .command("file.archiveNameEncoding"),
             .command("file.syncDirectories"), .command("file.compareByContents"),
             // The checksum pair sits with Compare By Contents: all three answer "are these bytes
             // the ones I expect", differing only in what they are compared against.
@@ -93,6 +113,10 @@ enum MainMenuBuilder {
             .command("view.quickLook"), .command("view.quickView"),
             .subcommand("view.quickViewFullWindow"), .subcommand("view.quickViewFullScreen"),
             .subcommand("view.quickViewSource"), .subcommand("view.quickViewRenderedPage"),
+            .subcommand("view.downloadPreview"),
+            .subcommand("view.quickViewZoomIn"), .keyAlias("view.quickViewZoomIn"),
+            .subcommand("view.quickViewZoomOut"), .subcommand("view.quickViewResetZoom"),
+            .subcommand("view.quickViewFilterTable"),
             .separator,
             .command("view.terminal")
         ]),
@@ -100,8 +124,24 @@ enum MainMenuBuilder {
             .command("go.back"), .command("go.forward"), .command("go.history"), .separator,
             .command("go.editLocation"), .command("go.parent"), .command("go.search"),
             .command("go.saveSearch"), .separator,
+            // Places leads the destination half of this menu: it is the way to every location the
+            // sidebar holds, and the only way to most of them when the sidebar is hidden
+            // (PLAN.md §M20). Favorites keeps its own item beside it — ⌘F is the fast path to the
+            // sub-list people use most, and it is muscle memory from Total Commander.
+            //
+            // Two Places entries, deliberately, because **an item carrying a submenu never fires its
+            // own key equivalent** — measured: `performKeyEquivalent` returns false and the action
+            // never runs, while the item still reports `isEnabled == true`, so a ⌘G hung on the
+            // submenu would be a shortcut that is drawn and dead. They are also two different
+            // gestures: the submenu is the one you *browse*, right here, while `go.places` drops the
+            // same list under the focused pane's path bar, where a keyboard user is already looking
+            // — exactly as `go.favorites` does.
+            .placesSubmenu, .command("go.places"),
             .command("go.favorites"), .command("go.addToFavorites"), .separator,
-            .command("go.connectServer"), .command("go.openInTerminal")
+            .command("go.connectServer"), .separator,
+            .command("go.newVault"), .command("go.unlockVault"), .command("go.lockVault"),
+            .separator,
+            .command("go.openInTerminal")
         ]),
         MenuSpec(category: .workspace, items: [
             .command("workspace.list"), .command("workspace.save")
@@ -131,6 +171,13 @@ enum MainMenuBuilder {
                 }
             case .cut:
                 submenu.addItem(cutItem())
+            case let .keyAlias(id):
+                if let alias = keyAliasItem(for: id, bindings: bindings) { submenu.addItem(alias) }
+            case .placesSubmenu:
+                submenu.addItem(places.menuItem(title: String(
+                    localized: "Places",
+                    comment: "Every sidebar destination: the Go-menu submenu, and the path bar's glyph."
+                )))
             }
         }
         if spec.isWindow {
@@ -158,6 +205,36 @@ enum MainMenuBuilder {
         return item
     }
 
+    /// A hidden item carrying the unshifted spelling of `id`'s binding, when it has one — or `nil`.
+    ///
+    /// ⌘+ is the zoom key every Mac app draws, and on a US layout it is typed as ⌘= — without Shift.
+    /// Measured against `NSMenu.performKeyEquivalent`: an item bound to "+" fires for ⇧⌘= and keypad +
+    /// and **not** for a plain ⌘=, while one bound to "=" is the mirror image, so no single item
+    /// covers the key as people press it. The visible item keeps the binding the user sees and can
+    /// change; this one adds the other spelling, and only while the binding is still ⌘+ and nothing
+    /// else claims ⌘= — a user's rebinding must not leave a key behind that answers the old one. It is
+    /// hidden, and a hidden item's key equivalent still fires (measured; `allowsKeyEquivalentWhenHidden`
+    /// is set anyway, since the menu bar's own dispatch is what matters here).
+    static func keyAliasItem(for id: String, bindings: KeyBindingStore = .shared) -> NSMenuItem? {
+        guard let shortcut = bindings.shortcut(for: id),
+              let alias = unshiftedAliases[shortcut],
+              !CommandCatalog.all.contains(where: { bindings.shortcut(for: $0.id) == alias }),
+              let item = commandItem(for: id, bindings: bindings) else { return nil }
+        item.keyEquivalent = alias.keyEquivalent
+        item.keyEquivalentModifierMask = alias.modifierMask
+        item.isHidden = true
+        item.allowsKeyEquivalentWhenHidden = true
+        return item
+    }
+
+    /// The bindings whose key is typed without Shift on a US layout, and the spelling that matches it.
+    private static let unshiftedAliases: [CommandShortcut: CommandShortcut] = [
+        CommandShortcut(key: "+", modifiers: .command): CommandShortcut(
+            key: "=",
+            modifiers: .command
+        )
+    ]
+
     /// The standard text Cut item (⌘X), hand-built rather than drawn from the registry — like the
     /// app menu's About/Hide, it is AppKit's item and not a command a user searches for. It has no
     /// file meaning (the panes have no "cut files", `edit.pasteMove` being the move half), so a
@@ -166,7 +243,7 @@ enum MainMenuBuilder {
     /// It has to exist at all because ⌘X reaches a field editor **only** as a menu key equivalent:
     /// Cocoa's key bindings map no key to `cut:`, so with no such item ⌘X is a dead no-op in every
     /// text field in the app — measured, the same trap as ⌘A (docs/NOTES.md). `NSTextView` answers
-    /// `cut:` and nothing in a pane's responder chain does, so the nil target greys it out
+    /// `cut:` and nothing in a pane's responder chain does, so the nil target grays it out
     /// everywhere else on its own; ⌘C and ⌘V already work for the same reason, via `edit.copy`.
     private static func cutItem() -> NSMenuItem {
         let item = NSMenuItem(

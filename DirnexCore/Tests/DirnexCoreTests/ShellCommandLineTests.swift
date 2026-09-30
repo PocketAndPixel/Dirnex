@@ -33,7 +33,7 @@ struct ShellCommandLineTests {
 
     @Test("fish escapes inside single quotes instead, where POSIX's bridge would corrupt the path")
     func fishQuotingUsesBackslashes() {
-        // fish honours \ and ' escapes inside single quotes, so the POSIX '\'' would leave a stray
+        // fish honors \ and ' escapes inside single quotes, so the POSIX '\'' would leave a stray
         // backslash in the directory name.
         #expect(ShellQuoting.quoted("a'b", for: .fish) == #"'a\'b'"#)
         #expect(ShellQuoting.quoted(#"back\slash"#, for: .fish) == #"'back\\slash'"#)

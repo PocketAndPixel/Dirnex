@@ -90,7 +90,7 @@ struct GitFileStatusTests {
         #expect(GitFileStatus.ignored.rollupPrecedence > GitFileStatus.unmodified.rollupPrecedence)
     }
 
-    @Test("only actionable statuses colour their ancestors")
+    @Test("only actionable statuses color their ancestors")
     func rollsUpToAncestors() {
         // An ignored file must not make its containing folder look ignored.
         #expect(!GitFileStatus.ignored.rollsUpToAncestors)

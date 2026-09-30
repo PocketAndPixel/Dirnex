@@ -6,7 +6,7 @@ import DirnexCore
 /// The shape is the same in every case and is what makes each of those features cheap: the tab's
 /// *container* path is synthetic (`search:…`, `trash:…`) while every entry in it carries its real
 /// on-disk path, so Quick Look, copying to the other pane, tags and sync badges all reach the actual
-/// file. The pane recognises such a tab through `isResultsListing` and suppresses the behavior that
+/// file. The pane recognizes such a tab through `isResultsListing` and suppresses the behavior that
 /// assumes a real directory underneath: watching it, re-listing it by path, the `..` row, and the
 /// in-place mutations (New Folder, rename, paste).
 ///
@@ -28,8 +28,9 @@ extension PanelViewController {
         /// The stable English `pathSummary` the Recents listing is identified by. Never displayed —
         /// the tab title and path-bar label localize separately — but the path bar matches on it to
         /// self-name Recents rather than borrow the "Results for …" phrasing (see
-        /// `rebuildVirtualLabel`), exactly as the Trash matches on `backend == .trash`.
-        static let recentsIdentity = "Recents"
+        /// `rebuildVirtualLabel`), exactly as the Trash matches on `backend == .trash`. Defined in
+        /// the core, because the sidebar's Focus Sidebar recognizes the tab by it too.
+        static let recentsIdentity = RecentsQuery.listingName
 
         /// The synthetic container's backend: `.search` for hits, `.trash` for the merged Trash.
         var backend: VFSBackendID = .search
@@ -38,7 +39,7 @@ extension PanelViewController {
         /// The listing order — the pane's own sort for a search or the Trash, recency for Recents.
         let sort: FileSort
         /// What "Save Search…" persists; `nil` for Recents and the Trash, which aren't queries.
-        let query: SpotlightQuery?
+        let query: FileQuery?
         let scope: VFSPath?
         /// The chip label; `nil` on an ad-hoc search leaves the query-summary crumb.
         let title: String?
@@ -102,6 +103,14 @@ extension PanelViewController {
         loadToken += 1
         let departed = panel.path
         panel.setModel(resultsModel(entries, as: presentation))
+        // The same line `navigate` runs here, and for the same reason: `setModel` *keeps* a tree
+        // across a navigation (re-rooted, all collapsed), so a pane that was a tree when the user
+        // clicked would go on drawing disclosure triangles over a listing where a tree cannot apply.
+        // The menu item reads its checkmark from the pane's real shape and its enablement from
+        // `canUseTreeMode`, so without this it renders ticked *and* gray — the menu is the only way
+        // to answer it, and a shortcut bound to the command is dead too, since a disabled item
+        // swallows its own key equivalent (docs/NOTES.md ▸ AppKit).
+        applyViewMode()
         resetMouseSelectionAnchor()
         // A results listing has no `..` row to park on, however empty it is.
         cursorOnParentRow = false
@@ -112,9 +121,12 @@ extension PanelViewController {
         tab.searchScope = presentation.scope
         tab.customTitle = presentation.title
 
-        // Drops the FSEvents watcher: the synthetic path is not a directory, and a watcher left on
-        // the folder we came from would re-list *that* into this pane.
-        startWatching(panel.path)
+        // Re-points the FSEvents watcher: the synthetic path is not a directory, so in list mode this
+        // watches whatever the merge was gathered from (or nothing, for a search snapshot) rather than
+        // leaving the watcher on the folder we came from, which would re-list *that* into this pane.
+        // Through `startPaneWatcher` rather than `startWatching` because the tab may be a tree by the
+        // time it gets here, and a tree watches its expanded children as well as those sources.
+        startPaneWatcher(panel.path)
         DirectorySizeProvider.shared.cancelScan(for: departed)
         reloadEverything()
         refreshTabBar()
@@ -124,6 +136,37 @@ extension PanelViewController {
         updateSizeVisualization()
         persistState()
         host?.panelDidNavigate(self)
+    }
+
+    /// Put one hit back under the name the app just gave it.
+    ///
+    /// A search snapshot is the one listing here that can neither re-list nor re-gather itself —
+    /// `refreshCurrentDirectory` returns without touching it, and `refreshTree` deliberately skips a
+    /// results root, both saying the same thing: it keeps the hits it was given. That is right for
+    /// the world changing underneath it, and wrong for a change *this pane* made, which would
+    /// otherwise leave the row showing a name that is no longer on disk — the tell the S3 rename bug
+    /// was first reported by.
+    ///
+    /// A substitution rather than a re-`stat`: a rename changes nothing but the name, and the hit
+    /// may be on a server, where confirming what we just did would be a round trip. Nothing else in
+    /// the snapshot moves, so a search that found a hundred files still shows a hundred.
+    ///
+    /// The merged Trash and iCloud listings need none of this — both re-gather on refresh — and a
+    /// rename that had to run as a **job** (an S3 prefix, `EXDEV`) is still outside it: the queue
+    /// refreshes both panes when it finishes, which for a search snapshot does nothing, so such a
+    /// hit keeps its old name until the search is run again.
+    func substituteSearchHit(_ source: VFSPath, renamedTo newName: String) {
+        guard panel.path.backend == .search else { return }
+        let entries = panel.model.listing.entries
+        guard entries.contains(where: { $0.path == source }) else { return }
+        panel.setListing(DirectoryListing(
+            path: panel.path,
+            entries: entries.map { $0.path == source ? $0.renamed(to: newName) : $0 }
+        ))
+        if let index = panel.displayedIndex(ofID: source.parent?.appending(newName) ?? source) {
+            panel.moveCursor(to: index)
+        }
+        reloadEverything()
     }
 
     /// The model behind a results tab — shared by opening one and by re-gathering an open one

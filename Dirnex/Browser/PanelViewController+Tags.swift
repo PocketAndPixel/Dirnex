@@ -8,10 +8,10 @@ import DirnexCore
 /// in step with the directory on screen.
 ///
 /// **The dots live inside the name cell, not in a column of their own** — where Finder puts them,
-/// and what the plan's word "column" turned out to mean in practice. The Git gutter needs its own
-/// column because it is *text*, competing for the name field's colour with the mark's red and the
-/// hidden-file dim, and F2 swaps that field for an editor. Dots are their own view, so none of that
-/// applies: they cost a tagged row a few points of name width and an untagged row nothing at all,
+/// and what the plan's word "column" turned out to mean in practice — three times out of three, as
+/// it happens: Git's status letter, the last one still in a column of its own, joined the cluster on
+/// 2026-08-07 (`GitBadgeView`). The dots are their own view rather than styled text, so they cost a
+/// tagged row a few points of name width and an untagged row nothing at all,
 /// which is a better bargain than a column that is blank for most people in most folders.
 ///
 /// **Why there is no second watcher here, unlike Git.** The Git side had to watch the *repository
@@ -99,7 +99,13 @@ extension PanelViewController {
         )
         // Whatever is already cached renders now; the scan republishes if it changed. Revisiting a
         // folder therefore paints its dots with the folder, not after it.
-        applyTagSnapshot(FinderTagProvider.shared.cachedSnapshot(for: directory))
+        //
+        // **Only a hit**, for the reason its twin in `+SyncStatus` spells out and
+        // `DirectoryScanCache.cachedSnapshot` argues: a miss is "not known here", so adopting one
+        // would blank the dots and reload the table for a directory nothing happened to.
+        if let cached = FinderTagProvider.shared.cachedSnapshot(for: directory) {
+            applyTagSnapshot(cached)
+        }
     }
 
     /// Ask for a re-scan of the directory on screen — what the tag editor calls after writing, so
@@ -144,9 +150,9 @@ extension PanelViewController {
     /// preference work with no column to install: the cells simply render no dots, and the names take
     /// back the width.
     ///
-    /// The colours come from the tag's *name*, not from the file: `FinderTagProvider.resolve` — and
+    /// The colors come from the tag's *name*, not from the file: `FinderTagProvider.resolve` — and
     /// the core's `FinderTagIndex` behind it — explains why the byte on disk is unusable for drawing
-    /// anywhere inside iCloud Drive, where every tagged file stores grey and Finder paints it red
+    /// anywhere inside iCloud Drive, where every tagged file stores gray and Finder paints it red
     /// regardless. Resolving here, at the point of drawing, rather than folding it into the snapshot,
     /// keeps `FinderTagSnapshot` meaning *what the files say* — which is what `FinderTagSnapshot.==`
     /// compares to decide a repaint, and what a later scan can legitimately find changed.

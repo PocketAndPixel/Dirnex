@@ -9,6 +9,20 @@ import DirnexCore
 ///
 /// Which editor, and what "Automatic" means, is the pure tested `ExternalTextEditor`; this is the
 /// AppKit shell — which file, whether there is one at all, and what to tell the user.
+
+/// Where the file under the cursor would be edited, and so how F4 gets its bytes and where a save
+/// goes back to. See `PanelViewController.editRoute(for:)`.
+enum EditRoute: Equatable {
+    /// A file on this Mac: hand the path over as it stands.
+    case local
+    /// A member of a writable archive: edit its extracted copy, repack the save (PLAN.md §M4).
+    case archiveMember
+    /// A file on a server: edit a downloaded copy, upload the save (PLAN.md §M21 Slice 10).
+    case remoteFile
+    /// Nothing F4 can do — a nested archive's member, whose own bytes are already a temp copy.
+    case unavailable
+}
+
 extension PanelViewController {
     // MARK: - Menu / palette actions (dispatched to the focused pane via the responder chain)
 
@@ -24,8 +38,31 @@ extension PanelViewController {
             if isCursorOnNothing { promptForFileToEdit() }
             return
         }
-        guard entry.path.backend == .local else {
-            // An archive member or a remote file would edit an extracted temp copy whose saves go
+        openForEditing(entry)
+    }
+
+    /// Hand `entry` to the editor by whichever route its backend needs — **one dispatch**, made by
+    /// F4 and by ⇧F4 alike.
+    ///
+    /// ⇧F4 used to make its own, and it knew only about this Mac: the file it had resolved went
+    /// straight to ``openInEditor(_:)``, whose `localURL` is `file://` plus the path *inside* the
+    /// backend. So ⇧F4 on an S3 object asked macOS to open `/test2.txt`, and Finder answered that
+    /// the file couldn’t be found (reported 2026-08-22) — about a row the pane was displaying, with
+    /// F4 one key away opening the same object perfectly. That is the same one-rule-several-spellings
+    /// shape `editRoute(for:)` itself was extracted for, arriving on the *act* rather than on the
+    /// decision: a route decided in one place and undone in the one that acts on it
+    /// (docs/NOTES.md ▸ Design lessons).
+    private func openForEditing(_ entry: FileEntry) {
+        switch editRoute(for: entry) {
+        case .local:
+            editLocalFile(entry)
+        case .archiveMember:
+            beginArchiveMemberEdit(for: entry)
+        case .remoteFile:
+            beginRemoteFileEdit(for: entry)
+        case .unavailable:
+            // A member of a *nested* archive — whose bytes are themselves an extracted copy, so a
+            // write-back would land somewhere thrown away. It would edit a temp copy whose saves go
             // nowhere. Said out loud rather than silently declined: a no-op that looks like it
             // worked is the expensive kind of wrong.
             showTransientStatus(
@@ -34,9 +71,29 @@ extension PanelViewController {
                     comment: "Status when F4 is pressed on an archive member or remote file."
                 )
             )
-            return
         }
-        edit(entry)
+    }
+
+    /// What F4 would do with `entry` — **the one answer** the key and its menu validator both read.
+    ///
+    /// They used to be two copies of one predicate, and they had already drifted: the key routed an
+    /// archive member to its extracted copy (PLAN.md §M4) while `validateEditItem` still answered
+    /// `backend == .local`, so the menu item was gray inside an archive — and a disabled item
+    /// swallows its own key equivalent, which is what turns a cosmetic-looking mismatch into a dead
+    /// key (docs/NOTES.md ▸ AppKit). Adding the remote branch beside it would have made that two
+    /// misses instead of one, so it is one function now and the switch below is exhaustive.
+    func editRoute(for entry: FileEntry) -> EditRoute {
+        if entry.path.backend.isArchive {
+            // A member of a *writable* archive edits its extracted copy and offers to write the save
+            // back; a nested archive's own bytes are already a temp copy, so it cannot.
+            return isWritableArchiveMember(entry) && !entry.isDirectoryLike
+                ? .archiveMember
+                : .unavailable
+        }
+        // A file on a server downloads to a temp copy and offers to upload the save — the same
+        // extract → watch → write-back shape (PLAN.md §M21 Slice 10).
+        if canEditRemoteFile(entry) { return .remoteFile }
+        return entry.path.backend == .local ? .local : .unavailable
     }
 
     /// ⇧F4 — name the file first. Prefilled with the cursor's name and selected, so Enter is "edit
@@ -60,11 +117,12 @@ extension PanelViewController {
                 localized: "Edit",
                 comment: "F4 menu title when no specific editor is chosen."
             )
-            // Enabled exactly where the key does something, so "inert" is a *greyed* item rather
-            // than a keystroke that vanishes: a local file to open, or nothing under the cursor at
-            // all, where F4 becomes the ⇧F4 dialog. A folder or a non-local file greys out.
+            // Enabled exactly where the key does something, so "inert" is a *grayed* item rather
+            // than a keystroke that vanishes: a file F4 has a route for, or nothing under the cursor
+            // at all, where F4 becomes the ⇧F4 dialog. A folder, or a file no route reaches, grays
+            // out. `editRoute` is what makes "exactly" true rather than aspirational.
             guard editor != nil else { return false }
-            if let entry = cursorEntryToEdit() { return entry.path.backend == .local }
+            if let entry = cursorEntryToEdit() { return editRoute(for: entry) != .unavailable }
             return isCursorOnNothing && canCreateFileHere
         case #selector(editNewFile(_:)):
             menuItem.title = editor.map { String(
@@ -108,14 +166,18 @@ extension PanelViewController {
 
     // MARK: - Opening
 
-    /// Open a local file in the user's editor, fetching its bytes first when it has none.
+    /// Open a file on this Mac in the user's editor, fetching its bytes first when it has none.
+    ///
+    /// The `.local` route and nothing else — every other backend hands over a *copy* and watches it
+    /// for a save. Named for the route rather than for the verb so a caller cannot reach for it as
+    /// "the way to edit something": ``openForEditing(_:)`` is that.
     ///
     /// An evicted iCloud or streaming-Drive file is `SF_DATALESS`: it has its real name and its
     /// real size and no bytes, so handing the path to an editor doesn't fail — it blocks the editor
     /// while the provider materializes it (measured 1.1 s for 200 KB), with nothing anywhere saying
     /// why. The listing already carries `isDataless`, so the existing download prompt wraps the open
     /// exactly as it does for Enter.
-    private func edit(_ entry: FileEntry) {
+    private func editLocalFile(_ entry: FileEntry) {
         CloudDownloadPrompt.materialize(entry, using: backend, over: view.window) { [weak self] in
             self?.openInEditor(entry.path)
         }
@@ -124,7 +186,9 @@ extension PanelViewController {
     /// Hand a local path to the editor and say so. The launch is asynchronous and a cold editor
     /// takes seconds to draw its first window, so without this line the app looks like it swallowed
     /// the keystroke.
-    private func openInEditor(_ path: VFSPath) {
+    /// Internal, not private: `PanelViewController+ArchiveOpen` hands it the extracted copy of an
+    /// archive member, and Swift's `private` is per-file.
+    func openInEditor(_ path: VFSPath) {
         showTransientStatus(String(
             localized: "Opening \(path.lastComponent)…",
             comment: "In-progress status while opening a file; %@ is the file name."
@@ -158,7 +222,7 @@ extension PanelViewController {
             presentOperationFailure(
                 message: String(
                     localized: "Couldn’t open “\(path.lastComponent)”",
-                    comment: "F4 failure title; %@ is the file name."
+                    comment: "Failure title; %@ is the name of the item that couldn’t be opened."
                 ),
                 detail: describe(error)
             )
@@ -183,8 +247,10 @@ extension PanelViewController {
         // Normally the folder isn't named: the path bar above the dialog already says which one this
         // is, and the field below is prefilled out of it. A tree breaks that — the path bar shows the
         // *root* while the cursor stands in a folder several levels down, so the one case where the
-        // dialog would be silently wrong about where is the one case that says it out loud.
-        alert.informativeText = target == panel.path
+        // dialog would be silently wrong about where is the one case that says it out loud. Asked of
+        // `writeDirectory` rather than `panel.path`, which for the merged iCloud listing is synthetic
+        // and never equal to a real target, so the plain sentence would never have been chosen there.
+        alert.informativeText = createsInPaneDirectory
             ? String(
                 localized: "Open a file, or type a new name to create one.",
                 comment: "Body of the ⇧F4 edit/create-file dialog."
@@ -203,8 +269,10 @@ extension PanelViewController {
             )
         )
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
+        field.keepToOneLine()
         field.stringValue = prefilledName()
         field.placeholderString = String(
             localized: "File name",
@@ -245,7 +313,10 @@ extension PanelViewController {
     /// The create is deliberately **not** undoable, unlike New Folder's. The file is handed to an
     /// external editor in the same breath, so by the time ⌘Z could be reached another app owns it —
     /// and a folder, which is what New Folder leaves behind, just sits there inert.
-    private func editFile(named name: String, in directory: VFSPath) {
+    ///
+    /// Internal, not private: `EditFileRouteTests` drives it directly, because the dialog above it
+    /// is an `NSAlert` and a test host that presents one waits for a human (docs/NOTES.md ▸ Testing).
+    func editFile(named name: String, in directory: VFSPath) {
         guard !name.isEmpty else { return } // an empty name is a silent cancel
         guard !name.contains("/") else {
             presentOperationFailure(
@@ -267,9 +338,9 @@ extension PanelViewController {
             // One `stat` decides the branch: an existing name means *open that file*, which is why
             // `createFile` is `O_EXCL` underneath — a file appearing between this read and the
             // create is reported, never truncated.
-            let existing = await Task.detached(priority: .userInitiated) {
+            let existing = await BlockingWork.run {
                 try? backend.stat(at: target)
-            }.value
+            }
             if let existing {
                 guard existing.kind == .file else {
                     presentOperationFailure(
@@ -284,21 +355,48 @@ extension PanelViewController {
                     )
                     return
                 }
-                edit(existing)
+                openForEditing(existing)
                 return
             }
             do {
-                try await Task.detached(priority: .userInitiated) {
-                    try backend.createFile(at: target)
-                }.value
-                refreshCurrentDirectory(selecting: target)
-                focusTable()
-                openInEditor(target)
+                try await BlockingWork.run {
+                    Result {
+                        try backend.createFile(at: target)
+                    }
+                }.get()
             } catch {
                 presentOperationFailure(
                     message: String(
                         localized: "Can’t create “\(name)”",
                         comment: "Create-file failure title; %@ is the name."
+                    ),
+                    detail: describe(error)
+                )
+                return
+            }
+            refreshCurrentDirectory(selecting: target)
+            focusTable()
+            do {
+                // The new file is read back rather than assumed, because the route is decided from
+                // an *entry*: on a server it is a copy that gets edited, and both the fetch that
+                // brings it down and the save that goes back up are keyed on the size, time and
+                // entity tag only a `stat` carries. A hand-built stand-in would cost one round trip
+                // less and make the very first save look like somebody else's write
+                // (`RemoteFileRevision`).
+                let created = try await BlockingWork.run {
+                    Result {
+                        try backend.stat(at: target)
+                    }
+                }.get()
+                openForEditing(created)
+            } catch {
+                // The file was created — this is the read back failing, so it is the *edit* that
+                // could not happen and the create is not retracted. Said out loud: the row is on
+                // screen by now, and a keystroke that silently opens nothing reads as a dead key.
+                presentOperationFailure(
+                    message: String(
+                        localized: "Can’t edit “\(name)”",
+                        comment: "Edit-file failure title; %@ is the name."
                     ),
                     detail: describe(error)
                 )

@@ -50,6 +50,23 @@ struct PersistedTab: Codable {
     /// are dropped, mirroring how a live refresh prunes marks. `nil` (not `[]`) when nothing was
     /// marked, so the common case stays out of the JSON.
     var markedPaths: [String]?
+    /// Where to reconnect before this tab can list, for a tab on a connected account
+    /// (docs/LOCATION-SUPPORT.md ▸ "Session restore and workspaces drop remote tabs"). Absent for
+    /// every local and archive tab, which need no connection at all.
+    ///
+    /// `backend` above is only the account's **descriptor** — host, user, port, region — which is
+    /// what a `VFSBackendID` carries and is not enough to reconnect: it says nothing about the auth
+    /// *method*, or about an FTPS certificate the user chose to trust. This is that, and it is
+    /// stored on the tab rather than looked up in the sidebar's saved servers for two reasons: a
+    /// server connected once from the Connect sheet and never saved still comes back, and deleting a
+    /// sidebar row does not silently un-restore the tabs pointing at it. It holds no secret — the
+    /// same argument ``ServerConnection`` makes for its own JSON — and the host and username were
+    /// already here, inside `backend`, before this field existed.
+    ///
+    /// Read it through ``serverEndpoint``: ``StoredServerEndpoint`` degrades a shape this build
+    /// cannot read to `nil` instead of throwing, which matters more here than anywhere, because a
+    /// pane's tabs are one array in one blob — a throw would empty the pane rather than drop a tab.
+    var endpoint: StoredServerEndpoint?
 }
 
 struct PersistedPane: Codable {
@@ -65,21 +82,48 @@ struct PersistedPane: Codable {
         guard tabs.indices.contains(activeIndex) else { return tabs.first?.columns }
         return tabs[activeIndex].columns
     }
+
+    /// The shape the tab that was active when this pane was saved drew in, clamped to the stored
+    /// tabs the same way ``activeTabColumns`` is — and used for the same reason, one field over.
+    ///
+    /// A pane whose every persisted tab was dropped falls back to a Home tab, and building that at
+    /// the plain default took the user's tree mode down with the dropped tab: set a pane to a tree,
+    /// connect to S3, quit, and the pane reopened a flat list, while a pane whose tab *was* restored
+    /// kept its shape. Reported 2026-08-20. `.list` when nothing was stored, which is what a fresh
+    /// tab is anyway.
+    var activeTabViewMode: PanelViewMode {
+        guard tabs.indices.contains(activeIndex) else { return tabs.first?.panelViewMode ?? .list }
+        return tabs[activeIndex].panelViewMode
+    }
+
+    /// The sort the tab that was active when this pane was saved was ordered by — the third and last
+    /// field a dropped tab was carrying, clamped like the two above and added for the same reason.
+    /// A pane whose only tab was remote came back sorted by name ascending however the user had left
+    /// it, so a pane set to newest-first reverted on every relaunch while a pane on a local folder
+    /// kept its order. `.default` when nothing was stored, which is what a fresh tab uses.
+    var activeTabSort: FileSort {
+        guard tabs.indices.contains(activeIndex) else { return tabs.first?.fileSort ?? .default }
+        return tabs[activeIndex].fileSort
+    }
 }
 
 /// Load/save per-pane tab state keyed by a stable pane identifier ("left"/"right").
+///
+/// The domain is an argument with no default, so every caller says where a pane's tabs go. The app
+/// test target runs inside the app, where `.standard` is the developer's own `com.dirnex.Dirnex`,
+/// and a test that wrote there by default left a key behind on every run (docs/NOTES.md ▸ Testing).
 enum TabPersistence {
     private static let keyPrefix = "Dirnex.tabs."
     private static let activePaneKey = "Dirnex.activePane"
 
-    static func load(paneKey: String) -> PersistedPane? {
-        guard let data = UserDefaults.standard.data(forKey: keyPrefix + paneKey) else { return nil }
+    static func load(paneKey: String, from defaults: UserDefaults) -> PersistedPane? {
+        guard let data = defaults.data(forKey: keyPrefix + paneKey) else { return nil }
         return try? JSONDecoder().decode(PersistedPane.self, from: data)
     }
 
-    static func save(_ pane: PersistedPane, paneKey: String) {
+    static func save(_ pane: PersistedPane, paneKey: String, to defaults: UserDefaults) {
         guard let data = try? JSONEncoder().encode(pane) else { return }
-        UserDefaults.standard.set(data, forKey: keyPrefix + paneKey)
+        defaults.set(data, forKey: keyPrefix + paneKey)
     }
 
     /// The pane identifier ("left"/"right") that held focus when the session was last saved, so a
@@ -103,7 +147,8 @@ extension PersistedTab {
         expandedPaths: [String]? = nil,
         cursorPath: String? = nil,
         cursorOnParent: Bool = false,
-        markedPaths: [String]? = nil
+        markedPaths: [String]? = nil,
+        endpoint: ServerEndpoint? = nil
     ) {
         backend = path.backend.rawValue
         self.path = path.path
@@ -115,6 +160,9 @@ extension PersistedTab {
         self.cursorPath = cursorPath
         self.cursorOnParent = cursorOnParent
         self.markedPaths = markedPaths
+        // `map`, so a local tab writes no field rather than a null — and so a `nil` read back out of
+        // a stored one can only ever mean "written, and unreadable by this build".
+        self.endpoint = endpoint.map(StoredServerEndpoint.init)
     }
 
     var vfsPath: VFSPath {
@@ -131,4 +179,10 @@ extension PersistedTab {
     var panelViewMode: PanelViewMode {
         PanelViewMode(rawValue: viewMode ?? "") ?? .list
     }
+
+    /// Where to reconnect, or `nil` for a tab that needs no connection — and for one whose stored
+    /// endpoint this build cannot read, which is a tab that will simply not be restored
+    /// (``TabRestorePolicy`` refuses a remote path with no endpoint rather than bringing back a
+    /// chip nothing could ever fill).
+    var serverEndpoint: ServerEndpoint? { endpoint?.endpoint }
 }

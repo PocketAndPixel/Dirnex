@@ -6,7 +6,7 @@ import Testing
 /// The `.ask` conflict policy — the engine yielding control per conflict to a resolver, the
 /// core half of TC's rich per-file conflict dialog with "apply to all" (PLAN.md §M2). The
 /// resolver stands in for the app's dialog: the tests script its answers and assert that the
-/// engine consults it exactly on the colliding items, honours each `ConflictResolution`, and
+/// engine consults it exactly on the colliding items, honors each `ConflictResolution`, and
 /// unwinds cleanly when the resolver says `.cancel`.
 @Suite("CopyEngine ask policy")
 struct CopyEngineAskTests {

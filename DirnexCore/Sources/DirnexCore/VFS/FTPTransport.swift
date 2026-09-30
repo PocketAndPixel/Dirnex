@@ -33,15 +33,105 @@ public protocol FTPTransport: RemoteWriteTransport {
     /// actually moved (`-w '%{size_download}'`), so the *delta* comes back directly and the backend
     /// never has to subtract a pre-existing size to report progress. Verified live — a resumed
     /// download of a 3 MiB file from a 1 MiB partial reported exactly 2 097 152.
+    ///
+    /// `isCancelled` is polled **while the bytes move**, and only the two byte-moving verbs take it
+    /// — see ``upload(_:to:resume:progress:isCancelled:)``. `progress` rides the same poll and
+    /// reports **deltas** as they land: a download's are exact, because the observable is the
+    /// destination file on this machine growing, which costs nothing and needs no flag.
     @discardableResult
-    func download(_ remotePath: String, to localPath: String, resume: Bool) throws -> Int64
+    func download(
+        _ remotePath: String,
+        to localPath: String,
+        resume: Bool,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Int64
+
+    /// Download several byte ranges of one remote file **at once**, each into its own file, for the
+    /// caller to join (``SegmentAssembly``).
+    ///
+    /// One transfer is one login, and one connection is not what a link gives: measured 2026-08-24
+    /// against a real server with a 4 MB/s per-connection cap, alternating rounds over a 32 MiB
+    /// file, **1 stream 16.02 s, 4 segments 4.01 s, 8 segments 2.01 s** — 3/3 each, and the pieces
+    /// reassembled byte-identical. What the segments are is ``SegmentedDownloadPlan``'s; this verb
+    /// only moves them.
+    ///
+    /// **It throws on any failure of the run rather than reporting per segment, and that is FTP's
+    /// nature rather than a simplification.** A section's reply code says nothing usable — the same
+    /// successful run reported `225` and `226` mixed, because a range download closes the data
+    /// connection early — and one `curl` carrying N transfers has **one** exit code. So the only
+    /// per-section fact is the file that landed, which the caller checks against its range. What
+    /// the caller does with a throw is fall back to a single stream, because the commonest cause is
+    /// a server capping concurrent connections, which no error message would help the user with.
+    ///
+    /// Additive, with a default that **forwards** to the plain download: a single stream produces
+    /// the identical file, so a transport that has not implemented this is slow and never wrong.
+    /// The answer says which of the two happened rather than leaving it to be inferred — "this
+    /// transport could not split the request" must never look like a failure.
+    @discardableResult
+    func downloadSegments(
+        _ segments: [DownloadSegment],
+        of remotePath: String,
+        to localPath: String,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> SegmentedDownloadOutcome
 
     /// Upload the local file at `localPath` to a remote path, returning **the bytes transferred by
     /// this call**. With `resume`, `curl -C -` asks the server for the remote file's current size
     /// and sends only the remainder — so, unlike the SFTP path, the backend needs no size probe of
     /// its own to resume an upload.
+    ///
+    /// **`isCancelled` and `progress` are polled while the transfer runs, and a metadata verb
+    /// deliberately has neither.** A transfer is one `curl` that may run for an hour, so a caller's
+    /// Stop and its progress bar both have to reach inside it; a `LIST` or a `SIZE` is over before
+    /// anyone could press anything, and giving those either parameter would promise a
+    /// responsiveness they cannot use. Both halves were measured on this backend's own tools rather
+    /// than assumed: without `isCancelled`, Stop on a 16-second download returned after the full 16
+    /// seconds having downloaded the whole file and then discarded it; and without `progress`, an
+    /// 8 MB upload to a local server reported its bytes once, **8 seconds** after it started
+    /// (docs/NOTES.md ▸ curl).
+    ///
+    /// An upload's `progress` is an **estimate** — nothing local changes as it runs, so the only
+    /// observable is `curl`'s own percentage meter, at one-per-cent resolution
+    /// (``CurlProgressMeter``). The exact figure is this method's return value, so a caller wanting
+    /// a byte-honest total reconciles against it at the end rather than summing the deltas.
     @discardableResult
-    func upload(_ localPath: String, to remotePath: String, resume: Bool) throws -> Int64
+    func upload(
+        _ localPath: String,
+        to remotePath: String,
+        resume: Bool,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Int64
+
+    /// The raw `LIST` output for **several** directories, gathered over one connection — one answer
+    /// per input path, in order, `nil` for a directory that could not be listed.
+    ///
+    /// This is the verb behind FTP's subtree shortcut, and it is a batch rather than a loop for one
+    /// reason: over FTP a listing is cheap and the *connection* around it is not. Measured
+    /// 2026-09-01 over a 159-directory tree, one `curl` per directory against one `curl` per level:
+    /// **159 logins and 11.264 s against 4 and 0.404 s** on a server 50 ms away, for identical
+    /// entries. See ``FTPProcessArguments/listDirectories(session:requests:credentials:)`` for the
+    /// whole measurement and for what `LIST -R` was found to be worth.
+    ///
+    /// **`nil` means "this directory could not be listed", never "it was empty"** — the two are
+    /// distinct and both are ordinary. A walk skips an unreadable subdirectory and reports an empty
+    /// one as empty, so a batch that could not tell them apart would silently prune whole branches;
+    /// ``FTPBackend`` relies on the difference, and refuses the shortcut outright when it is the
+    /// *root* that failed.
+    ///
+    /// **It takes `isCancelled` where ``listDirectory(_:)`` deliberately does not**, and the reason
+    /// is the one that doc comment gives for the split: a single `LIST` is over before anyone could
+    /// press anything, while a batch is a whole level of a tree and may run for as long as a
+    /// transfer. It is polled between chunks and while the child runs.
+    ///
+    /// Additive, with a default that **forwards** to one ``listDirectory(_:)`` per path: the answers
+    /// are the same answers, so a transport that has not implemented this is slow and never wrong —
+    /// the test this project applies before letting a default stand in, and the same one
+    /// ``downloadSegments(_:of:to:progress:isCancelled:)`` passes. The conditional write's default
+    /// throws for the opposite reason.
+    func listDirectories(_ remotePaths: [String], isCancelled: () -> Bool) throws -> [String?]
 
     /// The exact size of one remote file (`SIZE`, via `curl -I`), used to decide whether a partial
     /// is resumable. Costs a round trip, so it is a stat-one-item path and never a listing path.
@@ -54,6 +144,50 @@ public protocol FTPTransport: RemoteWriteTransport {
     /// invocation (`-w '%{certs}'` with verification suppressed), and folding a network round trip
     /// into an error's payload would make every failure path pay for it.
     func fetchCertificate() throws -> FTPCertificate
+}
+
+/// The additive halves of ``FTPTransport/listDirectories(_:isCancelled:)`` and
+/// ``FTPTransport/downloadSegments(_:of:to:progress:isCancelled:)``: a transport that predates
+/// either keeps compiling and keeps working.
+///
+/// It forwards rather than throwing — the test this project applies before letting a default stand
+/// in is whether the caller can tell it was not honoured, and here the two paths produce the
+/// identical file. The conditional write's default has to throw for the opposite reason: forwarding
+/// there would drop a protection the caller believes is in place.
+public extension FTPTransport {
+    func listDirectories(_ remotePaths: [String], isCancelled: () -> Bool) throws -> [String?] {
+        try remotePaths.map { remotePath in
+            guard !isCancelled() else { throw CancellationError() }
+            // A refusal is an answer here, not a failure: the caller's whole vocabulary for "this
+            // directory could not be listed" is `nil`, and it distinguishes that from the empty
+            // string an empty directory legitimately gives. Cancellation is the one thing that must
+            // travel, since it is the caller's own instruction rather than the server's answer.
+            do {
+                return try listDirectory(remotePath)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                return nil
+            }
+        }
+    }
+
+    @discardableResult
+    func downloadSegments(
+        _ segments: [DownloadSegment],
+        of remotePath: String,
+        to localPath: String,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> SegmentedDownloadOutcome {
+        .whole(bytes: try download(
+            remotePath,
+            to: localPath,
+            resume: false,
+            progress: progress,
+            isCancelled: isCancelled
+        ))
+    }
 }
 
 /// A remote FTP operation's failure, in the shapes the backend and the app's trust flow need to
@@ -93,6 +227,19 @@ public enum FTPTransportError: Error, Sendable, Equatable {
     /// the password is ever weighed. Distinct from ``loginDenied``: the credentials may be
     /// perfect; the fix is to switch to FTPS, not to re-check the user name and password.
     case tlsRequired
+    /// The server does not implement the command — reply **500** ("syntax error, command
+    /// unrecognized") or **502** ("command not implemented").
+    ///
+    /// Its own case because it is the one refusal that is a fact about the **account** rather than
+    /// about a file, which is exactly the split a per-connection latch rests on: a verb this server
+    /// lacks is true of every file on it and worth remembering, where 550 is that file's own problem
+    /// and says nothing about the next one (PLAN.md §M25). Folded into ``notFound`` — where it used
+    /// to land, through `replyCodeMeaning`'s default — the two are indistinguishable, and a metadata
+    /// carry would either latch on a file's refusal or never latch at all.
+    ///
+    /// Reachable in practice only from a `-Q` command, since the verbs a listing or a transfer uses
+    /// are RFC 959's and no server is without them.
+    case commandNotImplemented
     /// Anything else, carrying `curl`'s own text verbatim.
     ///
     /// **Empty when there was nothing to say**, deliberately — this is the tool's words, not ours,
@@ -108,7 +255,14 @@ public enum FTPTransportError: Error, Sendable, Equatable {
         case 6, 7: return .unreachable
         case 28: return .timedOut
         case 60, 35, 58, 59, 77, 83: return .certificateUntrusted
-        case 90, 91: return .certificateChanged
+        // 90 is `CURLE_SSL_PINNEDPUBKEYNOTMATCH`, and it is the *only* code that means the stored
+        // pin was weighed and rejected — it cannot arise without `--pinnedpubkey`. 91 is
+        // `CURLE_SSL_INVALIDCERTSTATUS` (a stapled OCSP status), which was classified here too and
+        // would have told a user their server "is presenting a different certificate than the one
+        // you trusted" about a revocation check. It needs `--cert-status`, which no invocation
+        // passes, so it is unreachable rather than merely rare — it falls to the default and
+        // carries `curl`'s own words instead of a claim nobody has observed.
+        case 90: return .certificateChanged
         // 64 is `CURLE_USE_SSL_FAILED` — a required TLS upgrade the server would not do, raised
         // when explicit FTPS meets a plain-only port (observed against port 2121, 2026-07-25).
         case 64: return .tlsNotAvailable
@@ -139,6 +293,9 @@ public enum FTPTransportError: Error, Sendable, Equatable {
     /// sends the user to check the wrong thing.
     private static func replyCodeMeaning(in stderr: String) -> FTPTransportError {
         switch ftpReplyCode(in: stderr) {
+        // 500/502 is the server saying it has no such verb — measured as the answer to a
+        // `SITE UTIME` no server here offers.
+        case 500, 502: return .commandNotImplemented
         case 530: return .loginDenied
         case 532, 552: return .permissionDenied
         // 553 is "file name not allowed" — a write the server rejected on the name itself.

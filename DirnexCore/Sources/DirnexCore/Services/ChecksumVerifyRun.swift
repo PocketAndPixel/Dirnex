@@ -10,14 +10,24 @@ import Foundation
 /// The algorithm is never passed in: it comes out of the manifest, by a `MD5 (…)` label or by the
 /// digest width, which is distinct for all four. A caller able to override it could verify a
 /// SHA-256 file as MD5 and report every single line as a mismatch.
+///
+/// **Which files it looks at is `ChecksumVerifyScope`'s, not this file's** (M24 Slice 4). Verifying
+/// a manifest that is not on this disk is two-phase — nothing can know what to fetch until the
+/// manifest has been read — so the gesture works the same set out in order to weigh it, and the two
+/// must be one function or a file the gesture failed to predict comes back "not downloaded" while
+/// sitting right in front of the user.
 struct ChecksumVerifyRun {
     let context: ChecksumRunContext
 
     func execute(manifest: VFSPath) -> OperationReport {
-        let manifestName = manifest.lastComponent
-        let parsed: ChecksumManifest
+        let scope: ChecksumVerifyScope
         do {
-            parsed = try read(manifest, named: manifestName)
+            scope = try ChecksumVerifyScope.resolve(
+                manifestAt: manifest,
+                contents: try read(manifest),
+                list: { (try? context.backend.listDirectory(at: $0)) ?? [] },
+                isCancelled: { context.isCancelled() }
+            )
         } catch let error as ChecksumError {
             return context.report(outcome: .failed(error))
         } catch {
@@ -25,74 +35,40 @@ struct ChecksumVerifyRun {
             return context.report(outcome: nil)
         }
 
-        let names = Set(parsed.entries.map(\.name))
-        let walked = gather(manifestNames: names)
-        let listing = ChecksumScope.comparableListing(
-            walked: walked.map { ($0.name, $0.entry.isHidden) },
-            manifestName: manifestName,
-            manifestNames: names
-        )
-        let comparable = Set(listing)
-        // Only files the manifest actually claims are hashed. The rest of the listing exists to
-        // answer "extra", which costs a `stat` the walk already did and not one byte of reading.
-        let claimed = walked.filter { names.contains($0.name) && comparable.contains($0.name) }
-        context.measure(files: claimed)
-
+        context.measure(files: scope.claimed)
         var computed: [String: ChecksumVerification.Computation] = [:]
-        for file in claimed {
+        for file in scope.claimed {
             guard !context.checkCancelled() else { return context.report(outcome: nil) }
-            computed[file.name] = context.digest(of: file.entry, using: parsed.algorithm).computation
+            computed[file.name] = context
+                .digest(of: file.entry, using: scope.manifest.algorithm)
+                .computation
         }
         guard !context.checkCancelled() else { return context.report(outcome: nil) }
         return context.report(
             outcome: .verified(
-                ChecksumVerification.verify(parsed, listing: listing, computed: computed)
+                ChecksumVerification.verify(
+                    scope.manifest,
+                    listing: scope.listing,
+                    computed: computed
+                )
             )
         )
     }
 
-    /// Read and parse the checksum file.
+    /// The manifest's own bytes, read from the file standing for it.
     ///
-    /// `impliedName` is what makes Total Commander's single-file `.crc` companion readable: its
-    /// whole content is one bare hex number, so the name it describes exists nowhere but in the
-    /// manifest's own file name (`disk.iso.crc` → `disk.iso`).
-    private func read(_ manifest: VFSPath, named manifestName: String) throws -> ChecksumManifest {
-        let data = try Data(contentsOf: URL(fileURLWithPath: manifest.path))
-        return try ChecksumManifest.parse(
-            data,
-            implicitName: ChecksumManifest.impliedName(forManifestFileName: manifestName)
-        )
-    }
-
-    /// Every regular file the manifest could be talking about, plus the siblings that make an
-    /// `extra` verdict meaningful — pruned by `ChecksumScope` so a subtree the manifest never
-    /// mentions is not walked at all.
+    /// For a manifest on this disk that is the manifest; for one in a bucket it is the copy the
+    /// gesture brought down before it could know what else to fetch (``MaterializedPaths``). The
+    /// job keeps naming the **remote** path throughout, which is what makes `job.root` the remote
+    /// directory and every name in the report the server's own spelling.
     ///
-    /// Sorted by name so a re-run's report diffs cleanly against the previous one; the walk's own
-    /// order is directory-entry order, which is not stable across filesystems.
-    private func gather(manifestNames: Set<String>) -> [ChecksumWalkedFile] {
-        let root = context.job.root
-        var found: [ChecksumWalkedFile] = []
-        var stack: [VFSPath] = [root]
-        while let directory = stack.popLast() {
-            if context.isCancelled() { return found }
-            for entry in (try? context.backend.listDirectory(at: directory)) ?? [] {
-                guard let name = ChecksumScope.relativeName(of: entry.path, under: root) else {
-                    continue
-                }
-                if ChecksumScope.shouldDescend(into: entry) {
-                    if ChecksumScope.shouldDescend(
-                        intoSubdirectory: name,
-                        manifestNames: manifestNames
-                    ) {
-                        stack.append(entry.path)
-                    }
-                    continue
-                }
-                guard ChecksumScope.isHashable(entry) else { continue }
-                found.append(ChecksumWalkedFile(name: name, entry: entry))
-            }
+    /// ``ChecksumError/needsLocalFile`` when there is no stand-in: the runner already refused that
+    /// case before this could be reached, and answering it here rather than force-unwrapping keeps
+    /// a dispatch mistake a reported failure instead of a crash.
+    private func read(_ manifest: VFSPath) throws -> Data {
+        guard let local = context.materialized.localPath(for: manifest) else {
+            throw ChecksumError.needsLocalFile
         }
-        return found.sorted { $0.name < $1.name }
+        return try Data(contentsOf: URL(fileURLWithPath: local.path))
     }
 }

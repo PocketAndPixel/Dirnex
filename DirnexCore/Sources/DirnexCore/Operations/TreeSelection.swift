@@ -55,7 +55,7 @@ public enum TreeSelection {
     }
 
     /// Group a marked set by the subdirectory each item lands in when the selection is transferred,
-    /// **preserving each item's path relative to `root`** — Total Commander's branch-view behaviour,
+    /// **preserving each item's path relative to `root`** — Total Commander's branch-view behavior,
     /// and the settled answer to "what F5/F6 do with marks spanning levels".
     ///
     /// The alternative — everything flat into one folder — collides the moment two expanded folders

@@ -27,7 +27,7 @@ struct UpdateIndicatorTooltipTests {
 
     @Test("a version-less update still gets a tooltip, not a blank one")
     func fallsBackWithoutVersion() {
-        // `available(version:)` normalises a blank version to `nil` (pinned in the core), and the
+        // `available(version:)` normalizes a blank version to `nil` (pinned in the core), and the
         // indicator still has to say *something* — "Dirnex  is available" is the failure this
         // branch exists to avoid.
         for version in [nil, "", "   "] as [String?] {

@@ -20,7 +20,7 @@ struct FirstRunTourViewTests {
     /// The counterpart of the function bar's `slotsHaveSelectors`: a screen highlights a command by
     /// id, and the app resolves it to a title-plus-shortcut chip. Every one must be a real, wired
     /// command — both so the chip renders and so the claim it makes ("copy", "connect", "grant
-    /// access") is one the app can honour.
+    /// access") is one the app can honor.
     @Test("every highlighted command is a real, dispatchable command")
     func highlightedCommandsAreDispatchable() {
         for id in FirstRunTour.screens.flatMap(\.commandIDs) {

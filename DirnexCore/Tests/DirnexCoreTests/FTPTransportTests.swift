@@ -90,6 +90,41 @@ struct FTPTransportErrorTests {
         #expect(FTPTransportError.classify(exitCode: 21, stderr: "... 550 ...") == .notFound)
     }
 
+    /// The split a per-connection metadata latch rests on (PLAN.md §M25 Slice 2).
+    ///
+    /// Both arrive as `curl` exit **21** — a refused `-Q` command — and before this milestone both
+    /// fell to `replyCodeMeaning`'s default and came back as ``FTPTransportError/notFound``. Read as
+    /// one, a metadata carry has no honest option: latch on 550 and one unwritable file costs every
+    /// later copy its mode, or never latch and a server that lacks the verb is asked again for every
+    /// file forever.
+    ///
+    /// Measured against a real server 2026-08-28: `SITE UTIME`, which no server here offers,
+    /// answered **500**, while `MFMT` on a missing file answered **550**.
+    @Test("500 is a verb the server lacks, where 550 is one file's own problem")
+    func unimplementedVerbIsNotAMissingFile() {
+        #expect(
+            FTPTransportError.classify(
+                exitCode: 21,
+                stderr: "curl: (21) QUOT command failed with 500"
+            ) == .commandNotImplemented
+        )
+        // 502 is the other spelling of the same answer.
+        #expect(
+            FTPTransportError.classify(
+                exitCode: 21,
+                stderr: "curl: (21) QUOT command failed with 502"
+            ) == .commandNotImplemented
+        )
+        // The narrowness control: a file problem must *not* read as the server lacking the verb, or
+        // a connection would stop carrying metadata because one path was missing.
+        #expect(
+            FTPTransportError.classify(
+                exitCode: 21,
+                stderr: "curl: (21) QUOT command failed with 550"
+            ) == .notFound
+        )
+    }
+
     @Test(
         "an untrusted certificate is its own case (exit 60, observed against a self-signed server)"
     )
@@ -110,6 +145,18 @@ struct FTPTransportErrorTests {
             stderr: "curl: (90) SSL: public key does not match pinned public key"
         )
         #expect(error == .certificateChanged)
+    }
+
+    /// `certificateChanged` drives a warning that tells the user their server is presenting a
+    /// different certificate than the one they trusted — a claim only exit 90 supports, since it is
+    /// the one code that means the stored pin was weighed and rejected. Exit 91 is a stapled OCSP
+    /// status (`CURLE_SSL_INVALIDCERTSTATUS`), which no invocation can provoke because none passes
+    /// `--cert-status`; it was classified alongside 90 and is now `curl`'s own words instead.
+    @Test("an OCSP status failure is not read as a changed certificate (exit 91)")
+    func invalidCertificateStatusIsNotACertificateChange() {
+        let message = "curl: (91) SSL: Invalid certificate status"
+        let error = FTPTransportError.classify(exitCode: 91, stderr: message)
+        #expect(error == .failure(message))
     }
 
     @Test("an unreachable host and a timeout are distinguished (exits 6/7 and 28, observed)")

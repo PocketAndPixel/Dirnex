@@ -12,7 +12,7 @@ private func words(_ list: String) -> Set<String> { LanguageGrammar.words(list) 
 /// `typeNames` holds only names the *language* defines. A type the user declared is a type because
 /// of a declaration somewhere else, which is a compiler's knowledge and out of scope by name
 /// (PLAN.md §M17 ▸ not in scope) — so no "an identifier starting with a capital is a type" rule,
-/// which would colour every enum case and constant in the file.
+/// which would color every enum case and constant in the file.
 enum CFamilyGrammars {
     /// The shape every row below starts from: `//` line comments, `/* */` blocks, double- and
     /// single-quoted literals with a backslash escape.
@@ -42,17 +42,17 @@ enum CFamilyGrammars {
     // MARK: - Swift and Objective-C
 
     /// Swift nests block comments, which is the difference between `/* /* */ */` ending where the
-    /// file says it does and colouring the remainder of the file as one comment.
+    /// file says it does and coloring the remainder of the file as one comment.
     ///
     /// A raw string (`#"…"#`) is not in the delimiter list: its opener carries a variable number of
     /// `#`, which is a count to remember, and remembering is the boundary this milestone draws
-    /// (PLAN.md §6). Such a literal simply colours from its inner quote.
+    /// (PLAN.md §6). Such a literal simply colors from its inner quote.
     ///
     /// `prefix` and `postfix` are **absent** on purpose, found by running the scanner over this
     /// repo's own source: both are contextual keywords that only mean anything before `func` or
     /// `operator`, and `prefix` is one of the most common method names in Swift — `data.prefix(n)`
-    /// came out coloured as a keyword on three lines of `TextPreview.swift` alone. A scanner with no
-    /// parser cannot tell the two apart, and the false positive is louder than the word it colours.
+    /// came out colored as a keyword on three lines of `TextPreview.swift` alone. A scanner with no
+    /// parser cannot tell the two apart, and the false positive is louder than the word it colors.
     static let swift = base(
         keywords: words("""
         actor any as associatedtype async await borrowing break case catch class consuming
@@ -123,7 +123,7 @@ enum CFamilyGrammars {
     /// A `.h` is C, C++ or Objective-C and nothing in the file's *type* says which — which is the
     /// reason `SyntaxLanguage.forFile(named:)` routes by extension in the first place. So a header
     /// gets the union: the superset keywords plus Objective-C's `@` directives, since a word
-    /// coloured that no other dialect uses is invisible in the files that do not use it, while
+    /// colored that no other dialect uses is invisible in the files that do not use it, while
     /// picking one dialect leaves `class` or `@interface` flat in the other two.
     static let cHeader: LanguageGrammar = {
         var grammar = cPlusPlus
@@ -211,8 +211,8 @@ enum CFamilyGrammars {
     )
 
     /// A Rust lifetime (`'a`) opens the single-quote literal and is closed by the end of the line,
-    /// so it colours as a very short string. That is the deliberate trade `StringLiteral.spansLines`
-    /// describes: a wrong colour on one token, never a wrong colour on the rest of the file.
+    /// so it colors as a very short string. That is the deliberate trade `StringLiteral.spansLines`
+    /// describes: a wrong color on one token, never a wrong color on the rest of the file.
     static let rust = base(
         keywords: words("""
         as async await break const continue crate dyn else enum extern false fn for if impl in
@@ -229,7 +229,7 @@ enum CFamilyGrammars {
 
     /// A JavaScript **regex literal** (`/re/`) is not scanned. Telling it from division needs to
     /// know what the previous token was, which is a parser's job (PLAN.md §M17) — so a `/` stays
-    /// plain, and a regex containing `//` will colour the rest of its line as a comment.
+    /// plain, and a regex containing `//` will color the rest of its line as a comment.
     static let javascript = base(
         keywords: words("""
         async await break case catch class const continue debugger default delete do else enum

@@ -104,6 +104,49 @@ struct ArchiveMutationTests {
         )
     }
 
+    // MARK: - Renaming a member in place
+
+    @Test("a renamed member keeps its own directory")
+    func renameKeepsTheDirectory() {
+        #expect(
+            ArchiveMutation.renamedInnerPath(ofInnerPath: "/docs/a.txt", to: "b.txt")
+                == "/docs/b.txt"
+        )
+        // A member at the archive root keeps the leading slash, which is what `workingLocation`
+        // strips again on the way to the staged tree — so root and depth take one code path.
+        #expect(ArchiveMutation.renamedInnerPath(ofInnerPath: "/a.txt", to: "b.txt") == "/b.txt")
+        #expect(
+            ArchiveMutation.renamedInnerPath(ofInnerPath: "/a/b/c/deep.txt", to: "other.md")
+                == "/a/b/c/other.md"
+        )
+        // A directory member renames exactly as a file does; its subtree travels with the move.
+        #expect(ArchiveMutation.renamedInnerPath(ofInnerPath: "/docs", to: "guides") == "/guides")
+    }
+
+    /// The names a member cannot take, and the two that matter are the ones a *local* rename never
+    /// meets: the staged tree is real filesystem paths, so `..` would climb out of the directory
+    /// the member was in and land the rename somewhere nobody asked for.
+    @Test("a name that would move the member instead of renaming it is refused")
+    func renameRefusesNamesThatAreNotNames() {
+        for bad in ["", "/", "a/b", "..", ".", "../escape.txt", "sub/deep.txt"] {
+            #expect(
+                ArchiveMutation.renamedInnerPath(ofInnerPath: "/docs/a.txt", to: bad) == nil,
+                "\(bad) should not be a member name"
+            )
+        }
+    }
+
+    /// A case-only change is deliberately **allowed** through, because the staged move performs it
+    /// (measured on APFS 2026-09-10) — refusing it here would make a case fix impossible inside an
+    /// archive while it works everywhere else in the app.
+    @Test("a case-only change is a rename like any other")
+    func renameAllowsACaseOnlyChange() {
+        #expect(
+            ArchiveMutation.renamedInnerPath(ofInnerPath: "/docs/readme.md", to: "README.md")
+                == "/docs/README.md"
+        )
+    }
+
     @Test("temporary archive name is a hidden sibling that keeps the full suffix")
     func temporaryArchiveName() {
         #expect(

@@ -23,19 +23,99 @@ enum FileFormatting {
     /// Size column text. A file shows its own byte size. A directory shows a dash until
     /// a recursive total has been computed for it (Space-on-dir, PLAN.md §M1), then that
     /// byte count — Total Commander's in-place directory sizing.
-    static func sizeString(for entry: FileEntry, computedSize: Int64? = nil) -> String {
+    ///
+    /// `state` carries the two things a byte count cannot say, and both exist only because a walk
+    /// over a server is slow and billed rather than instant (PLAN.md §M21 Slice 11): that one is
+    /// **running**, which locally is over before a frame is drawn and remotely takes seconds per
+    /// folder, and that one **gave up** at its budget, which must not draw the same dash as "never
+    /// measured" — the user would press Space again and spend the whole budget a second time.
+    ///
+    /// Both are glyphs rather than words on purpose. This column's width is measured against byte
+    /// counts, and a phrase here would be the fixed-width-control trap from docs/NOTES.md ▸
+    /// Localization in the one place there is no room to grow: prose belongs where its length is
+    /// free, which for the give-up is ``sizeToolTip(for:state:)``.
+    static func sizeString(
+        for entry: FileEntry,
+        computedSize: Int64? = nil,
+        state: DirectorySizeDisplayState = .idle
+    ) -> String {
         if entry.isDirectoryLike {
-            return computedSize.map { byteFormatter.string(fromByteCount: $0) } ?? "—"
+            if let computedSize { return byteFormatter.string(fromByteCount: computedSize) }
+            switch state {
+            case .measuring: return "…"
+            case .gaveUp: return "?"
+            case .idle: return "—"
+            }
         }
         return byteFormatter.string(fromByteCount: entry.byteSize)
+    }
+
+    /// What the size cell explains on hover, or `nil` when there is nothing to explain.
+    ///
+    /// The `?` is a symbol nobody has been taught, and the status line that teaches it expires after
+    /// four seconds while the marker stays on the row indefinitely — so without this the glyph is
+    /// permanently unexplained for anyone who looked away. A tooltip is the one surface here whose
+    /// length is genuinely free: it wraps, it is not in a column, and it is not competing with a
+    /// folder name of unbounded length, which is what makes the status line's own truncation
+    /// survivable rather than fatal (PLAN.md §M21 Slice 11).
+    ///
+    /// `.measuring` deliberately gets none. It lasts seconds and says what it means — a tooltip
+    /// nobody can hover in time is noise, and it would have to be cleared again a moment later.
+    static func sizeToolTip(for entry: FileEntry, state: DirectorySizeDisplayState) -> String? {
+        guard entry.isDirectoryLike, state == .gaveUp else { return nil }
+        return String(
+            localized: """
+            Measuring stopped: this folder holds more folders than Dirnex counts over a network \
+            connection. Press Space to try again.
+            """,
+            comment: """
+            Tooltip on a folder whose recursive size over a server gave up at its budget, \
+            explaining the “?” in the size column. Length is free here — it wraps.
+            """
+        )
     }
 
     static func byteString(_ bytes: Int64) -> String {
         byteFormatter.string(fromByteCount: bytes)
     }
 
+    /// Date column text — or the same dash the size column uses, for a row whose backend has no
+    /// date to give.
+    ///
+    /// Caught by browsing a real bucket: an S3 folder is a *common prefix* rather than an object,
+    /// so it carries no `LastModified`, and formatting `FileEntry.unknownDate` drew
+    /// **01.01.1, 02:02** — which reads as a corrupt timestamp rather than as an absent one, and
+    /// which no test could see, since every assertion in this area is about the shapes a *real*
+    /// date takes.
     static func dateString(for entry: FileEntry) -> String {
-        dateFormatter.string(from: entry.modificationDate)
+        guard entry.hasModificationDate else { return "—" }
+        return dateFormatter.string(from: entry.modificationDate)
+    }
+
+    /// Every shape `dateString(for:)` can take in the current region — what a caller sizing the Date
+    /// column measures (`DateColumnMetrics`).
+    ///
+    /// Sampled through the **same** formatter the rows use rather than reasoned about. A
+    /// `.short`/`.short` date is region data and its shape is not ours to predict: measured, `de_DE`
+    /// renders `28.12.25, 22:58` where `ko_KR` renders `2025. 12. 28. 오후 10:58` and `fi_FI` puts a
+    /// word in the middle (`28.12.2025 klo 22.58`). A second formatter here would be a second
+    /// definition of what a row shows, and the two would drift the first time either changed.
+    ///
+    /// Every month, because a region is free to spell one; both halves of the clock, for the AM/PM
+    /// regions; a two-digit day, hour and minute, since those are the widest a numeric field gets.
+    static var dateStringShapes: [String] {
+        var components = DateComponents()
+        components.year = 2025
+        components.day = 28
+        components.minute = 58
+        let calendar = Calendar(identifier: .gregorian)
+        return (1...12).flatMap { month in
+            [10, 22].compactMap { hour -> String? in
+                components.month = month
+                components.hour = hour
+                return calendar.date(from: components).map { dateFormatter.string(from: $0) }
+            }
+        }
     }
 }
 

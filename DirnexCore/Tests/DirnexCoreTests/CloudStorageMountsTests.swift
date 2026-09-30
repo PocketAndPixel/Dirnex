@@ -37,8 +37,8 @@ struct CloudStorageMountsTests {
         #expect(account == "some-one@gmail.com")
     }
 
-    @Test("a provider that mounts one unlabelled folder has no account")
-    func unlabelledMountHasNoAccount() {
+    @Test("a provider that mounts one unlabeled folder has no account")
+    func unlabeledMountHasNoAccount() {
         let (provider, account) = CloudStorageMounts.split(directoryName: "Dropbox")
         #expect(provider == "Dropbox")
         #expect(account == nil)
@@ -49,6 +49,59 @@ struct CloudStorageMountsTests {
         let (provider, account) = CloudStorageMounts.split(directoryName: "Box-")
         #expect(provider == "Box")
         #expect(account == nil)
+    }
+
+    @Test("a provider whose own name contains a hyphen is matched whole, not cut at it")
+    func sharedLibrariesIsNotCutInsideItsProviderName() {
+        // OneDrive mounts a SharePoint document library as `OneDrive-SharedLibraries-<tenant>`,
+        // so the first hyphen falls inside the provider's name. Cutting there would answer the
+        // account `SharedLibraries-Contoso` — an internal English token bound for the sidebar.
+        let (provider, account) = CloudStorageMounts.split(
+            directoryName: "OneDrive-SharedLibraries-Contoso"
+        )
+        #expect(provider == "OneDrive-SharedLibraries")
+        #expect(account == "Contoso")
+    }
+
+    @Test("the shorter OneDrive id does not shadow the longer one it prefixes")
+    func plainOneDriveStillSplitsAtTheHyphen() {
+        // The negative control for the rule above: ordering the table wrongly (or adding a bare
+        // `OneDrive` entry to it) would take this branch and answer an empty account.
+        let (provider, account) = CloudStorageMounts.split(directoryName: "OneDrive-Personal")
+        #expect(provider == "OneDrive")
+        #expect(account == "Personal")
+    }
+
+    @Test("a SharePoint library is named for the product, not for its folder")
+    func sharedLibrariesIsRenamed() {
+        let name = CloudStorageMounts.displayName(
+            providerID: "OneDrive-SharedLibraries",
+            accountLabel: "Contoso",
+            isAmbiguous: false
+        )
+        #expect(name == "SharePoint")
+    }
+
+    @Test("a SharePoint library and the user's own OneDrive are two different rows")
+    func sharePointDoesNotCollideWithOneDrive() {
+        // The pair that shipped identical: both mounts split to `OneDrive`, so neither was
+        // ambiguous by the count and both drew the bare provider name.
+        let personal = CloudStorageMounts.split(directoryName: "OneDrive-Personal")
+        let library = CloudStorageMounts.split(directoryName: "OneDrive-SharedLibraries-Contoso")
+        #expect(personal.providerID != library.providerID)
+
+        let personalName = CloudStorageMounts.displayName(
+            providerID: personal.providerID,
+            accountLabel: personal.accountLabel,
+            isAmbiguous: false
+        )
+        let libraryName = CloudStorageMounts.displayName(
+            providerID: library.providerID,
+            accountLabel: library.accountLabel,
+            isAmbiguous: false
+        )
+        #expect(personalName == "OneDrive")
+        #expect(libraryName == "SharePoint")
     }
 
     // MARK: - Display names
@@ -210,5 +263,57 @@ struct CloudStorageMountsTests {
         defer { temp.cleanup() }
 
         #expect(CloudStorageMounts.mounts(home: temp.root.path).isEmpty)
+    }
+
+    // MARK: - Is a macOS grant relevant here (PLAN.md §M26 Slice 3)
+
+    /// The three answers that decide which remedy a permission failure names. Pure string tests —
+    /// nothing here touches the disk, which is what makes it free to ask on an error path.
+    @Test("a path inside a provider mount is inside CloudStorage, at every depth")
+    func mountPathsAreInsideCloudStorage() {
+        let home = "/Users/test"
+        let inside = [
+            "/Users/test/Library/CloudStorage",
+            "/Users/test/Library/CloudStorage/GoogleDrive-someone@gmail.com",
+            "/Users/test/Library/CloudStorage/GoogleDrive-someone@gmail.com/My Drive/a/b.txt",
+            "/Users/test/Library/CloudStorage/Dropbox-Home/team/report.pdf"
+        ]
+        for path in inside {
+            #expect(CloudStorageMounts.isInsideCloudStorage(.local(path), home: home), "\(path)")
+        }
+    }
+
+    /// The narrowness control, and the half the fix would be wrong without: `Mobile Documents`
+    /// **is** TCC-gated, so Full Disk Access is the correct advice for an iCloud path. The two
+    /// roots are twins for the trash route (``TrashLanding/providerRoots``) and opposites here.
+    @Test("iCloud, ordinary local paths and a lookalike prefix are not")
+    func everywhereElseIsNot() {
+        let home = "/Users/test"
+        let outside = [
+            "/Users/test/Library/Mobile Documents/com~apple~CloudDocs/notes.txt",
+            "/Users/test/Documents/report.pdf",
+            "/Users/test/Library",
+            // A sibling whose name merely starts the same way — `isSelfOrDescendant` compares
+            // components, so this must not be swept in by a prefix match.
+            "/Users/test/Library/CloudStorageBackup/old.txt",
+            // Another user's mounts are not this home's.
+            "/Users/other/Library/CloudStorage/Box-Box/a.txt"
+        ]
+        for path in outside {
+            #expect(!CloudStorageMounts.isInsideCloudStorage(.local(path), home: home), "\(path)")
+        }
+    }
+
+    /// A remote path that happens to *spell* the same thing is not on this Mac at all, so it can
+    /// never be inside this home's CloudStorage — the backend is checked before the components.
+    @Test("a remote path spelling the same components is not inside CloudStorage")
+    func remoteLookalikeIsNot() {
+        // Built through the type's own constructor rather than hand-spelled, so it is an id the
+        // app really produces (docs/NOTES.md ▸ a fixture identifier that merely looks real).
+        let path = VFSPath(
+            backend: VFSBackendID.sftp(SFTPLocation(host: "srv", username: "oleg")),
+            path: "/Users/test/Library/CloudStorage/Box-Box/a.txt"
+        )
+        #expect(!CloudStorageMounts.isInsideCloudStorage(path, home: "/Users/test"))
     }
 }

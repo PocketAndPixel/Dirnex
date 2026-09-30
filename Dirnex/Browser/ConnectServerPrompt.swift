@@ -157,6 +157,11 @@ final class ConnectServerPrompt: NSObject {
         guard let content = sheet.contentView else { return }
         content.layoutSubtreeIfNeeded()
         sheet.setContentSize(content.fittingSize)
+        // AppKit orders Tab by where each control sits and builds that order once, so a row shown or
+        // hidden leaves every row below it in the wrong place: switching SMB to SFTP tabbed Protocol →
+        // Password → … → Host. Rebuild it from the settled layout.
+        content.layoutSubtreeIfNeeded()
+        sheet.recalculateKeyViewLoop()
     }
 
     // MARK: - Actions
@@ -219,9 +224,14 @@ private enum ConnectPromptChrome {
         String(localized: "Connect to Server", comment: "Title of the Connect to Server dialog.")
     }
 
+    /// Names every protocol the picker below it offers. It is a *list*, so it goes stale silently
+    /// the day one is added — the sheet went on saying three when it offered four, in fourteen
+    /// languages, with nothing but a launch to show it.
     static var subtitle: String {
         String(
-            localized: "Browse a remote SFTP or FTP account, or an SMB share on your network.",
+            localized: """
+            Browse a remote SFTP, FTP or S3 account, or an SMB share on your network.
+            """,
             comment: "Subtitle of the Connect to Server dialog."
         )
     }

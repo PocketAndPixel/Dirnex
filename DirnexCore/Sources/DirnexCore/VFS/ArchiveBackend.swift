@@ -7,7 +7,7 @@ import Foundation
 /// archive never re-reads it: the app's `ArchiveMounter` runs `bsdtar` once, off-main, to
 /// build the TOC and construct the backend. Extraction (Quick Look inside, F5 copy-out) and
 /// packing are a later M4 pass — hence `capabilities == .read` and the write primitives
-/// stay at their `.unsupported` defaults, which the panel greys out (§M5 "capability
+/// stay at their `.unsupported` defaults, which the panel grays out (§M5 "capability
 /// degradation").
 ///
 /// The backend's `id` encodes the archive's on-disk path, so a `VFSPath` under it identifies
@@ -18,12 +18,24 @@ public struct ArchiveBackend: VFSBackend {
     public let archiveOnDiskPath: String
     private let toc: ArchiveTOC
 
-    public init(archiveOnDiskPath: String, toc: ArchiveTOC) {
+    /// The archive's file is a Windows program with the archive appended — a self-extractor
+    /// (``SelfExtractingArchive``). Browsable like any other, and never rewritten: a repack would
+    /// write a bare archive over the program, and under a `.zip` name `bsdtar -a` would even turn a
+    /// 7z into a zip. Recorded at mount so the gates that ask can peek rather than read the file.
+    public let isSelfExtracting: Bool
+
+    public init(archiveOnDiskPath: String, toc: ArchiveTOC, isSelfExtracting: Bool = false) {
         self.archiveOnDiskPath = archiveOnDiskPath
         self.toc = toc
+        self.isSelfExtracting = isSelfExtracting
     }
 
     public var id: VFSBackendID { .archive(forArchiveAt: archiveOnDiskPath) }
+
+    /// At least one row this backend lists carries a name that did not decode, so the archive's
+    /// names are stored in a code page nobody has declared yet
+    /// (``ArchiveTOC/hasUnreadableNames``, ``ArchiveNameEncoding``).
+    public var hasUnreadableNames: Bool { toc.hasUnreadableNames }
 
     /// Read-only for now — writing inside an archive (add/delete) is the next M4 item.
     public var capabilities: VFSCapabilities { .read }
@@ -67,7 +79,12 @@ public struct ArchiveBackend: VFSBackend {
             modificationDate: entry.modificationDate,
             creationDate: entry.modificationDate,
             isHidden: entry.name.hasPrefix("."),
-            permissions: entry.kind == .directory ? 0o755 : 0o644,
+            // What the archive stored, and `nil` for a directory whose entry the archive omitted
+            // and this parser synthesized. Invented `0o755`/`0o644` until M24 Slice 7, while
+            // `bsdtar -tvf` had been printing the real mode in column 0 all along.
+            permissions: entry.permissions,
+            ownerName: entry.ownerName,
+            groupName: entry.groupName,
             inode: 0,
             symlinkDestination: entry.symlinkDestination,
             // A symlink inside a browsed archive isn't resolved (its target may be another

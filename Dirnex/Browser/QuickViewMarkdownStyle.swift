@@ -4,7 +4,7 @@ import DirnexCore
 /// The `<html>` wrapper and the stylesheet a rendered Markdown document is drawn with
 /// (PLAN.md §M18 ▸ Slice 3).
 ///
-/// `DirnexCore` emits a **fragment** carrying class names and never a colour, for the reason M17
+/// `DirnexCore` emits a **fragment** carrying class names and never a color, for the reason M17
 /// separates `SyntaxToken.Kind` from `SyntaxTheme`: the core says what a thing *is*, and only the
 /// app knows which appearance is on screen. This is the other half.
 ///
@@ -17,10 +17,10 @@ import DirnexCore
 /// media query and a light/dark flip costs nothing — where a re-render would have thrown away the
 /// user's reading position every time the system crossed sunset.
 ///
-/// ## Every colour here was measured, and two obvious choices are wrong
+/// ## Every color here was measured, and two obvious choices are wrong
 ///
 /// Measured in both appearances against the page background, with alpha composited (docs/NOTES.md:
-/// the muted label colours carry alpha, and reading them without compositing scores them at 21:1):
+/// the muted label colors carry alpha, and reading them without compositing scores them at 21:1):
 ///
 /// - **`.windowBackgroundColor` and `.controlBackgroundColor` are byte-identical to
 ///   `.textBackgroundColor`** — `#FFFFFF` light, `#1E1E1E` dark. Either as a code-fence fill draws
@@ -30,7 +30,7 @@ import DirnexCore
 ///   `.quaternaryLabelColor` composites to takes `typeOrTag` from 4.59:1 to **3.68:1**. M17
 ///   authored that palette against `.textBackgroundColor` and it clears AA there, so the fence keeps
 ///   the page's own background and is delimited by a **border** instead. The fill is kept for
-///   *inline* `<code>`, which carries no coloured spans — only `.textColor`, at ~18:1 over it.
+///   *inline* `<code>`, which carries no colored spans — only `.textColor`, at ~18:1 over it.
 /// - `.gridColor` inverts: `#E6E6E6` in light but `#1A1A1A` in dark, *darker* than the page it would
 ///   sit on (1.04:1). `.separatorColor` is the one that behaves in both (1.25 / 1.34:1).
 /// - `.linkColor` clears AA in both — `#0068DA` at 5.26:1, `#419CFF` at 5.89:1 — so links take the
@@ -38,7 +38,7 @@ import DirnexCore
 ///
 /// `@MainActor` because it resolves `NSColor`s through a drawing appearance and borrows the source
 /// view's truncation sentence; it runs on the load, not on the detached render, and is a few dozen
-/// colour resolutions and a string join.
+/// color resolutions and a string join.
 @MainActor
 enum QuickViewMarkdownStyle {
     /// The whole page: the fragment, wrapped, with both palettes and the rules that use them.
@@ -86,7 +86,7 @@ enum QuickViewMarkdownStyle {
 
     // MARK: - The palette
 
-    /// One appearance's colours as custom properties, so the rules below are written once.
+    /// One appearance's colors as custom properties, so the rules below are written once.
     private static func palette(for appearance: NSAppearance.Name, selector: String) -> String {
         guard let appearance = NSAppearance(named: appearance) else { return "" }
         let background = resolved(.textBackgroundColor, in: appearance)
@@ -102,38 +102,38 @@ enum QuickViewMarkdownStyle {
         // One rule per token kind, from the core's own class name rather than a second spelling of
         // it — the whole reason `MarkdownDocument.tokenClass` is public. A kind added later arrives
         // here automatically, and `SyntaxTheme.color(for:)` is a compiler-checked switch, so it
-        // cannot arrive uncoloured.
+        // cannot arrive uncolored.
         for kind in SyntaxToken.Kind.allCases {
             guard let name = MarkdownDocument.tokenClass(for: kind),
-                  let colour = SyntaxTheme.color(for: kind)
+                  let color = SyntaxTheme.color(for: kind)
             else { continue }
-            lines.append("--\(name): \(hex(resolved(colour, in: appearance)));")
+            lines.append("--\(name): \(hex(resolved(color, in: appearance)));")
         }
         return selector + " {\n" + lines.map { "  " + $0 }.joined(separator: "\n") + "\n}"
     }
 
-    /// `colour` as it resolves in `appearance`, in sRGB.
+    /// `color` as it resolves in `appearance`, in sRGB.
     ///
-    /// `performAsCurrentDrawingAppearance` rather than reading the colour directly: a dynamic
+    /// `performAsCurrentDrawingAppearance` rather than reading the color directly: a dynamic
     /// `NSColor` answers for whichever appearance is current, and this file has to ask it for the
     /// one that is *not* on screen — which is the only way a two-palette stylesheet can exist.
-    private static func resolved(_ colour: NSColor, in appearance: NSAppearance) -> NSColor {
-        var out = colour
+    private static func resolved(_ color: NSColor, in appearance: NSAppearance) -> NSColor {
+        var out = color
         appearance.performAsCurrentDrawingAppearance {
-            out = colour.usingColorSpace(.sRGB) ?? colour
+            out = color.usingColorSpace(.sRGB) ?? color
         }
         return out
     }
 
-    /// `colour` resolved and then **composited** over `background`, which is what the eye sees.
-    /// The muted label colours are black or white at 10–55 % alpha, so the raw value is useless: it
+    /// `color` resolved and then **composited** over `background`, which is what the eye sees.
+    /// The muted label colors are black or white at 10–55 % alpha, so the raw value is useless: it
     /// reads as pure black in light mode, at 21:1 against a background it is nowhere near.
     private static func flattened(
-        _ colour: NSColor,
+        _ color: NSColor,
         over background: NSColor,
         in appearance: NSAppearance
     ) -> NSColor {
-        let front = resolved(colour, in: appearance)
+        let front = resolved(color, in: appearance)
         let alpha = front.alphaComponent
         return NSColor(
             srgbRed: front.redComponent * alpha + background.redComponent * (1 - alpha),
@@ -143,8 +143,8 @@ enum QuickViewMarkdownStyle {
         )
     }
 
-    private static func hex(_ colour: NSColor) -> String {
-        let srgb = colour.usingColorSpace(.sRGB) ?? colour
+    private static func hex(_ color: NSColor) -> String {
+        let srgb = color.usingColorSpace(.sRGB) ?? color
         return String(
             format: "#%02X%02X%02X",
             Int((srgb.redComponent * 255).rounded()),
@@ -245,7 +245,7 @@ enum QuickViewMarkdownStyle {
         """
     }
 
-    /// One rule per coloured span, named by the core and coloured by `SyntaxTheme` — the same table
+    /// One rule per colored span, named by the core and colored by `SyntaxTheme` — the same table
     /// the source view uses, so the same fence looks the same on `1` and on `2`.
     private static var tokenRules: String {
         SyntaxToken.Kind.allCases

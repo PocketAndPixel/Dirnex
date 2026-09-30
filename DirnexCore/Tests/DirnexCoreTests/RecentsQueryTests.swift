@@ -14,7 +14,7 @@ struct RecentsQueryTests {
     @Test("the predicate filters by last-used within the window and excludes app bundles")
     func predicate() {
         // Last-*used*, not last-modified: that is what keeps Recents to opened documents rather than
-        // a wall of `~/Library` churn, and the reason this isn't just a `SpotlightQuery`.
+        // a wall of `~/Library` churn, and the reason this isn't just a `FileQuery`.
         #expect(
             RecentsQuery().metadataPredicate()
                 == "(kMDItemLastUsedDate >= $time.now(-2592000))"

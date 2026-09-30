@@ -13,7 +13,8 @@ public enum CommandCatalog {
     /// Every command, grouped by category in presentation order. The app filters by category
     /// to build each menu and searches the whole list for the palette.
     public static let all: [Command] =
-        file + edit + selection + view + navigation + workspace + window + application
+        file + fileLocation + edit + selection + view + navigation + workspace + window
+            + application
 
     /// The command with `id`, or `nil` if unknown — the app's menu builder and palette look
     /// commands up by id to join them with AppKit selectors.
@@ -89,6 +90,24 @@ public enum CommandCatalog {
             shortcut: CommandShortcut(key: "F5", modifiers: [.function, .option])
         ),
         Command(
+            id: "file.archiveNameEncoding",
+            title: "Archive Name Encoding…",
+            category: .file,
+            // The words somebody with this problem would reach for, and most of them are not
+            // "encoding": what they are looking at is a row of question marks, so the vocabulary
+            // for *that* — mojibake, garbled, unreadable — has to be here beside the technical
+            // spelling. The two most common code pages are named because a user who already knows
+            // the answer types the number rather than a description of the symptom.
+            keywords: [
+                "encoding", "charset", "character set", "code page", "codepage", "unicode",
+                "utf-8", "cp866", "cp1251", "names", "mojibake", "garbled", "unreadable",
+                "cyrillic", "legacy", "zip", "archive"
+            ]
+            // No shortcut. Every F-key is spoken for, and this is a once-per-archive answer to a
+            // question the app cannot work out for itself — the palette and the File menu are the
+            // whole of its surface.
+        ),
+        Command(
             id: "file.syncDirectories",
             title: "Synchronize Directories…",
             category: .file,
@@ -160,7 +179,7 @@ public enum CommandCatalog {
             title: "Tags…",
             category: .file,
             keywords: ["finder", "tag", "label", "colour", "color", "mark"],
-            // ⌃T next to ⌃D's favorites and ⌃Q's quick view — the control layer is where this app's
+            // ⌃T next to ⌃Q's quick view and ⌃B's size bars — the control layer is where this app's
             // own popups live, and ⌘T is already New Tab.
             shortcut: CommandShortcut(key: "t", modifiers: .control)
         ),

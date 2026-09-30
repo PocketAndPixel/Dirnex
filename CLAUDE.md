@@ -10,12 +10,17 @@ for Settings and dialogs).
 - **[PLAN.md](PLAN.md) is the authoritative source of truth** — architecture rules (§2, locked
   unless proven wrong), the testing strategy, and the current milestone. Read the relevant
   section before starting work, and add a progress note when a slice lands.
-- **[docs/HISTORY.md](docs/HISTORY.md)** — the M0–M18 build log; each milestone is archived here as
+- **[docs/HISTORY.md](docs/HISTORY.md)** — the M0–M28 build log; each milestone is archived here as
   it closes. Source comments citing `PLAN.md §M5` and the like point here. Read it for the
   reasoning behind a shipped decision; it's archive, not instruction.
 - **[docs/NOTES.md](docs/NOTES.md)** — durable engineering gotchas: Swift 6 traps, AppKit
   behaviors, external CLI quirks, release-pipeline pitfalls. Read it before debugging something
   that "should just work."
+- **[docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)** — what works where: every capability
+  against every backend (local, cloud mounts, archives, SFTP, FTP, S3, the virtual listings), with
+  the hard technical limits separated from the gaps that are still ours to close. Read it before
+  claiming a feature does or doesn't work on a given location, and update the cell when a slice
+  moves one.
 - **[docs/RELEASING.md](docs/RELEASING.md)** — the release procedure.
 
 @docs/NOTES.md
@@ -42,6 +47,11 @@ for Settings and dialogs).
 - **Verify live before claiming done** — and fully quit any running instance first; `open`
   just re-focuses the stale binary. `xcodebuild` writes to
   `~/Library/Developer/Xcode/DerivedData/`, not the repo's `build/`.
+  - **A live run that reads a saved secret raises a macOS Keychain password prompt you cannot see.**
+    Secrets live in the login Keychain, and the Debug build is signed differently from the
+    `/Applications` build that saved them, so macOS asks Oleg for his login password. Computer-use
+    screenshots filter that window out, so it looks like an empty screen or a connect that stalls.
+    Tell Oleg before such a run, and never try to answer the prompt yourself.
 - **Ask before a fork in the road.** Big design choices get a recommendation, not a survey.
 - **Leave changes uncommitted.** Oleg commits, in terse one-liners.
 
@@ -57,6 +67,17 @@ xcodebuild test -project Dirnex.xcodeproj -scheme Dirnex   # app target
 Both suites must stay green and both linters clean. SwiftLint's `file_length` 500 and
 `type_body_length` 250 are tight on the large AppKit controllers — see the file-splitting
 section of [docs/NOTES.md](docs/NOTES.md) before adding to one.
+
+**A green app run does not mean the live suites ran.** They are gated on a config file, and without
+it fourteen suites *skip* under a run summary that is byte-identical either way (measured: 979 tests
+executed with servers up against 922 without, both reported as `1018 tests in 169 suites passed`).
+Before trusting anything the remote backends are supposed to be holding up:
+
+```sh
+scripts/live_test_servers.sh up      # throwaway sshd + pyftpdlib, writes both configs
+xcodebuild test -project Dirnex.xcodeproj -scheme Dirnex
+scripts/live_test_servers.sh down    # stop, remove the configs, unpin the host key
+```
 
 ## Environment notes
 

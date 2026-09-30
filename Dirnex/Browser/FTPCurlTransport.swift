@@ -27,6 +27,9 @@ struct FTPCurlTransport: FTPTransport {
     /// The public key the user has explicitly trusted for this server, if any.
     var trustedPublicKey: String?
     var connectTimeout: Int = 15
+    /// Resolves the name to dial once per connection — the Bonjour fallback that lets a bare `nas`
+    /// reach a server, and the record that keeps an mDNS name from costing five seconds a request.
+    let dialer: HostDialer
     /// Wall-clock bound for a metadata command. Generous enough for a large listing over a slow
     /// link, tight enough that a dead server doesn't hang the pane.
     var metadataTimeout: Int = 30
@@ -38,13 +41,15 @@ struct FTPCurlTransport: FTPTransport {
         authentication: FTPAuthentication,
         password: String = "",
         trustedPublicKey: String? = nil,
-        connectTimeout: Int = 15
+        connectTimeout: Int = 15,
+        dialer: HostDialer? = nil
     ) {
         self.location = location
         self.authentication = authentication
         self.password = password
         self.trustedPublicKey = trustedPublicKey
         self.connectTimeout = connectTimeout
+        self.dialer = dialer ?? HostDialer(host: location.host)
     }
 
     // MARK: - Reads
@@ -85,11 +90,106 @@ struct FTPCurlTransport: FTPTransport {
         try quote([try FTPQuoteCommand.removeDirectory(remotePath)], near: parentOf(remotePath))
     }
 
+    /// Create an empty file, preferring `APPE` and falling back to `STOR`.
+    ///
+    /// The order is what the two measurements ask for, and neither is optional.
+    /// `APPE` leaves an already-present file untouched, so it is the one that keeps a lost race
+    /// against `createFile`'s `stat` from truncating somebody's document; `STOR` is the one every
+    /// server offers, and a server that grants it while refusing `APPE` answers exit 25 / 550 —
+    /// measured 2026-08-23 by withdrawing exactly the append permission from a real server, with
+    /// `STOR` still succeeding on the same connection.
+    ///
+    /// The fallback is safe to run blind. It is only ever reached for a name `createFile` has
+    /// already found free, and every *other* reason `APPE` could fail — a missing parent, a
+    /// read-only directory — fails `STOR` identically, so a retry costs one round trip and reports
+    /// the second failure rather than masking anything.
+    func createEmptyFile(_ remotePath: String) throws {
+        let scratch = try EmptyUploadFile()
+        defer { scratch.remove() }
+        do {
+            try uploadEmpty(scratch.path, to: remotePath, append: true)
+        } catch {
+            try uploadEmpty(scratch.path, to: remotePath, append: false)
+        }
+    }
+
+    private func uploadEmpty(_ localPath: String, to remotePath: String, append: Bool) throws {
+        _ = try runWithTLSRetry(timeout: metadataTimeout) { session in
+            FTPProcessArguments.createFile(
+                session: session,
+                localPath: localPath,
+                remotePath: remotePath,
+                append: append
+            )
+        }
+    }
+
     /// `RNFR` and `RNTO` are a *pair*: the server holds the pending rename between them, so they
     /// must travel on one connection. `curl` sends each `-Q` in order on the same connection, which
     /// is exactly what makes this expressible without a session.
     func rename(_ source: String, to destination: String) throws {
         try quote(try FTPQuoteCommand.rename(source, to: destination), near: parentOf(source))
+    }
+
+    // MARK: - Metadata carry (PLAN.md §M25 Slice 2)
+
+    /// What an FTP account can be asked before anything has been refused. There is no preserve flag
+    /// on this wire, so both are extensions the server need not implement — `SITE CHMOD` is by
+    /// definition per-server, and `MFMT` is RFC 3659 rather than RFC 959.
+    ///
+    /// `MFMT` is the one thing FTP has that SFTP does not: an **exact, UTC-anchored** modification
+    /// time, round-tripped live against the local truth on a host at +0300 so a zone error could not
+    /// have hidden. The coarse, year-less, zone-less stamp FTP is known for belongs to `LIST`, not
+    /// to the protocol.
+    var metadataCapabilities: RemoteMetadataCapabilities { .ftp }
+
+    /// Apply metadata steps in **their own invocation**, after the transfer.
+    ///
+    /// Measured 2026-08-28 against a real server, and it is the reason this is not folded into the
+    /// upload: a quote command sent alongside the transfer is refused as `curl` **exit 21**, which
+    /// fails the whole invocation *after* the bytes have landed — 16 bytes up, exit 21, a successful
+    /// upload reported as a failed copy. `curl`'s continue-on-failure prefix avoids that and costs
+    /// the attribution, since `%{http_code}` reports only the last reply. On its own the answer is
+    /// exact: exit 21 with reply **500** is a verb this server does not have, **550** is that file's
+    /// own problem, and `FTPTransportError.classify` already reads the difference.
+    ///
+    /// A refusal is **answered, not thrown**: the bytes are there and the file is right, so a server
+    /// that will not keep a mode has not failed the copy.
+    func applyMetadata(
+        _ steps: [RemoteMetadataStep],
+        to remotePath: String
+    ) throws -> [RemoteMetadataRefusal] {
+        let commands = try FTPQuoteCommand.metadataSteps(steps, on: remotePath)
+        guard !commands.isEmpty else { return [] }
+        do {
+            try quote(commands, near: parentOf(remotePath))
+            return []
+        } catch let error as FTPTransportError {
+            guard let refusal = Self.metadataRefusal(from: error) else { throw error }
+            return [refusal]
+        }
+    }
+
+    /// Read a refused quote command as the two answers that need different treatment, or `nil` when
+    /// the failure was not about the command at all — a dropped connection or a refused login is the
+    /// transfer's problem and must keep travelling as one.
+    ///
+    /// The split is the reply code's, which is why the core grew
+    /// ``FTPTransportError/commandNotImplemented`` for it: reply **500** is a verb this server does
+    /// not have — true of every file, so it latches — while **550** is that file's own problem and
+    /// says nothing about the next one. Collapsed together, a carry would either stop attempting a
+    /// verb the server honours or never learn about one it lacks.
+    private static func metadataRefusal(from error: FTPTransportError) -> RemoteMetadataRefusal? {
+        switch error {
+        case .commandNotImplemented:
+            return .verbUnimplemented("")
+        case let .failure(text):
+            return .itemRefused(text)
+        case .notFound, .permissionDenied:
+            return .itemRefused("")
+        default:
+            return nil
+        }
     }
 
     /// Run raw FTP commands. The URL only says where to connect and must not itself transfer, so it
@@ -111,9 +211,23 @@ struct FTPCurlTransport: FTPTransport {
 
     /// `%{size_download}` is the bytes moved *by this run* — the remainder when resuming — so the
     /// backend gets its progress delta with no arithmetic. Verified live against a real server.
+    ///
+    /// Progress comes from the **destination file**, not from `curl`: it is a local file that grows,
+    /// so its size is exact and free, and this invocation's flags are left exactly as they were.
     @discardableResult
-    func download(_ remotePath: String, to localPath: String, resume: Bool) throws -> Int64 {
-        let result = try runWithTLSRetry(timeout: transferTimeout) { session in
+    func download(
+        _ remotePath: String,
+        to localPath: String,
+        resume: Bool,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        let result = try runWithTLSRetry(
+            timeout: transferTimeout,
+            watching: .destinationFile(path: localPath),
+            progress: progress,
+            isCancelled: isCancelled
+        ) { session in
             FTPProcessArguments.download(
                 session: session,
                 remotePath: remotePath,
@@ -124,9 +238,25 @@ struct FTPCurlTransport: FTPTransport {
         return transferredBytes(from: result.standardOutput)
     }
 
+    /// Progress comes from `curl`'s percentage meter, which the upload arguments stop suppressing
+    /// (`-S` rather than `-sS`) precisely so it can be read: an upload changes nothing on this
+    /// machine, so there is no local observable to watch instead.
     @discardableResult
-    func upload(_ localPath: String, to remotePath: String, resume: Bool) throws -> Int64 {
-        let result = try runWithTLSRetry(timeout: transferTimeout) { session in
+    func upload(
+        _ localPath: String,
+        to remotePath: String,
+        resume: Bool,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> Int64 {
+        // The total the meter's percentage is applied to is the *source's* size, which is exact
+        // here; the meter's own `Total` column is rounded for display.
+        let result = try runWithTLSRetry(
+            timeout: transferTimeout,
+            watching: .uploadMeter(totalBytes: localFileSize(localPath)),
+            progress: progress,
+            isCancelled: isCancelled
+        ) { session in
             FTPProcessArguments.upload(
                 session: session,
                 localPath: localPath,
@@ -135,6 +265,12 @@ struct FTPCurlTransport: FTPTransport {
             )
         }
         return transferredBytes(from: result.standardOutput)
+    }
+
+    private func localFileSize(_ path: String) -> Int64 {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: path),
+              let size = attributes[.size] as? Int64 else { return 0 }
+        return size
     }
 
     /// The `-w` byte count, which is the whole of stdout for a transfer (the payload went to a file).
@@ -164,142 +300,5 @@ struct FTPCurlTransport: FTPTransport {
     /// runs before saving anything. Any auth, host, TLS or trust failure surfaces here, classified.
     func probeConnection() throws {
         _ = try listDirectory("/")
-    }
-
-    // MARK: - Process
-
-    private var session: FTPSession {
-        FTPSession(
-            location: location,
-            trust: trustedPublicKey.map { .pinned(publicKey: $0) } ?? .systemDefault,
-            tls: .negotiate,
-            connectTimeout: connectTimeout,
-            maxTime: metadataTimeout
-        )
-    }
-
-    private struct RunResult {
-        let standardOutput: String
-        let standardError: String
-    }
-
-    /// Run `curl`, and on the one documented FTPS symptom — exit 18, a data connection that returned
-    /// nothing — retry once pinned to TLS 1.2.
-    ///
-    /// The retry is what keeps the workaround from being a blanket downgrade. It fails in the quiet
-    /// direction otherwise: an empty listing reads as an empty remote directory, so a user would see
-    /// a folder they know has files in it appear empty, with no error anywhere.
-    private func runWithTLSRetry(
-        timeout: Int? = nil,
-        arguments: (FTPSession) -> [String]
-    ) throws -> RunResult {
-        var base = session
-        if let timeout {
-            base = FTPSession(
-                location: location,
-                trust: base.trust,
-                tls: .negotiate,
-                connectTimeout: connectTimeout,
-                maxTime: timeout
-            )
-        }
-        do {
-            return try run(arguments(base))
-        } catch let error as CurlExit where error.code == 18 && location.security.usesTLS {
-            let retry = base.with(tls: .forceTLS12)
-            do {
-                return try run(arguments(retry))
-            } catch let retryError as CurlExit {
-                throw FTPTransportError.classify(
-                    exitCode: retryError.code,
-                    stderr: retryError.standardError
-                )
-            }
-        } catch let error as CurlExit {
-            throw FTPTransportError.classify(exitCode: error.code, stderr: error.standardError)
-        }
-    }
-
-    /// A nonzero `curl` exit, carried untranslated so the retry decision can be made on the code
-    /// before it is classified into the shared vocabulary.
-    private struct CurlExit: Error {
-        let code: Int32
-        let standardError: String
-    }
-
-    /// Spawn `curl` with the credential on stdin, drain both pipes concurrently, and bound the wait.
-    /// Blocks; call it off the main thread — the backend is only ever driven by the operation engine
-    /// or the panel's background list.
-    private func run(_ arguments: [String]) throws -> RunResult {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/curl")
-        process.arguments = arguments
-
-        let input = Pipe()
-        let output = Pipe()
-        let errorPipe = Pipe()
-        process.standardInput = input
-        process.standardOutput = output
-        process.standardError = errorPipe
-
-        do {
-            try process.run()
-        } catch {
-            throw FTPTransportError.failure(String(
-                localized: "Couldn’t launch curl.",
-                comment: "FTP failure: the curl binary could not be spawned."
-            ))
-        }
-
-        // The credential goes in here and nowhere else — not in `arguments`, not on disk.
-        let config = FTPConfigFile.credentials(for: location, password: password)
-        input.fileHandleForWriting.write(Data(config.utf8))
-        try? input.fileHandleForWriting.close()
-
-        // Drain both pipes on background queues so neither can fill and deadlock the other, and
-        // join them through a group so the wait can be bounded.
-        var outputData = Data()
-        var errorData = Data()
-        let group = DispatchGroup()
-        let ioQueue = DispatchQueue(label: "com.dirnex.ftp.io", attributes: .concurrent)
-        group.enter()
-        ioQueue.async {
-            outputData = output.fileHandleForReading.readDataToEndOfFile()
-            group.leave()
-        }
-        group.enter()
-        ioQueue.async {
-            errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-            group.leave()
-        }
-
-        // `curl`'s own `--max-time` should fire first; this is the backstop for a process that is
-        // wedged rather than merely slow, so it is deliberately looser than the flag.
-        let budget = curlMaxTime(in: arguments) + 30
-        if group.wait(timeout: .now() + .seconds(budget)) == .timedOut {
-            process.terminate() // SIGTERM closes the pipes so the drains unblock
-            group.wait()
-            throw FTPTransportError.timedOut
-        }
-        group.wait()
-        process.waitUntilExit()
-
-        let standardError = String(bytes: errorData, encoding: .utf8) ?? ""
-        guard process.terminationStatus == 0 else {
-            throw CurlExit(code: process.terminationStatus, standardError: standardError)
-        }
-        return RunResult(
-            standardOutput: String(bytes: outputData, encoding: .utf8) ?? "",
-            standardError: standardError
-        )
-    }
-
-    /// The `--max-time` value already in the arguments, so the backstop is always derived from what
-    /// `curl` was actually told rather than from a second, drifting constant.
-    private func curlMaxTime(in arguments: [String]) -> Int {
-        guard let index = arguments.firstIndex(of: "--max-time"),
-              index + 1 < arguments.count,
-              let value = Int(arguments[index + 1]) else { return metadataTimeout }
-        return value
     }
 }

@@ -1,5 +1,6 @@
 import AppKit
 import DirnexCore
+import Foundation
 import Testing
 
 @testable import Dirnex
@@ -11,6 +12,23 @@ import Testing
 @Suite("OpenWith launcher")
 @MainActor
 struct OpenWithLauncherTests {
+    /// A row standing for a real file on this disk. The launcher takes **rows** rather than URLs
+    /// since M24 Slice 3, because half of a selection may have no file to ask about — the typing of
+    /// a row that is not here is covered in `HandoffMaterializeTests`.
+    private func row(at url: URL) -> FileEntry {
+        FileEntry(
+            path: .local(url.path),
+            name: url.lastPathComponent,
+            kind: .file,
+            byteSize: 5,
+            modificationDate: Date(timeIntervalSince1970: 1_700_000_000),
+            creationDate: Date(timeIntervalSince1970: 1_700_000_000),
+            isHidden: false,
+            permissions: 0o644,
+            inode: 3
+        )
+    }
+
     @Test("an application is named the way a menu should show it, not by its filename")
     func referenceUsesBundleDisplayName() {
         // The trap this pins: `localizedName` and `FileManager.displayName` both answer
@@ -48,7 +66,7 @@ struct OpenWithLauncherTests {
         try "hello".write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let candidates = OpenWithLauncher.candidates(for: [url])
+        let candidates = OpenWithLauncher.candidates(for: [row(at: url)])
         // Asserted against the machine rather than a fixed list: which editors are installed is not
         // this test's business, but *some* app opens plain text on any Mac, and the promoted one
         // must be the one a double-click would use.
@@ -69,7 +87,7 @@ struct OpenWithLauncherTests {
 
         // LaunchServices types this dynamically (`dyn.…`) and registers nothing against it. The menu
         // still offers Other…, which is the app layer's job, not this list's.
-        #expect(OpenWithLauncher.candidates(for: [url]).isEmpty)
+        #expect(OpenWithLauncher.candidates(for: [row(at: url)]).isEmpty)
     }
 
     @Test("a file that has been deleted offers nothing rather than guessing")
@@ -78,6 +96,6 @@ struct OpenWithLauncherTests {
             .appendingPathComponent("dirnex-openwith-gone-\(UUID().uuidString).txt")
         // The pane lists, the user right-clicks, the file is gone in between: it has no type, so the
         // core's "no type means nothing opens it" rule reaches this from a real path.
-        #expect(OpenWithLauncher.candidates(for: [url]).isEmpty)
+        #expect(OpenWithLauncher.candidates(for: [row(at: url)]).isEmpty)
     }
 }

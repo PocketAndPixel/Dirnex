@@ -1,6 +1,6 @@
 import Foundation
 
-/// The BSD file-flags word (`st_flags` / `chflags(2)`), modelled as the named bits the attributes
+/// The BSD file-flags word (`st_flags` / `chflags(2)`), modeled as the named bits the attributes
 /// panel shows and edits (PLAN.md §M14 Slice 3).
 ///
 /// The one distinction that drives the whole privilege design is encoded here rather than in a table
@@ -51,9 +51,6 @@ public struct BSDFileFlags: OptionSet, Sendable, Hashable, Codable {
     public static let superUserMask = BSDFileFlags(rawValue: 0xFFFF_0000)
 
     // MARK: Convenience
-
-    /// Finder's "Locked": the owner-settable immutable bit.
-    public var isLocked: Bool { contains(.userImmutable) }
 
     /// Either immutable bit is set, so a write, `chmod`, `chown` or `utimes` on the file would fail
     /// until it is cleared — the condition ``AttributeChangePlan`` unlocks around.

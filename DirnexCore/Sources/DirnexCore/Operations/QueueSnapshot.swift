@@ -13,7 +13,7 @@ public struct OperationJobID: Hashable, Sendable, CustomStringConvertible {
 }
 
 /// Where a job is in its lifecycle. A job goes `waiting → running → finished`, may be
-/// `paused` while running, and can reach `cancelled` from any non-terminal state.
+/// `paused` while running, and can reach `canceled` from any non-terminal state.
 public enum JobStatus: Sendable, Equatable {
     case waiting
     case running
@@ -29,7 +29,7 @@ public struct JobSnapshot: Sendable, Equatable, Identifiable {
     public let status: JobStatus
     /// The last progress the engine reported, or `nil` before the job has started.
     public let progress: OperationProgress?
-    /// The final report, present once the job has finished or been cancelled mid-flight.
+    /// The final report, present once the job has finished or been canceled mid-flight.
     public let report: OperationReport?
 
     public init(
@@ -50,7 +50,7 @@ public struct JobSnapshot: Sendable, Equatable, Identifiable {
 /// The whole-queue rollup the progress bar draws from.
 public struct AggregateProgress: Sendable, Equatable {
     public let totalJobs: Int
-    /// Jobs in a terminal state — finished or cancelled.
+    /// Jobs in a terminal state — finished or canceled.
     public let finishedJobs: Int
     /// Jobs currently running or paused.
     public let activeJobs: Int
@@ -115,7 +115,7 @@ public struct QueueSnapshot: Sendable, Equatable {
         self.isPaused = isPaused
     }
 
-    /// Nothing left to do — every job is finished or cancelled.
+    /// Nothing left to do — every job is finished or canceled.
     public var isIdle: Bool {
         jobs.allSatisfy { $0.status == .finished || $0.status == .cancelled }
     }

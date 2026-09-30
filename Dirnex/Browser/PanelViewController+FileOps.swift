@@ -51,18 +51,33 @@ extension PanelViewController {
         // a tree it is the folder the cursor's row lives in, so the new folder appears as a sibling
         // right where the cursor is rather than back at the root.
         guard let target = creationDirectory else { return }
+        // An S3 account pane's rows are **buckets**, so F7 there creates one (PLAN.md §M21
+        // Slice 9). Not a naming quibble: an account has no folders to make, and a bucket's name
+        // has to keep rules a folder's does not — which is why the prefilled default goes away
+        // below rather than arriving as a value that cannot be used.
+        let createsBucket = target.backend.isS3Account
         let alert = NSAlert()
-        alert.messageText = String(
-            localized: "New Folder",
-            comment: "Title of the New Folder dialog."
-        )
+        alert.messageText = createsBucket
+            ? String(
+                localized: "New Bucket",
+                comment: "Title of the New Folder dialog when the pane lists an S3 account's buckets."
+            )
+            : String(
+                localized: "New Folder",
+                comment: "Title of the New Folder dialog."
+            )
         // Named for what the pane shows, not for the directory underneath: "iCloud Drive", not
         // "com~apple~CloudDocs", which is a folder the user has never heard of. A tree is the
         // exception `creationDirectoryName` exists for — it really is drawing the deeper folder.
-        alert.informativeText = String(
-            localized: "Create a folder in “\(creationDirectoryName)”.",
-            comment: "New Folder dialog body; %@ is the containing folder name."
-        )
+        alert.informativeText = createsBucket
+            ? String(
+                localized: "Create a bucket on “\(creationDirectoryName)”.",
+                comment: "New Bucket dialog body; %@ is the S3 account the pane is listing."
+            )
+            : String(
+                localized: "Create a folder in “\(creationDirectoryName)”.",
+                comment: "New Folder dialog body; %@ is the containing folder name."
+            )
         alert.addButton(
             withTitle: String(
                 localized: "Create",
@@ -70,16 +85,26 @@ extension PanelViewController {
             )
         )
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
 
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
-        field.stringValue = String(
+        field.keepToOneLine()
+        // A bucket starts blank. "untitled folder" is not a legal bucket name — a space and a
+        // capital would each break a rule — so prefilling it would hand the user a default that
+        // earns a refusal about a rule they never chose to break.
+        field.stringValue = createsBucket ? "" : String(
             localized: "untitled folder",
             comment: "Default name prefilled in the New Folder dialog."
         )
-        field.placeholderString = String(
-            localized: "Folder name",
-            comment: "Placeholder in the New Folder name field."
-        )
+        field.placeholderString = createsBucket
+            ? String(
+                localized: "Bucket name",
+                comment: "Placeholder in the New Bucket name field (the New Folder dialog on an S3 account)."
+            )
+            : String(
+                localized: "Folder name",
+                comment: "Placeholder in the New Folder name field."
+            )
         alert.accessoryView = field
         alert.window.initialFirstResponder = field
 
@@ -98,7 +123,10 @@ extension PanelViewController {
 
     private func createFolder(named name: String, in directory: VFSPath) {
         guard !name.isEmpty else { return } // an empty name is a silent cancel
-        guard !name.contains("/") else {
+        // A bucket's rules are the service's, and `S3BucketName` is what says *which* one broke —
+        // a slash lands on "use lowercase letters, digits, dots and hyphens", which is the sentence
+        // that helps. Running the folder-shaped check first would preempt it with a worse one.
+        guard directory.backend.isS3Account || !name.contains("/") else {
             presentOperationFailure(
                 message: String(
                     localized: "Can’t create the folder",
@@ -116,9 +144,11 @@ extension PanelViewController {
         let backend = backend
         Task {
             do {
-                try await Task.detached(priority: .userInitiated) {
-                    try backend.createDirectory(at: target)
-                }.value
+                try await BlockingWork.run {
+                    Result {
+                        try backend.createDirectory(at: target)
+                    }
+                }.get()
                 refreshCurrentDirectory(selecting: target)
                 focusTable()
                 host?.recordUndoableAction(.newFolder(at: target))
@@ -182,14 +212,14 @@ extension PanelViewController {
         let goesToTrash = !permanent && strategy == .trash
         if !goesToTrash {
             confirmPermanentDelete(of: targets) { [weak self] in
-                self?.runDelete(targets, permanent: true)
+                self?.runDelete(targets.map(\.path), permanent: true)
             }
         } else if AppPreferences.shared.confirmTrash {
             confirmTrash(of: targets) { [weak self] in
-                self?.runDelete(targets, permanent: false)
+                self?.runDelete(targets.map(\.path), permanent: false)
             }
         } else {
-            runDelete(targets, permanent: false)
+            runDelete(targets.map(\.path), permanent: false)
         }
     }
 
@@ -218,6 +248,7 @@ extension PanelViewController {
             )
         )
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
 
         let handler: (NSApplication.ModalResponse) -> Void = { response in
             if response == .alertFirstButtonReturn { proceed() }
@@ -244,10 +275,23 @@ extension PanelViewController {
                 localized: "Delete \(targets.count) items permanently?",
                 comment: "Permanent-delete confirmation for several items; %lld is the count."
             )
-        alert.informativeText = String(
-            localized: "This can’t be undone.",
-            comment: "Warning that an action is irreversible."
-        )
+        // ⇧F8 needs this more than F8 does, not less: the user is deliberately destroying
+        // something, and a server quietly keeping a copy is the fact they would most want to know.
+        alert.informativeText = shareRecycleBinGoverning(targets.map(\.path)) != nil
+            ? String(
+                localized: """
+                Dirnex can’t undo this. The share has its own recycle bin (#recycle) and the \
+                server may keep a copy there.
+                """,
+                comment: """
+                Body of the permanent-delete confirmation on a network share that has a recycle \
+                bin of its own. "#recycle" is a folder name and is never translated.
+                """
+            )
+            : String(
+                localized: "This can’t be undone.",
+                comment: "Warning that an action is irreversible."
+            )
         alert.addButton(
             withTitle: String(
                 localized: "Delete",
@@ -255,6 +299,7 @@ extension PanelViewController {
             )
         )
         alert.addButton(withTitle: String(localized: "Cancel", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
 
         let handler: (NSApplication.ModalResponse) -> Void = { response in
             if response == .alertFirstButtonReturn { proceed() }
@@ -266,47 +311,58 @@ extension PanelViewController {
         }
     }
 
-    private func runDelete(_ targets: [FileEntry], permanent: Bool) {
-        let paths = targets.map(\.path)
+    /// Internal rather than private because the Trash-less-volume fallback re-enters it from
+    /// `PanelViewController+DeleteFallback`, with the same paths and `permanent: true`.
+    ///
+    /// Takes paths rather than entries because that is all a delete needs, and because the two
+    /// other flows that trash items — the F6 move into an archive and a directory sync — reach the
+    /// same fallback holding paths alone.
+    func runDelete(_ paths: [VFSPath], permanent: Bool) {
         let backend = backend
         Task {
-            let result = await Task.detached(priority: .userInitiated) { () -> DeleteResult in
-                var failures: [OperationFailure] = []
-                var restorations: [TrashRestoration] = []
-                for path in paths {
-                    do {
-                        if permanent {
-                            try backend.removeItem(at: path)
-                        } else if let trashed = try backend.trashItem(at: path) {
-                            // Capture where it landed so Cmd+Z can restore it from the Trash.
-                            restorations.append(TrashRestoration(original: path, trashed: trashed))
-                        }
-                    } catch let error as VFSError {
-                        failures.append(OperationFailure(path: path, error: error))
-                    } catch {
-                        failures.append(
-                            OperationFailure(path: path, error: .io(path: path, code: 0))
-                        )
-                    }
-                }
-                return DeleteResult(failures: failures, restorations: restorations)
-            }.value
+            let outcome = await BlockingWork.run {
+                DeletePass.run(paths, using: backend, permanent: permanent)
+            }
 
             panel.clearSelection()
             refreshCurrentDirectory()
             focusTable()
-            // Permanent delete is irreversible and never journaled; Trash is restorable.
-            if !permanent,
-               let record = UndoRecord.trash(result.restorations.map { ($0.original, $0.trashed) }) {
-                host?.recordUndoableAction(record)
+            // Permanent delete is irreversible and never journaled; Trash is restorable, and a
+            // permanent pass produces no restorations to note.
+            noteTrashed(outcome.restorations)
+            if !outcome.failures.isEmpty {
+                presentDeletionFailures(outcome.failures, permanent: permanent)
             }
-            if !result.failures.isEmpty {
-                presentDeletionFailures(result.failures, permanent: permanent)
+            // Last, so that in the (rare) mixed pass the question the user must answer is the sheet
+            // left in front rather than behind the report.
+            offerPermanentDelete(forVolumeWithoutTrash: outcome.refused) { [weak self] refused in
+                self?.runDelete(refused, permanent: true)
             }
         }
     }
 
-    private func presentDeletionFailures(_ failures: [OperationFailure], permanent: Bool) {
+    /// Record what a Trash pass moved, in the two places that need it — the session's undo journal
+    /// and the durable put-back store — from the one pair of paths `DeletePass` already produced.
+    ///
+    /// One funnel rather than a line at each of the three flows that trash items (F8, the F6 move
+    /// into an archive, a directory sync's deletes): all three were already spelling the undo half
+    /// for themselves, and a rule written three times is where one of them ends up missing a line.
+    ///
+    /// **The two are not the same record and neither replaces the other.** ⌘Z is a session-scoped
+    /// stack the user can walk back through in the minutes after a delete; Put Back is the gesture
+    /// for an item still sitting in the Trash a week later, which needs a record that outlives the
+    /// launch (PLAN.md §M26 Slice 4).
+    func noteTrashed(_ restorations: [DeletePass.Restoration]) {
+        guard !restorations.isEmpty else { return }
+        TrashOriginStore.shared.record(restorations)
+        if let record = UndoRecord.trash(restorations.map { ($0.original, $0.trashed) }) {
+            host?.recordUndoableAction(record)
+        }
+    }
+
+    /// Internal so the sync and archive-move flows report their own delete failures with the
+    /// same sentences — the wording is about the operation, not about which key started it.
+    func presentDeletionFailures(_ failures: [OperationItemFailure], permanent: Bool) {
         // Whole sentences per branch rather than a spliced verb: `"Couldn’t \(verb)…"` reads wrong
         // in a language that inflects the object or reorders the clause (docs/NOTES.md).
         let name = failures[0].path.lastComponent
@@ -365,13 +421,11 @@ extension PanelViewController {
             refreshTree(selecting: target)
             return
         }
-        // Re-list a real directory — on disk or on a connected SFTP account (an SFTP path is
+        // Re-list a real directory — on disk or on a connected remote (a remote path is
         // re-listable, so it must refresh after an upload/delete/mkdir even without FSEvents). A
         // virtual pane (search results, a browsed archive) has no directory to re-list, so a
         // both-panes refresh after a file operation leaves its snapshot untouched.
-        guard panel.path.backend == .local
-            || panel.path.backend.isSFTP
-            || panel.path.backend.isFTP else { return }
+        guard panel.path.backend == .local || panel.path.backend.isRemoteConnection else { return }
         loadToken += 1
         let token = loadToken
         let path = panel.path
@@ -387,6 +441,7 @@ extension PanelViewController {
                 backend, at: path, sort: sort, showHidden: showHidden, directorySizes: sizes
             ) else { return }
             guard token == loadToken, panel.path == path, activeTabIndex == tabIndex else { return }
+            clearOfflineReasonAnsweredByListing()
             reconcileCursorFromTable()
             installSortedModel(model)
             if let target, let index = panel.displayedIndex(ofID: target) {
@@ -410,26 +465,4 @@ extension PanelViewController {
             alert.runModal()
         }
     }
-}
-
-/// A single item's failure during a batch operation, in a `Sendable` shape so it can
-/// cross back from the background delete task. Per-file retry/abort is a later M2 item;
-/// for now failures are collected and summarized.
-private struct OperationFailure: Sendable {
-    let path: VFSPath
-    let error: VFSError
-}
-
-/// One trashed item's before/after locations, captured so Cmd+Z can restore it from the
-/// Trash (PLAN.md §M2 "delete-to-Trash restore").
-private struct TrashRestoration: Sendable {
-    let original: VFSPath
-    let trashed: VFSPath
-}
-
-/// What a delete pass produced: the items it couldn't remove, and (for Trash) where the
-/// removed items landed so the operation can be journaled for undo.
-private struct DeleteResult: Sendable {
-    let failures: [OperationFailure]
-    let restorations: [TrashRestoration]
 }

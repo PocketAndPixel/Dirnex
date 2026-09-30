@@ -1,4 +1,5 @@
 import Combine
+import DirnexCore
 import Foundation
 
 /// The app-wide toggles the Settings window's General / Panels / Operations tabs edit
@@ -13,7 +14,9 @@ import Foundation
 final class AppPreferences: ObservableObject {
     static let shared = AppPreferences()
 
-    private let defaults: UserDefaults
+    /// `internal` rather than `private` only because Swift's `private` does not cross files and
+    /// `AppPreferences+Palette` writes through it (docs/NOTES.md ▸ Lint ceilings and file splitting).
+    let defaults: UserDefaults
 
     /// General ▸ reopen the previous session's tabs at launch (default on — the existing
     /// behavior). Off starts every window fresh at Home.
@@ -37,13 +40,6 @@ final class AppPreferences: ObservableObject {
     /// new value to its tabs and re-render. `object` is the `AppPreferences` that changed.
     static let showHiddenDidChange = Notification.Name("Dirnex.showHiddenDidChange")
 
-    /// Flip the app-wide show-hidden state. The shared entry point for the header button, the
-    /// ⇧⌘. shortcut, and the palette/menu command — all of which want the same one-line effect.
-    /// The View menu owns this toggle; Settings deliberately does not restate it.
-    func toggleShowHidden() {
-        showHidden.toggle()
-    }
-
     /// View ▸ show Finder tags as dots at the right edge of each name, where Finder puts them
     /// (PLAN.md §M6 "Finder tags: column…"). Default **on**: someone who tags files sees them
     /// without having to find a setting first, and someone who doesn't pays nothing for it — an
@@ -60,15 +56,9 @@ final class AppPreferences: ObservableObject {
     /// column live. `object` is the `AppPreferences` that changed.
     static let showTagsDidChange = Notification.Name("Dirnex.showTagsDidChange")
 
-    /// Flip the app-wide tags-column state — the shared entry point for the View menu item and the
-    /// palette command, which own this toggle; Settings deliberately does not restate it.
-    func toggleShowTags() {
-        showTags.toggle()
-    }
-
     /// View ▸ show each file's cloud sync state as a badge at the right edge of its name, where
     /// Finder puts it (PLAN.md §M6 "iCloud/provider sync status"). Default **on**, and it can afford
-    /// to be: a folder that isn't a cloud folder is recognised in a single read and never scanned,
+    /// to be: a folder that isn't a cloud folder is recognized in a single read and never scanned,
     /// so someone with no provider pays one attribute read per folder visit and sees nothing.
     @Published var showSyncStatus: Bool {
         didSet {
@@ -82,15 +72,9 @@ final class AppPreferences: ObservableObject {
     /// up or drops them live. `object` is the `AppPreferences` that changed.
     static let showSyncStatusDidChange = Notification.Name("Dirnex.showSyncStatusDidChange")
 
-    /// Flip the app-wide sync-badge state — the shared entry point for the View menu item and the
-    /// palette command, which own this toggle; Settings deliberately does not restate it.
-    func toggleShowSyncStatus() {
-        showSyncStatus.toggle()
-    }
-
     /// View ▸ show the Total-Commander-style function-key bar along the window bottom (PLAN.md
     /// §M6). Default **on**: the bar is a signature discoverability win — it puts Copy/Move/
-    /// NewFolder/Delete on labelled buttons a new user can find without the manual, the exact
+    /// NewFolder/Delete on labeled buttons a new user can find without the manual, the exact
     /// "fix TC's adoption problem" goal — and someone who works entirely by keyboard can turn it
     /// off. App-wide, not per-window, like the tags column: every window shows or hides it
     /// together.
@@ -105,12 +89,6 @@ final class AppPreferences: ObservableObject {
     /// Posted (on the main actor) when `showFunctionBar` flips, so every open window installs or
     /// collapses its bar live. `object` is the `AppPreferences` that changed.
     static let showFunctionBarDidChange = Notification.Name("Dirnex.showFunctionBarDidChange")
-
-    /// Flip the app-wide function-bar state — the shared entry point for the View menu item and the
-    /// palette command, which own this toggle; Settings deliberately does not restate it.
-    func toggleShowFunctionBar() {
-        showFunctionBar.toggle()
-    }
 
     /// Panels ▸ how tall each file row is drawn, and how big the icon in it (PLAN.md §M15). A
     /// single app-wide value like `showHidden`, not a per-tab one: it is a reading preference, not
@@ -147,7 +125,8 @@ final class AppPreferences: ObservableObject {
     static let sizeVizDisplayModeDidChange = Notification.Name("Dirnex.sizeVizDisplayModeDidChange")
 
     /// How Quick View draws a file that can be shown two ways — its source, or the page it
-    /// describes (PLAN.md §M16). Only HTML offers both today; every other file ignores it.
+    /// describes (PLAN.md §M16). HTML and Markdown follow it; CSV and TSV follow
+    /// `quickViewTableStyle`, and every other file ignores both.
     ///
     /// App-wide like `rowDensity`, not per tab: it is a reading preference, not a question you ask
     /// of one directory — and a per-file choice would reset on every cursor step, which is the
@@ -161,11 +140,37 @@ final class AppPreferences: ObservableObject {
         }
     }
 
-    /// Posted (on the main actor) when `quickViewRenderStyle` changes, so every open Quick View
-    /// re-delivers its current file in the new style. `object` is the `AppPreferences` that changed.
-    static let quickViewRenderStyleDidChange = Notification.Name(
-        "Dirnex.quickViewRenderStyleDidChange"
-    )
+    /// How Quick View draws a CSV or TSV file — its source, or a table (2026-09-15). A preference of
+    /// its own rather than `quickViewRenderStyle`, because the two families default to opposite
+    /// styles (`QuickViewDualStyleKind`). Changing it posts the same notification.
+    @Published var quickViewTableStyle: QuickViewRenderStyle {
+        didSet {
+            guard quickViewTableStyle != oldValue else { return }
+            defaults.set(quickViewTableStyle.rawValue, forKey: Keys.quickViewTableStyle)
+            NotificationCenter.default.post(name: Self.quickViewRenderStyleDidChange, object: self)
+        }
+    }
+
+    /// How Quick View draws a JSON file — its source, or a tree of its values (a table, for a list of
+    /// like objects), 2026-09-15. Its own preference for the table's reason, so `1` on a JSON file
+    /// turns neither a CSV nor a page into source. Changing it posts the same notification.
+    @Published var quickViewJSONStyle: QuickViewRenderStyle {
+        didSet {
+            guard quickViewJSONStyle != oldValue else { return }
+            defaults.set(quickViewJSONStyle.rawValue, forKey: Keys.quickViewJSONStyle)
+            NotificationCenter.default.post(name: Self.quickViewRenderStyleDidChange, object: self)
+        }
+    }
+
+    /// How Quick View draws an XML file or a property list — its source, or a tree (a table, for a list
+    /// of like elements), 2026-09-16. Its own preference for JSON's reason.
+    @Published var quickViewXMLStyle: QuickViewRenderStyle {
+        didSet {
+            guard quickViewXMLStyle != oldValue else { return }
+            defaults.set(quickViewXMLStyle.rawValue, forKey: Keys.quickViewXMLStyle)
+            NotificationCenter.default.post(name: Self.quickViewRenderStyleDidChange, object: self)
+        }
+    }
 
     /// Panels ▸ whether a rendered HTML preview may run the page's own JavaScript (PLAN.md §M16).
     ///
@@ -194,23 +199,78 @@ final class AppPreferences: ObservableObject {
         "Dirnex.quickViewJavaScriptDidChange"
     )
 
-    /// A read of the same value for the one caller that needs it *per navigation* rather than per
-    /// change: `QuickViewWebView`'s policy delegate, which is handed a fresh `WKWebpagePreferences`
-    /// for every load and sets it there. Reading it at each navigation is what makes the toggle
-    /// take effect on a live web view — the value baked into a `WKWebViewConfiguration` at init
-    /// cannot be changed afterwards (probed: mutating `webView.configuration` is inert, and reads
-    /// back as though it worked).
-    static var quickViewJavaScriptValue: Bool {
-        shared.quickViewJavaScriptEnabled
+    /// Panels ▸ how large a file Quick View may pull down from a server on its own, in **bytes**
+    /// (PLAN.md §M21 Slice 10).
+    ///
+    /// The one number in `RemoteFetchPolicy`'s table the user owns, and the only one whose right
+    /// value is a fact about *them* rather than about the gesture: somebody whose photographs run to
+    /// 300 MB is asking a reasonable thing of a preview, and somebody on a metered link is right to
+    /// want none of it. Below it the preview follows the cursor by itself; above it the placeholder
+    /// card appears with the file's size and a Download button, and ⌘Y confirms before spending.
+    /// **Zero is a setting** — never fetch unasked — and is exactly what Quick View did before this
+    /// existed.
+    ///
+    /// Stored in bytes and edited in decimal megabytes, so what the field says is what the file list
+    /// beside it says. Clamped on the way in *and* on the way out (`RemoteFetchPolicy` computes every
+    /// threshold through its own clamp), because a defaults domain is hand-editable by design.
+    @Published var quickViewFetchLimit: Int64 {
+        didSet {
+            let clamped = RemoteFetchPolicy.clampedPreviewLimit(quickViewFetchLimit)
+            guard clamped == quickViewFetchLimit else {
+                quickViewFetchLimit = clamped
+                return
+            }
+            guard quickViewFetchLimit != oldValue else { return }
+            defaults.set(quickViewFetchLimit, forKey: Keys.quickViewFetchLimit)
+            NotificationCenter.default.post(name: Self.quickViewFetchLimitDidChange, object: self)
+        }
     }
 
-    /// Panels ▸ the three colours the user owns (PLAN.md §M15 Slice 2), each as `#RRGGBB` or the
+    /// Panels ▸ how long a pane on a connected server waits before re-listing it on its own
+    /// (docs/LOCATION-SUPPORT.md ▸ "No live refresh on a server"), in seconds.
+    ///
+    /// **Zero is a setting** — never talk to my server unless I ask — and is exactly what every
+    /// remote pane did before this existed. It is the honest answer on a metered link or a bill
+    /// somebody watches, which is why the band starts there rather than at some small number.
+    ///
+    /// The floor is all the user owns: how often a pane *actually* re-lists is derived from what the
+    /// previous refresh cost (``RemoteRefreshPolicy``), so a folder that turns out to be expensive
+    /// backs off on its own and there is no second number to keep consistent with this one. Clamped
+    /// on the way in *and* on the way out, because a defaults domain is hand-editable by design.
+    @Published var remoteRefreshFloor: TimeInterval {
+        didSet {
+            let clamped = RemoteRefreshPolicy.clampedFloor(remoteRefreshFloor)
+            guard clamped == remoteRefreshFloor else {
+                remoteRefreshFloor = clamped
+                return
+            }
+            guard remoteRefreshFloor != oldValue else { return }
+            defaults.set(remoteRefreshFloor, forKey: Keys.remoteRefreshFloor)
+            NotificationCenter.default.post(name: Self.remoteRefreshFloorDidChange, object: self)
+        }
+    }
+
+    /// Posted (on the main actor) when `remoteRefreshFloor` changes, so every open remote pane
+    /// re-arms — turning polling off has to stop the pane the user is looking at, not the one they
+    /// see after the next navigation.
+    static let remoteRefreshFloorDidChange = Notification.Name(
+        "Dirnex.remoteRefreshFloorDidChange"
+    )
+
+    /// Posted (on the main actor) when `quickViewFetchLimit` changes, so an open Quick View
+    /// re-weighs the row it is showing — raising the limit has to resolve the card the user is
+    /// looking at, not the one they see after the next cursor step.
+    static let quickViewFetchLimitDidChange = Notification.Name(
+        "Dirnex.quickViewFetchLimitDidChange"
+    )
+
+    /// Panels ▸ the three colors the user owns (PLAN.md §M15 Slice 2), each as `#RRGGBB` or the
     /// empty string for **Follow System** — the default, so an untouched install renders exactly as
     /// it did before this setting existed and the default path stays AppKit's own drawing.
     ///
     /// Stored as hex strings rather than as archived `NSColor`s so the defaults domain stays
     /// readable and hand-editable (PLAN.md §2, "boring and debuggable"), and so the change guard is
-    /// an exact string comparison rather than `NSColor`'s colour-space-sensitive equality. What each
+    /// an exact string comparison rather than `NSColor`'s color-space-sensitive equality. What each
     /// one paints, and what "the system's own" resolves to, is `PanelPalette`'s.
     @Published var accentColorHex: String {
         didSet { paletteValueChanged(accentColorHex, oldValue, key: Keys.accentColorHex) }
@@ -224,45 +284,10 @@ final class AppPreferences: ObservableObject {
         didSet { paletteValueChanged(markColorHex, oldValue, key: Keys.markColorHex) }
     }
 
-    /// The three, resolved. Read at each drawing site — cheap (three dictionary lookups' worth of
-    /// stored string parsing) and always current, so no view has to be told twice.
-    var palette: PanelPalette {
-        PanelPalette(
-            accent: PanelPalette.color(fromHex: accentColorHex),
-            cursor: PanelPalette.color(fromHex: cursorColorHex),
-            mark: PanelPalette.color(fromHex: markColorHex)
-        )
-    }
-
-    /// Posted (on the main actor) when any of the three colours changes, so every open pane, tab
-    /// strip, path bar and titlebar indicator restyles live. One notification for all three rather
-    /// than three: every observer repaints the same surfaces regardless of which colour moved, and
-    /// splitting them would only invite a site that listens for two of the three.
-    static let paletteDidChange = Notification.Name("Dirnex.paletteDidChange")
-
     /// Set while `resetPalette` writes all three, so the run posts one notification instead of up to
-    /// three — each of which would drive a full re-render of every open pane.
-    private var isResettingPalette = false
-
-    private func paletteValueChanged(_ new: String, _ old: String, key: String) {
-        guard new != old else { return }
-        defaults.set(new, forKey: key)
-        guard !isResettingPalette else { return }
-        NotificationCenter.default.post(name: Self.paletteDidChange, object: self)
-    }
-
-    /// Put all three back to Follow System in one step, for the Settings button that offers it —
-    /// the one gesture that restores the shipped rendering exactly, without the user having to
-    /// remember which of the three they had touched.
-    func resetPalette() {
-        guard !palette.isFollowingSystem else { return }
-        isResettingPalette = true
-        accentColorHex = ""
-        cursorColorHex = ""
-        markColorHex = ""
-        isResettingPalette = false
-        NotificationCenter.default.post(name: Self.paletteDidChange, object: self)
-    }
+    /// three — each of which would drive a full re-render of every open pane. Stays in the class
+    /// while the rest of the palette lives in `AppPreferences+Palette`, as stored properties must.
+    var isResettingPalette = false
 
     /// Operations ▸ ask for confirmation before moving items to the Trash (default off —
     /// Trash is recoverable, matching Finder). Permanent delete always confirms regardless.
@@ -296,6 +321,20 @@ final class AppPreferences: ObservableObject {
                 hasOfferedFullDiskAccessForICloud,
                 forKey: Keys.hasOfferedFullDiskAccessForICloud
             )
+        }
+    }
+
+    /// Whether Dirnex has ever actually read the iCloud app containers (docs/NOTES.md ▸ iCloud
+    /// Drive). Not a user-facing setting — the second half of the offer above, and the thing that
+    /// tells "the user declined" apart from "it worked and has since broken".
+    ///
+    /// Set from a scan that came back with libraries, which is the only positive proof of the
+    /// access available; spent by the rescue offer, so one loss buys one ask and declining it is
+    /// respected. A grant that returns sets it again and re-arms the rescue for the next loss.
+    /// `ICloudAccessOffer.decide` owns the rule.
+    @Published var hasReadICloudAppLibraries: Bool {
+        didSet {
+            defaults.set(hasReadICloudAppLibraries, forKey: Keys.hasReadICloudAppLibraries)
         }
     }
 
@@ -346,14 +385,36 @@ final class AppPreferences: ObservableObject {
         didSet { defaults.set(receiveBetaUpdates, forKey: Keys.receiveBetaUpdates) }
     }
 
-    /// A thread-safe read of the beta-updates opt-in straight from `UserDefaults`, for the one
-    /// caller that runs off the main actor: Sparkle's `allowedChannels(for:)` delegate hook, which
-    /// it invokes synchronously inside an update check. `UserDefaults` is itself thread-safe, so
-    /// this reads the same key the `@MainActor` `receiveBetaUpdates` property writes without hopping
-    /// actors, and re-reads every call so a Settings toggle is picked up on the next check.
-    nonisolated static func receiveBetaUpdatesValue(in defaults: UserDefaults = .standard) -> Bool {
-        defaults.bool(forKey: Keys.receiveBetaUpdates)
+    /// General ▸ let an unlocked vault's volume appear to the rest of the Mac: Finder's sidebar, the
+    /// desktop, every other app's Open panel (PLAN.md §M19).
+    ///
+    /// **On** by default, and one app-wide answer rather than a flag on each vault. It was per-vault
+    /// and off until 2026-09-02, on the argument that the two questions have different answers for
+    /// the same person — a vault of scanned documents is one you want to attach a file from in Mail,
+    /// while another should stay where you put it. What that cost was a setting living in one
+    /// sidebar row's context menu, which is nowhere anybody looks, for the thing most people want
+    /// most of the time. The default flip is the deliberate part of it: a vault is now published to
+    /// the whole Mac while it is unlocked unless this is turned off, so *locking it* is what makes
+    /// it private again rather than the attach flag.
+    ///
+    /// `-nobrowse` is still the whole mechanism
+    /// (``DiskImageArguments/attach(atPath:showingInFinder:)``); this decides whether it goes on the
+    /// command line. Changing it posts `showVaultsInFinderDidChange`, which `VaultVisibility` turns
+    /// into a live remount of every vault that is open right now — a setting that only took effect
+    /// at the next unlock would look like it did nothing at all.
+    @Published var showVaultsInFinder: Bool {
+        didSet {
+            guard showVaultsInFinder != oldValue else { return }
+            defaults.set(showVaultsInFinder, forKey: Keys.showVaultsInFinder)
+            NotificationCenter.default.post(name: Self.showVaultsInFinderDidChange, object: self)
+        }
     }
+
+    /// Posted (on the main actor) when `showVaultsInFinder` flips, so the vaults that are unlocked
+    /// right now are remounted to match. `object` is the `AppPreferences` that changed.
+    static let showVaultsInFinderDidChange = Notification.Name(
+        "Dirnex.showVaultsInFinderDidChange"
+    )
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -378,11 +439,37 @@ final class AppPreferences: ObservableObject {
         // Defaults off (see the property), which is what `bool(forKey:)` already answers for a
         // never-written key.
         quickViewJavaScriptEnabled = defaults.bool(forKey: Keys.quickViewJavaScriptEnabled)
+        // `object(forKey:)`, not `integer(forKey:)`: a missing key reads as **0** there, which is a
+        // legitimate value here ("never fetch unasked") — so the cheap spelling would hand every
+        // fresh install the one setting that turns the feature off, and read as it never working.
+        quickViewFetchLimit = RemoteFetchPolicy.clampedPreviewLimit(
+            (defaults.object(forKey: Keys.quickViewFetchLimit) as? NSNumber)?.int64Value
+                ?? RemoteFetchPolicy.defaultPreviewLimit
+        )
+        // `object(forKey:)` for the same reason as the line above: a missing key reads as **0**
+        // through `double(forKey:)`, and 0 is the one setting here that turns polling off — so the
+        // cheap spelling would ship every fresh install with the feature disabled and no way to tell
+        // that from a deliberate choice.
+        remoteRefreshFloor = RemoteRefreshPolicy.clampedFloor(
+            (defaults.object(forKey: Keys.remoteRefreshFloor) as? NSNumber)?.doubleValue
+                ?? RemoteRefreshPolicy.defaultFloor
+        )
         // Empty (never written) = the source, the shipped default, and so is anything an
         // older/newer build can't parse.
         quickViewRenderStyle = QuickViewRenderStyle(
             rawValue: defaults.string(forKey: Keys.quickViewRenderStyle) ?? ""
-        ) ?? .default
+        ) ?? QuickViewDualStyleKind.page.defaultStyle
+        // Empty (never written) = the table.
+        quickViewTableStyle = QuickViewRenderStyle(
+            rawValue: defaults.string(forKey: Keys.quickViewTableStyle) ?? ""
+        ) ?? QuickViewDualStyleKind.table.defaultStyle
+        // Empty (never written) = the tree, for JSON and XML alike.
+        quickViewJSONStyle = QuickViewRenderStyle(
+            rawValue: defaults.string(forKey: Keys.quickViewJSONStyle) ?? ""
+        ) ?? QuickViewDualStyleKind.json.defaultStyle
+        quickViewXMLStyle = QuickViewRenderStyle(
+            rawValue: defaults.string(forKey: Keys.quickViewXMLStyle) ?? ""
+        ) ?? QuickViewDualStyleKind.xml.defaultStyle
         // Empty (never written) = Follow System, and so is anything `PanelPalette` can't parse.
         accentColorHex = defaults.string(forKey: Keys.accentColorHex) ?? ""
         cursorColorHex = defaults.string(forKey: Keys.cursorColorHex) ?? ""
@@ -395,33 +482,15 @@ final class AppPreferences: ObservableObject {
         focusOpenedSearchDirectory = defaults.bool(forKey: Keys.focusOpenedSearchDirectory)
         // Defaults off — a fresh install rides the stable channel until the user opts in.
         receiveBetaUpdates = defaults.bool(forKey: Keys.receiveBetaUpdates)
+        // Defaults on, like `showTags`: `object(forKey:)`, not `bool(forKey:)`, which answers
+        // `false` for a never-written key and would ship every vault hidden while the property
+        // above documents the opposite.
+        showVaultsInFinder = defaults.object(forKey: Keys.showVaultsInFinder) as? Bool ?? true
         hasSeenFullDiskAccessOnboarding = defaults.bool(forKey: Keys.hasSeenFullDiskAccessOnboarding)
         hasOfferedFullDiskAccessForICloud = defaults.bool(
             forKey: Keys.hasOfferedFullDiskAccessForICloud
         )
+        hasReadICloudAppLibraries = defaults.bool(forKey: Keys.hasReadICloudAppLibraries)
         hasSeenFirstRunTour = defaults.bool(forKey: Keys.hasSeenFirstRunTour)
-    }
-
-    private enum Keys {
-        static let restoreSession = "Dirnex.pref.restoreSession"
-        static let showHidden = "Dirnex.pref.showHidden"
-        static let showTags = "Dirnex.pref.showTags"
-        static let showSyncStatus = "Dirnex.pref.showSyncStatus"
-        static let showFunctionBar = "Dirnex.pref.showFunctionBar"
-        static let rowDensity = "Dirnex.pref.rowDensity"
-        static let sizeVizDisplayMode = "Dirnex.pref.sizeVizDisplayMode"
-        static let quickViewRenderStyle = "Dirnex.pref.quickViewRenderStyle"
-        static let quickViewJavaScriptEnabled = "Dirnex.pref.quickViewJavaScriptEnabled"
-        static let accentColorHex = "Dirnex.pref.accentColorHex"
-        static let cursorColorHex = "Dirnex.pref.cursorColorHex"
-        static let markColorHex = "Dirnex.pref.markColorHex"
-        static let confirmTrash = "Dirnex.pref.confirmTrash"
-        static let diffToolIdentifier = "Dirnex.pref.diffToolIdentifier"
-        static let textEditorIdentifier = "Dirnex.pref.textEditorIdentifier"
-        static let focusOpenedSearchDirectory = "Dirnex.pref.focusOpenedSearchDirectory"
-        static let receiveBetaUpdates = "Dirnex.pref.receiveBetaUpdates"
-        static let hasSeenFullDiskAccessOnboarding = "Dirnex.pref.hasSeenFullDiskAccessOnboarding"
-        static let hasOfferedFullDiskAccessForICloud = "Dirnex.pref.hasOfferedFullDiskAccessForICloud"
-        static let hasSeenFirstRunTour = "Dirnex.pref.hasSeenFirstRunTour"
     }
 }

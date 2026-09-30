@@ -4,7 +4,7 @@ import DirnexCore
 /// The Finder-tag dots that ride at the right edge of a file's name (PLAN.md §M6 "Finder tags:
 /// column…"). Lives inside `FileCellView`, right-aligned, exactly where Finder puts them.
 ///
-/// Custom-drawn rather than text, because the content *is* the colour — which is also why this
+/// Custom-drawn rather than text, because the content *is* the color — which is also why this
 /// doesn't borrow `FileCellView.accentColor` the way the Git letter does.
 ///
 /// **The layout is Finder's, and it was measured rather than guessed** (a file tagged
@@ -14,14 +14,14 @@ import DirnexCore
 /// - **The dots run in reverse.** The **last** tag sits leftmost and fully visible; each earlier tag
 ///   peeks out from behind it to the right, showing only a crescent. So `[Red, Blue]` reads as a
 ///   whole blue dot with a red sliver on its right. It is the same precedence the core found in the
-///   legacy label byte, where the *last* coloured tag wins — the newest tag is the one macOS shows.
+///   legacy label byte, where the *last* colored tag wins — the newest tag is the one macOS shows.
 /// - **They overlap**, so four tags cost far less room than four separate dots would.
 final class TagDotsView: NSView {
     /// The row's tags, in stored order. Setting them resizes and redraws.
     var tags: [FinderTag] = [] {
         didSet {
-            // Compared on name *and* colour: `FinderTag.==` is name-only by design (it is identity,
-            // and macOS folds case to identify a tag), so a recolour — which the core documented
+            // Compared on name *and* color: `FinderTag.==` is name-only by design (it is identity,
+            // and macOS folds case to identify a tag), so a recolor — which the core documented
             // Finder doing on its own — would slip through the plain `!=` and leave the old dot.
             let unchanged = tags.count == oldValue.count
                 && zip(tags, oldValue).allSatisfy { $0.name == $1.name && $0.color == $1.color }
@@ -33,7 +33,7 @@ final class TagDotsView: NSView {
 
     private let dotDiameter: CGFloat = 9
     /// How far each dot behind the front one peeks out. A little over half the diameter: enough to
-    /// read the colour comfortably, little enough that a heavily tagged file stays a cluster rather
+    /// read the color comfortably, little enough that a heavily tagged file stays a cluster rather
     /// than a row of beads pushing the filename out of its own column.
     private let dotStep: CGFloat = 5.5
 
@@ -82,10 +82,10 @@ final class TagDotsView: NSView {
     }
 
     /// Clear a hair around a dot before drawing it, so it reads as a separate disc from the ones
-    /// behind rather than merging into them — two adjacent similar colours otherwise look like one
+    /// behind rather than merging into them — two adjacent similar colors otherwise look like one
     /// lozenge. Finder leaves the same gap. `.destinationOut` erases this view's layer only, so what
     /// shows through is the row background, whatever it happens to be (alternating, or the cursor's
-    /// blue) — which is exactly why the gap can't be a stroke in some fixed colour.
+    /// blue) — which is exactly why the gap can't be a stroke in some fixed color.
     private func punchGap(around rect: NSRect) {
         guard let context = NSGraphicsContext.current else { return }
         context.saveGraphicsState()
@@ -99,7 +99,7 @@ final class TagDotsView: NSView {
         let circle = NSBezierPath(ovalIn: rect.insetBy(dx: 0.5, dy: 0.5))
         circle.lineWidth = 1
         guard let fill = TagDotStyle.color(for: tag.color) else {
-            // A colourless tag (`Work` with no colour) gets a hollow ring. Finder draws *nothing* for
+            // A colorless tag (`Work` with no color) gets a hollow ring. Finder draws *nothing* for
             // one; a ring costs no room and answers "is this tagged" honestly at a glance.
             TagDotStyle.colorlessStroke.setStroke()
             circle.stroke()
@@ -110,17 +110,17 @@ final class TagDotsView: NSView {
     }
 }
 
-/// How a tag colour is painted. The eight indices are Apple's (`FinderTagColor` in the core, which
-/// picks the *index*); these are the system colours that match what Finder shows for each — the
+/// How a tag color is painted. The eight indices are Apple's (`FinderTagColor` in the core, which
+/// picks the *index*); these are the system colors that match what Finder shows for each — the
 /// same core-decides-meaning / app-decides-pixels split as `GitStatusStyle`.
 enum TagDotStyle {
-    /// The fill for a tag's dot, or `nil` for `.none` — which has no colour to draw and is rendered
-    /// as a ring instead. System colours throughout, so the dots track the user's appearance and
+    /// The fill for a tag's dot, or `nil` for `.none` — which has no color to draw and is rendered
+    /// as a ring instead. System colors throughout, so the dots track the user's appearance and
     /// accessibility settings rather than freezing eight literals.
     static func color(for color: FinderTagColor) -> NSColor? {
         switch color {
         case .none: nil
-        case .grey: .systemGray
+        case .gray: .systemGray
         case .green: .systemGreen
         case .purple: .systemPurple
         case .blue: .systemBlue
@@ -130,12 +130,12 @@ enum TagDotStyle {
         }
     }
 
-    /// The ring for a colourless tag — present, but deliberately quiet: it marks the file as tagged
-    /// without competing with the tags that chose a colour.
+    /// The ring for a colorless tag — present, but deliberately quiet: it marks the file as tagged
+    /// without competing with the tags that chose a color.
     static let colorlessStroke: NSColor = .tertiaryLabelColor
 
     /// A dot as a standalone image, for the tag editor's menu items and the sidebar's Tags rows.
-    /// Same look as the name cell's, so a colour reads identically everywhere it appears; the
+    /// Same look as the name cell's, so a color reads identically everywhere it appears; the
     /// sidebar asks for a larger one because its rows are taller than a menu's.
     static func menuImage(for color: FinderTagColor, diameter: CGFloat = 10) -> NSImage {
         let size = NSSize(width: diameter, height: diameter)

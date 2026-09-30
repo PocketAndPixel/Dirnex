@@ -1,7 +1,7 @@
 import AppKit
 import DirnexCore
 
-/// Menu-item validation for a file pane: every checkmark, and every item that has to grey out where
+/// Menu-item validation for a file pane: every checkmark, and every item that has to gray out where
 /// it cannot apply (PLAN.md §M1 "menu items reflect what the focused pane can actually do").
 ///
 /// Split out of `PanelViewController+FileOps`, which had grown past its length budget, along the
@@ -25,24 +25,29 @@ extension PanelViewController: NSMenuItemValidation {
             return !selectionTargets().isEmpty && host?.panelCounterpart(of: self) != nil
         case #selector(moveToOtherPane(_:)):
             // Move can't come out of a read-only archive (there's nothing to remove); a results
-            // panel still allows it (each target carries its real on-disk path).
-            return !isArchive && !selectionTargets().isEmpty && host?.panelCounterpart(of: self) != nil
+            // panel still allows it (each target carries its real on-disk path) — unless its rows
+            // are themselves archive members, which is what a search inside an archive produces.
+            let targets = selectionTargets()
+            return !isArchive
+                && extractionArchivePath(for: targets) == nil
+                && !targets.isEmpty
+                && host?.panelCounterpart(of: self) != nil
         case #selector(copy(_:)):
             // `copy:` only reaches the pane when the file table is first responder — a name/
             // path field editor intercepts ⌘C for text copy — so this validates the file case.
-            // An archive entry has no on-disk URL to place on the pasteboard, and a remote SFTP
-            // or FTP entry has no *local* one (F5 copies it out instead), so all are excluded.
-            return !isArchive
-                && !panel.path.backend.isSFTP
-                && !panel.path.backend.isFTP
-                && !selectionTargets().isEmpty
+            // Since M23 the board carries a `PasteboardPayload` beside the file URL, so a row on a
+            // connected remote copies like any other — and since Slice 5 an archive member does
+            // too, its paste extracting through the funnel F5 copy-out uses.
+            return canCopyToClipboard
         case #selector(saveCurrentSearch(_:)):
             // Only meaningful on a results pane that still carries the query behind it.
             return canSaveCurrentSearch
         case #selector(showTagsMenu(_:)):
             // Only local files carry tags. Gated on the *targets*, not the pane, so tagging works
-            // from a results tab (virtual pane, real local hits) — and, like ⌃D, ⌃T must reach a
-            // field editor rather than being stolen to open a popup while a name is being typed.
+            // from a results tab (virtual pane, real local hits) — and ⌃T must reach a field
+            // editor (where it transposes) rather than being stolen to open a popup while a name
+            // is being typed. The Favorites/Places popups need no such carve-out: they moved off
+            // the ⌃-letter layer to ⌘F/⌘G, which the text system binds nothing on.
             return canEditTags && !(view.window?.firstResponder is NSText)
         case #selector(undo(_:)):
             return validateUndoItem(menuItem)
@@ -60,19 +65,25 @@ extension PanelViewController: NSMenuItemValidation {
         switch menuItem.action {
         case #selector(goToParentDirectory(_:)):
             // "Go Up" walks out of an archive too, but is meaningless at a backend root or on a
-            // virtual search-results pane.
-            return isArchive || (panel.path.backend == .local && panel.parentPath != nil)
+            // virtual search-results pane. Read from `canGoToParent` rather than restating it: this
+            // menu item is the surface no headless test drives, so a validator carrying its own copy
+            // of the rule is how a working command ends up grayed out (docs/NOTES.md — and it was,
+            // for every remote pane, until 2026-08-13).
+            return canGoToParent
+        case #selector(findFiles(_:)):
+            // Read from `canFindFiles` rather than restating its rule, for the reason `canGoToParent`
+            // above exists: a validator carrying its own copy is how a working command ends up gray,
+            // and this is the surface no headless test drives. An S3 *account* pane is the one place
+            // it is false — its rows are buckets, so there is nothing to search and nothing local to
+            // fall back to.
+            return canFindFiles
         case #selector(goBack(_:)):
             return tabs[activeTabIndex].history.canGoBack
         case #selector(goForward(_:)):
             return tabs[activeTabIndex].history.canGoForward
         case #selector(showHistory(_:)):
-            // Like ⌃D, let ⌥↓ reach a field editor while a name/path field is being edited
-            // instead of stealing it to open the history popup.
-            return !(view.window?.firstResponder is NSText)
-        case #selector(showFavorites(_:)):
-            // While a name/path field is being edited, let ⌃D fall through to the field
-            // editor's delete-forward instead of stealing it to open the favorites.
+            // Let ⌥↓ reach a field editor while a name/path field is being edited instead of
+            // stealing it to open the history popup.
             return !(view.window?.firstResponder is NSText)
         case #selector(openInTerminal(_:)):
             // Needs a real directory on disk (never an archive, an SFTP server, or a results tab)
@@ -101,22 +112,29 @@ extension PanelViewController: NSMenuItemValidation {
             return backend.capabilities(for: panel.path).deleteStrategy != .unsupported
                 && !selectionTargets().isEmpty
         case #selector(putBackSelection(_:)):
-            // Only in a Trash listing, and only on something selected: outside one there is no
-            // record of where anything came from, which is the whole operation.
-            return isTrashListing && !selectionTargets().isEmpty
+            // Only where something can actually go home: the merged Trash, or a row inside a
+            // network share's own `#recycle` bin. `putBackTargets` is the single place that
+            // decides, so this cannot drift from the action it enables.
+            return !putBackTargets.isEmpty
         case #selector(paste(_:)):
-            // ⌘V pastes into a real writable folder, or *adds into* a writable browsed archive
-            // (PLAN.md §M4 — a nested archive is read-only, so it's excluded).
-            return (canWriteHere || isWritableArchive) && clipboardHasFiles()
+            // ⌘V pastes into any folder bytes can land in — this disk or a connected account since
+            // M23 — or *adds into* a writable browsed archive (PLAN.md §M4 — a nested archive is
+            // read-only, so it's excluded). `canReceiveFiles` rather than `canWriteHere`: an S3
+            // account pane is writable (F7 creates a bucket) and is not somewhere a file can go.
+            return (canReceiveFiles || isWritableArchive) && clipboardHasFiles()
         case #selector(pasteAndMoveFromClipboard(_:)):
             // ⌥⌘V has no standard selector, so it reaches the pane even mid text-edit — step it
             // aside for a field editor, else gate it like Paste.
-            return canWriteHere && clipboardHasFiles() && !(view.window?.firstResponder is NSText)
+            return canReceiveFiles && clipboardHasFiles()
+                && !(view.window?.firstResponder is NSText)
         case #selector(renameSelection(_:)):
             // Rename is single-item on the cursor (not the marked set) and never `..`.
-            return canRenameHere && !cursorOnParentRow && panel.currentEntry != nil
+            return canRenameCursorRow && !cursorOnParentRow && panel.currentEntry != nil
         case #selector(multiRenameSelection(_:)):
-            // The batch tool operates on the marked set (else the cursor entry).
+            // The batch tool operates on the marked set (else the cursor entry), and deliberately
+            // keeps the narrower `canRenameHere`: it renames each target with `backend.moveItem`,
+            // which an archive refuses, so it is gray inside one until that loop becomes the single
+            // rewrite the container wants (see `renameRoute`).
             return canRenameHere && !selectionTargets().isEmpty
         case #selector(synchronizeDirectories(_:)):
             // Compares the two panes' folders — needs two distinct real local directories.
@@ -146,7 +164,7 @@ extension PanelViewController: NSMenuItemValidation {
             // Lights up only on a recognized checksum file under the cursor.
             return canVerifyChecksums
         case #selector(createChecksumFile(_:)):
-            // Needs a real writable folder on disk and something selected. Remote panes stay grey:
+            // Needs a real writable folder on disk and something selected. Remote panes stay gray:
             // neither `sftp` nor `curl` can hash server-side (PLAN.md §M14 Slice 2).
             return canCreateChecksumFile
         default:
@@ -154,11 +172,17 @@ extension PanelViewController: NSMenuItemValidation {
         }
     }
 
-    /// Validate the archive operations (Pack). Kept out of the main switch so it stays under
-    /// SwiftLint's cyclomatic-complexity limit (a recurring gotcha). Returns `nil` for any other
-    /// selector so the main switch handles it.
+    /// Validate the archive operations (Pack, Archive Name Encoding). Kept out of the main switch
+    /// so it stays under SwiftLint's cyclomatic-complexity limit (a recurring gotcha). Returns `nil`
+    /// for any other selector so the main switch handles it.
     private func validateArchiveItem(_ menuItem: NSMenuItem) -> Bool? {
         switch menuItem.action {
+        case #selector(chooseArchiveNameEncoding(_:)):
+            // Read from `archiveAwaitingNameEncoding` rather than restating its rule, for the reason
+            // `canGoToParent` above exists: a validator carrying its own copy of a predicate is how
+            // a working command ends up grayed out, and the menu is the surface no headless test
+            // drives. The action itself guards on the same property, so the two cannot disagree.
+            return archiveAwaitingNameEncoding != nil
         case #selector(packSelection(_:)):
             // Pack a real local selection into a new archive in the other pane; the source must be
             // a real folder (not an archive or search-results view) and there must be a pane to
@@ -171,7 +195,7 @@ extension PanelViewController: NSMenuItemValidation {
 
     /// This pane can create/paste into its directory — driven off the *owning* backend's
     /// capabilities (PLAN.md §M5): a virtual pane (search results or a browsed archive) reports
-    /// `.read`, so `.write` is absent and the op greys out; a real disk (and a future writable
+    /// `.read`, so `.write` is absent and the op grays out; a real disk (and a future writable
     /// SFTP mount) reports `.write`.
     ///
     /// `creationDirectory` is the second half because the merged Trash is a virtual location that
@@ -179,7 +203,7 @@ extension PanelViewController: NSMenuItemValidation {
     /// create or paste into. Without it, New Folder lit up in a Trash tab and the flow behind it
     /// bailed out silently at its own guard. The merged iCloud listing is the mirror image: also
     /// virtual, also writable, but it *does* have a directory underneath (CloudDocs), so it enables
-    /// rather than greys — which is exactly why both ask the same question the flows themselves ask.
+    /// rather than grays — which is exactly why both ask the same question the flows themselves ask.
     ///
     /// It is the same property those flows resolve their destination from, spelled the same way so it
     /// cannot drift into a second predicate. Safe in a validator, which does not reconcile the cursor
@@ -188,9 +212,89 @@ extension PanelViewController: NSMenuItemValidation {
         backend.capabilities(for: panel.path).contains(.write) && creationDirectory != nil
     }
 
-    /// This pane can rename an item in place — the owning backend advertises `.rename`.
-    private var canRenameHere: Bool {
-        backend.capabilities(for: panel.path).contains(.rename)
+    /// The row under the cursor can be renamed in place — the backend that owns the directory it
+    /// lives in advertises `.rename`, and the name on screen is the name that would be edited.
+    ///
+    /// Internal, and asked by the **flows** as well as by this validator (F2's `beginRename`, ⇧F2's
+    /// `beginMultiRename`), because two hand-written copies of one rule is how they drifted: the
+    /// flows guarded on `backend.capabilities` — the composite's *backend-wide* set, which is always
+    /// the local backend's — while this asked `capabilities(for:)`, the set of whichever backend owns
+    /// the current path. The two then disagreed in both directions at once. On S3 the item was gray
+    /// and the key worked, because S3 did not advertise `.rename` and the local backend does; in the
+    /// merged iCloud listing the item was *enabled* and the key silently did nothing, because those
+    /// rows are ordinary local files (so the capability is the local one) sitting in a listing with
+    /// no directory of its own. One property answers both, so neither surface can be reached without
+    /// the other (docs/NOTES.md ▸ AppKit — the size-bar and `canGoToParent` lessons).
+    ///
+    /// The second half is the **row**, not the pane. `FileEntry.nameMatchesPath` is false for
+    /// exactly one kind of row in this app — the merged iCloud listing's app-library rows, which
+    /// wear an app's name over its `Documents` folder — and renaming one would rename a folder the
+    /// user is not looking at, under a name that is not the one they would be editing.
+    ///
+    /// It replaced `!isVirtualDirectory`, which was right about those rows and wrong about every row
+    /// standing beside them: a loose file in the merged listing, a search hit, a row inside an
+    /// expanded folder in either. All were refused for a property of the *container* rather than of
+    /// themselves. Nothing else needed relaxing — an archive member and an S3 account's buckets are
+    /// refused by the capability, and a trashed item by the `.rename` a trash withdraws, so each
+    /// refusal now states its own reason instead of three of them sharing one flag.
+    var canRenameHere: Bool {
+        cursorRowCarriesItsOwnName && backend.capabilities(for: renameDirectory).contains(.rename)
+    }
+
+    /// Whether **F2** can rename the row under the cursor — the one answer its menu validator and
+    /// the key's own `beginRename` both read.
+    ///
+    /// Two independent halves, and collapsing them loses one: the route says *how* the rename would
+    /// happen (a backend `moveItem`, or a rewrite of the archive the row is a member of), and
+    /// `cursorRowCarriesItsOwnName` says whether the name on screen is the file's own — false for
+    /// the merged iCloud listing's app-library rows, where editing "Pages" would rename the
+    /// `com~apple~Pages` container underneath it. A gate that asked only the route would rename the
+    /// wrong thing there; one that asked only the name would still refuse every archive member.
+    ///
+    /// It is deliberately **wider** than `canRenameHere`, which ⇧F2 keeps — see `renameRoute(for:)`
+    /// for why the multi-rename tool is not simply pointed at this.
+    var canRenameCursorRow: Bool {
+        cursorRowCarriesItsOwnName && renameRoute(for: renameRow) != .unavailable
+    }
+
+    /// Whether the row under the cursor shows its file's real name.
+    ///
+    /// `true` with no row under the cursor, which keeps this a question about a *location* for the
+    /// callers that ask it that way: F2's validator adds `panel.currentEntry != nil` and ⇧F2's a
+    /// non-empty selection, so an empty pane is refused there rather than here.
+    var cursorRowCarriesItsOwnName: Bool {
+        guard !cursorOnParentRow, let entry = panel.currentEntry else { return true }
+        return entry.nameMatchesPath
+    }
+
+    /// The directory whose backend decides whether the cursor's row can be renamed: the row's own,
+    /// which is `performRename`'s `source.parent` — the directory the rename actually happens in.
+    ///
+    /// It used to be `panel.path`, and the two are the same answer in a plain directory listing,
+    /// which is every listing this app had when the gate was written. Two shapes broke it:
+    ///
+    /// - **A tree** draws rows from several directories, and they can be on a different *backend*
+    ///   than the pane (docs/NOTES.md ▸ the results-tab family). An S3 account pane is where that
+    ///   reached a user: its own rows are buckets, which nothing can rename, so F2 three levels
+    ///   inside an expanded bucket did nothing at all and File ▸ Rename… was gray beside it
+    ///   (reported 2026-08-22). A cursor on a bucket row still answers with the account, and is
+    ///   still — correctly — refused.
+    /// - **A synthesized listing** has a container with no capabilities to speak of. A search hit
+    ///   and a loose file in the merged iCloud listing are ordinary files in ordinary directories,
+    ///   and asking `search:` or `icloud:` about them answered for the *presentation*.
+    ///
+    /// Deliberately **not** `Panel.cursorDirectory`, which stops at `panel.path` outside a tree and
+    /// at a tree's root level — that property answers where a *create* lands, and there the pane's
+    /// own directory is right (F7 in the merged iCloud listing creates in the CloudDocs container
+    /// underneath, via `writeDirectory`, not beside whichever row the cursor happens to be on). Two
+    /// questions that coincide in a plain listing and must not be collapsed.
+    private var renameDirectory: VFSPath {
+        // The `..` row stands for the pane's own parent rather than for any row, so a cursor parked
+        // on it is pointing at nothing and the pane's own directory is the answer.
+        guard !cursorOnParentRow, let directory = panel.currentEntry?.path.parent else {
+            return panel.path
+        }
+        return directory
     }
 
     /// Boolean view toggles that carry a checkmark tracking their state and are always
@@ -223,11 +327,11 @@ extension PanelViewController: NSMenuItemValidation {
             // an SFTP volume or in search results the bars are suppressed because there is nothing
             // sane to walk, and that is not the user having switched the mode off.
             menuItem.state = isSizeVisualizationEnabled ? .on : .off
-            // Disabled where it cannot apply, so the greying explains the suppression that the
-            // checkmark alone would leave looking like a bug. A tree *is* allowed now — its bars are
-            // re-scoped per level (`SizeVisualization(tree:)`, PLAN.md §M15) — so the gate matches
-            // `areSizeBarsVisible`.
-            return panel.path.backend == .local && !isResultsListing
+            // Disabled where it cannot apply, so the graying explains the suppression that the
+            // checkmark alone would leave looking like a bug. `canShowSizeBars` itself rather than a
+            // hand-copy of it: this was a second spelling of `backend == .local`, and it was wrong
+            // about an archive in exactly the same way its twin was.
+            return canShowSizeBars
         case #selector(toggleTreeView(_:)):
             // Tracks the pane's *actual* shape (`panel.isTree`), not the tab's stored `viewMode`: a
             // tree preference is suppressed in an archive or on a remote volume, and the checkmark
@@ -239,7 +343,7 @@ extension PanelViewController: NSMenuItemValidation {
             // The tab's flag again, not `areGitAwareSizesActive` — browsing out of a repository
             // suppresses the filtering, and unchecking the box would blame the user's setting.
             menuItem.state = isGitAwareSizesEnabled ? .on : .off
-            // Greyed outside a repository, where there is nothing to exclude. `isInGitRepository`
+            // Grayed outside a repository, where there is nothing to exclude. `isInGitRepository`
             // rather than the snapshot: a repository whose first `git status` is still in flight is
             // one you are in, and the item must not flicker enabled a moment after the folder opens.
             return isInGitRepository

@@ -295,6 +295,7 @@ final class MultiRenameController: NSViewController {
     }
 
     private func configure(_ field: NSTextField, placeholder: String, string: String, width: CGFloat) {
+        field.keepToOneLine()
         field.placeholderString = placeholder
         field.stringValue = string
         field.delegate = self
@@ -322,7 +323,7 @@ extension MultiRenameController: NSTableViewDelegate {
         return cell
     }
 
-    /// New-name colour by disposition: dim for a no-op, red for a blocking problem, normal for
+    /// New-name color by disposition: dim for a no-op, red for a blocking problem, normal for
     /// a clean rename — so the user reads the outcome of the whole batch at a glance.
     private func color(for status: RenameStatus) -> NSColor {
         switch status {

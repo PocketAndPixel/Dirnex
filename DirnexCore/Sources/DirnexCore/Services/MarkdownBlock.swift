@@ -9,8 +9,8 @@ import Foundation
 /// each site that happens to hold text.
 ///
 /// Two passes rather than the single one `SyntaxMarkdownScanner` makes over the same syntax, and the
-/// difference is deliberate (PLAN.md §M18). That scanner only ever *adds colour*, so it can afford
-/// one lookahead and a construct it misreads costs a wrong colour. This produces the document, so it
+/// difference is deliberate (PLAN.md §M18). That scanner only ever *adds color*, so it can afford
+/// one lookahead and a construct it misreads costs a wrong color. This produces the document, so it
 /// gets the previous line and the whole of a block — which is exactly what **setext headings** and
 /// **indented code blocks** need, the two constructs M17 named as out of its reach.
 public enum MarkdownBlock: Equatable, Sendable {
@@ -19,7 +19,7 @@ public enum MarkdownBlock: Equatable, Sendable {
     case paragraph(String)
     case thematicBreak
     /// A fenced or indented code block. `info` is the fence's info string — the language name Slice
-    /// 2 colours the body with — and is `nil` for an indented block, which has nowhere to carry one.
+    /// 2 colors the body with — and is `nil` for an indented block, which has nowhere to carry one.
     case codeBlock(info: String?, code: String)
     case blockQuote([MarkdownBlock])
     case list(MarkdownList)
@@ -100,9 +100,9 @@ public struct MarkdownTable: Equatable, Sendable {
 /// One `key: value` line of YAML front matter.
 ///
 /// Deliberately not a YAML parser: front matter is read for *display*, so a nested structure is
-/// shown as the text it is written as rather than being modelled. Anything that is not a `key:
+/// shown as the text it is written as rather than being modeled. Anything that is not a `key:
 /// value` line at the top level keeps its whole line as the value under an empty key, which renders
-/// as an unlabelled row instead of disappearing.
+/// as an unlabeled row instead of disappearing.
 public struct MarkdownFrontMatterEntry: Equatable, Sendable {
     public let key: String
     public let value: String

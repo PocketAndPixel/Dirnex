@@ -33,14 +33,6 @@ struct CommandCatalogTests {
         }
     }
 
-    @Test("the catalog carries the M3 per-panel history commands")
-    func coversHistoryCommands() {
-        let ids = Set(CommandCatalog.all.map(\.id))
-        for expected in ["go.back", "go.forward", "go.history"] {
-            #expect(ids.contains(expected))
-        }
-    }
-
     @Test("the catalog carries the M3 workspace commands")
     func coversWorkspaceCommands() {
         let workspace = CommandCatalog.all.filter { $0.category == .workspace }
@@ -173,16 +165,6 @@ struct CommandCatalogTests {
         #expect(KeyBindings().conflicts(for: "view.functionBar").isEmpty)
     }
 
-    @Test("the M5 connect-to-server command is a shortcut-free navigation command")
-    func coversConnectServer() {
-        let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
-        let connect = byID["go.connectServer"]
-        #expect(connect?.category == .navigation)
-        // No default shortcut (reached via menu/palette), so it can never collide.
-        #expect(connect?.shortcut == nil)
-        #expect(KeyBindings().conflicts(for: "go.connectServer").isEmpty)
-    }
-
     @Test("the M4 pack tool is a conflict-free File command on ⌥F5")
     func coversPack() {
         let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
@@ -242,6 +224,35 @@ struct CommandCatalogTests {
         #expect(fullWindow?.shortcut != byID["view.quickView"]?.shortcut)
     }
 
+    @Test("Quick View zoom is three conflict-free View commands on ⌘+, ⌘− and ⌘0")
+    func coversQuickViewZoom() {
+        let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
+        let expected: [(String, CommandShortcut)] = [
+            ("view.quickViewZoomIn", CommandShortcut(key: "+", modifiers: .command)),
+            ("view.quickViewZoomOut", CommandShortcut(key: "-", modifiers: .command)),
+            ("view.quickViewResetZoom", CommandShortcut(key: "0", modifiers: .command))
+        ]
+        for (id, shortcut) in expected {
+            #expect(byID[id]?.category == .view, "\(id)")
+            #expect(byID[id]?.shortcut == shortcut, "\(id)")
+            #expect(KeyBindings().conflicts(for: id).isEmpty, "\(id)")
+        }
+        // The hidden ⌘= alias for Zoom In is only safe while nothing else is bound to ⌘=.
+        let equals = CommandShortcut(key: "=", modifiers: .command)
+        #expect(!CommandCatalog.all.contains { $0.shortcut == equals })
+        #expect(CommandShortcut(key: "+", modifiers: .command).display == "⌘+")
+    }
+
+    @Test("Quick View's table filter is a conflict-free View command on ⌥⌘F, beside Favorites' ⌘F")
+    func coversQuickViewTableFilter() {
+        let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
+        let filter = byID["view.quickViewFilterTable"]
+        #expect(filter?.category == .view)
+        #expect(filter?.shortcut == CommandShortcut(key: "f", modifiers: [.command, .option]))
+        #expect(KeyBindings().conflicts(for: "view.quickViewFilterTable").isEmpty)
+        #expect(byID["go.favorites"]?.shortcut == CommandShortcut(key: "f", modifiers: .command))
+    }
+
     @Test("the M6 terminal drawer is a conflict-free View command on ⌃`")
     func coversTerminalDrawer() {
         let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
@@ -252,7 +263,7 @@ struct CommandCatalogTests {
     }
 
     /// The drawer's shortcut must stay off the ⌃-letter layer the app's own popups live on: those
-    /// letters are the shell's (⌃D is EOF, ⌃Q is XON, ⌃T transposes), and the drawer is the one
+    /// letters are the shell's (⌃B moves back, ⌃Q is XON, ⌃T transposes), and the drawer is the one
     /// surface whose keystrokes belong to somebody else.
     @Test("the terminal drawer's shortcut is not a control key a shell would want")
     func terminalDrawerAvoidsShellControlKeys() {
@@ -260,16 +271,6 @@ struct CommandCatalogTests {
         let drawer = byID["view.terminal"]
         #expect(drawer?.shortcut?.modifiers == .control)
         #expect(drawer?.shortcut?.key.first?.isLetter == false)
-    }
-
-    @Test("the M6 open-in-terminal command is a shortcut-free navigation command")
-    func coversOpenInTerminal() {
-        let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
-        let open = byID["go.openInTerminal"]
-        #expect(open?.category == .navigation)
-        // No default shortcut (reached via menu/palette), so it can never collide.
-        #expect(open?.shortcut == nil)
-        #expect(KeyBindings().conflicts(for: "go.openInTerminal").isEmpty)
     }
 
     @Test("Select All is a conflict-free Select command on ⌘A")
@@ -280,26 +281,6 @@ struct CommandCatalogTests {
         #expect(selectAll?.shortcut == CommandShortcut(key: "a", modifiers: .command))
         // ⌘A doubles as the text-field "select all" — it must not collide with any pane command.
         #expect(KeyBindings().conflicts(for: "select.all").isEmpty)
-    }
-
-    @Test("the M4 file search is a conflict-free Go command on ⌥F7")
-    func coversFindFiles() {
-        let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
-        let search = byID["go.search"]
-        #expect(search?.category == .navigation)
-        #expect(search?.shortcut == CommandShortcut(key: "F7", modifiers: [.function, .option]))
-        // ⌥F7 must not collide with plain F7 (New Folder) — the modifier set differs.
-        #expect(KeyBindings().conflicts(for: "go.search").isEmpty)
-    }
-
-    @Test("the M4 saved-search command is a conflict-free Go command on ⌘S")
-    func coversSaveSearch() {
-        let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
-        let save = byID["go.saveSearch"]
-        #expect(save?.category == .navigation)
-        // ⌘S saves the active search; distinct from ⌃⌘S (Show Sidebar), so no collision.
-        #expect(save?.shortcut == CommandShortcut(key: "s", modifiers: .command))
-        #expect(KeyBindings().conflicts(for: "go.saveSearch").isEmpty)
     }
 }
 

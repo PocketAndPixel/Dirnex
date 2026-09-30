@@ -1,0 +1,269 @@
+import Foundation
+import Testing
+
+@testable import DirnexCore
+
+/// The archives under test were written by **`bsdtar`**, not by `EncryptedArchiveWriter`.
+///
+/// That is the whole point of committing them: a reader checked against our own writer proves the
+/// two agree, which is exactly what a shared misunderstanding of the format also produces. The
+/// fixtures are the same kind of evidence as the `.DS_Store` the trash tests read (Package.swift's
+/// own comment) — real bytes from a producer that has no idea Dirnex exists.
+///
+/// Both were made with:
+///
+///     bsdtar -c -f encrypted-aes256-bsdtar.zip --format zip \
+///            --options zip:encryption=aes256 --passphrase 'dirnex-test-passphrase' \
+///            -C <staging> notes link.txt
+///
+/// holding `notes/hello.txt` (18 bytes), `notes/nested/deep.txt` (11 bytes), the two directories,
+/// and `link.txt` → `notes/hello.txt`.
+@Suite("EncryptedArchiveReader")
+struct EncryptedArchiveReaderTests {
+    private static let passphrase = EncryptedArchiveFixture.passphrase
+
+    private func fixture(_ name: String) throws -> String {
+        try EncryptedArchiveFixture.archive(name)
+    }
+
+    private func scratchDirectory() throws -> String {
+        try EncryptedArchiveFixture.scratchDirectory()
+    }
+
+    private func remove(_ path: String) { EncryptedArchiveFixture.remove(path) }
+
+    private func contents(of path: String) throws -> String {
+        try EncryptedArchiveFixture.contents(of: path)
+    }
+
+    // MARK: - Inspection
+
+    @Test("an encrypted archive lists its contents with no passphrase at all")
+    func inspectionNeedsNoPassphrase() throws {
+        let inspection = try EncryptedArchiveReader.inspect(
+            archiveAt: fixture("encrypted-aes256-bsdtar")
+        )
+
+        #expect(inspection.needsPassphrase)
+        #expect(inspection.entries.map(\.archivePath).sorted() == [
+            "link.txt", "notes/", "notes/hello.txt", "notes/nested/", "notes/nested/deep.txt"
+        ])
+        // 18 + 11; directories and the symlink contribute nothing.
+        #expect(inspection.totalByteSize == 29)
+    }
+
+    @Test("only the data is encrypted — directories and the symlink are not")
+    func onlyFileDataIsEncrypted() throws {
+        let inspection = try EncryptedArchiveReader.inspect(
+            archiveAt: fixture("encrypted-aes256-bsdtar")
+        )
+        let encrypted = inspection.entries.filter(\.isEncrypted).map(\.archivePath).sorted()
+        #expect(encrypted == ["notes/hello.txt", "notes/nested/deep.txt"])
+    }
+
+    @Test("a plain archive reports that it needs nothing")
+    func plainArchiveNeedsNoPassphrase() throws {
+        let inspection = try EncryptedArchiveReader.inspect(archiveAt: fixture("plain-bsdtar"))
+        #expect(!inspection.needsPassphrase)
+        #expect(inspection.entries.count == 5)
+    }
+
+    @Test("entry kinds survive the round trip through bsdtar's zip")
+    func entryKinds() throws {
+        let inspection = try EncryptedArchiveReader.inspect(archiveAt: fixture("plain-bsdtar"))
+        let byName = Dictionary(
+            uniqueKeysWithValues: inspection.entries.map { ($0.archivePath, $0) }
+        )
+
+        #expect(byName["notes/"]?.kind == .directory)
+        #expect(byName["notes/hello.txt"]?.kind == .regularFile)
+        #expect(byName["link.txt"]?.kind == .symbolicLink(target: "notes/hello.txt"))
+    }
+
+    // MARK: - Extraction
+
+    @Test("the right passphrase extracts bsdtar's archive byte for byte")
+    func extractsWithCorrectPassphrase() throws {
+        let destination = try scratchDirectory()
+        defer { remove(destination) }
+
+        let report = try EncryptedArchiveReader.extract(
+            archiveAt: fixture("encrypted-aes256-bsdtar"),
+            into: destination,
+            passphrase: ArchivePassphrase(Self.passphrase)
+        )
+
+        #expect(report.refused.isEmpty)
+        #expect(try contents(of: destination + "/notes/hello.txt") == "hello from bsdtar\n")
+        #expect(try contents(of: destination + "/notes/nested/deep.txt") == "deep bytes\n")
+
+        var linkStatus = stat()
+        #expect(lstat(destination + "/link.txt", &linkStatus) == 0)
+        #expect((linkStatus.st_mode & S_IFMT) == S_IFLNK)
+    }
+
+    @Test("a wrong passphrase is reported as such, not as a damaged archive")
+    func wrongPassphraseIsReportedAsSuch() throws {
+        let destination = try scratchDirectory()
+        defer { remove(destination) }
+
+        // This is the test that pins `LibArchive.isIncorrectPassphrase`, which has to read
+        // libarchive's English because the return code cannot tell the two failures apart. If a
+        // future libarchive rewords its message, this fails loudly here rather than silently
+        // degrading every mistyped passphrase into "this archive is damaged".
+        #expect(throws: EncryptedArchiveError.incorrectPassphrase) {
+            try EncryptedArchiveReader.extract(
+                archiveAt: fixture("encrypted-aes256-bsdtar"),
+                into: destination,
+                passphrase: ArchivePassphrase("not the passphrase")
+            )
+        }
+    }
+
+    @Test("extracting without a passphrase asks for one instead of failing obscurely")
+    func missingPassphraseIsNamed() throws {
+        let destination = try scratchDirectory()
+        defer { remove(destination) }
+
+        #expect(throws: EncryptedArchiveError.passphraseRequired) {
+            try EncryptedArchiveReader.extract(
+                archiveAt: fixture("encrypted-aes256-bsdtar"), into: destination, passphrase: nil
+            )
+        }
+    }
+
+    @Test("a plain archive extracts even when a passphrase is offered anyway")
+    func passphraseOnAPlainArchiveIsHarmless() throws {
+        let destination = try scratchDirectory()
+        defer { remove(destination) }
+
+        try EncryptedArchiveReader.extract(
+            archiveAt: fixture("plain-bsdtar"),
+            into: destination,
+            passphrase: ArchivePassphrase("irrelevant")
+        )
+        #expect(try contents(of: destination + "/notes/hello.txt") == "hello from bsdtar\n")
+    }
+
+    @Test("progress ends at the archive's own declared total")
+    func progressReachesTheTotal() throws {
+        let destination = try scratchDirectory()
+        defer { remove(destination) }
+
+        var last: EncryptedArchiveReader.Progress?
+        try EncryptedArchiveReader.extract(
+            archiveAt: fixture("encrypted-aes256-bsdtar"),
+            into: destination,
+            passphrase: ArchivePassphrase(Self.passphrase),
+            onProgress: { last = $0 }
+        )
+
+        let final = try #require(last)
+        #expect(final.bytesExtracted == 29)
+        #expect(final.totalBytes == 29)
+    }
+
+    @Test("canceling stops the extraction")
+    func cancellation() throws {
+        let destination = try scratchDirectory()
+        defer { remove(destination) }
+
+        #expect(throws: CancellationError.self) {
+            try EncryptedArchiveReader.extract(
+                archiveAt: fixture("encrypted-aes256-bsdtar"),
+                into: destination,
+                passphrase: ArchivePassphrase(Self.passphrase),
+                isCancelled: { true }
+            )
+        }
+    }
+
+    // MARK: - Round trip
+
+    @Test("what the writer produces, the reader reads back unchanged")
+    func writerReaderRoundTrip() throws {
+        let source = try scratchDirectory()
+        defer { remove(source) }
+        try FileManager.default.createDirectory(
+            atPath: source + "/tree/inner", withIntermediateDirectories: true
+        )
+        let body = String(repeating: "round trip bytes\n", count: 5000)
+        try Data(body.utf8).write(to: URL(fileURLWithPath: source + "/tree/inner/big.txt"))
+
+        let archive = source + "/out.zip"
+        let items = try ArchiveSourceEnumerator.items(inDirectory: source, names: ["tree"])
+        try EncryptedArchiveWriter.write(
+            items: items, toArchiveAt: archive,
+            encryption: .aes256, passphrase: ArchivePassphrase("round trip")
+        )
+
+        let destination = try scratchDirectory()
+        defer { remove(destination) }
+        try EncryptedArchiveReader.extract(
+            archiveAt: archive, into: destination, passphrase: ArchivePassphrase("round trip")
+        )
+
+        // Larger than one 128 KiB chunk on purpose: the chunked write and chunked read loops are
+        // where an off-by-one costs you a corrupted file rather than an error.
+        #expect(try contents(of: destination + "/tree/inner/big.txt") == body)
+    }
+
+    // MARK: - Modification times
+
+    /// The staged tree is what a rewrite repacks, so a time lost here is a time lost in the user's
+    /// archive: renaming one member restamped **every** entry with the moment of the rewrite until
+    /// 2026-09-10. `bsdtar -x` — the engine the other rewrite route uses — restores times, so this
+    /// is the assertion that keeps the two routes saying the same thing.
+    @Test("every placed item carries the modification time the archive recorded for it")
+    func extractionRestoresRecordedModificationTimes() throws {
+        let archive = try fixture("encrypted-aes256-bsdtar")
+        let inspection = try EncryptedArchiveReader.inspect(archiveAt: archive)
+        let destination = try scratchDirectory()
+        defer { remove(destination) }
+
+        try EncryptedArchiveReader.extract(
+            archiveAt: archive, into: destination,
+            passphrase: ArchivePassphrase(Self.passphrase)
+        )
+
+        // Checked against the archive's *own* headers rather than a date written into this test:
+        // the fixture's stamps are whatever `bsdtar` recorded the day it was committed, and a
+        // literal here would be a second copy of them for somebody to keep in step. It covers all
+        // three kinds in one pass — the two files, the two directories, and the symlink, whose own
+        // time is the one wanted rather than its target's.
+        for entry in inspection.entries {
+            var status = stat()
+            let placed = destination + "/" + entry.archivePath
+            let found = lstat(placed, &status) == 0
+            #expect(found, "not placed: \(entry.archivePath)")
+            guard found else { continue }
+            let recorded = time_t(entry.modificationDate.timeIntervalSince1970)
+            #expect(
+                status.st_mtimespec.tv_sec == recorded,
+                "\(entry.archivePath): placed \(status.st_mtimespec.tv_sec), archive \(recorded)"
+            )
+        }
+    }
+
+    /// The half a fix that stamped each directory where it created it would fail while passing
+    /// everything else here — `notes/` is made first and then written into twice, and creating an
+    /// entry inside a directory moves that directory's own mtime (measured 2026-09-10).
+    @Test("a directory keeps its recorded time even though its children are written after it")
+    func directoryTimeSurvivesItsOwnChildren() throws {
+        let archive = try fixture("encrypted-aes256-bsdtar")
+        let inspection = try EncryptedArchiveReader.inspect(archiveAt: archive)
+        let destination = try scratchDirectory()
+        defer { remove(destination) }
+
+        try EncryptedArchiveReader.extract(
+            archiveAt: archive, into: destination,
+            passphrase: ArchivePassphrase(Self.passphrase)
+        )
+
+        let notes = try #require(inspection.entries.first { $0.archivePath == "notes/" })
+        var status = stat()
+        let found = lstat(destination + "/notes", &status) == 0
+        #expect(found)
+        #expect(status.st_mtimespec.tv_sec == time_t(notes.modificationDate.timeIntervalSince1970))
+    }
+}

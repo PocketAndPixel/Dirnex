@@ -6,7 +6,7 @@ import Testing
 /// The `onError` hook — the engine yielding control per failed source to a resolver, the core
 /// half of TC's per-file "Skip / Retry / Abort" error dialog (PLAN.md §M2). The resolver
 /// stands in for the app's dialog: the tests script its answers and assert that the engine
-/// consults it exactly on the failing items, honours each `ErrorResolution` (skip collects and
+/// consults it exactly on the failing items, honors each `ErrorResolution` (skip collects and
 /// carries on, retry re-attempts, abort unwinds the whole op), and — with no resolver — keeps
 /// its unattended default of collecting the failure and moving on.
 @Suite("CopyEngine error handling")

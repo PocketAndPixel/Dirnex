@@ -73,6 +73,92 @@ public struct VFSBackendID: RawRepresentable, Sendable, Hashable, CustomStringCo
 
     private static let archivePrefix = "archive:"
 
+    /// Whether this id addresses a **connected remote account** — a place on another machine whose
+    /// directories are listed over the network and can be listed again.
+    ///
+    /// It exists because the question kept being asked by spelling out the backends that happened
+    /// to answer it. Five sites in the app read `isSFTP || isFTP` where they meant *this*, and each
+    /// one of them was silently wrong the day FTP arrived beside SFTP (docs/NOTES.md ▸ AppKit: a
+    /// freshly connected FTP server's path bar read "Results for /"). The compiler checks none of
+    /// them, so the fix is a name rather than a third disjunct.
+    ///
+    /// What it means, precisely, is *re-listable and not on this disk*: back/forward keeps a normal
+    /// trail here, a refresh after an operation re-lists, the path bar draws crumbs rather than the
+    /// dead-end "results" label — and ⌘C is refused, because these entries have no local URL to
+    /// put on the pasteboard. It says nothing about whether the account can be **written** to; that
+    /// is ``acceptsUploads``, which is a different question with a different answer.
+    ///
+    /// **The Photos library is a member, though no server is involved** (PLAN.md §M28). Its originals
+    /// are listed through PhotoKit and fetched to a temp copy before anything can open them, which is
+    /// every property this name promises — re-listable, not on this disk, no local URL. It is
+    /// read-only, so ``acceptsUploads`` leaves it out.
+    public var isRemoteConnection: Bool { isSFTP || isFTP || isS3 || isS3Account || isPhotos }
+
+    /// Whether a copy *into* this backend has an upload primitive behind it.
+    ///
+    /// Separate from ``isRemoteConnection`` and now visibly so: **an S3 account pane is browsable
+    /// and is not somewhere bytes can land.** Its rows are buckets, and S3 has no verb for "put
+    /// this file in the account" — a copy there is meaningless rather than merely unimplemented.
+    /// That gap is the whole reason the two properties were kept apart while they still read the
+    /// same: S3 spent a milestone read-only, where a pane accepting F5 would have failed *inside
+    /// the queue*, after the job started, instead of saying up front that the other panel cannot
+    /// receive files. Collapsing them at any point since would have had to be undone here.
+    public var acceptsUploads: Bool { isSFTP || isFTP || isS3 }
+
+    /// Whether a transfer can *land* here — this disk, or a remote account with an upload primitive
+    /// behind it.
+    ///
+    /// The union ``acceptsUploads`` is missing, and it exists because three sites were about to
+    /// spell it by hand: F5/F6's destination check (`PanelViewController+Copy.beginTransfer`, which
+    /// had it first), ⌘V's, and a drop's. One question, and this project's most-repeated bug is what
+    /// happens when it has several spellings — the day a fourth backend arrives, two of them are
+    /// updated.
+    ///
+    /// **An S3 *account* is the case that makes it worth a name rather than an `||` at each site.**
+    /// It carries `.write` — F7 there creates a *bucket* — and `writeDirectory` answers for it, so
+    /// every capability-shaped gate says yes while a file copied into it has nowhere to go. Without
+    /// this the paste would be enabled, start a job, and fail *inside the queue* rather than saying
+    /// up front that the other panel cannot receive files, which is exactly the failure
+    /// ``acceptsUploads``' own doc comment was written about.
+    ///
+    /// It says nothing about a *virtual* container: the merged Trash and a results listing have no
+    /// directory of their own, so a caller resolves that first (`writeDirectory`) and asks this of
+    /// whatever real location came back.
+    public var receivesFiles: Bool { self == .local || acceptsUploads }
+
+    /// Whether a modification time from this backend's **listing** can be compared against one
+    /// from another listing — the question a directory sync asks before it offers to compare by
+    /// date at all (PLAN.md §M25 Slice 5c).
+    ///
+    /// The local disk alone, and each of the others fails for its own reason. Two of them were
+    /// measured against a real `sshd` on 2026-08-28 rather than read off a man page, because the
+    /// SFTP answer is the one this project had assumed went the other way:
+    ///
+    /// - **SFTP** lists through `ls -la`, which prints `Aug 20 11:33` for a file whose true mtime is
+    ///   `11:33:37` — the **seconds are gone** — and `Dec 20  2025` for one older than about six
+    ///   months, where the time of day is gone entirely and the parse lands at local midnight
+    ///   (measured 41 617 s from the truth). Against ``DirectorySync/defaultTolerance`` that reports
+    ///   a difference for fifty-nine of every sixty recent files and for every old one. The exec
+    ///   channel's `ls -ldn` carries the identical stamp, so gathering the tree faster does not make
+    ///   it finer.
+    /// - **FTP**'s `LIST` is not standardized: its stamp is year-less for recent files, carries no
+    ///   time zone, and is on the *server's* clock (docs/NOTES.md ▸ curl).
+    /// - **S3** is the case that is exact and still wrong. `LastModified` is a real ISO-8601
+    ///   timestamp to the second — and it is when the object was **written**, not when its contents
+    ///   were last changed, and there is no verb that sets it. A file uploaded today from a 2018
+    ///   source reads as today, forever.
+    /// - **An archive** is read through `bsdtar -tvf`, which shares the year-less columnar stamp all
+    ///   four of this project's listing parsers read (``ColumnarListing``).
+    ///
+    /// It is asked of a **sync side**, which is always a real re-listable directory, so the virtual
+    /// containers are not among the answers above: their entries carry real `.local` paths and would
+    /// be perfectly comparable, but a listing with no directory of its own is refused a step earlier.
+    ///
+    /// Distinct from the deleted `hasApproximateTimestamps`, which asked a narrower question — may
+    /// two readings of *one* file be compared — and answered FTP alone. Two files, two listings and
+    /// possibly two protocols is a stricter test, and SFTP passes the old one and fails this.
+    public var hasComparableModificationTimes: Bool { self == .local }
+
     public var description: String { rawValue }
 }
 

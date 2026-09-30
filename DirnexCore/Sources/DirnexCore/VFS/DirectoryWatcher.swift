@@ -21,11 +21,22 @@ public final class DirectoryWatcher {
     private let queue: DispatchQueue
     private var stream: FSEventStreamRef?
 
+    /// FSEvents' coalescing window: a burst of changes within it collapses into one callback.
+    ///
+    /// Named rather than left as a default argument because a *second* thing now has to wait the
+    /// same length. Each edited copy is watched through its own stream, so a script rewriting forty
+    /// files produces forty independent callbacks — clustered within about this long of each other,
+    /// since that is what each stream is holding them for. Anything gathering those into one batch
+    /// is therefore waiting out the delivery mechanism's own window rather than picking a number,
+    /// which is the difference between a constant with a reason and a guess
+    /// (`BrowserWindowController+WriteBackBatch`).
+    public static let coalescingWindow: TimeInterval = 0.15
+
     /// Begin watching `path` immediately. `latency` is FSEvents' coalescing window —
     /// bursts of changes within it collapse into one callback.
     public init(
         path: VFSPath,
-        latency: TimeInterval = 0.15,
+        latency: TimeInterval = DirectoryWatcher.coalescingWindow,
         queue: DispatchQueue = DispatchQueue(label: "com.dirnex.fsevents", qos: .utility),
         onChange: @escaping @Sendable () -> Void
     ) {
@@ -47,7 +58,7 @@ public final class DirectoryWatcher {
     /// (no trash exists yet, iCloud Drive is off) has nothing to notice.
     public init(
         paths: [VFSPath],
-        latency: TimeInterval = 0.15,
+        latency: TimeInterval = DirectoryWatcher.coalescingWindow,
         queue: DispatchQueue = DispatchQueue(label: "com.dirnex.fsevents", qos: .utility),
         onChange: @escaping @Sendable () -> Void
     ) {
@@ -55,6 +66,36 @@ public final class DirectoryWatcher {
         self.queue = queue
         guard !paths.isEmpty else { return }
         start(paths: paths.map(\.path), latency: latency)
+    }
+
+    /// Watch one **file**, firing `onChange` whenever the bytes at that path change — what a pane
+    /// browsing an archive needs, since its rows are read from a `.zip` rather than from a directory
+    /// (PLAN.md ▸ Still open, "an archive pane does not notice its own file changing").
+    ///
+    /// `kFSEventStreamCreateFlagFileEvents` is the whole difference and it is load-bearing rather
+    /// than a tuning choice. Measured 2026-09-01 against a real stream, a file path *without* it
+    /// reports only the path itself appearing and disappearing: a delete-and-repack fired, a rename
+    /// fired, and an archive **rewritten in place** fired `0` times — which is precisely the case
+    /// ``ArchiveIdentity``'s size and modification-time fields exist for, and the quiet direction
+    /// (the pane goes on listing members that are no longer in the file). With the flag, all four
+    /// shapes fire.
+    ///
+    /// Two more properties from the same run decide this over watching the archive's enclosing
+    /// directory, which also sees everything. The stream is keyed to the **path**, not to an inode,
+    /// so it survives the file being deleted and recreated under the same name and goes on
+    /// reporting writes to the new one — the ordinary way to redo an archive. And it stays silent
+    /// for siblings: a sibling created, written five times, and written again after the repack
+    /// produced `0` callbacks here against one apiece on the directory. So a pane sitting inside an
+    /// archive in a busy folder pays nothing for the churn around it.
+    public init(
+        filePath: String,
+        latency: TimeInterval = DirectoryWatcher.coalescingWindow,
+        queue: DispatchQueue = DispatchQueue(label: "com.dirnex.fsevents", qos: .utility),
+        onChange: @escaping @Sendable () -> Void
+    ) {
+        self.onChange = onChange
+        self.queue = queue
+        start(paths: [filePath], latency: latency, fileEvents: true)
     }
 
     deinit {
@@ -70,7 +111,7 @@ public final class DirectoryWatcher {
         self.stream = nil
     }
 
-    private func start(paths: [String], latency: TimeInterval) {
+    private func start(paths: [String], latency: TimeInterval, fileEvents: Bool = false) {
         var context = FSEventStreamContext(
             version: 0,
             info: Unmanaged.passUnretained(self).toOpaque(),
@@ -84,7 +125,12 @@ public final class DirectoryWatcher {
             guard let info else { return }
             Unmanaged<DirectoryWatcher>.fromOpaque(info).takeUnretainedValue().onChange()
         }
-        let flags = UInt32(kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagWatchRoot)
+        // File events only where the watched path *is* a file (see `init(filePath:)`): asking for
+        // them over a directory would report one callback per file instead of one per directory,
+        // multiplying an event rate this app already treats as a cost (docs/NOTES.md ▸ AppKit, the
+        // recursive-stream measurement).
+        var flags = UInt32(kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagWatchRoot)
+        if fileEvents { flags |= UInt32(kFSEventStreamCreateFlagFileEvents) }
         guard let stream = FSEventStreamCreate(
             kCFAllocatorDefault,
             callback,

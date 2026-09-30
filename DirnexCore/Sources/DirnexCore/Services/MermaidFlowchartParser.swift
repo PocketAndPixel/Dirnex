@@ -7,7 +7,7 @@ import Foundation
 /// `MermaidFlowchartLink` finds and treating what is left as node references. A statement with no
 /// operator declares nodes and nothing else, which is exactly the one-group case of the same walk.
 ///
-/// A node may be *referred to* before it is *labelled* (`A --> B`, then `B[Done]` three lines
+/// A node may be *referred to* before it is *labeled* (`A --> B`, then `B[Done]` three lines
 /// later), so declarations accumulate: the first mention fixes a node's position in the drawing
 /// order and any later one may still supply its label and shape.
 enum MermaidFlowchartParser {

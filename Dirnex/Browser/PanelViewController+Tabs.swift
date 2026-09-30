@@ -6,7 +6,7 @@ import DirnexCore
 /// the add/close/select/reorder plumbing — plus the `TabBarView` delegate and the
 /// menu actions that drive it from the keyboard — lives here to keep the controller
 /// proper focused on a single directory. Writing those tabs to disk and bringing them
-/// back is the neighbouring concern, in `PanelViewController+Restore`.
+/// back is the neighboring concern, in `PanelViewController+Restore`.
 extension PanelViewController {
     // MARK: - Activation
 
@@ -14,7 +14,18 @@ extension PanelViewController {
     /// restored from disk) is loaded from scratch; a tab we're returning to renders its
     /// stored cursor/marks/filter instantly, then refreshes in the background so it is
     /// current after having been unwatched while inactive.
-    func activateTab() {
+    ///
+    /// `unasked` is passed only by `viewDidLoad`, which is the one activation nobody performed: it
+    /// travels to `navigate`, where it decides whether a restored server tab may open its connection
+    /// and whether a failed listing is worth an alert. Every other caller here is a gesture — opening,
+    /// closing or switching a tab, or applying a workspace — so a tab that came back disconnected
+    /// connects the moment somebody switches to it.
+    func activateTab(unasked: Bool = false) {
+        // The one funnel every tab change goes through — switching, closing, restoring — so a
+        // server-side size walk started in the tab being left is abandoned here rather than at each
+        // caller (PLAN.md §M21 Slice 11). Harmless on the first activation, when nothing is in
+        // flight.
+        cancelUnwatchedDirectorySizeWalks()
         applyColumnLayout(for: tabs[activeTabIndex])
         refreshTabBar()
         if tabs[activeTabIndex].hasLoaded {
@@ -34,8 +45,16 @@ extension PanelViewController {
             // them off must not inherit the outgoing tab's column.
             updateSizeVisualization()
         } else {
-            navigate(to: panel.path)
+            navigate(to: panel.path, unasked: unasked)
         }
+        // Re-point the remote poll at whichever tab is now on screen. It cannot ride
+        // `refreshActiveDirectory` the way the FSEvents watcher does: that returns early for exactly
+        // the tabs this is for — a remote list tab falls out at its `.local` guard, and a remote tree
+        // tab is served by `startWatchingTree` rather than by `startPaneWatcher`. So switching to a
+        // server tab would leave the loop armed for the tab you *left*, where its own path guard
+        // ends it, and nothing would poll again until the next navigation. Here instead, beside the
+        // size-walk cancellation, because this is the one funnel every tab change goes through.
+        updateRemoteRefreshSchedule()
         // The switched-to tab owns its own back/forward trail — re-validate the titlebar buttons.
         host?.panelDidNavigate(self)
     }

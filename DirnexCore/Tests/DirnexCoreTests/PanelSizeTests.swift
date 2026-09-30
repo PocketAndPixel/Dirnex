@@ -3,7 +3,7 @@ import Testing
 
 @testable import DirnexCore
 
-/// The panel's computed-directory-size behaviour: Space-on-dir (§M1) and the bulk seed that
+/// The panel's computed-directory-size behavior: Space-on-dir (§M1) and the bulk seed that
 /// size-visualization mode fills a panel from (§M6). Split out of `PanelTests`, which had grown
 /// past its body-length budget, along the same seam the suite's own `MARK` already drew.
 @Suite("Panel — computed sizes")

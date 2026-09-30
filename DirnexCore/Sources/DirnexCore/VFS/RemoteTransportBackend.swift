@@ -1,13 +1,28 @@
 import Foundation
 
-/// The four write verbs a remote file transport offers, whatever wire protocol it speaks.
+/// The write verbs a remote file transport offers, whatever wire protocol it speaks.
 ///
 /// `FTPTransport` and `SFTPTransport` both refine this: `curl`'s `MKD`/`RNFR`+`RNTO`/`DELE`/`RMD`
-/// and `sftp`'s `mkdir`/`rename`/`rm`/`rmdir` are the same four operations under different names,
+/// and `sftp`'s `mkdir`/`rename`/`rm`/`rmdir` are the same operations under different names,
 /// which is what lets `RemoteTransportBackend` express the writes once for both.
 public protocol RemoteWriteTransport: Sendable {
     /// Create one directory. The parent must already exist — neither protocol has a `mkdir -p`.
     func makeDirectory(_ remotePath: String) throws
+
+    /// Create an empty regular file at `remotePath` — ⇧F4 "Edit File…" on a server (PLAN.md §M11).
+    ///
+    /// **Neither protocol has a create-if-absent, so this one may overwrite and the caller is what
+    /// stops it.** ``RemoteTransportBackend/createFile(at:)`` refuses an occupied name before
+    /// calling here; what each transport owes is to write zero bytes to a name it is told is free,
+    /// and to get as close to harmless as its protocol allows if it turns out not to be.
+    ///
+    /// Measured 2026-08-23 against a real `sshd` and a real FTP server, because the two protocols
+    /// differ in how bad "not free after all" is. Over FTP `APPE` **creates when absent and leaves
+    /// an existing file untouched**, so the window between the check and the write is benign there;
+    /// over SFTP `put` truncates, `put -a` can create nothing, and `rename` overwrites, so the
+    /// window is real and unavoidable. Neither is expressible as a flag on ``upload``, which is why
+    /// this is its own verb rather than a zero-byte transfer.
+    func createEmptyFile(_ remotePath: String) throws
 
     /// Rename (move) within the account.
     func rename(_ source: String, to destination: String) throws
@@ -17,6 +32,54 @@ public protocol RemoteWriteTransport: Sendable {
 
     /// Remove one **empty** directory. Neither protocol has a recursive delete.
     func removeDirectory(_ remotePath: String) throws
+
+    /// What this transport can be asked to do about carrying a source's mode and times.
+    ///
+    /// **The default is empty, and that is the safe answer rather than a broken one.** A plan built
+    /// against `[]` asks for nothing and *reports the loss*, so a transport that has not implemented
+    /// the carry — including every test double written before it existed — makes copies that behave
+    /// exactly as they always did and say so, instead of claiming a mode they never wrote. This
+    /// milestone's whole subject is the opposite failure (PLAN.md §M25).
+    ///
+    /// Declaring a capability is therefore an obligation: a transport that reports
+    /// ``RemoteMetadataCapabilities/preserveFlag`` must implement the preserving transfer verbs, and
+    /// one that reports ``RemoteMetadataCapabilities/changeMode`` must implement ``applyMetadata(_:to:)``.
+    /// Nothing in the compiler checks that, so both are pinned by tests against the real transports.
+    var metadataCapabilities: RemoteMetadataCapabilities { get }
+
+    /// Apply metadata steps to an item that has already landed, answering the steps that did not
+    /// take — `nil`/empty when everything arrived.
+    ///
+    /// **This is FTP's shape, and SFTP deliberately does not use it.** Over SFTP the follow-up rides
+    /// the transfer's own batch, so calling here would spend a second connection (71 ms measured on
+    /// loopback, a real handshake over a network) for a `chmod` that could have been one more line.
+    /// Over FTP the opposite is true: a quote command sent alongside the transfer is refused as
+    /// `curl` exit 21, which fails the whole invocation *after* the bytes have landed — a successful
+    /// upload reported as a failed copy — so the steps must run on their own, where the reply code
+    /// attributes the refusal exactly.
+    ///
+    /// It **answers** rather than throwing, because a refused step is not a failed operation: the
+    /// bytes are there and the file is right. Throwing is reserved for the connection itself going
+    /// wrong.
+    ///
+    /// The default answers "everything was refused as unimplemented" for any step it is handed,
+    /// which pairs with the empty ``metadataCapabilities`` above: a transport that declared nothing
+    /// is never asked, and one that declared something and forgot to implement this reports a loss
+    /// rather than inventing a success.
+    func applyMetadata(_ steps: [RemoteMetadataStep], to remotePath: String) throws -> [
+        RemoteMetadataRefusal
+    ]
+}
+
+public extension RemoteWriteTransport {
+    var metadataCapabilities: RemoteMetadataCapabilities { [] }
+
+    func applyMetadata(
+        _ steps: [RemoteMetadataStep],
+        to remotePath: String
+    ) throws -> [RemoteMetadataRefusal] {
+        steps.isEmpty ? [] : [.verbUnimplemented("")]
+    }
 }
 
 /// A `VFSBackend` that mutates one remote account through a ``RemoteWriteTransport``.
@@ -31,10 +94,7 @@ public protocol RemoteWriteTransport: Sendable {
 /// was found in** rather than from a `stat`, because `sftp`'s `ls` follows symlinks and would report
 /// a link-to-directory as a directory, deleting the *target's* contents. That rule was written twice
 /// and is now written once.
-public protocol RemoteTransportBackend: VFSBackend {
-    /// How this connection names itself in an error the user reads (`user@host:port`).
-    var connectionDescriptor: String { get }
-
+public protocol RemoteTransportBackend: ConnectionScopedBackend {
     /// The transport the shared write verbs are issued through.
     var writeTransport: any RemoteWriteTransport { get }
 
@@ -45,20 +105,77 @@ public protocol RemoteTransportBackend: VFSBackend {
 }
 
 public extension RemoteTransportBackend {
-    /// Refuse a path belonging to another connection before it reaches the wire — a path under a
-    /// *different* account would otherwise be sent to this one as a raw string and act on whatever
-    /// happens to live there.
-    func requireOwnBackend(_ path: VFSPath) throws {
-        guard path.backend == id else {
-            throw VFSError.unsupported(
-                .pathOutsideConnection(path: "\(path)", connection: connectionDescriptor)
-            )
+    // `requireOwnBackend` is `ConnectionScopedBackend`'s — the same guard `S3Backend` needs, which
+    // is why it sits one level up rather than here.
+
+    /// Create one directory, answering ``VFSError/alreadyExists(_:)`` when the name is taken —
+    /// which neither protocol says on its own, and which a caller cannot recover without.
+    ///
+    /// **The refusal is generic on both wires, so it has to be disambiguated here.** Measured
+    /// 2026-08-23: `sftp`'s `mkdir` onto an existing directory answers a bare
+    /// `remote mkdir "…": Failure` (OpenSSH's SFTP v3 has no "already exists" status, so EEXIST
+    /// arrives as `SSH_FX_FAILURE`), which classifies as `.failure` → `.io`; FTP's `MKD` answers
+    /// **550**, which is FTP's one ambiguous "file unavailable" and is read as `.notFound`. Local
+    /// `mkdir(2)` has `EEXIST` and needs none of this, which is exactly why the gap was invisible:
+    /// every caller was written and tested against the one backend that answers correctly.
+    ///
+    /// What it cost was a `catch` that never fires. `PanelViewController+Copy.submitBranchTransfer`
+    /// skips an intermediate directory that is already there by catching `.alreadyExists`, so a
+    /// tree-mode branch transfer into a remote destination failed outright the moment one existed;
+    /// and F7 on a taken name reported `.io`'s or `.notFound`'s sentence instead of "an item with
+    /// that name already exists". One backend-side answer fixes both, where two caller-side
+    /// workarounds would have been the third and fourth copies of a rule this file keeps finding on
+    /// the wrong side of a fix.
+    ///
+    /// **Only a failure pays for the extra round trip**, and only a failure can: asking first would
+    /// bill every create for a question the happy path never needs, and would still race. That is
+    /// the shape `S3Backend`'s own existence check settled on — the cheap answer raises the
+    /// question, and only a name about to be refused pays to have it answered.
+    ///
+    /// A `stat` that itself fails leaves the original error standing rather than reading as "the
+    /// name is free": the two directions are not equal, and inventing `.alreadyExists` from a
+    /// listing nobody could get would refuse a create that should have been attempted.
+    func createDirectory(at path: VFSPath) throws {
+        try requireOwnBackend(path)
+        do {
+            try mapErrors(path) { try writeTransport.makeDirectory(path.path) }
+        } catch {
+            // Something already occupying the name is the answer the caller can act on, whatever
+            // the server's own reason was — a file or a symlink included, since the contract is
+            // "something is already there" rather than "a directory is".
+            if (try? stat(at: path)) != nil { throw VFSError.alreadyExists(path) }
+            throw error
         }
     }
 
-    func createDirectory(at path: VFSPath) throws {
+    /// Create an empty file at `path` — the ⇧F4 "Edit File…" route on a server (PLAN.md §M11).
+    ///
+    /// **The `stat` is the whole guard, and it is load-bearing twice over rather than once.**
+    /// Neither protocol offers a create-if-absent — measured 2026-08-23 against a real `sshd` and a
+    /// real FTP server — so an unguarded write is destructive in two different ways, and only one of
+    /// them is the one everybody expects:
+    ///
+    /// - **It truncates.** `put` and `STOR` alike replace an existing file's bytes with none, so
+    ///   ⇧F4 on a name that is already taken would empty the very document the user was reaching
+    ///   for. That is the case ``VFSBackend/createFile(at:)``'s contract exists to forbid.
+    /// - **Over SFTP it also writes somewhere else entirely.** `put <local> <an existing directory>`
+    ///   exits **0** having created `<directory>/<the local file's basename>` — so a create aimed at
+    ///   a folder's name would succeed, report success, and leave a file named after a temporary
+    ///   file nobody chose inside a folder nobody was editing. (`curl` refuses the same thing with
+    ///   550, so this half is SFTP's alone and would not have shown up on the FTP side.)
+    ///
+    /// The window between the check and the write cannot be closed here the way ``S3Backend`` closes
+    /// it with `If-None-Match: *`: there is no conditional write in either protocol. What FTP has
+    /// instead is `APPE`, which creates an absent file and leaves a present one *untouched*, so on
+    /// that side a lost race is merely a create that quietly did nothing — see
+    /// ``RemoteWriteTransport/createEmptyFile(_:)``. Over SFTP the window is real, and it is stated
+    /// rather than papered over: three candidates were measured and none of them is exclusive
+    /// (`put` truncates, `put -a` cannot create, `rename` overwrites).
+    func createFile(at path: VFSPath) throws {
         try requireOwnBackend(path)
-        try mapErrors(path) { try writeTransport.makeDirectory(path.path) }
+        guard path.parent != nil else { throw VFSError.alreadyExists(path) }
+        if (try? stat(at: path)) != nil { throw VFSError.alreadyExists(path) }
+        try mapErrors(path) { try writeTransport.createEmptyFile(path.path) }
     }
 
     /// Rename within this account. A move whose destination lives on a *different* backend
