@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Run by hand on any branch (Actions ▸ CI ▸ Run workflow), without opening a pull request.
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -28,16 +30,45 @@ jobs:
   app:
     name: App (xcodebuild test)
     runs-on: macos-26
+    # The watchdog below stops a stuck run at 25 minutes; this is only the backstop. Without it a
+    # stuck run sits for GitHub's six hours, as on 2026-09-30 and 2026-10-01.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
       - name: Build & test
+        # A test that blocks the main thread stops the whole suite without failing anything: on
+        # 2026-09-30 every test went quiet 5 seconds in and nothing printed for four hours. So the
+        # run is watched, and past 25 minutes the test host's threads are sampled and the screen
+        # captured (in the `hang` artifact) before it's stopped. The main thread's stack goes into
+        # the log too, since that's where such a hang waits.
         run: |
           set -o pipefail
           xcodebuild test \
             -project Dirnex.xcodeproj \
             -scheme Dirnex \
             -destination 'platform=macOS' \
-            -resultBundlePath TestResults.xcresult
+            -resultBundlePath TestResults.xcresult &
+          tests=$!
+          deadline=$((SECONDS + 25 * 60))
+          while kill -0 "$tests" 2>/dev/null; do
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "::error::The app tests ran past 25 minutes. Sampling the test host, then stopping them."
+              mkdir -p hang
+              screencapture -x hang/screen.png || echo "No screenshot (no Screen Recording permission?)."
+              for pid in $(pgrep -x Dirnex); do
+                sample "$pid" 10 -file "hang/sample-$pid.txt" || true
+                echo "::group::Main thread of Dirnex $pid"
+                awk '/^ +[0-9]+ Thread_/ { on = /com.apple.main-thread/ } /^Total number/ { on = 0 } on' \
+                  "hang/sample-$pid.txt" | head -200 || true
+                echo "::endgroup::"
+              done
+              kill "$tests" || true
+              pkill -x Dirnex || true
+              exit 1
+            fi
+            sleep 20
+          done
+          wait "$tests"
       # Reads the .stringsdata the build above emitted, so it runs after it rather than in the
       # lint job. A key the compiler extracted but the catalog never received renders in English
       # inside every translated build, with no error and a perfect English screenshot.
@@ -49,6 +80,13 @@ jobs:
         with:
           name: xcresult
           path: TestResults.xcresult
+          if-no-files-found: ignore
+      - name: Upload what a stuck run left
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: hang
+          path: hang
           if-no-files-found: ignore
 
   lint:
