@@ -42,5 +42,7 @@ extension AppPreferences {
         /// (PLAN.md §M29). Plain dates, so `defaults write … -date` can fake them on a beta.
         static let licenseGraceStart = "Dirnex.pref.licenseGraceStart"
         static let licenseReminderLastShown = "Dirnex.pref.licenseReminderLastShown"
+        /// The reply email of the last bug report sent (PLAN.md §M30), offered in the next one.
+        static let bugReportEmail = "Dirnex.pref.bugReportEmail"
     }
 }

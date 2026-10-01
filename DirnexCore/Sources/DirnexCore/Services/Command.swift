@@ -82,6 +82,8 @@ public enum CommandCategory: String, Sendable, CaseIterable {
     case workspace
     case window
     case application
+    /// The Help menu (PLAN.md §M30): Report a Bug…, the website and the release notes.
+    case help
 
     /// The human-facing section name, used as the palette's group label and the menu title.
     public var title: String {
@@ -94,6 +96,7 @@ public enum CommandCategory: String, Sendable, CaseIterable {
         case .workspace: return "Workspace"
         case .window: return "Window"
         case .application: return "Dirnex"
+        case .help: return "Help"
         }
     }
 }

@@ -59,6 +59,8 @@ enum MainMenuBuilder {
         let category: CommandCategory
         let items: [Item]
         var isWindow = false
+        /// The Help menu, which AppKit gives the system's menu search (PLAN.md §M30).
+        var isHelp = false
 
         var title: String { category.localizedTitle }
     }
@@ -149,7 +151,13 @@ enum MainMenuBuilder {
         MenuSpec(category: .window, items: [
             .command("window.minimize"), .command("window.close"), .separator,
             .command("window.previousTab"), .command("window.nextTab")
-        ], isWindow: true)
+        ], isWindow: true),
+        // Report a Bug… last, after a separator, so a build without it (`BugReportSwitch`) keeps
+        // the two links and drops the separator with it.
+        MenuSpec(category: .help, items: [
+            .command("help.website"), .command("help.releaseNotes"), .separator,
+            .command("help.reportBug")
+        ], isHelp: true)
     ]
 
     // MARK: - Building
@@ -180,10 +188,31 @@ enum MainMenuBuilder {
                 )))
             }
         }
+        removeStraySeparators(from: submenu)
         if spec.isWindow {
             NSApp.windowsMenu = submenu
         }
+        if spec.isHelp {
+            NSApp.helpMenu = submenu
+        }
         return menuItem
+    }
+
+    /// Drops a separator that separates nothing: at either end, or after another. A command this
+    /// build leaves out (Report a Bug… without its address) would otherwise leave its separator
+    /// behind.
+    static func removeStraySeparators(from menu: NSMenu) {
+        var previousWasSeparator = true
+        for item in menu.items {
+            if item.isSeparatorItem, previousWasSeparator {
+                menu.removeItem(item)
+            } else {
+                previousWasSeparator = item.isSeparatorItem
+            }
+        }
+        if menu.items.last?.isSeparatorItem == true, let last = menu.items.last {
+            menu.removeItem(last)
+        }
     }
 
     /// One menu item, fully described by the registry: title from `CommandCatalog`, effective

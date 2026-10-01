@@ -221,6 +221,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSWorkspace.shared.open(LicenseLinks.buy)
     }
 
+    // MARK: - Help
+
+    /// Help ▸ "Report a Bug…" (and the palette command, PLAN.md §M30). A build with nowhere to send a
+    /// report has no such command, so this is unreachable there; the guard keeps it that way for an
+    /// AppleScript that names it anyway.
+    @objc func reportBug(_ sender: Any?) {
+        guard let endpoint = BugReportSwitch.endpoint,
+              let host = activeBrowserWindowController?.window?.contentViewController else { return }
+        BugReportPresenter.present(from: host, endpoint: endpoint)
+    }
+
+    /// Help ▸ "Dirnex Website", in the browser.
+    @objc func openWebsite(_ sender: Any?) {
+        NSWorkspace.shared.open(HelpLinks.website)
+    }
+
+    /// Help ▸ "Release Notes", in the browser.
+    @objc func openReleaseNotes(_ sender: Any?) {
+        NSWorkspace.shared.open(HelpLinks.releaseNotes)
+    }
+
     /// Whether a newer build is waiting, for the titlebar indicator to mirror. Read once when a
     /// window installs its button (a window opened after a check must not miss what it found) and
     /// again on every `AppUpdater.availabilityDidChange`. The updater itself stays private — this is

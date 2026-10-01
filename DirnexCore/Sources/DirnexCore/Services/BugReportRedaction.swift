@@ -55,6 +55,19 @@ public struct BugReportRedaction: Sendable, Hashable {
     }
 }
 
+/// A crash report made fit to send by ``CrashReportTrimmer``, once.
+///
+/// Trimming is too slow to repeat while the user types: measured in a release build on 2026-10-01,
+/// 16 ms for a real 43 KB report, 50 ms at 256 KiB and 200 ms at the 1 MiB read cap. The dialog checks
+/// the report on every keystroke, so it trims when it opens and keeps this.
+public struct TrimmedCrashReport: Sendable, Hashable {
+    public let text: String
+
+    public init(_ raw: String, redaction: BugReportRedaction) {
+        text = CrashReportTrimmer.trimmed(raw, redaction: redaction)
+    }
+}
+
 /// Makes a crash report fit to send (PLAN.md §M30): the home folder shortened, the values that
 /// identify the Mac rather than the crash removed, and the size capped.
 ///

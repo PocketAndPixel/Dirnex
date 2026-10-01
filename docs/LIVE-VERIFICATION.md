@@ -238,6 +238,11 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     button. Key equivalents run ahead of `keyDown:`, so the field editor's own "revert the edit"
     never gets the key. Worth stating because the opposite is the natural worry, and it is the
     reason `enableEscapeToCancel` needs no carve-out for a sheet that opens with a field focused.
+- **computer-use reports `AXError: failure` for a button that opens a sheet, and the sheet is up.**
+  Seen twice on 2026-10-01 pressing Report a Bug…'s *Show What Will Be Sent…*: the AXPress came back
+  as a failure each time, and a screenshot showed the preview sheet open. The press waits for an
+  answer that a sheet presentation does not give in time. Take a screenshot before pressing again,
+  or the second press lands on the sheet.
 - **A transparent overlay from another app can gate every mouse click.** LanguageTool for
   Desktop did this for four passes; keyboard input still reached Dirnex, which masked it.
   Quitting the overlay app restored mouse verification.

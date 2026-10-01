@@ -25,11 +25,11 @@ public struct BugReportForm: Sendable, Hashable {
 
     /// The report this form sends. The texts lose the blanks around them, the home folder becomes
     /// `~` in everything but the email, and an unticked box leaves its field out entirely.
-    /// `crashReport` is the report's text as read from disk; it is trimmed here.
+    /// `crashReport` was trimmed with the same redaction when it was read.
     public func report(
         system: BugReportSystemInfo,
         licensed: Bool,
-        crashReport: String?,
+        crashReport: TrimmedCrashReport?,
         redaction: BugReportRedaction
     ) -> BugReport {
         let typed = { (text: String) in BugReportText.nonBlank(BugReportText.trimmed(text)) }
@@ -44,9 +44,7 @@ public struct BugReportForm: Sendable, Hashable {
             macModel: includesMacModel ? system.macModel : nil,
             language: includesLanguage ? system.language : nil,
             licensed: includesLicenseState ? licensed : nil,
-            crashReport: crash.flatMap {
-                BugReportText.nonBlank(CrashReportTrimmer.trimmed($0, redaction: redaction))
-            }
+            crashReport: crash.flatMap { BugReportText.nonBlank($0.text) }
         )
     }
 }

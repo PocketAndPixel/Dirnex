@@ -53,7 +53,7 @@ struct BugReportTests {
         let report = makeForm().report(
             system: Self.system,
             licensed: true,
-            crashReport: "Crash",
+            crashReport: TrimmedCrashReport("Crash", redaction: Self.home),
             redaction: Self.home
         )
         #expect(report == BugReport(
@@ -82,7 +82,7 @@ struct BugReportTests {
         let report = form.report(
             system: Self.system,
             licensed: true,
-            crashReport: "Crash",
+            crashReport: TrimmedCrashReport("Crash", redaction: Self.home),
             redaction: Self.home
         )
         #expect(try Set(fields(of: report.body()).keys) == ["v", "description"])
@@ -139,7 +139,7 @@ struct BugReportTests {
         let report = form.report(
             system: Self.system,
             licensed: false,
-            crashReport: crash,
+            crashReport: TrimmedCrashReport(crash, redaction: Self.home),
             redaction: Self.home
         )
         #expect(report.whatHappened == "Copying ~/Movies/Holiday fails.")
@@ -166,7 +166,7 @@ struct BugReportTests {
                 form.report(
                     system: Self.system,
                     licensed: false,
-                    crashReport: crash,
+                    crashReport: TrimmedCrashReport(crash, redaction: none),
                     redaction: none
                 ).body()
             )
@@ -181,7 +181,7 @@ struct BugReportTests {
         let report = form.report(
             system: Self.system,
             licensed: false,
-            crashReport: crash,
+            crashReport: TrimmedCrashReport(crash, redaction: Self.home),
             redaction: Self.home
         )
         #expect(report.crashReport == #""crashReporterKey" : """#)

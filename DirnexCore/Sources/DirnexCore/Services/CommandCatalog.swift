@@ -14,7 +14,7 @@ public enum CommandCatalog {
     /// to build each menu and searches the whole list for the palette.
     public static let all: [Command] =
         file + fileLocation + edit + selection + view + navigation + workspace + window
-            + application
+            + application + help
 
     /// The command with `id`, or `nil` if unknown — the app's menu builder and palette look
     /// commands up by id to join them with AppKit selectors.
@@ -27,6 +27,11 @@ public enum CommandCatalog {
     /// and Shortcuts. They stay in ``all`` so their translations and bindings are checked like any
     /// other command's.
     public static let licensingCommandIDs: Set<String> = ["app.license", "app.buyLicense"]
+
+    /// The commands about reporting a bug (PLAN.md §M30). A build that carries no
+    /// `DirnexBugReportURL` hides them everywhere a command can appear, the same way a build without
+    /// the licensing switch hides ``licensingCommandIDs``.
+    public static let bugReportCommandIDs: Set<String> = ["help.reportBug"]
 
     // MARK: - File
 

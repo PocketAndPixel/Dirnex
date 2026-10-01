@@ -37,7 +37,7 @@ struct PaletteEnglishReachabilityTests {
         // missing. `file.copy`'s registry keywords are `f5, duplicate, transfer` — no "copy" — so in
         // a Russian build typing "copy" matched nothing at all until the title joined the terms.
         let palette = LocalizedCatalog.all
-        for command in CommandCatalog.all {
+        for command in AvailableCommands.all {
             let matches = CommandMatcher.search(command.title, in: palette)
             #expect(
                 matches.contains { $0.command.id == command.id },

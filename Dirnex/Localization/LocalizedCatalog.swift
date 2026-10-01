@@ -18,9 +18,10 @@ enum LocalizedCatalog {
     ///
     /// Computed once: the display language cannot change without a relaunch (`LanguageSettings`),
     /// so there is nothing to invalidate. The licensing commands are left out of a build that shows
-    /// nothing about licenses (`LicensingSwitch`), which takes them out of the menu bar, the palette
-    /// and Settings ▸ Shortcuts at once, since all three read commands from here.
-    static let all: [Command] = LicensingSwitch.available(CommandCatalog.all).map(localized)
+    /// nothing about licenses (`LicensingSwitch`), and Report a Bug… out of one with nowhere to send
+    /// a report (`BugReportSwitch`), which takes them out of the menu bar, the palette and Settings ▸
+    /// Shortcuts at once, since all three read commands from here.
+    static let all: [Command] = AvailableCommands.all.map(localized)
 
     private static let byID: [String: Command] = Dictionary(
         uniqueKeysWithValues: all.map { ($0.id, $0) }

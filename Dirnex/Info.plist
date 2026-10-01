@@ -35,6 +35,8 @@
             <string>Viewer</string>
         </dict>
     </array>
+    <key>DirnexBugReportURL</key>
+    <string>$(DIRNEX_BUG_REPORT_URL)</string>
     <key>DirnexLicensingEnabled</key>
     <string>$(DIRNEX_LICENSING_ENABLED)</string>
     <key>DirnexReleaseDate</key>

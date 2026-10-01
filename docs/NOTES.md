@@ -158,7 +158,8 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   than the optional's wrapped type. Fix: precompute the RHS as a typed literal, or unwrap with
   `try #require` first. Don't chase it as a bug in the code under test.
 - **A `mutating` call or `coll.allSatisfy(\.x)` can't sit inside `#expect(...)`** — hoist the
-  result into a `let` first.
+  result into a `let` first. `contains(where: \.x)` is the same (2026-10-01: the expansion fails
+  with "call can throw, but it is not marked with 'try'"); a closure, `contains { $0.x }`, compiles.
 - **`xcodebuild` does not forward shell env to the test runner** — gate live integration suites
   on the existence of a *file*, not an environment variable. Prove such a suite is genuinely
   live by making it fail with bad credentials rather than skip.
@@ -178,6 +179,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     visible *before* its read finishes.
 
 ### Windows, sheets and key events in a test
+
+- **A window that was never shown has no key view loop, so Tab from a field goes nowhere.** Found
+  2026-10-01 testing Report a Bug…'s text views: `selectNextKeyView` left the focus where it was,
+  because AppKit builds the loop when a window first appears. `orderFront` the test window (and close
+  it after), and have the controller set `autorecalculatesKeyViewLoop = true` in `viewDidAppear`, so
+  the real dialog doesn't depend on that timing either.
 
 - **`NSWindow.sendEvent` skips key equivalents, so a synthesized Escape or Return sent that way never
   reaches a button.** `NSApplication.sendEvent` offers a key event to the key window's
@@ -1411,6 +1418,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     branches (nothing focused → closes; `_SystemTextFieldFieldEditor` focused → does not;
     marked control focused → does not). The one step left for a human is the physical keypress.
 
+- **A Send button for a form with multi-line text fields is ⌘Return, and the key equivalent
+  `"\r"` with `.command` does not claim a plain Return.** Pinned 2026-10-01 by
+  `BugReportDialogTests.returnAndCommandReturn`, through `performKeyEquivalent` then `sendEvent`, the
+  order `NSApplication` uses: plain Return reached the `NSTextView` as a new line and sent nothing,
+  ⌘Return sent. A plain `"\r"` would have sent the report from the middle of a sentence. The
+  `NSTextView` also needs `insertTab`/`insertBacktab` overridden to move the focus, or Tab types a
+  tab and the keyboard cannot leave the field.
+
 #### Presenting a dialog: `runModal`, sheets and movable windows
 
 - **`NSAlert.runModal()` centers on the *display*, not on the window that raised it** — measured, a
@@ -1524,6 +1539,10 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     opens back on the laptop screen the day an external display arrives.
 
 #### Laying out a dialog
+
+- **A sheet wider than the window it hangs from is cut off at both edges**, not widened or moved.
+  Seen live 2026-10-01: Report a Bug…'s preview at 640 pt over the 560 pt dialog lost the start and
+  the end of every line and half its OK button. Size a sheet from its parent's width.
 
 - **In a grouped SwiftUI `Form`, a `.labelsHidden()` `TextField`'s title is not drawn as a
   placeholder.** Settings ▸ License's key field (M29) sat empty with no hint: the title reached
@@ -8055,6 +8074,13 @@ the same cases (`Fixtures/bug-report-vectors.json`, from the private repo's
   redaction catches. *Show What Will Be Sent* is the backstop for what redaction can't know.
 - **A `Regex` isn't `Sendable`,** so it can't be a `static let` under Swift 6. Build it inside the
   function.
+- **`URLSession` adds headers of its own that say things about the Mac.** Its default `User-Agent`
+  names the app's build and the Darwin version, and it adds `Accept-Language` from the user's
+  languages, so an unticked box would leak through the headers. Both are set on the request
+  (`Dirnex`, `*`), and the fake endpoint saw exactly those on 2026-10-01, plus an
+  `Accept-Encoding: gzip, deflate` that says nothing. **A `URLProtocol` stub cannot check this**:
+  it sees the request before the system adds its headers, so only a real server shows what leaves
+  the Mac (`Tooling/fake-bug-report-endpoint.py`).
 
 ## macOS system gates
 
