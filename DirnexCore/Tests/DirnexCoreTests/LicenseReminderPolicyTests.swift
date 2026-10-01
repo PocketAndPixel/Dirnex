@@ -76,31 +76,99 @@ struct LicenseReminderPolicyTests {
         #expect(policy.shouldShow(.launch, status: .unlicensed, record: record, now: relaunch))
     }
 
-    @Test("on activation: once per calendar day in the Mac's time zone")
+    @Test("the daily reminder waits for 13:00")
+    func dailyHourIsOnePM() {
+        #expect(LicenseReminderPolicy.defaultDailyHour == 13)
+    }
+
+    @Test("on activation: once per calendar day, from 13:00 in the Mac's time zone")
     func oncePerDay() {
         var record = armed(at: firstLaunch)
-        // Day 31, 10:00 Kyiv: shown at launch.
-        let launch = firstLaunch.addingTimeInterval(31 * Self.day + 3600)
-        record = policy.recordingShown(record, now: launch)
+        // Day 31, 14:00 Kyiv: shown on activation.
+        let afternoon = firstLaunch.addingTimeInterval(31 * Self.day + 5 * 3600)
+        #expect(policy.shouldShow(.activation, status: .unlicensed, record: record, now: afternoon))
+        record = policy.recordingShown(record, now: afternoon)
 
-        // 23:59 the same Kyiv day: not again. (It's 21:59 UTC, so a UTC day would agree here.)
-        let lateEvening = launch.addingTimeInterval(13 * 3600 + 59 * 60)
+        // 23:59 the same Kyiv day: not again.
+        let lateEvening = afternoon.addingTimeInterval(9 * 3600 + 59 * 60)
         #expect(
             !policy.shouldShow(.activation, status: .unlicensed, record: record, now: lateEvening)
         )
 
-        // 00:30 the next Kyiv day, still 22:30 of the old day in UTC: shown.
-        let pastMidnight = launch.addingTimeInterval(14 * 3600 + 30 * 60)
+        // 00:30 the next Kyiv day: a new day, but before 13:00. The midnight rule showed it here,
+        // and Oleg met it at 00:29 in the Slice 6 beta.
+        let pastMidnight = afternoon.addingTimeInterval(10 * 3600 + 30 * 60)
         #expect(
-            policy.shouldShow(.activation, status: .unlicensed, record: record, now: pastMidnight)
+            !policy.shouldShow(.activation, status: .unlicensed, record: record, now: pastMidnight)
+        )
+
+        // 12:59 not yet, 13:00 shown.
+        let beforeOne = afternoon.addingTimeInterval(22 * 3600 + 59 * 60)
+        #expect(!policy.shouldShow(.activation, status: .unlicensed, record: record, now: beforeOne))
+        let one = afternoon.addingTimeInterval(23 * 3600)
+        #expect(policy.shouldShow(.activation, status: .unlicensed, record: record, now: one))
+    }
+
+    @Test("negative control: the old midnight rule would have shown it at 00:30")
+    func midnightRuleIsCaught() {
+        let midnight = LicenseReminderPolicy(dailyHour: 0, calendar: policy.calendar)
+        let afternoon = firstLaunch.addingTimeInterval(31 * Self.day + 5 * 3600)
+        let record = midnight.recordingShown(armed(at: firstLaunch), now: afternoon)
+        let pastMidnight = afternoon.addingTimeInterval(10 * 3600 + 30 * 60)
+        #expect(
+            midnight.shouldShow(.activation, status: .unlicensed, record: record, now: pastMidnight)
         )
     }
 
-    @Test("the first activation after the quiet period ends shows it, even with no launch since")
+    @Test("13:00 is the Mac's own time, not UTC")
+    func dailyHourIsLocal() {
+        let record = armed(at: firstLaunch)
+        // Day 31, 13:30 in Kyiv, which is 11:30 UTC.
+        let now = firstLaunch.addingTimeInterval(31 * Self.day + 4 * 3600 + 30 * 60)
+        #expect(policy.shouldShow(.activation, status: .unlicensed, record: record, now: now))
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = .gmt
+        let inUTC = LicenseReminderPolicy(calendar: utc)
+        #expect(!inUTC.shouldShow(.activation, status: .unlicensed, record: record, now: now))
+    }
+
+    @Test("a reminder at a morning launch counts for the day: no second one after 13:00")
+    func morningLaunchCountsForTheDay() {
+        var record = armed(at: firstLaunch)
+        // Day 31, 10:00 Kyiv: shown at launch.
+        let launch = firstLaunch.addingTimeInterval(31 * Self.day + 3600)
+        #expect(policy.shouldShow(.launch, status: .unlicensed, record: record, now: launch))
+        record = policy.recordingShown(record, now: launch)
+        let afternoon = launch.addingTimeInterval(4 * 3600)
+        #expect(!policy.shouldShow(.activation, status: .unlicensed, record: record, now: afternoon))
+        let nextAfternoon = afternoon.addingTimeInterval(Self.day)
+        #expect(
+            policy.shouldShow(.activation, status: .unlicensed, record: record, now: nextAfternoon)
+        )
+    }
+
+    @Test("someone who uses Dirnex only in the evening meets it at the first evening use")
+    func eveningOnly() {
+        var record = armed(at: firstLaunch)
+        record = policy.recordingShown(
+            record,
+            now: firstLaunch.addingTimeInterval(31 * Self.day + 11 * 3600)
+        )
+        // Day 33, 20:00 Kyiv.
+        let evening = firstLaunch.addingTimeInterval(33 * Self.day + 11 * 3600)
+        #expect(policy.shouldShow(.activation, status: .unlicensed, record: record, now: evening))
+    }
+
+    @Test(
+        "the first activation after the quiet period shows it from 13:00, even with no launch since"
+    )
     func firstActivationAfterGrace() {
         let record = armed(at: firstLaunch)
-        let now = firstLaunch.addingTimeInterval(30 * Self.day + 60)
-        #expect(policy.shouldShow(.activation, status: .unlicensed, record: record, now: now))
+        // The quiet period ends at 09:00 Kyiv. A minute later is still the morning.
+        let morning = firstLaunch.addingTimeInterval(30 * Self.day + 60)
+        #expect(!policy.shouldShow(.activation, status: .unlicensed, record: record, now: morning))
+        let afternoon = firstLaunch.addingTimeInterval(30 * Self.day + 4 * 3600)
+        #expect(policy.shouldShow(.activation, status: .unlicensed, record: record, now: afternoon))
     }
 
     @Test("a key that covers this build silences it; a lapsed key does not")
@@ -127,10 +195,11 @@ struct LicenseReminderPolicyTests {
     @Test("a last-shown day in the future does not hold the daily reminder shut")
     func clockSetBackAfterShowing() {
         var record = armed(at: firstLaunch)
-        let shown = firstLaunch.addingTimeInterval(60 * Self.day)
+        // Day 60, 14:00 Kyiv.
+        let shown = firstLaunch.addingTimeInterval(60 * Self.day + 5 * 3600)
         record = policy.recordingShown(record, now: shown)
-        // The clock goes back three days. "A later day than last time" would stay false for three
-        // days; "a different day" shows it now.
+        // The clock goes back three days, to 14:00. "A later day than last time" would stay false
+        // for three days; "a different day" shows it now.
         let setBack = shown.addingTimeInterval(-3 * Self.day)
         #expect(policy.shouldShow(.activation, status: .unlicensed, record: record, now: setBack))
     }

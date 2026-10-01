@@ -14,6 +14,14 @@ struct LicenseReminderControllerTests {
     /// 2027-01-10 07:00 UTC.
     private static let start = Date(timeIntervalSince1970: 1_799_564_400)
 
+    /// The policy's days and hours in UTC, so the daily reminder's 13:00 doesn't depend on the time
+    /// zone of the Mac running the tests.
+    private static let policy: LicenseReminderPolicy = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .gmt
+        return LicenseReminderPolicy(calendar: calendar)
+    }()
+
     @MainActor
     private struct Rig {
         let controller: LicenseReminderController
@@ -54,6 +62,7 @@ struct LicenseReminderControllerTests {
         let controller = LicenseReminderController(
             isEnabled: isEnabled,
             store: store,
+            policy: Self.policy,
             records: LicenseReminderRecords(defaults: defaults),
             clock: { clock.now },
             realClock: { clock.now }
@@ -168,7 +177,9 @@ struct LicenseReminderControllerTests {
         rig.close()
     }
 
-    @Test("once a day: not again on the same day's activation, but again the next day")
+    @Test(
+        "once a day: not again on the same day's afternoon activation, but again the next afternoon"
+    )
     func oncePerDay() async throws {
         let rig = try rig(graceStart: Self.start.addingTimeInterval(-31 * Self.day))
         start(rig)
@@ -176,12 +187,20 @@ struct LicenseReminderControllerTests {
         rig.reminder?.okButton.performClick(nil)
         try await settleUntil { rig.window.attachedSheet == nil && rig.reminder == nil }
 
-        rig.clock.now = Self.start.addingTimeInterval(3600)
+        // 15:00 the same day: past 13:00, but the launch reminder counted for the day.
+        rig.clock.now = Self.start.addingTimeInterval(8 * 3600)
         rig.controller.handle(.activation)
         try await Task.sleep(for: .milliseconds(300))
         #expect(rig.window.attachedSheet == nil)
 
-        rig.clock.now = Self.start.addingTimeInterval(Self.day)
+        // 10:00 the next day: a new day, but before 13:00.
+        rig.clock.now = Self.start.addingTimeInterval(Self.day + 3 * 3600)
+        rig.controller.handle(.activation)
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(rig.window.attachedSheet == nil)
+
+        // 14:00 the next day.
+        rig.clock.now = Self.start.addingTimeInterval(Self.day + 7 * 3600)
         rig.controller.handle(.activation)
         try await settleUntil { rig.window.attachedSheet != nil }
         rig.close()

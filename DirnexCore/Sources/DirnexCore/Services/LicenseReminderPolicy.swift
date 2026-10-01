@@ -38,9 +38,13 @@ public extension LicenseStatus {
 /// - Nothing for the first ``defaultGracePeriod``, counted from the first launch of a build with
 ///   the switch on, not from install. So nobody who used an earlier, dormant build meets the
 ///   reminder on the day it arrives.
-/// - After that, while no key covers this build: at every launch, and at the first activation of
-///   each new calendar day in the Mac's time zone. Macs sleep rather than quit, so launch alone
-///   would almost never fire.
+/// - After that, while no key covers this build: at every launch, and once a day at the first
+///   activation from ``defaultDailyHour`` (13:00) in the Mac's time zone. Macs sleep rather than
+///   quit, so launch alone would almost never fire.
+/// - The daily one waits for the afternoon (Oleg, 2026-10-01). With the day starting at midnight,
+///   a late session met it again just after 00:00, and in the morning it lands on the first minutes
+///   of work, when someone opens Dirnex to get something done. So someone who uses Dirnex only in
+///   the mornings sees it only when Dirnex starts, which is acceptable for a request, not a lock.
 ///
 /// Every rule is a named constant or one line here, so changing the cadence after launch feedback
 /// is a small, tested change. PLAN.md §6 names the risk: a sheet at every launch is the most hostile
@@ -54,12 +58,21 @@ public struct LicenseReminderPolicy: Sendable {
 
     public static let defaultGracePeriod: TimeInterval = 30 * 24 * 60 * 60
 
+    /// The hour, in the Mac's time zone, from which the daily reminder may appear: 13:00.
+    public static let defaultDailyHour = 13
+
     public let gracePeriod: TimeInterval
-    /// The Mac's calendar and time zone, which decide where one day ends.
+    public let dailyHour: Int
+    /// The Mac's calendar and time zone, which decide where one day ends and what hour it is.
     public let calendar: Calendar
 
-    public init(gracePeriod: TimeInterval = Self.defaultGracePeriod, calendar: Calendar = .current) {
+    public init(
+        gracePeriod: TimeInterval = Self.defaultGracePeriod,
+        dailyHour: Int = Self.defaultDailyHour,
+        calendar: Calendar = .current
+    ) {
         self.gracePeriod = gracePeriod
+        self.dailyHour = dailyHour
         self.calendar = calendar
     }
 
@@ -86,9 +99,10 @@ public struct LicenseReminderPolicy: Sendable {
 
     /// Whether to show the reminder now.
     ///
-    /// On activation it shows when it last appeared on a *different* calendar day, not an earlier
-    /// one. After the clock moves backwards, "earlier" could stay false for as long as the clock was
-    /// wrong; "different" puts it back on its daily rhythm at once.
+    /// On activation it shows from ``dailyHour`` on, when it last appeared on a *different* calendar
+    /// day. So a reminder at a morning launch counts for that day, and there's no second one after
+    /// 13:00. "Different", not "earlier": after the clock moves backwards, "earlier" could stay false
+    /// for as long as the clock was wrong; "different" puts it back on its daily rhythm at once.
     public func shouldShow(
         _ trigger: Trigger,
         status: LicenseStatus,
@@ -100,6 +114,7 @@ public struct LicenseReminderPolicy: Sendable {
         case .launch:
             return true
         case .activation:
+            guard calendar.component(.hour, from: now) >= dailyHour else { return false }
             guard let lastShown = record.lastShown else { return true }
             return !calendar.isDate(lastShown, inSameDayAs: now)
         }

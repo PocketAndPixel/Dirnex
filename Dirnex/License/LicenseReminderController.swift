@@ -2,15 +2,15 @@ import AppKit
 import DirnexCore
 
 /// Puts the license reminder in front of the user when `LicenseReminderPolicy` says so (PLAN.md §M29
-/// "When it appears"): at every launch and at the first activation of each new day, once the thirty
-/// quiet days are over and no key covers this build.
+/// "When it appears"): at every launch, and once a day at the first activation from 13:00, once the
+/// thirty quiet days are over and no key covers this build.
 ///
 /// The policy is the core's and tested there; this is the timing. Two rules live here:
 ///
 /// - **It never stacks over another sheet or a modal dialog.** The first-run tour and the Full Disk
 ///   Access prompt only ever appear on the first launch of any Dirnex, when the quiet period has just
-///   begun, so at launch they can't meet. A new day's activation can land while any sheet is up
-///   (a copy conflict left open overnight), so the reminder waits until the window is clear.
+///   begun, so at launch they can't meet. The daily activation can land while any sheet is up (a
+///   copy conflict left open since the morning), so the reminder waits until the window is clear.
 /// - **It counts as shown only once it's on screen.** A reminder that waited is recorded when it
 ///   appears, not when it was due.
 @MainActor

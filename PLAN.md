@@ -4,8 +4,8 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M28 shipped** (14 languages) · **M29 in progress** (licensing: Slices 1–4 landed) ·
-**M30 planned** (bug reports) ·
+Status: **M0–M28 shipped** (14 languages) · **M29 in progress** (licensing: Slices 1–5 landed,
+Slice 6 live on a beta) · **M30 planned** (bug reports) ·
 Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
 [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)
@@ -177,8 +177,9 @@ overturn until Slice 4 puts the reminder in front of a user:
 - **When it appears.** After the 30 days, the reminder appears if there's no key, or if the key
   doesn't cover this build:
   - at every launch, and
-  - at the first activation of each new calendar day while Dirnex stays running. Macs sleep rather
-    than quit, so launch alone would almost never fire.
+  - once a day while Dirnex stays running, at the first activation from 13:00 in the Mac's time
+    zone. Macs sleep rather than quit, so launch alone would almost never fire. (Until Slice 6 it was
+    the first activation of each new calendar day; see Slice 6 for why it moved.)
 
   It never stacks over the first-run tour or the Full Disk Access sheet; it waits for them.
 - **What it is.** A sheet over the browser window. It's a custom window, not an `NSAlert`, so
@@ -487,6 +488,41 @@ generating the production key pair (below).
     store. Fixed with `initialFirstResponder` (docs/NOTES.md ▸ AppKit);
   - **Escape couldn't be tried live** (the correction above). A harness on the same alert answered
     it, and the test pins it.
+
+**2026-09-30 → 10-01: Slice 6, so far** (the first beta with the switch on).
+
+- **The beta.** `DIRNEX_LICENSING` was set to `beta`, and `v1.0.11-beta.25` (build 45) was cut from
+  Dev: `Licensing switch: YES`, release date 2026-09-30, the same moment as its appcast `pubDate`.
+  Oleg published it rather than staging a draft, because he was the only beta user (every beta DMG
+  had one download). A self-built Release copy came out with both values empty: licensing off, and
+  undated.
+- **Verified live on beta.25**, Oleg's own copy, updated by Sparkle from beta.24:
+  - the first launch showed nothing and started the quiet period; License… and Settings ▸ License
+    were there;
+  - with the quiet period moved back 31 days (`defaults write`), the reminder appeared at launch,
+    with the Unlicensed label. **Escape and Return did nothing under a real keyboard**, the first
+    live proof of that, since computer use can't send Escape. Tab and Space reached and pressed every
+    button. Switching away and back the same day didn't bring it back;
+  - **the next day's first activation** showed it again, at 00:29;
+  - a key **signed with the production key**, activated from a local page shaped like the license
+    email, removed the label at once;
+  - **background checks**, with auto-install on and a local feed offering 1.4.0 dated after the key's
+    end (`Tooling/fake-update-feed.py`): with no key, every hourly check from 18:21 to 10:22 asked
+    for the DMG. That's the control. With the key, the checks at 11:37 and 12:37 asked for
+    **nothing**. The same was measured first on the Debug build (docs/NOTES.md ▸ Release pipeline).
+- **The live run found two things:**
+  - **Tab never reached any button in Settings**, for instance Buy a License…, or Activate after
+    pasting a key. A SwiftUI `Button` in a `Form` has no `NSButton` behind it on macOS 26, so
+    `KeyboardReachableControls` never saw it. All eight now use `SettingsButton`, an `NSButton` in
+    the form (docs/NOTES.md ▸ AppKit).
+  - **The daily reminder came at 00:29**, in the middle of a late session, because a new day began
+    at midnight. **Decided with Oleg:** it now comes at the first activation from 13:00. The first
+    minutes of the working day are the worst moment to interrupt, and someone who uses Dirnex only
+    in the mornings sees it only when Dirnex starts. The reminder at launch is unchanged, and a
+    reminder at a morning launch counts for that day. `LicenseReminderPolicy.defaultDailyHour`.
+- **Still to do:** the notice by hand on beta.25 (Not Now, then Update Anyway); then beta.26 with
+  both fixes, which the key covers, so it must install with no notice; and Tab through Settings in
+  it.
 
 ### M30 — Report a Bug, and a Help menu to hold it (S)
 
