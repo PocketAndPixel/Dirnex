@@ -340,11 +340,21 @@ jobs:
           fi
 
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            # A release that already exists is a rerun, or a draft an earlier run staged. A draft
+            # has no tag until it's published, so beta.yml picks the same number again and lands
+            # here (`gh release view` finds a draft by its pending tag). Upload first, so a release
+            # is never published holding the old DMG. Then publish it, made from this commit:
+            # `gh release edit` leaves a draft a draft unless told otherwise, and the appcast below
+            # would point at a DMG nobody can download. The target only matters while the tag
+            # doesn't exist yet; GitHub ignores it once it does.
+            gh release upload "$TAG_NAME" "$RELEASE_DMG" --clobber
+            if [ "$DRAFT" != "true" ]; then
+              PROMOTE_FLAGS="$PROMOTE_FLAGS --draft=false --target $(git rev-parse HEAD)"
+            fi
             gh release edit "$TAG_NAME" \
               --title "$TAG_NAME" \
               --notes-file dist/release-notes.md \
               $PROMOTE_FLAGS
-            gh release upload "$TAG_NAME" "$RELEASE_DMG" --clobber
           else
             gh release create "$TAG_NAME" "$RELEASE_DMG" \
               --title "$TAG_NAME" \

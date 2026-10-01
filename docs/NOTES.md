@@ -8023,6 +8023,20 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   the test measures the wrong app. Ask Launch Services first:
   `osascript -l JavaScript -e 'ObjC.import("AppKit"); $.NSWorkspace.sharedWorkspace.URLForApplicationToOpenURL($.NSURL.URLWithString("dirnex://license")).path.js'`.
   `lsregister -f <app>` registers the copy under test, and `lsregister -u <app>` removes a stale one.
+- **A staged draft was never published by the run that reused its version** (fixed 2026-10-01). A
+  draft has no git tag until it's published, so `beta.yml` picks the same `-beta.N` again, and
+  `gh release view` finds the draft by its pending tag (gh's `FetchRelease` looks up drafts by GraphQL
+  when the REST lookup by tag fails). The edit path then ran `gh release edit` without `--draft`,
+  and gh sends `draft` only when the flag is given, so the release stayed a draft. Meanwhile the
+  next step published an appcast pointing at its DMG, which only collaborators can download. Every
+  beta install would have been offered an update that failed to download. The edit path now
+  uploads first, then publishes with `--draft=false --target <this commit>`. Checked against gh
+  2.97.0's source, and by running the step's own script against a stand-in `gh` that records its
+  calls: four cases right, and the version before the fix, as the control, editing without
+  publishing.
+  - **The draft and that release still share a build number**, because the floor is "highest in
+    the published feed + 1", and a draft doesn't touch the feed. A copy installed by hand from the
+    draft is never offered the release (docs/RELEASING.md ▸ Cutting a beta).
 - **A `GITHUB_TOKEN`-pushed tag does not re-trigger `on: push`** — which is exactly why the beta
   workflow calls `release.yml` as a reusable workflow instead of pushing a tag and hoping the tag
   trigger fires.

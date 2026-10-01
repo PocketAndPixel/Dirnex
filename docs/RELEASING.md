@@ -90,6 +90,12 @@ It reads the `v<base>-beta.*` tags that already exist and takes the next number 
 second copy of the pipeline to drift. A beta never rewrites the `VERSION` file — that tracks the
 stable line only.
 
+**A staged draft is published by the next normal run.** A draft has no tag until it's published, so
+the next run takes the same `-beta.N`, replaces the draft's DMG with its own, and publishes it from
+the new commit. One trap remains: the draft and that release get the **same build number**, because
+the number comes from the published feed, which a draft doesn't touch. So a copy installed by hand
+from the draft is never offered that release. Reinstall such a copy from the published release.
+
 > **Build numbers are shared across channels on purpose.** Sparkle ranks candidates by
 > `CFBundleVersion`, so it must increase globally, not per channel. `github.run_number` is
 > per-workflow-*file*, so a beta run counts separately from a stable one and would restart at 1 —
