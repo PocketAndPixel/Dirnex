@@ -8024,6 +8024,38 @@ vector (`Fixtures/license-vectors.json`) rather than a hope:
   Greenwich. `LicenseDay.date(in:)` returns noon of the day in the viewer's zone.
 - `String(validating:as:)` exists only from macOS 15; the core's floor is 14.
 
+### Bug reports: one contract, two languages (M30)
+
+The report is written in Swift (the app) and judged in TypeScript (the store's server), against
+the same cases (`Fixtures/bug-report-vectors.json`, from the private repo's
+`web/src/bug-reports/`). Found 2026-10-01 while building Slice 1:
+
+- **Every limit counts UTF-8 bytes.** `"é" × 51` is 102 bytes, 51 UTF-16 units and 51 `Character`s,
+  so a limit counted any other way lets it through on one side only. A shared case pins it.
+- **"Blank" is the list JavaScript's `trim` removes, written out** (`BugReportText.blankScalars`).
+  `Character.isWhitespace` disagrees on two of the shared cases (U+0085 and U+FEFF); a negative
+  control shows it.
+- **An `@` followed by a combining mark is one `Character`,** so `contains(Character("@"))` misses
+  it. The email rule walks Unicode scalars.
+- **`decodeIfPresent` reads `null` as absent**, while the server refuses `null`. The decoder uses
+  `contains` + `decode`, so every JSON case the server calls `malformed` also fails to decode here.
+- **A crash report escapes every slash** (`\/Users\/jane\/…`, in a real `.ips`), so the home is
+  redacted in both spellings. Inside the request body that text is escaped once more
+  (`\\/Users\\/jane`), so a leak check that searches the body's text for either spelling finds
+  nothing. It must read the decoded values; the negative control caught the first version.
+- **macOS moves a crash report to `DiagnosticReports/Retired/` within days** (a two-day-old Dirnex
+  report was already there), so the locator looks in both folders.
+- **A crash report carries IDs of the Mac, not the crash:** `crashReporterKey` and
+  `storeInfo.deviceIdentifierForVendor` stay the same across every report from one Mac, and
+  `bootSessionUUID` and `sleepWakeUUID` link the reports from one boot. The trimmer blanks them as
+  text (a regex), rather than parsing and rewriting the JSON, which could round a 64-bit register
+  value through `Double`.
+- **A user name can also appear outside its home path.** The real report held
+  `/private/tmp/claude-501/-Users-oleg-…`, a path that spells the home with dashes, which no home
+  redaction catches. *Show What Will Be Sent* is the backstop for what redaction can't know.
+- **A `Regex` isn't `Sendable`,** so it can't be a `static let` under Swift 6. Build it inside the
+  function.
+
 ## macOS system gates
 
 - **App Intents only register from a Team-ID-signed app in a standard install location.** Two

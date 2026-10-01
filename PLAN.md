@@ -5,7 +5,7 @@ built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spot
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
 Status: **M0–M29 shipped** (14 languages; M29's licensing is on in betas, off in stable until the
-store opens) · **M30 planned** (bug reports) ·
+store opens) · **M30 in progress** (bug reports; Slice 1 landed) ·
 Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
 [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)
@@ -195,6 +195,42 @@ Decided before Slice 1:
 - a report sent from a beta arrives in the server's inbox with exactly what the preview showed;
 - the same report with the network off survives as Copy or Email;
 - a build without the URL shows no trace of the feature.
+
+#### Progress
+
+**2026-10-01: Slice 1 landed** (core only; the app is untouched).
+
+- **The contract** is in the private repo, `web/src/bug-reports/contract.ts`, with 43 shared cases
+  copied here unchanged as `Fixtures/bug-report-vectors.json`. The body is flat JSON: `v` (1),
+  `description`, `steps`, `email`, `appVersion`, `appBuild`, `macOS`, `macModel`, `language`,
+  `licensed` and `crashReport`. An unticked box leaves its field out entirely.
+- **Core:** `BugReport` (the body, `problem` in the server's order, and `body()`, the exact bytes),
+  `BugReportText` (the blank list, trimming, the email rule, cutting at a character boundary),
+  `BugReportForm` (the dialog's texts and boxes, and the one place they become a report),
+  `BugReportSystemInfo`, `BugReportRedaction` (the home to `~`), `CrashReportTrimmer` and
+  `CrashReportLocator`. 39 tests in 4 suites, with negative controls: a redaction that leaves the
+  home in, a blank test built on `Character.isWhitespace`, and an `@` looked for among
+  `Character`s.
+- **Decided in the slice:**
+  - **Every limit counts UTF-8 bytes:** the body 512 KiB, the description and the steps 20,000
+    each, the email 254, the five short fields 100 each, the crash report 256 KiB. The typed texts
+    always fit even when JSON escapes every character, so only the crash report can push a body
+    over, and `body()` cuts it until the body fits.
+  - **The body is written in the contract's order, pretty-printed, slashes unescaped,** so the
+    preview reads top to bottom and the crash report comes last. `JSONEncoder` without
+    `.sortedKeys` promises no order, so the object is assembled by hand from encoded values.
+  - **The crash report is the newest `Dirnex-*.ips` modified in the last 7 days,** in
+    `DiagnosticReports` or its `Retired/` folder. It is trimmed as text: home to `~`, the four
+    values that identify the Mac or the boot blanked, at most 256 KiB, cut at the start's end with
+    a marker. The start holds the exception, the reason and the crashed thread.
+  - **The home is replaced only where its name ends** (`/Users/janet` and `/Users/jane.doe` stay),
+    case-insensitively, in the plain and the escaped spelling.
+  - **The request will send `User-Agent: Dirnex`, with no version** (Slice 2). URLSession's
+    default carries the build and the Darwin version, which would leak what an unticked box holds
+    back.
+  - **The server answers** 201 with an id, 400 (413 for `tooLarge`) with the refusal's name, or
+    429 `rateLimited` with `Retry-After`. Anything but 201 keeps the text and offers Copy Report
+    and Email Instead.
 
 ### Still open
 

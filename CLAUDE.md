@@ -58,7 +58,7 @@ The sections, and when each one matters:
   extended attributes, checksums, regex, `qlmanage`, `gpr_tools`, `git`. The big ones (sftp/ssh,
   S3, FTP, the Trash, Google Drive, encryption) split again into `####` topics.
 - **Release pipeline**: a release, the workflows, Sparkle.
-- **Distribution and licensing**: the license, `NOTICE`, license keys.
+- **Distribution and licensing**: the license, `NOTICE`, license keys, bug reports.
 - **macOS system gates**: App Intents, Vision and OCR.
 - **Design lessons that generalize**: designing a gesture, an undo, a batch, a guard or a backend
   change, one `###` per topic.
