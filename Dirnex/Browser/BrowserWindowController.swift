@@ -180,6 +180,10 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
     /// (`BrowserWindowController+Updates`).
     let updateIndicatorButton = NSButton()
 
+    /// The **Unlicensed** / **Renew License** titlebar label (PLAN.md §M29), hidden unless the
+    /// license reminder is due.
+    let licenseLabel = LicenseTitlebarLabel()
+
     init() {
         // A composite backend so a pane can browse into an archive (`archive:…` paths route
         // to a lazily-mounted read-only `ArchiveBackend`) while every local path still runs
@@ -288,6 +292,7 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
         // place it — into the leading accessory beside the sidebar toggle.
         installUpdateIndicator()
         installSidebarToggle()
+        window.addTitlebarAccessoryViewController(licenseLabel)
         installNavigationButtons()
 
         queueBar.onPauseToggle = { [weak self] in self?.togglePause() }

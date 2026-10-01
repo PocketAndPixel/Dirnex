@@ -109,7 +109,8 @@ struct SizeScanQueueTests {
     }
 
     private static func settle(
-        within budget: Duration = .seconds(10),
+        // 30 s, like `settleUntil`: the main actor stalls for seconds in a full run (docs/NOTES.md ▸ Testing).
+        within budget: Duration = .seconds(30),
         until condition: @MainActor () -> Bool
     ) async -> Bool {
         let deadline = ContinuousClock.now + budget

@@ -39,7 +39,11 @@ final class SettingsWindowController: NSWindowController {
     /// It takes the same placement as the dialogs — where the user last dragged it, else centered on
     /// the app's window. The window itself is not resizable, which is what makes the restore
     /// position-only (see ``DialogWindowPlacement``).
-    func present() {
+    ///
+    /// `tab` switches to that tab first (App menu ▸ License… opens License); `nil` keeps whichever
+    /// tab the window last showed.
+    func present(tab: SettingsTab? = nil) {
+        if let tab { SettingsNavigation.shared.tab = tab }
         if !hasPlaced, let window, let content = window.contentViewController?.view {
             content.layoutSubtreeIfNeeded()
             let fitting = content.fittingSize

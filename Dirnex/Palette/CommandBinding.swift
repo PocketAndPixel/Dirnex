@@ -130,6 +130,8 @@ enum CommandBinding {
         "app.fullDiskAccess": #selector(AppDelegate.showFullDiskAccess(_:)),
         "app.showTour": #selector(AppDelegate.showFirstRunTour(_:)),
         "app.checkForUpdates": #selector(AppDelegate.checkForUpdates(_:)),
+        "app.license": #selector(AppDelegate.showLicense(_:)),
+        "app.buyLicense": #selector(AppDelegate.buyLicense(_:)),
         "app.quit": #selector(NSApplication.terminate(_:))
     ]
 }

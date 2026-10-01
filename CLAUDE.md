@@ -10,12 +10,14 @@ for Settings and dialogs).
 - **[PLAN.md](PLAN.md) is the authoritative source of truth** — architecture rules (§2, locked
   unless proven wrong), the testing strategy, and the current milestone. Read the relevant
   section before starting work, and add a progress note when a slice lands.
-- **[docs/HISTORY.md](docs/HISTORY.md)** — the M0–M28 build log; each milestone is archived here as
+- **[docs/HISTORY.md](docs/HISTORY.md)** — the M0–M29 build log; each milestone is archived here as
   it closes. Source comments citing `PLAN.md §M5` and the like point here. Read it for the
   reasoning behind a shipped decision; it's archive, not instruction.
 - **[docs/NOTES.md](docs/NOTES.md)** — durable engineering gotchas: Swift 6 traps, AppKit
-  behaviors, external CLI quirks, release-pipeline pitfalls. Read it before debugging something
-  that "should just work."
+  behaviors, external CLI quirks, release-pipeline pitfalls. Too big to load at session start, so
+  it is read by area: see [Using NOTES.md](#using-notesmd) below.
+- **[docs/LIVE-VERIFICATION.md](docs/LIVE-VERIFICATION.md)** — traps met while checking a change in
+  the running app. Loaded in every session, just below.
 - **[docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)** — what works where: every capability
   against every backend (local, cloud mounts, archives, SFTP, FTP, S3, the virtual listings), with
   the hard technical limits separated from the gaps that are still ours to close. Read it before
@@ -23,7 +25,43 @@ for Settings and dialogs).
   moves one.
 - **[docs/RELEASING.md](docs/RELEASING.md)** — the release procedure.
 
-@docs/NOTES.md
+@docs/LIVE-VERIFICATION.md
+
+## Using NOTES.md
+
+NOTES.md is not imported here. It is close to 300k tokens, and an import loads the whole file at
+the start of every session (measured 2026-10-01), so it cost each session nearly ten times
+everything else before any work began. Read it by area instead:
+
+- **Before starting a slice**, read the NOTES.md sections for the areas it touches.
+  `command grep -n '^##' docs/NOTES.md` prints the map with line numbers. Read a section with an
+  offset and limit: the whole file is too big for one read.
+- **Before debugging something that "should just work"**, grep NOTES.md for the API, the tool or
+  the symptom.
+- A source comment citing `docs/NOTES.md ▸ AppKit` points at that section.
+- A new note goes under the section for its area. A trap that can bite any live run goes in
+  LIVE-VERIFICATION.md instead.
+
+The sections, and when each one matters:
+
+- **Working rhythm**: its rules are in [How to work here](#how-to-work-here), below.
+- **Swift 6 and concurrency**: actors, `Sendable`, tasks, isolation errors.
+- **Testing**: writing or debugging a test, a flaky run, a live integration suite, one `###` per
+  topic (waits, negative controls, runs that prove nothing, fixtures, live suites, …).
+- **AppKit**: any window, view, table, sheet, alert, menu or key handling, one `###` per topic
+  (windows, alerts and dialogs, focus, menus, tables, text, layout, previews, drag and drop, …):
+  read only the ones you touch.
+- **Localization**: adding or changing a user-visible string, one `###` per topic.
+- **Lint ceilings and file splitting**: adding to a large controller.
+- **External CLI tools**: a backend or a tool, one `###` each: `bsdtar`, sftp/ssh, curl for FTP
+  and for S3, SMB, the Trash, iCloud Drive, Google Drive, iCloud Photos, encryption, ACLs and
+  extended attributes, checksums, regex, `qlmanage`, `gpr_tools`, `git`. The big ones (sftp/ssh,
+  S3, FTP, the Trash, Google Drive, encryption) split again into `####` topics.
+- **Release pipeline**: a release, the workflows, Sparkle.
+- **Distribution and licensing**: the license, `NOTICE`, license keys.
+- **macOS system gates**: App Intents, Vision and OCR.
+- **Design lessons that generalize**: designing a gesture, an undo, a batch, a guard or a backend
+  change, one `###` per topic.
 
 ## Architecture rules
 
@@ -42,6 +80,8 @@ for Settings and dialogs).
 - **Probe the real thing before writing Swift.** Capture the real bytes or measure the real
   syscall and design from what you observed. This has caught a wrong assumption in every pass
   that used it.
+- **When a format's rule is undocumented, test against a corpus that already depends on it**, such
+  as real files on this Mac written against the real behavior (NOTES.md ▸ Working rhythm).
 - **Core first, then the app.** A slice opens with purely additive, tested core files (app
   untouched, no rebuild) and lands in a second pass that wires the app.
 - **Verify live before claiming done** — and fully quit any running instance first; `open`

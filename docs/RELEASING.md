@@ -90,6 +90,12 @@ It reads the `v<base>-beta.*` tags that already exist and takes the next number 
 second copy of the pipeline to drift. A beta never rewrites the `VERSION` file — that tracks the
 stable line only.
 
+**A staged draft is published by the next normal run.** A draft has no tag until it's published, so
+the next run takes the same `-beta.N`, replaces the draft's DMG with its own, and publishes it from
+the new commit. One trap remains: the draft and that release get the **same build number**, because
+the number comes from the published feed, which a draft doesn't touch. So a copy installed by hand
+from the draft is never offered that release. Reinstall such a copy from the published release.
+
 > **Build numbers are shared across channels on purpose.** Sparkle ranks candidates by
 > `CFBundleVersion`, so it must increase globally, not per channel. `github.run_number` is
 > per-workflow-*file*, so a beta run counts separately from a stable one and would restart at 1 —
@@ -104,6 +110,88 @@ The run produces:
 - On the fixed **`appcast`** release: `appcast.xml` — the merged Sparkle feed, served at the stable
   `releases/download/appcast/appcast.xml` URL every app checks. This release is infrastructure —
   don't delete it.
+
+## The licensing switch and the release date
+
+Two values are baked into every release build's `Info.plist` (PLAN.md §M29):
+
+- **`DirnexReleaseDate`**, the UTC day the release was cut (`YYYY-MM-DD`). A license covers every
+  build released on or before its end day. The *Resolve release values* step takes one timestamp
+  for the whole run, and both this date and the appcast item's `<pubDate>` come from it. So the
+  app can judge an update from the feed before installing it, and gets the same answer the installed
+  build will give.
+- **`DirnexLicensingEnabled`**, `YES` or `NO`. With `NO` (the default), nothing about licensing
+  appears: no License tab, no license commands, no reminder, and a `dirnex://` license link is
+  ignored. With `YES`, it all appears, and the reminder starts its 30 quiet days on the first launch.
+
+The switch is the repository **variable** `DIRNEX_LICENSING` (Settings → Secrets and variables →
+Actions → **Variables**, not Secrets):
+
+| `DIRNEX_LICENSING` | Beta builds | Stable builds |
+| --- | --- | --- |
+| unset, or `off` | off | off |
+| `beta` | **on** | off |
+| `all` | **on** | **on** |
+
+Any other value fails the run. The plan is `beta` for the first beta that should remind (M29 Slice
+6), and `all` on the day the store opens. Each run's log says which it used ("Licensing switch: …"),
+and `scripts/build_app.sh` reads both values back out of the exported app and fails the run if they
+aren't what it passed.
+
+Builds made any other way (Xcode, `xcodebuild`, anyone's own build from source) leave both values
+empty: licensing off, and undated. A Debug build still *shows* the License tab and the two commands,
+so they can be worked on, but it doesn't remind unless it's launched with a preview argument (next
+section).
+
+### Trying the reminder
+
+- **In a Debug build**, launch with `-DirnexDebugLicenseDaysAhead 31`. Reminding switches on with
+  the clock 31 days ahead, so the reminder appears at launch and the titlebar label shows. Add
+  `-DirnexDebugLicenseBuildDate 2028-01-01` to pretend the build came out on that day: a license
+  that ended before it then shows the **Renew** version. A Debug build keeps the reminder's record
+  in memory only, and it accepts keys signed with the test key (`tools/license sign --test` in the
+  private repo).
+- **In a beta with the switch on**, fake the 30 days by moving the start of the quiet period back,
+  with Dirnex quit:
+
+  ```sh
+  defaults write com.dirnex.Dirnex Dirnex.pref.licenseGraceStart -date "2026-01-01 00:00:00 +0000"
+  ```
+
+  The next launch reminds. `Dirnex.pref.licenseReminderLastShown` holds the last time it appeared.
+  Delete both keys to start the 30 days again.
+
+### Trying the update notice
+
+The notice appears before an update that the license held doesn't cover. To try it without
+releasing anything, serve a local feed offering Dirnex 1.4.0, released on a day after the key's
+last day:
+
+```sh
+python3 Tooling/fake-update-feed.py 8766 2027-04-01 /tmp/feed.log
+```
+
+Quit Dirnex, then launch it pointed at that feed. The feed is a launch argument, so the real
+preferences never gain it, and the next normal launch uses the real feed again:
+
+```sh
+open -n /Applications/Dirnex.app --args -SUFeedURL http://127.0.0.1:8766/appcast.xml
+```
+
+- **By hand.** With a key that covers the running build, the launch probe lights the titlebar
+  indicator. Clicking it, or Check for Updates…, brings the notice. **Update Anyway** brings
+  Sparkle's own update window; close it there. The feed answers the DMG with a 404, so nothing it
+  offers can install, and every request for it is logged with `"download": true`.
+- **In the background.** Add
+  `-SUEnableAutomaticChecks '<true/>' -SUAutomaticallyUpdate '<true/>' -SUScheduledCheckInterval '<integer>3600</integer>'`
+  and leave Dirnex running for more than an hour. Dirnex's own launch probe counts as Sparkle's last
+  check, and an hour is Sparkle's shortest interval, so the first background check comes an hour
+  after launch. With the key, the log shows the feed fetched again and no download. Run the same
+  launch once **without** a key as the control: that one asks for the DMG. Without the control, a
+  log with no download would also fit a background check that never ran.
+- A key can be a launch argument too (`-Dirnex.pref.licenseKey dnx1.…`), which keeps it out of the
+  real preferences. A release build accepts only keys signed with the production key; a Debug build
+  also accepts test keys.
 
 ## What the app does with it
 

@@ -47,42 +47,35 @@ struct EditFileRouteTests {
         )
     }
 
-    /// Poll rather than spin the run loop: the flow lands through a `Task`, and a spin drives layout
-    /// without ever suspending the main actor, so the result simply never arrives.
-    @discardableResult
-    private func settle(within seconds: Double = 10, until isDone: () -> Bool) async -> Bool {
-        let deadline = Date().addingTimeInterval(seconds)
-        while Date() < deadline {
-            if isDone() { return true }
-            try? await Task.sleep(for: .milliseconds(25))
-        }
-        return isDone()
-    }
-
     /// Wait a delay **out** to show the editor is never reached, giving up early if it ever is.
     ///
-    /// Half a second, and short on purpose: the local route reaches `openInEditor` in the same
-    /// main-actor turn the resolving `stat` resumes on, so there is nothing slow to wait for — the
-    /// window only absorbs scheduling delay. Measured on the reverted build, the token is up within
-    /// the first poll or two. Its length is the claim, so it is fixed rather than scaled for a slow
-    /// machine — and kept small because this suite runs beside `PanelPassiveRefreshTests`, which
-    /// measures whether a pane repaints while nobody touched it and is sensitive to what else is
-    /// holding the main actor (docs/NOTES.md ▸ Testing).
+    /// Half a second, and it rests on **ordering, not on its length**. The local route reaches
+    /// `openInEditor` in the same main-actor turn the resolving `stat` resumes on, and that turn is
+    /// queued as the `stat` returns, before this wait starts. In a full run the main actor stalls for
+    /// seconds at a time, so the whole window can pass in one stall: measured 2026-10-01, this wait
+    /// woke **once**, 2.1–3.8 s late. Its one look still comes after that turn, because the main
+    /// actor runs its queue in order. The negative control is what says so: with ⇧F4 opening the
+    /// path directly again, both tests failed every full run (docs/NOTES.md ▸ Testing). Kept small
+    /// because this suite runs beside `PanelPassiveRefreshTests`, which measures whether a pane
+    /// repaints while nobody touched it and is sensitive to what else is holding the main actor.
     private func hold(until isHappening: () -> Bool) async {
-        _ = await settle(within: 0.5, until: isHappening)
+        let deadline = ContinuousClock.now + .milliseconds(500)
+        while !isHappening(), ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(25))
+        }
     }
 
     @Test("a file already on the server is opened by its own route, not as a local path")
-    func existingRemoteFileTakesTheRemoteRoute() async {
+    func existingRemoteFileTakesTheRemoteRoute() async throws {
         let backend = RecordingBackend(hasFile: true)
         let pane = Self.pane(backend)
 
         pane.editFile(named: "notes.txt", in: Self.directory)
 
         // The flow ran and resolved the name — without this the status assertion below would pass
-        // against a ⇧F4 that had simply stopped working.
-        let resolved = await settle { backend.statCount == 1 }
-        #expect(resolved)
+        // against a ⇧F4 that had simply stopped working. The shared wait's 30 s, not a copy's 10 s:
+        // the main actor stalls for seconds in a full run, and once past 10 s (2026-10-01).
+        try await settleUntil { backend.statCount == 1 }
         await hold(until: { pane.transientStatusToken > 0 })
         #expect(pane.transientStatusToken == 0)
         // An existing name means *open that file*: `createFile` would truncate the document the
@@ -91,18 +84,16 @@ struct EditFileRouteTests {
     }
 
     @Test("a file created on the server is opened by its own route, not as a local path")
-    func createdRemoteFileTakesTheRemoteRoute() async {
+    func createdRemoteFileTakesTheRemoteRoute() async throws {
         let backend = RecordingBackend(hasFile: false)
         let pane = Self.pane(backend)
 
         pane.editFile(named: "notes.txt", in: Self.directory)
 
-        let created = await settle { backend.createCount == 1 }
-        #expect(created)
+        try await settleUntil { backend.createCount == 1 }
         // Read back rather than assumed: the route is decided from an entry, and a remote one is
         // fetched and later saved against the size, time and entity tag only a `stat` carries.
-        let readBack = await settle { backend.statCount == 2 }
-        #expect(readBack)
+        try await settleUntil { backend.statCount == 2 }
         await hold(until: { pane.transientStatusToken > 0 })
         #expect(pane.transientStatusToken == 0)
     }

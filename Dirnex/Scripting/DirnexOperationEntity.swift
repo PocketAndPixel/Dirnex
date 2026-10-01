@@ -51,23 +51,35 @@ struct DirnexOperation: AppEntity {
 struct DirnexOperationQuery: EnumerableEntityQuery, EntityStringQuery {
     /// The whole registry plus the user's scripts — the dropdown's contents.
     func allEntities() async throws -> [DirnexOperation] {
-        AutomationOperation.all(userScripts: userScripts).map(DirnexOperation.init)
+        AutomationOperation.all(commands: commands, userScripts: userScripts).map(
+            DirnexOperation.init
+        )
     }
 
     /// Fuzzy-ranked matches for what the user typed into the picker's search field.
     func entities(matching string: String) async throws -> [DirnexOperation] {
-        AutomationOperation.search(string, userScripts: userScripts).map(DirnexOperation.init)
+        AutomationOperation.search(string, commands: commands, userScripts: userScripts).map(
+            DirnexOperation.init
+        )
     }
 
     /// Re-resolve the ids a saved shortcut stored. Exact matching (see `AutomationOperation`): a
     /// shortcut pointing at a since-renamed script resolves to nothing and Shortcuts shows it as
     /// needing a value, which is far better than silently binding to a different operation.
     func entities(for identifiers: [String]) async throws -> [DirnexOperation] {
-        AutomationOperation.operations(ids: identifiers, userScripts: userScripts).map(
+        AutomationOperation.operations(
+            ids: identifiers,
+            commands: commands,
+            userScripts: userScripts
+        ).map(
             DirnexOperation.init
         )
     }
 
     /// The store read is nonisolated (plain `UserDefaults` JSON), so the query needs no actor hop.
     private var userScripts: [UserScript] { UserScriptStore.load().scripts }
+
+    /// The registry as this build offers it: without the licensing commands where it shows nothing
+    /// about licenses (PLAN.md §M29).
+    private var commands: [Command] { LicensingSwitch.available(CommandCatalog.all) }
 }

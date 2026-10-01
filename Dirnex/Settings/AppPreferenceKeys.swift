@@ -36,5 +36,11 @@ extension AppPreferences {
         static let hasOfferedFullDiskAccessForICloud = "Dirnex.pref.hasOfferedFullDiskAccessForICloud"
         static let hasReadICloudAppLibraries = "Dirnex.pref.hasReadICloudAppLibraries"
         static let hasSeenFirstRunTour = "Dirnex.pref.hasSeenFirstRunTour"
+        /// The license key's text (PLAN.md §M29). Read and written by `LicenseStore` alone.
+        static let licenseKey = "Dirnex.pref.licenseKey"
+        /// When the license reminder's quiet period began, and when the reminder last appeared
+        /// (PLAN.md §M29). Plain dates, so `defaults write … -date` can fake them on a beta.
+        static let licenseGraceStart = "Dirnex.pref.licenseGraceStart"
+        static let licenseReminderLastShown = "Dirnex.pref.licenseReminderLastShown"
     }
 }

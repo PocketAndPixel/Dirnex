@@ -153,6 +153,13 @@ enum FullDiskAccessOnboarding {
     }
 
     private static func showAlreadyGranted(over window: NSWindow?) {
+        present(alreadyGrantedAlert(), over: window) { response in
+            if response == .alertSecondButtonReturn { openSystemSettings() }
+        }
+    }
+
+    /// The alert `showAlreadyGranted` shows, built apart so a test can present it.
+    static func alreadyGrantedAlert() -> NSAlert {
         let alert = NSAlert()
         alert.messageText = String(localized: "Dirnex already has Full Disk Access")
         alert.informativeText = String(localized: """
@@ -165,10 +172,10 @@ enum FullDiskAccessOnboarding {
         // ⎋ → OK (the lone safe default here) — named, because it is *not* the last button and the
         // default would otherwise hand Escape to "Open System Settings".
         alert.enableEscapeToCancel(safe: .alertFirstButtonReturn)
-
-        present(alert, over: window) { response in
-            if response == .alertSecondButtonReturn { openSystemSettings() }
-        }
+        // And the focus, for the same reason: Space presses the focused button, and this alert
+        // opens focused on its last one (docs/NOTES.md ▸ AppKit).
+        alert.window.initialFirstResponder = alert.buttons.first
+        return alert
     }
 
     // MARK: - Plumbing

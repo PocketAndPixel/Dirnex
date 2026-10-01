@@ -346,8 +346,9 @@ enum QuickViewTextFindFixtures {
     }
 
     /// Wait until `condition` holds, polling with `Task.sleep` (docs/NOTES.md ▸ Testing); `false` if it
-    /// has not within the budget.
-    static func settle(within seconds: Double = 10, until condition: () -> Bool) async -> Bool {
+    /// has not within the budget. 30 s, like `settleUntil`: the main actor stalls for seconds in a
+    /// full run (docs/NOTES.md ▸ Testing).
+    static func settle(within seconds: Double = 30, until condition: () -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(seconds)
         while Date() < deadline {
             if condition() { return true }

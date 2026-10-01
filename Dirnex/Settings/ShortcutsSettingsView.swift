@@ -91,7 +91,7 @@ struct ShortcutsSettingsView: View {
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 140)
 
-            Button("Restore Defaults") { confirmingRestore = true }
+            SettingsButton("Restore Defaults") { confirmingRestore = true }
                 .disabled(store.bindings.overrides.isEmpty)
         }
         .padding(12)

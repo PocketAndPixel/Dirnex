@@ -4,7 +4,9 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M28 shipped** (14 languages) · Created: 2026-07-05 ·
+Status: **M0–M29 shipped** (14 languages; M29's licensing is on in betas, off in stable until the
+store opens) · **M30 planned** (bug reports) ·
+Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
 [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)
 
@@ -97,7 +99,7 @@ Dirnex/
 Sizes are relative (S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks of focused work).
 Each milestone ends in something runnable; no milestone depends on a later one.
 
-### Shipped: M0 → M28 (2026-07-05 → 2026-09-13)
+### Shipped: M0 → M29 (2026-07-05 → 2026-10-01)
 
 Every milestone is closed. The checklists and the full per-pass progress log — what was probed,
 decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source comments citing
@@ -134,10 +136,69 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 | M26 | Move to Trash, wherever the file lives | 08-31 | **The remote backends**, which have no Trash at all and are already degraded to a confirmed permanent delete (§M5, and M25 §7's decision not to invent one); **chasing the refusal further into TCC and `fileproviderd`**, which is not observable from here past the three candidates already eliminated — the fix does not depend on knowing which policy denies; and **Put Back for an item *Finder* deleted out of a provider domain**, or for anything trashed before the store shipped, both of which keep the honest answer the restore flow already gives by name. A **third** origin source landed 2026-09-20 — a network share's own `#recycle`, where the bin mirrors the original path so there is no record to be missing (HISTORY.md ▸ the follow-on log) |
 | M27 | Legacy code-page archive names | 09-09 | **Inferring** the code page — no reader can, and a wrong guess is a plausible name for the wrong file, so it is a chooser over a preview and never a detector; **preserving an un-representable name byte-for-byte**, the rejected streaming rewrite, which keeps bytes nobody can read and still cannot extract that row *out* of the archive; and **persisting the declaration** across sessions, since it is a guess the user made about one archive and a wrong one silently outliving the session is worse than being asked again |
 | M28 | iCloud Photos, as folders of originals | 09-13 | **Import, delete and album edits**, each a write Photos mediates with its own confirmation; **smart albums** — one a person made is returned by no PhotoKit fetch, and the system ones are views over the library rather than places; **shared albums, the Shared Library and hidden photos**, left out as Photos' own Library view leaves them out; **a per-asset time zone**, which PhotoKit does not expose, so months are cut in the Mac's; **⌘L inside the library**, which has no real directory to start from; and **Photos' lowercase `.mov`** for a Live Photo's movie, since a row's name is part of its path. **Exercised later that evening**: the download of an original that is only in iCloud, on clips recorded for it — the bar sat at zero and Stop was ignored until the request carried a progress handler (HISTORY.md §M28); after that fix a 219 MB copy arrived byte-identical and Stop on a 276 MB one stored nothing |
+| M29 | A license, and the reminder it removes | 10-01 | **Revoking a refunded key inside the app** (the server marks it; an in-app list waits until refunds are actually abused); **trials that stop working, and activation limits**; **any copy protection beyond the signature**, since the source is open and the reminder is a request, not a lock; and **the Keychain** for the key, which is signed rather than secret. **Seen only in tests or a Debug build**: the Renew reminder on a release build, the prominent Renew… in Settings ▸ License, a pasted production key, and the 13:00 rule |
+
+### Next: M30 (planned 2026-09-29)
+
+Dirnex starts selling licenses. The store, the key server, the website at dirnex.app and the launch
+are planned in the private companion repo (`dirnex-home`, milestones C1–C15). The app's share is two
+milestones: **M29**, the license and the reminder it removes, shipped 2026-10-01 and is archived in
+[docs/HISTORY.md](docs/HISTORY.md) ▸ M29; and **M30**, below. Neither changes what Dirnex *is*: it
+stays open source, fully usable without paying, and it never asks a server whether a license is
+real.
+
+### M30 — Report a Bug, and a Help menu to hold it (S)
+
+**Planned 2026-09-29.** A way to tell Oleg something broke without a GitHub account. The report goes
+to the store's server (`https://dirnex.app/api/bug-reports`, built in the private repo), which keeps
+it and messages him. Apart from Sparkle's update check, it is the only thing in Dirnex that talks to
+a server of ours. It sends only when the user presses Send, and only what the user was shown.
+
+Decided before Slice 1:
+
+- **A Help menu, finally.** M20 left adding one as its own decision; this takes it. It holds *Report
+  a Bug…*, *Dirnex Website* and *Release Notes*, which is where every Mac user looks, and it brings
+  macOS's menu search with it. `app.reportBug` is in the palette too.
+- **What is sent.**
+  - A description (required).
+  - Steps to reproduce and a reply email (both optional; the email is remembered for next time).
+  - Each behind its own checkbox, on by default: the Dirnex version and build, the macOS version,
+    the Mac model, the UI language, and whether a license is present (never the key itself).
+  - Optional and off by default: the newest Dirnex crash report from the last 7 days in
+    `~/Library/Logs/DiagnosticReports`.
+
+  The home folder is shortened to `~` everywhere.
+- **Shown before it's sent.** *Show What Will Be Sent* opens the exact JSON body. File names and
+  paths are personal data, so nothing reaches the payload that the user didn't type or tick.
+- **When the server can't be reached,** the dialog keeps the text and offers *Copy Report* and *Email
+  Instead* (a `mailto:` with the same body), rather than losing it.
+- **Hidden until the endpoint exists.** The menu item and the command appear only when the build
+  carries `DirnexBugReportURL` in `Info.plist`. The release workflow adds it once the server is
+  live; until then the feature ships inert.
+
+#### Slices
+
+1. **The core** (additive).
+   - `BugReport`: the payload and its redaction (home folder to `~`, a size cap, crash-report
+     trimming).
+   - Encoding to the server's JSON contract, which is defined in the private repo and mirrored here
+     as a fixture.
+   - Tests, including a negative control that leaves the home path in.
+2. **The app.**
+   - The Help menu, the command, the dialog, the preview, sending with a timeout, and the fallbacks.
+   - A fake endpoint in `Tooling/` (the `fake-s3-endpoint.py` pattern) for the app tests to post to.
+   - Translated into all 14 languages.
+3. **Live.** Against the real endpoint once it exists (staging first), then in a beta with
+   `DirnexBugReportURL` set.
+
+**Done when:**
+- a report sent from a beta arrives in the server's inbox with exactly what the preview showed;
+- the same report with the network off survives as Copy or Email;
+- a build without the URL shows no trace of the feature.
 
 ### Still open
 
-Everything through M28 is shipped, and the record of it — the milestone checklists, the sixty
+Everything through M29 is shipped, and the record of it — the milestone checklists, the sixty
 dated passes that landed outside a milestone of their own, and the reasoning behind every decision —
 is in **[docs/HISTORY.md](docs/HISTORY.md)**. What is still open, rather than merely imaginable, is
 the *undone* column in the table above, plus the list below. Everything that came off this list came
@@ -205,6 +266,8 @@ plan keeps the strategy, which is a rule that outlives any one pass.
 | The tree becomes a *second* pane implementation by accretion — a refresh path, a mark gesture or a sort that quietly forks from the flat one | The tree is a flat projection over the same `NSTableView` and the same index space, not a parallel surface (HISTORY.md §M15 Slice 4); anything that forks is a signal the projection is wrong, not that the tree needs its own copy. Both fork points were answered in the slice — `SizeVisualization`'s per-directory assumption (the bars were withdrawn in tree mode at M15 close, then re-scoped *per parent directory* rather than forked — `SizeVisualization(tree:)` groups each row against its own level, so the projection stays one definition of "share of this folder") and the `installSortedModel` → `reloadEverything` → `syncCursorToTable` tail. It arrived once already, as the *second index space*: six `panel.model[row]` sites that crashed on the first click below the root's last entry, now routed through `displayedIndex(ofID:)` — NOTES.md ▸ AppKit |
 | M24 turns "fetch it first" into a download nobody asked for. Seven gestures gain the right to pull bytes over a network, and each one is a keystroke that used to be free | The rule is stated once and belongs to the **gesture**, never to the engine: `ByteComparator` refuses an evicted cloud placeholder rather than reading through it, and every engine reached here keeps that posture — it sees only files already on this disk, and the gesture is what fetches and what reports. The tell that the boundary is going is an *engine* learning to materialize, or a second threshold table appearing beside `RemoteFetchPolicy`'s. What makes it enforceable rather than a wish is that the size decision is already a named table keyed by `RemoteFetchPurpose`, so a new gesture is a row in it — and a purpose whose `isAutomatic` is true may never raise a dialog, which is the fork M21 Slice 10 settled and the bug a user reported when it was got wrong. **Held (closed 2026-08-28).** No engine learned to materialize: `ByteComparator` still refuses an evicted placeholder, every fetch runs through the one `MaterializationPlan` the gesture builds, and `RemoteFetchPurpose` grew **rows** — `handOff`, `compare`, `syncContents`, `checksum`, `userScript`, `pack` — rather than the second threshold table the row names as the tell. The unbounded case is refused rather than weighed: a folder that is not already here is turned away by name in each hand-off, because it stands for an unknown number of requests |
 | M25 writes attributes to a server through verbs that vary per account, and reports success it did not have. `sftp`'s `-p`, `chmod`, `copy` and the `readlink` behind a symlink target are each present on some accounts and absent on others — `ForceCommand internal-sftp` alone removes the exec channel | Degrade **per connection at run time**, the shape M22's search walk already proved: the account is asked once, the answer is remembered for that connection, and what cannot be carried is *not* carried rather than approximated. The failure to design against is the quiet one — writing an empty symlink because no target could be read, or reporting a preserved mode that was silently dropped — so the milestone opens with probes against a real `sshd` rather than with a man page, and a capability that cannot be established leaves the old behaviour standing. The corollary is that this milestone owes docs/NOTES.md a **correction** rather than only an entry: "neither remote protocol has a copy verb" is written down twice, and `sftp copy` exists. **Held (closed 2026-08-29).** Every capability is latched per connection and none is asked in advance; a refusal is *reported* rather than approximated (`RemoteMetadataPlan` names what a transfer will lose, and the status line says it), and the quiet failure the row names was found to be worse than described — `CopyEngine.swift:283` now refuses a symlink whose target could not be read, because `ln -s ""` is a dangling link over SFTP and an **`NSInvalidArgumentException` that terminates the process** on a download. The correction was made: NOTES.md records `copy-data revision 1`, measured at 64 MiB in 0.08 s |
+| M29's reminder turns goodwill into irritation. A sheet Escape cannot close, at every launch, is the most hostile thing Dirnex will ever do, in an app whose reviews are written by keyboard users | The mitigations: 30 quiet days; a sentence that asks rather than scolds; one sheet per launch or per day, never stacked over onboarding; and every rule a named constant in `LicenseReminderPolicy`, so changing the cadence is a one-line, tested change rather than a redesign. The tell is feedback about the sheet outnumbering feedback about the app |
+| M29: a paying customer meets the reminder after an update they didn't choose | The notice before any uncovered install, and no silent background install of one. Slice 5's probe chose the hook, an app test pins that a background check cannot get past it, and Slice 6 watched it hold on a beta all night |
 
 ## 7. Open questions
 

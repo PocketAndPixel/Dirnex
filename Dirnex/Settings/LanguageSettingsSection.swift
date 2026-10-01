@@ -30,7 +30,7 @@ struct LanguageSettingsSection: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     Spacer()
-                    Button("Relaunch") { settings.relaunch() }
+                    SettingsButton("Relaunch") { settings.relaunch() }
                 }
             }
         } footer: {

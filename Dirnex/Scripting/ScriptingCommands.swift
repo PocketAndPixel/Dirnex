@@ -80,7 +80,11 @@ final class DirnexRunOperationScriptCommand: NSScriptCommand {
         }
         // Resolution is pure (and the store read is nonisolated), so only the dispatch is isolated.
         let scripts = UserScriptStore.load().scripts
-        guard let id = AutomationOperation.resolve(query, userScripts: scripts) else {
+        guard let id = AutomationOperation.resolve(
+            query,
+            commands: LicensingSwitch.available(CommandCatalog.all),
+            userScripts: scripts
+        ) else {
             return fail(
                 AppleScriptError.notFound,
                 String(

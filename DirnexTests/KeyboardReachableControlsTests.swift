@@ -239,7 +239,8 @@ struct KeyboardReachableControlsTests {
             func all(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(all) }
             return window.contentView.map(all)?.compactMap { $0 as? NSControl } ?? []
         }
-        let deadline = Date().addingTimeInterval(10)
+        // 30 s, like `settleUntil`: the main actor stalls for seconds in a full run (docs/NOTES.md ▸ Testing).
+        let deadline = Date().addingTimeInterval(30)
         let kinds: [NSControl.Type] = [
             NSSwitch.self, NSPopUpButton.self, NSSegmentedControl.self, NSColorWell.self,
             NSStepper.self
