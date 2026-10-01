@@ -214,8 +214,10 @@ struct PanelPassiveRefreshTests {
     /// Poll rather than spin the run loop: these refreshes land through a `Task`, and a run-loop spin
     /// drives layout without ever letting the main actor suspend, so the result simply never arrives
     /// (docs/NOTES.md ▸ Testing). Generous, because a satisfied predicate returns on the next poll —
-    /// the budget only sets how much scheduling delay is absorbed before the code is blamed.
-    private static func settle(within seconds: Double = 10, until isDone: () -> Bool) async -> Bool {
+    /// the budget only sets how much scheduling delay is absorbed before the code is blamed. 30 s like
+    /// the shared `settleUntil`: at 10 s, "the pane never listed its own directory" failed 2 of 3 full
+    /// runs on 2026-10-01, while the main actor was stalling for longer than usual.
+    private static func settle(within seconds: Double = 30, until isDone: () -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(seconds)
         while Date() < deadline {
             if isDone() { return true }

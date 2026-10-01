@@ -58,7 +58,8 @@ struct QueueBarDetailReadoutTests {
     private func waitForReadout(
         _ bar: QueueBarView,
         toContain needle: String,
-        within seconds: Double = 4
+        // 30 s, like `settleUntil`: the main actor stalls for seconds in a full run (docs/NOTES.md ▸ Testing).
+        within seconds: Double = 30
     ) async -> Bool {
         let deadline = Date().addingTimeInterval(seconds)
         while Date() < deadline {

@@ -38,14 +38,18 @@ struct SettingsButtonTests {
     }
 
     /// Waits for SwiftUI to build what `find` looks for, laying the window out as it goes.
+    ///
+    /// 30 s, like the shared `settleUntil`, with one last look after the deadline: in a full run the
+    /// main actor stalls for seconds at a time, and a wait that wakes after its deadline must still
+    /// see work that landed during the stall (docs/NOTES.md ▸ Testing).
     private func built<Found>(in window: NSWindow, _ find: () -> Found?) async throws -> Found? {
-        let deadline = Date().addingTimeInterval(10)
-        while Date() < deadline {
+        let deadline = ContinuousClock.now + .seconds(30)
+        while ContinuousClock.now < deadline {
             if let found = find() { return found }
             window.contentView?.layoutSubtreeIfNeeded()
             try await Task.sleep(for: .milliseconds(50))
         }
-        return nil
+        return find()
     }
 
     private func button(_ title: LocalizedStringResource, in window: NSWindow) async throws -> NSButton {

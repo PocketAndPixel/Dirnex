@@ -162,7 +162,8 @@ struct RemoteAttributeUndoReachTests {
     /// Poll rather than spinning the run loop: a detached read's continuation needs the main actor
     /// to *suspend*, which a run-loop spin never does (docs/NOTES.md ▸ Testing).
     private func settle(
-        within seconds: Double = 10,
+        // 30 s, like `settleUntil`: the main actor stalls for seconds in a full run (docs/NOTES.md ▸ Testing).
+        within seconds: Double = 30,
         until predicate: () -> Bool
     ) async throws {
         let deadline = Date().addingTimeInterval(seconds)

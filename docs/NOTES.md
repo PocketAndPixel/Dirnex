@@ -593,6 +593,23 @@ at build time.
       five tests on their own assertions, alone and in two full runs. With the tests unchanged, the
       same controls had also failed all five in one full run, so the old holds were unreliable
       rather than always blind.
+    - **Ten more copies were still at 10 s or less on 2026-10-01, and that day's stalls went past
+      10 s.** ⇧F4's route failed once in a full run, 25 s, with `createFile` arriving after the 10 s
+      wait had given up (the next wait saw it). Amplified to 1 s it failed **3 of 3** full runs with
+      that signature, and the meter showed every wait in the suite waking **once**, 2.1–4.6 s late.
+      With that suite fixed, the next copies failed in turn: `PanelPassiveRefreshTests` 2 of 3 runs,
+      `RemoteAttributesWriteTests` 2 of 3, `RemoteAttributeUndoReachTests` 1 of 3. Full runs took
+      56–61 s that afternoon against 31–36 s on a quiet one, the same code either way, with
+      WindowServer busy; the CPU was not (load 4 on 16 cores). So every waiting-for copy went to
+      30 s: ⇧F4's route now calls `settleUntil`, and the defaults of `PanelPassiveRefreshTests`,
+      `RemoteAttributesWriteTests`, `RemoteAttributeUndoReachTests`, `SizeBarReachTests`,
+      `SizeScanQueueTests`, `QuickViewTextFindTests`, `QueueBarDetailReadoutTests` (4 s),
+      `KeyboardReachableControlsTests` and `SettingsButtonTests` moved. None of those defaults was
+      used to wait something out. Then **3 of 3** full runs passed in the same slow conditions.
+      - ⇧F4's 0.5 s `hold` stayed, because it rests on ordering: the local route raises the token in
+        the turn the `stat` resumes on, queued before the hold starts, and the main actor runs its
+        queue in order. With ⇧F4 opening the path directly again, both tests failed **3 of 3** full
+        runs. **A waiting-for budget can be raised without a control; a waiting-out one cannot.**
   - **That split is right and both of its numbers were still wrong, because a third clock was
     hiding behind them: the *fixture's*.** Same suite, same message, 2026-08-27 — `attachedSheet →
     nil → nil` about **1 full run in 8–16**, passing alone every time, and this entry's own fix
