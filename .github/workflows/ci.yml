@@ -48,10 +48,16 @@ jobs:
           TEST_RUNNER_DIRNEX_CI: "1"
         run: |
           set -o pipefail
+          # One test at a time. The runner has three cooperative threads, and a synchronous test
+          # holds one for as long as it blocks, so three at once leave none: then work on a global
+          # queue — `BlockingWork`, a pipe drain — never starts, and tests that wait for it time out
+          # (2026-10-02: six of them, at about a minute each). A Mac with many cores is spared,
+          # so local runs stay parallel (docs/NOTES.md ▸ Testing).
           xcodebuild test \
             -project Dirnex.xcodeproj \
             -scheme Dirnex \
             -destination 'platform=macOS' \
+            -parallel-testing-enabled NO \
             -resultBundlePath TestResults.xcresult &
           tests=$!
           deadline=$((SECONDS + 25 * 60))

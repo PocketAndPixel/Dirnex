@@ -201,6 +201,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     on a global queue never ran within 6 s in 10 to 16 of 16 cases; on a serial queue, `.utility`
     included, it always ran. **So a pipe is drained on a serial queue of its own**
     (`ProcessWaiting.pipeQueue`), in `ArchivePacker` and the SFTP, FTP and S3 transports.
+  - **The same starvation also makes tests time out rather than hang.** With the drains fixed, the
+    run finished (1517 tests in 91 s) but six tests failed after about a minute each, all of them
+    waiting for work on a global queue: `BlockingWork.run` (a remote preview fetch, entering a
+    nested archive, the code-page chooser's read) while synchronous tests held the cooperative
+    threads. So CI runs the app tests one at a time (`-parallel-testing-enabled NO`, which Swift
+    Testing honors: each test finishes before the next starts), and local runs stay parallel.
   - Ruled out on the way, by probes: the pipe leaking into a concurrently launched child (EOF came
     at once), and the termination handler needing a cooperative thread.
     `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1` passed as `TEST_RUNNER_…` did not limit the test host's
