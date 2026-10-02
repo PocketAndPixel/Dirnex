@@ -82,7 +82,7 @@ final class DirnexRunOperationScriptCommand: NSScriptCommand {
         let scripts = UserScriptStore.load().scripts
         guard let id = AutomationOperation.resolve(
             query,
-            commands: LicensingSwitch.available(CommandCatalog.all),
+            commands: AvailableCommands.all,
             userScripts: scripts
         ) else {
             return fail(

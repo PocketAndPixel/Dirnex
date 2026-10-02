@@ -5,7 +5,7 @@ built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spot
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
 Status: **M0–M29 shipped** (14 languages; M29's licensing is on in betas, off in stable until the
-store opens) · **M30 planned** (bug reports) ·
+store opens) · **M30 in progress** (bug reports; Slices 1 and 2 landed) ·
 Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
 [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)
@@ -195,6 +195,99 @@ Decided before Slice 1:
 - a report sent from a beta arrives in the server's inbox with exactly what the preview showed;
 - the same report with the network off survives as Copy or Email;
 - a build without the URL shows no trace of the feature.
+
+#### Progress
+
+**2026-10-01: Slice 1 landed** (core only; the app is untouched).
+
+- **The contract** is in the private repo, `web/src/bug-reports/contract.ts`, with 43 shared cases
+  copied here unchanged as `Fixtures/bug-report-vectors.json`. The body is flat JSON: `v` (1),
+  `description`, `steps`, `email`, `appVersion`, `appBuild`, `macOS`, `macModel`, `language`,
+  `licensed` and `crashReport`. An unticked box leaves its field out entirely.
+- **Core:** `BugReport` (the body, `problem` in the server's order, and `body()`, the exact bytes),
+  `BugReportText` (the blank list, trimming, the email rule, cutting at a character boundary),
+  `BugReportForm` (the dialog's texts and boxes, and the one place they become a report),
+  `BugReportSystemInfo`, `BugReportRedaction` (the home to `~`), `CrashReportTrimmer` and
+  `CrashReportLocator`. 39 tests in 4 suites, with negative controls: a redaction that leaves the
+  home in, a blank test built on `Character.isWhitespace`, and an `@` looked for among
+  `Character`s.
+- **Decided in the slice:**
+  - **Every limit counts UTF-8 bytes:** the body 512 KiB, the description and the steps 20,000
+    each, the email 254, the five short fields 100 each, the crash report 256 KiB. The typed texts
+    always fit even when JSON escapes every character, so only the crash report can push a body
+    over, and `body()` cuts it until the body fits.
+  - **The body is written in the contract's order, pretty-printed, slashes unescaped,** so the
+    preview reads top to bottom and the crash report comes last. `JSONEncoder` without
+    `.sortedKeys` promises no order, so the object is assembled by hand from encoded values.
+  - **The crash report is the newest `Dirnex-*.ips` modified in the last 7 days,** in
+    `DiagnosticReports` or its `Retired/` folder. It is trimmed as text: home to `~`, the four
+    values that identify the Mac or the boot blanked, at most 256 KiB, cut at the start's end with
+    a marker. The start holds the exception, the reason and the crashed thread.
+  - **The home is replaced only where its name ends** (`/Users/janet` and `/Users/jane.doe` stay),
+    case-insensitively, in the plain and the escaped spelling.
+  - **The request will send `User-Agent: Dirnex`, with no version** (Slice 2). URLSession's
+    default carries the build and the Darwin version, which would leak what an unticked box holds
+    back.
+  - **The server answers** 201 with an id, 400 (413 for `tooLarge`) with the refusal's name, or
+    429 `rateLimited` with `Retry-After`. Anything but 201 keeps the text and offers Copy Report
+    and Email Instead.
+
+**2026-10-01: Slice 2 landed** (the app; Slice 3 waits for the store's endpoint).
+
+- **Core:** a `help` category with `help.reportBug`, `help.website` and `help.releaseNotes`
+  (the plan's `app.reportBug` became `help.reportBug` once Help was a category of its own), and
+  `CommandCatalog.bugReportCommandIDs`. `BugReportDelivery.swift`: `HelpLinks`, `BugReportEndpoint`
+  (only `https`; plain `http` to this Mac only when allowed), `BugReportRequest`,
+  `BugReportOutcome` (the server's answer, read as the contract describes it) and `BugReportMail`
+  (the `mailto:` for Email Instead).
+- **App** (`Dirnex/BugReport/`): `BugReportSwitch` (`DirnexBugReportURL` in `Info.plist`, or
+  `-DirnexDebugBugReportURL` in a Debug build), `AvailableCommands` (the registry minus the
+  licensing commands and Report a Bug… where each is off, now read by the palette, the menus,
+  Settings ▸ Shortcuts, AppleScript and Shortcuts), the Help menu (`NSApp.helpMenu`, so macOS adds
+  its menu search), `BugReportController` (the dialog), `BugReportPreviewController`,
+  `BugReportSender` and `BugReportPresenter`. 42 new catalog entries in all 14 languages.
+  `Tooling/fake-bug-report-endpoint.py` stands in for the server in a live run.
+- **Decided in the slice:**
+  - **The Help menu holds Dirnex Website, Release Notes, then Report a Bug…** after a separator, so
+    a build without the address keeps the two links and loses the separator with the item
+    (`MainMenuBuilder.removeStraySeparators`). Release Notes opens the GitHub releases page until the
+    website has its changelog.
+  - **The boxes show their values** ("Mac model: Mac16,5"), so the user reads what is sent rather
+    than a description of it. A fact that can't be read is grayed out, the license box exists only
+    where licensing is on, and the crash report box names the file or says there is none.
+  - **Send is ⌘Return, not Return**, since Return starts a new line in the two text fields; Tab and
+    ⇧Tab leave a text field instead of typing a tab. Escape is Cancel's.
+  - **Copy Report and Email Instead are there from the start**, enabled whenever Send would be,
+    rather than appearing only after a failure: there was no room for them to appear (five buttons
+    don't fit one row in German or Russian), and offering email up front costs nothing. *Show What
+    Will Be Sent…* moved under the boxes for the same reason.
+  - **A report closed unsent is kept until Dirnex quits**, so Escape loses nothing; a sent one
+    starts the next fresh. The reply email of a sent report is remembered across launches
+    (`Dirnex.pref.bugReportEmail`), and forgotten when one is sent without it.
+  - **The request overrides `Accept-Language` too** (`*`), not only `User-Agent`: the system adds
+    it by itself and it names the user's languages whatever the language box says.
+  - **The app tests answer through a `URLProtocol` stub** rather than posting to the fake endpoint,
+    so they need no server and no port. The stub cannot see headers the system adds on the way out,
+    so the live run checks those against the fake endpoint.
+  - **`DirnexBugReportURL` is in `Info.plist` as `$(DIRNEX_BUG_REPORT_URL)`**, empty in every build.
+    Passing it through `build_app.sh` and `release.yml` (a repository variable, like
+    `DIRNEX_LICENSING`) is Slice 3's first step, once the endpoint exists.
+- **Verified live** (2026-10-01, computer use, Debug build with `-DirnexDebugBugReportURL` on the
+  fake endpoint): the Help menu with all three items, and with two when launched without the
+  argument; the dialog with this Mac's real facts and the newest crash report found in
+  `DiagnosticReports/Retired/`; the preview; Send, which delivered a body **byte-identical** to Copy
+  Report's (8,683 bytes, the crash report's four identifiers blanked, the home shortened to `~`),
+  with `User-Agent: Dirnex` and `Accept-Language: *` on the wire; the thank-you sheet with the
+  server's reference; the server stopped, which kept the text and said so in red; and a report
+  cancelled and reopened, still there. The run found one bug the tests could not: the preview sheet
+  was 640 pt wide over the 560 pt dialog and cut off at both edges.
+- **Measured after the live run:** with the crash report box ticked, each keystroke re-trimmed the
+  crash report, which costs 16 ms for a real 43 KB report and 200 ms at the 1 MiB read cap
+  (release build). The dialog now trims once (`TrimmedCrashReport`), and a keystroke's check takes
+  under 0.2 ms.
+- **Not tried live:** Email Instead (it would have opened a draft in the mail app; the link is
+  pinned by core tests), the rate-limit and refusal messages (pinned by app tests), and Escape
+  (synthetic Escape never reaches the app, LIVE-VERIFICATION.md).
 
 ### Still open
 

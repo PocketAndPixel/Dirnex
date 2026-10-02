@@ -19,6 +19,10 @@ import UniformTypeIdentifiers
 @Suite("Quick View RAW preview")
 @MainActor
 struct QuickViewRAWPreviewTests {
+    /// Real camera files on the developer's own Mac, too large and too many to commit.
+    nonisolated static let liveRAWDirectory = URL(fileURLWithPath: NSHomeDirectory())
+        .appendingPathComponent("swtest/raw")
+
     // MARK: - Routing
 
     /// Keyed on the `.rawImage` conformance, so the formats are covered without being named.
@@ -112,13 +116,20 @@ struct QuickViewRAWPreviewTests {
     /// `dataProvider.data` passed, because it merely *forces* the render it was meant to detect; and
     /// timing `decode` itself against a 20 ms floor failed by **16 µs**, since setting a RAW filter
     /// up costs about that much on its own. A threshold that close is a coin toss, not a test.
-    @Test("a real RAW decodes at full size, with orientation applied")
-    func decodesRealRAWFiles() throws {
-        let directory = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("swtest/raw")
-        try #require(
-            FileManager.default.fileExists(atPath: directory.path),
-            "live RAW fixtures absent — skipping"
+    ///
+    /// Skipped where the fixtures are absent, CI among them. It once said so with a `#require`,
+    /// which records a failure rather than a skip.
+    @Test(
+        "a real RAW decodes at full size, with orientation applied",
+        .enabled(
+            if: FileManager.default.fileExists(
+                atPath: QuickViewRAWPreviewTests.liveRAWDirectory.path
+            ),
+            "no ~/swtest/raw"
         )
+    )
+    func decodesRealRAWFiles() throws {
+        let directory = Self.liveRAWDirectory
         for name in ["DSC02467.ARW", "DSC_0004.NEF", "P1011960.RW2", "P1060804.dng"] {
             let url = directory.appendingPathComponent(name)
             guard FileManager.default.fileExists(atPath: url.path) else { continue }

@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Run by hand on any branch (Actions ▸ CI ▸ Run workflow), without opening a pull request.
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -28,16 +30,65 @@ jobs:
   app:
     name: App (xcodebuild test)
     runs-on: macos-26
+    # The watchdog below stops a stuck run at 25 minutes; this is only the backstop. Without it a
+    # stuck run sits for GitHub's six hours, as on 2026-09-30 and 2026-10-01.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
       - name: Build & test
+        # A test that never returns stops the whole suite without failing anything: on 2026-09-30
+        # every test went quiet 5 seconds in and nothing printed for four hours. The runner has
+        # only three cooperative threads, so three tests blocked on a child process are enough to
+        # freeze every other test (the 2026-10-02 sample). So the run is watched, and past 25
+        # minutes the test host's threads are sampled and the screen captured (in the `hang`
+        # artifact) before it's stopped. The main thread's stack goes into the log too.
+        env:
+          # Reaches the tests as `DIRNEX_CI` (xcodebuild strips the prefix), for the suites that
+          # must not run on a CI machine, such as SFTPPasswordMechanismTests.
+          TEST_RUNNER_DIRNEX_CI: "1"
         run: |
           set -o pipefail
+          # One test at a time. The runner has three cooperative threads, and a synchronous test
+          # holds one for as long as it blocks, so three at once leave none: then work on a global
+          # queue — `BlockingWork`, a pipe drain — never starts, and tests that wait for it time out
+          # (2026-10-02: six of them, at about a minute each). A Mac with many cores is spared,
+          # so local runs stay parallel (docs/NOTES.md ▸ Testing).
           xcodebuild test \
             -project Dirnex.xcodeproj \
             -scheme Dirnex \
             -destination 'platform=macOS' \
-            -resultBundlePath TestResults.xcresult
+            -parallel-testing-enabled NO \
+            -resultBundlePath TestResults.xcresult &
+          tests=$!
+          deadline=$((SECONDS + 25 * 60))
+          while kill -0 "$tests" 2>/dev/null; do
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "::error::The app tests ran past 25 minutes. Sampling the test host, then stopping them."
+              mkdir -p hang
+              screencapture -x hang/screen.png || echo "No screenshot (no Screen Recording permission?)."
+              for pid in $(pgrep -x Dirnex); do
+                sample "$pid" 10 -file "hang/sample-$pid.txt" || true
+                echo "::group::Main thread of Dirnex $pid"
+                awk '/^ +[0-9]+ Thread_/ { on = /com.apple.main-thread/ } /^Total number/ { on = 0 } on' \
+                  "hang/sample-$pid.txt" | head -200 || true
+                echo "::endgroup::"
+                # The tests that held the run on 2026-10-02 were each waiting for a child process
+                # (bsdtar, sftp) whose exit never reached them. Whether such a child is still
+                # running (S, R), exited but not reaped (Z), or gone says where the exit was lost.
+                echo "::group::Child processes of Dirnex $pid"
+                ps -A -o pid=,ppid=,stat=,etime=,command= | awk -v parent="$pid" '$2 == parent' || true
+                echo "::endgroup::"
+                for child in $(pgrep -P "$pid"); do
+                  sample "$child" 3 -file "hang/sample-child-$child.txt" > /dev/null 2>&1 || true
+                done
+              done
+              kill "$tests" || true
+              pkill -x Dirnex || true
+              exit 1
+            fi
+            sleep 20
+          done
+          wait "$tests"
       # Reads the .stringsdata the build above emitted, so it runs after it rather than in the
       # lint job. A key the compiler extracted but the catalog never received renders in English
       # inside every translated build, with no error and a perfect English screenshot.
@@ -49,6 +100,34 @@ jobs:
         with:
           name: xcresult
           path: TestResults.xcresult
+          if-no-files-found: ignore
+      # A crash ends the test host with only "Test crashed with signal segv." in the log
+      # (2026-10-02, in TreeRefreshReachTests, which passes on its own and in a full local run).
+      # macOS keeps a report on the runner, so its crashing thread goes in the log and the report
+      # in the `crashes` artifact.
+      - name: Crash reports
+        if: always()
+        run: |
+          mkdir -p crashes
+          find ~/Library/Logs/DiagnosticReports -maxdepth 2 -name 'Dirnex-*.ips' -exec cp {} crashes/ \;
+          if ls crashes/*.ips > /dev/null 2>&1; then
+            python3 scripts/print_crash_reports.py crashes/*.ips
+          else
+            echo "No Dirnex crash reports."
+          fi
+      - name: Upload crash reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: crashes
+          path: crashes
+          if-no-files-found: ignore
+      - name: Upload what a stuck run left
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: hang
+          path: hang
           if-no-files-found: ignore
 
   lint:

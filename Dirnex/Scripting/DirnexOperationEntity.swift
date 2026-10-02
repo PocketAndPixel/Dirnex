@@ -79,7 +79,6 @@ struct DirnexOperationQuery: EnumerableEntityQuery, EntityStringQuery {
     /// The store read is nonisolated (plain `UserDefaults` JSON), so the query needs no actor hop.
     private var userScripts: [UserScript] { UserScriptStore.load().scripts }
 
-    /// The registry as this build offers it: without the licensing commands where it shows nothing
-    /// about licenses (PLAN.md §M29).
-    private var commands: [Command] { LicensingSwitch.available(CommandCatalog.all) }
+    /// The registry as this build offers it (``AvailableCommands``).
+    private var commands: [Command] { AvailableCommands.all }
 }

@@ -256,7 +256,9 @@ struct LocalizationCoverageTests {
 
     @Test("localizing never drops or reorders the registry")
     func catalogShapeIsPreserved() {
-        #expect(LocalizedCatalog.all.map(\.id) == CommandCatalog.all.map(\.id))
+        // The registry as this build offers it: the test host has no bug-report address, so it
+        // leaves Report a Bug… out (`BugReportSwitch`), and `BugReportSurfaceTests` pins that.
+        #expect(LocalizedCatalog.all.map(\.id) == AvailableCommands.all.map(\.id))
         for command in LocalizedCatalog.all {
             #expect(!command.title.isEmpty)
             // A raw key leaking to the UI is the specific failure `L10n`'s sentinel exists to

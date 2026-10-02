@@ -158,10 +158,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   than the optional's wrapped type. Fix: precompute the RHS as a typed literal, or unwrap with
   `try #require` first. Don't chase it as a bug in the code under test.
 - **A `mutating` call or `coll.allSatisfy(\.x)` can't sit inside `#expect(...)`** — hoist the
-  result into a `let` first.
+  result into a `let` first. `contains(where: \.x)` is the same (2026-10-01: the expansion fails
+  with "call can throw, but it is not marked with 'try'"); a closure, `contains { $0.x }`, compiles.
 - **`xcodebuild` does not forward shell env to the test runner** — gate live integration suites
   on the existence of a *file*, not an environment variable. Prove such a suite is genuinely
   live by making it fail with bad credentials rather than skip.
+  - **The one exception is the `TEST_RUNNER_` prefix** (`man xcodebuild`): `TEST_RUNNER_FOO=1`
+    reaches the tests as `FOO=1`. CI uses it to say it is CI (`TEST_RUNNER_DIRNEX_CI`, read as
+    `DIRNEX_CI`), since 2026-10-02.
 - **An Objective-C exception raised inside a Swift Testing body does not fail the test — it wedges
   the test host, and `xcodebuild` sits there until something kills it.** Measured 2026-09-14: a test
   read `textStorage.attribute(_:at:6:)` before an asynchronous RTF read had landed, the storage was
@@ -176,8 +180,50 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     wait on the content a load produces (the text itself) rather than on the surface that shows it:
     `QuickViewTextPreviewTests.loaded` returns once the text surface is visible, which a backend makes
     visible *before* its read finishes.
+- **Three tests blocked on a child process freeze a CI run, because the runner has three cooperative
+  threads.** GitHub's macOS runner has 3 CPUs, so Swift's cooperative pool has 3 threads, and a
+  synchronous nonisolated test that waits on a `Process` (`ProcessWaiting.wait`, a
+  `DispatchGroup.wait`) holds one for as long as it waits. On 2026-10-02 three did at once, and
+  every other test stopped 5 seconds in: `SFTPPasswordMechanismTests.wrongPasswordIsPermissionDenied`
+  (against the runner's own sshd — Remote Login is on there — through a wait with no deadline) and
+  two `ArchiveNonASCIINameTests` packs. The 2026-09-30 runs stalled the same way for four hours. A
+  Mac with more cores has threads to spare, so it never shows locally.
+  - **Reading it:** CI's watchdog (`.github/workflows/ci.yml`) samples the host at 25 minutes. The
+    main thread idles in `XCTWaiter`; the stuck tests are the `…cooperative` threads whose stacks
+    reach a `DirnexTests` frame.
+  - **Why they never finished: their pipe drains never started.** The children had exited and been
+    reaped (the watchdog found the host with no child processes at all), but each wait also joins
+    the drains of the child's pipes, and those ran on a global or a concurrent queue. GCD admits
+    work there only while it counts fewer busy threads than CPUs, and a cooperative thread blocked
+    in a wait still counts — so with the runner's three all waiting, no drain got a thread.
+    `Process`'s own exit handling runs on a serial queue, which is why the reaping still happened.
+    Probed on a 16-CPU Mac with a standalone program: all 16 cooperative threads waiting, the work
+    on a global queue never ran within 6 s in 10 to 16 of 16 cases; on a serial queue, `.utility`
+    included, it always ran. **So a pipe is drained on a serial queue of its own**
+    (`ProcessWaiting.pipeQueue`), in `ArchivePacker` and the SFTP, FTP and S3 transports.
+  - **The same starvation also makes tests time out rather than hang.** With the drains fixed, the
+    run finished (1517 tests in 91 s) but six tests failed after about a minute each, all of them
+    waiting for work on a global queue: `BlockingWork.run` (a remote preview fetch, entering a
+    nested archive, the code-page chooser's read) while synchronous tests held the cooperative
+    threads. So CI runs the app tests one at a time (`-parallel-testing-enabled NO`, which Swift
+    Testing honors: each test finishes before the next starts), and local runs stay parallel.
+  - **A crash in CI says only "Test crashed with signal segv."** against the running test, and
+    `xcodebuild` restarts the host for the rest. The stack is in the runner's crash report, which
+    CI copies out and prints (`scripts/print_crash_reports.py`, the "Crash reports" step). The first
+    one, on 2026-10-02 in `TreeRefreshReachTests.openBucketIsNotReconnected`, did not repeat on
+    this Mac: alone, one at a time, or in a full serial run (1517 passed).
+  - Ruled out on the way, by probes: the pipe leaking into a concurrently launched child (EOF came
+    at once), and the termination handler needing a cooperative thread.
+    `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1` passed as `TEST_RUNNER_…` did not limit the test host's
+    pool (two tests still ran side by side), so it can't stand in for a small runner.
 
 ### Windows, sheets and key events in a test
+
+- **A window that was never shown has no key view loop, so Tab from a field goes nowhere.** Found
+  2026-10-01 testing Report a Bug…'s text views: `selectNextKeyView` left the focus where it was,
+  because AppKit builds the loop when a window first appears. `orderFront` the test window (and close
+  it after), and have the controller set `autorecalculatesKeyViewLoop = true` in `viewDidAppear`, so
+  the real dialog doesn't depend on that timing either.
 
 - **`NSWindow.sendEvent` skips key equivalents, so a synthesized Escape or Return sent that way never
   reaches a button.** `NSApplication.sendEvent` offers a key event to the key window's
@@ -1411,6 +1457,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     branches (nothing focused → closes; `_SystemTextFieldFieldEditor` focused → does not;
     marked control focused → does not). The one step left for a human is the physical keypress.
 
+- **A Send button for a form with multi-line text fields is ⌘Return, and the key equivalent
+  `"\r"` with `.command` does not claim a plain Return.** Pinned 2026-10-01 by
+  `BugReportDialogTests.returnAndCommandReturn`, through `performKeyEquivalent` then `sendEvent`, the
+  order `NSApplication` uses: plain Return reached the `NSTextView` as a new line and sent nothing,
+  ⌘Return sent. A plain `"\r"` would have sent the report from the middle of a sentence. The
+  `NSTextView` also needs `insertTab`/`insertBacktab` overridden to move the focus, or Tab types a
+  tab and the keyboard cannot leave the field.
+
 #### Presenting a dialog: `runModal`, sheets and movable windows
 
 - **`NSAlert.runModal()` centers on the *display*, not on the window that raised it** — measured, a
@@ -1524,6 +1578,10 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     opens back on the laptop screen the day an external display arrives.
 
 #### Laying out a dialog
+
+- **A sheet wider than the window it hangs from is cut off at both edges**, not widened or moved.
+  Seen live 2026-10-01: Report a Bug…'s preview at 640 pt over the 560 pt dialog lost the start and
+  the end of every line and half its OK button. Size a sheet from its parent's width.
 
 - **In a grouped SwiftUI `Form`, a `.labelsHidden()` `TextField`'s title is not drawn as a
   placeholder.** Settings ▸ License's key field (M29) sat empty with no hint: the title reached
@@ -8023,6 +8081,45 @@ vector (`Fixtures/license-vectors.json`) rather than a hope:
 - **A `LicenseDay` shown through a `Date` at midnight UTC prints as the day before** anywhere west of
   Greenwich. `LicenseDay.date(in:)` returns noon of the day in the viewer's zone.
 - `String(validating:as:)` exists only from macOS 15; the core's floor is 14.
+
+### Bug reports: one contract, two languages (M30)
+
+The report is written in Swift (the app) and judged in TypeScript (the store's server), against
+the same cases (`Fixtures/bug-report-vectors.json`, from the private repo's
+`web/src/bug-reports/`). Found 2026-10-01 while building Slice 1:
+
+- **Every limit counts UTF-8 bytes.** `"é" × 51` is 102 bytes, 51 UTF-16 units and 51 `Character`s,
+  so a limit counted any other way lets it through on one side only. A shared case pins it.
+- **"Blank" is the list JavaScript's `trim` removes, written out** (`BugReportText.blankScalars`).
+  `Character.isWhitespace` disagrees on two of the shared cases (U+0085 and U+FEFF); a negative
+  control shows it.
+- **An `@` followed by a combining mark is one `Character`,** so `contains(Character("@"))` misses
+  it. The email rule walks Unicode scalars.
+- **`decodeIfPresent` reads `null` as absent**, while the server refuses `null`. The decoder uses
+  `contains` + `decode`, so every JSON case the server calls `malformed` also fails to decode here.
+- **A crash report escapes every slash** (`\/Users\/jane\/…`, in a real `.ips`), so the home is
+  redacted in both spellings. Inside the request body that text is escaped once more
+  (`\\/Users\\/jane`), so a leak check that searches the body's text for either spelling finds
+  nothing. It must read the decoded values; the negative control caught the first version.
+- **macOS moves a crash report to `DiagnosticReports/Retired/` within days** (a two-day-old Dirnex
+  report was already there), so the locator looks in both folders.
+- **A crash report carries IDs of the Mac, not the crash:** `crashReporterKey` and
+  `storeInfo.deviceIdentifierForVendor` stay the same across every report from one Mac, and
+  `bootSessionUUID` and `sleepWakeUUID` link the reports from one boot. The trimmer blanks them as
+  text (a regex), rather than parsing and rewriting the JSON, which could round a 64-bit register
+  value through `Double`.
+- **A user name can also appear outside its home path.** The real report held
+  `/private/tmp/claude-501/-Users-oleg-…`, a path that spells the home with dashes, which no home
+  redaction catches. *Show What Will Be Sent* is the backstop for what redaction can't know.
+- **A `Regex` isn't `Sendable`,** so it can't be a `static let` under Swift 6. Build it inside the
+  function.
+- **`URLSession` adds headers of its own that say things about the Mac.** Its default `User-Agent`
+  names the app's build and the Darwin version, and it adds `Accept-Language` from the user's
+  languages, so an unticked box would leak through the headers. Both are set on the request
+  (`Dirnex`, `*`), and the fake endpoint saw exactly those on 2026-10-01, plus an
+  `Accept-Encoding: gzip, deflate` that says nothing. **A `URLProtocol` stub cannot check this**:
+  it sees the request before the system adds its headers, so only a real server shows what leaves
+  the Mac (`Tooling/fake-bug-report-endpoint.py`).
 
 ## macOS system gates
 

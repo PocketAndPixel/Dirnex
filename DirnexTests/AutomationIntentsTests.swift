@@ -23,7 +23,9 @@ struct AutomationIntentsTests {
     @Test("the picker lists the whole command registry")
     func queryEnumeratesOperations() async throws {
         let operations = try await DirnexOperationQuery().allEntities()
-        #expect(operations.count >= CommandCatalog.all.count)
+        // Every command this build offers — not the whole catalog, since a build without a
+        // bug-report address leaves Report a Bug… out (`AvailableCommands`, PLAN.md §M30).
+        #expect(operations.count >= AvailableCommands.all.count)
         let copy = try #require(operations.first { $0.id == "file.copy" })
         // Asserted against the localized registry rather than against the English literals it used
         // to name. `xcodebuild test` runs these in the *app*, which honors whatever

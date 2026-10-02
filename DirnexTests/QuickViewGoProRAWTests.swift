@@ -18,6 +18,10 @@ import Testing
 @Suite("Quick View GoPro RAW")
 @MainActor
 struct QuickViewGoProRAWTests {
+    /// A real GoPro file on the developer's own Mac, beside the RAW suite's.
+    nonisolated static let liveGoProFile = URL(fileURLWithPath: NSHomeDirectory())
+        .appendingPathComponent("swtest/raw/GOPR4581.GPR")
+
     // MARK: - Fixtures
 
     /// A little-endian TIFF header — what every DNG, and so every GPR, opens with.
@@ -122,14 +126,18 @@ struct QuickViewGoProRAWTests {
     /// The claim is the one the whole feature rests on: the picture that comes back is the sensor's
     /// own 4000x3000 frame. There is no weaker version worth asserting — a GPR has no embedded
     /// thumbnail, so the failure mode is not a postage stamp but nothing at all.
-    @Test("a real GoPro RAW converts and decodes at full size")
-    func decodesRealGoProFiles() throws {
-        let directory = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("swtest/raw")
-        let url = directory.appendingPathComponent("GOPR4581.GPR")
-        try #require(
-            FileManager.default.fileExists(atPath: url.path),
-            "live GoPro fixtures absent — skipping"
+    ///
+    /// Skipped where the fixture is absent, CI among them. It once said so with a `#require`, which
+    /// records a failure rather than a skip.
+    @Test(
+        "a real GoPro RAW converts and decodes at full size",
+        .enabled(
+            if: FileManager.default.fileExists(atPath: QuickViewGoProRAWTests.liveGoProFile.path),
+            "no GOPR4581.GPR"
         )
+    )
+    func decodesRealGoProFiles() throws {
+        let url = Self.liveGoProFile
 
         let converted = try #require(
             GPRConverter.shared.decodableCopy(of: url),

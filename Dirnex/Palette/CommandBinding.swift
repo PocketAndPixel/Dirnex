@@ -132,6 +132,9 @@ enum CommandBinding {
         "app.checkForUpdates": #selector(AppDelegate.checkForUpdates(_:)),
         "app.license": #selector(AppDelegate.showLicense(_:)),
         "app.buyLicense": #selector(AppDelegate.buyLicense(_:)),
-        "app.quit": #selector(NSApplication.terminate(_:))
+        "app.quit": #selector(NSApplication.terminate(_:)),
+        "help.reportBug": #selector(AppDelegate.reportBug(_:)),
+        "help.website": #selector(AppDelegate.openWebsite(_:)),
+        "help.releaseNotes": #selector(AppDelegate.openReleaseNotes(_:))
     ]
 }

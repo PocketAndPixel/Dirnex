@@ -1,0 +1,518 @@
+{
+  "about": "Test cases for the bug reports Dirnex sends to POST /api/bug-reports. Kept in dirnex-home/web/src/bug-reports/ and copied unchanged into the app as DirnexCore/Tests/DirnexCoreTests/Fixtures/bug-report-vectors.json. Limits count UTF-8 bytes. tooLarge has no case here, since one would be half a megabyte: both sides test it from limits.bodyBytes. Each case has body (a JSON value, sent as JSON), raw (a text, sent as it is) or rawBase64 (bytes). report is what the server keeps.",
+  "limits": {
+    "bodyBytes": 524288,
+    "descriptionBytes": 20000,
+    "stepsBytes": 20000,
+    "emailBytes": 254,
+    "shortFieldBytes": 100,
+    "crashReportBytes": 262144
+  },
+  "blankCharacters": [
+    9, 10, 11, 12, 13, 32, 160, 5760, 8192, 8193, 8194, 8195, 8196, 8197, 8198, 8199, 8200, 8201,
+    8202, 8232, 8233, 8239, 8287, 12288, 65279
+  ],
+  "vectors": [
+    {
+      "name": "minimal",
+      "note": "Only the two required fields.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder."
+      },
+      "expect": "accepted",
+      "report": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder."
+      }
+    },
+    {
+      "name": "everything",
+      "note": "Every field, as a report with every box ticked would be.",
+      "body": {
+        "v": 1,
+        "description": "Copying a folder to my NAS stops at 99% and the queue bar stays.",
+        "steps": "1. Connect to smb://nas.local/Media\n2. Press F5 on ~/Movies/Holiday\n3. Wait",
+        "email": "jane@example.com",
+        "appVersion": "1.4.0-beta.3",
+        "appBuild": "512",
+        "macOS": "26.0.1 (25A362)",
+        "macModel": "Mac16,5",
+        "language": "de",
+        "licensed": true,
+        "crashReport": "{\"app_name\":\"Dirnex\",\"timestamp\":\"2026-09-29 23:44:58.00 +0300\",\"app_version\":\"1.4.0\",\"build_version\":\"512\",\"bug_type\":\"309\",\"os_version\":\"macOS 26.0.1 (25A362)\"}\n{\"exception\":{\"type\":\"EXC_BAD_ACCESS\",\"signal\":\"SIGSEGV\"},\"procPath\":\"/Applications/Dirnex.app/Contents/MacOS/Dirnex\",\"termination\":{\"indicator\":\"Segmentation fault: 11\"},\"faultingThread\":0,\"threads\":[{\"triggered\":true,\"frames\":[{\"imageOffset\":23460,\"imageIndex\":0}]}],\"usedImages\":[{\"name\":\"Dirnex\",\"path\":\"~/Applications/Dirnex.app/Contents/MacOS/Dirnex\"}]}"
+      },
+      "expect": "accepted",
+      "report": {
+        "v": 1,
+        "description": "Copying a folder to my NAS stops at 99% and the queue bar stays.",
+        "steps": "1. Connect to smb://nas.local/Media\n2. Press F5 on ~/Movies/Holiday\n3. Wait",
+        "email": "jane@example.com",
+        "appVersion": "1.4.0-beta.3",
+        "appBuild": "512",
+        "macOS": "26.0.1 (25A362)",
+        "macModel": "Mac16,5",
+        "language": "de",
+        "licensed": true,
+        "crashReport": "{\"app_name\":\"Dirnex\",\"timestamp\":\"2026-09-29 23:44:58.00 +0300\",\"app_version\":\"1.4.0\",\"build_version\":\"512\",\"bug_type\":\"309\",\"os_version\":\"macOS 26.0.1 (25A362)\"}\n{\"exception\":{\"type\":\"EXC_BAD_ACCESS\",\"signal\":\"SIGSEGV\"},\"procPath\":\"/Applications/Dirnex.app/Contents/MacOS/Dirnex\",\"termination\":{\"indicator\":\"Segmentation fault: 11\"},\"faultingThread\":0,\"threads\":[{\"triggered\":true,\"frames\":[{\"imageOffset\":23460,\"imageIndex\":0}]}],\"usedImages\":[{\"name\":\"Dirnex\",\"path\":\"~/Applications/Dirnex.app/Contents/MacOS/Dirnex\"}]}"
+      }
+    },
+    {
+      "name": "non-ascii",
+      "note": "Texts are UTF-8: Cyrillic, Japanese, an emoji and an accent.",
+      "body": {
+        "v": 1,
+        "description": "Панель не оновлюється 😕",
+        "steps": "フォルダの名前を変更する",
+        "language": "uk",
+        "appVersion": "1.4.0"
+      },
+      "expect": "accepted",
+      "report": {
+        "v": 1,
+        "description": "Панель не оновлюється 😕",
+        "steps": "フォルダの名前を変更する",
+        "language": "uk",
+        "appVersion": "1.4.0"
+      }
+    },
+    {
+      "name": "unknown-field-ignored",
+      "note": "A field the server does not know is accepted and not kept, so a newer app can add one.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "sentBy": "a newer Dirnex",
+        "extra": {
+          "nested": [1, 2]
+        }
+      },
+      "expect": "accepted",
+      "report": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder."
+      }
+    },
+    {
+      "name": "blank-optional-fields-dropped",
+      "note": "A blank optional text counts as absent. The app never sends one.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "steps": " \n ",
+        "email": "",
+        "appBuild": "\t",
+        "crashReport": "\n"
+      },
+      "expect": "accepted",
+      "report": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder."
+      }
+    },
+    {
+      "name": "licensed-false",
+      "note": "false is kept, not dropped.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "licensed": false
+      },
+      "expect": "accepted",
+      "report": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "licensed": false
+      }
+    },
+    {
+      "name": "zero-width-space-is-not-blank",
+      "note": "U+200B is not in the blank list, so a description of only that is accepted.",
+      "body": {
+        "v": 1,
+        "description": "\u200b"
+      },
+      "expect": "accepted",
+      "report": {
+        "v": 1,
+        "description": "\u200b"
+      }
+    },
+    {
+      "name": "next-line-is-not-blank",
+      "note": "U+0085 is not in the blank list either (JavaScript trim keeps it; Swift trims it).",
+      "body": {
+        "v": 1,
+        "description": "\u0085"
+      },
+      "expect": "accepted",
+      "report": {
+        "v": 1,
+        "description": "\u0085"
+      }
+    },
+    {
+      "name": "short-field-at-limit-in-bytes",
+      "note": "50 × é is 100 UTF-8 bytes: at the limit. It is 50 UTF-16 units and 50 characters.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "macModel": "éééééééééééééééééééééééééééééééééééééééééééééééééé"
+      },
+      "expect": "accepted",
+      "report": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "macModel": "éééééééééééééééééééééééééééééééééééééééééééééééééé"
+      }
+    },
+    {
+      "name": "email-at-limit",
+      "note": "A 254-byte address, with a non-ASCII local part.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "email": "üüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüü@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.com"
+      },
+      "expect": "accepted",
+      "report": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "email": "üüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüü@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.com"
+      }
+    },
+    {
+      "name": "email-non-ascii",
+      "note": "Non-ASCII addresses are accepted.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "email": "jürgen@exämple.de"
+      },
+      "expect": "accepted",
+      "report": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "email": "jürgen@exämple.de"
+      }
+    },
+    {
+      "name": "email-at-before-a-combining-mark",
+      "note": "U+0301 after the @. In Swift the two are one Character, so the @ must be looked for among Unicode scalars, not Characters.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "email": "jane@́example.com"
+      },
+      "expect": "accepted",
+      "report": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "email": "jane@́example.com"
+      }
+    },
+    {
+      "name": "not-json",
+      "note": "The body is cut off.",
+      "raw": "{\"v\":1,\"description\":\"The left pane",
+      "expect": "malformed"
+    },
+    {
+      "name": "not-utf8",
+      "note": "A byte that is not UTF-8 (0xFF) inside a string.",
+      "rawBase64": "eyJ2IjoxLCJkZXNjcmlwdGlvbiI6Iv8ifQ==",
+      "expect": "malformed"
+    },
+    {
+      "name": "lone-surrogate",
+      "note": "A JSON escape for half a UTF-16 pair. Swift cannot decode it, and storing it would lose it.",
+      "raw": "{\"v\":1,\"description\":\"\\ud800\"}",
+      "expect": "malformed",
+      "field": "description"
+    },
+    {
+      "name": "array",
+      "note": "The body is a JSON array.",
+      "body": [
+        {
+          "v": 1,
+          "description": "The left pane stops updating after I rename a folder."
+        }
+      ],
+      "expect": "malformed"
+    },
+    {
+      "name": "null",
+      "note": "The body is null.",
+      "body": null,
+      "expect": "malformed"
+    },
+    {
+      "name": "string",
+      "note": "The body is a JSON string.",
+      "body": "The left pane stops updating after I rename a folder.",
+      "expect": "malformed"
+    },
+    {
+      "name": "v-missing",
+      "note": "No v.",
+      "body": {
+        "description": "The left pane stops updating after I rename a folder."
+      },
+      "expect": "malformed",
+      "field": "v"
+    },
+    {
+      "name": "v-string",
+      "note": "v is the string \"1\".",
+      "body": {
+        "v": "1",
+        "description": "The left pane stops updating after I rename a folder."
+      },
+      "expect": "malformed",
+      "field": "v"
+    },
+    {
+      "name": "v-true",
+      "note": "v is true. Some decoders read true as 1.",
+      "body": {
+        "v": true,
+        "description": "The left pane stops updating after I rename a folder."
+      },
+      "expect": "malformed",
+      "field": "v"
+    },
+    {
+      "name": "v-zero",
+      "note": "v is 0.",
+      "body": {
+        "v": 0,
+        "description": "The left pane stops updating after I rename a folder."
+      },
+      "expect": "malformed",
+      "field": "v"
+    },
+    {
+      "name": "v-fraction",
+      "note": "v is 1.5.",
+      "body": {
+        "v": 1.5,
+        "description": "The left pane stops updating after I rename a folder."
+      },
+      "expect": "malformed",
+      "field": "v"
+    },
+    {
+      "name": "v-2",
+      "note": "A newer app. Checked before anything else in the body.",
+      "body": {
+        "v": 2,
+        "summary": "The left pane stops updating after I rename a folder."
+      },
+      "expect": "unsupportedVersion",
+      "field": "v"
+    },
+    {
+      "name": "description-missing",
+      "note": "No description.",
+      "body": {
+        "v": 1,
+        "steps": "Rename a folder."
+      },
+      "expect": "missingDescription"
+    },
+    {
+      "name": "description-blank",
+      "note": "Spaces, a tab and line breaks only.",
+      "body": {
+        "v": 1,
+        "description": "  \n\t\r\n "
+      },
+      "expect": "missingDescription"
+    },
+    {
+      "name": "description-unicode-blank",
+      "note": "No-break space, em space, ideographic space, byte-order mark and line separator: all in the blank list.",
+      "body": {
+        "v": 1,
+        "description": "\u00a0\u2003\u3000\ufeff\u2028"
+      },
+      "expect": "missingDescription"
+    },
+    {
+      "name": "description-null",
+      "note": "null is not absent.",
+      "body": {
+        "v": 1,
+        "description": null
+      },
+      "expect": "malformed",
+      "field": "description"
+    },
+    {
+      "name": "description-number",
+      "note": "A number, not a text.",
+      "body": {
+        "v": 1,
+        "description": 42
+      },
+      "expect": "malformed",
+      "field": "description"
+    },
+    {
+      "name": "steps-not-string",
+      "note": "Steps as a list.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "steps": ["Rename a folder."]
+      },
+      "expect": "malformed",
+      "field": "steps"
+    },
+    {
+      "name": "build-is-a-number",
+      "note": "appBuild is a text, as CFBundleVersion is.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "appBuild": 512
+      },
+      "expect": "malformed",
+      "field": "appBuild"
+    },
+    {
+      "name": "licensed-is-a-number",
+      "note": "1 is not true.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "licensed": 1
+      },
+      "expect": "malformed",
+      "field": "licensed"
+    },
+    {
+      "name": "crash-report-not-string",
+      "note": "A crash report as an object.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "crashReport": {
+          "exception": "EXC_BAD_ACCESS"
+        }
+      },
+      "expect": "malformed",
+      "field": "crashReport"
+    },
+    {
+      "name": "short-field-over-limit-in-bytes",
+      "note": "51 × é is 102 UTF-8 bytes, but only 51 UTF-16 units: a limit counted in units would let it through.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "macModel": "ééééééééééééééééééééééééééééééééééééééééééééééééééé"
+      },
+      "expect": "tooLong",
+      "field": "macModel"
+    },
+    {
+      "name": "email-over-limit",
+      "note": "A 255-byte address.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "email": "üüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüü@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.com"
+      },
+      "expect": "tooLong",
+      "field": "email"
+    },
+    {
+      "name": "email-no-at",
+      "note": "No @.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "email": "jane.example.com"
+      },
+      "expect": "invalidEmail",
+      "field": "email"
+    },
+    {
+      "name": "email-two-ats",
+      "note": "Two @.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "email": "jane@doe@example.com"
+      },
+      "expect": "invalidEmail",
+      "field": "email"
+    },
+    {
+      "name": "email-nothing-before-at",
+      "note": "Nothing before the @.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "email": "@example.com"
+      },
+      "expect": "invalidEmail",
+      "field": "email"
+    },
+    {
+      "name": "email-no-dot-in-domain",
+      "note": "A domain without a dot.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "email": "jane@localhost"
+      },
+      "expect": "invalidEmail",
+      "field": "email"
+    },
+    {
+      "name": "email-domain-ends-with-dot",
+      "note": "A domain ending in a dot.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "email": "jane@example."
+      },
+      "expect": "invalidEmail",
+      "field": "email"
+    },
+    {
+      "name": "email-space-inside",
+      "note": "A space inside.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "email": "jane doe@example.com"
+      },
+      "expect": "invalidEmail",
+      "field": "email"
+    },
+    {
+      "name": "email-leading-space",
+      "note": "A space before it: the app removes blanks around the address before sending.",
+      "body": {
+        "v": 1,
+        "description": "The left pane stops updating after I rename a folder.",
+        "email": " jane@example.com"
+      },
+      "expect": "invalidEmail",
+      "field": "email"
+    },
+    {
+      "name": "first-problem-wins",
+      "note": "A blank description and a bad email: the description is checked first.",
+      "body": {
+        "v": 1,
+        "description": " ",
+        "email": "jane"
+      },
+      "expect": "missingDescription"
+    }
+  ]
+}

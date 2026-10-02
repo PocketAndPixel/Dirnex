@@ -204,14 +204,16 @@ extension SFTPProcessTransport {
         // wait (an unresponsive server must not hang the pane).
         var outputData = Data()
         var errorData = Data()
-        let ioQueue = DispatchQueue(label: "com.dirnex.sftp.io", attributes: .concurrent)
+        // One serial queue per pipe, never a concurrent one: see `ProcessWaiting.pipeQueue`.
+        let outputQueue = ProcessWaiting.pipeQueue("com.dirnex.sftp.output")
+        let errorQueue = ProcessWaiting.pipeQueue("com.dirnex.sftp.errors")
         group.enter()
-        ioQueue.async {
+        outputQueue.async {
             outputData = output.fileHandleForReading.readDataToEndOfFile()
             group.leave()
         }
         group.enter()
-        ioQueue.async {
+        errorQueue.async {
             errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
             group.leave()
         }

@@ -13,10 +13,21 @@ import Testing
 /// Exercises the real `SFTPProcessTransport` password path against the machine's own sshd, needing
 /// no credential: a bogus account with a wrong password must fail *fast* as `.permissionDenied`
 /// rather than hang waiting for a TTY, which only happens if the `SSH_ASKPASS` wiring answered the
-/// prompt. Gated on `localhost:22` being reachable, so it runs where Remote Login is on and skips in
+/// prompt. Gated on `localhost:22` being reachable, so it runs where Remote Login is on, and off in
 /// CI. (That the helper actually fires was also confirmed by a marker-file probe during development;
 /// this guards the transport's argument/environment assembly end-to-end.)
-@Suite("SFTP password auth mechanism", .enabled(if: LocalSSHDProbe.isReachable))
+///
+/// **Reachable is not enough to mean "a Mac of ours":** GitHub's macOS runners have Remote Login on
+/// too, so on CI this suite talked to the runner's own sshd. There `wrongPasswordIsPermissionDenied`
+/// was one of the three tests the app run froze on (2026-09-30 to 2026-10-02; the freeze itself
+/// was the pipe drains, `ProcessWaiting.pipeQueue`). CI says it is CI through
+/// `TEST_RUNNER_DIRNEX_CI` (`.github/workflows/ci.yml`), which arrives here as `DIRNEX_CI`.
+@Suite(
+    "SFTP password auth mechanism",
+    .enabled(
+        if: LocalSSHDProbe.isReachable && ProcessInfo.processInfo.environment["DIRNEX_CI"] == nil
+    )
+)
 struct SFTPPasswordMechanismTests {
     @Test("the SSH_ASKPASS helper is written and executable")
     func askpassHelperIsExecutable() throws {
