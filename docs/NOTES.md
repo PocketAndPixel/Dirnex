@@ -163,6 +163,9 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 - **`xcodebuild` does not forward shell env to the test runner** — gate live integration suites
   on the existence of a *file*, not an environment variable. Prove such a suite is genuinely
   live by making it fail with bad credentials rather than skip.
+  - **The one exception is the `TEST_RUNNER_` prefix** (`man xcodebuild`): `TEST_RUNNER_FOO=1`
+    reaches the tests as `FOO=1`. CI uses it to say it is CI (`TEST_RUNNER_DIRNEX_CI`, read as
+    `DIRNEX_CI`), since 2026-10-02.
 - **An Objective-C exception raised inside a Swift Testing body does not fail the test — it wedges
   the test host, and `xcodebuild` sits there until something kills it.** Measured 2026-09-14: a test
   read `textStorage.attribute(_:at:6:)` before an asynchronous RTF read had landed, the storage was
@@ -177,6 +180,22 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     wait on the content a load produces (the text itself) rather than on the surface that shows it:
     `QuickViewTextPreviewTests.loaded` returns once the text surface is visible, which a backend makes
     visible *before* its read finishes.
+- **Three tests blocked on a child process freeze a CI run, because the runner has three cooperative
+  threads.** GitHub's macOS runner has 3 CPUs, so Swift's cooperative pool has 3 threads, and a
+  synchronous nonisolated test that waits on a `Process` (`ProcessWaiting.wait`, a
+  `DispatchGroup.wait`) holds one for as long as it waits. On 2026-10-02 three did at once, and
+  every other test stopped 5 seconds in: `SFTPPasswordMechanismTests.wrongPasswordIsPermissionDenied`
+  (against the runner's own sshd — Remote Login is on there — through a wait with no deadline) and
+  two `ArchiveNonASCIINameTests` packs. The 2026-09-30 runs stalled the same way for four hours. A
+  Mac with more cores has threads to spare, so it never shows locally.
+  - **Reading it:** CI's watchdog (`.github/workflows/ci.yml`) samples the host at 25 minutes. The
+    main thread idles in `XCTWaiter`; the stuck tests are the `…cooperative` threads whose stacks
+    reach a `DirnexTests` frame.
+  - **Still open: why the two packs never finished.** Their `bsdtar` had closed its stderr (no
+    drain thread was left), yet the termination handler never ran. Ruled out on 2026-10-02 by
+    probes on this Mac: the pipe leaking into a concurrently launched child (EOF came at once), and
+    the handler needing a cooperative thread (it arrived with the pool limited to one,
+    `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1`).
 
 ### Windows, sheets and key events in a test
 

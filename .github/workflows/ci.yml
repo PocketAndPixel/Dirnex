@@ -36,11 +36,16 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Build & test
-        # A test that blocks the main thread stops the whole suite without failing anything: on
-        # 2026-09-30 every test went quiet 5 seconds in and nothing printed for four hours. So the
-        # run is watched, and past 25 minutes the test host's threads are sampled and the screen
-        # captured (in the `hang` artifact) before it's stopped. The main thread's stack goes into
-        # the log too, since that's where such a hang waits.
+        # A test that never returns stops the whole suite without failing anything: on 2026-09-30
+        # every test went quiet 5 seconds in and nothing printed for four hours. The runner has
+        # only three cooperative threads, so three tests blocked on a child process are enough to
+        # freeze every other test (the 2026-10-02 sample). So the run is watched, and past 25
+        # minutes the test host's threads are sampled and the screen captured (in the `hang`
+        # artifact) before it's stopped. The main thread's stack goes into the log too.
+        env:
+          # Reaches the tests as `DIRNEX_CI` (xcodebuild strips the prefix), for the suites that
+          # must not run on a CI machine, such as SFTPPasswordMechanismTests.
+          TEST_RUNNER_DIRNEX_CI: "1"
         run: |
           set -o pipefail
           xcodebuild test \
