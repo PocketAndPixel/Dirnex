@@ -207,6 +207,11 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     nested archive, the code-page chooser's read) while synchronous tests held the cooperative
     threads. So CI runs the app tests one at a time (`-parallel-testing-enabled NO`, which Swift
     Testing honors: each test finishes before the next starts), and local runs stay parallel.
+  - **A crash in CI says only "Test crashed with signal segv."** against the running test, and
+    `xcodebuild` restarts the host for the rest. The stack is in the runner's crash report, which
+    CI copies out and prints (`scripts/print_crash_reports.py`, the "Crash reports" step). The first
+    one, on 2026-10-02 in `TreeRefreshReachTests.openBucketIsNotReconnected`, did not repeat on
+    this Mac: alone, one at a time, or in a full serial run (1517 passed).
   - Ruled out on the way, by probes: the pipe leaking into a concurrently launched child (EOF came
     at once), and the termination handler needing a cooperative thread.
     `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1` passed as `TEST_RUNNER_…` did not limit the test host's

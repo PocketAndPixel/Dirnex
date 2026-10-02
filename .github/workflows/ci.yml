@@ -101,6 +101,27 @@ jobs:
           name: xcresult
           path: TestResults.xcresult
           if-no-files-found: ignore
+      # A crash ends the test host with only "Test crashed with signal segv." in the log
+      # (2026-10-02, in TreeRefreshReachTests, which passes on its own and in a full local run).
+      # macOS keeps a report on the runner, so its crashing thread goes in the log and the report
+      # in the `crashes` artifact.
+      - name: Crash reports
+        if: always()
+        run: |
+          mkdir -p crashes
+          find ~/Library/Logs/DiagnosticReports -maxdepth 2 -name 'Dirnex-*.ips' -exec cp {} crashes/ \;
+          if ls crashes/*.ips > /dev/null 2>&1; then
+            python3 scripts/print_crash_reports.py crashes/*.ips
+          else
+            echo "No Dirnex crash reports."
+          fi
+      - name: Upload crash reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: crashes
+          path: crashes
+          if-no-files-found: ignore
       - name: Upload what a stuck run left
         if: always()
         uses: actions/upload-artifact@v7
