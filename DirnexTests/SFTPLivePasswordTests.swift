@@ -18,10 +18,10 @@ import Testing
 /// this guards the transport's argument/environment assembly end-to-end.)
 ///
 /// **Reachable is not enough to mean "a Mac of ours":** GitHub's macOS runners have Remote Login on
-/// too, and there `wrongPasswordIsPermissionDenied` never returned — it held one of the runner's
-/// three cooperative threads for good, and with two more tests blocked beside it the whole app run
-/// froze (CI, 2026-09-30 to 2026-10-02, read from a sample of the stuck test host). CI says so
-/// through `TEST_RUNNER_DIRNEX_CI` (`.github/workflows/ci.yml`), which arrives here as `DIRNEX_CI`.
+/// too, so on CI this suite talked to the runner's own sshd. There `wrongPasswordIsPermissionDenied`
+/// was one of the three tests the app run froze on (2026-09-30 to 2026-10-02; the freeze itself
+/// was the pipe drains, `ProcessWaiting.pipeQueue`). CI says it is CI through
+/// `TEST_RUNNER_DIRNEX_CI` (`.github/workflows/ci.yml`), which arrives here as `DIRNEX_CI`.
 @Suite(
     "SFTP password auth mechanism",
     .enabled(

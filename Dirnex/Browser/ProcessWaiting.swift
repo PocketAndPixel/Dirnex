@@ -101,4 +101,20 @@ enum ProcessWaiting {
         joinTermination(of: process, into: group)
         return { group.wait() }
     }
+
+    /// A queue to drain one of a child's pipes on: a **serial** one, one per pipe, never a global
+    /// or a concurrent queue.
+    ///
+    /// A drain is joined into the group ``wait(for:deadline:isCancelled:onPoll:)`` blocks on, so it
+    /// must start whatever the waiter is doing — and a block on a global or concurrent queue may
+    /// not. GCD admits work on those queues only while it counts fewer busy threads than CPUs, and
+    /// a cooperative thread blocked in a wait still counts. Probed 2026-10-02 on a 16-CPU Mac: with
+    /// all 16 cooperative threads waiting, the work they waited for on a global queue never ran
+    /// within 6 s in 10 to 16 of 16 cases, run after run; on a serial queue it always ran, at
+    /// `.utility` too. On CI's 3-CPU runner, three tests waiting on a child at once (two packs and
+    /// an `sftp`) froze the whole app run that way — the children exited and were reaped, and their
+    /// drains never started (docs/NOTES.md ▸ Testing).
+    static func pipeQueue(_ label: String, qos: DispatchQoS = .unspecified) -> DispatchQueue {
+        DispatchQueue(label: label, qos: qos)
+    }
 }

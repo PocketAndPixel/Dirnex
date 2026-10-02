@@ -191,11 +191,20 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - **Reading it:** CI's watchdog (`.github/workflows/ci.yml`) samples the host at 25 minutes. The
     main thread idles in `XCTWaiter`; the stuck tests are the `…cooperative` threads whose stacks
     reach a `DirnexTests` frame.
-  - **Still open: why the two packs never finished.** Their `bsdtar` had closed its stderr (no
-    drain thread was left), yet the termination handler never ran. Ruled out on 2026-10-02 by
-    probes on this Mac: the pipe leaking into a concurrently launched child (EOF came at once), and
-    the handler needing a cooperative thread (it arrived with the pool limited to one,
-    `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1`).
+  - **Why they never finished: their pipe drains never started.** The children had exited and been
+    reaped (the watchdog found the host with no child processes at all), but each wait also joins
+    the drains of the child's pipes, and those ran on a global or a concurrent queue. GCD admits
+    work there only while it counts fewer busy threads than CPUs, and a cooperative thread blocked
+    in a wait still counts — so with the runner's three all waiting, no drain got a thread.
+    `Process`'s own exit handling runs on a serial queue, which is why the reaping still happened.
+    Probed on a 16-CPU Mac with a standalone program: all 16 cooperative threads waiting, the work
+    on a global queue never ran within 6 s in 10 to 16 of 16 cases; on a serial queue, `.utility`
+    included, it always ran. **So a pipe is drained on a serial queue of its own**
+    (`ProcessWaiting.pipeQueue`), in `ArchivePacker` and the SFTP, FTP and S3 transports.
+  - Ruled out on the way, by probes: the pipe leaking into a concurrently launched child (EOF came
+    at once), and the termination handler needing a cooperative thread.
+    `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1` passed as `TEST_RUNNER_…` did not limit the test host's
+    pool (two tests still ran side by side), so it can't stand in for a small runner.
 
 ### Windows, sheets and key events in a test
 

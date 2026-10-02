@@ -226,14 +226,16 @@ struct S3CurlRunner: Sendable {
         // Drain both pipes on background queues so neither can fill and deadlock the other, and
         // join them through a group so the wait can be bounded.
         let drained = Drained()
-        let ioQueue = DispatchQueue(label: "com.dirnex.s3.io", attributes: .concurrent)
+        // One serial queue per pipe, never a concurrent one: see `ProcessWaiting.pipeQueue`.
+        let outputQueue = ProcessWaiting.pipeQueue("com.dirnex.s3.output")
+        let errorQueue = ProcessWaiting.pipeQueue("com.dirnex.s3.errors")
         group.enter()
-        ioQueue.async {
+        outputQueue.async {
             drained.standardOutput = output.fileHandleForReading.readDataToEndOfFile()
             group.leave()
         }
         group.enter()
-        ioQueue.async {
+        errorQueue.async {
             // Chunked rather than `readDataToEndOfFile`, so the progress meter can be read *while*
             // it is being written. It drains just as continuously, which is the property that
             // matters — a reader that stops reading is the two-pipe deadlock.

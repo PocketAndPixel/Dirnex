@@ -103,7 +103,7 @@ struct ArchivePacker: PlainPackWriting {
     /// fix, reintroduced one layer down (docs/NOTES.md ▸ curl for S3).
     private func drain(_ pipe: Pipe, into answers: BsdtarAnswers, group: DispatchGroup) {
         group.enter()
-        DispatchQueue.global(qos: .utility).async {
+        ProcessWaiting.pipeQueue("com.dirnex.pack.errors", qos: .utility).async {
             defer { group.leave() }
             while true {
                 let chunk = pipe.fileHandleForReading.availableData
