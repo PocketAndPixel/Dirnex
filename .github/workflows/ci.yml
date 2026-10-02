@@ -66,6 +66,15 @@ jobs:
                 awk '/^ +[0-9]+ Thread_/ { on = /com.apple.main-thread/ } /^Total number/ { on = 0 } on' \
                   "hang/sample-$pid.txt" | head -200 || true
                 echo "::endgroup::"
+                # The tests that held the run on 2026-10-02 were each waiting for a child process
+                # (bsdtar, sftp) whose exit never reached them. Whether such a child is still
+                # running (S, R), exited but not reaped (Z), or gone says where the exit was lost.
+                echo "::group::Child processes of Dirnex $pid"
+                ps -A -o pid=,ppid=,stat=,etime=,command= | awk -v parent="$pid" '$2 == parent' || true
+                echo "::endgroup::"
+                for child in $(pgrep -P "$pid"); do
+                  sample "$child" 3 -file "hang/sample-child-$child.txt" > /dev/null 2>&1 || true
+                done
               done
               kill "$tests" || true
               pkill -x Dirnex || true
