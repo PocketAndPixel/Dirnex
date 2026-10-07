@@ -4,8 +4,8 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M29 shipped** (14 languages; M29's licensing is on in betas, off in stable until the
-store opens) · **M30 in progress** (bug reports; Slices 1 and 2 landed) ·
+Status: **M0–M30 shipped** (14 languages; M29's licensing is on in betas, off in stable until the
+store opens; M30's Report a Bug is in every release built while `DIRNEX_BUG_REPORT_URL` is set) ·
 Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
 [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)
@@ -99,7 +99,7 @@ Dirnex/
 Sizes are relative (S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks of focused work).
 Each milestone ends in something runnable; no milestone depends on a later one.
 
-### Shipped: M0 → M29 (2026-07-05 → 2026-10-01)
+### Shipped: M0 → M30 (2026-07-05 → 2026-10-07)
 
 Every milestone is closed. The checklists and the full per-pass progress log — what was probed,
 decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source comments citing
@@ -137,177 +137,21 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 | M27 | Legacy code-page archive names | 09-09 | **Inferring** the code page — no reader can, and a wrong guess is a plausible name for the wrong file, so it is a chooser over a preview and never a detector; **preserving an un-representable name byte-for-byte**, the rejected streaming rewrite, which keeps bytes nobody can read and still cannot extract that row *out* of the archive; and **persisting the declaration** across sessions, since it is a guess the user made about one archive and a wrong one silently outliving the session is worse than being asked again |
 | M28 | iCloud Photos, as folders of originals | 09-13 | **Import, delete and album edits**, each a write Photos mediates with its own confirmation; **smart albums** — one a person made is returned by no PhotoKit fetch, and the system ones are views over the library rather than places; **shared albums, the Shared Library and hidden photos**, left out as Photos' own Library view leaves them out; **a per-asset time zone**, which PhotoKit does not expose, so months are cut in the Mac's; **⌘L inside the library**, which has no real directory to start from; and **Photos' lowercase `.mov`** for a Live Photo's movie, since a row's name is part of its path. **Exercised later that evening**: the download of an original that is only in iCloud, on clips recorded for it — the bar sat at zero and Stop was ignored until the request carried a progress handler (HISTORY.md §M28); after that fix a 219 MB copy arrived byte-identical and Stop on a 276 MB one stored nothing |
 | M29 | A license, and the reminder it removes | 10-01 | **Revoking a refunded key inside the app** (the server marks it; an in-app list waits until refunds are actually abused); **trials that stop working, and activation limits**; **any copy protection beyond the signature**, since the source is open and the reminder is a request, not a lock; and **the Keychain** for the key, which is signed rather than secret. **Seen only in tests or a Debug build**: the Renew reminder on a release build, the prominent Renew… in Settings ▸ License, a pasted production key, and the 13:00 rule |
+| M30 | Report a Bug, and a Help menu to hold it | 10-07 | **Anything the user didn't type or tick** in a report: no logs, no screenshots, no file names or paths, one crash report at most; **the website** naming Help ▸ Report a Bug…, until a stable release has it (the private repo's C8). **Seen only in tests**: Email Instead's draft, the rate-limit and refusal messages, and Escape. **Open**: a click in the email field once left the focus in Steps, in a computer-use run |
 
-### Next: M30 (planned 2026-09-29)
+### Next
 
-Dirnex starts selling licenses. The store, the key server, the website at dirnex.app and the launch
-are planned in the private companion repo (`dirnex-home`, milestones C1–C15). The app's share is two
-milestones: **M29**, the license and the reminder it removes, shipped 2026-10-01 and is archived in
-[docs/HISTORY.md](docs/HISTORY.md) ▸ M29; and **M30**, below. Neither changes what Dirnex *is*: it
-stays open source, fully usable without paying, and it never asks a server whether a license is
-real.
-
-### M30 — Report a Bug, and a Help menu to hold it (S)
-
-**Planned 2026-09-29.** A way to tell Oleg something broke without a GitHub account. The report goes
-to the store's server (`https://dirnex.app/api/bug-reports`, built in the private repo), which keeps
-it and messages him. Apart from Sparkle's update check, it is the only thing in Dirnex that talks to
-a server of ours. It sends only when the user presses Send, and only what the user was shown.
-
-Decided before Slice 1:
-
-- **A Help menu, finally.** M20 left adding one as its own decision; this takes it. It holds *Report
-  a Bug…*, *Dirnex Website* and *Release Notes*, which is where every Mac user looks, and it brings
-  macOS's menu search with it. `app.reportBug` is in the palette too.
-- **What is sent.**
-  - A description (required).
-  - Steps to reproduce and a reply email (both optional; the email is remembered for next time).
-  - Each behind its own checkbox, on by default: the Dirnex version and build, the macOS version,
-    the Mac model, the UI language, and whether a license is present (never the key itself).
-  - Optional and off by default: the newest Dirnex crash report from the last 7 days in
-    `~/Library/Logs/DiagnosticReports`.
-
-  The home folder is shortened to `~` everywhere.
-- **Shown before it's sent.** *Show What Will Be Sent* opens the exact JSON body. File names and
-  paths are personal data, so nothing reaches the payload that the user didn't type or tick.
-- **When the server can't be reached,** the dialog keeps the text and offers *Copy Report* and *Email
-  Instead* (a `mailto:` with the same body), rather than losing it.
-- **Hidden until the endpoint exists.** The menu item and the command appear only when the build
-  carries `DirnexBugReportURL` in `Info.plist`. The release workflow adds it once the server is
-  live; until then the feature ships inert.
-
-#### Slices
-
-1. **The core** (additive).
-   - `BugReport`: the payload and its redaction (home folder to `~`, a size cap, crash-report
-     trimming).
-   - Encoding to the server's JSON contract, which is defined in the private repo and mirrored here
-     as a fixture.
-   - Tests, including a negative control that leaves the home path in.
-2. **The app.**
-   - The Help menu, the command, the dialog, the preview, sending with a timeout, and the fallbacks.
-   - A fake endpoint in `Tooling/` (the `fake-s3-endpoint.py` pattern) for the app tests to post to.
-   - Translated into all 14 languages.
-3. **Live.** Against the real endpoint once it exists (staging first), then in a beta with
-   `DirnexBugReportURL` set.
-
-**Done when:**
-- a report sent from a beta arrives in the server's inbox with exactly what the preview showed;
-- the same report with the network off survives as Copy or Email;
-- a build without the URL shows no trace of the feature.
-
-#### Progress
-
-**2026-10-01: Slice 1 landed** (core only; the app is untouched).
-
-- **The contract** is in the private repo, `web/src/bug-reports/contract.ts`, with 43 shared cases
-  copied here unchanged as `Fixtures/bug-report-vectors.json`. The body is flat JSON: `v` (1),
-  `description`, `steps`, `email`, `appVersion`, `appBuild`, `macOS`, `macModel`, `language`,
-  `licensed` and `crashReport`. An unticked box leaves its field out entirely.
-- **Core:** `BugReport` (the body, `problem` in the server's order, and `body()`, the exact bytes),
-  `BugReportText` (the blank list, trimming, the email rule, cutting at a character boundary),
-  `BugReportForm` (the dialog's texts and boxes, and the one place they become a report),
-  `BugReportSystemInfo`, `BugReportRedaction` (the home to `~`), `CrashReportTrimmer` and
-  `CrashReportLocator`. 39 tests in 4 suites, with negative controls: a redaction that leaves the
-  home in, a blank test built on `Character.isWhitespace`, and an `@` looked for among
-  `Character`s.
-- **Decided in the slice:**
-  - **Every limit counts UTF-8 bytes:** the body 512 KiB, the description and the steps 20,000
-    each, the email 254, the five short fields 100 each, the crash report 256 KiB. The typed texts
-    always fit even when JSON escapes every character, so only the crash report can push a body
-    over, and `body()` cuts it until the body fits.
-  - **The body is written in the contract's order, pretty-printed, slashes unescaped,** so the
-    preview reads top to bottom and the crash report comes last. `JSONEncoder` without
-    `.sortedKeys` promises no order, so the object is assembled by hand from encoded values.
-  - **The crash report is the newest `Dirnex-*.ips` modified in the last 7 days,** in
-    `DiagnosticReports` or its `Retired/` folder. It is trimmed as text: home to `~`, the four
-    values that identify the Mac or the boot blanked, at most 256 KiB, cut at the start's end with
-    a marker. The start holds the exception, the reason and the crashed thread.
-  - **The home is replaced only where its name ends** (`/Users/janet` and `/Users/jane.doe` stay),
-    case-insensitively, in the plain and the escaped spelling.
-  - **The request will send `User-Agent: Dirnex`, with no version** (Slice 2). URLSession's
-    default carries the build and the Darwin version, which would leak what an unticked box holds
-    back.
-  - **The server answers** 201 with an id, 400 (413 for `tooLarge`) with the refusal's name, or
-    429 `rateLimited` with `Retry-After`. Anything but 201 keeps the text and offers Copy Report
-    and Email Instead.
-
-**2026-10-01: Slice 2 landed** (the app; Slice 3 waits for the store's endpoint).
-
-- **Core:** a `help` category with `help.reportBug`, `help.website` and `help.releaseNotes`
-  (the plan's `app.reportBug` became `help.reportBug` once Help was a category of its own), and
-  `CommandCatalog.bugReportCommandIDs`. `BugReportDelivery.swift`: `HelpLinks`, `BugReportEndpoint`
-  (only `https`; plain `http` to this Mac only when allowed), `BugReportRequest`,
-  `BugReportOutcome` (the server's answer, read as the contract describes it) and `BugReportMail`
-  (the `mailto:` for Email Instead).
-- **App** (`Dirnex/BugReport/`): `BugReportSwitch` (`DirnexBugReportURL` in `Info.plist`, or
-  `-DirnexDebugBugReportURL` in a Debug build), `AvailableCommands` (the registry minus the
-  licensing commands and Report a Bug… where each is off, now read by the palette, the menus,
-  Settings ▸ Shortcuts, AppleScript and Shortcuts), the Help menu (`NSApp.helpMenu`, so macOS adds
-  its menu search), `BugReportController` (the dialog), `BugReportPreviewController`,
-  `BugReportSender` and `BugReportPresenter`. 42 new catalog entries in all 14 languages.
-  `Tooling/fake-bug-report-endpoint.py` stands in for the server in a live run.
-- **Decided in the slice:**
-  - **The Help menu holds Dirnex Website, Release Notes, then Report a Bug…** after a separator, so
-    a build without the address keeps the two links and loses the separator with the item
-    (`MainMenuBuilder.removeStraySeparators`). Release Notes opens the GitHub releases page until the
-    website has its changelog.
-  - **The boxes show their values** ("Mac model: Mac16,5"), so the user reads what is sent rather
-    than a description of it. A fact that can't be read is grayed out, the license box exists only
-    where licensing is on, and the crash report box names the file or says there is none.
-  - **Send is ⌘Return, not Return**, since Return starts a new line in the two text fields; Tab and
-    ⇧Tab leave a text field instead of typing a tab. Escape is Cancel's.
-  - **Copy Report and Email Instead are there from the start**, enabled whenever Send would be,
-    rather than appearing only after a failure: there was no room for them to appear (five buttons
-    don't fit one row in German or Russian), and offering email up front costs nothing. *Show What
-    Will Be Sent…* moved under the boxes for the same reason.
-  - **A report closed unsent is kept until Dirnex quits**, so Escape loses nothing; a sent one
-    starts the next fresh. The reply email of a sent report is remembered across launches
-    (`Dirnex.pref.bugReportEmail`), and forgotten when one is sent without it.
-  - **The request overrides `Accept-Language` too** (`*`), not only `User-Agent`: the system adds
-    it by itself and it names the user's languages whatever the language box says.
-  - **The app tests answer through a `URLProtocol` stub** rather than posting to the fake endpoint,
-    so they need no server and no port. The stub cannot see headers the system adds on the way out,
-    so the live run checks those against the fake endpoint.
-  - **`DirnexBugReportURL` is in `Info.plist` as `$(DIRNEX_BUG_REPORT_URL)`**, empty in every build.
-    Passing it through `build_app.sh` and `release.yml` (a repository variable, like
-    `DIRNEX_LICENSING`) is Slice 3's first step, once the endpoint exists.
-- **Verified live** (2026-10-01, computer use, Debug build with `-DirnexDebugBugReportURL` on the
-  fake endpoint): the Help menu with all three items, and with two when launched without the
-  argument; the dialog with this Mac's real facts and the newest crash report found in
-  `DiagnosticReports/Retired/`; the preview; Send, which delivered a body **byte-identical** to Copy
-  Report's (8,683 bytes, the crash report's four identifiers blanked, the home shortened to `~`),
-  with `User-Agent: Dirnex` and `Accept-Language: *` on the wire; the thank-you sheet with the
-  server's reference; the server stopped, which kept the text and said so in red; and a report
-  cancelled and reopened, still there. The run found one bug the tests could not: the preview sheet
-  was 640 pt wide over the 560 pt dialog and cut off at both edges.
-- **Measured after the live run:** with the crash report box ticked, each keystroke re-trimmed the
-  crash report, which costs 16 ms for a real 43 KB report and 200 ms at the 1 MiB read cap
-  (release build). The dialog now trims once (`TrimmedCrashReport`), and a keystroke's check takes
-  under 0.2 ms.
-- **Not tried live:** Email Instead (it would have opened a draft in the mail app; the link is
-  pinned by core tests), the rate-limit and refusal messages (pinned by app tests), and Escape
-  (synthetic Escape never reaches the app, LIVE-VERIFICATION.md).
-
-**2026-10-07: Slice 3, first step** (the release workflow; the beta waits for the store's server to be
-live).
-
-- **`DIRNEX_BUG_REPORT_URL`, a repository variable,** reaches `Info.plist` as `DirnexBugReportURL`
-  the way `DIRNEX_LICENSING` reaches the licensing switch: *Resolve release values* reads it,
-  `scripts/build_app.sh` passes it as a build setting and reads it back out of the exported app.
-  Unset, no build shows Report a Bug; set, beta and stable builds both do. Anything but an
-  `https://` address fails the run, since the app would ignore it and hide the item without a word.
-  See docs/RELEASING.md ▸ Report a Bug's address.
-- **Probed first:** a Debug build with `DIRNEX_BUG_REPORT_URL=https://dirnex.app/api/bug-reports`
-  on the `xcodebuild` command line carries exactly that in its `Info.plist`. The worry was the
-  `//`, which starts a comment inside an `.xcconfig` file. The workflow's check was tried on six
-  values in `bash`; the workflow itself hasn't run yet, and no Swift changed.
-- **Next:** once the store's server takes reports at `https://dirnex.app/api/bug-reports`, set the
-  variable to that address, cut a beta, and send a report from it (the first "done when").
+Nothing is planned yet. The app's share of selling Dirnex (the private companion repo
+`dirnex-home`, milestones C1–C15) was two milestones, **M29** (a license, and the reminder it
+removes) and **M30** (Report a Bug), both shipped and archived in [docs/HISTORY.md](docs/HISTORY.md).
+Neither changed what Dirnex *is*: it stays open source, fully usable without paying, and it never
+asks a server whether a license is real. Before the store opens (the private repo's C12), the
+licensing switch goes on for stable, and two small changes are proposed: Help ▸ Release Notes
+opening the website's changelog, and a "Lost your key?" link in Settings ▸ License.
 
 ### Still open
 
-Everything through M29 is shipped, and the record of it — the milestone checklists, the sixty
+Everything through M30 is shipped, and the record of it — the milestone checklists, the sixty
 dated passes that landed outside a milestone of their own, and the reasoning behind every decision —
 is in **[docs/HISTORY.md](docs/HISTORY.md)**. What is still open, rather than merely imaginable, is
 the *undone* column in the table above, plus the list below. Everything that came off this list came
