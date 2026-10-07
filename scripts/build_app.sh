@@ -17,6 +17,7 @@
 #   CONFIGURATION   xcodebuild configuration (default Release).
 #   LICENSING       YES builds with the licensing switch on (PLAN.md §M29); anything else, off.
 #   RELEASE_DATE    this build's release day, YYYY-MM-DD in UTC; empty leaves the build undated.
+#   BUG_REPORT_URL  where Report a Bug sends (PLAN.md §M30); empty hides it.
 #
 # Prints the path to the exported .app on success.
 
@@ -69,15 +70,16 @@ if [ -n "${BUILD_NUMBER:-}" ]; then
     set -- "$@" "CURRENT_PROJECT_VERSION=$BUILD_NUMBER"
 fi
 
-# The licensing switch and the release day land in Info.plist through two build settings its
-# `$(…)` placeholders expand (Dirnex/Info.plist). Always passed, so a stale value can't survive
-# from an earlier build in the same derived-data directory.
+# The licensing switch, the release day and Report a Bug's address land in Info.plist through three
+# build settings its `$(…)` placeholders expand (Dirnex/Info.plist). Always passed, so a stale value
+# can't survive from an earlier build in the same derived-data directory.
 if [ "${LICENSING:-NO}" = "YES" ]; then
     LICENSING_SETTING="YES"
 else
     LICENSING_SETTING="NO"
 fi
-set -- "$@" "DIRNEX_LICENSING_ENABLED=$LICENSING_SETTING" "DIRNEX_RELEASE_DATE=${RELEASE_DATE:-}"
+set -- "$@" "DIRNEX_LICENSING_ENABLED=$LICENSING_SETTING" "DIRNEX_RELEASE_DATE=${RELEASE_DATE:-}" \
+    "DIRNEX_BUG_REPORT_URL=${BUG_REPORT_URL:-}"
 
 xcodebuild archive "$@"
 
@@ -89,16 +91,21 @@ xcodebuild -exportArchive \
 APP_PATH="$EXPORT_DIR/$APP_NAME.app"
 codesign --verify --strict "$APP_PATH"
 
-# Read both values back out of the exported app. An expansion that silently didn't happen would
-# ship a beta that never reminds, or a stable build that does, and nothing else would notice.
+# Read the three values back out of the exported app. An expansion that silently didn't happen
+# would ship a beta that never reminds, a stable build that does, or a Report a Bug that never
+# shows, and nothing else would notice.
 PLIST="$APP_PATH/Contents/Info.plist"
 BAKED_SWITCH=$(/usr/libexec/PlistBuddy -c "Print :DirnexLicensingEnabled" "$PLIST" 2> /dev/null || true)
 BAKED_DATE=$(/usr/libexec/PlistBuddy -c "Print :DirnexReleaseDate" "$PLIST" 2> /dev/null || true)
-if [ "$BAKED_SWITCH" != "$LICENSING_SETTING" ] || [ "$BAKED_DATE" != "${RELEASE_DATE:-}" ]; then
-    echo "Info.plist carries licensing '$BAKED_SWITCH' and release date '$BAKED_DATE'," \
-        "expected '$LICENSING_SETTING' and '${RELEASE_DATE:-}'." >&2
+BAKED_URL=$(/usr/libexec/PlistBuddy -c "Print :DirnexBugReportURL" "$PLIST" 2> /dev/null || true)
+if [ "$BAKED_SWITCH" != "$LICENSING_SETTING" ] || [ "$BAKED_DATE" != "${RELEASE_DATE:-}" ] \
+    || [ "$BAKED_URL" != "${BUG_REPORT_URL:-}" ]; then
+    echo "Info.plist carries licensing '$BAKED_SWITCH', release date '$BAKED_DATE' and bug-report" \
+        "address '$BAKED_URL', expected '$LICENSING_SETTING', '${RELEASE_DATE:-}' and" \
+        "'${BUG_REPORT_URL:-}'." >&2
     exit 1
 fi
-echo "Licensing switch: $BAKED_SWITCH. Release date: ${BAKED_DATE:-none}." >&2
+echo "Licensing switch: $BAKED_SWITCH. Release date: ${BAKED_DATE:-none}." \
+    "Report a Bug: ${BAKED_URL:-hidden}." >&2
 
 echo "$APP_PATH"

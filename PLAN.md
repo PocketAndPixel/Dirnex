@@ -289,6 +289,22 @@ Decided before Slice 1:
   pinned by core tests), the rate-limit and refusal messages (pinned by app tests), and Escape
   (synthetic Escape never reaches the app, LIVE-VERIFICATION.md).
 
+**2026-10-07: Slice 3, first step** (the release workflow; the beta waits for the store's server to be
+live).
+
+- **`DIRNEX_BUG_REPORT_URL`, a repository variable,** reaches `Info.plist` as `DirnexBugReportURL`
+  the way `DIRNEX_LICENSING` reaches the licensing switch: *Resolve release values* reads it,
+  `scripts/build_app.sh` passes it as a build setting and reads it back out of the exported app.
+  Unset, no build shows Report a Bug; set, beta and stable builds both do. Anything but an
+  `https://` address fails the run, since the app would ignore it and hide the item without a word.
+  See docs/RELEASING.md ▸ Report a Bug's address.
+- **Probed first:** a Debug build with `DIRNEX_BUG_REPORT_URL=https://dirnex.app/api/bug-reports`
+  on the `xcodebuild` command line carries exactly that in its `Info.plist`. The worry was the
+  `//`, which starts a comment inside an `.xcconfig` file. The workflow's check was tried on six
+  values in `bash`; the workflow itself hasn't run yet, and no Swift changed.
+- **Next:** once the store's server takes reports at `https://dirnex.app/api/bug-reports`, set the
+  variable to that address, cut a beta, and send a report from it (the first "done when").
+
 ### Still open
 
 Everything through M29 is shipped, and the record of it — the milestone checklists, the sixty
