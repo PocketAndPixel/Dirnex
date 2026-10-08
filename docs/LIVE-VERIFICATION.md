@@ -57,6 +57,11 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     afterwards was of the release build. A timed-out event, or a window that looks like the
     pre-change app, is the moment to run the `pgrep` above and to check
     `~/Library/Logs/DiagnosticReports` for a crash report before believing anything on screen.
+  - **`open -n` starts a second copy beside one already running, without a word.** On 2026-10-09 a
+    Debug build nobody in the session had launched was up (no arguments, parent `launchd`, started
+    after the last test run had finished), and `open -n` on the fresh build made two. Then
+    `app_menu` and every AppleEvent by bundle id can reach either one. Run the `pgrep` *before*
+    launching as well as after.
 - **computer-use's `=` and `-` are the *keypad* keys, so it cannot type ⇧⌘= as a keyboard does.**
   Logged 2026-09-15 with a temporary local key monitor while verifying the zoom keys: `cmd+=` arrived
   as keyCode **81** (keypad `=`) and `cmd+-` as **78** (keypad `-`), both with the numeric-pad flag.

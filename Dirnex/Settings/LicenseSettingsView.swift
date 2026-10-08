@@ -91,6 +91,10 @@ struct LicenseSettingsView: View {
                 prompt: Text("Paste your license key"),
                 axis: .vertical
             )
+            // A box like every other text field in the app: a grouped `Form` otherwise draws its
+            // fields with no bezel, so this was the one field without a border. Bezeled, it also gets
+            // the stronger ring (`FieldBorder`) and a dimmed placeholder (probed 2026-10-09).
+            .textFieldStyle(.roundedBorder)
             .labelsHidden()
             .lineLimit(3...6)
             .font(.system(.body, design: .monospaced))

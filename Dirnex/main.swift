@@ -18,6 +18,8 @@ UserDefaults.standard.set(false, forKey: "NSSplitViewItemSidebarDefaultsToFloati
 // Let Tab reach a dialog's popups, checkboxes and buttons even with the system's Keyboard
 // navigation switch off — before any window is built, so the first dialog's key view loop has them.
 KeyboardReachableControls.install()
+// A clearer edge on every bezeled text field, the system's own faint border drawn again stronger.
+FieldBorder.install()
 
 let application = NSApplication.shared
 // ⌘1–⌘9 pick a dialog's tabs, and holding ⌘ shows the numbers.

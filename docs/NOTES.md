@@ -2326,6 +2326,27 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     the hosting view promoted into the field's place. Override the container's
     `accessibilityChildren()` instead, and check by walking the tree in a test, not by reading the
     property: the property test passed while the running app had the extra element.
+- **A macOS 26 field's border is a 1 pt ring just *outside* its frame, at 9% opacity**, which is why
+  it is so faint. Measured 2026-10-09: black at 9% in Light Mode, light gray at 9% in Dark Mode, the
+  same for editable, read-only and disabled fields, and for secure and token fields (only the fill
+  changes with state). There is no property for it, and giving one field a high-contrast appearance
+  changes nothing, pixel-identical, since the hosting view follows the system's Increase Contrast
+  setting instead. `FieldBorder` draws the ring again with `separatorColor` from a back-most subview
+  of every bezeled field, attached by patching `NSTextField.viewDidMoveToWindow`.
+  - **Stroke the centerline 0.5 pt outside the frame with a 6.5 pt radius.** A first try stroked
+    0.5 pt *inside* the frame and read as a second border inside the first; the pixel test that pins
+    the position (every changed pixel lies in the rounded band outside the frame) fails it by 2,240
+    pixels. At the corners the band has to be rounded too: a square band counts 36 pixels per corner
+    of a correct stroke as outside it.
+  - **A search field's ring is a capsule**, a radius of half its height, and white at 9% in Dark
+    Mode.
+  - **`isBordered = false` clears `isBezeled` too** (probed), so a table cell built from
+    `NSTextField()` and then unbordered is no bezeled field, and gets no ring.
+  - **SwiftUI's `TextField` is a bezeled `NSTextField`** (Settings ▸ Shortcuts' Filter got the ring),
+    except in a grouped `Form`, where it draws no bezel and gets none. `.textFieldStyle(.roundedBorder)`
+    makes it bezeled there too, multi-line (`axis: .vertical`) included, and with that it gets the
+    ring and a dimmed placeholder, which the borderless one drew in the text's own color (Settings ▸
+    License's key, probed 2026-10-09).
 
 ### Views, layout and hit testing
 

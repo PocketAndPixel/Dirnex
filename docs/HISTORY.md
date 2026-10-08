@@ -13578,6 +13578,15 @@ Both were reported with screenshots of 1.0.12-beta.1.
 - **The bordered lists keep their square bezel** (the scripts list, Multi-Rename's preview,
   Synchronize, the checksum report, the workspaces organizer, Get Info's attribute and permission
   tables). Oleg's call: a field's look around a table reads as somewhere to type.
+- **Every text field's border is stronger** (`FieldBorder`), asked for with a screenshot of the New
+  Folder prompt. The system's own faint ring, 1 pt outside the field at 9%, is drawn again with
+  `separatorColor`, about doubling it. Oleg chose that "subtle" strength over a medium and a strong
+  one rendered beside it. It is a patch on `NSTextField`, so it reaches alerts, Settings' SwiftUI
+  fields and the field behind each multi-line box. Seen live in Dark Mode: New Folder (focused, the
+  blue ring unchanged), Report a Bug, and Settings ▸ Shortcuts' Filter.
+- **Settings ▸ License's key field has a box now.** SwiftUI's grouped `Form` drew it with no bezel,
+  the one text field in the app with no border; `.textFieldStyle(.roundedBorder)` gives it one, and
+  with it the stronger ring. Seen live in Dark Mode.
 
 ---
 
