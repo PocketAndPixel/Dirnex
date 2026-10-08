@@ -1557,6 +1557,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - A title bar arriving also makes any in-content headline a **duplicate**, and a display string
     that exists twice gets localized once (▸ Localization). Promote the existing headline to the window title
     and delete the label — its translations carry over untouched, since the key is the English text.
+  - **While one of these closes, it is still `NSApp.modalWindow`**: in its controller's
+    `viewDidDisappear`, and still when `dismiss(_:)` returns. It is `nil` one main-queue turn later
+    (probed 2026-10-08). So an alert raised from the close, through `NSAlert.sheetHost(over:)`,
+    attaches to the dying window and brings it back on screen, empty, with the alert in the middle.
+    Report a Bug…'s thank-you did exactly that. Raise it a turn later
+    (`BugReportPresenter`).
 - **`setFrameUsingName` restores the *position only* on a non-resizable window, and preserves the
   top-left while doing it.** Probed after the move above, because the obvious worry — a size saved by
   an older build coming back and fighting a fixed-size container — turns out not to exist: a frame
@@ -2289,6 +2295,37 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - **A probe disagreed with the app by three orders of magnitude.** A scratch app measured
     `scrollRangeToVisible` at 3.7–4.6 s for the same file, against 1 ms in Dirnex, and its screenshot
     drew no text at all, so what it measured was its own text view. Time TextKit in the app's own view.
+- **On macOS 26 a text field's look can't be drawn by hand; borrow a real field.** Probed 2026-10-08
+  for Report a Bug…'s text boxes, which sat as `.bezelBorder` scroll views under a modern email field.
+  The bezel, fill and focus ring come from a private `_NSCoreHostingView<AppKitTextField>` subview,
+  not the cell: `NSTextFieldCell.draw(withFrame:in:)` by hand differed in almost every pixel in Dark
+  Mode, and both the field's and the cell's focus-ring mask are empty. What works is
+  `MultiLineField`: a real field, inert, behind a transparent scroll view. Unfocused, it is
+  pixel-identical to a field of the same size, which a `cacheDisplay` test pins in both appearances.
+  - **Keep the inert field *editable*.** A non-editable one draws its border differently in Dark
+    Mode, about 90 pixels off on a 300 × 96 box; refusing first responder and a `hitTest` override
+    keep it from ever editing. To look *disabled* beside disabled fields, disable it: a disabled
+    field draws differently in both appearances, so the box forwards `isEnabled` to it.
+  - **A read-only field has a look of its own, and no focus ring.** Probed 2026-10-09: a
+    non-editable, selectable field draws differently from an editable one in both appearances (no
+    fill, a fainter border), and one clicked into takes focus and shows its selection but draws no
+    ring. So a read-only box makes its inert field read-only and turns its scroll view's ring off.
+  - **A field on screen animates a state change**, so a pixel test that sets editable, read-only
+    or disabled *after* the field is in a window catches it mid-change: the read-only case differed
+    in Light Mode that way. Set the state before hosting.
+  - **Drop the inert field's hugging and compression resistance to 1**, or it sizes the box. Pinned
+    to the box's edges, it held a box that a stack view should stretch (the scripts organizer's
+    Command) to its own one-line 24 pt.
+  - **A view inside a scroll view is never asked for a focus ring**, whatever its `focusRingType`:
+    `drawFocusRingMask` ran 0 times for an `NSTextView` and for a plain responder, against once each
+    outside one. The scroll view *is* asked, while its document view has focus, once its own type is
+    `.exterior` (not `.default`). It draws the system ring, with Keyboard navigation off as well.
+  - **The mask's radius is 6 pt, measured** against a focused 96 pt field: only anti-aliasing on the
+    arcs differed, and 5.5 or 6.5 pt left about twice as many pixels off.
+  - **`setAccessibilityElement(false)` on the inert field puts an empty `AXTextField` in the tree**,
+    the hosting view promoted into the field's place. Override the container's
+    `accessibilityChildren()` instead, and check by walking the tree in a test, not by reading the
+    property: the property test passed while the running app had the extra element.
 
 ### Views, layout and hit testing
 

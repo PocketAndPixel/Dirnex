@@ -13553,6 +13553,32 @@ live).
   so the address was typed there; a second click worked. Not yet known whether a real click
   does the same.
 
+**2026-10-09: the text boxes look like the email field, and the thanks waits for the dialog to go.**
+Both were reported with screenshots of 1.0.12-beta.1.
+
+- **The text boxes** were `.bezelBorder` scroll views: square, gray-edged and ringless under a modern
+  email field. `MultiLineField` puts a real, inert text field behind a transparent scroll view,
+  because on macOS 26 a field's look comes from a private hosting view and can't be drawn by hand.
+  The scroll view draws the focus ring, and the text sits where a field's does. How each part was
+  measured is in NOTES.md ▸ Text fields and text views.
+- **The thank-you alert** came up in the middle of an empty Report a Bug window. The dialog is still
+  `NSApp.modalWindow` while it closes, and the alert hangs on the modal window first, so it brought
+  the emptied window back as its host. It is now raised one turn later, on the main window.
+- **Verified live** against `Tooling/fake-bug-report-endpoint.py`, in Dark Mode: the boxes match the
+  email field, the focused one has the ring, the server got exactly what was typed, and the thanks
+  came up on the main window with no other window open. Light Mode is covered by the pixel test
+  only. The ring was seen on the description box only: computer-use couldn't move focus to Steps,
+  and a window it drives in the background isn't key, so no ring draws there anyway.
+- **The scripts organizer's Command** uses the same box, beside its Name and Keywords fields. The box
+  stretches to fill the form and, with no script selected, draws disabled the way those fields do.
+  Seen live with a script selected; the disabled look is covered by the pixel test only, since
+  driving the organizer saves every edit to the real script store.
+- **Show What Will Be Sent…** uses it too, read-only: drawn as AppKit draws a read-only field (no
+  fill, a fainter border, no focus ring), and still selectable for copying. Seen live in Dark Mode.
+- **The bordered lists keep their square bezel** (the scripts list, Multi-Rename's preview,
+  Synchronize, the checksum report, the workspaces organizer, Get Info's attribute and permission
+  tables). Oleg's call: a field's look around a table reads as somewhere to type.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

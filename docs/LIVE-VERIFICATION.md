@@ -238,6 +238,12 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     button. Key equivalents run ahead of `keyDown:`, so the field editor's own "revert the edit"
     never gets the key. Worth stating because the opposite is the natural worry, and it is the
     reason `enableEscapeToCancel` needs no carve-out for a sheet that opens with a field focused.
+- **computer-use refuses a key aimed at a point inside a text view, saying it "belongs to a different
+  process".** Seen 2026-10-08 on both of Report a Bug…'s text boxes: `app_key tab` at the box's center
+  was refused twice, before and after a fix to the boxes' accessibility tree, while the app's own
+  accessibility hit test at those points answers its `AXTextArea` (pinned in `MultiLineFieldTests`).
+  Typing by `element_index` and `app_click` by `element_index` both worked. Neither moved the window's
+  first responder, though, so a focus ring that should follow the click can't be checked this way.
 - **computer-use reports `AXError: failure` for a button that opens a sheet, and the sheet is up.**
   Seen twice on 2026-10-01 pressing Report a Bug…'s *Show What Will Be Sent…*: the AXPress came back
   as a failure each time, and a screenshot showed the preview sheet open. The press waits for an
