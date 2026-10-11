@@ -239,6 +239,11 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   it after), and have the controller set `autorecalculatesKeyViewLoop = true` in `viewDidAppear`, so
   the real dialog doesn't depend on that timing either.
 
+- **A synthesized ⇧Tab is a forward Tab unless it carries the back-tab character.** keyCode 48 with
+  Shift held and `"\t"` as its characters moved focus *forward* (measured 2026-10-11 in
+  `ShortcutRecorderFocusTests`); a real ⇧Tab carries U+0019, and with that it went back. A test of
+  backward Tab built the obvious way passes or fails for reasons that have nothing to do with the code.
+
 - **`NSWindow.sendEvent` skips key equivalents, so a synthesized Escape or Return sent that way never
   reaches a button.** `NSApplication.sendEvent` offers a key event to the key window's
   `performKeyEquivalent` first and only then to `sendEvent`. A test that calls `window.sendEvent`
@@ -1753,6 +1758,16 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     draws only while the system switch is off. At a 3 pt outset in `keyboardFocusIndicatorColor` it
     matched the system rings on the neighbouring stepper and switch. Nothing between a Settings well
     and its grouped row clips that close: the row leaves 10 pt around it.
+  - **A custom `NSView` that accepts first responder is on the Tab loop already, and draws no ring
+    until it supplies a mask.** Probed 2026-10-11 on the Settings ▸ Shortcuts pill, with the system
+    switch off: `canBecomeKeyView == true` without any patch, Tab from Filter walked pill → pill →
+    Filter, and `focusRingMaskBounds` was empty, so the focus went somewhere nobody could see.
+    `focusRingMaskBounds` plus `drawFocusRingMask` is the whole fix, as on `MultiLineField`'s scroll
+    view. The half worth carrying to the next custom control: the pill had been written on the
+    assumption that it holds focus *only* while recording, and marked itself `EscapeKeyConsuming`
+    outright, so a pill Tab had merely landed on swallowed Escape and Settings wouldn't close.
+    `consumesEscape` now answers per state. Once Tab can focus a control without activating it,
+    check every "focused means active" shortcut in it.
   - **The loop is built once, from where each control sits, and a row shown or hidden later leaves
     it wrong.** Connect to Server computes it from the SMB layout; switching to SFTP then tabbed
     Protocol → Password → Save as → Cancel → Connect → Host. Text fields had this problem all along,

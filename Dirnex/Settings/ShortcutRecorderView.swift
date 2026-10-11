@@ -30,6 +30,13 @@ struct ShortcutRecorder: NSViewRepresentable {
     /// next resolvable key combination into a `CommandShortcut`. Esc cancels, Delete clears the
     /// binding.
     ///
+    /// **Focus and recording are two states.** Tab reaches the pill like a field — it was always a
+    /// key view, with Keyboard navigation off too — and the pill draws the system focus ring while it
+    /// has focus. Space or Return then starts recording, as Space presses a focused button. Ending a
+    /// recording keeps focus on the pill, so Tab carries on from there, and Tab while recording leaves
+    /// as it would from anywhere else: Tab can never be recorded (it is a control key), so nothing is
+    /// lost by letting it go.
+    ///
     /// Both placeholder states are drawn as a **glyph with the words in the tooltip**, never as
     /// prose in the pill: the pill is a fixed 148 pt (it lines up with the shortcut column), and
     /// measured in its own font "Aggiungi abbreviazione da tastiera" is 252 pt, "Додати
@@ -43,7 +50,7 @@ struct ShortcutRecorder: NSViewRepresentable {
         private let glyph = NSImageView()
         private var shortcut: CommandShortcut?
         private var isConflicting = false
-        private var isRecording = false {
+        private(set) var isRecording = false {
             didSet { needsDisplay = true; refreshContent() }
         }
 
@@ -72,6 +79,14 @@ struct ShortcutRecorder: NSViewRepresentable {
         override var intrinsicContentSize: NSSize { NSSize(width: 148, height: 24) }
         override var acceptsFirstResponder: Bool { true }
 
+        /// The pill's own outline, which AppKit rings while the pill has focus. Without these the
+        /// mask is empty and Tab lands on a pill that shows nothing.
+        override var focusRingMaskBounds: NSRect { bounds }
+
+        override func drawFocusRingMask() {
+            outline(in: bounds).fill()
+        }
+
         func update(shortcut: CommandShortcut?, conflicting: Bool) {
             self.shortcut = shortcut
             isConflicting = conflicting
@@ -85,9 +100,13 @@ struct ShortcutRecorder: NSViewRepresentable {
             if isRecording {
                 endRecording()
             } else {
-                isRecording = true
-                window?.makeFirstResponder(self)
+                beginRecording()
             }
+        }
+
+        private func beginRecording() {
+            isRecording = true
+            window?.makeFirstResponder(self)
         }
 
         /// While recording, swallow ⌘-combinations that would otherwise dispatch as menu key
@@ -99,8 +118,17 @@ struct ShortcutRecorder: NSViewRepresentable {
         }
 
         override func keyDown(with event: NSEvent) {
-            guard isRecording else { super.keyDown(with: event); return }
+            guard isRecording else {
+                if Self.startsRecording(event) { beginRecording() } else { super.keyDown(with: event) }
+                return
+            }
             handle(event)
+        }
+
+        /// Space, Return or keypad Enter with no ⌘, ⌃ or ⌥: the keys that press a focused button.
+        static func startsRecording(_ event: NSEvent) -> Bool {
+            [49, 36, 76].contains(event.keyCode)
+                && event.modifierFlags.isDisjoint(with: [.command, .control, .option])
         }
 
         private func handle(_ event: NSEvent) {
@@ -113,6 +141,9 @@ struct ShortcutRecorder: NSViewRepresentable {
             case 51, 117: // Delete / Forward Delete — clear the binding.
                 onRecord?(nil)
                 endRecording()
+            case 48: // Tab — stop and hand the key on, so it moves focus as it does from any control.
+                endRecording()
+                super.keyDown(with: event)
             default:
                 guard let recorded = CommandShortcut(event: event) else { return } // keep waiting
                 onRecord?(recorded)
@@ -122,17 +153,12 @@ struct ShortcutRecorder: NSViewRepresentable {
 
         private func endRecording() {
             isRecording = false
-            if window?.firstResponder == self { window?.makeFirstResponder(nil) }
         }
 
         override func resignFirstResponder() -> Bool {
             isRecording = false
             return super.resignFirstResponder()
         }
-
-        // The view only holds first responder *while recording* (`mouseDown` takes it,
-        // `endRecording` and `resignFirstResponder` give it back), so being focused and wanting
-        // Escape are the same state — nothing further to test.
 
         // MARK: - Appearance
 
@@ -184,29 +210,30 @@ struct ShortcutRecorder: NSViewRepresentable {
             setAccessibilityLabel(description)
         }
 
+        /// The pill's rounded rectangle within `rect`.
+        private func outline(in rect: NSRect) -> NSBezierPath {
+            NSBezierPath(roundedRect: rect, xRadius: 5, yRadius: 5)
+        }
+
         override func draw(_ dirtyRect: NSRect) {
-            let path = NSBezierPath(
-                roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5),
-                xRadius: 5,
-                yRadius: 5
-            )
+            let path = outline(in: bounds.insetBy(dx: 0.5, dy: 0.5))
             let fill = isRecording
                 ? NSColor.controlAccentColor.withAlphaComponent(0.12)
                 : NSColor.controlBackgroundColor
             fill.setFill()
             path.fill()
-            if isRecording {
-                NSColor.controlAccentColor.setStroke()
-                path.lineWidth = 2
-            } else {
-                NSColor.separatorColor.setStroke()
-                path.lineWidth = 1
-            }
+            // A recording pill always has focus, so the focus ring is already around it: a 1 pt accent
+            // edge inside that ring, as a focused field has, rather than a wider one the ring merges into.
+            (isRecording ? NSColor.controlAccentColor : NSColor.separatorColor).setStroke()
+            path.lineWidth = 1
             path.stroke()
         }
     }
 }
 
 /// Escape belongs to the recorder while it is recording — it cancels the capture. Marked so the
-/// Settings window's Escape-to-close stands aside rather than closing over an in-progress recording.
-extension ShortcutRecorder.RecorderView: EscapeKeyConsuming {}
+/// Settings window's Escape-to-close stands aside rather than closing over an in-progress recording;
+/// a pill that only has focus leaves Escape to close the window, as any other control does.
+extension ShortcutRecorder.RecorderView: EscapeKeyConsuming {
+    var consumesEscape: Bool { isRecording }
+}
