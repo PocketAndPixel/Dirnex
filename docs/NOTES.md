@@ -1649,6 +1649,28 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     reasoning was really protecting: build the view **expanded** so anything that has to be
     *measured* (a wrapping footer) is measured holding its real text, and collapse before the alert
     first lays out, since there is nothing to re-fit yet.
+- **An alert's message hyphenates a word too long for its line, so a code in it comes out with a
+  hyphen in the middle.** Seen live 2026-10-11 on Settings ▸ License's Remove License confirmation
+  (a SwiftUI `.alert`, an `NSAlert` underneath, macOS 26). Its message named the license ID, and a
+  real ID drew as `HMPPP4D3ZOPNAREKXVL-` / `HJ3D5LQ`. The English message's text box was 220 pt
+  wide in 13 pt SF. The test key's 26-character base32 ID measured 219.7 pt, and an all-`W` one
+  would be 325 pt. So no line holds every ID, and a line of its own doesn't help. Keep anything a
+  person must copy exactly (an ID, a key) out of an alert's message, or put it in a selectable
+  accessory field.
+  - **The width isn't fixed: the alert widens for some messages.** The same alert's text box was
+    220 pt in English, Japanese and Korean, and 252–268 pt in Italian, German, French and Spanish.
+  - **A TextKit layout of the field's string doesn't predict the hyphen.** `attributedStringValue`
+    reports `hyphenationFactor` 0, and an `NSLayoutManager` over it at the field's width reproduced
+    the live line breaks and never hyphenated. To see what the alert really draws, render the sheet
+    under each `-testLanguage`. `cacheDisplay` on its `contentView` works once
+    `sheet.appearance = NSAppearance(named: .aqua)` is set. Without that, Dark Mode's white text
+    draws on the bitmap's white, and the render looks empty apart from the buttons, as does
+    `dataWithPDF`.
+  - **Korean breaks a line inside an address, after `.` or `@`, where no other language did.** In
+    the other thirteen languages' renders every address stayed whole, or wrapped only after a `/`.
+    Korean split `dirnex.` / `app/ko/account` and `support@` / `dirnex.app`, with a
+    particle glued on and again with a space after the address. Only a line of its own kept it whole,
+    so the Korean message puts each address on one.
 
 ### Keyboard focus and the responder chain
 
@@ -3868,6 +3890,14 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
     macOS 26 a second sheet on a window that already has one is **no longer queued invisibly** —
     it stacks, visible and key, which retires the older observation recorded above under
     `sheetHost(over:)`. The bug was in the binding all along, not in who held focus.
+- **A translated SwiftUI `.alert` keeps Escape on its `role: .cancel` button**, where a plain
+  `NSAlert` loses it. Measured 2026-10-11 on Settings ▸ License's Remove License confirmation under
+  `xcodebuild test -testLanguage ru`: the sheet is an `NSAlert` underneath, and its «Отмена», from
+  `Button("Cancel", role: .cancel)`, carried `keyEquivalent` 27. The Russian text was read back from
+  the sheet in the same run, since a pass under `-testLanguage` proves nothing until the host is
+  shown to be in that language. Only the role-carrying spelling was measured, not a cancel button
+  without one. `scripts/check_alert_escape.py` doesn't see these alerts. `LicenseRemovalTests` pins
+  the one measured.
 
 ## Lint ceilings and file splitting
 

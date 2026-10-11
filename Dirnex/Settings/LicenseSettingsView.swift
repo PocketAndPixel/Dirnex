@@ -9,10 +9,17 @@ import SwiftUI
 /// client, or either activation link (`LicenseLinks.keyText(fromPasted:)`). A refusal is shown
 /// under the field in the words `LicenseKeyError.message` gives, and disappears as soon as the text
 /// changes.
+///
+/// Remove asks first, and says how to get the key back. The key carries no email address and doesn't
+/// say whether it was bought, so the message covers both ways back: "Your licenses" on dirnex.app
+/// returns every license that has an address, and support finds the rest by name. The license ID
+/// isn't in the message: the alert hyphenates, its text is 220 pt wide in English, and many IDs are
+/// wider, so one came out broken by a hyphen nobody should type (docs/NOTES.md ▸ AppKit).
 struct LicenseSettingsView: View {
     @ObservedObject var store: LicenseStore
     @State private var entry = ""
     @State private var refusal: LicenseKeyError?
+    @State private var confirmingRemoval = false
 
     var body: some View {
         Form {
@@ -20,6 +27,17 @@ struct LicenseSettingsView: View {
             entrySection
         }
         .formStyle(.grouped)
+        .alert("Remove the license from this Mac?", isPresented: $confirmingRemoval) {
+            Button("Remove License", role: .destructive) { store.remove() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                """
+                To add it back later, paste the key from your license email, or get it again at \
+                dirnex.app/account. If you can’t, write to support@dirnex.app.
+                """
+            )
+        }
     }
 
     // MARK: - Status
@@ -70,7 +88,7 @@ struct LicenseSettingsView: View {
                     .textSelection(.enabled)
             }
             HStack {
-                SettingsButton("Remove License", role: .destructive) { store.remove() }
+                SettingsButton("Remove License", role: .destructive) { confirmingRemoval = true }
                 Spacer()
                 SettingsButton("Renew…", isProminent: !covered) {
                     NSWorkspace.shared.open(LicenseLinks.renew(key))
