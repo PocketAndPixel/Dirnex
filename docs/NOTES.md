@@ -3484,6 +3484,12 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
     `Bundle(url:)?.preferredLocalizations.first?.hasPrefix("en")` — and keep the
     language-independent claims (no `.app` suffix, the bundle id) unconditional. Those are the
     claims the test existed for anyway; the app name was the incidental part.
+  - **`xcodebuild test … -testLanguage en -testRegion US` runs the suite in English without
+    touching the pin.** It passes `-AppleLanguages` as a launch argument, which outranks the app's
+    own domain. Measured 2026-10-11 under a Ukrainian pin: 7 failures in
+    `ArchiveWriteBackBatchTests`, `WriteBackBatchTests` and `QueueBarDetailReadoutTests`, all
+    English literals, and 0 with the flag. It is a way to get a clean run, not a fix: those tests
+    still break the rule above.
 - **Locale-dependent formatting came free and region stays put.** `ByteCountFormatter` and
   `DateFormatter` already follow the current locale, so sizes and dates localized with no code
   change — and because `AppleLanguages` sets the *language* only, a Russian UI on a European region

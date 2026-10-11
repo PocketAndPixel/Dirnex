@@ -137197,13 +137197,13 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nuage"
+            "value": "Cloud"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "iCloud"
+            "value": "Cloud"
           }
         },
         "ja": {
@@ -137221,7 +137221,7 @@
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "iCloud"
+            "value": "Cloud"
           }
         },
         "pl": {
@@ -137239,7 +137239,7 @@
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "iCloud"
+            "value": "Хмара"
           }
         },
         "pt-BR": {
@@ -137251,13 +137251,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "iCloud Drive"
+            "value": "云存储"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "iCloud 雲碟"
+            "value": "雲端"
           }
         }
       }
