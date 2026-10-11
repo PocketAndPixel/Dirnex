@@ -875,6 +875,18 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Fixtures and shared state
 
+- **A test that deletes a directory a pane is watching can crash the test host, so stop the
+  watcher first.** Seen twice on 2026-10-11 in `PanelTreeLoadFailureTests`: `EXC_BAD_ACCESS` at
+  address 0, on the `com.dirnex.fsevents` queue, under `root_dir_event_callback` and
+  `DirectoryWatcher.start`'s callback, while the main thread was freeing the pane. A tree render
+  starts a watcher on the root (`kFSEventStreamCreateFlagWatchRoot`), and the fixture's cleanup
+  deleted that root at the end of the test, right as the pane went away. `DirectoryWatcher` gives the
+  stream an unretained pointer to itself, and `stop()` from `deinit` does not wait for a callback
+  already running on the queue. So the callback ran on a freed watcher and called a zeroed
+  `onChange`. The run then shows *"Restarting after unexpected exit"* and ends `0 tests … passed`
+  over `** TEST FAILED **`. Setting `pane.watcher = nil` before touching the disk fixed it: three
+  runs were clean afterwards. The race is in the core type, so the app can hit it too, whenever a
+  watcher is replaced or freed while its folder is changing.
 - **A date parsed from a year-less `ls` stamp lands at local midnight** (the formatter sets no
   zone), so read `.day` in the local calendar or the day shifts by one.
 - **A fixture that uses a process-wide cache must adopt a cached value in the same main-actor turn
