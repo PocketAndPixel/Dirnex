@@ -49,9 +49,23 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 - **Block/token `NotificationCenter` observers can't be torn down from a `nonisolated deinit`**
   — the `[NSObjectProtocol]` token array is non-Sendable. Use selector-based observers plus
   `removeObserver(self)`.
-- **An `FSEventStream` must hold an *unretained* `Unmanaged` pointer to its watcher.** Retained
-  is a cycle that never stops. The non-capturing C callback recovers the watcher and calls an
-  immutable `@Sendable` closure; `stop()` is idempotent and runs from `deinit`.
+- **An `FSEventStream`'s `info` must be retained by the stream, and must not be the watcher.**
+  `FSEventStreamInvalidate` and `FSEventStreamRelease` return without waiting for FSEvents. Measured
+  2026-10-11 by deleting a watched root and dropping the watcher straight after, 200 rounds: a
+  callback was still running when they returned in 172 rounds, and 19 root-changed callbacks
+  started afterwards. So an unretained pointer to the watcher runs callbacks on a freed object
+  (it crashed the app's test host, ▸ Testing ▸ Fixtures and shared state). A retained watcher is a
+  cycle that never stops. `DirectoryWatcher` therefore hands the stream a separate checked-`Sendable`
+  box (the closure and an armed flag), retained through the context's `retain`/`release` callbacks.
+  FSEvents releases it only after its last callback: none of 600 releases came while a callback was
+  running. `stop()` disarms the box, is idempotent, and runs from `deinit`.
+  - **Invalidating on the stream's queue (`queue.sync`) also measured clean, and was not taken.**
+    It blocks the owner on the queue, deadlocks when the last reference drops on that queue, and
+    rests on how FSEvents times an invalidation, where the retain is the API's own rule for `info`.
+  - **Don't detect "already stopped" by the `info` address in a probe.** malloc hands the next
+    watcher the freed one's slot, so the first probe here counted 191 of 193 callbacks as late, every
+    one of them a live watcher at a reused address. A per-watcher token the probe never frees
+    separates the cases.
 - **Two-phase init forbids passing `self` as a delegate before `super.init()`.** A stored
   controller that needs `self` as its delegate becomes `var`, assigned once after `super.init()`.
 - **A protocol witness that must be `nonisolated`** (e.g. `SPUUpdaterDelegate`) can either read
@@ -875,18 +889,25 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Fixtures and shared state
 
-- **A test that deletes a directory a pane is watching can crash the test host, so stop the
-  watcher first.** Seen twice on 2026-10-11 in `PanelTreeLoadFailureTests`: `EXC_BAD_ACCESS` at
-  address 0, on the `com.dirnex.fsevents` queue, under `root_dir_event_callback` and
-  `DirectoryWatcher.start`'s callback, while the main thread was freeing the pane. A tree render
-  starts a watcher on the root (`kFSEventStreamCreateFlagWatchRoot`), and the fixture's cleanup
-  deleted that root at the end of the test, right as the pane went away. `DirectoryWatcher` gives the
-  stream an unretained pointer to itself, and `stop()` from `deinit` does not wait for a callback
-  already running on the queue. So the callback ran on a freed watcher and called a zeroed
-  `onChange`. The run then shows *"Restarting after unexpected exit"* and ends `0 tests … passed`
-  over `** TEST FAILED **`. Setting `pane.watcher = nil` before touching the disk fixed it: three
-  runs were clean afterwards. The race is in the core type, so the app can hit it too, whenever a
-  watcher is replaced or freed while its folder is changing.
+- **A test that deleted a directory a pane was watching crashed the test host. Fixed in the core on
+  2026-10-11, so a fixture no longer has to stop the watcher first.** Seen twice that day in
+  `PanelTreeLoadFailureTests`: `EXC_BAD_ACCESS` at address 0, on the `com.dirnex.fsevents` queue,
+  under `root_dir_event_callback` and `DirectoryWatcher.start`'s callback, while the main thread was
+  freeing the pane. A tree render starts a watcher on the root (`kFSEventStreamCreateFlagWatchRoot`),
+  and the fixture's cleanup deleted that root right as the pane went away. The stream then held an
+  unretained pointer to the watcher, and tearing it down does not wait for FSEvents (▸ Swift 6 and
+  concurrency), so the callback ran on a freed watcher and called a zeroed `onChange`. The run
+  showed *"Restarting after unexpected exit"* and ended `0 tests … passed` over `** TEST FAILED **`.
+  The app could hit it too, whenever a watcher was replaced or freed while its folder was changing.
+  `DirectoryWatcherTests` now reproduces it on purpose ("dropping a watcher while its root is
+  deleted"), which crashed 8 runs of 8 before the fix. The fixture's `pane.watcher = nil`
+  workaround is gone: without it, the suite crashed 8 runs of 10 against the old watcher, every
+  report the stack above, and passed 11 of 11 with the fix.
+  - **That test makes the `DirectoryWatcher` suite `.serialized`.** It starts and tears down a hundred
+    streams in under three seconds, and run beside it, "a file watcher stays silent for its siblings"
+    saw a stray callback after its 50 ms quiesce in 2 runs of 10. The same churn with plain
+    directories and no watchers failed it 0 times in 20, so the cause is the streams, not the disk.
+    Serialized, the suite passed 20 of 20.
 - **A date parsed from a year-less `ls` stamp lands at local midnight** (the formatter sets no
   zone), so read `.day` in the local calendar or the day shifts by one.
 - **A fixture that uses a process-wide cache must adopt a cached value in the same main-actor turn
