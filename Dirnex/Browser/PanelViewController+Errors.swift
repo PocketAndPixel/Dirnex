@@ -11,6 +11,9 @@ extension PanelViewController {
     /// lists a path nobody has just clicked, so a pane with no window has nobody to tell.
     /// ``NSAlert/beginSheetIfVisible(over:completionHandler:)`` is where that rule and the
     /// measurement behind it live; the failure is still reported wherever it can be seen.
+    ///
+    /// `viewIfLoaded`, because reading `view` *loads* it, and loading it runs the launch listing
+    /// (`isRemoteRefreshWanted` gives the same rule). A pane with no view has no window either.
     func presentLoadFailure(_ error: Error, path: VFSPath) {
         let alert = NSAlert()
         alert.messageText = String(localized: "Can’t open “\(path.displayName)”")
@@ -18,7 +21,7 @@ extension PanelViewController {
         alert.alertStyle = .warning
         alert.addButton(withTitle: String(localized: "OK"))
         alert.enableEscapeToCancel()
-        alert.beginSheetIfVisible(over: view.window)
+        alert.beginSheetIfVisible(over: viewIfLoaded?.window)
     }
 
     /// A human-readable sentence for an error. Internal (not private) so the file-op

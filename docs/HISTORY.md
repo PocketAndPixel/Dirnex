@@ -13588,6 +13588,40 @@ Both were reported with screenshots of 1.0.12-beta.1.
   the one text field in the app with no border; `.textFieldStyle(.roundedBorder)` gives it one, and
   with it the stronger ring. Seen live in Dark Mode.
 
+**2026-10-11: a folder that can't be listed says so in a tree too.** The same day's list-mode fix
+(a Synology `#recycle` the mounting account may not list now raises *"Can’t open “#recycle”"* with
+the server's sentence, NOTES.md ▸ SMB) left the tree telling the old story: `→` on the bin drew it
+expanded with nothing beneath it, which is what an empty folder looks like. The tree's lazy load
+threw the error away with a `try?` and left the row open, by design.
+
+- **A folder the user opens (→ or the disclosure triangle) whose listing fails closes again** and
+  raises the sheet list mode raises for the same folder. This is `navigate`'s rule: a gesture gets an
+  alert. Oleg approved it over the status line a bucket row's failed expansion uses: that line names
+  the row and drops the reason, and the reason was the point of the fix.
+- **A restored expansion that fails closes without a word**, and drops out of the saved tab. Nobody
+  asked for it, so nobody is told; the next → asks again and reports.
+- **A live refresh keeps its last good listing**, as before. It re-reads only folders that listed,
+  and a watcher must not raise a sheet.
+- A folder closed again before its failure lands, or a pane that has moved on, says nothing. A
+  bucket row closes too, without a second report, since its route already named it on the status
+  line.
+- No core change: `Panel.collapse(_:)` already keeps the cursor on the same row, and a failed load
+  installs nothing. The load's body became `performTreeChildLoad`, which a test can await, the same
+  split `refreshTree` made. `PanelTreeLoadFailureTests` pins all four rules on a real `chmod 000`
+  folder. Putting the old behaviour back failed all five of the failure tests (three in that suite,
+  two in the bucket suite).
+- **The suite's first runs crashed the test host**, and the cause is older than this change:
+  `DirectoryWatcher` gives FSEvents an unretained pointer to itself, so deleting a watched root
+  while its pane is freed runs the callback on a freed watcher (NOTES.md ▸ Testing). The fixture now
+  stops the watcher before touching the disk. The core fix is a separate piece of work.
+- **Verified live** in the Debug build, launched by path, on a local `chmod 000` folder. The share's
+  `#recycle` lists fine now, so the NAS refusal could not be reproduced. A tab seeded as a tree with
+  `locked` and `open` expanded came back with `open` listed and `locked` closed, no sheet, and its
+  saved `expandedPaths` down to `["open"]`. → on `locked` and a click on its triangle each raised
+  *"Can’t open “locked”"* over a row that was closed again. Making `open` unreadable while a new file
+  appeared at the root ran a refresh, which showed the new row, kept `open`'s `a.txt`, and said
+  nothing.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
