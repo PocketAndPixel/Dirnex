@@ -1093,7 +1093,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ restant"
+            "value": "il reste %@"
           }
         },
         "it": {
@@ -8272,7 +8272,29 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld sur %lld sélectionnés · %@"
+            "value": "%1$lld sur %2$lld %#@selected@ · %3$@"
+          },
+          "substitutions": {
+            "selected": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "sélectionné"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "sélectionnés"
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "it": {
@@ -10423,9 +10445,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "(+%lld plus)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "(+%lld autre)"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "(+%lld autres)"
+                }
+              }
+            }
           }
         },
         "it": {
