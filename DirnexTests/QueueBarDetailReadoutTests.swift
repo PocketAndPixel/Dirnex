@@ -115,4 +115,29 @@ struct QueueBarDetailReadoutTests {
         bar.update(with: snapshot(totalBytes: 29_000_000))
         #expect(bar.detailReadout.contains("29"), "no deferral was needed: \(bar.detailReadout)")
     }
+
+    /// The time left rounds up to the second. The formatter drops the fraction, so the last second
+    /// of a copy read "0 s left" while bytes were still moving, and 59.6 s read "59 s". Both
+    /// expectations are spelled by the bar's own formatter, so they hold in the running language.
+    @Test("the time left rounds up to the next second", arguments: [
+        (0.4, 1.0),
+        (59.6, 60.0)
+    ])
+    func timeLeftRoundsUp(estimate: TimeInterval, shown: TimeInterval) throws {
+        let bar = QueueBarView(frame: .init(x: 0, y: 0, width: 600, height: 64))
+        let aggregate = AggregateProgress(
+            totalJobs: 1,
+            finishedJobs: 0,
+            activeJobs: 1,
+            totalBytes: 29_000_000,
+            completedBytes: 9_000_000,
+            bytesPerSecond: 1_000_000,
+            estimatedTimeRemaining: estimate
+        )
+        let readout = bar.detailText(for: aggregate, paused: false)
+        let rounded = try #require(QueueBarView.etaFormatter.string(from: shown))
+        let truncated = try #require(QueueBarView.etaFormatter.string(from: estimate))
+        #expect(readout.contains(rounded), "\(readout)")
+        #expect(!readout.contains(truncated), "\(readout)")
+    }
 }
