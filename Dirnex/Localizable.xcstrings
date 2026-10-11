@@ -74465,6 +74465,95 @@
         }
       }
     },
+    "Remove the license from this Mac?": {
+      "comment": "Settings ▸ License: the title of the confirmation Remove License shows.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lizenz von diesem Mac entfernen?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove the license from this Mac?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Eliminar la licencia de este Mac?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer la licence de ce Mac ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimuovere la licenza da questo Mac?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このMacからライセンスを削除しますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 Mac에서 라이선스를 제거하겠습니까?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licentie van deze Mac verwijderen?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usunąć licencję z tego Maca?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить лицензию с этого Mac?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вилучити ліцензію з цього Mac?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover a licença deste Mac?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要从这台 Mac 上移除许可证吗？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要從這台 Mac 移除授權嗎？"
+          }
+        }
+      }
+    },
     "Remove the selected entry": {
       "comment": "Accessibility label for the button that removes an ACL entry.",
       "localizations": {
@@ -102499,6 +102588,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "勾選某個日期即可將其設定到每個選取項目；不勾選則保留各項目自己的日期。"
+          }
+        }
+      }
+    },
+    "To add it back later, paste the key from your license email, or get it again at dirnex.app/account. If you can’t, write to support@dirnex.app.": {
+      "comment": "Settings ▸ License: the Remove License confirmation’s message. Each language names its own page, dirnex.app/<locale>/account (pt-br, zh-hans, zh-hant in lower case), called “Your licenses” on the site.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um sie später wieder zu aktivieren, fügen Sie den Schlüssel aus Ihrer Lizenz-E-Mail ein oder rufen Sie ihn unter dirnex.app/de/account erneut ab. Falls das nicht möglich ist, schreiben Sie an support@dirnex.app."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To add it back later, paste the key from your license email, or get it again at dirnex.app/account. If you can’t, write to support@dirnex.app."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para volver a añadirla, pega la clave del correo de tu licencia o recupérala en dirnex.app/es/account. Si no puedes, escribe a support@dirnex.app."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour la rajouter plus tard, collez la clé de l’e-mail de votre licence ou récupérez-la sur dirnex.app/fr/account. Si ce n’est pas possible, écrivez à support@dirnex.app."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per aggiungerla di nuovo, incolla la chiave dall’email della licenza o recuperala su dirnex.app/it/account. Se non puoi, scrivi a support@dirnex.app."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "あとで戻すには、ライセンスのメールにあるキーをペーストするか、dirnex.app/ja/account で再度取得してください。それができない場合は、support@dirnex.app までご連絡ください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나중에 다시 추가하려면 라이선스 이메일에 있는 키를 붙여 넣거나 아래 페이지에서 다시 받으세요.\ndirnex.app/ko/account\n그럴 수 없다면 아래 주소로 문의하세요.\nsupport@dirnex.app"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Om de licentie later terug te zetten, plak je de sleutel uit je licentiemail of haal je hem opnieuw op via dirnex.app/nl/account. Lukt dat niet, schrijf dan naar support@dirnex.app."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aby ją później przywrócić, wklej klucz z e-maila z licencją lub pobierz go ponownie na dirnex.app/pl/account. Jeśli to niemożliwe, napisz na support@dirnex.app."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Чтобы вернуть её, вставьте ключ из письма с лицензией или получите его снова на dirnex.app/ru/account. Если не получится, напишите на support@dirnex.app."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Щоб повернути її, вставте ключ із листа з ліцензією або отримайте його знову на dirnex.app/uk/account. Якщо не вийде, напишіть на support@dirnex.app."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para adicioná-la de novo, cole a chave do e-mail da licença ou obtenha-a novamente em dirnex.app/pt-br/account. Se não conseguir, escreva para support@dirnex.app."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如需重新添加，请粘贴许可证邮件中的密钥，或在 dirnex.app/zh-hans/account 重新获取。如果无法做到，请写信至 support@dirnex.app。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如需重新加入，請貼上授權郵件中的金鑰，或在 dirnex.app/zh-hant/account 重新取得。如果無法這麼做，請寫信至 support@dirnex.app。"
           }
         }
       }

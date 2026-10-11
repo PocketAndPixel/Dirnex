@@ -13622,6 +13622,42 @@ threw the error away with a `try?` and left the row open, by design.
   appeared at the root ran a refresh, which showed the new row, kept `open`'s `a.txt`, and said
   nothing.
 
+**2026-10-11: Remove License asks first, and says how to get the key back.** It used to forget the
+key at one click. Now *"Remove the license from this Mac?"* comes up, with **Remove License**
+(destructive, not the default button) and **Cancel**: *"To add it back later, paste the key from
+your license email, or get it again at dirnex.app/account. If you can’t, write to
+support@dirnex.app."*
+
+- **Oleg asked for two messages**: one pointing at the website, and one pointing at support when the
+  license has no email. The app can't tell those apart. The key's payload has no email and no kind,
+  and only a special license can lack an address (the private repo's C5/C7: paid licenses always
+  have the buyer's). So it's one message covering both. "Your licenses" (`/account`) returns every
+  license that has an address, and support finds the rest by name or email.
+- **Each translation names its own page** (`dirnex.app/de/account`, `/pt-br/account`,
+  `/zh-hans/account`…): the site picks the language from the address alone, so the bare `/account`
+  is English (`localeDetection: false`).
+- **The license ID was in the message at first, and came out live as `HMPPP4D3ZOPNAREKXVL-` /
+  `HJ3D5LQ`.** The alert hyphenates a word too long for its line, its text is 220 pt wide in
+  English, and many IDs are wider (docs/NOTES.md ▸ AppKit, Laying out a dialog). A hidden break
+  character would put an invisible character into whatever the customer pastes to support, and an
+  AppKit alert with a copyable field is a lot of dialog for a rare path. So the ID came out, and
+  support asks for the name instead.
+- **The sheet was rendered in all fourteen languages** to check the two addresses survive the line
+  breaks. Thirteen kept both whole, or wrapped the page only after a `/` (Portuguese and both
+  Chinese, `dirnex.app/pt-br/` / `account`). Korean split them after `.` and `@` in both phrasings
+  tried, so its message gives each address a line of its own.
+- `LicenseRemovalTests` presses the tab's real button and the alert's own buttons: the question names
+  the page and support and leaves the key in place, confirming forgets it, and Cancel keeps it.
+  Removing at one click again failed all three. **Escape is the alert's Cancel even in Russian**
+  (`keyEquivalent` 27 on «Отмена», run with `xcodebuild -testLanguage ru`, with the text checked to
+  be Russian). So SwiftUI's `.alert` doesn't fall into `NSAlert`'s English-only Escape
+  (docs/NOTES.md ▸ Escape on a translated alert).
+- **Verified live** in the Debug build, launched by path, on Oleg's own license (the defaults
+  domain backed up first). License… ▸ Remove License brought the dialog as rendered, four lines
+  with no break inside either address, and the keyboard focus on Cancel. Cancel closed it, and the
+  key was still in preferences afterwards. The confirming half was left to the tests, so the real
+  key was never at risk.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
