@@ -6,7 +6,13 @@ import Testing
 /// Integration tests for the real FSEvents-backed watcher. These touch the filesystem
 /// and wait on the kernel's event delivery, so they use a generous timeout and a short
 /// coalescing latency to stay fast without being flaky.
-@Suite("DirectoryWatcher")
+///
+/// Serialized because one test here starts and tears down a hundred streams in under three
+/// seconds, and that disturbs the others' timing. Run beside it, "a file watcher stays silent for its
+/// siblings" saw a stray callback after its 50 ms quiesce in 2 runs of 10. The same churn without
+/// the watchers (plain directories created and deleted) failed it 0 times in 20, so the cause is the
+/// streams, not the disk.
+@Suite("DirectoryWatcher", .serialized)
 struct DirectoryWatcherTests {
     /// A one-shot cross-thread signal: the FSEvents callback fires it from a background
     /// queue, the test awaits it on the test task. Rearmable for a second change.
@@ -290,5 +296,60 @@ struct DirectoryWatcherTests {
         let watcher = DirectoryWatcher(path: tree.vfsPath(), latency: 0.05) {}
         watcher.stop()
         watcher.stop()
+    }
+
+    // MARK: - Dropping a watcher while FSEvents is delivering
+
+    /// Something the callback captures, so a test can tell when the callback itself is gone.
+    private final class Sentinel: Sendable {}
+
+    private struct WeakSentinel {
+        weak var value: Sentinel?
+    }
+
+    /// Wait until every sentinel has been freed, or `timeout` passes, and say how many are left.
+    /// The stream lets go of its callback once its last delivery is done, not when it is dropped, so
+    /// this is a bounded wait on a positive signal rather than a pause.
+    private func survivors(_ sentinels: [WeakSentinel], timeout: Duration) async -> Int {
+        let deadline = ContinuousClock.now + timeout
+        while true {
+            let alive = sentinels.count(where: { $0.value != nil })
+            if alive == 0 || ContinuousClock.now >= deadline { return alive }
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+    }
+
+    /// The crash of 2026-10-11, reproduced on purpose. Deleting a watched root makes FSEvents
+    /// deliver a root-changed callback, and dropping the watcher at that moment freed it while the
+    /// callback was still on its way: `FSEventStreamInvalidate` does not wait for one. Measured with
+    /// the stream's old unretained pointer to the watcher: a callback was still running when `stop()`
+    /// returned in 172 of 200 rounds, and 19 callbacks *started* after it. Against that watcher this
+    /// test crashed the test process in 8 runs of 8, in the watcher's callback under
+    /// `root_dir_event_callback`: mostly a call to address 0, the app's own stack, once the runtime
+    /// aborting over a watcher freed while that callback held it. A crash is how this fails.
+    ///
+    /// The sentinels are the other half: the stream now holds a reference to the callback, so this
+    /// also checks that it lets go of it, every round, even when a delivery was in flight at the drop.
+    @Test("dropping a watcher while its root is deleted is safe, and frees the callback")
+    func droppingWhileRootIsDeleted() async throws {
+        var sentinels: [WeakSentinel] = []
+        for _ in 0..<100 {
+            let tree = try TempTree()
+            defer { tree.cleanup() }
+            let sentinel = Sentinel()
+            sentinels.append(WeakSentinel(value: sentinel))
+            do {
+                let watcher = DirectoryWatcher(path: tree.vfsPath()) {
+                    withExtendedLifetime(sentinel) {}
+                }
+                // Long enough for the stream to arm, so the deletion reaches it.
+                try await Task.sleep(for: .milliseconds(20))
+                try FileManager.default.removeItem(at: tree.root)
+                // The last reference goes here, right after the deletion.
+                withExtendedLifetime(watcher) {}
+            }
+        }
+        let alive = await survivors(sentinels, timeout: timeout)
+        #expect(alive == 0, "every stream let go of its callback")
     }
 }

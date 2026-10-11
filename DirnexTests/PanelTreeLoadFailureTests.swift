@@ -61,13 +61,7 @@ struct PanelTreeLoadFailureTests {
         }
 
         /// Give both folders their modes back first, or the removal stops at the one it can't read.
-        ///
-        /// The pane's watcher goes before anything on disk does. Every render here starts one on the
-        /// root, and deleting a watched root fires its callback on the FSEvents queue while the pane
-        /// is being freed on the main one. `DirectoryWatcher` gives the stream an unretained pointer to
-        /// itself, so that callback ran on a freed watcher and the test host crashed (2026-10-11).
         func remove() {
-            pane.watcher = nil
             for name in ["locked", "open"] {
                 try? FileManager.default.setAttributes(
                     [.posixPermissions: 0o755],
