@@ -37,6 +37,14 @@ struct ArchiveWriteBackBatchTests {
         ArchiveWriteBackGroup(archivePath: items[0].archivePath, items: items)
     }
 
+    /// Whether the *running* app resolves to English. The app test target inherits whichever
+    /// `AppleLanguages` the developer has Dirnex pinned to (docs/NOTES.md ▸ Localization), so an
+    /// assertion over English wording is true only here, while the sentences differing from each
+    /// other holds in every language.
+    private var readsEnglish: Bool {
+        Bundle.main.preferredLocalizations.first?.hasPrefix("en") == true
+    }
+
     // MARK: - Grouping
 
     @Test("every member of one archive is one group, so one rewrite")
@@ -132,7 +140,12 @@ struct ArchiveWriteBackBatchTests {
         #expect(title.contains("pkg.zip"))
         // "a copy", singular — the batch must not make the ordinary single save read like a report
         // about a set.
-        #expect(BrowserWindowController.archiveWriteBackBody(one, undoable: true).contains("a copy"))
+        let many = group((1...12).map { pending("f\($0).txt") })
+        let body = BrowserWindowController.archiveWriteBackBody(one, undoable: true)
+        #expect(body != BrowserWindowController.archiveWriteBackBody(many, undoable: true))
+        if readsEnglish {
+            #expect(body.contains("a copy"))
+        }
     }
 
     @Test("a group says how many, and names the archive rather than the files")
@@ -151,7 +164,13 @@ struct ArchiveWriteBackBatchTests {
         // The reader is being asked about twelve files and is entitled to know they cost one
         // rewrite rather than twelve.
         let many = group((1...12).map { pending("f\($0).txt") })
-        #expect(BrowserWindowController.archiveWriteBackBody(many, undoable: true).contains("once"))
+        let body = BrowserWindowController.archiveWriteBackBody(many, undoable: true)
+        #expect(body != BrowserWindowController.archiveWriteBackBody(
+            group([pending("notes.txt")]), undoable: true
+        ))
+        if readsEnglish {
+            #expect(body.contains("once"))
+        }
     }
 
     @Test("undoability changes the sentence, at both sizes")
@@ -164,8 +183,10 @@ struct ArchiveWriteBackBatchTests {
             let undoable = BrowserWindowController.archiveWriteBackBody(subject, undoable: true)
             let permanent = BrowserWindowController.archiveWriteBackBody(subject, undoable: false)
             #expect(undoable != permanent)
-            #expect(undoable.contains("Undo"))
-            #expect(permanent.contains("can’t be undone"))
+            if readsEnglish {
+                #expect(undoable.contains("Undo"))
+                #expect(permanent.contains("can’t be undone"))
+            }
         }
     }
 

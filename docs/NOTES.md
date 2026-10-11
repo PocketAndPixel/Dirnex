@@ -3486,10 +3486,15 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
     claims the test existed for anyway; the app name was the incidental part.
   - **`xcodebuild test … -testLanguage en -testRegion US` runs the suite in English without
     touching the pin.** It passes `-AppleLanguages` as a launch argument, which outranks the app's
-    own domain. Measured 2026-10-11 under a Ukrainian pin: 7 failures in
-    `ArchiveWriteBackBatchTests`, `WriteBackBatchTests` and `QueueBarDetailReadoutTests`, all
-    English literals, and 0 with the flag. It is a way to get a clean run, not a fix: those tests
-    still break the rule above.
+    own domain. Under a pin it is the only way the `readsEnglish`-guarded half of a wording suite
+    runs at all, so run the suite both ways after touching one. Measured 2026-10-11 under a
+    Ukrainian pin, 7 tests in `ArchiveWriteBackBatchTests`, `WriteBackBatchTests` and
+    `QueueBarDetailReadoutTests` failed on English literals, and were moved to that guard.
+  - **A negative assertion on an English word passes in every other language without testing
+    anything.** `#expect(!line.contains("No matches"))` holds under a Ukrainian pin whatever the
+    line says, so the pinned run never fails and never measures. Compare against the app's own
+    `String(localized:)` with the same key and comment instead, or guard it by `readsEnglish` and
+    give the test a claim that holds in every language beside it.
 - **Locale-dependent formatting came free and region stays put.** `ByteCountFormatter` and
   `DateFormatter` already follow the current locale, so sizes and dates localized with no code
   change — and because `AppleLanguages` sets the *language* only, a Russian UI on a European region
