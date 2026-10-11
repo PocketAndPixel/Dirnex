@@ -4168,6 +4168,27 @@ do not share a resolver, and neither half of that is obvious from either call si
     reads as the NAS being unreachable, on a host that pings and whose 445 is open. Percent-encode
     the password before believing any `smbutil` failure.
 
+- **A share can grant the `opendir` and refuse the `readdir`, and a loop that stops on `NULL` shows
+  that refusal as an empty folder.** Measured 2026-10-11 on the NAS's `media` share, whose
+  `#recycle` the mounting account may not list: `opendir` succeeds, the first `readdir` returns
+  `NULL` with `errno` **`EACCES`**, and `ls` says *"fts_read: Permission denied"* — while DSM's File
+  Station listed three items in it. `LocalBackend` read `NULL` as the end of
+  the directory, so the pane showed `..` alone and no error. No local filesystem behaves this way
+  (APFS refuses at the `open`), which is why nothing caught it; the listing now takes `readdir` as a
+  seam so the tests can fail it at the first read and partway.
+  - **The cause was DSM's per-folder *Restrict access to administrators only*** (Control Panel ▸
+    Shared Folder ▸ Edit ▸ General, under *Enable Recycle Bin*), confirmed by Oleg the same day: ticked
+    on `media`, unticked on `home`, which is why the 2026-09-20 Put Back work never met it. It closes
+    the whole bin, not only its listing — `stat` of a name inside was refused too. Two shares on one
+    NAS can disagree, so a bin that works on one proves nothing about the next.
+  - **Clear `errno` before every `readdir`, not once.** With the clearing removed, folders of plain
+    files failed with `notFound`: an `ENOENT` is nearly always left on the thread from something
+    earlier, and a dangling symlink's follow-up `fstatat` leaves its own just before the end.
+  - **A refusal under `/Volumes/<share>` is the server's, and Full Disk Access cannot change it.**
+    The share is browsed by `LocalBackend`, so the remote test in `VFSErrorText` cannot see it; the
+    sentence now asks `NetworkVolume.root(of:)` (`volumeIsLocal == false`) and gives the server's
+    wording.
+
 ### bsdtar
 
 - **Each extract member is a shell-glob pattern, not a literal** — a name containing `* ? [`

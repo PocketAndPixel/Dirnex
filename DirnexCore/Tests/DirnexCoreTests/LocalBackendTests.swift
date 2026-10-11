@@ -175,4 +175,43 @@ struct LocalBackendTests {
             try backend.listDirectory(at: filePath)
         }
     }
+
+    /// The shape measured on a Synology share's `#recycle` (2026-10-11): the `opendir` is granted and
+    /// a `readdir` is refused with `EACCES`. `0` is that run exactly — an empty folder on screen —
+    /// and `3` is a refusal after real entries, which would have been a short listing instead.
+    @Test("a readdir the server refuses throws instead of listing short", arguments: [0, 3])
+    func refusedReaddirThrows(readsBeforeRefusal: Int) throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.writeFile("a.txt", contents: "a")
+        try tree.writeFile("b.txt", contents: "b")
+        try tree.writeFile("c.txt", contents: "c")
+        let dir = tree.vfsPath()
+
+        var reads = 0
+        #expect(throws: VFSError.permissionDenied(dir)) {
+            try backend.listDirectory(at: dir) { dirp in
+                guard reads < readsBeforeRefusal else {
+                    errno = EACCES
+                    return nil
+                }
+                reads += 1
+                return readdir(dirp)
+            }
+        }
+        #expect(reads == readsBeforeRefusal)
+    }
+
+    /// The control for the test above: a dangling symlink's follow-up `fstatat` leaves `ENOENT`
+    /// behind just before the directory ends, so a listing that reads `errno` without clearing it
+    /// first fails here with `notFound` on a perfectly healthy folder.
+    @Test("an errno left by the last entry does not fail the end of the listing")
+    func staleErrnoDoesNotFailListing() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.symlink("broken", to: "does-not-exist")
+
+        let names = try backend.listDirectory(at: tree.vfsPath()).map(\.name)
+        #expect(names == ["broken"])
+    }
 }

@@ -34,6 +34,27 @@ public struct LocalBackend: VFSBackend {
     private typealias StatBuf = Darwin.stat
 
     public func listDirectory(at path: VFSPath) throws -> [FileEntry] {
+        try listDirectory(at: path) { readdir($0) }
+    }
+
+    /// The listing with `readdir` handed in — the seam the tests fill with one that fails, because
+    /// no local filesystem refuses a `readdir` after granting the `opendir` before it.
+    ///
+    /// **A server does, and the refusal looks exactly like an empty folder unless `errno` is read.**
+    /// Measured 2026-10-11 on a Synology share mounted over SMB, whose `#recycle` the account may
+    /// not list: `opendir` succeeds, and the first `readdir` returns `NULL` with `errno` `EACCES`
+    /// (`ls` says *"fts_read: Permission denied"*). `NULL` is also the end of the directory, so a
+    /// loop that stops on it showed the bin as holding nothing while DSM's File Station listed
+    /// three items in it. A failure partway through would have been worse: a short listing that
+    /// looks complete. `errno` is cleared before **every** call, because a stale value turns the
+    /// ordinary end of a directory into a failure, and one is nearly always lying around: with the
+    /// clearing removed, folders of plain files failed with `notFound` from an `ENOENT` set earlier
+    /// on the thread, and ``makeEntry`` leaves its own behind for a dangling symlink, whose
+    /// follow-up `fstatat` fails.
+    func listDirectory(
+        at path: VFSPath,
+        readingWith next: (UnsafeMutablePointer<DIR>) -> UnsafeMutablePointer<dirent>?
+    ) throws -> [FileEntry] {
         let cPath = (path.path as NSString).fileSystemRepresentation
         guard let dirp = opendir(cPath) else {
             throw VFSError.fromErrno(errno, path: path)
@@ -42,7 +63,12 @@ public struct LocalBackend: VFSBackend {
         let dirFD = dirfd(dirp)
 
         var entries: [FileEntry] = []
-        while let entPtr = readdir(dirp) {
+        while true {
+            errno = 0
+            guard let entPtr = next(dirp) else {
+                if errno != 0 { throw VFSError.fromErrno(errno, path: path) }
+                break
+            }
             // Access d_name in place — readdir reuses one buffer, and the tuple is
             // 1 KB, so copying it per entry would be wasteful on huge directories.
             let entry = withUnsafePointer(to: &entPtr.pointee.d_name) { tuplePtr -> FileEntry? in

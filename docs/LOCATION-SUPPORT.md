@@ -298,7 +298,11 @@ lands in it. The neighbouring wart was fixed the same day: `trashItem` is refuse
 may keep a copy in `#recycle` rather than promising destruction. They say *may*: the folder being
 there does not prove the setting is still on. An item **already in** the bin is the exception and
 keeps the strong wording, since a delete there is permanent — measured, and reported the same day
-after it shipped the other way (NOTES.md ▸ The Trash).
+after it shipped the other way (NOTES.md ▸ The Trash). **The bin has to be readable by the account
+the share was mounted as**, and that is the server's call: since **2026-10-11** a bin the NAS refuses
+to list says so (*"The server refused that…"*) instead of opening as an empty folder, which it did
+while DSM's File Station showed three items in it (NOTES.md ▸ SMB). On a Synology the switch is per
+shared folder: *Restrict access to administrators only*, under *Enable Recycle Bin*.
 
 <sup>p</sup> Rename, move, New Folder and — since 2026-09-01 — an **attribute change** are journaled
 and reversed through the backend, so they undo remotely (▸ <sup>tt</sup> for what that last one can
