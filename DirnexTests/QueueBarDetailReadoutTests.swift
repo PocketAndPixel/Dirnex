@@ -69,13 +69,19 @@ struct QueueBarDetailReadoutTests {
         return bar.detailReadout.contains(needle)
     }
 
+    /// Nothing measured, as the bar spells it: `Zero KB` in English, `0 КБ` under a Ukrainian pin.
+    /// The bar's formatter follows the running app's language, which the test target inherits from
+    /// the developer (docs/NOTES.md ▸ Localization), so the expectation is asked of a formatter set
+    /// up the same way rather than written in English.
+    private static let zeroBytes = ByteCountFormatter.string(fromByteCount: 0, countStyle: .file)
+
     @Test("a total that arrives inside the coalescing window is drawn, not dropped")
     func aDeferredReadoutIsStillDrawn() async {
         let bar = QueueBarView(frame: .init(x: 0, y: 0, width: 600, height: 64))
 
         // The enqueue publish: a job with nothing measured yet.
         bar.update(with: snapshot(totalBytes: 0))
-        #expect(bar.detailReadout.contains("Zero KB"), "nothing is known yet, and it says so")
+        #expect(bar.detailReadout.contains(Self.zeroBytes), "nothing is known yet, and it says so")
 
         // The engine's own first emits, microseconds later and inside the same second.
         bar.update(with: snapshot(totalBytes: 29_000_000))

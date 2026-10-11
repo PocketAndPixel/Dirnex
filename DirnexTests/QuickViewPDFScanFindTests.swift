@@ -114,7 +114,13 @@ struct QuickViewPDFScanFindTests {
 
         let line = surface.filterBar.countLabel.stringValue
         #expect(!line.isEmpty)
-        #expect(!line.contains("No matches"))
+        // The app's own "No matches", in whatever language the test target inherited (docs/NOTES.md
+        // ▸ Localization): the English literal is absent from every other language's line, so it
+        // would pass there without testing anything.
+        #expect(!line.contains(String(
+            localized: "No matches",
+            comment: "Quick View text find: the count when the text is found nowhere in the file."
+        )))
         // "Reading 0 of 2 scanned pages" — the total is what has to be read, not the page count.
         #expect(line.contains("2"))
 
