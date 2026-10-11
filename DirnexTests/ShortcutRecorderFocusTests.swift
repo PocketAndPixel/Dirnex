@@ -231,8 +231,7 @@ struct ShortcutRecorderFocusTests {
         try space(in: fixture.window)
         #expect(EscapeToCloseMonitor.leavesEscape(to: fixture.first))
 
-        // The other two answers, so the predicate is seen saying both things.
-        #expect(EscapeToCloseMonitor.leavesEscape(to: NSTextView()))
+        // Responders that own nothing. Text fields have their own suite (`SettingsEscapeTests`).
         #expect(!EscapeToCloseMonitor.leavesEscape(to: NSView()))
         #expect(!EscapeToCloseMonitor.leavesEscape(to: nil))
     }

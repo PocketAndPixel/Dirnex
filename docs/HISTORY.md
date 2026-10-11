@@ -13658,6 +13658,28 @@ support@dirnex.app."*
   key was still in preferences afterwards. The confirming half was left to the tests, so the real
   key was never at risk.
 
+**2026-10-11: Escape closes Settings while a text field has the focus.** Reported on License: with
+the focus in the key field, Escape beeped and the window stayed. `EscapeToCloseMonitor` stood aside
+for any field editor (`focused is NSText`), on the belief that Escape reverts the edit. A SwiftUI
+`TextField` does nothing with it. Probed on a `text:` field with `axis: .vertical` and on a
+`value:format:` one: the typed text, the binding and the focus all stayed as they were. So License,
+whose field holds the focus, could never be closed with Escape, and neither could any other tab
+while its field was focused.
+
+- **The one text-field state that does own Escape is an input method's composition**, where Escape
+  cancels the marked text. Closing over it would discard the half-typed word along with the window,
+  so the monitor now stands aside only while the focused responder `hasMarkedText()`.
+- **Nothing is lost by closing mid-edit.** The same probe showed a `value:format:` field writing its
+  binding on every keystroke (`30` was in the preference before any Return), and License's pasted
+  text is `@State` in a view the window keeps, so it is still in the field when Settings reopens.
+- `SettingsEscapeTests` runs on the real License tab: a focused field with text in it leaves Escape
+  to close, the same editor composing keeps it, and committing the composition gives it back. Put
+  back to `focused is NSText`, both tests fail.
+- **Verified end to end with posted events** (docs/NOTES.md ▸ the SwiftUI Escape monitor): a
+  throwaway app compiled against the shipped `EscapeToDismiss.swift`, with the monitor installed over
+  an `NSHostingController` and a vertical `TextField` focused. Composing, a posted Escape left the
+  window up; with plain text typed, the next one closed it. The physical keypress was left to Oleg.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
