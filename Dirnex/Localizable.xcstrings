@@ -1087,7 +1087,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "quedan %@"
+            "value": "tiempo restante: %@"
           }
         },
         "fr": {
@@ -1099,7 +1099,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ rimanenti"
+            "value": "tempo rimanente: %@"
           }
         },
         "ja": {
@@ -1141,7 +1141,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ restante"
+            "value": "tempo restante: %@"
           }
         },
         "zh-Hans": {
@@ -8266,7 +8266,29 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld de %lld seleccionados · %@"
+            "value": "%1$lld de %2$lld %#@selected@ · %3$@"
+          },
+          "substitutions": {
+            "selected": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "seleccionado"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "seleccionados"
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "fr": {
@@ -8300,7 +8322,29 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld di %lld selezionati · %@"
+            "value": "%1$lld di %2$lld %#@selected@ · %3$@"
+          },
+          "substitutions": {
+            "selected": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "selezionato"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "selezionati"
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -8342,7 +8386,29 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld de %lld selecionados · %@"
+            "value": "%1$lld de %2$lld %#@selected@ · %3$@"
+          },
+          "substitutions": {
+            "selected": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "selecionado"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "selecionados"
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "zh-Hans": {
@@ -10463,9 +10529,21 @@
           }
         },
         "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "(+ altri %lld)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "(+ un altro)"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "(+ altri %lld)"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -10495,13 +10573,13 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "(+%lld ещё)"
+            "value": "(ещё %lld)"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "(і ще %lld)"
+            "value": "(ще %lld)"
           }
         },
         "pt-BR": {
