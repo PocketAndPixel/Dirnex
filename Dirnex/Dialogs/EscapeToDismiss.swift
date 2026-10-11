@@ -165,8 +165,14 @@ extension EscapeKeyConsuming {
 /// Escape-to-close for a window whose content is SwiftUI, where `EscapeDismissingView` cannot reach.
 ///
 /// Scoped to one window and installed only while it is on screen. Three responders keep Escape:
-/// a field editor mid-edit (it reverts the edit — the same carve-out `EscapeDismissingView` makes),
-/// anything marked ``EscapeKeyConsuming``, and any window that is not this one.
+/// an input method mid-composition (Escape cancels the composition), anything marked
+/// ``EscapeKeyConsuming``, and any window that is not this one.
+///
+/// **A focused text field is not one of them.** This used to stand aside for any field editor, on the
+/// belief that Escape reverts the edit, as it does in `EscapeDismissingView`'s inline renames. A
+/// SwiftUI `TextField` has no such delegate: probed 2026-10-11, Escape left the typed text, the
+/// binding and the focus exactly as they were, and the user got a beep. So Settings ▸ License, whose
+/// key field holds the focus, could not be closed with Escape at all.
 @MainActor
 final class EscapeToCloseMonitor {
     private var monitor: Any?
@@ -194,7 +200,7 @@ final class EscapeToCloseMonitor {
 
     /// Whether Escape belongs to `focused` rather than closing the window.
     static func leavesEscape(to focused: NSResponder?) -> Bool {
-        if focused is NSText { return true }
+        if let composing = focused as? any NSTextInputClient, composing.hasMarkedText() { return true }
         return (focused as? any EscapeKeyConsuming)?.consumesEscape ?? false
     }
 }

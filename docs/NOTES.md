@@ -1484,16 +1484,25 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   monitor is the way in.** A monitor runs *ahead of responder dispatch*, so it sees the key whatever
   the hosting view would have done with it — the same lever Quick View already uses to take Esc back
   from a focused `PDFView`. The cost is that it now sees **every** Escape in that window, so it has to
-  hand the key back to whoever legitimately owns it: a field editor mid-edit (which reverts the edit),
-  and any control that means something else by it — in Settings, the shortcut recorder, where Escape
-  cancels the capture. Mark those with a protocol on the *control* rather than listing class names in
-  the monitor; the knowledge belongs with the thing that wants the key.
+  hand the key back to whoever legitimately owns it: an input method mid-composition (Escape cancels
+  the marked text), and any control that means something else by it — in Settings, the shortcut
+  recorder, where Escape cancels the capture. Mark those with a protocol on the *control* rather than
+  listing class names in the monitor; the knowledge belongs with the thing that wants the key.
+  - **A focused SwiftUI `TextField` is *not* an owner, though it looks like one.** The monitor first
+    stood aside for any field editor, on the belief that Escape reverts the edit. Probed 2026-10-11
+    on both a `text:` field (with `axis: .vertical`) and a `value:format:` one: `performKeyEquivalent`
+    returned `false`, `interpretKeyEvents` left the typed text, the binding and the focus exactly as
+    they were, and the user got a beep. Reverting is a *delegate's* doing (`control(_:textView:
+    doCommandBy:)`, as the inline renames have), and SwiftUI installs none for it. So Settings ▸
+    License, whose key field holds the focus, could not be closed with Escape at all. Before standing
+    aside for a responder, check what it does with the key, rather than what such a responder usually
+    does.
   - Verify it in a **probe with `postEvent`, not through computer-use**: synthetic Escape is swallowed
     before the app entirely (LIVE-VERIFICATION.md), so the tool cannot tell a working monitor from a broken one — it
     shows the window simply staying open either way. `NSApp.postEvent` does reach a local monitor, so
-    a throwaway app carrying the identical monitor over a real `NSHostingController` pins all three
-    branches (nothing focused → closes; `_SystemTextFieldFieldEditor` focused → does not;
-    marked control focused → does not). The one step left for a human is the physical keypress.
+    a throwaway app carrying the identical monitor over a real `NSHostingController` pins the
+    branches (nothing focused → closes; marked control focused → does not). The one step left for a
+    human is the physical keypress.
 
 - **A Send button for a form with multi-line text fields is ⌘Return, and the key equivalent
   `"\r"` with `.command` does not claim a plain Return.** Pinned 2026-10-01 by
