@@ -36,12 +36,12 @@ APPCAST = f"""<?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
     <channel>
         <title>Dirnex</title>
-        <link>https://github.com/olegasd123/Dirnex</link>
+        <link>https://github.com/PocketAndPixel/Dirnex</link>
         <description>Dirnex app updates (local test feed, Tooling/fake-update-feed.py)</description>
         <language>en</language>
         <item>
             <title>Version {VERSION}</title>
-            <link>https://github.com/olegasd123/Dirnex</link>{CHANNEL_TAG}
+            <link>https://github.com/PocketAndPixel/Dirnex</link>{CHANNEL_TAG}
             <sparkle:version>999999</sparkle:version>
             <sparkle:shortVersionString>{VERSION}</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
