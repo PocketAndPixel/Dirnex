@@ -27339,7 +27339,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Copia %@"
+            "value": "Copia di %@"
           }
         },
         "ja": {
@@ -59243,7 +59243,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Spostando %@"
+            "value": "Spostamento di %@"
           }
         },
         "ja": {
@@ -69761,7 +69761,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pausato"
+            "value": "In pausa"
           }
         },
         "ja": {
@@ -69850,7 +69850,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pausato — %@"
+            "value": "In pausa — %@"
           }
         },
         "ja": {
