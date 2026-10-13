@@ -69779,7 +69779,7 @@
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pausgezet"
+            "value": "Gepauzeerd"
           }
         },
         "pl": {
@@ -69868,7 +69868,7 @@
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pausgezet — %@"
+            "value": "Gepauzeerd — %@"
           }
         },
         "pl": {
@@ -124679,7 +124679,7 @@
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "ouder, uit"
+            "value": "bovenliggende map, naar boven"
           }
         },
         "pl": {
@@ -126478,7 +126478,7 @@
         },
         "nl": {
           "stringUnit": {
-            "value": "schakelen, draaien",
+            "value": "omschakelen, omdraaien",
             "state": "translated"
           }
         },
