@@ -891,6 +891,20 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   failure a test file has available (a green suite that ran nothing), and the only tell is the test
   *count*, which is why a run's count is worth reading rather than its verdict. It invalidated a
   measurement taken while it was in place, so re-take any measurement made across such an edit.
+- **A hosted pane seeded by assigning `pane.panel` is overwritten by the pane's own first listing,
+  and a test that rows *went away* then passes on a pane that never held them.** `loadViewIfNeeded`
+  starts `navigate(to: defaultPath)`, and its completion installs into whichever tab is in front
+  when it lands, guarded only by `loadToken`. Measured 2026-10-14 on `SearchHitDeleteTests`: three
+  tests failed, and the permanent-delete one *passed*, because its listing came up empty for the
+  wrong reason. Wait for `tabs[0].hasLoaded` first, then land the rows the way the product does
+  (`installResults` bumps `loadToken` for exactly this), and `#require` the rows are there before
+  acting on them. An unloaded pane does not have the race, which is why the validator tests beside
+  them could assign `panel` freely.
+  - **The same file's negative controls found a second one: an async re-check that the gesture
+    itself starts is still in flight when the test moves on.** The delete's own refresh re-reads the
+    disk, so a test that put the file back straight after was answered by *that* read, and passed
+    with the tab-switch hook it was written for deleted. `holdOutTheDeletePasses()` after the gesture
+    lets it finish first. Without reverting each hook in turn, both tests would have looked fine.
 
 ### Fixtures and shared state
 
@@ -9808,6 +9822,13 @@ overturned the obvious implementation.
   iCloud row, a bucket, an SFTP directory and a folder inside an archive were all expandable the
   whole time, and widening the gate needed **no core change at all**. The tell is a gate whose stated
   justification describes the rows while its expression reads the container.
+  - **F8 was the same gate, found on 2026-10-14.** `deleteSelection` and its validator read
+    `capabilities(for: panel.path)`, which a results pane answers `.read`, so every search hit was
+    refused while it sat in a folder that could delete it. `DeleteRouting` asks each row's own
+    directory, as F2 has since 2026-08-22, and the weakest answer wins. The grep that finds the
+    next one: `capabilities(for: panel.path)` behind a gesture that acts on `selectionTargets()`.
+    The two left at that date are F7's and ⇧F4's *create* gates, where the pane's own folder is the
+    right subject.
   - **It failed as a *dead end* rather than as an absence, because the shape outlives the gate.**
     `Panel.setModel` re-roots a tree across a navigation instead of dropping one, and
     `installResults` — the in-place install a merged listing uses — never called `applyViewMode`, the

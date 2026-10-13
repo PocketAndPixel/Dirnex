@@ -86,6 +86,8 @@ extension PanelViewController {
         tab.searchScope = presentation.scope
         tab.searchOrigin = presentation.origin
         tab.customTitle = presentation.title
+        // New hits: what the old ones lost to the Trash is no longer this snapshot's to bring back.
+        tab.trashedSearchHits = [:]
     }
 
     /// The search matched more than a results tab holds. Shared by a new results tab and an edited
@@ -178,6 +180,70 @@ extension PanelViewController {
         if let index = panel.displayedIndex(ofID: source.parent?.appending(newName) ?? source) {
             panel.moveCursor(to: index)
         }
+        reloadEverything()
+    }
+
+    /// Take the hits a delete in `tab` removed out of its snapshot — the rename's twin above, for
+    /// the same reason: the snapshot cannot re-list, so a deleted hit would otherwise go on showing
+    /// a file that is no longer there.
+    ///
+    /// `tab` is the tab the delete was started in, found by identity rather than as "the active
+    /// tab", which it need not be by the time a pass over a server comes back. Rows inside an
+    /// expanded folder are not hits, so they are left to the tree's re-list of that folder.
+    ///
+    /// What went to the Trash is remembered (`PanelTab.trashedSearchHits`), so ⌘Z can bring its row
+    /// back; a permanent delete has nothing to come back from.
+    func dropDeletedSearchHits(_ paths: [VFSPath], from tab: PanelTab, trashed: Bool) {
+        guard tab.panel.path.backend == .search, tabs.contains(where: { $0 === tab }) else { return }
+        let entries = tab.panel.model.listing.entries
+        let remaining = SearchSnapshot.removing(paths, from: entries)
+        guard remaining.count != entries.count else { return }
+        if trashed {
+            let removed = Set(paths)
+            for entry in entries where removed.contains(entry.path) {
+                tab.trashedSearchHits[entry.path] = entry
+            }
+        }
+        installSearchHits(remaining, in: tab)
+    }
+
+    /// Show again the hits this tab sent to the Trash that are back where they were, and drop any
+    /// that went again — so ⌘Z after a delete in search results restores the row along with the
+    /// file, and ⇧⌘Z takes both away again (`SearchSnapshot`).
+    ///
+    /// Asked of the disk rather than of the undo record, which is what makes an undo that only put
+    /// back some of the items land right, and it costs nothing where nothing was trashed. Runs on
+    /// every refresh of the active search tab, and when the tab is switched back to — undo refreshes
+    /// only the tabs on screen.
+    func reconcileTrashedSearchHits() {
+        let tab = tabs[activeTabIndex]
+        let trashed = Array(tab.trashedSearchHits.values)
+        guard tab.panel.path.backend == .search, !trashed.isEmpty else { return }
+        let backend = backend
+        Task {
+            let present = await BlockingWork.run {
+                SearchSnapshot.present(trashed.map(\.path), using: backend)
+            }
+            guard tab.panel.path.backend == .search, tabs.contains(where: { $0 === tab }),
+                  let entries = SearchSnapshot.reconciled(
+                      tab.panel.model.listing.entries,
+                      trashed: trashed,
+                      present: present
+                  )
+            else { return }
+            installSearchHits(entries, in: tab)
+        }
+    }
+
+    /// Replace `tab`'s hits in place, keeping the cursor and marks by identity. The active tab is
+    /// redrawn; a background one renders what it holds when it is switched back to.
+    private func installSearchHits(_ entries: [FileEntry], in tab: PanelTab) {
+        let isActive = tab === tabs[activeTabIndex]
+        // The table's selection is the live cursor until its change notification lands, and the
+        // re-anchor below starts from the model's.
+        if isActive { reconcileCursorFromTable() }
+        tab.panel.setListing(DirectoryListing(path: tab.panel.path, entries: entries))
+        guard isActive else { return }
         reloadEverything()
     }
 
