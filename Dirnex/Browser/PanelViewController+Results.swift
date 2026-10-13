@@ -43,6 +43,9 @@ extension PanelViewController {
         let scope: VFSPath?
         /// The chip label; `nil` on an ad-hoc search leaves the query-summary crumb.
         let title: String?
+        /// The folder ⌥F7 was pressed in, which editing the search offers again (`PanelTab`);
+        /// `nil` for everything that was not started from the dialog.
+        var origin: VFSPath?
         /// Whether dotfiles show. `true` for hits the user explicitly asked for — a matched search
         /// or a recently-used file shouldn't be hidden by the app-wide toggle — but the Trash passes
         /// the pane's own setting, because its dotfiles are Finder's `.DS_Store` put-back databases
@@ -60,14 +63,8 @@ extension PanelViewController {
     ) {
         captureColumnLayout()
         let tab = PanelTab(panel: Panel(model: resultsModel(entries, as: presentation)))
-        tab.hasLoaded = true
         tab.columnLayout = tabs[activeTabIndex].columnLayout
-        // Retain what produced these results so "Save Search…" can persist it (nil elsewhere).
-        tab.searchQuery = presentation.query
-        tab.searchScope = presentation.scope
-        // A saved search / Recents / the Trash names its results tab; an ad-hoc ⌥F7 search leaves
-        // the query-summary chip.
-        tab.customTitle = presentation.title
+        record(presentation, on: tab)
 
         tabs.insert(tab, at: activeTabIndex + 1)
         activeTabIndex += 1
@@ -75,25 +72,44 @@ extension PanelViewController {
         persistState()
         focusTable()
 
-        if truncated {
-            presentOperationFailure(
-                message: String(
-                    localized: "Showing the first \(SpotlightSearchRunner.resultLimit) results",
-                    comment: "Search-results truncation title; %lld is the fixed result cap."
-                ),
-                detail: String(
-                    localized: "Your search matched more items. Narrow it to see the rest.",
-                    comment: "Search-results truncation body."
-                )
+        if truncated { presentTruncationNotice() }
+    }
+
+    /// Mark `tab` as holding the listing `presentation` describes: loaded, so nothing tries to
+    /// re-list the synthetic path, and carrying what produced it — the query and scope "Save
+    /// Search…" persists and an edit re-opens (nil for Recents and the Trash), and the chip label a
+    /// saved search, Recents or the Trash names its tab with (an ad-hoc ⌥F7 search leaves the
+    /// query-summary chip).
+    func record(_ presentation: ResultsPresentation, on tab: PanelTab) {
+        tab.hasLoaded = true
+        tab.searchQuery = presentation.query
+        tab.searchScope = presentation.scope
+        tab.searchOrigin = presentation.origin
+        tab.customTitle = presentation.title
+    }
+
+    /// The search matched more than a results tab holds. Shared by a new results tab and an edited
+    /// one, since the cap is the same whichever tab the hits land in.
+    func presentTruncationNotice() {
+        presentOperationFailure(
+            message: String(
+                localized: "Showing the first \(SpotlightSearchRunner.resultLimit) results",
+                comment: "Search-results truncation title; %lld is the fixed result cap."
+            ),
+            detail: String(
+                localized: "Your search matched more items. Narrow it to see the rest.",
+                comment: "Search-results truncation body."
             )
-        }
+        )
     }
 
     /// Install gathered entries into the tab **already active**, the way navigating to a directory
     /// replaces its listing — for a virtual listing that names a place rather than a query.
     ///
-    /// iCloud Drive is the caller: a user clicks it repeatedly while browsing, and `openResults`'
-    /// tab-per-click is right for a search or the Trash but stacks up for a destination. Everything
+    /// iCloud Drive is one caller: a user clicks it repeatedly while browsing, and `openResults`'
+    /// tab-per-click is right for a search or the Trash but stacks up for a destination. An edited
+    /// search is the other, for the same reason one step removed — changing a condition is still the
+    /// same question, and a tab per change would stack up just as fast (`+SearchEdit`). Everything
     /// a `navigate` does for the pane's chrome happens here too, minus the parts that only mean
     /// something for a real directory — the load is already done, the synthetic path is not
     /// watchable, and it never enters the back/forward trail (it can't be re-listed by path, so
@@ -115,11 +131,7 @@ extension PanelViewController {
         // A results listing has no `..` row to park on, however empty it is.
         cursorOnParentRow = false
 
-        let tab = tabs[activeTabIndex]
-        tab.hasLoaded = true
-        tab.searchQuery = presentation.query
-        tab.searchScope = presentation.scope
-        tab.customTitle = presentation.title
+        record(presentation, on: tabs[activeTabIndex])
 
         // Re-points the FSEvents watcher: the synthetic path is not a directory, so in list mode this
         // watches whatever the merge was gathered from (or nothing, for a search snapshot) rather than

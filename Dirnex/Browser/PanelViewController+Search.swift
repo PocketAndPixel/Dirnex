@@ -19,27 +19,43 @@ extension PanelViewController {
 
     // MARK: - Menu / key action (dispatched to the focused pane via the responder chain)
 
+    /// ⌥F7. On a tab of search hits it edits the search behind them (`+SearchEdit`), which is what
+    /// Total Commander's Alt+F7 does from its results too; everywhere else it starts a fresh one.
     @objc func findFiles(_ sender: Any?) {
+        if canEditCurrentSearch {
+            editCurrentSearch()
+            return
+        }
         guard let scope = searchScopeDirectory() else { return }
-        let controller = SearchController(
-            currentFolderName: scope.displayName,
-            fields: SearchFields.answerable(by: scope.backend),
-            // The second scope option is "everywhere Spotlight indexed" locally and "everything on
-            // this server" on a walk, which is the connection's own root — there being no index to
-            // search and nowhere else to look.
-            connectionRootTitle: SearchRoute.forBackend(scope.backend) == .walk
-                ? scope.backendRootTitle
-                : nil
-        )
+        let controller = makeSearchController(searching: scope)
         controller.onSearch = { [weak self] query, choice in
-            self?.runSearch(query, from: scope, choice: choice)
+            self?.runSearch(query, in: SearchPlace(folder: scope, everything: choice == .everything))
         }
         presentAsMovableWindow(controller)
     }
 
-    /// Whether this pane has anything to search — gates ⌥F7 and its menu item.
+    /// Whether this pane has anything to search — gates ⌥F7 and its menu item. Asks the edit
+    /// first, as `findFiles` does, so the gate and the gesture cannot disagree about a results tab.
     var canFindFiles: Bool {
-        searchScopeDirectory() != nil
+        canEditCurrentSearch || searchScopeDirectory() != nil
+    }
+
+    /// The Find Files dialog for a search run in `folder`: the fields that folder can answer, and
+    /// its name on the first scope option.
+    ///
+    /// Always a *real* folder. Building it from a results tab's own `search:` path would hide
+    /// Content and Tags, which is the trap `SearchPlace` exists for.
+    func makeSearchController(searching folder: VFSPath) -> SearchController {
+        SearchController(
+            currentFolderName: folder.displayName,
+            fields: SearchFields.answerable(by: folder.backend),
+            // The second scope option is "everywhere Spotlight indexed" locally and "everything on
+            // this server" on a walk, which is the connection's own root — there being no index to
+            // search and nowhere else to look.
+            connectionRootTitle: SearchRoute.forBackend(folder.backend) == .walk
+                ? folder.backendRootTitle
+                : nil
+        )
     }
 
     // MARK: - Running the search
@@ -62,17 +78,28 @@ extension PanelViewController {
         }
     }
 
-    private func runSearch(_ query: FileQuery, from scope: VFSPath, choice: SearchController.Scope) {
-        switch SearchRoute.forBackend(scope.backend) {
+    /// Run `query` over `place`, landing the hits in a new results tab — or, for an edit, back in
+    /// the tab being edited (`landing.tab`).
+    ///
+    /// The scope comes from `SearchPlace`, which is also what an edit reads it back through, so the
+    /// two directions have one definition: Spotlight's everywhere is the *absence* of a scope, and a
+    /// walk's "everything here" is the connection's or archive's own root, a real listable path.
+    func runSearch(
+        _ query: FileQuery,
+        in place: SearchPlace,
+        landing: SearchLanding = SearchLanding()
+    ) {
+        var landing = landing
+        landing.origin = place.folder
+        switch place.route {
         case .spotlight:
-            performSearch(query, scope: choice == .currentFolder ? scope : nil)
+            performSearch(query, scope: place.scope, landing: landing)
         case .walk:
-            // "Everything here" is the connection's or archive's own root, which is a real listable
-            // path — unlike Spotlight's "everywhere", which is the absence of a scope.
-            let root = choice == .currentFolder ? scope : VFSPath(backend: scope.backend, path: "/")
-            performWalkSearch(query, under: root)
+            // Non-`nil` on a walk: only Spotlight has an everywhere.
+            guard let root = place.scope else { return }
+            performWalkSearch(query, under: root, landing: landing)
         case .unavailable:
-            break // unreachable: `searchScopeDirectory` already refused
+            break // unreachable: `searchScopeDirectory` and `SearchPlace` both resolve a real folder
         }
     }
 
@@ -100,11 +127,19 @@ extension PanelViewController {
         case .spotlight:
             // A saved search carries a friendly name — label its results tab with it, not the query.
             // A `nil` scope routes here and stays `nil`: that is Spotlight's "everywhere".
-            performSearch(savedSearch.query, scope: savedSearch.scope, title: savedSearch.name)
+            performSearch(
+                savedSearch.query,
+                scope: savedSearch.scope,
+                landing: SearchLanding(title: savedSearch.name)
+            )
         case .walk:
             // Non-`nil` by construction — only a scope can route here, since a walk needs a root.
             guard let scope = savedSearch.scope else { return }
-            performWalkSearch(savedSearch.query, under: scope, title: savedSearch.name)
+            performWalkSearch(
+                savedSearch.query,
+                under: scope,
+                landing: SearchLanding(title: savedSearch.name)
+            )
         case .unavailable:
             guard let scope = savedSearch.scope else { return }
             presentUnsearchableScope(at: scope)
@@ -121,23 +156,25 @@ extension PanelViewController {
     /// Matched by name only, because a name is all Spotlight indexes (`FileQuery.tags`) — which
     /// costs nothing here, since a tag *is* its name to macOS and the color is only how it is drawn.
     func runTagSearch(_ tag: FinderTag) {
-        performSearch(FileQuery(tags: [tag.name]), scope: nil, title: tag.name)
+        performSearch(
+            FileQuery(tags: [tag.name]),
+            scope: nil,
+            landing: SearchLanding(title: tag.name)
+        )
     }
 
     /// Run `query` within `scope` (its subtree), or everywhere when `scope` is `nil`, off the
-    /// main thread, then install the hits as a virtual results tab. `title`, when given, is the
-    /// tab's chip label (a saved search's name); a fresh ⌥F7 search leaves it `nil` and the chip
-    /// shows the query summary.
-    private func performSearch(_ query: FileQuery, scope: VFSPath?, title: String? = nil) {
+    /// main thread, then land the hits where `landing` says (`+SearchEdit`).
+    private func performSearch(_ query: FileQuery, scope: VFSPath?, landing: SearchLanding) {
         let backend = backend
         Task {
             let results = await SpotlightSearchRunner.run(query, scope: scope, backend: backend)
-            openSearchResults(
+            landSearchResults(
                 results.entries,
+                truncated: results.truncated,
                 query: query,
                 scope: scope,
-                truncated: results.truncated,
-                title: title
+                landing: landing
             )
         }
     }
@@ -175,30 +212,6 @@ extension PanelViewController {
         }
     }
 
-    // MARK: - Virtual results tab
-
-    /// Install the hits as a virtual results tab (`PanelViewController+Results`), labeled by the
-    /// query that produced them and carrying it so "Save Search…" can persist it.
-    private func openSearchResults(
-        _ entries: [FileEntry],
-        query: FileQuery,
-        scope: VFSPath?,
-        truncated: Bool,
-        title: String? = nil
-    ) {
-        openResults(
-            entries,
-            truncated: truncated,
-            as: ResultsPresentation(
-                pathSummary: LocalizedCatalog.summary(of: query),
-                sort: panel.model.sort,
-                query: query,
-                scope: scope,
-                title: title
-            )
-        )
-    }
-
     // MARK: - Saving the current search
 
     /// Whether the active results tab carries a re-runnable query — gates "Save Search…".
@@ -212,7 +225,7 @@ extension PanelViewController {
     @objc func saveCurrentSearch(_ sender: Any?) {
         let tab = tabs[activeTabIndex]
         guard let query = tab.searchQuery else { return }
-        let prefill = LocalizedCatalog.plainName(of: query)
+        let prefill = savedSearchNameToOffer(for: tab, query: query)
         // The prompts are sheets, so they are awaited rather than run inline; the work either side
         // of them is unchanged and still main-actor.
         Task { @MainActor in
@@ -228,6 +241,13 @@ extension PanelViewController {
             refreshTabBar()
             persistState()
         }
+    }
+
+    /// The name Save Search… starts from: the tab's own name when it has one — a saved search's,
+    /// or the one an edit took off it — so re-saving lands on the existing search through the
+    /// replace confirmation; otherwise the query's plain name.
+    func savedSearchNameToOffer(for tab: PanelTab, query: FileQuery) -> String {
+        tab.customTitle ?? tab.titleBeforeEdit ?? LocalizedCatalog.plainName(of: query)
     }
 
     /// Ask for a saved-search name, prefilled with a sensible default, returning the trimmed

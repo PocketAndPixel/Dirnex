@@ -226,9 +226,30 @@ extension PathBarView {
                     localized: "Results for \(path.lastComponent)",
                     comment: "Path-bar label for a search-results snapshot; %@ is the query."
                 ),
-                symbolNamed: "magnifyingglass"
+                symbolNamed: "magnifyingglass",
+                editsSearch: true
             )
         }
+    }
+
+    /// The search snapshot's label as a button onto the search behind it: the crumb's borderless
+    /// style in the plain label's bold, so it reads the same and clicks like the crumbs around it.
+    /// The row is otherwise a dead end, and this is the one thing in it worth clicking — the same
+    /// edit ⌥F7 opens, given a mouse route.
+    func makeSearchEditLabel(_ text: String, color: NSColor) -> NSButton {
+        let button = NSButton(title: text, target: self, action: #selector(requestSearchEdit(_:)))
+        button.isBordered = false
+        button.bezelStyle = .inline
+        button.setButtonType(.momentaryChange)
+        button.imagePosition = .noImage
+        button.lineBreakMode = .byTruncatingTail
+        button.font = .boldSystemFont(ofSize: NSFont.smallSystemFontSize)
+        button.contentTintColor = color
+        button.toolTip = String(
+            localized: "Edit this search",
+            comment: "Tooltip on the path bar's search-results label, which opens Find Files on that search."
+        )
+        return button
     }
 
     /// Render a browsed archive as a full, clickable breadcrumb trail — styled exactly like a
