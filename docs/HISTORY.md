@@ -13717,6 +13717,46 @@ bar's "Results for …" label does the same as ⌥F7.
   both options search the same thing; "text2" then replaced the 2 hits with 1 in the same tab.
   Servers and Photos take the same walk route and are covered by tests only.
 
+**2026-10-14: a search hit can be deleted where it was found.** Asked for with the same screenshot
+of a "test" results tab. F8, ⇧F8, File ▸ Move to Trash and the right-click's Move to Trash were all
+gray over search results, and Recents too, which rides the same listing. They now work there, and
+⌘Z brings the row back with the file.
+
+- **The gate asked the pane, and a results pane is the synthetic `search:` path**, which
+  `CompositeBackend.capabilities(for:)` answers `.read`, so `deleteStrategy` was `.unsupported`
+  for every search there was. `DeleteRouting` (core) asks each row's *own* directory, the way F2
+  already did (`renameDirectory`), and the key and its menu item both read the one
+  `deleteStrategy(for:)`. One more instance of NOTES.md's results-tab family (▸ "One rule, many
+  copies"), on a gate nobody had asked about. In a plain listing the answer is the pane's, as before; in a tree it is
+  now right for a folder expanded inside a Trash too.
+- **The weakest answer wins**: one row that cannot be deleted refuses the gesture, one that can
+  only be deleted for good makes it the confirmed permanent delete. The reverse would fail the row
+  that is already in a Trash, which `LocalBackend` refuses by name (`alreadyInTrash`). A mixed set
+  is rare: probed that Spotlight returns nothing in `~/.Trash` (`mdls` read a trashed file and
+  `mdfind -name` on the same name returned nothing), and a walk's hits share one backend. A hit
+  inside an archive stays refused, as in a browsed nested archive.
+- **A snapshot re-lists nothing, so a delete is applied to it by hand**, the rename's
+  `substituteSearchHit` again. `DeletePass.Outcome.deleted(from:)` says what actually left (not
+  `restorations`, which a permanent pass leaves empty), and those rows are dropped from the tab the
+  delete started in, found by identity. Hits sent to the Trash are remembered on the tab
+  (`trashedSearchHits`), and every refresh of it, and switching back to it, re-checks them on disk
+  (`SearchSnapshot.reconciled`): undo refreshes only the tabs on screen and says nothing when it
+  succeeds, so without this the file came back and its row did not. Asked of the disk rather than
+  the journal, so redo and a partial undo need no branch.
+- `DeleteRoutingTests` and `SearchSnapshotTests` (core), `SearchHitDeleteTests` (app). Reverting the
+  gate, the drop, the refresh's re-check or the tab switch's each fails its own tests. The first run
+  of the app suite had a test passing on an empty pane, and a negative control passing because the
+  delete's own re-check did the work; both are in NOTES.md ▸ Testing.
+- **Verified live** on the Debug build, launched by path with no other copy running: ⌥F7 for
+  "qzxdelprobe" over three fixture files, then File ▸ Move to Trash on the first hit put it in
+  `~/.Trash` and took its row out, the cursor moving to the next. Edit ▸ Undo Move to Trash put the
+  file and the row back; Redo took both away again. Delete Immediately… on the next hit asked
+  "Delete “qzxdelprobe-b.txt” permanently?", and Delete removed the file and the row. A hit on a
+  server takes the same permanent path and is covered by tests only.
+- **Left as it was**, from reading the code rather than a run: a hit **moved** with F6 still keeps
+  its row until the search runs again, the queued rename's limit (`substituteSearchHit`); and a
+  second tab showing the same hits is not told about a delete in the first.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

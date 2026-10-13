@@ -95,8 +95,9 @@ extension PanelViewController: NSMenuItemValidation {
         }
     }
 
-    /// Validate the directory-mutating operations — the ones that need a real, writable
-    /// directory and so are all disabled on a virtual search-results pane (`isResultsListing`).
+    /// Validate the directory-mutating operations. Those that create something need a real,
+    /// writable directory and are disabled on a virtual results pane (`isResultsListing`); rename
+    /// and delete ask each row's own directory instead, so they work on a search hit.
     /// Returns `nil` for any other selector so the main switch handles it. Split out to keep
     /// `validateMenuItem` under SwiftLint's cyclomatic-complexity limit (a recurring gotcha).
     private func validateMutatingItem(_ menuItem: NSMenuItem) -> Bool? {
@@ -105,12 +106,11 @@ extension PanelViewController: NSMenuItemValidation {
             return canWriteHere
         case #selector(moveSelectionToTrash(_:)), #selector(deleteSelectionPermanently(_:)):
             // Inside a top-level archive, delete rewrites it to drop the members (no Trash, not
-            // undoable) — enabled on a non-empty selection. Elsewhere the owning backend must be
-            // able to delete at all: a search-results pane and a read-only nested archive report
-            // `.read`, whose `deleteStrategy` is `.unsupported`, so both stay disabled.
+            // undoable) — enabled on a non-empty selection. Elsewhere it is the key's own answer,
+            // asked of each row's directory: a search hit deletes like the folder it is in, while a
+            // read-only nested archive (and a hit inside one) reports `.read` and stays disabled.
             if isWritableArchive { return !selectionTargets().isEmpty }
-            return backend.capabilities(for: panel.path).deleteStrategy != .unsupported
-                && !selectionTargets().isEmpty
+            return deleteStrategy(for: recursiveTargets()) != .unsupported
         case #selector(putBackSelection(_:)):
             // Only where something can actually go home: the merged Trash, or a row inside a
             // network share's own `#recycle` bin. `putBackTargets` is the single place that
