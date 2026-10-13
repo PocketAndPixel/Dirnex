@@ -202,6 +202,8 @@ extension PanelViewController {
                 DeletePass.run(paths, using: backend, permanent: false)
             }
             panel.clearSelection()
+            // F6 into an archive from search results: the originals left, so their rows go too.
+            noteSearchHitsDeleted(outcome.deleted(from: paths), permanent: false)
             refreshCurrentDirectory()
             focusTable()
             noteTrashed(outcome.restorations)

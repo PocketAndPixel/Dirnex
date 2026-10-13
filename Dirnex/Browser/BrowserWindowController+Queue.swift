@@ -75,6 +75,14 @@ extension BrowserWindowController {
                 deliverJobReport(job.report ?? .empty, kind: job.kind, id: job.id)
                 continue
             }
+            // A search snapshot re-lists nothing, so the refresh below cannot take a moved hit out
+            // of it. The report says which items really moved — a stopped or skipped one is still
+            // there and keeps its row — and the job knows no tab, so both panes check all of theirs.
+            if let report = job.report {
+                let changes = SearchSnapshot.changes(made: report, by: job.kind)
+                leftPanel.applySearchHitChanges(changes, canReturn: true)
+                rightPanel.applySearchHitChanges(changes, canReturn: true)
+            }
             refreshPanes()
             guard let report = job.report else { continue }
             // Journal whatever landed (even a canceled job's partial work) so Cmd+Z can

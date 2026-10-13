@@ -191,7 +191,7 @@ struct SearchHitDeleteTests {
         pane.runDelete([gone.path], permanent: false)
         await settle { names(tab) == ["kept.txt"] }
         #expect(names(tab) == ["kept.txt"])
-        #expect(tab.trashedSearchHits[gone.path] == gone)
+        #expect(tab.departedSearchHits[gone.path] == gone)
         // The delete's own refresh checks the disk too; let it finish, or the file put back below
         // is found by that check and the refresh under test proves nothing.
         try await holdOutTheDeletePasses()
@@ -245,7 +245,7 @@ struct SearchHitDeleteTests {
         pane.runDelete([gone.path], permanent: true)
         await settle { names(tab) == ["kept.txt"] }
         #expect(names(tab) == ["kept.txt"])
-        #expect(tab.trashedSearchHits.isEmpty)
+        #expect(tab.departedSearchHits.isEmpty)
 
         disk.putBack(gone)
         pane.refreshCurrentDirectory()
@@ -271,20 +271,23 @@ struct SearchHitDeleteTests {
         try #require(TrashlessProbe.defaultButton(in: sheet)).performClick(nil)
     }
 
-    /// A pass over a server is long enough to switch tabs under: its hits leave the tab it was
-    /// started in, and the tab in front keeps its rows.
-    @Test("the hits leave the tab the delete started in, not the one in front")
-    func dropsFromTheStartingTab() {
+    /// The question is about the file, not the tab the key was pressed in: every results tab
+    /// holding the hit loses it, in front or behind, and a folder tab — which re-lists itself — is
+    /// left alone even when its row is the same file.
+    @Test("every results tab holding the hit loses it, and a folder tab does not")
+    func dropsFromEveryResultsTab() {
         let pane = Self.compositePane([Self.hit("a.txt"), Self.hit("b.txt")])
-        let search = pane.tabs[0]
-        let front = PanelTab(panel: Self.results([Self.hit("a.txt")], at: Self.documents))
-        pane.tabs.append(front)
-        pane.activeTabIndex = 1
+        let first = pane.tabs[0]
+        let second = PanelTab(panel: Self.results([Self.hit("a.txt")]))
+        let folder = PanelTab(panel: Self.results([Self.hit("a.txt")], at: Self.documents))
+        pane.tabs += [second, folder]
+        pane.activeTabIndex = 2
 
-        pane.dropDeletedSearchHits([Self.hit("a.txt").path], from: search, trashed: true)
+        pane.noteSearchHitsDeleted([Self.hit("a.txt").path], permanent: false)
 
-        #expect(names(search) == ["b.txt"])
-        #expect(names(front) == ["a.txt"])
+        #expect(names(first) == ["b.txt"])
+        #expect(names(second).isEmpty)
+        #expect(names(folder) == ["a.txt"])
     }
 
     /// The narrowness control: a listing that re-lists or re-gathers itself is left to do so, and
@@ -298,9 +301,9 @@ struct SearchHitDeleteTests {
         ] {
             let pane = Self.compositePane([])
             pane.panel = Self.results([Self.hit("a.txt")], at: path)
-            pane.dropDeletedSearchHits([Self.hit("a.txt").path], from: pane.tabs[0], trashed: true)
+            pane.noteSearchHitsDeleted([Self.hit("a.txt").path], permanent: false)
             #expect(names(pane.tabs[0]) == ["a.txt"], "\(path.backend)")
-            #expect(pane.tabs[0].trashedSearchHits.isEmpty, "\(path.backend)")
+            #expect(pane.tabs[0].departedSearchHits.isEmpty, "\(path.backend)")
         }
     }
 
@@ -310,8 +313,8 @@ struct SearchHitDeleteTests {
     func newHitsForgetTrashed() {
         let pane = Self.compositePane([Self.hit("a.txt")])
         let tab = pane.tabs[0]
-        pane.dropDeletedSearchHits([Self.hit("a.txt").path], from: tab, trashed: true)
-        #expect(!tab.trashedSearchHits.isEmpty)
+        pane.noteSearchHitsDeleted([Self.hit("a.txt").path], permanent: false)
+        #expect(!tab.departedSearchHits.isEmpty)
 
         pane.record(
             PanelViewController.ResultsPresentation(
@@ -324,13 +327,13 @@ struct SearchHitDeleteTests {
             on: tab
         )
 
-        #expect(tab.trashedSearchHits.isEmpty)
+        #expect(tab.departedSearchHits.isEmpty)
     }
 }
 
 /// A disk the test can put things back on: a delete takes a path off it, and ⌘Z is the test putting
 /// the entry back. `stat` answers from what is on it, which is what the pane's reconcile reads.
-private final class SnapshotDisk: VFSBackend, @unchecked Sendable {
+final class SnapshotDisk: VFSBackend, @unchecked Sendable {
     let id = VFSBackendID.local
     let capabilities: VFSCapabilities = [.read, .write, .trash]
 

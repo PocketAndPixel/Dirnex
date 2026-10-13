@@ -63,9 +63,10 @@ extension PanelViewController {
     /// the tab may have gone stale while inactive (nothing watches an inactive tab). A virtual
     /// results tab has no directory to re-list; its snapshot stands until the tab is closed.
     private func refreshActiveDirectory() {
-        // A search tab's snapshot stands, except for hits it sent to the Trash: ⌘Z refreshes only
-        // the tabs on screen, so one undone while this tab sat in the background comes back here.
-        reconcileTrashedSearchHits()
+        // A search tab's snapshot stands, except for hits that left it by a delete or a move: ⌘Z
+        // refreshes only the tabs on screen, so one undone while this tab sat in the background
+        // comes back here.
+        reconcileDepartedSearchHits()
         // A tree tab re-lists every level it holds and re-arms its multi-path watcher — the flat
         // re-list below would refresh only the root and leave expanded children stale (PLAN.md §M15).
         if panel.isTree {
@@ -179,7 +180,7 @@ extension PanelViewController {
         duplicate.searchOrigin = currentTab.searchOrigin
         duplicate.customTitle = currentTab.customTitle
         duplicate.titleBeforeEdit = currentTab.titleBeforeEdit
-        duplicate.trashedSearchHits = currentTab.trashedSearchHits
+        duplicate.departedSearchHits = currentTab.departedSearchHits
         return duplicate
     }
 

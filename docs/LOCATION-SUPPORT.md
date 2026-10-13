@@ -186,7 +186,7 @@ rather than per fetch (docs/NOTES.md ▸ iCloud Photos). It rides the remote siz
 |---|---|---|---|---|---|---|---|---|---|---|
 | Copy `F5` (source) | yes | yes | yes, limited<sup>g</sup> | yes | yes | yes | no<sup>h</sup> | yes | yes | yes |
 | Copy `F5` (destination) | yes | yes | yes, limited<sup>g</sup> | yes | yes | yes | no<sup>h</sup> | no<sup>jjj</sup> | n/a | n/a |
-| Move `F6` | yes | yes | no<sup>g</sup> | yes | yes | yes, limited<sup>i</sup> | no<sup>h</sup> | no<sup>jjj</sup> | yes | yes |
+| Move `F6` | yes | yes | no<sup>g</sup> | yes | yes | yes, limited<sup>i</sup> | no<sup>h</sup> | no<sup>jjj</sup> | yes<sup>aac</sup> | yes |
 | Copy between two different accounts | yes | yes | — | yes | yes | yes | — | yes | — | — |
 | Copy **inside one account**, without the bytes crossing this Mac | n/a | n/a | n/a | yes, limited<sup>bbb</sup> | **no**<sup>bbb</sup> | yes | — | n/a | — | — |
 | Copy / paste `⌘C` `⌘V` | yes | yes | yes<sup>j</sup> | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>jjj</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
@@ -255,9 +255,13 @@ Top-level archives only.
 <sup>aac</sup> Gated per **row**, like <sup>ee</sup>: each hit deletes the way the folder it lives in
 does (`DeleteRouting`), so a local hit goes to the Trash and a hit on a server is the confirmed
 permanent delete. A set mixing the two is deleted for good, after the confirmation. A hit inside an
-archive is refused. The deleted rows leave the results at once, and ⌘Z puts a trashed hit's row
-back with the file. Search hits and Recents only since 2026-10-14; the iCloud Drive row always
-could. Verified live on local hits; a server's hits by tests only.
+archive is refused. A deleted or **moved** hit leaves every results tab showing it, in either
+pane — a move as soon as its job finishes, and only for the items that really moved — and ⌘Z puts
+a trashed or moved hit's row back with the file, for a hit on this Mac. A hit on a server is not
+followed — an undo that puts the file back leaves the row gone — because the check would cost a
+round trip per hit on every refresh. A rename that
+had to run as a job renames the row. Search hits and Recents only since 2026-10-14; the iCloud
+Drive row always could. Verified live on local hits; a server's hits by tests only.
 
 <sup>o</sup> Two halves, and they meet on a cloud mount. **Put Back** works for anything Finder
 trashed to `~/.Trash`, a volume's `.Trashes`, or a Google Drive mount's `.Trash`, and — since M26
