@@ -126113,7 +126113,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "마크, 모든 것, 전체"
+            "value": "표시, 마크, 모든 것, 전체"
           }
         },
         "nl": {
@@ -126293,7 +126293,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "wildcard, glob, mark"
+            "value": "와일드카드, glob, 표시"
           }
         },
         "nl": {
