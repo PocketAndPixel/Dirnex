@@ -173,7 +173,9 @@ extension PanelViewController {
         duplicate.hasLoaded = true
         duplicate.searchQuery = currentTab.searchQuery
         duplicate.searchScope = currentTab.searchScope
+        duplicate.searchOrigin = currentTab.searchOrigin
         duplicate.customTitle = currentTab.customTitle
+        duplicate.titleBeforeEdit = currentTab.titleBeforeEdit
         return duplicate
     }
 

@@ -13680,6 +13680,43 @@ while its field was focused.
   an `NSHostingController` and a vertical `TextField` focused. Composing, a posted Escape left the
   window up; with plain text typed, the next one closed it. The physical keypress was left to Oleg.
 
+**2026-10-14: a search's conditions can be changed from its results.** Asked for with a screenshot
+of a "test" results tab. ⌥F7 on a tab of search hits now opens Find Files filled in with that
+search, and Find runs the edited search back into the same tab. Total Commander's Alt+F7 does the
+same from its results. Before, ⌥F7 there opened an empty dialog scoped to Home. Clicking the path
+bar's "Results for …" label does the same as ⌥F7.
+
+- **Oleg chose both forks:** the hits are replaced in place rather than opened in a new tab (`+`
+  already copies a results tab, for keeping the old hits), and an edit takes a saved search's name
+  off the tab. Save Search… offers that name again, so updating the saved search goes through the
+  existing replace confirmation. Running the search again unchanged keeps the name, which is also
+  how the sidebar recognizes a saved search's tab.
+- **The trap was the dialog's fields.** A results tab's path is `search:/…`, which
+  `SearchFields.answerable(by:)` answers with the listing set, so a dialog built from it hides
+  Content and Tags and the edited search silently drops them. `SearchPlace` (core) turns what the
+  tab stored back into the real folder and the "This Folder or everything" choice, and is also what
+  ⌥F7 now runs a fresh search through, so the two directions have one definition. The tab now keeps
+  the folder ⌥F7 was pressed in (`searchOrigin`), since an everywhere scope no longer names it.
+- **The hits land in the tab that was edited, found by identity.** A content search can take
+  seconds, so the user may have switched tabs; a background tab is updated without being brought
+  forward. A tab closed or navigated off to a folder meanwhile is no longer the search, and the hits
+  open a tab of their own.
+- **The dialog never widens an edited search.** The Kind menu holds one kind and Size four
+  thresholds, so a query holding more (only a hand-written saved search could) gets an extra item
+  naming it, rather than opening on "Any". One new string, the label's tooltip "Edit this search",
+  in all 13 languages.
+- `SearchPlaceTests` (core) and `SearchEditTests` (app) pin it. The round trip from query to dialog
+  and back is tested over every menu value, and the landing in place, in a background tab and in a
+  departed one. Reverting the walk rule, the extra item or the title rule each fails its tests.
+- **Verified live** on the Debug build, launched by path with the release copy quit, on the Spotlight
+  route: ⌥F7 on a results tab reopened "dirnex" with This Folder (“translations”) rather than Home;
+  a click on "Results for “test”" in `swtest` opened the dialog on "test", and changing it to "dtest"
+  replaced the 5 hits with 1 in the same tab, the label and chip following. **Inside a zip** (the
+  walk route), "text" found both members; ⌥F7 reopened it without the Content and Tags rows and
+  with the second option reading "All of “swtest copy.zip”", selected because at the archive root
+  both options search the same thing; "text2" then replaced the 2 hits with 1 in the same tab.
+  Servers and Photos take the same walk route and are covered by tests only.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

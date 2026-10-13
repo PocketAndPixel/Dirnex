@@ -249,6 +249,12 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   accessibility hit test at those points answers its `AXTextArea` (pinned in `MultiLineFieldTests`).
   Typing by `element_index` and `app_click` by `element_index` both worked. Neither moved the window's
   first responder, though, so a focus ring that should follow the click can't be checked this way.
+- **A background `app_screenshot` taken right after an action can show the window as it was before
+  it.** Seen on 2026-10-14 checking the search edit: after Find, the capture still drew the pane's
+  old folder while the same call's accessibility summary already named the new results tab, and a
+  second capture a moment later drew it. The next Find came back with image *and* summary both
+  stale — there the async search had simply not landed yet. Either way the first capture said the
+  action did nothing; take another before believing it.
 - **computer-use reports `AXError: failure` for a button that opens a sheet, and the sheet is up.**
   Seen twice on 2026-10-01 pressing Report a Bug…'s *Show What Will Be Sent…*: the AXPress came back
   as a failure each time, and a screenshot showed the preview sheet open. The press waits for an

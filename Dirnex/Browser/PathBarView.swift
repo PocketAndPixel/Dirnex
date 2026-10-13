@@ -18,6 +18,10 @@ protocol PathBarViewDelegate: AnyObject {
     /// rather than done here for the reason at the top of this file: the bar states intent, and
     /// which pane a place opens in is the pane's business, not the bar's.
     func pathBarDidRequestPlaces(_ bar: PathBarView)
+    /// A search snapshot's "Results for …" label was clicked — the pane should open Find Files on
+    /// the search behind it. Reported for the same reason as the glyph: whether this tab has a
+    /// search to edit is the pane's to know.
+    func pathBarDidRequestSearchEdit(_ bar: PathBarView)
     /// Text editing began — the pane should become the active one.
     func pathBarDidBeginEditing(_ bar: PathBarView)
     /// Directory names contained directly in `directory`, for path completion. Called
@@ -246,6 +250,11 @@ final class PathBarView: NSView, NSTextFieldDelegate {
     @objc func showPlaces(_ sender: Any?) {
         delegate?.pathBarDidRequestPlaces(self)
     }
+
+    /// The search label was clicked. Internal for the same reason as `showPlaces`.
+    @objc func requestSearchEdit(_ sender: Any?) {
+        delegate?.pathBarDidRequestSearchEdit(self)
+    }
 }
 
 // MARK: - Crumb row installation
@@ -320,16 +329,30 @@ extension PathBarView {
     /// you clicked and the place you landed carry one mark. It rides in a nested stack rather than
     /// going straight into `crumbStack`: that one is spaced at 1 pt for the `›` separators, which
     /// would leave the icon touching its text.
-    func installVirtualLabel(_ text: String, symbolNamed symbolName: String) {
+    ///
+    /// `editsSearch` makes the label itself a button onto the search behind a results tab, drawn
+    /// exactly as the plain label is — a borderless button in the crumbs' own style, since a crumb
+    /// is already this row's way of saying "click here".
+    func installVirtualLabel(
+        _ text: String,
+        symbolNamed symbolName: String,
+        editsSearch: Bool = false
+    ) {
         clearCrumbStack()
         let color: NSColor = isActive ? .labelColor : .secondaryLabelColor
 
         let glyph = makePlacesButton(named: symbolName, describedAs: text, tint: color)
 
-        let label = NSTextField(labelWithString: text)
-        label.font = .boldSystemFont(ofSize: NSFont.smallSystemFontSize)
-        label.textColor = color
-        label.lineBreakMode = .byTruncatingTail
+        let label: NSControl
+        if editsSearch {
+            label = makeSearchEditLabel(text, color: color)
+        } else {
+            let field = NSTextField(labelWithString: text)
+            field.font = .boldSystemFont(ofSize: NSFont.smallSystemFontSize)
+            field.textColor = color
+            field.lineBreakMode = .byTruncatingTail
+            label = field
+        }
         // Like the crumb row, the label truncates within the pane rather than widening it
         // past the user's divider — resist below the split items' 250 holding priority.
         label.setContentCompressionResistancePriority(

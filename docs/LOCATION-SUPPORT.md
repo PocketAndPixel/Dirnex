@@ -596,12 +596,21 @@ values, with the JSON tree's rules.
 | Server-side walk (one request, not one per folder) | n/a | n/a | n/a | yes, limited<sup>dd</sup> | n/a<sup>ss</sup> | yes | n/a | no<sup>nnn</sup> | — | — |
 | Live progress + Stop | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
 | Save the search to the sidebar, re-run later | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| Edit the search's conditions and run it again in the same tab<sup>aab</sup> | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
 
 <sup>z</sup> Deliberate: the rows are buckets, and "search every bucket" is a different and far
 more expensive question than the one ⌥F7 asks (PLAN.md §M22).
 
 <sup>aa</sup> A virtual listing has no directory, so the scope falls back to **Home** — the hits
-are real files, but the pane you were looking at is not the scope.
+are real files, but the pane you were looking at is not the scope. The exception is a tab of
+**search hits**, where ⌥F7 edits the search behind them instead (<sup>aab</sup>); Recents, the
+Trash and iCloud Drive still fall back to Home.
+
+<sup>aab</sup> ⌥F7 on a tab of search hits, or a click on its "Results for …" label, opens Find
+Files filled in with that search and asking about the folder it ran in — never the tab's own
+`search:` path, whose fields would hide Content and Tags and drop them from the edit
+(`SearchPlace`). Find replaces the hits in that tab. Verified live locally and inside a zip; on a
+server and in Photos, which take the same walk route as the zip, by tests only.
 
 <sup>bb</sup> Impossible without downloading everything under the scope in order to grep it.
 `SearchFields` **hides** the field rather than accepting it and skipping the clause, which would

@@ -72,6 +72,14 @@ final class PanelTab {
     /// a results tab (search results aren't persisted), so this is never encoded.
     var searchQuery: FileQuery?
     var searchScope: VFSPath?
+    /// The folder ⌥F7 was pressed in, so editing the search can offer it again as "This Folder"
+    /// (`SearchPlace`). Only an *everything* search needs it — that scope no longer names a folder —
+    /// and a saved search or a tag's search has none. Session-scoped like the pair above.
+    var searchOrigin: VFSPath?
+    /// The chip label an edit took away: a saved search's name, which stops describing the tab once
+    /// its conditions change. Kept so Save Search… offers that name again, and saving under it goes
+    /// through the replace confirmation rather than leaving the saved search behind. Session-scoped.
+    var titleBeforeEdit: String?
     /// The Git working tree this tab's directory belongs to, and the snapshot its rows are painted
     /// from (PLAN.md §M6) — both `nil` outside a repository, and the snapshot also `nil` until the
     /// first `git status` lands. UI-only and session-scoped, like `cursorOnParentRow`: they are
@@ -142,6 +150,8 @@ final class PanelTab {
         customTitle = nil
         searchQuery = nil
         searchScope = nil
+        searchOrigin = nil
+        titleBeforeEdit = nil
         mergedSources = []
     }
 
