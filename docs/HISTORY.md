@@ -13757,6 +13757,39 @@ gray over search results, and Recents too, which rides the same listing. They no
   its row until the search runs again, the queued rename's limit (`substituteSearchHit`); and a
   second tab showing the same hits is not told about a delete in the first.
 
+**2026-10-14: a hit moved with F6 leaves the results too.** Asked for straight after the delete
+entry above, and it closes both of that entry's leftovers. A move is a queued job, so the pane never
+learns how it ended; the window does, when it finalizes the job, with the report's outcomes and no
+tab attached. It now hands `SearchSnapshot.changes(made:by:)` to both panes, and each applies them to
+every results tab it has (`applySearchHitChanges`), asking by content rather than by the tab the key
+was pressed in, as NOTES.md ▸ "One rule, many copies" says a window-level handler must.
+
+- **Only what really moved.** An outcome is recorded once the source is gone, and `landedAt` is
+  `nil` for a skipped item, so a Stop, an Abort or a conflict answered with Skip leaves those rows.
+  Pinned against the real `CopyEngine` (a two-hit move with one name already at the destination),
+  not only against a hand-built report.
+- **A move that stays in its own folder is a rename**, the shape a rename takes when it has to run as
+  a job (an S3 prefix, `EXDEV`). Such a row now takes its new name and keeps the cursor. Before, it
+  kept its old name until the search ran again, the limit `substituteSearchHit`'s comment recorded;
+  dropping it would have been worse, since the file is still where it was found.
+- **⌘Z brings the row back**, through the delete's machinery renamed for the job:
+  `trashedSearchHits` became `departedSearchHits`. Only for a hit on this Mac: following one costs a
+  `stat` on every refresh of the tab, a round trip apiece on a server, so a server hit leaves and is
+  not followed.
+- **Deletes now ask by content too.** `noteSearchHitsDeleted` drops the hit from every results tab in
+  both panes rather than only the tab F8 was pressed in. And F6 *into an archive* from a results tab,
+  which trashes the originals through its own loop, now drops them as well.
+- `SearchSnapshotTests` (core) and `SearchHitMoveTests` (app). Reverting the skipped-item rule or the
+  rename rule fails the three core tests for them; following server hits, or dropping the cursor
+  move, fails the two app tests for them. The window's one call is not reachable from a test (no
+  test builds a `BrowserWindowController`), so it was checked live. One full app run failed an
+  unrelated archive-encoding test at its 30 s wait; it passed alone twice and the next full run was
+  green (1591 tests).
+- **Verified live** on the Debug build, launched by path with no other copy running: ⌥F7 for
+  "qzxmoveprobe" over three fixture files, with the other pane on a fixture destination. File ▸ Move
+  to Other Panel moved the first hit there and took its row out of the results; Edit ▸ Undo Move put
+  the file and the row back; Redo took both away again.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

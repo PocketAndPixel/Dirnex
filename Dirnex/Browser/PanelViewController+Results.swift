@@ -86,8 +86,8 @@ extension PanelViewController {
         tab.searchScope = presentation.scope
         tab.searchOrigin = presentation.origin
         tab.customTitle = presentation.title
-        // New hits: what the old ones lost to the Trash is no longer this snapshot's to bring back.
-        tab.trashedSearchHits = [:]
+        // New hits: what left the old ones is no longer this snapshot's to bring back.
+        tab.departedSearchHits = [:]
     }
 
     /// The search matched more than a results tab holds. Shared by a new results tab and an edited
@@ -165,10 +165,9 @@ extension PanelViewController {
     /// may be on a server, where confirming what we just did would be a round trip. Nothing else in
     /// the snapshot moves, so a search that found a hundred files still shows a hundred.
     ///
-    /// The merged Trash and iCloud listings need none of this — both re-gather on refresh — and a
-    /// rename that had to run as a **job** (an S3 prefix, `EXDEV`) is still outside it: the queue
-    /// refreshes both panes when it finishes, which for a search snapshot does nothing, so such a
-    /// hit keeps its old name until the search is run again.
+    /// The merged Trash and iCloud listings need none of this — both re-gather on refresh. A rename
+    /// that had to run as a **job** (an S3 prefix, `EXDEV`) lands through `applySearchHitChanges`
+    /// instead, once the window hears the job finish: it is a move that stayed in its own folder.
     func substituteSearchHit(_ source: VFSPath, renamedTo newName: String) {
         guard panel.path.backend == .search else { return }
         let entries = panel.model.listing.entries
@@ -183,51 +182,71 @@ extension PanelViewController {
         reloadEverything()
     }
 
-    /// Take the hits a delete in `tab` removed out of its snapshot — the rename's twin above, for
-    /// the same reason: the snapshot cannot re-list, so a deleted hit would otherwise go on showing
-    /// a file that is no longer there.
+    /// Apply what a delete or a move did to search hits, in every results tab of this pane that
+    /// holds them — the rename's twin above, for the same reason: a snapshot cannot re-list, so a
+    /// hit that left would go on showing a file that is no longer there. A move that stayed in the
+    /// hit's own folder is a queued rename, and the row takes the new name (`SearchSnapshot`).
     ///
-    /// `tab` is the tab the delete was started in, found by identity rather than as "the active
-    /// tab", which it need not be by the time a pass over a server comes back. Rows inside an
-    /// expanded folder are not hits, so they are left to the tree's re-list of that folder.
+    /// Every results tab rather than the one the gesture started in, because the question is about
+    /// the *file*. A move reaches the window only when its job finishes, with no tab attached, and a
+    /// delete over a server takes long enough to switch tabs under; any tab showing the hit is
+    /// showing a file that is not there. Rows inside an expanded folder are not hits, and are left
+    /// to the tree's re-list of that folder.
     ///
-    /// What went to the Trash is remembered (`PanelTab.trashedSearchHits`), so ⌘Z can bring its row
-    /// back; a permanent delete has nothing to come back from.
-    func dropDeletedSearchHits(_ paths: [VFSPath], from tab: PanelTab, trashed: Bool) {
-        guard tab.panel.path.backend == .search, tabs.contains(where: { $0 === tab }) else { return }
-        let entries = tab.panel.model.listing.entries
-        let remaining = SearchSnapshot.removing(paths, from: entries)
-        guard remaining.count != entries.count else { return }
-        if trashed {
-            let removed = Set(paths)
-            for entry in entries where removed.contains(entry.path) {
-                tab.trashedSearchHits[entry.path] = entry
+    /// A hit that can come back is remembered (`PanelTab.departedSearchHits`), so ⌘Z restores its
+    /// row: when `canReturn` — a Trash pass or a move, never a permanent delete — and only on this
+    /// Mac, because following it costs a `stat` per hit on every refresh of the tab, which on a
+    /// server would be a round trip apiece.
+    func applySearchHitChanges(_ changes: [SearchSnapshot.Change], canReturn: Bool) {
+        guard !changes.isEmpty else { return }
+        for tab in tabs where tab.panel.path.backend == .search {
+            let cursor = tab.panel.currentEntry?.path
+            guard let applied = SearchSnapshot.applying(changes, to: tab.panel.model.listing.entries)
+            else { continue }
+            if canReturn {
+                for entry in applied.departed where entry.path.backend == .local {
+                    tab.departedSearchHits[entry.path] = entry
+                }
             }
+            // A renamed row re-sorts under its new name; the cursor goes with it, as it does after
+            // an in-place rename.
+            let renamedCursor = changes.lazy.compactMap { change -> VFSPath? in
+                guard case let .moved(source, landing) = change, source == cursor else { return nil }
+                return landing
+            }.first
+            installSearchHits(applied.entries, in: tab, cursorOn: renamedCursor)
         }
-        installSearchHits(remaining, in: tab)
     }
 
-    /// Show again the hits this tab sent to the Trash that are back where they were, and drop any
-    /// that went again — so ⌘Z after a delete in search results restores the row along with the
-    /// file, and ⇧⌘Z takes both away again (`SearchSnapshot`).
+    /// Tell every results tab in the window what a delete took away: this pane's, and the other
+    /// pane's, which may be showing the same hits (`applySearchHitChanges`).
+    func noteSearchHitsDeleted(_ paths: [VFSPath], permanent: Bool) {
+        let changes = paths.map(SearchSnapshot.Change.removed)
+        applySearchHitChanges(changes, canReturn: !permanent)
+        host?.panelCounterpart(of: self)?.applySearchHitChanges(changes, canReturn: !permanent)
+    }
+
+    /// Show again the hits that left this tab and are back where they were, and drop any that went
+    /// again — so ⌘Z after a delete or a move restores the row along with the file, and ⇧⌘Z takes
+    /// both away again (`SearchSnapshot`).
     ///
     /// Asked of the disk rather than of the undo record, which is what makes an undo that only put
-    /// back some of the items land right, and it costs nothing where nothing was trashed. Runs on
-    /// every refresh of the active search tab, and when the tab is switched back to — undo refreshes
-    /// only the tabs on screen.
-    func reconcileTrashedSearchHits() {
+    /// back some of the items land right, and it costs nothing where nothing departed. Runs on every
+    /// refresh of the active search tab, and when the tab is switched back to — undo refreshes only
+    /// the tabs on screen.
+    func reconcileDepartedSearchHits() {
         let tab = tabs[activeTabIndex]
-        let trashed = Array(tab.trashedSearchHits.values)
-        guard tab.panel.path.backend == .search, !trashed.isEmpty else { return }
+        let departed = Array(tab.departedSearchHits.values)
+        guard tab.panel.path.backend == .search, !departed.isEmpty else { return }
         let backend = backend
         Task {
             let present = await BlockingWork.run {
-                SearchSnapshot.present(trashed.map(\.path), using: backend)
+                SearchSnapshot.present(departed.map(\.path), using: backend)
             }
             guard tab.panel.path.backend == .search, tabs.contains(where: { $0 === tab }),
                   let entries = SearchSnapshot.reconciled(
                       tab.panel.model.listing.entries,
-                      trashed: trashed,
+                      departed: departed,
                       present: present
                   )
             else { return }
@@ -237,12 +256,19 @@ extension PanelViewController {
 
     /// Replace `tab`'s hits in place, keeping the cursor and marks by identity. The active tab is
     /// redrawn; a background one renders what it holds when it is switched back to.
-    private func installSearchHits(_ entries: [FileEntry], in tab: PanelTab) {
+    private func installSearchHits(
+        _ entries: [FileEntry],
+        in tab: PanelTab,
+        cursorOn target: VFSPath? = nil
+    ) {
         let isActive = tab === tabs[activeTabIndex]
         // The table's selection is the live cursor until its change notification lands, and the
         // re-anchor below starts from the model's.
         if isActive { reconcileCursorFromTable() }
         tab.panel.setListing(DirectoryListing(path: tab.panel.path, entries: entries))
+        if let target, let index = tab.panel.displayedIndex(ofID: target) {
+            tab.panel.moveCursor(to: index)
+        }
         guard isActive else { return }
         reloadEverything()
     }

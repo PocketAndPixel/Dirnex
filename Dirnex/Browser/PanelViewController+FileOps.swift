@@ -331,9 +331,6 @@ extension PanelViewController {
     /// same fallback holding paths alone.
     func runDelete(_ paths: [VFSPath], permanent: Bool) {
         let backend = backend
-        // The tab the delete was started in, by identity: a pass over a server takes long enough to
-        // switch tabs under, and its search hits are the ones that must go.
-        let tab = tabs[activeTabIndex]
         Task {
             let outcome = await BlockingWork.run {
                 DeletePass.run(paths, using: backend, permanent: permanent)
@@ -341,7 +338,7 @@ extension PanelViewController {
 
             panel.clearSelection()
             // A search snapshot re-lists nothing, so the refresh below leaves it alone.
-            dropDeletedSearchHits(outcome.deleted(from: paths), from: tab, trashed: !permanent)
+            noteSearchHitsDeleted(outcome.deleted(from: paths), permanent: permanent)
             refreshCurrentDirectory()
             focusTable()
             // Permanent delete is irreversible and never journaled; Trash is restorable, and a
@@ -430,10 +427,10 @@ extension PanelViewController {
             reloadICloudDrive(selecting: target)
             return
         }
-        // A search snapshot keeps the hits it was given, except the ones this pane sent to the Trash,
+        // A search snapshot keeps the hits it was given, except the ones the app trashed or moved,
         // which ⌘Z may have put back (`+Results`). Then on to the tree, which still re-lists any
         // folder expanded under a hit.
-        reconcileTrashedSearchHits()
+        reconcileDepartedSearchHits()
         // A tree spans several directories, and an operation the app just performed (a rename, a
         // New Folder, a delete) can land in a child the *root* re-list below would never touch — so
         // the display would go stale until an FSEvents ping caught up, and the cursor would never
