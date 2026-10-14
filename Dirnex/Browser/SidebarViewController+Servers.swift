@@ -80,7 +80,7 @@ extension SidebarViewController {
     @objc private func connectServerItem(_ sender: NSMenuItem) {
         guard let name = sender.representedObject as? String,
               let server = ServerConnectionStore.load().connection(named: name) else { return }
-        delegate?.sidebar(self, didActivateServer: server)
+        delegate?.sidebar(self, didActivateServer: server, inNewTab: false)
     }
 
     @objc private func editServerItem(_ sender: NSMenuItem) {

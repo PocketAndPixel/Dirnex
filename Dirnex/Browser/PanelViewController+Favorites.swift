@@ -137,15 +137,22 @@ extension PanelViewController {
     /// a path belonging to another — a plausible listing under the wrong name, which is the quiet
     /// direction. A remote pin written before the endpoint existed lands there too, and fails the
     /// way it always has: `serverNotConnected`, naming the account.
-    func jumpToFavorite(_ entry: FavoriteEntry) {
+    ///
+    /// `inNewTab` (a sidebar row picked with ⌘) opens the pin in a new tab instead, and the endpoint
+    /// goes on *that* tab: the active one is being left as it is, connection and all.
+    func jumpToFavorite(_ entry: FavoriteEntry, inNewTab: Bool = false) {
         // A pinned folder can outlive the directory it points at; catch that here rather than
         // dropping the user onto a load-failure sheet, and offer to unpin the dead entry.
         if entry.path.backend == .local, !directoryExists(entry.path) {
             presentMissingFavoriteEntry(entry.path)
             return
         }
-        recordPendingConnection(for: entry)
-        navigate(to: entry.path)
+        if inNewTab {
+            openInNewTab(entry.path, pendingConnection: pendingConnection(for: entry))
+        } else {
+            recordPendingConnection(for: entry)
+            navigate(to: entry.path)
+        }
         focusTable()
     }
 
@@ -161,11 +168,19 @@ extension PanelViewController {
     /// from "it does not" without reading the tab back.
     @discardableResult
     func recordPendingConnection(for entry: FavoriteEntry) -> ServerEndpoint? {
+        guard let endpoint = pendingConnection(for: entry) else { return nil }
+        tabs[activeTabIndex].pendingConnection = endpoint
+        return endpoint
+    }
+
+    /// What `entry` has to reconnect before it can list, or `nil` when it needs nothing — the
+    /// decision `recordPendingConnection` records, on its own for a jump into a new tab, which hands
+    /// it to that tab instead of to the active one.
+    func pendingConnection(for entry: FavoriteEntry) -> ServerEndpoint? {
         guard case let .connection(endpoint) = TabRestorePolicy.requirement(
             for: entry.path,
             endpoint: entry.serverEndpoint
         ) else { return nil }
-        tabs[activeTabIndex].pendingConnection = endpoint
         return endpoint
     }
 

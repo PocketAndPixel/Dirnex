@@ -121,7 +121,16 @@ extension PanelViewController {
     ///
     /// `activate` switches to the new tab (loading it) when `true`; when `false` the tab is
     /// inserted in the background and the currently shown tab (e.g. the search results) stays put.
-    func openInNewTab(_ path: VFSPath, activate: Bool = true) {
+    ///
+    /// `pendingConnection` is what the tab has to reconnect before it can list — a pin on a server
+    /// account opened from the sidebar with ⌘. It is set on the new tab before anything loads it,
+    /// because the load is where it is read (`canListAfterReconnecting`); recorded afterwards, it
+    /// would land on the tab the user was leaving.
+    func openInNewTab(
+        _ path: VFSPath,
+        activate: Bool = true,
+        pendingConnection: ServerEndpoint? = nil
+    ) {
         captureColumnLayout()
         let tab = PanelTab(
             path: path,
@@ -132,6 +141,7 @@ extension PanelViewController {
             columns: tabs[activeTabIndex].columnLayout
         )
         tab.viewMode = tabs[activeTabIndex].viewMode
+        tab.pendingConnection = pendingConnection
         tabs.insert(tab, at: activeTabIndex + 1)
         if activate {
             activeTabIndex += 1
@@ -140,6 +150,16 @@ extension PanelViewController {
             refreshTabBar()
         }
         persistState()
+    }
+
+    /// Show `path` in the active tab, or — for a sidebar place picked with ⌘ — in a new tab beside
+    /// it, leaving the active one where it was.
+    func navigate(to path: VFSPath, inNewTab: Bool) {
+        if inNewTab {
+            openInNewTab(path)
+        } else {
+            navigate(to: path)
+        }
     }
 
     /// Open a new tab beside the current one, showing the same directory and inheriting

@@ -332,20 +332,38 @@ private final class NotificationCounter: @unchecked Sendable {
 private final class CloudOpenRecorder: SidebarViewControllerDelegate {
     var events: [String] = []
 
-    func sidebar(_ sidebar: SidebarViewController, didActivate path: VFSPath) { events.append(
-        path.path
-    ) }
-    func sidebarDidActivateICloud(_ sidebar: SidebarViewController) { events.append("icloud") }
-    func sidebarDidActivatePhotos(_ sidebar: SidebarViewController) { events.append("photos") }
+    func sidebar(_ sidebar: SidebarViewController, didActivate path: VFSPath, inNewTab: Bool) {
+        events.append(path.path)
+    }
 
-    func sidebar(_ sidebar: SidebarViewController, didActivateFavorite entry: FavoriteEntry) {}
+    func sidebarDidActivateICloud(_ sidebar: SidebarViewController, inNewTab: Bool) {
+        events.append("icloud")
+    }
+
+    func sidebarDidActivatePhotos(_ sidebar: SidebarViewController, inNewTab: Bool) {
+        events.append("photos")
+    }
+
+    func sidebar(
+        _ sidebar: SidebarViewController,
+        didActivateFavorite entry: FavoriteEntry,
+        inNewTab: Bool
+    ) {}
     func sidebar(_ sidebar: SidebarViewController, didActivateSavedSearch savedSearch: SavedSearch) {}
     func sidebarDidActivateRecents(_ sidebar: SidebarViewController) {}
     func sidebarDidActivateTrash(_ sidebar: SidebarViewController) {}
     func sidebarDidRequestEmptyTrash(_ sidebar: SidebarViewController) {}
-    func sidebar(_ sidebar: SidebarViewController, didActivateServer server: ServerConnection) {}
+    func sidebar(
+        _ sidebar: SidebarViewController,
+        didActivateServer server: ServerConnection,
+        inNewTab: Bool
+    ) {}
     func sidebar(_ sidebar: SidebarViewController, didEditServer server: ServerConnection) {}
-    func sidebar(_ sidebar: SidebarViewController, didActivateVault vault: VaultLocation) {}
+    func sidebar(
+        _ sidebar: SidebarViewController,
+        didActivateVault vault: VaultLocation,
+        inNewTab: Bool
+    ) {}
     func sidebar(_ sidebar: SidebarViewController, didRequestLockOf vault: VaultLocation) {}
     func sidebar(_ sidebar: SidebarViewController, didRequestRenameOf vault: VaultLocation) {}
     func sidebar(_ sidebar: SidebarViewController, didActivateTag tag: FinderTag) {}
