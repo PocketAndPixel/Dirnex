@@ -35,19 +35,24 @@ extension BrowserWindowController {
 // MARK: - SidebarViewControllerDelegate
 
 extension BrowserWindowController: SidebarViewControllerDelegate {
-    /// A sidebar click points the active pane at the chosen place/volume, then hands
-    /// keyboard focus back to that pane so browsing continues without a mouse.
-    func sidebar(_ sidebar: SidebarViewController, didActivate path: VFSPath) {
+    /// A sidebar click points the active pane at the chosen place/volume — or, with ⌘, opens it in a
+    /// new tab of that pane — then hands keyboard focus back to the pane so browsing continues
+    /// without a mouse.
+    func sidebar(_ sidebar: SidebarViewController, didActivate path: VFSPath, inNewTab: Bool) {
         let target = activePanel ?? leftPanel
-        target.navigate(to: path)
+        target.navigate(to: path, inNewTab: inNewTab)
         target.focusTable()
     }
 
     /// A pinned folder opens in the active pane through the pane's own jump — the same funnel the
     /// ⌘F popup uses, so a row and a keystroke cannot come to disagree about what a favorite means,
     /// and so a pin on a server reconnects from either. It focuses the pane itself.
-    func sidebar(_ sidebar: SidebarViewController, didActivateFavorite entry: FavoriteEntry) {
-        (activePanel ?? leftPanel).jumpToFavorite(entry)
+    func sidebar(
+        _ sidebar: SidebarViewController,
+        didActivateFavorite entry: FavoriteEntry,
+        inNewTab: Bool
+    ) {
+        (activePanel ?? leftPanel).jumpToFavorite(entry, inNewTab: inNewTab)
     }
 
     /// A saved search re-runs its query in the active pane, opening the hits in a virtual
@@ -78,17 +83,17 @@ extension BrowserWindowController: SidebarViewControllerDelegate {
     /// loose files plus each app's own document folder (PLAN.md §M9) — then hands focus back for
     /// keyboard browsing. Unlike the Trash it replaces the pane's listing rather than opening a tab
     /// beside it: it is a place people browse repeatedly, and a tab per click would stack up.
-    func sidebarDidActivateICloud(_ sidebar: SidebarViewController) {
+    func sidebarDidActivateICloud(_ sidebar: SidebarViewController, inNewTab: Bool) {
         let target = activePanel ?? leftPanel
-        target.showICloudDrive()
+        target.showICloudDrive(inNewTab: inNewTab)
         target.focusTable()
     }
 
     /// The Photos library opens in the active pane as years, months and originals (PLAN.md §M28),
     /// asking macOS for access on the first click; focus goes back to the pane either way.
-    func sidebarDidActivatePhotos(_ sidebar: SidebarViewController) {
+    func sidebarDidActivatePhotos(_ sidebar: SidebarViewController, inNewTab: Bool) {
         let target = activePanel ?? leftPanel
-        target.showPhotosLibrary()
+        target.showPhotosLibrary(inNewTab: inNewTab)
         target.focusTable()
     }
 
@@ -103,8 +108,20 @@ extension BrowserWindowController: SidebarViewControllerDelegate {
     /// A saved server connects (SFTP) or mounts (SMB) in the active pane and browses it. The
     /// connect/mount is async and, on completion, both navigates *and* focuses the pane itself,
     /// so grabbing focus here (before the connection resolves) would be premature.
-    func sidebar(_ sidebar: SidebarViewController, didActivateServer server: ServerConnection) {
-        (activePanel ?? leftPanel).connect(to: server)
+    ///
+    /// With ⌘ the new tab opens first, as ⌘T would, and the connect lands in it — the way a browser
+    /// opens a tab and then loads the page. Every connect path ends in its own navigation, and some
+    /// pass through a sheet (a password that was never saved, a changed host key), so opening the
+    /// tab up front is what makes all of them land in it; the cost is that a connect that fails or
+    /// is cancelled leaves the tab showing the folder it was opened from.
+    func sidebar(
+        _ sidebar: SidebarViewController,
+        didActivateServer server: ServerConnection,
+        inNewTab: Bool
+    ) {
+        let target = activePanel ?? leftPanel
+        if inNewTab { target.addTab() }
+        target.connect(to: server)
     }
 
     /// A tag row searches for the files carrying it and shows them in the active pane, the way a

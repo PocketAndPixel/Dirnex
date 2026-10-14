@@ -172,7 +172,7 @@ extension SidebarViewController {
 
     @objc private func unlockVaultItem(_ sender: NSMenuItem) {
         guard let vault = vault(from: sender) else { return }
-        delegate?.sidebar(self, didActivateVault: vault)
+        delegate?.sidebar(self, didActivateVault: vault, inNewTab: false)
     }
 
     @objc private func lockVaultItem(_ sender: NSMenuItem) {

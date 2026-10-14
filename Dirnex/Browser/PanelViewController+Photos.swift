@@ -17,10 +17,13 @@ extension PanelViewController {
     /// A refusal is deliberately not handled here: the listing fails with `permissionDenied`, and the
     /// load-failure sheet names Privacy & Security ▸ Photos — the only place it can be changed — with
     /// the same sentence a revoked grant gets later in the session.
-    func showPhotosLibrary() {
+    ///
+    /// `inNewTab` (the row picked with ⌘) opens the library in a new tab, once the question has been
+    /// answered rather than before, so the tab appears with the library in it.
+    func showPhotosLibrary(inNewTab: Bool = false) {
         guard PHPhotoLibrary.authorizationStatus(for: .readWrite) == .notDetermined else {
             PhotosLibraryChangeMonitor.shared.startIfPermitted()
-            navigate(to: Self.photosLibraryRoot)
+            navigate(to: Self.photosLibraryRoot, inNewTab: inNewTab)
             return
         }
         Task { @MainActor [weak self] in
@@ -28,7 +31,7 @@ extension PanelViewController {
             // Before the navigation, so the grant just given reaches every pane already on the
             // library — a tab restored before it — and not only this one.
             PhotosLibraryChangeMonitor.shared.startIfPermitted()
-            self?.navigate(to: Self.photosLibraryRoot)
+            self?.navigate(to: Self.photosLibraryRoot, inNewTab: inNewTab)
             self?.focusTable()
         }
     }

@@ -13949,6 +13949,49 @@ folder already has that mode, so the run skips it and changes only what differs 
   three at `700`, with "Changed 3 items" in the status line. Edit ▸ Undo Change Attributes put back
   644, 755 and 644.
 
+**2026-10-14: ⌘-click or ⌘Return opens a sidebar place in a new tab.** Asked for in one line. A
+plain click still replaces what the active tab shows. With ⌘ the place opens in a new tab of the
+active pane, beside the current one, and that tab is left as it was. ⌘Return is the same for the
+row the keyboard has selected. ⌘ on a header still only folds it, and ⌘ on All Tags… still only
+expands it.
+
+- **The flag travels through the one funnel.** `SidebarViewController.activate(_:inNewTab:)` stays
+  the only switch over places, and the six window verbs whose place replaces a listing carry it:
+  volumes and cloud mounts, favorites, iCloud Drive, Photos, servers and vaults. Recents, the Trash,
+  a saved search and a tag already open a results tab on every click, so ⌘ changes nothing for them.
+- **A ⌘-click is handled in `SidebarTableView.mouseDown`, ahead of `super`.** A single-selection
+  table reads ⌘ as "toggle this row" and would deselect the row being opened, so the row is selected
+  by hand. ⌘Return reaches `keyDown` because Return cannot be bound in the catalog, and no menu item
+  or key monitor claims it. A test pins the menu half.
+- **Each place opens its tab once there is something to show.** A path goes through
+  `navigate(to:inNewTab:)`. iCloud Drive opens through `openResults`, in `showTrash`'s order. Photos
+  opens after the access question is answered, and a vault after it unlocks, so a cancelled
+  passphrase leaves no tab behind. A pin on a server needs its endpoint on the *new* tab before that
+  tab loads, since the load is where it is read; recorded the old way it would land on the tab being
+  left. `openInNewTab` takes it as `pendingConnection`.
+- **A server is the exception.** Its new tab opens first, as ⌘T would, and the connect lands in it,
+  like a browser loading a page in a new tab. Every connect path ends in its own `navigate`, and some
+  pass through a sheet (a password never saved, a changed host key). Making all of them land in a
+  new tab would mean carrying the flag through four request types and SMB. A connect that fails or
+  is cancelled therefore leaves a tab showing the folder it was opened from.
+- `SidebarNewTabTests` (app, 9 tests): ⌘Return and ⌘Enter against plain Return and Enter, a real
+  ⌘-mouse-down on a laid-out sidebar opening a row and selecting it, ⌘ on a header still folding,
+  every place carrying the flag (and none without ⌘), and a pin's endpoint landing on the new tab
+  only. A source-list group row placed *first* answers `row(at:)` with -1 at the middle of its own
+  `rect(ofRow:)` in a headless window, so the header test puts an item above it, as the real sidebar
+  does. Three negative controls in one build each failed their own tests: ignoring ⌘ in `keyDown`,
+  dropping the flag for favorites, and not setting the endpoint on the new tab. Core green (3922
+  tests). The first full app run failed `RemoteDirectorySizeTests` and
+  `ArchiveNameEncodingGestureTests` at their waits, the known load flakes. Both passed alone, and
+  the next full run was green (1619 tests).
+- **Verified live** on the Debug build, launched by path after the running copy had quit, settings
+  backed up and restored around the run. ⌘-click on Downloads opened a third tab listing
+  `~/Downloads`. ⌥⌘S, ↓ to Pictures and ⌘Return opened a fourth. ⌘-click on iCloud Drive opened a
+  fifth with the merged listing. A plain click on Documents then replaced that tab in place, and the
+  tab the first ⌘-click came from still showed its folder with the cursor where it was. Not run
+  live: Photos (a Debug build raises its own access prompt), servers and vaults (both read the
+  Keychain, which prompts for the Debug build's different signature).
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

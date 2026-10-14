@@ -8,9 +8,13 @@ import DirnexCore
 /// window*, where the file it left is the source list's own view code. Every section — favorites,
 /// servers, vaults, tags — states its verbs here, and each is implemented in the matching
 /// `BrowserWindowController+…` extension.
+///
+/// The six verbs whose place *replaces* the active tab's listing carry `inNewTab` — a ⌘-click's or
+/// ⌘Return's request to leave that tab alone and open the place in a new one beside it. The rest
+/// already open a results tab of their own on every activation, so they have nothing to carry.
 @MainActor
 protocol SidebarViewControllerDelegate: AnyObject {
-    func sidebar(_ sidebar: SidebarViewController, didActivate path: VFSPath)
+    func sidebar(_ sidebar: SidebarViewController, didActivate path: VFSPath, inNewTab: Bool)
     /// A pinned folder was picked — open it in the active pane, reconnecting its account first when
     /// the pin is on one (docs/LOCATION-SUPPORT.md ▸ the Favorites row).
     ///
@@ -18,7 +22,11 @@ protocol SidebarViewControllerDelegate: AnyObject {
     /// difference the method exists for: a `VFSBackendID` is an account's *descriptor* and says
     /// nothing about the auth method, so a pin reduced to its path is one that can be drawn and
     /// never opened again after a relaunch.
-    func sidebar(_ sidebar: SidebarViewController, didActivateFavorite entry: FavoriteEntry)
+    func sidebar(
+        _ sidebar: SidebarViewController,
+        didActivateFavorite entry: FavoriteEntry,
+        inNewTab: Bool
+    )
     /// A saved-search row was picked — re-run its query in the active pane and show the hits in
     /// a virtual results panel (PLAN.md §M4 "Saved searches … in the places strip").
     func sidebar(_ sidebar: SidebarViewController, didActivateSavedSearch savedSearch: SavedSearch)
@@ -33,22 +41,30 @@ protocol SidebarViewControllerDelegate: AnyObject {
     /// app's own document folder, the way Finder's iCloud Drive is assembled (PLAN.md §M9). It
     /// carries no payload for the same reason the Trash doesn't: what it opens is a merge, not the
     /// single directory the row's own path names.
-    func sidebarDidActivateICloud(_ sidebar: SidebarViewController)
+    func sidebarDidActivateICloud(_ sidebar: SidebarViewController, inNewTab: Bool)
     /// The Photos row was picked — ask for access if nobody has yet, then browse the library as
     /// folders of originals (PLAN.md §M28). No payload: there is one library.
-    func sidebarDidActivatePhotos(_ sidebar: SidebarViewController)
+    func sidebarDidActivatePhotos(_ sidebar: SidebarViewController, inNewTab: Bool)
     /// "Empty Trash…" was chosen on the Trash row — permanently erase every volume's trash, after
     /// a confirmation naming what will go (PLAN.md §M8).
     func sidebarDidRequestEmptyTrash(_ sidebar: SidebarViewController)
     /// A saved-server row was picked — connect (SFTP) or mount (SMB) it and browse it in the active
     /// pane (PLAN.md §M5 "click → connect/mount + navigate").
-    func sidebar(_ sidebar: SidebarViewController, didActivateServer server: ServerConnection)
+    func sidebar(
+        _ sidebar: SidebarViewController,
+        didActivateServer server: ServerConnection,
+        inNewTab: Bool
+    )
     /// A saved-server's "Edit…" was chosen — re-open the connect prompt prefilled from it.
     func sidebar(_ sidebar: SidebarViewController, didEditServer server: ServerConnection)
     /// A vault row was picked — unlock it (asking for the passphrase) and browse it in the active
     /// pane, or, if it is already unlocked, just go there (PLAN.md §M19). One gesture for both
     /// states because the user's intent is the same either way: *open my vault*.
-    func sidebar(_ sidebar: SidebarViewController, didActivateVault vault: VaultLocation)
+    func sidebar(
+        _ sidebar: SidebarViewController,
+        didActivateVault vault: VaultLocation,
+        inNewTab: Bool
+    )
     /// A vault's "Lock" was chosen — unmount it, moving any pane standing inside it out first.
     func sidebar(_ sidebar: SidebarViewController, didRequestLockOf vault: VaultLocation)
     /// A vault's "Rename…" was chosen, from the context menu or F2 — rename the volume itself,
