@@ -41,6 +41,9 @@ extension PanelViewController {
         /// from an account pane — because what gets corrected is a fact about the endpoint, not about
         /// one bucket.
         let savedServerName: String?
+        /// As `SFTPConnectRequest.inNewTab`. Read by `connectS3` and not by the establishment beneath
+        /// it, which a tree expansion shares and which has no tab to open.
+        var inNewTab = false
         /// Whether this attempt has already been re-aimed at a region the server named. One
         /// correction per connect: a server that keeps redirecting — an endpoint behind something
         /// that answers the probe and the retry differently — would otherwise redirect forever.
@@ -68,7 +71,7 @@ extension PanelViewController {
     func connectS3(_ request: S3ConnectRequest) async -> ConnectServerPrompt.Attempt {
         switch await establishS3Connection(request) {
         case let .connected(location):
-            navigate(to: VFSPath(backend: .s3(location), path: "/"))
+            navigate(to: VFSPath(backend: .s3(location), path: "/"), inNewTab: request.inNewTab)
             return .succeeded
         case .abandoned:
             return .succeeded

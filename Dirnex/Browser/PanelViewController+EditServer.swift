@@ -30,7 +30,11 @@ extension PanelViewController {
     /// show what was typed, and the loss only shows up at the next launch. The old rule survives
     /// where it belongs: a **new** connection still records nothing until it works, so a first
     /// attempt that fails does not litter the sidebar with a row that has never connected.
-    func editServer(_ server: ServerConnection) {
+    ///
+    /// `inNewTab` comes from a saved server picked with ⌘ whose secret was not in the Keychain, which
+    /// falls back to this sheet. The connection opens its tab when it lands, so a cancelled sheet
+    /// leaves none behind; the sidebar's own Edit… never asks for one.
+    func editServer(_ server: ServerConnection, inNewTab: Bool = false) {
         guard let window = view.window else { return }
         ConnectServerPrompt.present(
             over: window,
@@ -38,7 +42,7 @@ extension PanelViewController {
             attempt: { [weak self] form in
                 guard let self else { return .failed(Self.genericConnectError) }
                 if let refusal = commitEdit(form, replacing: server) { return .failed(refusal) }
-                return await apply(form)
+                return await apply(form, inNewTab: inNewTab)
             },
             onSucceeded: { [weak self] in self?.focusTable() }
         )

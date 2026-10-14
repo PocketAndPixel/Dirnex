@@ -13969,11 +13969,19 @@ expands it.
   passphrase leaves no tab behind. A pin on a server needs its endpoint on the *new* tab before that
   tab loads, since the load is where it is read; recorded the old way it would land on the tab being
   left. `openInNewTab` takes it as `pendingConnection`.
-- **A server is the exception.** Its new tab opens first, as ⌘T would, and the connect lands in it,
-  like a browser loading a page in a new tab. Every connect path ends in its own `navigate`, and some
-  pass through a sheet (a password never saved, a changed host key). Making all of them land in a
-  new tab would mean carrying the flag through four request types and SMB. A connect that fails or
-  is cancelled therefore leaves a tab showing the folder it was opened from.
+- **A server opens its tab when the connection lands, as a vault does.** Every connect path ends in
+  its own `navigate`, so the flag rides on the request: `inNewTab` on the SFTP, FTP, S3, S3 account
+  and SMB requests, landing through `navigate(to:inNewTab:)`. The retries after a changed host key,
+  an FTPS certificate and an S3 region or path-style correction copy the request, so they keep it.
+  A saved server whose secret is not in the Keychain falls back to the prefilled sheet, and
+  `editServer` and `apply` carry the flag there too. So a connect that fails, a changed key the user
+  turns down or a cancelled sheet leaves the pane as it was. A first version opened the tab before
+  connecting and left it behind on any of those.
+- **The row's request is built by one pure function.** `connectRequest(for:secret:inNewTab:)` decides
+  which saved servers need the sheet and builds the attempt for the rest, and its twin does the same
+  for the sheet's form. The Keychain is read once per click, where the old switch read it twice.
+  `PanelViewController+Connect.swift` was at 492 lines, so the SFTP half moved first into
+  `+ConnectSFTP.swift`, beside the FTP and S3 halves. SMB got a request struct like the other four.
 - `SidebarNewTabTests` (app, 9 tests): ⌘Return and ⌘Enter against plain Return and Enter, a real
   ⌘-mouse-down on a laid-out sidebar opening a row and selecting it, ⌘ on a header still folding,
   every place carrying the flag (and none without ⌘), and a pin's endpoint landing on the new tab
@@ -13989,8 +13997,26 @@ expands it.
   `~/Downloads`. ⌥⌘S, ↓ to Pictures and ⌘Return opened a fourth. ⌘-click on iCloud Drive opened a
   fifth with the merged listing. A plain click on Documents then replaced that tab in place, and the
   tab the first ⌘-click came from still showed its folder with the cursor where it was. Not run
-  live: Photos (a Debug build raises its own access prompt), servers and vaults (both read the
-  Keychain, which prompts for the Debug build's different signature).
+  live: Photos (a Debug build raises its own access prompt) and vaults (which read the Keychain,
+  and that prompts for the Debug build's different signature).
+- `ServerConnectNewTabTests` (app, 7 tests): every saved server's attempt carries the flag, and only
+  when asked, for all five protocols. Rows whose secret is missing fall back to the sheet, rows that
+  need none connect, a guest share is handed no secret, and the sheet's form carries the flag too.
+  The landing opens the new tab and leaves the old one, and passes a focus row on in place. Three
+  negative controls in one build each failed their own tests: dropping the flag from the row's SFTP
+  attempt, dropping it from the form's SMB attempt, and dropping `focus` in the landing. Core green
+  (3922 tests). Full app runs were not green under the machine's load that evening (load average
+  about 9): each failed `ArchiveNameEncodingGestureTests` at its sheet wait, some also
+  `RemoteDirectorySizeTests` at its 15 s listing wait. A run without the new suite failed the same
+  way, and the flaky suites passed alone with it (32 tests). The landing tests first used loaded
+  panes, and dropped them, since nothing in them reads the table.
+- **Servers verified live** on the Debug build, launched by path after the running copy had quit,
+  settings and `known_hosts` backed up and restored around the run, against the throwaway sshd. No
+  fixture account had a Keychain item, so nothing prompted. ⌥⌘S and ⌘Return on a server whose port
+  was closed raised "Couldn't connect" and left one tab. ⌘Return on a reachable one opened a second
+  tab on its home over SFTP. That showed the ⌘ arrived, and the closed one then failed again with
+  the tab count still two. ⌘Return on a password server with nothing saved opened the prefilled
+  sheet, and Cancel left two tabs. A plain click then connected in the tab it was made in.
 
 ---
 

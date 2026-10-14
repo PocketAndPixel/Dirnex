@@ -243,6 +243,12 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     button. Key equivalents run ahead of `keyDown:`, so the field editor's own "revert the edit"
     never gets the key. Worth stating because the opposite is the natural worry, and it is the
     reason `enableEscapeToCancel` needs no carve-out for a sheet that opens with a field focused.
+- **Background computer-use cannot ⌘-click, so reach a sidebar row's ⌘ gesture by keyboard.** Its
+  `app_click` takes no modifiers. Measured 2026-10-14 checking servers opening in a new tab: View ▸
+  Focus Sidebar, then `down` keys, then `app_key cmd+return` arrived as ⌘Return. Two cautions. Section
+  headers are keyboard stops, so count them or zoom on the sidebar after each key. And a vault row
+  passed on the way opens if ⌘Return lands on it, which reads its passphrase from the Keychain. A
+  plain Return proves nothing about ⌘, so run a case whose result only ⌘ can produce first.
 - **computer-use refuses a key aimed at a point inside a text view, saying it "belongs to a different
   process".** Seen 2026-10-08 on both of Report a Bug…'s text boxes: `app_key tab` at the box's center
   was refused twice, before and after a fix to the boxes' accessibility tree, while the app's own
