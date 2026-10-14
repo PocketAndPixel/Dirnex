@@ -13925,6 +13925,30 @@ is rename on the Total Commander preset. Oleg chose to move F6 with F5 so the tw
   and `x copy.txt` with the right contents. The keys themselves were not pressed: background
   computer use cannot send an F-key, so the menu items stood in for them.
 
+**2026-10-14: Save with only *Apply to enclosed items* ticked gives the folder's mode to everything
+inside.** Asked for with a screenshot of a `700` folder's Permissions tab, the box ticked and Save
+grayed. Save used to need an edit, since a recursive job was only ever the edit. Now the ticked box
+alone lights it, and with nothing edited the job carries the folder's own mode, all twelve bits,
+the way a changed mode already travelled. The target popup still decides which items get it. The
+folder already has that mode, so the run skips it and changes only what differs underneath.
+
+- **An edit on the sheet still travels alone.** Ticking Hidden with the box ticked hides what is
+  inside and leaves each item's mode as it was. Taking the mode along would quietly rewrite the
+  permissions of a tree the user meant to hide. Group, dates and the ACL never travel unedited. The
+  rule is `AttributeApplyJob(from:to:accessControlList:target:)` in the core. The multi-selection
+  sheet is unchanged, since several folders have no single mode to give.
+- `AttributeApplyJobTests` (core, 5 tests): an untouched sheet forces the mode alone, a flag or ACL
+  edit does not drag the mode along, and a run over a real tree gives the mode to the five items
+  inside while the root stays as it was. `AttributesRecursiveSaveTests` (app, 2 tests) clicks the
+  real checkbox and checks Save and the job it hands over. Both app tests fail with the sheet file
+  put back to before. Core green (3922 tests). The first full app run failed `RemoteDirectorySizeTests`
+  at its listing wait, the known load flake. It passed alone, and the next full run was green (1610 tests).
+- **Verified live** on the Debug build, launched by path with no other copy running, settings backed
+  up and restored around the run. On a `700` folder holding `a.txt` (644), `sub` (755) and
+  `sub/b.txt` (644), ticking the box lit Save, Save asked "Change 4 items?", and Apply left all
+  three at `700`, with "Changed 3 items" in the status line. Edit ▸ Undo Change Attributes put back
+  644, 755 and 644.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
