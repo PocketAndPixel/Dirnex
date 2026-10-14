@@ -84,7 +84,7 @@ protocol FileTableViewInput: AnyObject {
 /// default table behavior. Arrow keys and mouse selection fall through to `super`,
 /// which moves the cursor (the table's own selection); everything else — navigation,
 /// marking, and type-to-filter — is routed to the controller via `FileTableViewInput`.
-final class FileTableView: NSTableView {
+final class FileTableView: StripedTableView {
     weak var inputDelegate: FileTableViewInput?
 
     /// The row under the pointer, or `-1`. View-level state on purpose: it is *where the mouse is*,

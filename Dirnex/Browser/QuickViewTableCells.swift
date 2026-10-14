@@ -123,7 +123,7 @@ final class QuickViewTableCell: NSTableCellView {
 /// The table itself, which puts the selected rows on the pasteboard as tab-separated text — what a
 /// spreadsheet reads back into cells.
 @MainActor
-final class QuickViewDataTableView: NSTableView, NSMenuItemValidation {
+final class QuickViewDataTableView: StripedTableView, NSMenuItemValidation {
     var copiedText: ((IndexSet) -> String?)?
     /// Where ⌘C writes. The general pasteboard, except in a test, which must not overwrite the
     /// clipboard of whoever is running it.
