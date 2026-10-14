@@ -14018,6 +14018,39 @@ expands it.
   the tab count still two. ⌘Return on a password server with nothing saved opened the prefilled
   sheet, and Cancel left two tabs. A plain click then connected in the tab it was made in.
 
+**2026-10-14: `RemoteDirectorySizeTests` waits out the start of a full run.** The entry above met it
+twice: in several full runs all five tests failed at the pane fixture's 15 s listing wait, ten
+issues at its two lines, and the suite passed alone every time. The wait was the suite's own copy
+of the poll, at half the shared `settleUntil`'s 30 s.
+
+- **Measured before changing a number.** Alone, the listing lands in 25 ms. In seven full runs it
+  landed **18.2–30.5 s** in, so the old 15 s would have failed every one. Three meters showed why:
+  the cooperative pool was never more than 53 ms late, the main actor went **12.4–20.8 s** without
+  one poll waking, and the fake backend's first `listDirectory` came 7–21 s in. The pane's listing
+  `Task` could not even start until the main thread came free. All five tests' listings landed in
+  the same instant each run. It is the main-actor work every suite queues as a run starts, and
+  nothing in this suite.
+- **The profile named the wrong suite, and a control caught it.** `sample` on the test host during
+  the stall put 40% of main-thread samples in `MultiLineFieldTests.looksLikeAField`, which reads
+  every pixel of two captures through `colorAt(x:y:)` on the main actor. With that suite skipped,
+  the listing still landed at 30.1–30.5 s behind a 12.8 s stall. The rest of the queue filled the
+  time.
+- **Every wait here that waits *for* something now calls `settleUntil`.** The pane's first listing
+  gets `within: .seconds(60)`, since it is the first thing each test does and so sits in that queue.
+  The walk and size waits measured 2–14.4 s and keep the shared 30 s. The private `wait` stays only
+  for the two 2 s looks at a walk already under way, whose expiry is not a failure, and lost its
+  default. The cancel test's 400 ms grace window is unchanged.
+- **30 s passed by the order of checks, not by margin.** On `settleUntil`'s default the suite passed
+  all seven runs, two of them with the listing at 30.06 and 30.5 s. The helper checks the predicate
+  before the deadline, and its late wake-up sat in the same queue as the listing, behind it. That is
+  why the listing gets 60.
+- Alone green (5 tests). Three full runs of the final code passed the suite every time, and two of
+  them were green throughout (1626 tests). The third failed only `ArchiveNameEncodingGestureTests`
+  at its sheet wait. swiftformat and swiftlint clean. Across the measuring runs
+  `ArchiveNameEncodingCallSiteTests`, `ArchiveNameEncodingGestureTests`, `RemoteFetchPromptTests`
+  and `RemotePreviewFetchTests` also failed at their own 30 s waits, behind the same queue. They are
+  not touched here.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
