@@ -145,6 +145,29 @@ struct CopyEngineAskTests {
         #expect(try contents(tree, "dest/b.txt") == "old-b")
     }
 
+    /// F5 from a tree lands every mark flat in one folder, so two expanded folders can each hand it
+    /// an `x.txt`. Nothing is in the destination when the job starts — the collision is with the
+    /// job's *own* first write — and it must still reach the resolver rather than overwrite.
+    @Test("two same-named sources in one job: the second meets the first as a conflict")
+    func sameNamedSourcesCollideWithEachOther() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        try tree.makeDir("one")
+        try tree.makeDir("two")
+        try tree.writeFile("one/x.txt", contents: "first")
+        try tree.writeFile("two/x.txt", contents: "second")
+        try tree.makeDir("dest")
+        let resolver = ScriptedResolver { _ in .keepBoth }
+
+        let report = run(try copyOp(tree, sources: ["one/x.txt", "two/x.txt"]), resolver)
+        #expect(report.succeeded)
+        #expect(resolver.callCount == 1)
+        #expect(resolver.contexts.first?.source.path == tree.vfsPath("two/x.txt"))
+        #expect(resolver.contexts.first?.existing.path == tree.vfsPath("dest/x.txt"))
+        #expect(try contents(tree, "dest/x.txt") == "first")
+        #expect(try contents(tree, "dest/x copy.txt") == "second")
+    }
+
     @Test("an ask policy with no resolver degrades to fail (never clobbers)")
     func askWithoutResolverFails() throws {
         let tree = try collidingTree()

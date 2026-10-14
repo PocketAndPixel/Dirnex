@@ -78,7 +78,8 @@ enum MainMenuBuilder {
             // The cloud pair gets a group of its own: it is about where an item's bytes are, which
             // is neither the item itself nor moving it anywhere.
             .command("file.downloadNow"), .command("file.removeDownload"), .separator,
-            .command("file.copy"), .command("file.move"), .command("file.pack"),
+            .command("file.copy"), .command("file.copyKeepingFolders"),
+            .command("file.move"), .command("file.moveKeepingFolders"), .command("file.pack"),
             // Archive Name Encoding sits beside Pack because those two are the archive items:
             // one makes an archive, the other says how to read the names in one. It is also the
             // only route to the chooser that does not require a gesture to have *failed* first

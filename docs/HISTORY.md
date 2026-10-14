@@ -13890,6 +13890,41 @@ Info's Sharing and Attributes tabs.
   switched off drew a light sliver three rows above the table's foot. The fixed build, same
   sequence, drew even stripes.
 
+**2026-10-14: F5 copies a tree's marks flat, and ⇧F5 keeps their folders.** Asked for with a
+screenshot: in a tree, one file marked inside an expanded `oleg` folder and one at the top level,
+and F5 made an `oleg` folder in the other pane to hold the first. That was M15's branch-view rule
+(`TreeSelection.transferGroups`). F5 and F6 now put every mark side by side in the other pane's
+folder, as drag-and-drop and ⌘V always did. The old behaviour moved to two new commands: Copy to
+Other Panel, Keeping Folders on ⇧F5, and Move to Other Panel, Keeping Folders with no key, since ⇧F6
+is rename on the Total Commander preset. Oleg chose to move F6 with F5 so the two keys agree.
+
+- **M15's reason for not going flat does not hold.** It said two expanded folders each holding an
+  `x.jpg` would overwrite each other silently. The engine stats each landing name just before it
+  writes, so the second meets the first as an ordinary conflict. `CopyEngineAskTests` pins it, and
+  the live run below saw the dialog.
+- **A mark already in the destination is dropped from a flat transfer.** A tree reaches this
+  whenever the other pane shows one of its expanded folders. Copying such a file would hit the
+  self-landing rule `submit` keeps for ⌘V and become "<name> copy" without a prompt, and a move
+  would be a silent rename. Paste drops a same-folder move for the same reason. With nothing left,
+  F5 raises the same-folder alert it always raised for two panes on one folder.
+- ⇧F5 does what F5 does out of an archive and into one: an archive pane is never a tree, and
+  add-into lands by name alone.
+- The two commands took `CommandCatalog.swift` over `type_body_length`, so Edit and Select moved to
+  `CommandCatalogEdit.swift`, the way earlier categories did.
+- `TreeTransferTests` (app, 5 tests), and one test each in `CopyEngineAskTests` and
+  `CommandCatalogTests` (core). Putting F5 back to keeping folders fails two of the app tests, and
+  removing the drop fails two. Titles and keywords in all 14 languages. Core green (3917 tests). The
+  first full app run failed three sheet waits in unrelated suites (`ArchiveNameEncodingGestureTests`,
+  `RemoteFetchPromptTests`) under load; they passed run beside the new suite, and the next full run
+  was green (1608 tests).
+- **Verified live** on the Debug build, launched by path after the running copy had quit, with the
+  settings backed up and restored around the run. A tree over a fixture, `sub` expanded, `a.txt` and
+  `sub/b.txt` marked: File ▸ Copy to Other Panel put `a.txt` and `b.txt` side by side, and File ▸
+  Copy to Other Panel, Keeping Folders put `a.txt` beside a new `sub/b.txt`. With `sub/x.txt` and the
+  top-level `x.txt` marked, F5 raised the conflict dialog on the second, and Keep Both left `x.txt`
+  and `x copy.txt` with the right contents. The keys themselves were not pressed: background
+  computer use cannot send an F-key, so the menu items stood in for them.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

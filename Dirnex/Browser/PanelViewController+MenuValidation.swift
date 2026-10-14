@@ -18,12 +18,13 @@ extension PanelViewController: NSMenuItemValidation {
         if let handoff = validateHandoffItem(menuItem) { return handoff }
         if let automation = validateAutomationItem(menuItem) { return automation }
         switch menuItem.action {
-        case #selector(copyToOtherPane(_:)):
+        case #selector(copyToOtherPane(_:)), #selector(copyToOtherPaneKeepingFolders(_:)):
             // Copy to the other pane works from a results panel (real paths) and from an archive,
             // where F5 becomes copy-*out* — extract the marked members to the other pane. Both
             // just need a counterpart to land in; the extraction path re-checks it's local.
+            // Keeping folders is enabled wherever F5 is: with nothing nested it *is* F5.
             return !selectionTargets().isEmpty && host?.panelCounterpart(of: self) != nil
-        case #selector(moveToOtherPane(_:)):
+        case #selector(moveToOtherPane(_:)), #selector(moveToOtherPaneKeepingFolders(_:)):
             // Move can't come out of a read-only archive (there's nothing to remove); a results
             // panel still allows it (each target carries its real on-disk path) — unless its rows
             // are themselves archive members, which is what a search inside an archive produces.

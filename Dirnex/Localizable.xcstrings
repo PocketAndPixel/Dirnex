@@ -119499,6 +119499,186 @@
         }
       }
     },
+    "command.file.copyKeepingFolders.keywords": {
+      "comment": "Extra command-palette search terms, comma-separated. Added to the English terms, not replacing them, so the English words keep working. Synonyms a user might type — not a translation of the title.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, kopieren, Baum, Struktur, Unterordner, relative Pfade"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, tree, branch, structure, subfolders, relative paths"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, copiar, árbol, estructura, subcarpetas, rutas relativas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, copier, arborescence, structure, sous-dossiers, chemins relatifs"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, copiare, albero, struttura, sottocartelle, percorsi relativi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, コピー, ツリー, 構造, サブフォルダ, 相対パス"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, 복사, 트리, 구조, 하위 폴더, 상대 경로"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, kopiëren, boom, structuur, submappen, relatieve paden"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, kopiuj, drzewo, struktura, podfoldery, ścieżki względne"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, copiar, árvore, estrutura, subpastas, caminhos relativos"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, копировать, дерево, структура, подпапки, относительные пути"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, копіювати, дерево, структура, підпапки, відносні шляхи"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, 拷贝, 复制, 树状, 结构, 子文件夹, 相对路径"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, 拷貝, 複製, 樹狀, 結構, 子檔案夾, 相對路徑"
+          }
+        }
+      }
+    },
+    "command.file.copyKeepingFolders.title": {
+      "comment": "Menu and command-palette title for the “file.copyKeepingFolders” command. Copies the marked items to the other panel and recreates the folders they sit in (tree view), where plain Copy puts them all side by side.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mit Ordnerstruktur in den anderen Bereich kopieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy to Other Panel, Keeping Folders"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar al otro panel conservando las carpetas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copier vers l’autre panneau en conservant les dossiers"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia nell’altro pannello mantenendo le cartelle"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォルダ構造を保ってほかのパネルにコピー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더 구조를 유지하며 다른 패널로 복사"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopieer naar ander paneel met mapstructuur"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopiuj do drugiego panelu z zachowaniem folderów"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar para o Outro Painel Mantendo as Pastas"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копировать на другую панель со структурой папок"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копіювати зі структурою папок"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拷贝到另一面板并保留文件夹结构"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拷貝到另一面板並保留檔案夾結構"
+          }
+        }
+      }
+    },
     "command.file.deletePermanently.keywords": {
       "comment": "Extra command-palette search terms, comma-separated. Added to the English terms, not replacing them, so the English words keep working. Synonyms a user might type — not a translation of the title.",
       "extractionState": "manual",
@@ -120575,6 +120755,186 @@
           "stringUnit": {
             "state": "translated",
             "value": "移動到另一面板"
+          }
+        }
+      }
+    },
+    "command.file.moveKeepingFolders.keywords": {
+      "comment": "Extra command-palette search terms, comma-separated. Added to the English terms, not replacing them, so the English words keep working. Synonyms a user might type — not a translation of the title.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "verschieben, Baum, Struktur, Unterordner, relative Pfade, übertragen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tree, branch, structure, subfolders, relative paths, transfer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mover, árbol, estructura, subcarpetas, rutas relativas, transferir"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "déplacer, arborescence, structure, sous-dossiers, chemins relatifs, transfert"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "spostare, albero, struttura, sottocartelle, percorsi relativi, trasferire"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移動, ツリー, 構造, サブフォルダ, 相対パス, 転送"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이동, 트리, 구조, 하위 폴더, 상대 경로, 전송"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "verplaatsen, boom, structuur, submappen, relatieve paden, overdracht"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "przenieś, drzewo, struktura, podfoldery, ścieżki względne, transfer"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mover, árvore, estrutura, subpastas, caminhos relativos, transferir"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "переместить, дерево, структура, подпапки, относительные пути, перенести"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "перемістити, дерево, структура, підпапки, відносні шляхи, перенести"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移动, 树状, 结构, 子文件夹, 相对路径, 传输"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移動, 樹狀, 結構, 子檔案夾, 相對路徑, 傳輸"
+          }
+        }
+      }
+    },
+    "command.file.moveKeepingFolders.title": {
+      "comment": "Menu and command-palette title for the “file.moveKeepingFolders” command. Moves the marked items to the other panel and recreates the folders they sit in (tree view), where plain Move puts them all side by side.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mit Ordnerstruktur in den anderen Bereich verschieben"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move to Other Panel, Keeping Folders"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover al otro panel conservando las carpetas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déplacer vers l’autre panneau en conservant les dossiers"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sposta nell’altro pannello mantenendo le cartelle"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォルダ構造を保ってほかのパネルに移動"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더 구조를 유지하며 다른 패널로 이동"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verplaats naar ander paneel met mapstructuur"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przenieś do drugiego panelu z zachowaniem folderów"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover para o Outro Painel Mantendo as Pastas"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переместить на другую панель со структурой папок"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перемістити зі структурою папок"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移动到另一面板并保留文件夹结构"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移動到另一面板並保留檔案夾結構"
           }
         }
       }
