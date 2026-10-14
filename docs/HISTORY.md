@@ -13790,6 +13790,21 @@ was pressed in, as NOTES.md ▸ "One rule, many copies" says a window-level hand
   to Other Panel moved the first hit there and took its row out of the results; Edit ▸ Undo Move put
   the file and the row back; Redo took both away again.
 
+**2026-10-14: Get Info in the right-click menu.** Asked for with two screenshots, the item menu and
+File ▸ Get Info. It is the registry's `file.attributes`, added after Quick Look and before Show in
+Finder, which is the File menu's order. Both item menus have it, the Trash's too: a trashed row
+carries its real local path, so the ordinary panel describes it. Nothing new was needed for a marked
+set. `retargetSelection` keeps the marks when the click lands inside them, and `showAttributes`
+already opens the bulk panel for marks.
+
+- `ContextMenuGetInfoTests` (app): one row, a marked set, a trashed row. Each builds the real menu
+  with `contextMenu(forRow:)` and checks the item validates and is aimed at the right rows. All three
+  fail with the menu change reverted. Full app run green (1594 tests).
+- **Verified live** on the Debug build, launched by path with no other copy running. A right-click on
+  one of three fixture files showed Get Info enabled between Quick Look and Show in Finder, and it
+  opened the single-item panel on that file. With all three marked, it opened the bulk panel for
+  "3 items".
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
