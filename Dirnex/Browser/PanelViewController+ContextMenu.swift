@@ -203,11 +203,12 @@ extension PanelViewController {
     }
 
     /// The menu over the pane's empty space (or the `..` row): nothing selectable is under the
-    /// pointer, so this is about the *folder* `directory` — make something in it, paste into it, or
-    /// copy its path.
+    /// pointer, so this is about the *folder* `directory` — make something in it, paste into it, look
+    /// at it, or copy its path.
     private func backgroundMenu(directory: VFSPath) -> NSMenu {
         let menu = NSMenu()
         add(["file.newFolder", "edit.paste"], to: menu)
+        if let item = folderInfoItem(for: directory) { menu.addItem(item) }
         menu.addItem(copyPathItem(for: [directory]))
         menu.addSeparator()
         add(["go.addToFavorites", "file.syncDirectories"], to: menu)
@@ -237,6 +238,27 @@ extension PanelViewController {
         )
         item.target = self
         item.representedObject = paths
+        return item
+    }
+
+    /// Get Info for the folder the background menu is about, or `nil` where there is no folder
+    /// (``folderInfoSubject(for:)``).
+    ///
+    /// Not the registry's `file.attributes` item, which describes the marks or the cursor row. The
+    /// row under the cursor is not what this menu is about, so the item captures the folder as it is
+    /// built, as Copy Path does. The title is the registry's, so it reads and translates the same as
+    /// the item menu's Get Info.
+    func folderInfoItem(for directory: VFSPath) -> NSMenuItem? {
+        guard let subject = folderInfoSubject(for: directory),
+              let title = LocalizedCatalog.command(for: "file.attributes")?.title
+        else { return nil }
+        let item = NSMenuItem(
+            title: title,
+            action: #selector(showFolderAttributes(_:)),
+            keyEquivalent: ""
+        )
+        item.target = self
+        item.representedObject = subject
         return item
     }
 
@@ -366,6 +388,13 @@ extension PanelViewController {
     @objc private func copyContextPath(_ sender: NSMenuItem) {
         guard let paths = sender.representedObject as? [String] else { return }
         PathClipboard.copy(paths)
+    }
+
+    /// Open Get Info on the folder `folderInfoItem` captured. A real target for the reason Copy
+    /// Path has one: the folder is what the menu captured, not the pane's selection.
+    @objc private func showFolderAttributes(_ sender: NSMenuItem) {
+        guard let location = sender.representedObject as? VFSPath else { return }
+        showAttributes(ofFolder: location)
     }
 }
 
