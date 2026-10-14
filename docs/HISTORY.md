@@ -13852,6 +13852,44 @@ folder, while the file on show comes from the other pane.
   *2 Page (no JavaScript)*, and `readme.txt` showed only its name and *4 of 4*. With ⌃Q off, the
   path bar, the branch and "3 items" came back.
 
+**2026-10-14: the stripes under a pane's last row stay in step.** Reported with screenshots of two
+panes whose empty space had two dark rows in a row, with a sliver of a light one between them, near
+the bottom edge. In both, the band below the break was exactly as tall as the rows the folder had
+just lost: three going up from Common to Dev, five from llm-rag to Common. AppKit paints that space
+with a private view of its own, and on a resize it repaints all of it only when it grows past the
+largest size it was last drawn at (NOTES.md ▸ AppKit, Drawing rows and cells). When the pane's height
+changed between two draws and the folder then lost rows, `reloadData` repainted the view's old bounds
+and the bottom band kept pixels drawn for the rows that were gone. The pane's table now repaints
+any of its subviews but the rows, whole, whenever that subview's frame changes.
+
+- Reproduced in a scratch table (10 rows, the pane 100 pt shorter, then 7: the bottom three rows
+  inverted) and in the app (Common, terminal drawer open, up to Dev). Fuzzed six-step runs of
+  reloads, scrolls and resizes: stock 2 of 30 broken, fixed 0 of 60. What made the reported panes'
+  height change is not known. The drawer is one way, a window resize another.
+- Tests (app, now in `StripedTableViewTests`) pin both halves of the fix. AppKit lays a view from
+  the last row to the table's bottom, and a view under the rows that redraws only when told is
+  repainted whole on a resize and on a move alone. With the fix out of the build, both repaint
+  checks fail. Full app run green (1602 tests).
+- **Verified live** on the Debug build, launched by path after the copy that was running had quit.
+  The drawer-and-Dev sequence that had drawn the inverted band before the fix drew even stripes to
+  the bottom, twice.
+
+**2026-10-14: every striped table, not only the panes.** Asked for straight after the entry above.
+The fix moved into `StripedTableView` and `StripedOutlineView`, which share `TableFillerRepaint`.
+All eight striped tables in the app are now one of the two: the file pane's (`FileTableView`
+derives from it), Quick View's table and tree, Synchronize, Verify Checksums, Multi-Rename, and Get
+Info's Sharing and Attributes tabs.
+
+- `StripedTableViewTests` builds each of the seven surfaces besides the pane the way the app does,
+  and fails on any striped table in one that is neither class. With all seven put back on a plain
+  `NSTableView` or `NSOutlineView`, it failed seven times, once per surface. The repaint check runs
+  on both classes and on `FileTableView`, and all three fail with the watch switched off. Full app
+  run green (1603 tests).
+- **Verified live** on Quick View's table, which the drawer resizes the way it does a pane: ⌃Q on a
+  7-row CSV, the drawer opened, then the cursor moved to a 4-row one. A build with the watch
+  switched off drew a light sliver three rows above the table's foot. The fixed build, same
+  sequence, drew even stripes.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

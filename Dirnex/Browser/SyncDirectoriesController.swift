@@ -84,7 +84,7 @@ final class SyncDirectoriesController: NSViewController {
     let headerLabel = NSTextField(labelWithString: "")
     let directionControl = NSSegmentedControl()
     let comparisonControl = NSSegmentedControl()
-    let tableView = NSTableView()
+    let tableView = StripedTableView()
     let scrollView = NSScrollView()
     let spinner = NSProgressIndicator()
     let statusLabel = NSTextField(labelWithString: "")

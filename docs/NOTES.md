@@ -2167,6 +2167,38 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - The window-key state is a third one and is not reachable from either side: states 2 (window key,
     pane focused) and 3 (window not key) both read `isEmphasized == false` with no callback between
     them, so the tint stays on in a background window where macOS would drop it.
+- **The stripes under the last row are a separate view, and it repaints on a resize only when it
+  grows past the largest size it was last drawn at.** With `usesAlternatingRowBackgroundColors`, a
+  view-based table lays a private `NSTableBackgroundView` from `rect(ofRow: numberOfRows)` to its own
+  bottom, in `-[NSTableView layout]` (`_updateBackgroundViews`). Its `setFrameSize:` calls
+  `setNeedsDisplay:` only when the new width or height exceeds a size its `drawRect:` records, or
+  when its layer has no contents. Read off `dyld_info -disassemble` on AppKit, 2026-10-14. The layer
+  is top-left placed and redraws on `setNeedsDisplay` only. So when the pane's height changes between
+  two draws (the terminal drawer, a window resize) and the folder then loses rows, the view grows back
+  inside that size. `reloadData` repaints its *old* bounds, and the bottom band, as tall as the rows
+  that went, keeps pixels drawn for those rows. An odd count inverts the stripes there: two dark
+  rows in a row with a sliver of a light one between, on the pane's bottom edge. An even count is the
+  same staleness drawn right by luck. A resize clears it, which is why it comes and goes.
+  `TableFillerRepaint` repaints every non-row subview whole on `frameDidChangeNotification`, a move
+  alone included. **A striped table is a `StripedTableView` or a `StripedOutlineView`**, never a
+  plain `NSTableView`, and `StripedTableViewTests` builds every striped surface and fails on one
+  that isn't.
+  - **Repro**: in the app, Common (15 rows), open the drawer, go up to Dev (12 rows). For Quick View's
+    table: ⌃Q on a 7-row CSV, open the drawer, move to a 4-row one. In a scratch
+    table: 10 rows, the scroll view 100 pt shorter, 7 rows.
+  - **Instruments that can't see it**: `cacheDisplay` and `CALayer.render(in:)` redraw through the
+    view rather than reading the layer's backing store (`NSViewBackingLayerContents`, private), so
+    both show correct stripes over a broken screen. `NSView.needsDisplay` reads `false` straight after
+    being set on a layer-backed view, and `layer.needsDisplay()` is one bool that can't tell a partial
+    repaint from a whole one. What saw it: a scratch app capturing its own on-screen window with
+    `CGWindowListCreateImage` (obsoleted in the macOS 15 SDK, still exported, reached through
+    `dlsym`) and sampling every 22 pt cell, and a computer-use zoom of the live pane.
+  - **Overriding `drawBackground(inClipRect:)` makes AppKit drop that view altogether**, even an
+    override that only calls `super` (`_subclassOverridesDrawBackgroundInRect`): the table then
+    paints the whole visible background itself on every change. Not taken. It hangs on a hidden
+    switch, and a draw override is the kind of thing that can cost a table responsive scrolling.
+  - In a test, the view exists only in a window that is **on screen** (`orderFront`) and only after
+    the table's **second** layout pass: the first one makes the rows.
 
 #### Reloading and the row model
 
