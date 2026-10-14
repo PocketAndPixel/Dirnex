@@ -477,6 +477,15 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     process. It is a run-loop observer, so nothing main-actor-isolated is drained while it runs.
     Two clocks stalling identically while an independent thread does not is the whole discriminator,
     and it costs twenty lines.
+    - **By 2026-10-14 it was 12–21 s in one piece at the start of a full run**, at 1626 tests. A
+      wait that is the first thing its test does sits in it whole. `RemoteDirectorySizeTests`' first
+      listing landed 18–30.5 s in across seven runs (25 ms alone), and the pane's `Task` could not
+      even start until 7–21 s in. A detached task beside it was never more than 53 ms late. Such a
+      wait needs more than the house 30 s, and that one got 60 (HISTORY.md ▸ the 2026-10-14 entries).
+    - **A `sample` names whose code is on the main thread, not what makes the queue long.** The
+      stall's profile put 40% of samples in `MultiLineFieldTests`' per-pixel `colorAt` loop. Skipped,
+      the same wait landed at 30.1–30.5 s behind a 12.8 s stall: the other suites filled the time.
+      Skip the suspect for one run before believing a profile of a shared queue.
   - **A negative wait sized in seconds goes vacuous under that stall, and only a control finds it.**
     The sibling test pinning "no progress sheet over the placeholder card" held 2.5 s — "the 1200 ms
     delay, twice" — while the sheet actually lands 2.9–6.3 s in, so it expired before one could have
