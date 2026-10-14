@@ -61,7 +61,12 @@ extension AttributesController {
         modeValueField?.stringValue = AttributeFormatting.modeDescription(working.permissions)
     }
 
-    /// Save is live when something changed **and** the change is one the panel can write.
+    /// Save is live when something changed, or "Apply to enclosed items" is ticked, **and** the
+    /// change is one the panel can write.
+    ///
+    /// The ticked box is enough on its own: with nothing edited it means "make everything inside
+    /// match this folder", which ``AttributeApplyJob/init(from:to:accessControlList:target:)`` turns
+    /// into the folder's mode, pushed down.
     ///
     /// The validity half is the ACL's: an entry carrying no rights is a state the OS stores happily
     /// and that decides nothing (probed), so the panel refuses to write one rather than saving a row
@@ -70,30 +75,31 @@ extension AttributesController {
     func refreshSaveEnabled() {
         let changed = !AttributeDiff(from: snapshot.attributes, to: working).isEmpty
             || accessControlListChanged
+            || recursiveOptions?.isRecursive == true
         saveButton?.isEnabled = changed && accessControlTable?.isValid != false
     }
 
     // MARK: - Recursion
 
-    /// The recursive job this sheet's edits describe, or `nil` when the box is unticked or there is
-    /// nothing to force.
+    /// The recursive job this sheet's edits describe, or `nil` when the box is unticked.
     ///
-    /// The translation from a whole-value edit to a patch is ``AttributePatch/init(from:to:)``'s, and
-    /// it is a core decision rather than a detail of this file: a changed mode travels whole because
-    /// a mode is a shape, while flags travel bit by bit so a `UF_HIDDEN` on one file inside the
-    /// folder survives ticking Locked on the folder.
+    /// The translation from a whole-value edit to a job is a core decision rather than a detail of
+    /// this file (``AttributeApplyJob/init(from:to:accessControlList:target:)``): a changed mode
+    /// travels whole because a mode is a shape, flags travel bit by bit so a `UF_HIDDEN` on one file
+    /// inside the folder survives ticking Locked on the folder, and a sheet with nothing edited
+    /// pushes the folder's own mode down.
     ///
     /// The ACL travels as a **whole list** when it was edited, adjusted to each item's kind by the
     /// runner — a file cannot carry `delete_child` or an inheritance flag meaningfully, and the
     /// kernel will store one anyway if nobody stops it (probed).
     func recursiveJob() -> AttributeApplyJob? {
         guard let options = recursiveOptions, options.isRecursive else { return nil }
-        let job = AttributeApplyJob(
-            patch: AttributePatch(from: snapshot.attributes, to: working),
+        return AttributeApplyJob(
+            from: snapshot.attributes,
+            to: working,
             accessControlList: accessControlListChanged ? workingAccessControlList : nil,
             target: options.target
         )
-        return job.isEmpty ? nil : job
     }
 
     // MARK: - Commit
@@ -109,15 +115,16 @@ extension AttributesController {
         // so "changed" is a whole-value comparison and the change is a whole-list replacement.
         let aclChanged = accessControlListChanged
         let newList = workingAccessControlList
-        guard !diff.isEmpty || aclChanged else { dismiss(sender); return }
 
         // "Apply to enclosed items" replaces the flat write rather than running beside it, so the
         // item on screen and everything under it are one operation with one undo record. Doing the
-        // root here and the tree there would take two Cmd+Z to reverse one gesture.
+        // root here and the tree there would take two Cmd+Z to reverse one gesture. It comes before
+        // the empty-diff check because the ticked box is a request even with nothing edited.
         if let job = recursiveJob() {
             confirmRecursive(job, sender)
             return
         }
+        guard !diff.isEmpty || aclChanged else { dismiss(sender); return }
 
         let reasons = AttributePrivilege.reasons(
             for: diff, current: old, actor: actor, changesAccessControlList: aclChanged

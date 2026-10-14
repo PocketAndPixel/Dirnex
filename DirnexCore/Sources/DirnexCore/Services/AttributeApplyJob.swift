@@ -65,6 +65,31 @@ public struct AttributeApplyJob: Sendable, Equatable {
         self.journalLimit = journalLimit
     }
 
+    /// The job a **single-item** sheet's "Apply to enclosed items" describes: the edit, carried
+    /// outward by ``AttributePatch/init(from:to:)``, or the item's own mode when nothing was edited.
+    ///
+    /// The second case is a Save with the box ticked and every control left alone, and it has one
+    /// meaning: make everything inside match what the sheet shows. The mode is what the Permissions
+    /// tab shows, so the mode is what travels — whole, as a changed one would. The root already has
+    /// it, so the run leaves the root alone and changes only what differs underneath.
+    ///
+    /// Only when *nothing* was edited. With an edit on the sheet, the edit is the request: ticking
+    /// Hidden with the box ticked hides what is inside and must not also `chmod` every item to this
+    /// folder's mode. Group, dates and the ACL never travel unedited, for the same reason.
+    public init(
+        from old: FileAttributes,
+        to new: FileAttributes,
+        accessControlList: AccessControlList? = nil,
+        target: AttributeApplyScope.Target = .everything
+    ) {
+        var patch = AttributePatch(from: old, to: new)
+        if patch.isEmpty, accessControlList == nil {
+            patch.permissionMask = POSIXPermissions(rawValue: 0o7777)
+            patch.permissionValues = new.permissions
+        }
+        self.init(patch: patch, accessControlList: accessControlList, target: target)
+    }
+
     /// Nothing is forced and no ACL is being written, so the run has nothing to do.
     public var isEmpty: Bool { patch.isEmpty && accessControlList == nil }
 }
