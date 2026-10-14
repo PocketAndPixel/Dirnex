@@ -98,7 +98,10 @@ extension PanelViewController {
         open.target = self
         menu.addItem(open)
         menu.addItem(openWithMenuItem())
-        add(["view.quickLook"], to: menu)
+        // Get Info beside Quick Look: both look at the item rather than do anything to it. Before
+        // Show in Finder, the order the File menu has. Over a marked set it is the bulk panel, by the
+        // marks-over-cursor rule `retargetSelection` has already applied.
+        add(["view.quickLook", "file.attributes"], to: menu)
         add(whereItLivesCommandIDs(), to: menu)
         menu.addSeparator()
         addShareItem(to: menu)
@@ -152,7 +155,8 @@ extension PanelViewController {
         open.target = self
         menu.addItem(open)
         menu.addItem(openWithMenuItem())
-        add(["view.quickLook"], to: menu)
+        // A trashed row carries its real local path, so Get Info is the ordinary local panel here.
+        add(["view.quickLook", "file.attributes"], to: menu)
         add(whereItLivesCommandIDs(), to: menu)
         menu.addSeparator()
         addShareItem(to: menu)
