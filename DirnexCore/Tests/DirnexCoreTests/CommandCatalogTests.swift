@@ -67,6 +67,20 @@ struct CommandCatalogTests {
         #expect(KeyBindings().conflicts(for: "file.multiRename").isEmpty)
     }
 
+    @Test("copy keeping folders is a conflict-free File command on ⇧F5; its move twin has no key")
+    func keepingFoldersCommands() throws {
+        let copy = try #require(CommandCatalog.command(for: "file.copyKeepingFolders"))
+        #expect(copy.category == .file)
+        #expect(copy.shortcut == CommandShortcut(key: "F5", modifiers: [.function, .shift]))
+        let move = try #require(CommandCatalog.command(for: "file.moveKeepingFolders"))
+        #expect(move.category == .file)
+        // ⇧F6 is in-place rename on the Total Commander preset, so the move twin ships unbound.
+        #expect(move.shortcut == nil)
+        for preset in KeyBindings.Preset.allCases {
+            #expect(KeyBindings.preset(preset).conflicts(for: "file.copyKeepingFolders").isEmpty)
+        }
+    }
+
     @Test("the M5 synchronize-directories tool is a shortcut-free File command")
     func coversSyncDirectories() {
         let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })

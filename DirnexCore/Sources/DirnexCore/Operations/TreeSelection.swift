@@ -55,12 +55,14 @@ public enum TreeSelection {
     }
 
     /// Group a marked set by the subdirectory each item lands in when the selection is transferred,
-    /// **preserving each item's path relative to `root`** — Total Commander's branch-view behavior,
-    /// and the settled answer to "what F5/F6 do with marks spanning levels".
+    /// **preserving each item's path relative to `root`** — Total Commander's branch-view behavior.
     ///
-    /// The alternative — everything flat into one folder — collides the moment two expanded folders
-    /// each hold an `x.jpg`, and silently, since both are legitimate sources for the same
-    /// destination name.
+    /// This was F5/F6's own answer to marks spanning levels until 2026-10-14, when it moved to the
+    /// opt-in ⇧F5 and "Move to Other Panel, Keeping Folders": F5/F6 now land everything flat, as
+    /// drag-and-drop and ⌘V always did. The fear that settled it the other way — two expanded
+    /// folders each holding an `x.jpg` overwriting each other silently — does not hold: the engine
+    /// checks each source's landing name just before writing it, so the second `x.jpg` meets the
+    /// first as an ordinary conflict.
     ///
     /// A selection entirely at the tree's own level (every list-mode transfer, and the common tree
     /// one) yields a single group with no components, which is byte-for-byte today's operation. An
