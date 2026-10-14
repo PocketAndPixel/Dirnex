@@ -153,12 +153,15 @@ extension PanelViewController {
     }
 
     /// Show `path` in the active tab, or — for a sidebar place picked with ⌘ — in a new tab beside
-    /// it, leaving the active one where it was.
-    func navigate(to path: VFSPath, inNewTab: Bool) {
+    /// it, leaving the active one where it was. A saved server lands here too, once it connects.
+    ///
+    /// `focus` lands the cursor on that row when the path opens in place: the bucket a walk up out
+    /// of it came from. A new tab opens at the top, since nothing that asks for one is returning.
+    func navigate(to path: VFSPath, focus child: VFSPath? = nil, inNewTab: Bool) {
         if inNewTab {
             openInNewTab(path)
         } else {
-            navigate(to: path)
+            navigate(to: path, focus: child)
         }
     }
 

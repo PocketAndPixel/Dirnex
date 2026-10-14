@@ -105,23 +105,20 @@ extension BrowserWindowController: SidebarViewControllerDelegate {
         (activePanel ?? leftPanel).emptyTrash()
     }
 
-    /// A saved server connects (SFTP) or mounts (SMB) in the active pane and browses it. The
-    /// connect/mount is async and, on completion, both navigates *and* focuses the pane itself,
+    /// A saved server connects (SFTP, FTP, S3) or mounts (SMB) in the active pane and browses it.
+    /// The connect/mount is async and, on completion, both navigates *and* focuses the pane itself,
     /// so grabbing focus here (before the connection resolves) would be premature.
     ///
-    /// With ⌘ the new tab opens first, as ⌘T would, and the connect lands in it — the way a browser
-    /// opens a tab and then loads the page. Every connect path ends in its own navigation, and some
-    /// pass through a sheet (a password that was never saved, a changed host key), so opening the
-    /// tab up front is what makes all of them land in it; the cost is that a connect that fails or
-    /// is cancelled leaves the tab showing the folder it was opened from.
+    /// With ⌘ the connection lands in a new tab, opened only once it is up, the way a vault's tab
+    /// waits for its unlock. The flag rides on the connect request through every path, including
+    /// the sheet a missing password falls back to and the retry after a changed host key or
+    /// certificate, so a connect that fails or is cancelled leaves no tab behind.
     func sidebar(
         _ sidebar: SidebarViewController,
         didActivateServer server: ServerConnection,
         inNewTab: Bool
     ) {
-        let target = activePanel ?? leftPanel
-        if inNewTab { target.addTab() }
-        target.connect(to: server)
+        (activePanel ?? leftPanel).connect(to: server, inNewTab: inNewTab)
     }
 
     /// A tag row searches for the files carrying it and shows them in the active pane, the way a

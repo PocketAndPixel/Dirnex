@@ -33,6 +33,10 @@ extension PanelViewController {
         /// this connect is a walk upwards. `nil` leaves the cursor at the top, which is right for a
         /// connect that is arriving rather than returning.
         var focus: VFSPath?
+        /// As `SFTPConnectRequest.inNewTab`. Never set together with `focus`: a walk upwards stays in
+        /// the tab it walks in, and a new tab opens with its cursor at the top
+        /// (`navigate(to:focus:inNewTab:)`).
+        var inNewTab = false
     }
 
     // MARK: - Connecting
@@ -85,7 +89,11 @@ extension PanelViewController {
             if let saveName = request.saveName {
                 saveS3Account(name: saveName, account: account)
             }
-            navigate(to: VFSPath(backend: .s3Account(account), path: "/"), focus: request.focus)
+            navigate(
+                to: VFSPath(backend: .s3Account(account), path: "/"),
+                focus: request.focus,
+                inNewTab: request.inNewTab
+            )
             return .succeeded
         case let .failure(error):
             return .failed(Self.s3ConnectFailureDetail(
