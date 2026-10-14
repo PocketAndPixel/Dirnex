@@ -13805,6 +13805,30 @@ already opens the bulk panel for marks.
   opened the single-item panel on that file. With all three marked, it opened the bulk panel for
   "3 items".
 
+**2026-10-14: Get Info on the folder, from the background menu.** Asked for straight after the entry
+above. The empty space and the `..` row get a menu about a folder, and the registry's Get Info would
+have described the cursor row instead. So the background menu has its own item, aimed like Copy
+Path: it captures the folder when the menu is built, and shares the registry's title so it reads and
+translates the same. It sits between Paste and Copy Path. Choosing it stats the folder off the main
+thread, through the routing backend, and opens whichever panel `AttributesRoute` picks.
+
+- **Where there is no folder, there is no item.** A search, Recents or iCloud results tab is a
+  synthetic container (the Trash has its own background menu). At an **archive's root** it describes
+  the archive file, the one Copy Path names there. The archive's table of contents answers its root
+  as `/` with no name and no date. A nested or downloaded archive points to the member or server file
+  it came from, which is where `archiveParent` walks back to.
+- `ContextMenuGetInfoTests` gained four tests: the empty space aims at the pane's folder while the
+  cursor sits on a file, `..` aims at the parent, a results tab has no item, and an archive root
+  resolves to the file or to its origin. Removing the menu line, the results guard or the archive
+  rule each fails its own test. The results guard was checked alone, since with the menu line gone
+  its test passes for the wrong reason. One full app run failed `RemoteDirectorySizeTests` at its
+  listing wait, the load flake NOTES.md ▸ Testing describes. It passed alone, and the next full run
+  was green (1598 tests).
+- **Verified live** on the Debug build, launched by path with no other copy running. The empty space
+  under a cursor on `b.txt` opened the panel on the folder itself, with *Apply to enclosed items*.
+  `..` opened it on the parent. Inside `bundle.zip`, with New Folder grayed, it opened the local
+  panel on `bundle.zip`, a 162-byte file.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
