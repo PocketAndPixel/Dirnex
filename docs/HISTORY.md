@@ -13829,6 +13829,29 @@ thread, through the routing backend, and opens whichever panel `AttributesRoute`
   `..` opened it on the parent. Inside `bundle.zip`, with New Folder grayed, it opened the local
   panel on `bundle.zip`, a 162-byte file.
 
+**2026-10-14: ⌃Q gets the header, and covers the path bar and the item count.** Asked for with a
+screenshot of a pane-size preview. ⌃⇧Q and ⌃⌥Q name the two styles in their header, and ⌃Q had no
+header, so nothing at that size said `1` / `2` would do anything. The keys themselves already worked
+there. The covered pane's path bar and "3 items" also stayed on screen. Both describe that pane's
+folder, while the file on show comes from the other pane.
+
+- The pane's surface is now built with the **pinned** header, the full-window one: style, name,
+  position. It is pinned from the top of the path bar to the foot of the status line, so the header
+  takes the path bar's place. The surface covers those views rather than hiding them, so nothing in
+  the pane moves and uncovering needs no relayout. The tab strip above stays. The window hands the
+  caption over in pane mode through the same `quickViewCaption(for:style:from:)` as the full sizes,
+  and the JavaScript preference's caption refresh now reaches the pane's surface too. That closes
+  M16's undone "(no JavaScript)" mark in the pane-size preview.
+- `QuickViewPaneSurfaceTests` pins both halves. The surface's top is the path bar's top and its foot
+  is the status line's foot, and its header carries the caption and draws both style names. With the
+  old anchors and `header: .none` put back, both tests fail (4 issues). Full app run green, 1600 tests.
+- **Verified live** on the Debug build, launched by path after the copy that was running had quit.
+  The settings were backed up and restored around the run. On `people.csv` the covered pane showed
+  *1 Source · 2 Table · people.csv · 3 of 4* where its path bar had been, with no item count below.
+  Its tab strip was still there. `1` dimmed *Table* and showed the CSV's text. `page.html` showed
+  *2 Page (no JavaScript)*, and `readme.txt` showed only its name and *4 of 4*. With ⌃Q off, the
+  path bar, the branch and "3 items" came back.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

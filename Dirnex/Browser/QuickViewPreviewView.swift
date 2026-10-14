@@ -19,8 +19,8 @@ enum QuickViewMode {
     /// full-screen space. A viewing mode: black backing, no chrome.
     case fullScreen
 
-    /// Whether this size covers the file list the cursor is walking, which is what makes a header
-    /// and the ← / → cursor steps necessary rather than redundant.
+    /// Whether this size covers the file list the cursor is walking, which is what makes the ← / →
+    /// cursor steps necessary rather than redundant.
     var isFullSize: Bool { self == .fullWindow || self == .fullScreen }
 }
 
@@ -37,9 +37,11 @@ enum QuickViewMode {
 final class QuickViewPreviewView: NSView {
     /// Whether this surface carries a header, and how it behaves.
     enum Header {
-        /// No header — pane mode, where the file list is visible right beside the preview.
+        /// No header. The app builds none of these since pane mode took the pinned one (2026-10-14);
+        /// it is for a test about the content alone, which a header would only offset.
         case none
-        /// Always visible, taking its own strip above the preview (full window: a working surface).
+        /// Always visible, taking its own strip above the preview (pane and full window: the two
+        /// working surfaces).
         case pinned
         /// Floating over the preview, fading in on mouse movement and back out after a pause
         /// (full screen: a viewing surface, where permanent chrome is the thing being escaped).

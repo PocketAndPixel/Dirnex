@@ -58,7 +58,7 @@ enum QuickViewRenderStyle: String, CaseIterable, Identifiable {
         }
     }
 
-    /// The short form the full-size header draws — a hint that the other style exists at all, in a
+    /// The short form the preview's header draws — a hint that the other style exists at all, in a
     /// strip that already carries the file's name and position. "1 Source · 2 Page" whole would
     /// crowd it, so each style names only itself and the digit says which key. What the rendered
     /// style is called depends on what it renders.
