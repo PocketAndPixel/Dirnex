@@ -10840,7 +10840,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uma vista rápida no modo página (2) a renderiza ali mesmo, e um relatório autocontido normalmente precisa dos próprios scripts para desenhar gráficos ou fórmulas. As pré-visualizações nunca acessam a rede, diga o que disser esta opção — toda requisição que não seja o próprio arquivo é bloqueada —, então um script só pode mudar o que você vê. Vem desativado, porque a pré-visualização é renderizada ao mover o cursor: ative quando uma página precisar dos seus scripts."
+            "value": "O Painel de Visualização Rápida no modo página (2) a renderiza ali mesmo, e um relatório autocontido normalmente precisa dos próprios scripts para desenhar gráficos ou fórmulas. As pré-visualizações nunca acessam a rede, diga o que disser esta opção — toda requisição que não seja o próprio arquivo é bloqueada —, então um script só pode mudar o que você vê. Vem desativado, porque a pré-visualização é renderizada ao mover o cursor: ative quando uma página precisar dos seus scripts."
           }
         },
         "ru": {
@@ -52924,7 +52924,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quanto a Visualização rápida baixa por conta própria enquanto o cursor passa por um arquivo em um servidor. Arquivos maiores continuam podendo ser vistos: o cartão informa o nome e o tamanho e espera você tocar em Baixar (⌘D) ou ⌘Y. Defina 0 para não baixar nada sem pedir. Arquivos neste Mac nunca são afetados."
+            "value": "Quanto o Painel de Visualização Rápida baixa por conta própria enquanto o cursor passa por um arquivo em um servidor. Arquivos maiores continuam podendo ser vistos: o cartão informa o nome e o tamanho e espera você tocar em Baixar (⌘D) ou ⌘Y. Defina 0 para não baixar nada sem pedir. Arquivos neste Mac nunca são afetados."
           }
         },
         "ru": {
