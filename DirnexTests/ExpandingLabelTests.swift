@@ -4,13 +4,14 @@ import Testing
 
 @testable import Dirnex
 
-/// The expansion tooltip a file row floats when its column is too narrow for the name.
+/// The cell that sizes and draws the panel a file row floats when its column is too narrow for the
+/// name (`ExpansionPanel`).
 ///
 /// Presentation, so it is tested here rather than in `DirnexCore`, like `PanelPaletteTests` and
 /// `RowDensityTests`. What a headless test *can* reach is the part that fails quietly: the
 /// mechanism that installs the custom cell, and the color pushed into it. The drawing itself was
 /// verified against the live pane in both appearances — no bitmap here would prove it, since the
-/// panel is painted into a window AppKit makes on hover.
+/// panel is painted into a window that exists only while it is up.
 @Suite("Expansion tooltip")
 @MainActor
 struct ExpandingLabelTests {
@@ -50,18 +51,20 @@ struct ExpandingLabelTests {
         #expect(cell.expansionFrame(withFrame: label.bounds, in: label).isEmpty)
     }
 
-    /// The opt-in itself. Every column gets it — a Date narrowed past its content truncates the
-    /// same way a name does.
-    @Test("every file cell offers to expand a truncated value")
-    func fileCellsOptIn() {
+    /// Every column floats a truncated value through the custom cell — a Date narrowed past its
+    /// content truncates the same way a name does — and none through AppKit's own tooltip, whose
+    /// panel looks different from the ⌘ hold's (`ExpansionPanel`). Both at once would float two.
+    @Test("every file cell floats through the custom cell, never AppKit's own tooltip")
+    func fileCellsUseTheCustomPanel() {
         for showsImage in [true, false] {
             let cell = FileCellView(
                 showsImage: showsImage,
                 identifier: NSUserInterfaceItemIdentifier("test")
             )
             let field = try? #require(cell.textField)
-            #expect(field?.allowsExpansionToolTips == true)
+            #expect(field is ExpandingLabel)
             #expect(field?.cell is ExpandingLabelCell)
+            #expect(field?.allowsExpansionToolTips == false)
         }
     }
 

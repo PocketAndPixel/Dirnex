@@ -24,7 +24,8 @@ FieldBorder.install()
 let application = NSApplication.shared
 // ⌘1–⌘9 pick a dialog's tabs, and holding ⌘ shows the numbers.
 TabShortcuts.install()
-// Holding ⌘ in a pane floats the cursor row's full name when its column cuts it short.
+// A value its column cuts short floats whole: on hover, and for the cursor row while ⌘ is held.
+HoverExpansion.install()
 CursorNamePeek.install()
 let delegate = AppDelegate()
 application.delegate = delegate
