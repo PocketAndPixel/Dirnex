@@ -14216,6 +14216,57 @@ pane's last tab stays: the menu item is disabled there, and a drag cannot start 
   The drop logic is pinned by the app tests above; one physical drag in each direction is left for a
   person.
 
+**2026-10-15: a tab chip shows where its listing comes from.** Each chip draws a glyph before its
+label, taken from the sidebar row that stands for that kind of source: a folder on this Mac, an
+external drive or disk image, a share (the SMB server row's connected drive), a vault's open padlock,
+a cloud provider, iCloud Drive, Photos, an archive, SFTP, FTP, S3 (an account and a bucket alike), the
+Trash, Recents, and a magnifying glass for any results listing. The glyph is tinted with the label,
+so it turns white with it on the active chip, and it rides along in the drag image.
+
+- **The source is not the sidebar place.** `SidebarPlaceLocator` answers which row a pane is *in*, so
+  a folder in Downloads is in Downloads. The chip names the source instead, so that folder wears a
+  plain folder, and an archive, a share or a disk image, which have no row of their own, still get a
+  glyph. `LocationSource` (core) classifies the path. For a local path the more specific territories
+  come first: a trash directory (a folder opened from the Trash), an unlocked vault (a disk image
+  the volume rule would call external), a `CloudStorage` provider, then all of `Mobile Documents`.
+  Whatever is left is decided by the volume it lies on.
+- **The volume comes from the kernel's mount table, not from the path.** `URL.resourceValues` for a
+  volume key resolves the path itself, which blocks for as long as a dead share does, and the strip
+  is rebuilt on every navigation on the main thread. `MountTable.current()` is
+  `getmntinfo_r_np(MNT_NOWAIT)`, which asks no file system anything: measured at 3 µs for 13 mounts.
+  It finds the deepest mount point holding the path on whole components. `MNT_LOCAL` absent means a
+  share. A local mount other than `/` is external only if Finder lists it (`MNT_DONTBROWSE` absent,
+  so `/dev` and simulator runtimes stay folders) and its root does not report `volumeIsInternal`.
+  That read touches a local volume only. Probed on a throwaway disk image: it reports
+  `volumeIsInternal` as **nil**, not `false`, which the sidebar's `?? false` already draws as
+  external, so the chip agrees with the Volumes row.
+- **One spelling per glyph.** `SidebarPlacePresentation.symbolName(for: LocationSource)` maps each
+  source to a sidebar symbol. The sidebar's own Recents, Trash, iCloud Drive, Photos, saved-search,
+  archive-pin and folder-pin glyphs now route through it, and the cloud glyph became
+  `CloudStorageMount.symbolName` (static) so the chip doesn't repeat the literal.
+- **The drag image is drawn by hand and had to learn the glyph.** A template symbol drawn in an
+  `NSImage` drawing handler comes out black, so the drag image colors it with
+  `SymbolConfiguration(paletteColors:)` and draws glyph and label at the live chip's own frames.
+- `LocationSourceTests` (core, 13 tests): every territory, the volume split, whole-component
+  boundaries, each remote backend, Recents against other results, and the live mount table.
+  `TabSourceGlyphTests` (app, 4): every source's glyph equals the matching sidebar row's (which also
+  pins that every case is covered), every glyph exists on this system, a pane's strip draws five
+  kinds in order with the glyph before the label, and the drag image carries ink in the chip's text
+  color. Negative control: the drag image without the palette color failed the color test. Core
+  green (3952 tests), app green (1653), both linters clean.
+- **Verified live** on the Debug build launched by path (after quitting a stale Debug copy from 12:49),
+  with settings backed up and restored (65 keys, identical by value). Tabs built with `reveal` and
+  `file.newTab`, then a sidebar click and a double-click: Home and other local folders drew the
+  folder, a folder on a mounted disk image the external drive, Dropbox the cloud, CloudDocs the
+  iCloud glyph, Recents the clock, and the inside of a zip on that disk image the zipper. The active
+  chip's glyph was white on the accent. The Trash would not list (the Debug build has no Full Disk
+  Access), so its glyph is pinned by the tests only.
+- **Not verified live:** a share, a vault and the servers (each reads a secret from the Keychain,
+  which prompts for the Debug build's signature), Photos, and a real drag of a chip. **Seen live:**
+  with nine tabs in a half-width pane the strip overflows, and the labels of some chips truncate to
+  nothing while others keep theirs. That uneven squeeze predates this change; the glyph takes about
+  18 pt per chip, so it starts with fewer tabs than before.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
