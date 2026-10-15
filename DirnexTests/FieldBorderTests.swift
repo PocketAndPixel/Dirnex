@@ -170,12 +170,14 @@ struct FieldBorderTests {
         let content = try #require(window.contentView)
         let border = try #require(FieldBorder.border(of: field))
 
-        let with = try pixels(of: content)
+        let with = try BitmapPixels(capturing: content)
         border.isHidden = true
-        let without = try pixels(of: content)
+        let without = try BitmapPixels(capturing: content)
         border.isHidden = false
+        try #require(with.width == without.width && with.height == without.height)
+        try #require(with.colorSpace == without.colorSpace)
 
-        let scale = CGFloat(with.pixelsWide) / content.bounds.width
+        let scale = CGFloat(with.width) / content.bounds.width
         let frame = field.frame
         // The ring follows the field's rounded corner, so the band is rounded too, with a quarter
         // point either side for the anti-aliasing along the curves.
@@ -191,14 +193,12 @@ struct FieldBorderTests {
         )
         var changed = 0
         var outsideTheBand = 0
-        for y in 0..<with.pixelsHigh {
-            for x in 0..<with.pixelsWide {
-                let drawn = try #require(with.colorAt(x: x, y: y))
-                let plain = try #require(without.colorAt(x: x, y: y))
-                let delta = abs(drawn.redComponent - plain.redComponent)
-                    + abs(drawn.greenComponent - plain.greenComponent)
-                    + abs(drawn.blueComponent - plain.blueComponent)
-                    + abs(drawn.alphaComponent - plain.alphaComponent)
+        for y in 0..<with.height {
+            for x in 0..<with.width {
+                let drawn = with.rgba(x: x, y: y)
+                let plain = without.rgba(x: x, y: y)
+                let delta = abs(drawn.x - plain.x) + abs(drawn.y - plain.y)
+                    + abs(drawn.z - plain.z) + abs(drawn.w - plain.w)
                 guard delta > 0.01 else { continue }
                 changed += 1
                 // The pixel's center, in the content view's points (unflipped).
@@ -213,11 +213,5 @@ struct FieldBorderTests {
         let perimeter = Int(2 * (frame.width + frame.height) * scale)
         #expect(changed > perimeter)
         #expect(outsideTheBand == 0)
-    }
-
-    private func pixels(of view: NSView) throws -> NSBitmapImageRep {
-        let rep = try #require(view.bitmapImageRepForCachingDisplay(in: view.bounds))
-        view.cacheDisplay(in: view.bounds, to: rep)
-        return rep
     }
 }
