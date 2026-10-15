@@ -40,10 +40,27 @@ final class ExpandingLabelCell: NSTextFieldCell {
     /// Matches the corner AppKit's own expansion panel draws.
     static let cornerRadius: CGFloat = 3
 
+    /// Air between the floated text and the panel's border, per side. The stock frame hugs the
+    /// glyphs — about 3 pt from the stroke on the sides and less above and below — which is hard
+    /// to read against a hairline border. AppKit sizes its window from `expansionFrame`, so the
+    /// padding is honored: measured on the live pane, a name AppKit floats at 313 × 17 pt now
+    /// floats at 321 × 21 pt, the text where it was.
+    static let padding = NSSize(width: 4, height: 2)
+
     /// The color the floated panel draws its text in — the row's *resting* color, pushed down by
     /// `FileCellView.applyStyle`. `nil` leaves whatever the cell already holds, which is right for
     /// every label that is not a file row.
     var expansionInk: NSColor?
+
+    /// AppKit's frame, grown outward by `padding`, so the panel grows around the text and the text
+    /// still lands exactly over the truncated one in the row.
+    override func expansionFrame(withFrame cellFrame: NSRect, in view: NSView) -> NSRect {
+        let frame = super.expansionFrame(withFrame: cellFrame, in: view)
+        // An empty frame is AppKit's "it fits, show nothing". Growing that would float a panel
+        // over every row.
+        guard !frame.isEmpty else { return frame }
+        return frame.insetBy(dx: -Self.padding.width, dy: -Self.padding.height)
+    }
 
     override func draw(withExpansionFrame cellFrame: NSRect, in view: NSView) {
         // Paint the backing before anything else. The stock drawing is *glyphs only* — probed, the
@@ -62,7 +79,11 @@ final class ExpandingLabelCell: NSTextFieldCell {
 
         let ink = textColor
         if let expansionInk { textColor = expansionInk }
-        super.draw(withExpansionFrame: cellFrame, in: view)
+        // The text goes back into the frame AppKit measured, before `expansionFrame` padded it.
+        super.draw(
+            withExpansionFrame: cellFrame.insetBy(dx: Self.padding.width, dy: Self.padding.height),
+            in: view
+        )
         textColor = ink
     }
 }

@@ -24,6 +24,32 @@ struct ExpandingLabelTests {
         #expect(label.cell is ExpandingLabelCell)
     }
 
+    /// The padding is added around AppKit's own answer, measured against a stock label of the same
+    /// string and width. The empty case matters more than the padded one: AppKit answers an empty
+    /// frame for a value that fits, and padding that would float a panel over every row.
+    @Test("a truncated value floats in a padded panel, and one that fits floats nothing")
+    func expansionFrameIsPaddedOnlyWhenTruncated() throws {
+        let name = "WestWorld.S01E09.The.Well-Tempered.Clavier.mkv"
+        let label = ExpandingLabel(labelWithString: name)
+        let stock = NSTextField(labelWithString: name)
+        let cell = try #require(label.cell)
+        let stockCell = try #require(stock.cell)
+
+        for field in [label, stock] {
+            field.frame = NSRect(x: 0, y: 0, width: 120, height: 17)
+        }
+        let stockFrame = stockCell.expansionFrame(withFrame: stock.bounds, in: stock)
+        #expect(!stockFrame.isEmpty)
+        let padding = ExpandingLabelCell.padding
+        #expect(
+            cell.expansionFrame(withFrame: label.bounds, in: label)
+                == stockFrame.insetBy(dx: -padding.width, dy: -padding.height)
+        )
+
+        label.frame.size.width = 1000
+        #expect(cell.expansionFrame(withFrame: label.bounds, in: label).isEmpty)
+    }
+
     /// The opt-in itself. Every column gets it — a Date narrowed past its content truncates the
     /// same way a name does.
     @Test("every file cell offers to expand a truncated value")
