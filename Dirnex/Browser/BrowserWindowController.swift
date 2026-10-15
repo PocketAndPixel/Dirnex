@@ -17,10 +17,11 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
     let splitViewController = SidebarFocusSplitViewController()
     /// Inner split: `[leftPanel, rightPanel]`. Kept separate so the sidebar toggle can't
     /// steal width from just the adjacent pane — the two panes redistribute proportionally in
-    /// both directions here, holding their ratio across any number of sidebar toggles.
+    /// both directions here, holding their ratio across any number of sidebar toggles. Its divider
+    /// holds at the even split while dragged past it (`PanesSplitViewController`).
     /// Internal (not private) so `BrowserWindowController+Terminal` can stack it over the
     /// drawer — Swift's `private` is per-file.
-    let panesSplitViewController = LockableDividerSplitViewController()
+    let panesSplitViewController = PanesSplitViewController()
     /// Middle split: `[panes, terminal drawer]`, stacked vertically. Sits between the outer
     /// sidebar split and the panes split so the drawer spans the two panes and *not* the
     /// sidebar — Xcode's debug area, not a full-width strip — and so the sidebar stays full
@@ -415,9 +416,9 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
     private func centerPanesDivider() {
         let splitView = panesSplitViewController.splitView
         splitView.layoutSubtreeIfNeeded()
-        let available = splitView.bounds.width - splitView.dividerThickness
-        guard available > 0 else { return }
-        splitView.setPosition(available / 2, ofDividerAt: 0)
+        let equal = PanesSplitViewController.equalPosition(in: splitView)
+        guard equal > 0 else { return }
+        splitView.setPosition(equal, ofDividerAt: 0)
     }
 
     // MARK: - PanelHost

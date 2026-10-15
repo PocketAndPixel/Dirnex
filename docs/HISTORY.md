@@ -14360,6 +14360,40 @@ shows it. The showing tab always keeps a chip, and the strip no longer pushes th
   synthesized; the slot arithmetic is pinned by the drop test), and the » at a translated
   language.
 
+**2026-10-15: the pane divider holds where the panes are the same width.** Asked for in one line:
+equal panes were hard to hit by hand. A drag that comes within 8 pt of the even split puts the
+divider exactly there and holds it until the pointer is more than 8 pt away. Entering that band taps
+the trackpad (`NSHapticFeedbackManager`'s `.alignment`, the feedback macOS gives at an alignment
+guide). The panes split is now a `PanesSplitViewController`, a subclass of
+`LockableDividerSplitViewController`; the sidebar and drawer splits are unchanged.
+
+- **Probed before writing it.** Swift requires `override` on
+  `splitView(_:constrainSplitPosition:ofSubviewAt:)` for an `NSSplitViewController` subclass, but
+  `NSSplitViewController.instancesRespond(to:)` is false, so there is no `super` to call (a `super`
+  call compiles and raises an unrecognized selector). AppKit sends it for every step of a drag and
+  once for a programmatic `setPosition`, and the leading pane's frame still holds the previous
+  step's position when it arrives. That last fact makes the tap stateless: tap when the result is
+  the even split and the leading pane was outside the band. A tap also needs `NSApp.currentEvent`
+  to be a `.leftMouseDragged`, so the first launch's centering, which goes through `setPosition`,
+  stays silent.
+- **A drag can be driven headlessly.** `NSSplitView` tracks a drag in its own loop, pulling events
+  off the queue, so a test posts the drags and the release with `NSApp.postEvent` and then sends
+  the press with `window.sendEvent`. That runs AppKit's whole path, the delegate call included.
+- `PanesDividerDetentTests` (app, 9): the position rule at both edges of the band, the even split,
+  the selector by string, a drag released inside the band, one past it, one tap per entry over a
+  drag that leaves and comes back, no tap leaving the band, and no tap for `setPosition`. The same
+  drag on a plain `LockableDividerSplitViewController` stops at 395 (the negative control for the
+  drag test). Negative controls on the source each failed their own tests: no snap (four tests),
+  no "was outside the band" check (the entry and leaving tests), and no drag-event check (the
+  `setPosition` test, and the leaving test, whose fixture places the divider with `setPosition`).
+  Core green (3962 tests), app green (1673), both linters clean.
+- **Verified live** on the Debug build launched by path, after quitting a Debug instance from before
+  the change. Read from the split's autosave after each drag: a control drag to the left gave 548 /
+  687; a drag released about 4 pt right of the middle gave 617.5 / 617.5; dragging out of it gave
+  643 / 592; released about 5 pt left of the middle gave 617.5 / 617.5 again; about 10 pt off gave
+  627.5 / 607.5, so the band ends where it should. The divider was left at 617.5 / 617.5, as found.
+- **Not verified live:** the trackpad tap, which only a hand on a Force Touch trackpad can feel.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
