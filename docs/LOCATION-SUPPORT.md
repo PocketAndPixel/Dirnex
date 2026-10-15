@@ -78,6 +78,7 @@ capabilities and has not been exercised against it.
 |---|---|---|---|---|---|---|---|---|---|---|
 | List a folder | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Enter a folder (`⏎`, double-click) | yes | yes | yes | yes | yes | yes | yes, limited<sup>a</sup> | yes | yes | yes |
+| Open in a new tab of the other pane (`⌘⏎`, ⌘-double-click)<sup>aad</sup> | yes | yes | yes | yes | yes | yes | yes, limited<sup>a</sup> | yes | yes | yes |
 | `..` row and Go Up (`⌫`) | yes | yes | yes | yes | yes | yes | n/a | yes | n/a | n/a |
 | Path bar, breadcrumbs, `⌘L` | yes | yes | yes | yes | yes | yes | yes | yes, partially<sup>fff</sup> | yes, limited<sup>b</sup> | yes, limited<sup>b</sup> |
 | Back / forward, history (`⌥↓`) | yes | yes | yes | yes | yes | yes | yes | yes | yes, limited<sup>c</sup> | yes, limited<sup>c</sup> |
@@ -179,6 +180,13 @@ what is re-listed pays for names again.
 month's names — about 1.1 ms an asset, since a name is the one thing PhotoKit answers per asset
 rather than per fetch (docs/NOTES.md ▸ iCloud Photos). It rides the remote size budget
 (<sup>e</sup>), so a very large library gives up rather than stalling.
+
+<sup>aad</sup> The same route as `⏎` up to its last step, which lands in a new tab of the other pane
+instead of this one, so each cell follows the row above. A folder opens there. An archive opens at its
+root, after the fetch or extraction a server or a nested archive needs. A vault image unlocks first,
+and a bucket row connects in the other pane. In a results tab `⏎` already opens a folder over there,
+so ⌘ changes nothing. A file opens as `⏎` opens it. Exercised live on local folders and a local zip
+(2026-10-15); the other columns follow from the shared route and are not exercised live.
 
 ## 2. File operations
 

@@ -118,4 +118,40 @@ struct SelectionUndoTests {
         journal.record(.selection(change(prior: [], new: ["b"])))
         #expect(!journal.canRedo)
     }
+
+    // MARK: - Withdrawing
+
+    @Test("withdrawing the top entry leaves the journal as it was before it, with no redo")
+    func withdrawTop() {
+        var journal = UndoJournal()
+        journal.record(.newFolder(at: .local("/dir/new")))
+        let mark = UndoEntry.selection(change(prior: [], new: ["a"]))
+        journal.record(mark)
+
+        let withdrew = journal.withdraw(mark)
+        #expect(withdrew)
+        #expect(journal.top?.fileOperation?.label == .newFolder)
+        #expect(journal.records.count == 1)
+        // Not an undo: nothing was reversed, so there is nothing to redo.
+        #expect(!journal.canRedo)
+    }
+
+    @Test("an entry that is not on top is never withdrawn")
+    func withdrawOnlyTheTop() {
+        var journal = UndoJournal()
+        let mark = UndoEntry.selection(change(prior: [], new: ["a"]))
+        journal.record(mark)
+        let later = UndoEntry.selection(change(prior: ["a"], new: ["a", "b"]))
+        journal.record(later)
+        let before = journal
+
+        // Under a later entry: taking it back would leave the later one describing marks that
+        // never existed.
+        let underneath = journal.withdraw(mark)
+        // The same pane and folder with different marks is a different entry.
+        let lookalike = journal.withdraw(.selection(change(prior: ["a"], new: ["a", "c"])))
+        #expect(!underneath)
+        #expect(!lookalike)
+        #expect(journal == before)
+    }
 }

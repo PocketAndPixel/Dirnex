@@ -8,14 +8,24 @@ import DirnexCore
 extension PanelViewController {
     /// Enter the directory under the cursor, browse into an archive file, or launch a plain
     /// file with its default app.
-    func openCurrentEntry() {
+    ///
+    /// `inOtherPane` (Cmd+Return, a Cmd-double-click) opens a folder, an archive, a vault or a bucket
+    /// in a new tab of the other pane, and leaves this pane and the focus where they are. A file opens
+    /// as it always does, since there is no tab to put it in. It is one flag through this one chain
+    /// rather than a second chain beside it, because the order below is the rule: a vault and a
+    /// bucket are directories that must not be entered as directories.
+    func openCurrentEntry(inOtherPane: Bool = false) {
         guard let entry = panel.currentEntry else { return }
         // Before the directory branch, because a `.sparsebundle` *is* a directory: entering one shows
         // `bands/`, `Info.plist` and `token` — the container's machinery — while the files the user
         // came for are on a mounted volume somewhere else entirely. An unlocked vault therefore read
         // as locked from the pane, and the only way in was the sidebar (user-reported 2026-08-10).
         if let vault = savedVault(for: entry) {
-            host?.panelRequestsVaultOpen(vault, showingIn: self)
+            host?.panelRequestsVaultOpen(
+                vault,
+                showingIn: inOtherPane ? otherPane : self,
+                inNewTab: inOtherPane
+            )
             return
         }
         // Also before the directory branch, and for the same shape of reason: a bucket row *is* a
@@ -27,7 +37,12 @@ extension PanelViewController {
         // bucket's contents beneath it on the `s3://` backend, and those are ordinary folders that
         // navigate (`VFSPath.isS3BucketRow`).
         if let bucket = s3BucketToEnter(for: entry) {
-            enterS3Bucket(at: bucket)
+            // The other pane connects, so the bucket lands there. The focus stays in this pane.
+            if inOtherPane {
+                otherPane.enterS3Bucket(at: bucket, inNewTab: true, focusing: false)
+            } else {
+                enterS3Bucket(at: bucket)
+            }
             return
         }
         if let target = panel.openTarget(for: entry) {
@@ -39,17 +54,20 @@ extension PanelViewController {
             // stepping into "Pages" should walk this pane into that folder the way stepping into any
             // folder does. Sending it to the other pane — which is right for a search you want to
             // keep — reads as the click going to the wrong window.
+            //
+            // With Cmd a results tab still takes its own route, which already lands in a new tab of
+            // the other pane and answers to the setting that says where the focus goes.
             if isResultsListing, !isICloudListing {
                 openResultDirectory(target)
             } else {
-                navigate(to: target)
+                navigate(to: target, inOtherPane: inOtherPane)
             }
         } else if entry.path.backend == .local, ArchiveType.isBrowsable(entry.name) {
             // A local archive file — browse into its virtual folder tree instead of launching.
-            navigate(to: archiveRoot(for: entry))
+            navigate(to: archiveRoot(for: entry), inOtherPane: inOtherPane)
         } else if entry.path.backend.isArchive, ArchiveType.isBrowsable(entry.name) {
             // A nested archive — extract this member to disk and browse into it (PLAN.md §M4).
-            beginNestedArchiveEntry(for: entry)
+            beginNestedArchiveEntry(for: entry, inOtherPane: inOtherPane)
         } else if entry.path.backend == .local {
             // An evicted iCloud item has a real name and a real size and no bytes, so handing it
             // straight to `NSWorkspace` doesn't fail — it blocks whichever app opens it, silently,
@@ -81,7 +99,7 @@ extension PanelViewController {
             // Slice 6). Before the plain remote branch below, which would hand the same `.zip` to
             // Archive Utility instead: ⏎ on something folder-shaped means *go inside it*, and that
             // it happens to be on a server is not a reason for the key to mean something else.
-            beginRemoteArchiveEntry(for: archive)
+            beginRemoteArchiveEntry(for: archive, inOtherPane: inOtherPane)
         } else if entry.path.backend.isRemoteConnection {
             // A file on a server, for the same reason and by the same route: download it to temp and
             // open *that*, registering the copy so a save is offered back up (PLAN.md §M21 Slice
@@ -89,6 +107,23 @@ extension PanelViewController {
             // not even a message, which is the one outcome worse than a refusal.
             beginRemoteFileOpen(for: entry)
         }
+    }
+
+    /// Show `path` in this tab, or for Cmd+Return and a Cmd-double-click in a new tab of the other
+    /// pane. The new tab becomes the one that pane shows, while the focus stays here, so the folder
+    /// the user just opened is the target of the next F5 or F6.
+    func navigate(to path: VFSPath, inOtherPane: Bool) {
+        if inOtherPane {
+            otherPane.openInNewTab(path)
+        } else {
+            navigate(to: path)
+        }
+    }
+
+    /// The pane a row opened with Cmd lands in. When there is no other pane (a pane built in a test)
+    /// it is this one, where the row still gets a tab of its own rather than replacing this one.
+    var otherPane: PanelViewController {
+        host?.panelCounterpart(of: self) ?? self
     }
 
     /// The saved vault `entry` is the image of, if it is one.

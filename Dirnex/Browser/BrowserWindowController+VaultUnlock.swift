@@ -26,8 +26,20 @@ extension BrowserWindowController {
 
     // MARK: - Panes
 
-    func panelRequestsVaultOpen(_ vault: VaultLocation, showingIn pane: PanelViewController) {
-        openVault(vault, showingIn: pane)
+    func panelRequestsVaultOpen(
+        _ vault: VaultLocation,
+        showingIn pane: PanelViewController,
+        inNewTab: Bool
+    ) {
+        guard inNewTab else {
+            openVault(vault, showingIn: pane)
+            return
+        }
+        // Cmd+Return on the image: `pane` is the other one, and the focus stays in the pane the key
+        // was pressed in, which `openVault` would move.
+        withUnlockedVault(vault) { [weak pane] point in
+            pane?.navigate(to: .local(point), inNewTab: true)
+        }
     }
 
     // MARK: - Commands
