@@ -486,6 +486,27 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
       stall's profile put 40% of samples in `MultiLineFieldTests`' per-pixel `colorAt` loop. Skipped,
       the same wait landed at 30.1–30.5 s behind a 12.8 s stall: the other suites filled the time.
       Skip the suspect for one run before believing a profile of a shared queue.
+    - **Count work after the test body too (2026-10-15).** A 30 s profile grouped by test frame
+      put 15.3% in `MultiLineFieldTests` and 43.7% across callers inside AppKit's blocking sheet
+      animation loop. Later profiles put 19–21% in `refreshTree` tasks with no test frame left.
+      Those tasks came from `PanelTreeBucketExpansionTests.localRowIsUntouched`: expanding its
+      missing row installed a watcher over `NSTemporaryDirectory()`, about 13,000 entries on this
+      Mac. Other suites' temp files kept it busy: 76 refresh tails cost 30.1 s of main-actor work.
+      Give a watched fixture its own directory and stop its watcher at cleanup. Replacing the
+      per-pixel `colorAt`/`#require` loops with checked raw-byte reads and moving the RAW decode to
+      `offCooperativePool` removed another ~5 s. No wait budget changed. Three completed full runs
+      had 10.6–15.1 s peak pauses and 15.1–20.6 s pane listing waits, against the initial 24.4–24.5 s
+      pauses. HISTORY.md's 2026-10-15 entry has the stages and controls.
+      - **The restore control still got an earlier listing once.** Restoring the old tests brought
+        back 79 large refresh tails (32.46 s) and the 4.5 s pixel loop, yet its listing landed in
+        14.22 s. Queue order can improve one clock while total work grows. Measure body time,
+        repeated work and several full runs alongside a stall meter; never use one latency alone.
+      - **Display capture bytes are premultiplied RGBA.** For these 8-bit, interleaved captures,
+        `colorAt` reports RGB divided by alpha, and alpha divided by 255. A byte comparison using
+        `/ 255` for every channel changes the tolerance at translucent edges. `BitmapPixels`
+        checks the format and row stride; its fixture covers transparent pixels, partial alpha and
+        padded rows. Comparing every component of the real field captures with `colorAt` differed
+        by at most 1.11e-16, with the old 0.02 and 0.01 difference thresholds kept.
   - **A negative wait sized in seconds goes vacuous under that stall, and only a control finds it.**
     The sibling test pinning "no progress sheet over the placeholder card" held 2.5 s — "the 1200 ms
     delay, twice" — while the sheet actually lands 2.9–6.3 s in, so it expired before one could have

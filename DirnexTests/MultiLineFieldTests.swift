@@ -65,34 +65,27 @@ struct MultiLineFieldTests {
         try #require(box.subviews.lazy.compactMap { $0 as? NSTextField }.first)
     }
 
-    private func pixels(of view: NSView) throws -> NSBitmapImageRep {
-        let rep = try #require(view.bitmapImageRepForCachingDisplay(in: view.bounds))
-        view.cacheDisplay(in: view.bounds, to: rep)
-        return rep
-    }
-
     /// How many pixels of `view` differ from `reference`'s, which has to have drawn something.
     private func differingPixels(_ view: NSView, from reference: NSView) throws -> Int {
-        let drawnPixels = try pixels(of: view)
-        let expectedPixels = try pixels(of: reference)
-        #expect(drawnPixels.pixelsWide == expectedPixels.pixelsWide)
-        #expect(drawnPixels.pixelsHigh == expectedPixels.pixelsHigh)
+        let drawnPixels = try BitmapPixels(capturing: view)
+        let expectedPixels = try BitmapPixels(capturing: reference)
+        try #require(drawnPixels.width == expectedPixels.width)
+        try #require(drawnPixels.height == expectedPixels.height)
+        try #require(drawnPixels.colorSpace == expectedPixels.colorSpace)
         var differing = 0
         var inked = 0
-        for y in 0..<expectedPixels.pixelsHigh {
-            for x in 0..<expectedPixels.pixelsWide {
-                let drawn = try #require(drawnPixels.colorAt(x: x, y: y))
-                let expected = try #require(expectedPixels.colorAt(x: x, y: y))
-                let delta = abs(drawn.redComponent - expected.redComponent)
-                    + abs(drawn.greenComponent - expected.greenComponent)
-                    + abs(drawn.blueComponent - expected.blueComponent)
-                    + abs(drawn.alphaComponent - expected.alphaComponent)
+        for y in 0..<expectedPixels.height {
+            for x in 0..<expectedPixels.width {
+                let drawn = drawnPixels.rgba(x: x, y: y)
+                let expected = expectedPixels.rgba(x: x, y: y)
+                let delta = abs(drawn.x - expected.x) + abs(drawn.y - expected.y)
+                    + abs(drawn.z - expected.z) + abs(drawn.w - expected.w)
                 if delta > 0.02 { differing += 1 }
-                if expected.alphaComponent > 0 { inked += 1 }
+                if expected.w > 0 { inked += 1 }
             }
         }
         // A field that drew nothing would match a box that drew nothing.
-        #expect(inked > expectedPixels.pixelsWide * expectedPixels.pixelsHigh / 2)
+        #expect(inked > expectedPixels.width * expectedPixels.height / 2)
         return differing
     }
 

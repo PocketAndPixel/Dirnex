@@ -14051,6 +14051,67 @@ of the poll, at half the shared `settleUntil`'s 30 s.
   and `RemotePreviewFetchTests` also failed at their own 30 s waits, behind the same queue. They are
   not touched here.
 
+
+**2026-10-15: less main-actor work at the start of the app tests.** Follow-up to the wait above.
+No wait budget changed, and no production code changed. The two initial full runs had a longest
+main-actor pause of **24.54 and 24.39 s**; their pane listings took **24.80–24.81 and 20.60–20.62 s**.
+Both failed the archive-name chooser's wait.
+
+- **Measured the work as well as the delay.** A temporary 25 ms main-actor sleeper and a detached
+  sleeper started at the first shared wait; the pane fixture timed its own listing separately.
+  `sample` at 10 ms over the first 30 s grouped main-thread stacks by test frame. In the complete
+  baseline profile, `MultiLineFieldTests` held 15.3% of samples, `LicenseReminderSheetTests` 13.4%,
+  `LicenseReminderControllerTests` 4.9%, and its presentation tasks another 3.9%. Across all callers,
+  AppKit's sheet animation loop held **43.7%**. The per-window animation setting, a zero animation
+  context and the two window-animation defaults did not shorten a standalone sheet probe (~266 ms).
+  The sheets and their assertions stay intact.
+- **Compare capture bytes, keeping the same colors and tolerance.** The six field cases took
+  **4.47–4.57 s** synchronously before, **0.39–0.46 s** after. `BitmapPixels` validates the capture's
+  format once and reads its RGBA bytes, including row padding. RGB is divided by alpha: these are
+  premultiplied captures, and dividing by 255 would change the test at the antialiased edges.
+  A temporary comparison with `colorAt` over all 3.06 million captured pixels differed by at most
+  **1.11e-16** per component. The 0.02 field and 0.01 border tolerances, alpha coverage, changed-pixel
+  count, and border-position checks are unchanged. The border suite uses the same reader; a small
+  fixture pins zero and partial alpha and padded rows.
+- **Run the RAW decode off the main actor.** Its five real camera files took ~0.8 s on that actor.
+  The whole body now uses `offCooperativePool`, including the clock that checks for deferred pixel
+  work. Resolution, portrait orientation and the residual-work limit are all still checked.
+- **A routing fixture was watching the whole temp folder.** `PanelTreeBucketExpansionTests` expanded
+  a missing child beneath `NSTemporaryDirectory()`. That installed a real tree watcher over about
+  **13,000 entries**, while every other suite kept changing the folder. A temporary timer found
+  **76 refresh tails totaling 30.1 s**, largely sorting on the main actor, in one full run. The test
+  now owns a small temp directory and stops its watcher at cleanup. It also checks that its seeded
+  row is still present, so a refresh cannot make the collapse assertion pass by deleting the row.
+  The large refresh tails disappeared, and the full run fell from 78.72 to 50.06 s at this step.
+- **One change at a time was not enough.** Bytes alone left a 21.86 s pause and failures in other
+  suites. Adding the RAW move gave 20.66 s; isolating the watched folder gave 20.46 s and removed the
+  later repeated work. After the border comparison changed too, three completed full runs measured:
+
+  | Run | Largest main-actor pause | Pane listing wait | Full test run |
+  |---|---:|---:|---:|
+  | Final 1 | 10.80 s | 17.16–17.17 s | 49.55 s |
+  | Final 2, SFTP + FTP enabled | 10.55 s | 20.58–20.59 s | 49.61 s |
+  | Final 3, SFTP + FTP enabled | 15.08 s | 15.06–15.11 s | 48.91 s |
+
+- **The control separates less work from a lucky place in the queue.** Temporarily restoring all
+  four old test implementations brought back **79 large refresh tails totaling 32.46 s** and the
+  ~4.5 s pixel loop. That run finished in 61.73 s, yet its pane listing happened to land in 14.22 s.
+  So a single listing time proves neither version faster; the repeated timings, direct body times
+  and removed refresh work are the evidence. Nothing was skipped or serialized to obtain the gain.
+- **The assertions still fail their controls.** Forcing the wrong bezel failed both read-only
+  appearances; omitting the border stroke failed both border cases; treating a missing folder as an
+  empty listing failed the tree test; returning a lazy RAW image failed all four residual-work
+  checks. Dividing RGB by 255 failed the new byte-reader test with ten issues. Every control was
+  restored. All probes were removed too.
+- **Verification caveats are separate from wait failures.** One live attempt lost its background FTP
+  server when the tool's shell ended; it was rerun with the server held in a foreground session.
+  Another run hit `NSRangeException` in `PDFKit.PDFTilePool.workQueue` → `PDFPage.lazilyLoadAnnotations`
+  after the startup measurements, and was not counted as a completed run. No PDF code was changed.
+  The three runs in the table passed (1627 tests reported, including the existing known-issue control).
+  S3 remained gated without its config. A final full run with every probe removed also passed in
+  49.02 s, with SFTP and FTP enabled. Core passed (3922 tests); both linters were clean. Changes
+  remain uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

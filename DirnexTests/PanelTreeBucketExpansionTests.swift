@@ -117,10 +117,18 @@ struct PanelTreeBucketExpansionTests {
     /// list writes nothing on the status line, which only the bucket route does; it closes again
     /// instead, and `PanelTreeLoadFailureTests` pins how that failure is reported.
     @Test("an ordinary folder row is still a plain listing")
-    func localRowIsUntouched() async {
-        let root = VFSPath.local(NSTemporaryDirectory())
+    func localRowIsUntouched() async throws {
+        // Expanding installs a live watcher. The shared temp root changes throughout a full run
+        // and has thousands of unrelated entries to sort on every event. Own the watched folder.
+        let directory = try TempDirectory()
+        defer { directory.cleanup() }
+        let root = VFSPath.local(directory.root.path)
         let pane = Self.pane(at: root)
-        let missing = root.appending("dirnex-tree-expansion-fixture-\(UUID().uuidString)")
+        defer {
+            pane.loadToken += 1
+            pane.watcher = nil
+        }
+        let missing = root.appending("missing")
         Self.seed(pane, [Self.folder(missing)])
 
         pane.toggleTreeExpansion(for: missing)
@@ -134,6 +142,7 @@ struct PanelTreeBucketExpansionTests {
             polls += 1
         }
         #expect(pane.panel.tree?.isExpanded(missing) == false)
+        #expect(pane.panel.displayedEntries.map(\.path) == [missing])
         #expect(pane.transientStatus == nil)
     }
 
