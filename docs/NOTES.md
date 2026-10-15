@@ -230,6 +230,15 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     at once), and the termination handler needing a cooperative thread.
     `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1` passed as `TEST_RUNNER_…` did not limit the test host's
     pool (two tests still ran side by side), so it can't stand in for a small runner.
+- **The CI runner's display is 1x, so a pixel test that passes on a Retina Mac can fail there.**
+  `bitmapImageRepForCachingDisplay` captures at the window's screen scale. Measured 2026-10-15 on
+  `FieldBorderTests.darkensTheRingOnly`: CI found 24 changed pixels outside the allowed band in Light
+  and 32 in Dark, and a probe capturing the same field into an explicit 1x bitmap here found exactly
+  24 and 32, all on the four rounded corners, against 0 at 2x. At 1x a curve's anti-aliased pixels
+  have centers up to about 0.7 pt off the stroke. Capture at a fixed scale
+  (`BitmapPixels(capturing:scale:)`) rather than widening a margin until 1x passes, which can cost
+  the assertion its point: here it would have let a stroke drawn inside the field through. With the
+  scale pinned at 2x, a stroke moved 1 pt inside still fails the test.
 
 ### Windows, sheets and key events in a test
 
@@ -274,6 +283,11 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     let the probe **retain** its windows for the life of the process (`TrashlessProbe.window()`). A
     handful of retained windows in a test host costs nothing against a crash that reads as several
     broken features. Re-measured: 7/7 green, no restarts, and the full app suite 6/6.
+  - **Met again in CI on 2026-10-15, in `RemoteFetchPromptTests`.** Its Download test answered the
+    confirmation and then closed its window. The host died about 20 s into the next test,
+    "dismissing the confirmation starts nothing" (`objc_release` in an autorelease pool the main
+    actor popped), and CI listed that test. Its `probeWindow()` now hands out
+    `TrashlessProbe.window()`. Any suite that presents a real sheet needs the same.
   - **The wall clock lies about which fix worked.** The crashing runs took 23 s against a 12 s
     baseline, which reads as "these tests are slow" and invites tuning the waits; the restarts were
     the whole difference, and with them gone the suite costs ~6 s.
