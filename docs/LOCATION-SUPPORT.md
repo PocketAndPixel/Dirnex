@@ -83,6 +83,7 @@ capabilities and has not been exercised against it.
 | Path bar, breadcrumbs, `⌘L` | yes | yes | yes | yes | yes | yes | yes | yes, partially<sup>fff</sup> | yes, limited<sup>b</sup> | yes, limited<sup>b</sup> |
 | Back / forward, history (`⌥↓`) | yes | yes | yes | yes | yes | yes | yes | yes | yes, limited<sup>c</sup> | yes, limited<sup>c</sup> |
 | Tabs, split panes, `Tab` focus | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Move a tab along its strip or to the other pane (`⌥⌘[` `⌥⌘]` `⇧⌘M`, dragging a chip)<sup>aae</sup> | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Sort, column layout, hidden files | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Type-to-filter, marks, `⌘A`, invert | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Tree view (`→` to expand) | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
@@ -187,6 +188,13 @@ root, after the fetch or extraction a server or a nested archive needs. A vault 
 and a bucket row connects in the other pane. In a results tab `⏎` already opens a folder over there,
 so ⌘ changes nothing. A file opens as `⏎` opens it. Exercised live on local folders and a local zip
 (2026-10-15); the other columns follow from the shared route and are not exercised live.
+
+<sup>aae</sup> A tab is the same object in its new place, carrying its own cursor, marks, history,
+columns, shape and a search's question. Both panes list through the window's one backend, so a tab on
+a server, inside an archive or in a vault moves as it is, without reconnecting or re-extracting. A
+pane's last tab stays. The keyboard moves were exercised live on local folders (2026-10-15). Dragging
+a chip is tested through the strips' drop methods only, because a drag session cannot be synthesized;
+the other columns follow from the shared backend and are not exercised live.
 
 ## 2. File operations
 

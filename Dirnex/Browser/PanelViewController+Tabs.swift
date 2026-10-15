@@ -105,9 +105,10 @@ extension PanelViewController {
     }
 
     /// Rebuild the tab strip from the current tab list; the strip hides itself when a
-    /// pane has a single tab so the browser looks unchanged until a second one is opened.
+    /// pane has a single tab so the browser looks unchanged until a second one is opened —
+    /// except while a tab from the other pane is being dragged, when it is the drop target.
     func refreshTabBar() {
-        tabBar.isHidden = tabs.count <= 1
+        tabBar.isHidden = tabs.count <= 1 && !tabBar.isRevealedForDrag
         tabBar.setTabs(tabs.map(\.title), activeIndex: activeTabIndex)
         tabBar.isActivePane = isActivePanel
     }
@@ -275,27 +276,30 @@ extension PanelViewController {
     /// window instead, matching macOS Cmd+W), so this reports whether one was removed.
     @discardableResult
     func closeTab(at index: Int) -> Bool {
-        guard tabs.count > 1, index >= 0, index < tabs.count else { return false }
-        tabs.remove(at: index)
-        if activeTabIndex >= tabs.count {
-            activeTabIndex = tabs.count - 1
-        } else if index < activeTabIndex {
-            activeTabIndex -= 1
-        }
+        guard updateTabList({ $0.remove(at: index) }) != nil else { return false }
         activateTab()
         persistState()
         return true
     }
 
-    /// Reorder a tab, keeping the same tab active across the move (identity, not index).
-    func moveTab(from source: Int, to destination: Int) {
-        guard source >= 0, source < tabs.count, source != destination else { return }
-        let activeTab = tabs[activeTabIndex]
-        let tab = tabs.remove(at: source)
-        tabs.insert(tab, at: min(max(destination, 0), tabs.count))
-        activeTabIndex = tabs.firstIndex { $0 === activeTab } ?? activeTabIndex
+    /// Reorder a tab by dropping it into `slot`, a gap between tabs (`TabSlot`), keeping the same
+    /// tab active across the move. A drop that leaves the tab where it was changes nothing.
+    func moveTab(from source: Int, toSlot slot: Int) {
+        guard updateTabList({ $0.move(from: source, toSlot: slot) }) else { return }
         refreshTabBar()
         persistState()
+    }
+
+    /// Apply `change` to this pane's tabs through `TabList`, which owns where a tab lands and which
+    /// tab shows afterwards, and hand back what `change` returned. The tabs are stored as a plain
+    /// array and an index because every `panel` read goes through them; this is the one place they
+    /// are rearranged.
+    func updateTabList<Result>(_ change: (inout TabList<PanelTab>) -> Result) -> Result {
+        var list = TabList(tabs: tabs, activeIndex: activeTabIndex)
+        let result = change(&list)
+        tabs = list.tabs
+        activeTabIndex = list.activeIndex
+        return result
     }
 
     // MARK: - Menu actions (dispatched to the focused pane via the responder chain)
@@ -333,8 +337,26 @@ extension PanelViewController: TabBarViewDelegate {
         focusTable()
     }
 
-    func tabBar(_ bar: TabBarView, didMoveTabFrom source: Int, to destination: Int) {
-        moveTab(from: source, to: destination)
+    func tabBar(_ bar: TabBarView, didMoveTabFrom source: Int, toSlot slot: Int) {
+        moveTab(from: source, toSlot: slot)
+    }
+
+    func tabBar(
+        _ bar: TabBarView,
+        didReceiveTabAt index: Int,
+        from source: TabBarView,
+        atSlot slot: Int
+    ) {
+        guard let sourcePane = source.delegate as? PanelViewController else { return }
+        sourcePane.handOverTab(at: index, to: self, atSlot: slot)
+    }
+
+    func tabBar(_ bar: TabBarView, didRequestOtherPanelForTabAt index: Int) {
+        moveTabToOtherPanel(at: index)
+    }
+
+    func tabBar(_ bar: TabBarView, tabDragIsInFlight inFlight: Bool) {
+        revealCounterpartTabBar(inFlight)
     }
 
     func tabBarDidRequestNewTab(_ bar: TabBarView) {
