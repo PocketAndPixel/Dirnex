@@ -250,14 +250,18 @@ extension PanelViewController {
     /// pane gesture that crosses into another backend (entering a bucket from an S3 account pane,
     /// or walking up out of one). There is no sheet to keep open, so success hands focus to the pane
     /// and a failure surfaces the standard error alert.
+    ///
+    /// `focusing` is `false` for a bucket opened here from the other pane with Cmd+Return, whose
+    /// focus stays where the user pressed it.
     func runConnect(
         host: String,
+        focusing: Bool = true,
         _ attempt: @escaping () async -> ConnectServerPrompt.Attempt
     ) {
         Task {
             if case let .failed(message) = await attempt() {
                 presentOperationFailure(message: connectFailureTitle(host), detail: message)
-            } else {
+            } else if focusing {
                 focusTable()
             }
         }

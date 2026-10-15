@@ -9,6 +9,12 @@ import DirnexCore
 protocol FileTableViewInput: AnyObject {
     /// Return / Enter / Cmd+Down — open the directory under the cursor or launch the file.
     func fileTableOpenSelection(_ tableView: FileTableView)
+    /// Cmd+Return / Cmd+Enter — open the folder or archive under the cursor in a new tab of the
+    /// other pane.
+    func fileTableOpenSelectionInOtherPane(_ tableView: FileTableView)
+    /// The second click of a Cmd-double-click on `row` — what Cmd+Return does, for the row clicked.
+    /// The first click has already toggled that row's mark as any Cmd-click does.
+    func fileTable(_ tableView: FileTableView, didCommandDoubleClickRow row: Int)
     /// Cmd+Up — navigate to the parent directory (unconditional, ignores any filter).
     func fileTableGoToParent(_ tableView: FileTableView)
     /// Backspace — trim the active type-to-filter, or go to the parent when it is empty.
@@ -231,6 +237,9 @@ final class FileTableView: StripedTableView {
             return
         }
 
+        // Ahead of the Cmd-click below, which would read the second click as another toggle.
+        if handleCommandDoubleClick(event, row: row) { return }
+
         if inputDelegate?.fileTable(self, didClickRow: row, modifiers: flags) == true {
             return
         }
@@ -274,6 +283,8 @@ final class FileTableView: StripedTableView {
 
     override func keyDown(with event: NSEvent) {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+
+        if handleCommandReturn(event) { return }
 
         if flags == .command {
             if handleCommandArrow(event.keyCode) { return }
@@ -449,5 +460,38 @@ final class FileTableView: StripedTableView {
     private func visibleRowCount() -> Int {
         let rows = rows(in: visibleRect)
         return max(rows.length - 1, 1)
+    }
+}
+
+// MARK: - Opening in the other pane
+
+/// Cmd+Return and the Cmd-double-click, which open the row in a new tab of the other pane. Both read
+/// ⌘ off the four modifier keys alone, because each key and lock adds a flag of its own: keypad Enter
+/// carries the numeric-pad flag, fn+Return the function flag, and Caps Lock is on whenever it is lit.
+extension FileTableView {
+    /// Cmd+Return, and Cmd+Enter on the keypad. `true` when it was one.
+    fileprivate func handleCommandReturn(_ event: NSEvent) -> Bool {
+        guard Self.holdsCommandAlone(event), event.keyCode == 36 || event.keyCode == 76 else {
+            return false
+        }
+        inputDelegate?.fileTableOpenSelectionInOtherPane(self)
+        return true
+    }
+
+    /// The second click of a Cmd-double-click on `row`. `true` when the click belongs to one.
+    ///
+    /// Caught in `mouseDown`, because a Cmd-click is consumed there and never reaches `super`, so the
+    /// table's `doubleAction` never fires for one. A third click is swallowed rather than read as
+    /// another Cmd-click, which would mark the row just opened.
+    fileprivate func handleCommandDoubleClick(_ event: NSEvent, row: Int) -> Bool {
+        guard Self.holdsCommandAlone(event), event.clickCount >= 2 else { return false }
+        if event.clickCount == 2, row >= 0 {
+            inputDelegate?.fileTable(self, didCommandDoubleClickRow: row)
+        }
+        return true
+    }
+
+    private static func holdsCommandAlone(_ event: NSEvent) -> Bool {
+        event.modifierFlags.intersection([.command, .shift, .option, .control]) == .command
     }
 }

@@ -90,14 +90,18 @@ extension PanelViewController {
     /// where it came from, and navigate into its virtual contents. Reuses a still-present prior
     /// extraction instead of re-spawning `bsdtar`. `entry` must be a browsable-archive *file*
     /// member of the pane's archive (the caller checks `ArchiveType.isBrowsable`).
-    func beginNestedArchiveEntry(for entry: FileEntry) {
+    ///
+    /// `inOtherPane` (Cmd+Return) lands the mount in a new tab of the other pane. The extraction
+    /// still runs here, since it reads this pane's archive, and the registry it is recorded in is the
+    /// window's, so the other pane walks back out of it the same way.
+    func beginNestedArchiveEntry(for entry: FileEntry, inOtherPane: Bool = false) {
         guard let outerArchivePath = panel.path.backend.archivePath else { return }
         let origin = entry.path // the member's identity inside the outer archive
 
         // Re-entering an inner archive we already extracted this session reuses the temp file (and
         // its cached mount), matching how the preview cache avoids re-extracting the same member.
         if let existing = host?.nestedArchiveRegistry.reusableMount(forOrigin: origin) {
-            navigate(to: stagedArchiveRoot(atOnDiskPath: existing))
+            navigate(to: stagedArchiveRoot(atOnDiskPath: existing), inOtherPane: inOtherPane)
             return
         }
 
@@ -122,7 +126,7 @@ extension PanelViewController {
         } onSuccess: { [weak self] mountPath in
             guard let self else { return }
             host?.nestedArchiveRegistry.record(mountOnDiskPath: mountPath, origin: origin)
-            navigate(to: stagedArchiveRoot(atOnDiskPath: mountPath))
+            navigate(to: stagedArchiveRoot(atOnDiskPath: mountPath), inOtherPane: inOtherPane)
         } onFailure: { [weak self] error in
             guard let self else { return }
             // The refusal names the *outer* archive, which is the file whose code page is in
@@ -169,7 +173,10 @@ extension PanelViewController {
     /// bytes are reused by every later gesture over the same row. A second ⏎ on an archive already
     /// fetched this session costs nothing at all: the plan reads the copy as `cached` and the mount
     /// is the same file.
-    func beginRemoteArchiveEntry(for entry: FileEntry) {
+    ///
+    /// `inOtherPane` (Cmd+Return) lands the mount in a new tab of the other pane once the copy is
+    /// here, as `beginNestedArchiveEntry` does.
+    func beginRemoteArchiveEntry(for entry: FileEntry, inOtherPane: Bool = false) {
         materialize([entry], for: .browseArchive) {
             String(
                 localized: "Couldn’t open this archive",
@@ -178,7 +185,7 @@ extension PanelViewController {
         } then: { [weak self] urls in
             guard let self, let url = urls.first else { return }
             host?.nestedArchiveRegistry.record(mountOnDiskPath: url.path, origin: entry.path)
-            navigate(to: stagedArchiveRoot(atOnDiskPath: url.path))
+            navigate(to: stagedArchiveRoot(atOnDiskPath: url.path), inOtherPane: inOtherPane)
         }
     }
 }

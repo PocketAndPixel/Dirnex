@@ -14112,6 +14112,52 @@ Both failed the archive-name chooser's wait.
   49.02 s, with SFTP and FTP enabled. Core passed (3922 tests); both linters were clean. Changes
   remain uncommitted.
 
+**2026-10-15: ⌘Return or a ⌘-double-click opens a folder or an archive in the other pane.** Asked
+for in one line. The row opens in a new tab of the other pane, which becomes the tab that pane shows,
+so it is the target of the next F5 or F6. This pane and the focus stay where they were, as a search
+hit's folder already did by default. A file opens as Return opens it, since there is no tab to put
+it in. On `..`, ⌘ also changes nothing and the pane goes up.
+
+- **One flag through the one chain.** `openCurrentEntry(inOtherPane:)` stays the only place that
+  decides what a row is, because its order is the rule: a saved vault and a bucket row are
+  directories that must not be entered as directories. Each folder-shaped branch hands the flag to
+  its landing. A folder and a local archive go through `navigate(to:inOtherPane:)`. A nested archive
+  and an archive on a server are extracted or fetched *here*, since that reads this pane's archive,
+  and land over there. The registry they record into is the window's, so the other pane walks out of
+  them the same way. A vault unlocks and opens in a new tab of the other pane without taking the
+  focus. A bucket row connects in the other pane, with `runConnect(focusing: false)`. A results tab
+  keeps its own route, which already opened folders over there and answers to the focus setting.
+- **⌘Return is caught in `FileTableView.keyDown`.** No menu item or monitor claims it, which
+  `SidebarNewTabTests` already pins. ⌘ is read off ⌘⇧⌥⌃ alone, because keypad Enter carries the
+  numeric-pad flag, fn+Return the function flag, and Caps Lock its own.
+- **A ⌘-double-click starts with a ⌘-click, and that click marks the row.** The second click
+  (`clickCount == 2`) reaches `mouseDown` before the ⌘-click handling, since a ⌘-click never reaches
+  `super`, so `doubleAction` never fires for one. The pane remembers the row the last ⌘-click toggled
+  and the marks from before it. The second click puts those marks back and withdraws that click's
+  journal entry. Otherwise ⌘Z would stop on a mark nobody meant. `UndoJournal.withdraw` (core) takes
+  an entry off the top only if it is still the top, and nothing goes to redo. Any other click forgets
+  the row, so a ⌘-click made on its own earlier keeps its mark. A third click is swallowed.
+- `FileTableView` went 3 lines over `type_body_length`, so the two recognizers moved into an
+  extension of their own in the same file.
+- `OpenInOtherPaneTests` (app, 10 tests): real key and mouse events into a pane laid out in a window,
+  with a loaded pane beside it. They cover ⌘Return on a folder and on a local zip, and the spellings
+  of the key (keypad, fn, Caps Lock; ⌥⌘ and ⇧⌘ open nothing). Plain Return, ⌘ on `..` and ⌘ on a file
+  are the narrowness controls. The ⌘-double-click restores earlier marks and leaves the journal
+  empty, a third click opens and marks nothing, and a mark from an earlier lone ⌘-click stays. Two
+  core tests cover `withdraw`. Negative controls each failed their own tests: `withdraw` without its
+  top check; the key read as `flags == .command`; no mark restore; a plain click not forgetting the
+  ⌘-click; and the landing ignoring the flag. Core green (3924 tests), app green (1637), both linters
+  clean.
+- **Verified live** on the Debug build, launched by path with nothing else running, settings backed
+  up and restored (65 keys, identical by value). ⌘Return on a folder opened a fourth tab in the right
+  pane listing it, beside the tab that pane had been showing. The left pane did not move, and ↓
+  then moved its cursor, so the focus had stayed. ⌘Return on a zip opened another tab at the
+  archive's root. Then Space marked a file and a ⌘-double-click (full-screen computer-use, which can
+  hold ⌘ through a click) opened a folder in a further tab, with only the file marked afterwards.
+  One ⌘Z then unmarked the file, so the Space's entry was on top and the double-click had left none.
+  Not run live: vaults and buckets (both read the Keychain, which prompts for the Debug build's
+  signature) and archives on a server or nested in another.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

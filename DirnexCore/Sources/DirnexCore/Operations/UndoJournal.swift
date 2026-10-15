@@ -419,6 +419,20 @@ public struct UndoJournal: Sendable, Equatable {
         return entry
     }
 
+    /// Take `entry` back off the top of the undo stack, as though it had never been recorded: an
+    /// action that turned out to be the first half of a different gesture. The first click of a
+    /// ⌘-double-click marks the row it then opens, and the open is what the user asked for.
+    ///
+    /// Unlike `takeForUndo`, nothing goes onto the redo stack, since there is nothing to redo. What
+    /// the recording cleared from redo stays cleared. `false`, with nothing changed, when `entry` is
+    /// not the top, so a later action can never be taken back by mistake.
+    @discardableResult
+    public mutating func withdraw(_ entry: UndoEntry) -> Bool {
+        guard records.last == entry else { return false }
+        records.removeLast()
+        return true
+    }
+
     public mutating func clear() {
         records.removeAll()
         redoRecords.removeAll()
