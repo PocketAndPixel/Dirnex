@@ -25,9 +25,11 @@ struct ExpandingLabelTests {
         #expect(label.cell is ExpandingLabelCell)
     }
 
-    /// The padding is added around AppKit's own answer, measured against a stock label of the same
-    /// string and width. The empty case matters more than the padded one: AppKit answers an empty
-    /// frame for a value that fits, and padding that would float a panel over every row.
+    /// The padding is added around AppKit's own width at the label's own height, measured against a
+    /// stock label of the same string and width. AppKit's frame is a point taller than the label, all
+    /// of it below, which hung the panel a point low; the stock height here keeps that visible. The
+    /// empty case matters more than the padded one: AppKit answers an empty frame for a value that
+    /// fits, and padding that would float a panel over every row.
     @Test("a truncated value floats in a padded panel, and one that fits floats nothing")
     func expansionFrameIsPaddedOnlyWhenTruncated() throws {
         let name = "WestWorld.S01E09.The.Well-Tempered.Clavier.mkv"
@@ -36,15 +38,23 @@ struct ExpandingLabelTests {
         let cell = try #require(label.cell)
         let stockCell = try #require(stock.cell)
 
+        // At its natural height, as the row lays it out: AppKit's extra point is relative to that.
         for field in [label, stock] {
-            field.frame = NSRect(x: 0, y: 0, width: 120, height: 17)
+            field.frame = NSRect(x: 0, y: 0, width: 120, height: field.intrinsicContentSize.height)
         }
         let stockFrame = stockCell.expansionFrame(withFrame: stock.bounds, in: stock)
         #expect(!stockFrame.isEmpty)
+        #expect(stockFrame.height > stock.bounds.height)
         let padding = ExpandingLabelCell.padding
+        let atLabelHeight = NSRect(
+            x: stockFrame.minX,
+            y: label.bounds.minY,
+            width: stockFrame.width,
+            height: label.bounds.height
+        )
         #expect(
             cell.expansionFrame(withFrame: label.bounds, in: label)
-                == stockFrame.insetBy(dx: -padding.width, dy: -padding.height)
+                == atLabelHeight.insetBy(dx: -padding.width, dy: -padding.height)
         )
 
         label.frame.size.width = 1000

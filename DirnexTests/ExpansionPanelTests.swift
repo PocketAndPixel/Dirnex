@@ -81,4 +81,62 @@ struct ExpansionPanelTests {
         #expect(ExpansionPanel.isShowing(after))
         #expect(!ExpansionPanel.isShowing(try #require(fixture.label(atRow: 1))))
     }
+
+    /// The floated text has to land exactly on the row's own, or the name visibly drops a point when
+    /// the panel comes up, and the panel has to sit evenly around it. Measured by ink, at a fixed 2×
+    /// and composited over white for both: drawn into an unflipped view, the panel's text sat 1 pt
+    /// below the row's at both of the pane's fonts, and AppKit's taller frame left 3 pt of panel below
+    /// the label against 2 above.
+    @Test("the floated text lands on the row's own text, in an even panel", arguments: [false, true])
+    func floatedTextLandsOnTheRowText(bold: Bool) throws {
+        let fixture = ExpansionTableFixture(names: [Self.longName])
+        defer { ExpansionPanel.hide() }
+        let label = try #require(fixture.label(atRow: 0))
+        // Light, whatever the Mac is set to: the measurement looks for dark ink on a light panel.
+        fixture.window.appearance = NSAppearance(named: .aqua)
+        let size = NSFont.systemFontSize
+        label.font = bold ? .boldSystemFont(ofSize: size) : .systemFont(ofSize: size)
+        fixture.window.displayIfNeeded()
+
+        #expect(ExpansionPanel.show(over: label, for: .hover))
+        let panel = try #require(ExpansionPanel.shownPanel)
+        let content = try #require(panel.contentView)
+        let labelOnScreen = fixture.window.convertToScreen(label.convert(label.bounds, to: nil))
+        let rowInk = try #require(Self.inkDepth(of: label))
+        let panelInk = try #require(Self.inkDepth(of: content))
+        #expect(labelOnScreen.maxY - rowInk == panel.frame.maxY - panelInk)
+
+        let padding = ExpandingLabelCell.padding
+        #expect(panel.frame.maxY - labelOnScreen.maxY == padding.height)
+        #expect(labelOnScreen.minY - panel.frame.minY == padding.height)
+    }
+
+    /// How far below `view`'s top edge its first dark pixel row is, in points, rendered at 2× over
+    /// white whatever the screen is.
+    private static func inkDepth(of view: NSView) -> CGFloat? {
+        let scale: CGFloat = 2
+        guard let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: Int(view.bounds.width * scale),
+            pixelsHigh: Int(view.bounds.height * scale),
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ) else { return nil }
+        rep.size = view.bounds.size
+        view.cacheDisplay(in: view.bounds, to: rep)
+        for row in 0..<rep.pixelsHigh {
+            for column in 0..<rep.pixelsWide {
+                guard let color = rep.colorAt(x: column, y: row)?.usingColorSpace(.sRGB) else { continue }
+                let alpha = color.alphaComponent
+                let channels = color.redComponent + color.greenComponent + color.blueComponent
+                if channels * alpha + 3 * (1 - alpha) < 1.5 { return CGFloat(row) / scale }
+            }
+        }
+        return nil
+    }
 }
