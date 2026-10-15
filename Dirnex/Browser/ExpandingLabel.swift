@@ -44,8 +44,8 @@ final class ExpandingLabelCell: NSTextFieldCell {
     /// Air between the floated text and the panel's border, per side. The stock frame hugs the
     /// glyphs — about 3 pt from the stroke on the sides and less above and below — which is hard
     /// to read against a hairline border. The panel is sized from `expansionFrame`, so a name AppKit
-    /// measures at 313 × 17 pt floats at 321 × 21 pt (measured on the live pane), the text where it
-    /// was.
+    /// measures at 313 pt floats 321 × 20 pt on a 16 pt label (measured on the live pane), the text
+    /// where it was.
     static let padding = NSSize(width: 4, height: 2)
 
     /// The color the floated panel draws its text in — the row's *resting* color, pushed down by
@@ -53,13 +53,19 @@ final class ExpandingLabelCell: NSTextFieldCell {
     /// every label that is not a file row.
     var expansionInk: NSColor?
 
-    /// AppKit's frame, grown outward by `padding`, so the panel grows around the text and the text
-    /// still lands exactly over the truncated one in the row.
+    /// AppKit's width at the label's own height, grown outward by `padding`, so the panel grows
+    /// evenly around the text and the text still lands exactly over the truncated one in the row.
     override func expansionFrame(withFrame cellFrame: NSRect, in view: NSView) -> NSRect {
-        let frame = super.expansionFrame(withFrame: cellFrame, in: view)
+        var frame = super.expansionFrame(withFrame: cellFrame, in: view)
         // An empty frame is AppKit's "it fits, show nothing". Growing that would float a panel
         // over every row.
         guard !frame.isEmpty else { return frame }
+        // AppKit's frame is a point taller than the label at its natural height, all of it below
+        // (17 pt on the pane's 16 pt label; 15 on 14 and 22 on 21 at 11 and 18 pt), so the panel
+        // hung a point low: 2 pt of padding above the name and 3 below. The label's own height
+        // keeps it even, and still clears a descender (measured: the "p" ends 0.5 pt above it).
+        frame.origin.y = cellFrame.origin.y
+        frame.size.height = cellFrame.height
         return frame.insetBy(dx: -Self.padding.width, dy: -Self.padding.height)
     }
 

@@ -138,6 +138,13 @@ private final class ExpansionPanelView: NSView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    /// Flipped like the row's own label, so the cell lays the line out from the top of its frame as the
+    /// label does. Unflipped it is laid out from the bottom, which put the text a point low while the
+    /// frame was AppKit's, a point taller than the label (measured by ink at 2× against the row: 1 pt
+    /// at 11 and 13 pt, 1.5 at 18). `ExpandingLabelCell.expansionFrame` now trims that point too, and
+    /// either fix alone aligns the text; this one keeps it aligned whatever height the frame has.
+    override var isFlipped: Bool { true }
+
     override func draw(_ dirtyRect: NSRect) {
         cell.draw(withExpansionFrame: bounds, in: self)
     }
