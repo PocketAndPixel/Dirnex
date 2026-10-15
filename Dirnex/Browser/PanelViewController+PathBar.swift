@@ -73,6 +73,15 @@ extension PanelViewController: PathBarViewDelegate {
         showPlaces(bar)
     }
 
+    /// The search label's click: the edit ⌥F7 opens on a tab of search hits (`+SearchEdit`). The
+    /// pane becomes active first, as for the glyph — a click on the inactive pane's label arrives
+    /// without moving first responder, and the edited hits land in this pane's tab.
+    func pathBarDidRequestSearchEdit(_ bar: PathBarView) {
+        host?.panelDidBecomeActive(self)
+        guard canEditCurrentSearch else { return }
+        editCurrentSearch()
+    }
+
     func pathBar(_ bar: PathBarView, childDirectoriesOf directory: VFSPath) async -> [String] {
         let showHidden = panel.model.showHidden
         do {

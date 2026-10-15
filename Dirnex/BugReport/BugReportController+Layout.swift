@@ -37,30 +37,23 @@ extension BugReportController {
         return intro
     }
 
+    /// A text box drawn as the email field below it is drawn (``MultiLineField``).
     private func makeTextSection(_ title: String, _ textView: BugReportTextView, height: CGFloat) -> NSView {
         textView.isRichText = false
         textView.allowsUndo = true
         textView.font = .systemFont(ofSize: NSFont.systemFontSize)
-        textView.textContainerInset = NSSize(width: 2, height: 4)
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
         textView.isAutomaticTextReplacementEnabled = false
-        textView.isVerticallyResizable = true
-        textView.autoresizingMask = [.width]
-        textView.textContainer?.widthTracksTextView = true
         textView.setAccessibilityLabel(title)
         textView.onChange = { [weak self] in self?.formChanged() }
 
-        let scroll = NSScrollView()
-        scroll.documentView = textView
-        scroll.hasVerticalScroller = true
-        scroll.borderType = .bezelBorder
-        scroll.translatesAutoresizingMaskIntoConstraints = false
+        let box = MultiLineField(textView)
         NSLayoutConstraint.activate([
-            scroll.widthAnchor.constraint(equalToConstant: Self.fieldWidth),
-            scroll.heightAnchor.constraint(equalToConstant: height)
+            box.widthAnchor.constraint(equalToConstant: Self.fieldWidth),
+            box.heightAnchor.constraint(equalToConstant: height)
         ])
-        return section(title, scroll)
+        return section(title, box)
     }
 
     private func makeEmailSection() -> NSView {

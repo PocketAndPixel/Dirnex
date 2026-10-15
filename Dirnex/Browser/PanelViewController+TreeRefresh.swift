@@ -165,10 +165,10 @@ extension PanelViewController {
         // something far below the deepest row: measured on a tree at `/Users/oleg` with nothing
         // touched, this ran ~5 times a second for half a minute and the 27 rows were identical
         // every time. Re-installing identical entries is not free — each pass ends in a
-        // `renderRefresh`, whose `reloadData` the user *sees*, because it tears down the
+        // `renderRefresh`, whose `reloadData` the user *saw*, because it tore down AppKit's
         // expansion tooltip on the row under the pointer and a name too long for its column
-        // blinks (docs/NOTES.md ▸ AppKit). The list-mode watcher keeps the same rule, and so do
-        // the git, tag and sync consumers of this event.
+        // blinked (docs/NOTES.md ▸ AppKit; that panel is `ExpansionPanel` now). The list-mode
+        // watcher keeps the same rule, and so do the git, tag and sync consumers of this event.
         let changed = listings.filter { directory, entries in
             directory == root
                 ? entries != panel.model.listing.entries

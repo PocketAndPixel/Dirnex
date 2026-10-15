@@ -184,7 +184,7 @@ final class AppPreferences: ObservableObject {
     /// previewed page carries is the *network*, and that is closed unconditionally by a content
     /// rule list nothing here can turn off (`QuickViewWebView`) — a script with no network cannot
     /// report what it saw. Changing it posts `quickViewJavaScriptDidChange` so an open preview
-    /// re-renders under the new answer, and the full-size header says which answer is in force.
+    /// re-renders under the new answer, and the preview's header says which answer is in force.
     @Published var quickViewJavaScriptEnabled: Bool {
         didSet {
             guard quickViewJavaScriptEnabled != oldValue else { return }

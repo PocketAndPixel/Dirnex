@@ -16,7 +16,8 @@ extension QueueBarView {
         return formatter
     }()
 
-    private static let etaFormatter: DateComponentsFormatter = {
+    /// Internal, not private, so a test can spell the expected duration in the running language.
+    static let etaFormatter: DateComponentsFormatter = {
         let formatter = DateComponentsFormatter()
         formatter.allowedUnits = [.hour, .minute, .second]
         formatter.unitsStyle = .abbreviated
@@ -79,8 +80,11 @@ extension QueueBarView {
                 localized: "\(rate)/s",
                 comment: "Queue-bar throughput readout; %@ is a byte count, e.g. “1.2 MB/s”."
             ))
+            // Rounded up to the second, because the formatter drops the fraction: the last second
+            // of a copy read "0 s left" while bytes were still moving, and 59.6 s read "59 s".
+            // The core only estimates while bytes remain, so what reaches here is never zero.
             if let eta = aggregate.estimatedTimeRemaining, let text = Self.etaFormatter.string(
-                from: eta
+                from: eta.rounded(.up)
             ) {
                 parts.append(String(
                     localized: "\(text) left",

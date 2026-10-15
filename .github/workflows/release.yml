@@ -75,6 +75,9 @@ jobs:
           # Secrets and variables ▸ Actions ▸ Variables): unset or `off`, no build reminds; `beta`,
           # beta builds only; `all`, every build. See docs/RELEASING.md.
           DIRNEX_LICENSING: ${{ vars.DIRNEX_LICENSING }}
+          # Where Report a Bug sends (PLAN.md §M30), a repository variable too: unset, the Help menu
+          # has no Report a Bug…; an `https://` address shows it, and the app posts there.
+          DIRNEX_BUG_REPORT_URL: ${{ vars.DIRNEX_BUG_REPORT_URL }}
         run: |
           RELEASE_NOTES_REF="$(git rev-parse HEAD)"
 
@@ -146,6 +149,18 @@ jobs:
               ;;
           esac
           echo "Licensing switch: $LICENSING (channel $CHANNEL, DIRNEX_LICENSING=${DIRNEX_LICENSING:-off})."
+
+          # The app ignores anything but https (BugReportEndpoint), so another value would ship a
+          # build that silently hides Report a Bug. Fail instead.
+          BUG_REPORT_URL="$(printf '%s' "${DIRNEX_BUG_REPORT_URL:-}" | tr -d '[:space:]')"
+          case "$BUG_REPORT_URL" in
+            "" | https://?*) ;;
+            *)
+              echo "DIRNEX_BUG_REPORT_URL must be empty or an https:// address (got '$BUG_REPORT_URL')." >&2
+              exit 1
+              ;;
+          esac
+          echo "Report a Bug: ${BUG_REPORT_URL:-hidden (no DIRNEX_BUG_REPORT_URL)}."
           echo "Release date: $RELEASE_DATE."
 
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
@@ -156,6 +171,7 @@ jobs:
           echo "RELEASE_TIMESTAMP=$RELEASE_TIMESTAMP" >> "$GITHUB_ENV"
           echo "RELEASE_DATE=$RELEASE_DATE" >> "$GITHUB_ENV"
           echo "LICENSING=$LICENSING" >> "$GITHUB_ENV"
+          echo "BUG_REPORT_URL=$BUG_REPORT_URL" >> "$GITHUB_ENV"
           echo "RELEASE_NOTES_REF=$RELEASE_NOTES_REF" >> "$GITHUB_ENV"
           echo "DOWNLOAD_URL=https://github.com/${GITHUB_REPOSITORY}/releases/download/$TAG_NAME/Dirnex.dmg" >> "$GITHUB_ENV"
 
@@ -284,6 +300,7 @@ jobs:
           BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
           LICENSING: ${{ env.LICENSING }}
           RELEASE_DATE: ${{ env.RELEASE_DATE }}
+          BUG_REPORT_URL: ${{ env.BUG_REPORT_URL }}
 
       - name: Create DMG
         run: scripts/make_dmg.sh

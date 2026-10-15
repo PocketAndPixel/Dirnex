@@ -57,6 +57,11 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     afterwards was of the release build. A timed-out event, or a window that looks like the
     pre-change app, is the moment to run the `pgrep` above and to check
     `~/Library/Logs/DiagnosticReports` for a crash report before believing anything on screen.
+  - **`open -n` starts a second copy beside one already running, without a word.** On 2026-10-09 a
+    Debug build nobody in the session had launched was up (no arguments, parent `launchd`, started
+    after the last test run had finished), and `open -n` on the fresh build made two. Then
+    `app_menu` and every AppleEvent by bundle id can reach either one. Run the `pgrep` *before*
+    launching as well as after.
 - **computer-use's `=` and `-` are the *keypad* keys, so it cannot type ⇧⌘= as a keyboard does.**
   Logged 2026-09-15 with a temporary local key monitor while verifying the zoom keys: `cmd+=` arrived
   as keyCode **81** (keypad `=`) and `cmd+-` as **78** (keypad `-`), both with the numeric-pad flag.
@@ -103,6 +108,12 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     `Cloud` after the type's own and `strings`/`nm` counted **0** for `iCloudContainer` in a build
     that contained it (2026-09-16). `nm <dylib> | xcrun swift-demangle | command grep <name>` finds
     it. Grep for a string literal the change added, or demangle, before concluding a build is stale.
+- **A `reveal` sent straight after `run operation "file.newTab"` can be lost.** Measured 2026-10-15
+  building three tabs for the tab-move check: reveal, new tab, reveal, new tab, reveal came out as
+  [one, one, three], because the second reveal raced the new tab's own first listing. The pane looked
+  healthy and every verb returned true. Put a short `delay` (0.7 s was enough) after each step, and
+  read the saved tabs back (`Dirnex.tabs.left`, JSON inside a data value) before trusting the fixture.
+
 - **When no gesture can reach a state, drive the *reader* from outside through whatever seam it
   already reads.** M23 Slice 5 had to prove that pasting a row from inside a `.zip` really extracts
   and copies it in the running app, and the gesture is unreachable headlessly twice over: session
@@ -238,6 +249,31 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     button. Key equivalents run ahead of `keyDown:`, so the field editor's own "revert the edit"
     never gets the key. Worth stating because the opposite is the natural worry, and it is the
     reason `enableEscapeToCancel` needs no carve-out for a sheet that opens with a field focused.
+- **Background computer-use works on a window in its own full-screen space, but cannot summon that
+  space's title bar.** Seen 2026-10-15 checking ⌃⌥Q: `app_screenshot` captured the full-screen
+  window from another space and `app_drag` selected text in it. Nothing in the background tools puts
+  the pointer on the screen's top edge, which is what drops the menu bar and title bar. Only
+  display-scope `mouse_move` can, and that needs full-screen control. Without it, measure the title
+  bar instead (its height is the close button's superview, NOTES.md ▸ Windows) and say the drop was
+  not seen.
+- **Background computer-use cannot ⌘-click, so reach a sidebar row's ⌘ gesture by keyboard.** Its
+  `app_click` takes no modifiers. Measured 2026-10-14 checking servers opening in a new tab: View ▸
+  Focus Sidebar, then `down` keys, then `app_key cmd+return` arrived as ⌘Return. Two cautions. Section
+  headers are keyboard stops, so count them or zoom on the sidebar after each key. And a vault row
+  passed on the way opens if ⌘Return lands on it, which reads its passphrase from the Keychain. A
+  plain Return proves nothing about ⌘, so run a case whose result only ⌘ can produce first.
+- **computer-use refuses a key aimed at a point inside a text view, saying it "belongs to a different
+  process".** Seen 2026-10-08 on both of Report a Bug…'s text boxes: `app_key tab` at the box's center
+  was refused twice, before and after a fix to the boxes' accessibility tree, while the app's own
+  accessibility hit test at those points answers its `AXTextArea` (pinned in `MultiLineFieldTests`).
+  Typing by `element_index` and `app_click` by `element_index` both worked. Neither moved the window's
+  first responder, though, so a focus ring that should follow the click can't be checked this way.
+- **A background `app_screenshot` taken right after an action can show the window as it was before
+  it.** Seen on 2026-10-14 checking the search edit: after Find, the capture still drew the pane's
+  old folder while the same call's accessibility summary already named the new results tab, and a
+  second capture a moment later drew it. The next Find came back with image *and* summary both
+  stale — there the async search had simply not landed yet. Either way the first capture said the
+  action did nothing; take another before believing it.
 - **computer-use reports `AXError: failure` for a button that opens a sheet, and the sheet is up.**
   Seen twice on 2026-10-01 pressing Report a Bug…'s *Show What Will Be Sent…*: the AXPress came back
   as a failure each time, and a screenshot showed the preview sheet open. The press waits for an

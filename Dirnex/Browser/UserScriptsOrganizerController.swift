@@ -33,8 +33,9 @@ final class UserScriptsOrganizerController: NSViewController {
     private let runModePopUp = NSPopUpButton()
     private let functionKeyPopUp = NSPopUpButton()
     private let keywordsField = NSTextField.singleLine()
-    private let commandTextView = NSTextView()
-    private let commandScrollView = NSScrollView()
+    /// Drawn as the Name and Keywords fields above it are drawn (``MultiLineField``).
+    private let commandBox = MultiLineField(NSTextView())
+    private var commandTextView: NSTextView { commandBox.textView }
     private let detailStack = NSStackView()
 
     init() {
@@ -177,13 +178,13 @@ final class UserScriptsOrganizerController: NSViewController {
             localized: "Command",
             comment: "Scripts organizer field label: the shell command body."
         )))
-        detailStack.addArrangedSubview(commandScrollView)
+        detailStack.addArrangedSubview(commandBox)
         detailStack.addArrangedSubview(helpLabel())
-        for control in [nameField, runModePopUp, functionKeyPopUp, keywordsField, commandScrollView] {
+        for control in [nameField, runModePopUp, functionKeyPopUp, keywordsField, commandBox] {
             control.widthAnchor.constraint(equalTo: detailStack.widthAnchor).isActive = true
         }
-        commandScrollView.setContentHuggingPriority(.defaultLow, for: .vertical)
-        commandScrollView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+        commandBox.setContentHuggingPriority(.defaultLow, for: .vertical)
+        commandBox.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
     }
 
     // MARK: - Actions
@@ -342,8 +343,7 @@ private extension UserScriptsOrganizerController {
         runModePopUp.isEnabled = enabled
         functionKeyPopUp.isEnabled = enabled
         keywordsField.isEnabled = enabled
-        commandTextView.isEditable = enabled
-        commandTextView.isSelectable = enabled
+        commandBox.isEnabled = enabled
     }
 
     func selectRunMode(_ mode: UserScriptRunMode) {
@@ -440,13 +440,6 @@ private extension UserScriptsOrganizerController {
         commandTextView.isAutomaticSpellingCorrectionEnabled = false
         commandTextView.delegate = self
         commandTextView.allowsUndo = true
-        commandTextView.isVerticallyResizable = true
-        commandTextView.textContainer?.widthTracksTextView = true
-
-        commandScrollView.documentView = commandTextView
-        commandScrollView.hasVerticalScroller = true
-        commandScrollView.borderType = .bezelBorder
-        commandScrollView.translatesAutoresizingMaskIntoConstraints = false
     }
 
     func activateConstraints(in container: NSView, doneButton: NSButton) {

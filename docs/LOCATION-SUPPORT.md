@@ -78,10 +78,13 @@ capabilities and has not been exercised against it.
 |---|---|---|---|---|---|---|---|---|---|---|
 | List a folder | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Enter a folder (`⏎`, double-click) | yes | yes | yes | yes | yes | yes | yes, limited<sup>a</sup> | yes | yes | yes |
+| Open in a new tab of the other pane (`⌘⏎`, ⌘-double-click)<sup>aad</sup> | yes | yes | yes | yes | yes | yes | yes, limited<sup>a</sup> | yes | yes | yes |
 | `..` row and Go Up (`⌫`) | yes | yes | yes | yes | yes | yes | n/a | yes | n/a | n/a |
 | Path bar, breadcrumbs, `⌘L` | yes | yes | yes | yes | yes | yes | yes | yes, partially<sup>fff</sup> | yes, limited<sup>b</sup> | yes, limited<sup>b</sup> |
 | Back / forward, history (`⌥↓`) | yes | yes | yes | yes | yes | yes | yes | yes | yes, limited<sup>c</sup> | yes, limited<sup>c</sup> |
 | Tabs, split panes, `Tab` focus | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Move a tab along its strip or to the other pane (`⌥⌘[` `⌥⌘]` `⇧⌘M`, dragging a chip)<sup>aae</sup> | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| A tab chip names its source with the sidebar's glyph<sup>aaf</sup> | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Sort, column layout, hidden files | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Type-to-filter, marks, `⌘A`, invert | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Tree view (`→` to expand) | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
@@ -180,13 +183,33 @@ month's names — about 1.1 ms an asset, since a name is the one thing PhotoKit 
 rather than per fetch (docs/NOTES.md ▸ iCloud Photos). It rides the remote size budget
 (<sup>e</sup>), so a very large library gives up rather than stalling.
 
+<sup>aad</sup> The same route as `⏎` up to its last step, which lands in a new tab of the other pane
+instead of this one, so each cell follows the row above. A folder opens there. An archive opens at its
+root, after the fetch or extraction a server or a nested archive needs. A vault image unlocks first,
+and a bucket row connects in the other pane. In a results tab `⏎` already opens a folder over there,
+so ⌘ changes nothing. A file opens as `⏎` opens it. Exercised live on local folders and a local zip
+(2026-10-15); the other columns follow from the shared route and are not exercised live.
+
+<sup>aae</sup> A tab is the same object in its new place, carrying its own cursor, marks, history,
+columns, shape and a search's question. Both panes list through the window's one backend, so a tab on
+a server, inside an archive or in a vault moves as it is, without reconnecting or re-extracting. A
+pane's last tab stays. The keyboard moves were exercised live on local folders (2026-10-15). Dragging
+a chip is tested through the strips' drop methods only, because a drag session cannot be synthesized;
+the other columns follow from the shared backend and are not exercised live.
+
+<sup>aaf</sup> A share, an external drive or a disk image, a vault, iCloud Drive and a cloud provider are all
+local paths, told apart by territory and then by the volume the kernel's mount table puts them on, so
+the classification never waits on a share that has stopped answering. Exercised live on local
+folders, a disk image, Dropbox, iCloud Drive, Recents and a zip (2026-10-15); the other columns are
+pinned by tests and not exercised live.
+
 ## 2. File operations
 
 | Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Photos | Results | Trash |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Copy `F5` (source) | yes | yes | yes, limited<sup>g</sup> | yes | yes | yes | no<sup>h</sup> | yes | yes | yes |
 | Copy `F5` (destination) | yes | yes | yes, limited<sup>g</sup> | yes | yes | yes | no<sup>h</sup> | no<sup>jjj</sup> | n/a | n/a |
-| Move `F6` | yes | yes | no<sup>g</sup> | yes | yes | yes, limited<sup>i</sup> | no<sup>h</sup> | no<sup>jjj</sup> | yes | yes |
+| Move `F6` | yes | yes | no<sup>g</sup> | yes | yes | yes, limited<sup>i</sup> | no<sup>h</sup> | no<sup>jjj</sup> | yes<sup>aac</sup> | yes |
 | Copy between two different accounts | yes | yes | — | yes | yes | yes | — | yes | — | — |
 | Copy **inside one account**, without the bytes crossing this Mac | n/a | n/a | n/a | yes, limited<sup>bbb</sup> | **no**<sup>bbb</sup> | yes | — | n/a | — | — |
 | Copy / paste `⌘C` `⌘V` | yes | yes | yes<sup>j</sup> | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>jjj</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
@@ -197,8 +220,8 @@ rather than per fetch (docs/NOTES.md ▸ iCloud Photos). It rides the remote siz
 | New / Edit File `⇧F4` | yes | yes | no | yes | yes | yes | n/a | no<sup>jjj</sup> | no | no |
 | Rename `F2` | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
 | Multi-rename `⇧F2` | yes | yes | no<sup>ccc</sup> | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
-| Delete `F8` → Trash | yes | yes, limited<sup>o</sup> | n/a | n/a | n/a | n/a | n/a | no<sup>jjj</sup> | yes | n/a |
-| Delete `F8` → permanent (confirmed) | yes | yes | yes, limited<sup>n</sup> | yes | yes | yes | yes, limited<sup>l</sup> | n/a | yes | yes |
+| Delete `F8` → Trash | yes | yes, limited<sup>o</sup> | n/a | n/a | n/a | n/a | n/a | no<sup>jjj</sup> | yes<sup>aac</sup> | n/a |
+| Delete `F8` → permanent (confirmed) | yes | yes | yes, limited<sup>n</sup> | yes | yes | yes | yes, limited<sup>l</sup> | n/a | yes<sup>aac</sup> | yes |
 | Put Back (restore from Trash, or a share's `#recycle`) | yes, limited<sup>iii</sup> | n/a | n/a | yes, limited<sup>iii</sup> | yes, limited<sup>iii</sup> | n/a | n/a | n/a | n/a | yes, limited<sup>o</sup> |
 | Undo `⌘Z` | yes | yes | yes, limited<sup>qq</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially | n/a | yes | no |
 | Background queue, progress bar, Stop | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
@@ -252,6 +275,17 @@ reversible: ⌘Z swaps the container back (▸ <sup>qq</sup>), and the confirmat
 it will be before it runs.
 Top-level archives only.
 
+<sup>aac</sup> Gated per **row**, like <sup>ee</sup>: each hit deletes the way the folder it lives in
+does (`DeleteRouting`), so a local hit goes to the Trash and a hit on a server is the confirmed
+permanent delete. A set mixing the two is deleted for good, after the confirmation. A hit inside an
+archive is refused. A deleted or **moved** hit leaves every results tab showing it, in either
+pane — a move as soon as its job finishes, and only for the items that really moved — and ⌘Z puts
+a trashed or moved hit's row back with the file, for a hit on this Mac. A hit on a server is not
+followed — an undo that puts the file back leaves the row gone — because the check would cost a
+round trip per hit on every refresh. A rename that
+had to run as a job renames the row. Search hits and Recents only since 2026-10-14; the iCloud
+Drive row always could. Verified live on local hits; a server's hits by tests only.
+
 <sup>o</sup> Two halves, and they meet on a cloud mount. **Put Back** works for anything Finder
 trashed to `~/.Trash`, a volume's `.Trashes`, or a Google Drive mount's `.Trash`, and — since M26
 Slice 4 — for anything **Dirnex** trashed to any of them, the iCloud trash included. What it
@@ -298,7 +332,12 @@ lands in it. The neighbouring wart was fixed the same day: `trashItem` is refuse
 may keep a copy in `#recycle` rather than promising destruction. They say *may*: the folder being
 there does not prove the setting is still on. An item **already in** the bin is the exception and
 keeps the strong wording, since a delete there is permanent — measured, and reported the same day
-after it shipped the other way (NOTES.md ▸ The Trash).
+after it shipped the other way (NOTES.md ▸ The Trash). **The bin has to be readable by the account
+the share was mounted as**, and that is the server's call: since **2026-10-11** a bin the NAS refuses
+to list says so (*"The server refused that…"*) instead of opening as an empty folder, which it did
+while DSM's File Station showed three items in it (NOTES.md ▸ SMB). In a tree, expanding it closes
+the row again and gives the same sentence. On a Synology the switch is per
+shared folder: *Restrict access to administrators only*, under *Enable Recycle Bin*.
 
 <sup>p</sup> Rename, move, New Folder and — since 2026-09-01 — an **attribute change** are journaled
 and reversed through the backend, so they undo remotely (▸ <sup>tt</sup> for what that last one can
@@ -591,12 +630,21 @@ values, with the JSON tree's rules.
 | Server-side walk (one request, not one per folder) | n/a | n/a | n/a | yes, limited<sup>dd</sup> | n/a<sup>ss</sup> | yes | n/a | no<sup>nnn</sup> | — | — |
 | Live progress + Stop | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
 | Save the search to the sidebar, re-run later | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| Edit the search's conditions and run it again in the same tab<sup>aab</sup> | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
 
 <sup>z</sup> Deliberate: the rows are buckets, and "search every bucket" is a different and far
 more expensive question than the one ⌥F7 asks (PLAN.md §M22).
 
 <sup>aa</sup> A virtual listing has no directory, so the scope falls back to **Home** — the hits
-are real files, but the pane you were looking at is not the scope.
+are real files, but the pane you were looking at is not the scope. The exception is a tab of
+**search hits**, where ⌥F7 edits the search behind them instead (<sup>aab</sup>); Recents, the
+Trash and iCloud Drive still fall back to Home.
+
+<sup>aab</sup> ⌥F7 on a tab of search hits, or a click on its "Results for …" label, opens Find
+Files filled in with that search and asking about the folder it ran in — never the tab's own
+`search:` path, whose fields would hide Content and Tags and drop them from the edit
+(`SearchPlace`). Find replaces the hits in that tab. Verified live locally and inside a zip; on a
+server and in Photos, which take the same walk route as the zip, by tests only.
 
 <sup>bb</sup> Impossible without downloading everything under the scope in order to grep it.
 `SearchFields` **hides** the field rather than accepting it and skipping the clause, which would

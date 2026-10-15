@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// Watches a single directory and fires `onChange` — coalesced by FSEvents' own
 /// latency — whenever something under it changes, so a panel can re-list and refresh
@@ -9,15 +10,55 @@ import Foundation
 /// and marks by identity (PLAN.md §6 "reapplies cursor by identity, not row index"),
 /// so a live refresh never fights the selection.
 ///
-/// Lifetime contract: the stream holds an *unretained* pointer back to this object
-/// (a retained pointer would be a cycle that never stops watching), so `stop()` — run
-/// automatically from `deinit` — must tear the stream down before the object is freed.
-/// `FSEventStreamInvalidate` drains the dispatch queue, so no callback outlives it.
+/// Lifetime contract: the stream's `info` is a ``Delivery``, a small object of its own holding
+/// `onChange`, and the stream **retains** it through the context's `retain`/`release` callbacks.
+/// It is not the watcher, because a stream retaining its watcher is a cycle that never stops
+/// watching. `stop()`, run from `deinit`, disarms the delivery and then tears the stream down.
 ///
-/// Not `Sendable` on purpose: the owner touches it from one actor and the C callback
-/// reaches it only through the raw `info` pointer, reading the immutable `onChange`.
+/// Tearing the stream down does not wait for FSEvents, which is why the delivery must not be
+/// freed with the watcher. Measured 2026-10-11 by deleting a watched root and dropping the watcher
+/// straight after, 200 rounds: a callback was still running when `FSEventStreamInvalidate` and
+/// `FSEventStreamRelease` had returned in 172 of them, and 19 root-changed callbacks *started*
+/// afterwards. While the stream held an unretained pointer to the watcher, those callbacks ran a
+/// freed `onChange` and crashed the app's test host (docs/NOTES.md ▸ Testing ▸ Fixtures and shared
+/// state). FSEvents releases `info` only once its last delivery is over: 0 of 600 releases came
+/// while a callback was running, none on the thread that dropped the watcher, and no callback
+/// started after one.
+///
+/// Invalidating on the stream's own queue (`queue.sync` from `stop()`) also measured clean, and
+/// was not taken. It blocks the owner on the queue, deadlocks if the last reference is dropped on
+/// that queue, and relies on how FSEvents times an invalidation. The retain is the API's own
+/// ownership rule for `info`.
+///
+/// Not `Sendable` on purpose: the owner touches it from one actor. The C callback never reaches
+/// the watcher, only its ``Delivery``, which is checked `Sendable`.
 public final class DirectoryWatcher {
-    private let onChange: @Sendable () -> Void
+    /// What the stream calls: `onChange`, unless `stop()` has disarmed it.
+    ///
+    /// Disarming stops a callback that starts after `stop()` (the late root-changed ones above)
+    /// from reaching `onChange`. A callback already past the check still finishes, against a
+    /// delivery the stream is keeping alive. Every stored property is an immutable `Sendable`, so
+    /// the compiler checks the conformance; `OSAllocatedUnfairLock` rather than this package's
+    /// usual `NSLock` is what lets it go without `@unchecked`.
+    private final class Delivery: Sendable {
+        private let onChange: @Sendable () -> Void
+        private let armed = OSAllocatedUnfairLock(initialState: true)
+
+        init(_ onChange: @escaping @Sendable () -> Void) {
+            self.onChange = onChange
+        }
+
+        func deliver() {
+            guard armed.withLock({ $0 }) else { return }
+            onChange()
+        }
+
+        func disarm() {
+            armed.withLock { $0 = false }
+        }
+    }
+
+    private let delivery: Delivery
     private let queue: DispatchQueue
     private var stream: FSEventStreamRef?
 
@@ -40,7 +81,7 @@ public final class DirectoryWatcher {
         queue: DispatchQueue = DispatchQueue(label: "com.dirnex.fsevents", qos: .utility),
         onChange: @escaping @Sendable () -> Void
     ) {
-        self.onChange = onChange
+        delivery = Delivery(onChange)
         self.queue = queue
         start(paths: [path.path], latency: latency)
     }
@@ -62,7 +103,7 @@ public final class DirectoryWatcher {
         queue: DispatchQueue = DispatchQueue(label: "com.dirnex.fsevents", qos: .utility),
         onChange: @escaping @Sendable () -> Void
     ) {
-        self.onChange = onChange
+        delivery = Delivery(onChange)
         self.queue = queue
         guard !paths.isEmpty else { return }
         start(paths: paths.map(\.path), latency: latency)
@@ -93,7 +134,7 @@ public final class DirectoryWatcher {
         queue: DispatchQueue = DispatchQueue(label: "com.dirnex.fsevents", qos: .utility),
         onChange: @escaping @Sendable () -> Void
     ) {
-        self.onChange = onChange
+        delivery = Delivery(onChange)
         self.queue = queue
         start(paths: [filePath], latency: latency, fileEvents: true)
     }
@@ -102,8 +143,10 @@ public final class DirectoryWatcher {
         stop()
     }
 
-    /// Stop watching. Idempotent, so reassigning or dropping the watcher is safe.
+    /// Stop watching. Idempotent, so reassigning or dropping the watcher is safe. A callback that
+    /// FSEvents starts after this returns does not reach `onChange` (see ``Delivery``).
     public func stop() {
+        delivery.disarm()
         guard let stream else { return }
         FSEventStreamStop(stream)
         FSEventStreamInvalidate(stream)
@@ -112,18 +155,26 @@ public final class DirectoryWatcher {
     }
 
     private func start(paths: [String], latency: TimeInterval, fileEvents: Bool = false) {
+        // The stream retains the delivery for as long as it can call back, and releases it once the
+        // last callback is over (see the type's lifetime contract). All three closures are
+        // non-capturing, so they bridge to C function pointers.
         var context = FSEventStreamContext(
             version: 0,
-            info: Unmanaged.passUnretained(self).toOpaque(),
-            retain: nil,
-            release: nil,
+            info: Unmanaged.passUnretained(delivery).toOpaque(),
+            retain: { info in
+                guard let info else { return nil }
+                _ = Unmanaged<Delivery>.fromOpaque(info).retain()
+                return info
+            },
+            release: { info in
+                guard let info else { return }
+                Unmanaged<Delivery>.fromOpaque(info).release()
+            },
             copyDescription: nil
         )
-        // A non-capturing closure so it bridges to the C function pointer; it recovers
-        // the watcher from `info` and forwards to the immutable `onChange`.
         let callback: FSEventStreamCallback = { _, info, _, _, _, _ in
             guard let info else { return }
-            Unmanaged<DirectoryWatcher>.fromOpaque(info).takeUnretainedValue().onChange()
+            Unmanaged<Delivery>.fromOpaque(info).takeUnretainedValue().deliver()
         }
         // File events only where the watched path *is* a file (see `init(filePath:)`): asking for
         // them over a directory would report one callback per file instead of one per directory,

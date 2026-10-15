@@ -190,18 +190,18 @@ final class FileCellView: NSTableCellView {
         text.translatesAutoresizingMaskIntoConstraints = false
         text.lineBreakMode = .byTruncatingTail
         text.cell?.usesSingleLineMode = true
-        // Hovering a truncated cell floats the whole value in place — AppKit's own expansion
-        // tooltip, which is what Finder and every stock list does for a name too long for its
-        // column. Preferred over setting `toolTip` to the name because it **self-gates exactly**:
-        // measured on a label of this shape in a 200 pt text area, `expansionFrame(withFrame:in:)`
-        // answers 335.4 pt for a truncated name and `.zero` for one that fits — so the rows that
-        // fit cost nothing and never show a tooltip. It is also stateless, which matters more here
-        // than it looks: a `toolTip` string would have to be re-assigned on *every* render,
-        // `nil` included, or it rides a recycled cell onto an unrelated row (the hazard the Size
-        // column's own tooltip is commented for). Set for every column, not only the name: a Date
-        // narrowed past its content has the same problem and the same answer. `ExpandingLabel` owns
-        // how the floated panel is *drawn* — the stock one is illegible on a custom cursor color.
-        text.allowsExpansionToolTips = true
+        // Hovering a truncated cell floats the whole value in place, as Finder and every stock list
+        // does for a name too long for its column — through `HoverExpansion`, which reads this
+        // label's `expansionFrame(withFrame:in:)` to know whether it is cut short at all. Preferred
+        // over setting `toolTip` to the name because that frame **self-gates exactly**: measured on
+        // a label of this shape in a 200 pt text area, it answers 335.4 pt for a truncated name and
+        // `.zero` for one that fits, so the rows that fit never show a panel. It is also stateless,
+        // which matters more here than it looks: a `toolTip` string would have to be re-assigned on
+        // *every* render, `nil` included, or it rides a recycled cell onto an unrelated row (the
+        // hazard the Size column's own tooltip is commented for). Every column gets it, not only the
+        // name: a Date narrowed past its content has the same problem and the same answer.
+        // AppKit's own `allowsExpansionToolTips` stays off: its panel looks different from the one a
+        // held ⌘ floats (`ExpansionPanel` has the measurement).
         addSubview(text)
         textField = text
 

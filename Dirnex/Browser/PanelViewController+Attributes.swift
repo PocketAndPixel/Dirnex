@@ -15,15 +15,56 @@ import DirnexCore
 extension PanelViewController {
     @objc func showAttributes(_ sender: Any?) {
         let targets = attributesTargets()
-        guard let first = targets.first else {
+        guard !targets.isEmpty else {
             presentNothingToShow()
             return
         }
+        showAttributes(of: targets)
+    }
+
+    /// Open the panel `targets` deserve. `targets` is never empty.
+    private func showAttributes(of targets: [FileEntry]) {
+        guard let first = targets.first else { return }
         switch AttributesRoute.decide(for: targets) {
         case .single: showSingleAttributes(first)
         case .multiple: showMultipleAttributes(targets)
         case .remote: showRemoteAttributes(first)
         case .bulkUnavailable: presentBulkNotAvailable()
+        }
+    }
+
+    // MARK: - A folder, from the background menu
+
+    /// What Get Info describes from a right-click on the pane's empty space or its `..` row: the
+    /// folder that menu is about, or `nil` where there is no folder behind it.
+    ///
+    /// A results tab's container is synthetic, since its hits share no folder. An archive's root is
+    /// the archive itself, the file Copy Path names there too. Its table of contents answers `/`
+    /// with no name and no date, so the archive file is the one thing worth describing.
+    func folderInfoSubject(for directory: VFSPath) -> VFSPath? {
+        if [VFSBackendID.search, .trash, .icloud].contains(directory.backend) { return nil }
+        if let archivePath = directory.backend.archivePath, directory.isRoot {
+            // A nested or downloaded archive is browsed from a temp copy. Describe the member or
+            // server file it came from, as `archiveParent` walks back to.
+            return host?.nestedArchiveRegistry.origin(ofMountAt: archivePath) ?? .local(archivePath)
+        }
+        return directory
+    }
+
+    /// Stat `location` and open the panel it deserves. The stat is a round trip on a server, so it
+    /// runs off the main thread, and it goes through the routing backend because a `..` row or an
+    /// archive's origin can be on a different backend from the pane's own listing.
+    func showAttributes(ofFolder location: VFSPath) {
+        let backend = backend
+        Task { [weak self] in
+            let result = await BlockingWork.run { () -> Result<FileEntry, any Error> in
+                Result { try backend.stat(at: location) }
+            }
+            guard let self else { return }
+            switch result {
+            case let .success(entry): showAttributes(of: [entry])
+            case let .failure(error): presentUnreadable(named: location.lastComponent, error: error)
+            }
         }
     }
 
@@ -95,14 +136,19 @@ extension PanelViewController {
             }
             presentAsMovableWindow(controller)
         } catch {
-            presentOperationFailure(
-                message: String(
-                    localized: "Couldn’t read “\(entry.name)”",
-                    comment: "Get Info failure title when the item can't be stat'ed; %@ is its name."
-                ),
-                detail: VFSErrorText.sentence(for: error)
-            )
+            presentUnreadable(named: entry.name, error: error)
         }
+    }
+
+    /// One spelling of the failure for both callers, so the catalog has one key and one comment.
+    private func presentUnreadable(named name: String, error: any Error) {
+        presentOperationFailure(
+            message: String(
+                localized: "Couldn’t read “\(name)”",
+                comment: "Get Info failure title when the item can't be stat'ed; %@ is its name."
+            ),
+            detail: VFSErrorText.sentence(for: error)
+        )
     }
 
     // MARK: - Multi-selection

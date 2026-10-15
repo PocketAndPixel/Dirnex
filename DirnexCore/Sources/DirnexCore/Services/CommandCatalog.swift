@@ -93,6 +93,28 @@ public enum CommandCatalog {
             keywords: ["f6", "transfer"],
             shortcut: CommandShortcut(key: "F6", modifiers: .function)
         ),
+        // The tree-mode twins of F5/F6. Those two land every marked item flat in the other pane's
+        // folder, as drag-and-drop and ⌘V always have; these recreate the folders the marks were
+        // found in, relative to the pane's own directory (`TreeSelection.transferGroups`). Outside a
+        // tree, or with every mark at the top level, there is nothing to recreate and the pair
+        // behaves exactly like F5/F6.
+        Command(
+            id: "file.copyKeepingFolders",
+            title: "Copy to Other Panel, Keeping Folders",
+            category: .file,
+            keywords: ["shift+f5", "tree", "branch", "structure", "subfolders", "relative paths"],
+            // ⇧F5 beside F5. Free on both presets — Dirnex has no copy-in-place for it to displace.
+            shortcut: CommandShortcut(key: "F5", modifiers: [.function, .shift])
+        ),
+        Command(
+            id: "file.moveKeepingFolders",
+            title: "Move to Other Panel, Keeping Folders",
+            category: .file,
+            keywords: ["tree", "branch", "structure", "subfolders", "relative paths", "transfer"]
+            // No shortcut: ⇧F6 is in-place rename on the Total Commander preset, and a key that
+            // means two different things depending on the preset is worse than none. Bindable in
+            // Settings.
+        ),
         Command(
             id: "file.pack",
             title: "Pack…",
@@ -237,76 +259,6 @@ public enum CommandCatalog {
             // No shortcut: it applies in exactly one place — a Trash listing — and every key worth
             // taking for it already means something everywhere else. Finder's ⌘⌫ is "move to
             // Trash" on the rest of the Mac, which is the opposite of this.
-        )
-    ]
-
-    // MARK: - Edit
-
-    private static let edit: [Command] = [
-        Command(
-            id: "edit.undo",
-            title: "Undo",
-            category: .edit,
-            keywords: ["revert", "back"],
-            shortcut: CommandShortcut(key: "z", modifiers: .command)
-        ),
-        Command(
-            id: "edit.redo",
-            title: "Redo",
-            category: .edit,
-            keywords: ["repeat", "forward", "again", "reapply"],
-            shortcut: CommandShortcut(key: "z", modifiers: [.command, .shift])
-        ),
-        Command(
-            id: "edit.copy",
-            title: "Copy",
-            category: .edit,
-            keywords: ["clipboard", "duplicate", "pasteboard"],
-            shortcut: CommandShortcut(key: "c", modifiers: .command)
-        ),
-        Command(
-            id: "edit.paste",
-            title: "Paste",
-            category: .edit,
-            keywords: ["clipboard", "pasteboard"],
-            shortcut: CommandShortcut(key: "v", modifiers: .command)
-        ),
-        Command(
-            id: "edit.pasteMove",
-            title: "Move Items Here",
-            category: .edit,
-            keywords: ["clipboard", "paste", "cut", "pasteboard"],
-            shortcut: CommandShortcut(key: "v", modifiers: [.command, .option])
-        )
-    ]
-
-    // MARK: - Select
-
-    private static let selection: [Command] = [
-        Command(
-            id: "select.all",
-            title: "Select All",
-            category: .selection,
-            keywords: ["mark", "everything", "whole"],
-            shortcut: CommandShortcut(key: "a", modifiers: .command)
-        ),
-        Command(
-            id: "select.invert",
-            title: "Invert Selection",
-            category: .selection,
-            keywords: ["toggle", "flip"]
-        ),
-        Command(
-            id: "select.byPattern",
-            title: "Select by Pattern…",
-            category: .selection,
-            keywords: ["wildcard", "glob", "mark"]
-        ),
-        Command(
-            id: "select.unselectByPattern",
-            title: "Unselect by Pattern…",
-            category: .selection,
-            keywords: ["wildcard", "glob", "deselect", "unmark"]
         )
     ]
 }

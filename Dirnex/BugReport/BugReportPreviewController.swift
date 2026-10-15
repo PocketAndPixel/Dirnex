@@ -33,20 +33,13 @@ final class BugReportPreviewController: NSViewController {
         ))
 
         textView.string = text
-        textView.isEditable = false
-        textView.isSelectable = true
         textView.isRichText = false
         textView.font = .monospacedSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular)
-        textView.textContainerInset = NSSize(width: 4, height: 4)
-        textView.isVerticallyResizable = true
-        textView.autoresizingMask = [.width]
-        textView.textContainer?.widthTracksTextView = true
         textView.setAccessibilityLabel(label.stringValue)
 
-        let scroll = NSScrollView()
-        scroll.documentView = textView
-        scroll.hasVerticalScroller = true
-        scroll.borderType = .bezelBorder
+        // Drawn as a read-only field is drawn, under the dialog's editable ones (``MultiLineField``).
+        let box = MultiLineField(textView)
+        box.isEditable = false
 
         let close = NSButton(
             title: String(localized: "OK"),
@@ -61,11 +54,11 @@ final class BugReportPreviewController: NSViewController {
         let container = EscapeDismissingView()
         container.dismissesWhileEditing = true
         container.onEscape = { [weak self] in self?.close(nil) }
-        DialogLayout.fill(container, with: [label, scroll, row])
+        DialogLayout.fill(container, with: [label, box, row])
         NSLayoutConstraint.activate([
             container.widthAnchor.constraint(equalToConstant: width),
-            scroll.widthAnchor.constraint(equalToConstant: inner),
-            scroll.heightAnchor.constraint(equalToConstant: 400),
+            box.widthAnchor.constraint(equalToConstant: inner),
+            box.heightAnchor.constraint(equalToConstant: 400),
             row.widthAnchor.constraint(equalToConstant: inner)
         ])
         view = container

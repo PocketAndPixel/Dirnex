@@ -5,7 +5,7 @@ public enum HelpLinks {
     public static let website = URL(string: "https://dirnex.app")!
     /// Every release with its notes. The website's changelog will be built from the same releases
     /// (the private repo's C4), so this can move there once it exists.
-    public static let releaseNotes = URL(string: "https://github.com/olegasd123/Dirnex/releases")!
+    public static let releaseNotes = URL(string: "https://github.com/PocketAndPixel/Dirnex/releases")!
 }
 
 /// Where a bug report goes (PLAN.md §M30): the address the release workflow writes into

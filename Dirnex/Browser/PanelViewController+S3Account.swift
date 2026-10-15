@@ -33,6 +33,10 @@ extension PanelViewController {
         /// this connect is a walk upwards. `nil` leaves the cursor at the top, which is right for a
         /// connect that is arriving rather than returning.
         var focus: VFSPath?
+        /// As `SFTPConnectRequest.inNewTab`. Never set together with `focus`: a walk upwards stays in
+        /// the tab it walks in, and a new tab opens with its cursor at the top
+        /// (`navigate(to:focus:inNewTab:)`).
+        var inNewTab = false
     }
 
     // MARK: - Connecting
@@ -85,7 +89,11 @@ extension PanelViewController {
             if let saveName = request.saveName {
                 saveS3Account(name: saveName, account: account)
             }
-            navigate(to: VFSPath(backend: .s3Account(account), path: "/"), focus: request.focus)
+            navigate(
+                to: VFSPath(backend: .s3Account(account), path: "/"),
+                focus: request.focus,
+                inNewTab: request.inNewTab
+            )
             return .succeeded
         case let .failure(error):
             return .failed(Self.s3ConnectFailureDetail(
@@ -122,16 +130,21 @@ extension PanelViewController {
     /// The bucket comes from the **row's** own path rather than the pane's, which is the same
     /// subject `s3BucketChildren(at:)` reads: in a tree the pane may be standing on an account whose
     /// rows are two backends deep, and only the row says whether this is a bucket at all.
-    func enterS3Bucket(at path: VFSPath) {
+    ///
+    /// `inNewTab` lands the bucket in a new tab of this pane, and `focusing` says whether a connect
+    /// that succeeds takes the focus. Cmd+Return on a bucket row in the *other* pane asks this pane
+    /// for both, so the bucket opens here while the focus stays over there.
+    func enterS3Bucket(at path: VFSPath, inNewTab: Bool = false, focusing: Bool = true) {
         guard path.isS3BucketRow, let account = path.backend.s3Account else { return }
-        guard let request = s3BucketConnectRequest(for: account, bucket: path.lastComponent) else {
+        guard var request = s3BucketConnectRequest(for: account, bucket: path.lastComponent) else {
             presentOperationFailure(
                 message: connectFailureTitle(account.host),
                 detail: Self.genericS3ConnectError
             )
             return
         }
-        runConnect(host: account.host) { [self] in await connectS3(request) }
+        request.inNewTab = inNewTab
+        runConnect(host: account.host, focusing: focusing) { [self] in await connectS3(request) }
     }
 
     /// The connect attempt one bucket row stands for — built once and shared, because Enter and a

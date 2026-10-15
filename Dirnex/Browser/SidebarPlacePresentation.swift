@@ -55,11 +55,11 @@ enum SidebarPlacePresentation {
     /// means "assume locked", which is the honest default for a caller that has not asked.
     static func symbolName(for place: SidebarPlace, unlockedVaults: Set<String> = []) -> String? {
         switch place {
-        case .recents: "clock"
-        case .trash: "trash"
-        case .iCloudDrive: "icloud"
-        case .photos: PhotosPresentation.symbolName
-        case .savedSearch: "magnifyingglass"
+        case .recents: symbolName(for: LocationSource.recents)
+        case .trash: symbolName(for: LocationSource.trash)
+        case .iCloudDrive: symbolName(for: LocationSource.iCloudDrive)
+        case .photos: symbolName(for: LocationSource.photos)
+        case .savedSearch: symbolName(for: LocationSource.search)
         case let .favorite(entry): favoriteSymbolName(for: entry.path)
         case let .cloudMount(mount): mount.symbolName
         case let .volume(volume): volume.symbolName
@@ -67,6 +67,33 @@ enum SidebarPlacePresentation {
             vaultSymbolName(isUnlocked: unlockedVaults.contains(vault.resolvedImagePath))
         case let .server(server): serverSymbolName(for: server.kind)
         case .tag: nil
+        }
+    }
+
+    /// The glyph a tab chip draws for where its listing comes from — always one a sidebar row wears,
+    /// so the strip and the sidebar name a kind of place with one mark.
+    ///
+    /// The rows above route their own symbols through here where the two are the same place, so
+    /// each is spelled once. A **share** takes the SMB server row's connected drive rather than the
+    /// external drive its Volumes row draws, because what tells it apart from a drive on the desk is
+    /// the network; a **folder** takes the plain folder of a pin, not the standard-place symbol of
+    /// Downloads or Home, because the chip names the source and the label already names the folder.
+    static func symbolName(for source: LocationSource) -> String {
+        switch source {
+        case .folder: "folder"
+        case .externalVolume: MountedVolume.externalSymbolName
+        case .networkVolume: serverSymbolName(for: .smb)
+        case .vault: vaultSymbolName(isUnlocked: true)
+        case .cloudStorage: CloudStorageMount.symbolName
+        case .iCloudDrive: "icloud"
+        case .photos: PhotosPresentation.symbolName
+        case .archive: "doc.zipper"
+        case .sftp: serverSymbolName(for: .sftp)
+        case .ftp: serverSymbolName(for: .ftp)
+        case .s3: serverSymbolName(for: .s3)
+        case .trash: "trash"
+        case .recents: "clock"
+        case .search: "magnifyingglass"
         }
     }
 
@@ -86,9 +113,9 @@ enum SidebarPlacePresentation {
             return standardPlaceSymbolName(for: kind)
         }
         guard path.backend == .local else {
-            return path.backend.isArchive ? "doc.zipper" : "network"
+            return path.backend.isArchive ? symbolName(for: LocationSource.archive) : "network"
         }
-        return "folder"
+        return symbolName(for: LocationSource.folder)
     }
 
     /// A monochrome SF Symbol standing in for each standard folder, so Documents, Downloads,

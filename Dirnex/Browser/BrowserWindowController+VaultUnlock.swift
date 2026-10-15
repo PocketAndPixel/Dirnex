@@ -12,8 +12,12 @@ import DirnexCore
 extension BrowserWindowController {
     // MARK: - Sidebar
 
-    func sidebar(_ sidebar: SidebarViewController, didActivateVault vault: VaultLocation) {
-        openVault(vault)
+    func sidebar(
+        _ sidebar: SidebarViewController,
+        didActivateVault vault: VaultLocation,
+        inNewTab: Bool
+    ) {
+        openVault(vault, inNewTab: inNewTab)
     }
 
     func sidebar(_ sidebar: SidebarViewController, didRequestLockOf vault: VaultLocation) {
@@ -22,8 +26,20 @@ extension BrowserWindowController {
 
     // MARK: - Panes
 
-    func panelRequestsVaultOpen(_ vault: VaultLocation, showingIn pane: PanelViewController) {
-        openVault(vault, showingIn: pane)
+    func panelRequestsVaultOpen(
+        _ vault: VaultLocation,
+        showingIn pane: PanelViewController,
+        inNewTab: Bool
+    ) {
+        guard inNewTab else {
+            openVault(vault, showingIn: pane)
+            return
+        }
+        // Cmd+Return on the image: `pane` is the other one, and the focus stays in the pane the key
+        // was pressed in, which `openVault` would move.
+        withUnlockedVault(vault) { [weak pane] point in
+            pane?.navigate(to: .local(point), inNewTab: true)
+        }
     }
 
     // MARK: - Commands
@@ -88,14 +104,18 @@ extension BrowserWindowController {
     /// One entry point for the sidebar click, the command and the just-created vault, because the
     /// user's intent is identical in all three — *show me what is in there* — and the lock state is
     /// a fact to look up rather than a mode the caller should have to know.
+    ///
+    /// `inNewTab` (the sidebar row picked with ⌘) opens the volume in a new tab of `pane`. The tab
+    /// is opened only once the vault is unlocked, so a cancelled passphrase leaves nothing behind.
     func openVault(
         _ vault: VaultLocation,
         with passphrase: ArchivePassphrase? = nil,
-        showingIn pane: PanelViewController? = nil
+        showingIn pane: PanelViewController? = nil,
+        inNewTab: Bool = false
     ) {
         let destination = pane ?? focusedPanel
         withUnlockedVault(vault, using: passphrase) { [weak destination] point in
-            destination?.navigate(to: .local(point))
+            destination?.navigate(to: .local(point), inNewTab: inNewTab)
             destination?.focusTable()
         }
     }

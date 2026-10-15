@@ -39,6 +39,14 @@ final class SearchController: NSViewController {
     /// Handed the assembled query and the chosen scope when the user commits. The panel runs the
     /// search.
     var onSearch: ((FileQuery, _ scope: Scope) -> Void)?
+    /// The search the dialog opens on when it edits one rather than starting fresh (`open(on:…)`),
+    /// held until the controls exist.
+    private var opening: (query: FileQuery, everything: Bool)?
+    /// What the Kind and Size popups hold beyond their fixed menus: a value an edited search carried
+    /// that no menu item names, kept as an extra item rather than dropped (`select(_:in:)`). `nil`
+    /// while the popup has no such item.
+    private var extraKinds: Set<SearchKind>?
+    private var extraMinSize: Int64?
 
     // Controls
     private let nameField = NSTextField()
@@ -81,6 +89,7 @@ final class SearchController: NSViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        applyOpening()
         updateFindEnabled()
     }
 
@@ -251,33 +260,50 @@ final class SearchController: NSViewController {
     @objc private func find(_ sender: Any?) {
         let query = currentQuery()
         guard !query.isEmpty else { return }
-        onSearch?(query, scopePopup.indexOfSelectedItem == 0 ? .currentFolder : .everything)
+        onSearch?(query, currentScope)
         dismiss(sender)
     }
 
     // MARK: - Query
 
-    /// The query as the controls currently stand.
+    /// The query as the controls currently stand. Internal so a test can read back what an edited
+    /// search opened on.
     ///
     /// A field the scope cannot answer contributes nothing, whatever it happens to hold. It is
     /// hidden and therefore always empty in practice — but the whole design rests on a query never
     /// carrying a term that will be silently ignored, and resting that on "the row isn't on screen"
     /// makes it a fact about the *layout*. Reading it from `fields` makes it a fact about the place
     /// being searched, which is what it is.
-    private func currentQuery() -> FileQuery {
-        let kind = SearchFilterOptions.kinds[max(0, kindPopup.indexOfSelectedItem)].kind
-        return FileQuery(
+    func currentQuery() -> FileQuery {
+        FileQuery(
             nameContains: fields.contains(.name) ? nameField.stringValue : "",
             contentContains: fields.contains(.content) ? contentField.stringValue : "",
-            kinds: fields.contains(.kind) ? kind.map { [$0] } ?? [] : [],
-            minSizeBytes: fields.contains(.size)
-                ? SearchFilterOptions.sizes[max(0, sizePopup.indexOfSelectedItem)].bytes
-                : nil,
+            kinds: fields.contains(.kind) ? selectedKinds : [],
+            minSizeBytes: fields.contains(.size) ? selectedMinSize : nil,
             modifiedWithin: fields.contains(.modified)
                 ? SearchFilterOptions.ages[max(0, datePopup.indexOfSelectedItem)].age
                 : nil,
             tags: fields.contains(.tags) ? enteredTags : []
         )
+    }
+
+    /// The scope option as it stands.
+    var currentScope: Scope {
+        scopePopup.indexOfSelectedItem == 0 ? .currentFolder : .everything
+    }
+
+    /// The Kind popup's value: a fixed item's single kind, or the extra item an edit added.
+    private var selectedKinds: Set<SearchKind> {
+        let index = kindPopup.indexOfSelectedItem
+        guard SearchFilterOptions.kinds.indices.contains(index) else { return extraKinds ?? [] }
+        return SearchFilterOptions.kinds[index].kind.map { [$0] } ?? []
+    }
+
+    /// The Size popup's value: a fixed item's threshold, or the extra item an edit added.
+    private var selectedMinSize: Int64? {
+        let index = sizePopup.indexOfSelectedItem
+        guard SearchFilterOptions.sizes.indices.contains(index) else { return extraMinSize }
+        return SearchFilterOptions.sizes[index].bytes
     }
 
     /// The tag names in the field — chips the user has committed **and** whatever they are still
@@ -316,6 +342,68 @@ final class SearchController: NSViewController {
         field.delegate = self
         field.translatesAutoresizingMaskIntoConstraints = false
         field.widthAnchor.constraint(equalToConstant: 360).isActive = true
+    }
+}
+
+// MARK: - Opening on an existing search
+
+extension SearchController {
+    /// Open the dialog on `query` rather than empty — editing the search behind a results tab. Safe
+    /// before or after the view loads; the controls are filled in once they exist.
+    func open(on query: FileQuery, everything: Bool) {
+        opening = (query, everything)
+        if isViewLoaded { applyOpening() }
+    }
+
+    /// Fill the controls in from `opening` — the inverse of `currentQuery()`, which a test holds
+    /// it to for every value the dialog can produce.
+    private func applyOpening() {
+        guard let opening else { return }
+        self.opening = nil
+        let query = opening.query
+        nameField.stringValue = query.nameContains
+        contentField.stringValue = query.contentContains
+        tagField.objectValue = query.tags.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+        select(query.kinds, in: kindPopup)
+        select(query.minSizeBytes, in: sizePopup)
+        datePopup.selectItem(
+            at: SearchFilterOptions.ages.firstIndex { $0.age == query.modifiedWithin } ?? 0
+        )
+        scopePopup.selectItem(at: opening.everything ? 1 : 0)
+        updateFindEnabled()
+    }
+
+    /// Select the Kind item for `kinds`. The menu picks one kind at a time, while a query can hold
+    /// several; a query carrying a set the menu cannot name gets an extra item naming it, rather
+    /// than being opened on "Any kind" — which would *widen* the edited search without a word.
+    /// Nothing the dialog writes produces one; a hand-written saved search could.
+    private func select(_ kinds: Set<SearchKind>, in popup: NSPopUpButton) {
+        // An empty set is `first == nil`, which is the "Any kind" item's own value.
+        if kinds.count <= 1,
+           let index = SearchFilterOptions.kinds.firstIndex(where: { $0.kind == kinds.first }) {
+            popup.selectItem(at: index)
+            return
+        }
+        extraKinds = kinds
+        let titles = kinds.map { LocalizedCatalog.title(for: $0) }.sorted()
+        popup.addItem(withTitle: ListFormatter.localizedString(byJoining: titles))
+        popup.selectItem(at: popup.numberOfItems - 1)
+    }
+
+    /// Select the Size item for `bytes`, adding one for a threshold the menu does not offer, for the
+    /// reason `select(_:in:)` gives for kinds. Drawn as `≥` and a localized size, so it needs no
+    /// sentence of its own to translate.
+    private func select(_ bytes: Int64?, in popup: NSPopUpButton) {
+        if let index = SearchFilterOptions.sizes.firstIndex(where: { $0.bytes == bytes }) {
+            popup.selectItem(at: index)
+            return
+        }
+        guard let bytes else { return }
+        extraMinSize = bytes
+        popup.addItem(
+            withTitle: "≥ " + ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+        )
+        popup.selectItem(at: popup.numberOfItems - 1)
     }
 }
 

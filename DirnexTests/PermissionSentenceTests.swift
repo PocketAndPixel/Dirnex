@@ -101,6 +101,53 @@ struct PermissionSentenceTests {
         """))
     }
 
+    // MARK: - A mounted share
+
+    /// A share's path, decided by the injected answer rather than a mount — the real answer needs
+    /// one, and `NetworkVolume.root(of:)` is the same check the recycle-bin wording already rests on.
+    private static let share = VFSPath.local("/Volumes/media/#recycle")
+
+    private func sentence(_ path: VFSPath, onShare: Bool) -> String {
+        VFSErrorText.sentence(for: VFSError.permissionDenied(path)) { _ in onShare }
+    }
+
+    /// Measured 2026-10-11: a Synology share's `#recycle` refuses its listing, and the sheet named
+    /// Full Disk Access — a switch on this Mac — for a decision the NAS made.
+    @Test("a refusal on a mounted share gets the server sentence, not Full Disk Access")
+    func shareGetsTheServerSentence() {
+        #expect(sentence(Self.share, onShare: true) == sentence(Self.remote))
+        #expect(sentence(Self.share, onShare: true) != sentence(Self.ordinary))
+    }
+
+    /// The same path off a share is an ordinary local path, so the branch is the volume's answer and
+    /// not anything about `/Volumes` or `#recycle` in the spelling.
+    @Test("the same path on a local disk keeps the Full Disk Access sentence")
+    func localDiskKeepsTheGrantAdvice() {
+        #expect(sentence(Self.share, onShare: false) == sentence(Self.ordinary))
+    }
+
+    /// The question costs a syscall, so it is asked only where the answer can change the sentence.
+    @Test("the share question is asked only for a local permission failure")
+    func shareQuestionIsNarrow() {
+        var asked: [VFSPath] = []
+        func describe(_ error: VFSError) {
+            _ = VFSErrorText.sentence(for: error) { asked.append($0); return true }
+        }
+        describe(.notFound(Self.share))
+        describe(.permissionDenied(Self.remote))
+        #expect(asked.isEmpty)
+        describe(.permissionDenied(Self.share))
+        #expect(asked == [Self.share])
+    }
+
+    /// The real check's hermetic half: a folder on this Mac's own disk is not a share, and a server
+    /// path is never looked up on this Mac's volumes however its spelling collides with one.
+    @Test("the real check says no for a local disk and for a server path")
+    func realCheckRefusesNonShares() {
+        #expect(NetworkVolume.root(of: .local(Self.home)) == nil)
+        #expect(NetworkVolume.root(of: Self.remote) == nil)
+    }
+
     // MARK: - Only permission failures
 
     /// The branch reads the path, so it could in principle leak into other cases. Nothing else

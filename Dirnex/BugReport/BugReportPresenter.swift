@@ -35,7 +35,13 @@ enum BugReportPresenter {
             }
             draft = nil
             remember(email: controller.report.email, in: defaults)
-            thank(reference: reference, over: host?.view.window)
+            // One turn later, once the dialog's window is gone. It is still `NSApp.modalWindow` while
+            // it closes (probed: in `viewDidDisappear` and still when `dismiss` returns, `nil` a turn
+            // later), and an alert hangs on the modal window first (`NSAlert.sheetHost(over:)`), so
+            // the thanks would bring the emptied dialog back on screen as its sheet's host.
+            DispatchQueue.main.async {
+                thank(reference: reference, over: host?.view.window)
+            }
         }
         current = controller
         host.presentAsMovableWindow(controller)

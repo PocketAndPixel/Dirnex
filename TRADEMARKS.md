@@ -70,7 +70,7 @@ push official Dirnex builds onto your users, or your builds onto Dirnex users.
 
 Anything this policy does not clearly allow, ask about first — permission is
 often granted for reasonable uses. Open an issue at
-<https://github.com/olegasd123/Dirnex/issues>.
+<https://github.com/PocketAndPixel/Dirnex/issues>.
 
 ## Not legal advice
 

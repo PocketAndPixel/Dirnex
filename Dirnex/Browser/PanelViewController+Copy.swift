@@ -6,6 +6,10 @@ import DirnexCore
 /// (PLAN.md §M2). Total Commander semantics: the operation targets the marked set over the
 /// cursor and lands in the *other* pane's current directory.
 ///
+/// In a tree the marks can span levels. F5/F6 land them all flat in that directory, the way
+/// drag-and-drop and ⌘V always have; ⇧F5 and "Move to Other Panel, Keeping Folders" recreate the
+/// folders they were found in instead (`TreeSelection.transferGroups`).
+///
 /// This file owns only the AppKit shell — resolving the source set and destination, then
 /// handing the operation to the queue under the `.ask` conflict policy with a
 /// `ConflictPrompter` that raises the rich per-file dialog on collisions. Progress (the
@@ -15,6 +19,25 @@ extension PanelViewController {
     // MARK: - Menu actions (dispatched to the focused pane via the responder chain)
 
     @objc func copyToOtherPane(_ sender: Any?) {
+        copyToOtherPane(keepingFolders: false)
+    }
+
+    @objc func moveToOtherPane(_ sender: Any?) {
+        moveToOtherPane(keepingFolders: false)
+    }
+
+    /// ⇧F5. Only the plain transfer has levels to keep: an archive pane is never a tree, so what
+    /// F5 extracts from one is already a single level, and an add *into* an archive lands by name
+    /// alone — both routes are F5's own.
+    @objc func copyToOtherPaneKeepingFolders(_ sender: Any?) {
+        copyToOtherPane(keepingFolders: true)
+    }
+
+    @objc func moveToOtherPaneKeepingFolders(_ sender: Any?) {
+        moveToOtherPane(keepingFolders: true)
+    }
+
+    private func copyToOtherPane(keepingFolders: Bool) {
         // F5 on an archive member is copy-*out*: extract the marked members to disk and copy them
         // into the other pane (PLAN.md §M4). A move-out doesn't exist — the archive is read-only,
         // so there's nothing to remove — hence only Copy routes here; `moveToOtherPane` stays gated.
@@ -29,11 +52,11 @@ extension PanelViewController {
             // F5 into an archive is add-into: copy the marked local items into the archive pane.
             addSelectionToArchive(destPane, kind: .copy)
         } else {
-            beginTransfer(kind: .copy)
+            beginTransfer(kind: .copy, keepingFolders: keepingFolders)
         }
     }
 
-    @objc func moveToOtherPane(_ sender: Any?) {
+    private func moveToOtherPane(keepingFolders: Bool) {
         // F6 into an archive is add-into with move semantics: copy the items in, then trash the
         // originals. Move-*out* of an archive stays gated — including from a results tab holding
         // archive members, which `isArchive` alone does not cover (the pane is a `search:` one).
@@ -41,7 +64,7 @@ extension PanelViewController {
         if let destPane = archiveDestinationPane() {
             addSelectionToArchive(destPane, kind: .move)
         } else {
-            beginTransfer(kind: .move)
+            beginTransfer(kind: .move, keepingFolders: keepingFolders)
         }
     }
 
@@ -71,7 +94,7 @@ extension PanelViewController {
 
     // MARK: - Flow
 
-    private func beginTransfer(kind: FileOperation.Kind) {
+    private func beginTransfer(kind: FileOperation.Kind, keepingFolders: Bool) {
         // F5/F6 reach here via the key model, which bypasses menu validation — so re-check that
         // this isn't an archive pane, whose entries can't be extracted yet (a later M4 pass).
         guard !isArchive else { return }
@@ -92,9 +115,15 @@ extension PanelViewController {
             )
             return
         }
+        // Flat, a mark already living in the destination would land on itself, which a tree reaches
+        // whenever the other pane shows one of its expanded folders. Moving it there is nothing, and
+        // copying it would be the "<name> copy" duplicate `submit` keeps for ⌘V, so it is dropped,
+        // as paste drops a same-folder move. Keeping folders cannot land one on itself once the two
+        // panes differ: every group keeps its relative path under a different folder.
+        let landing = keepingFolders ? sources : sources.filter { $0.path.parent != destination }
         // Copying/moving a selection onto the folder it already lives in would collide
         // with every item; point the user at a real destination instead.
-        guard destination != panel.path else {
+        guard destination != panel.path, !landing.isEmpty else {
             presentOperationFailure(
                 message: kind == .copy
                     ? String(
@@ -112,14 +141,14 @@ extension PanelViewController {
             )
             return
         }
-        // In tree mode the marked set can span levels, and TC's branch-view semantics are to
-        // reproduce each item's path *relative to this pane's directory* under the destination
-        // (PLAN.md §M15) — so the transfer becomes one job per destination subdirectory. A
+        // In tree mode the marked set can span levels. Flat is one job whatever the levels; keeping
+        // folders reproduces each item's path *relative to this pane's directory* under the
+        // destination (TC's branch view, PLAN.md §M15), one job per destination subdirectory. A
         // selection that sits entirely at this pane's own level is a single group with no relative
-        // path, which is every list-mode transfer and takes the shipped single-job path unchanged.
-        let groups = TreeSelection.transferGroups(sources, relativeTo: panel.path)
-        if groups.count == 1, groups[0].relativeComponents.isEmpty {
-            submitTransfer(kind: kind, sources: sources, destination: destination)
+        // path, which is every list-mode transfer and takes the single-job path either way.
+        let groups = TreeSelection.transferGroups(landing, relativeTo: panel.path)
+        if !keepingFolders || (groups.count == 1 && groups[0].relativeComponents.isEmpty) {
+            submitTransfer(kind: kind, sources: landing, destination: destination)
             consumeTransferMarks()
         } else {
             submitBranchTransfer(kind: kind, groups: groups, destination: destination)
@@ -135,11 +164,9 @@ extension PanelViewController {
         focusTable()
     }
 
-    /// A transfer whose sources span several tree levels: recreate the folders they came from under
-    /// the destination, then hand each directory's sources to the queue as its own job.
-    ///
-    /// The alternative — everything flat into one folder — collides silently the moment two expanded
-    /// folders each hold an `x.jpg`, which is why the semantics were settled before the slice opened.
+    /// A keeping-folders transfer whose sources span several tree levels: recreate the folders they
+    /// came from under the destination, then hand each directory's sources to the queue as its own
+    /// job.
     ///
     /// The directories must exist before the jobs run (the engine writes into
     /// `destinationDirectory`, it does not create it), so they are made first, off the main thread,

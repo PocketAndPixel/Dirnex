@@ -9,7 +9,8 @@ import AppKit
 /// So a click is let through only when it lands on a real, selectable destination row — which
 /// navigates the active pane and hands focus back to it anyway (`SidebarViewController`'s
 /// `rowClicked` → `focusTable`). Empty space runs `onEmptyClick` and a header runs
-/// `onHeaderClick`, both of which re-focus the active pane. Right-click (the saved-search context
+/// `onHeaderClick`, both of which re-focus the active pane; a ⌘-click on a destination row runs
+/// `onCommandClick`, which opens it in a new tab. Right-click (the saved-search context
 /// menu) and the cells' own eject/delete buttons are unaffected — they never route through this
 /// `mouseDown`.
 final class SidebarTableView: NSTableView {
@@ -20,12 +21,15 @@ final class SidebarTableView: NSTableView {
     /// chevron is a mean thing to ask anyone to hit, and the header has no other click behavior to
     /// compete with.
     var onHeaderClick: ((Int) -> Void)?
+    /// Invoked with the row index for a ⌘-click on a destination row — open it in a new tab.
+    var onCommandClick: ((Int) -> Void)?
 
     // Keyboard commands the focused sidebar forwards to its controller (PLAN.md §M8 "Keyboard
     // access to the sidebar"). Row movement (↑/↓) and type-select are left to `NSTableView`; only
     // the file-manager-specific keys are intercepted. All are `nil` until the controller wires them.
     /// Return / Enter — activate the selected row (navigate a place, run a search, fold a header).
-    var onActivateSelection: (() -> Void)?
+    /// The flag is `true` for ⌘Return / ⌘Enter, which opens the row in a new tab.
+    var onActivateSelection: ((_ inNewTab: Bool) -> Void)?
     /// Left arrow — collapse the selected row's section, or step out to its header.
     var onMoveLeft: (() -> Void)?
     /// Right arrow — expand the selected header, or step into its first row.
@@ -52,6 +56,14 @@ final class SidebarTableView: NSTableView {
             onEmptyClick?()
             return
         }
+        // ⌘-click opens the row in a new tab. Handled here rather than after `super`, because a
+        // single-selection table reads ⌘ as "toggle this row" and would deselect the very row being
+        // opened. Selecting it by hand keeps the highlight where a plain click would put it.
+        if event.modifierFlags.contains(.command), let onCommandClick {
+            selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+            onCommandClick(row)
+            return
+        }
         super.mouseDown(with: event)
     }
 
@@ -60,8 +72,8 @@ final class SidebarTableView: NSTableView {
     /// so claiming them for fold/step costs nothing.
     override func keyDown(with event: NSEvent) {
         switch event.keyCode {
-        case 36, 76: // Return, keypad Enter
-            onActivateSelection?()
+        case 36, 76: // Return, keypad Enter — with ⌘, into a new tab
+            onActivateSelection?(event.modifierFlags.contains(.command))
         case 48: // Tab — back to the pane, not the next key view
             onReturnToPane?()
         case 123: // Left

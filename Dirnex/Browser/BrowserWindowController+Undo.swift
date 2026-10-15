@@ -25,14 +25,43 @@ extension BrowserWindowController {
         previousMarks: Set<VFSPath>,
         label: UndoActionLabel
     ) {
-        let side: PaneSide = (pane === leftPanel) ? .left : .right
-        undoController.recordSelection(SelectionChange(
-            pane: side,
+        undoController.recordSelection(selectionChange(
+            on: pane,
+            directory: directory,
+            previousMarks: previousMarks,
+            label: label
+        ))
+    }
+
+    func withdrawSelectionChange(
+        on pane: PanelViewController,
+        directory: VFSPath,
+        previousMarks: Set<VFSPath>,
+        label: UndoActionLabel
+    ) -> Bool {
+        undoController.withdrawSelection(selectionChange(
+            on: pane,
+            directory: directory,
+            previousMarks: previousMarks,
+            label: label
+        ))
+    }
+
+    /// The journal entry for a marking change on `pane`, built in one place because withdrawing an
+    /// entry finds it by being equal to the one that was recorded.
+    private func selectionChange(
+        on pane: PanelViewController,
+        directory: VFSPath,
+        previousMarks: Set<VFSPath>,
+        label: UndoActionLabel
+    ) -> SelectionChange {
+        SelectionChange(
+            pane: (pane === leftPanel) ? .left : .right,
             directory: directory,
             priorSelection: previousMarks,
             newSelection: pane.panel.selection,
             label: label
-        ))
+        )
     }
 
     var nextUndoLabel: UndoActionLabel? {

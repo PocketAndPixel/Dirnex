@@ -30,6 +30,13 @@ struct WriteBackBatchTests {
         )
     }
 
+    /// Whether the *running* app resolves to English. The app test target inherits whichever
+    /// `AppleLanguages` the developer has Dirnex pinned to (docs/NOTES.md ▸ Localization), so an
+    /// assertion over English wording is true only here.
+    private var readsEnglish: Bool {
+        Bundle.main.preferredLocalizations.first?.hasPrefix("en") == true
+    }
+
     // MARK: - Who gets interrupted
 
     @Test("a batch the checks found nothing wrong with asks nothing")
@@ -143,7 +150,9 @@ struct WriteBackBatchTests {
         #expect(body.contains("a.txt"))
         // "The rest are as you left them" is what makes Skip a comprehensible button; without it
         // the reader cannot tell whether skipping leaves anything to upload.
-        #expect(body.contains("rest"))
+        if readsEnglish {
+            #expect(body.contains("rest"))
+        }
     }
 
     @Test("a batch where everything is contested says so rather than counting")
@@ -151,8 +160,14 @@ struct WriteBackBatchTests {
         let all = [checked("a.txt", concern: "x"), checked("b.txt", concern: "x")]
         let body = BrowserWindowController.writeBackPromptBody(contested: all, total: 2)
         // Naming a clean remainder that does not exist would be false, and would describe a Skip
-        // button the sheet does not offer.
-        #expect(!body.contains("rest"))
+        // button the sheet does not offer. The same two files out of three *do* leave one, so
+        // that sentence must not be this one. That holds in every language, where the English
+        // check alone passes in any other without testing anything.
+        #expect(body != BrowserWindowController.writeBackPromptBody(contested: all, total: 3))
+        #expect(!body.contains("a.txt"))
+        if readsEnglish {
+            #expect(!body.contains("rest"))
+        }
     }
 
     @Test("the status line names one file and counts many")

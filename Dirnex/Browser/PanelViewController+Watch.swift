@@ -192,10 +192,10 @@ extension PanelViewController {
         // pane draws: measured on `/Users/oleg` with nothing touched, ~5 events a second, every
         // one of them from `~/Library` (Chrome's cache, Spotlight's index, a sync client's
         // metrics) and the 27 rows identical throughout. Re-installing them anyway costs a full
-        // `reloadData` several times a second, which the user *sees* — it tears down the
+        // `reloadData` several times a second, which the user *saw* — it tore down AppKit's
         // expansion tooltip on the row under the pointer, so a name too long for its column
-        // blinks (docs/NOTES.md ▸ AppKit), and it is the same teardown `deferRefreshIfRenaming`
-        // exists to keep away from an open rename field.
+        // blinked (docs/NOTES.md ▸ AppKit; that panel is `ExpansionPanel` now), and it is the same
+        // teardown `deferRefreshIfRenaming` exists to keep away from an open rename field.
         //
         // This is the rule the other three consumers of this event already keep — `applyGitSnapshot`,
         // `applyTagSnapshot` and `applySyncSnapshot` each say "a no-op when nothing changed, so

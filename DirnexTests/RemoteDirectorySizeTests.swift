@@ -112,9 +112,13 @@ struct RemoteDirectorySizeTests {
             restorationKey: nil
         )
         pane.loadViewIfNeeded()
-        let arrived = await wait { rows(of: pane).contains { $0.name == folder } }
-        #expect(arrived, "the pane never listed its own directory")
-        let entry = try #require(rows(of: pane).first { $0.name == folder })
+        // 60 s rather than the shared 30: this is the first thing every test here does, so it waits
+        // behind the main-actor work every suite queues as a full run starts. Measured 2026-10-14
+        // over seven full runs, the listing landed 18–30.5 s in, against 25 ms alone.
+        try await settleUntil(within: .seconds(60)) { rows(of: pane).contains { $0.name == folder } }
+        let entry = try #require(
+            rows(of: pane).first { $0.name == folder }, "the pane never listed its own directory"
+        )
         return (pane, entry)
     }
 
@@ -124,17 +128,16 @@ struct RemoteDirectorySizeTests {
         (0..<pane.panel.model.count).map { pane.panel.model[$0] }
     }
 
+    /// A short look at a walk already running off the main actor, for the two tests that want it
+    /// under way before they act on it. Running out is not a failure, so its answer is ignored and
+    /// its bound stays short. Everything this suite waits *for* goes through `settleUntil`, since
+    /// this helper's own 15 s expired under a full run's main-actor stalls (2026-10-14).
+    ///
     /// Polls rather than spinning the run loop: the walk lands through a detached task, and a
     /// run-loop spin drives layout without ever letting the main actor suspend, so the result
     /// simply never arrives (docs/NOTES.md ▸ Testing).
-    ///
-    /// The default budget is generous on purpose and costs nothing: a satisfied condition returns
-    /// on the next poll, so it only decides how much scheduling delay this can absorb before
-    /// reporting a failure that is really the machine's. At 5 s it expired on a loaded Mac and read
-    /// as "the pane never listed its own directory" (2026-08-20). Callers that are waiting a delay
-    /// *out* rather than waiting *for* something pass their own, shorter, bound.
     private static func wait(
-        upTo seconds: Double = 15,
+        upTo seconds: Double,
         until condition: @MainActor () -> Bool
     ) async -> Bool {
         let deadline = Date().addingTimeInterval(seconds)
@@ -158,9 +161,9 @@ struct RemoteDirectorySizeTests {
         // 1000 and looked like an off-by-one in the sizer, which it was not.
         let baseline = backend.listingCount
         pane.computeDirectorySize(for: folder)
-        let finished = await Self.wait(upTo: 20) { pane.directorySizeWalks[folder.path] == nil }
+        // The walk must terminate rather than run forever.
+        try await settleUntil { pane.directorySizeWalks[folder.path] == nil }
 
-        #expect(finished, "the walk must terminate rather than run forever")
         // Exactly the budget, not one more: the limit refuses the request rather than making it and
         // throwing the answer away, and on a billed backend that is the number that was spent.
         let limit = try #require(DirectorySizeBudget.remote.directoryLimit)
@@ -189,9 +192,8 @@ struct RemoteDirectorySizeTests {
         )
 
         pane.computeDirectorySize(for: folder)
-        let landed = await Self.wait { pane.panel.computedSize(of: folder) != nil }
+        try await settleUntil { pane.panel.computedSize(of: folder) != nil }
 
-        #expect(landed)
         #expect(pane.panel.computedSize(of: folder) == 100)
         #expect(pane.directorySizeState(for: folder) == .idle)
     }
@@ -262,8 +264,7 @@ struct RemoteDirectorySizeTests {
         pane.computeDirectorySize(for: folder)
         #expect(pane.directorySizeWalks.isEmpty, "a local walk is fire-and-forget, not tracked")
 
-        let landed = await Self.wait { pane.panel.computedSize(of: folder) != nil }
-        #expect(landed)
+        try await settleUntil { pane.panel.computedSize(of: folder) != nil }
         #expect(pane.panel.computedSize(of: folder) == 7)
     }
 }

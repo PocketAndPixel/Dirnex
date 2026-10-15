@@ -20,7 +20,7 @@ final class ChecksumReportController: NSViewController {
     private let report: ChecksumVerificationReport
     private let manifestName: String
 
-    private let tableView = NSTableView()
+    private let tableView = StripedTableView()
     private let scrollView = NSScrollView()
     private let verdictLabel = NSTextField(labelWithString: "")
     private let detailLabel = NSTextField(labelWithString: "")

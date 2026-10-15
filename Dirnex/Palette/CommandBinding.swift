@@ -25,6 +25,10 @@ enum CommandBinding {
         "file.removeDownload": #selector(PanelViewController.removeDownload(_:)),
         "file.copy": #selector(PanelViewController.copyToOtherPane(_:)),
         "file.move": #selector(PanelViewController.moveToOtherPane(_:)),
+        "file.copyKeepingFolders":
+            #selector(PanelViewController.copyToOtherPaneKeepingFolders(_:)),
+        "file.moveKeepingFolders":
+            #selector(PanelViewController.moveToOtherPaneKeepingFolders(_:)),
         "file.pack": #selector(PanelViewController.packSelection(_:)),
         "file.archiveNameEncoding":
             #selector(PanelViewController.chooseArchiveNameEncoding(_:)),
@@ -126,6 +130,9 @@ enum CommandBinding {
         "window.close": #selector(NSWindow.performClose(_:)),
         "window.previousTab": #selector(PanelViewController.showPreviousTab(_:)),
         "window.nextTab": #selector(PanelViewController.showNextTab(_:)),
+        "window.moveTabLeft": #selector(PanelViewController.moveTabLeft(_:)),
+        "window.moveTabRight": #selector(PanelViewController.moveTabRight(_:)),
+        "window.moveTabToOtherPanel": #selector(PanelViewController.moveTabToOtherPanel(_:)),
         "app.settings": #selector(AppDelegate.showSettings(_:)),
         "app.fullDiskAccess": #selector(AppDelegate.showFullDiskAccess(_:)),
         "app.showTour": #selector(AppDelegate.showFirstRunTour(_:)),

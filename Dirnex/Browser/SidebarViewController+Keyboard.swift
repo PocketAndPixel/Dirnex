@@ -8,13 +8,15 @@ import DirnexCore
 ///
 /// The model is `NSOutlineView`'s, adapted to a flat table whose "expand/collapse" is the M8 fold
 /// state rather than a tree: ← collapses a header or steps out of an item to its header, → expands a
-/// header or steps into it, Return activates an item or folds a header, and Tab/Escape leave for the
-/// active pane. Headers are keyboard-selectable (`shouldSelectRow` returns true) precisely so ←/→
+/// header or steps into it, Return activates an item or folds a header (⌘Return opens the item in a
+/// new tab), and Tab/Escape leave for the active pane. Headers are keyboard-selectable (`shouldSelectRow` returns true) precisely so ←/→
 /// and Return have something to land on; the mouse still never selects one.
 extension SidebarViewController {
     /// Wire the table's key callbacks to the handlers below. Called once from `loadView`.
     func registerKeyboardHandlers() {
-        tableView.onActivateSelection = { [weak self] in self?.keyboardActivateSelection() }
+        tableView.onActivateSelection = { [weak self] inNewTab in
+            self?.keyboardActivateSelection(inNewTab: inNewTab)
+        }
         tableView.onMoveLeft = { [weak self] in self?.keyboardMoveLeft() }
         tableView.onMoveRight = { [weak self] in self?.keyboardMoveRight() }
         tableView.onReturnToPane = { [weak self] in self?.keyboardReturnToPane() }
@@ -51,16 +53,18 @@ extension SidebarViewController {
 
     // MARK: - Key handlers
 
-    private func keyboardActivateSelection() {
+    private func keyboardActivateSelection(inNewTab: Bool) {
         let row = tableView.selectedRow
         guard rows.indices.contains(row) else { return }
         if let section = rows[row].section {
-            // A header activates by folding — Return is the keyboard twin of clicking it.
+            // A header activates by folding — Return is the keyboard twin of clicking it, and ⌘ adds
+            // nothing, as it adds nothing to a click on one: a header has no place to open.
             foldFromKeyboard(section, collapsed: !sectionCollapse.isCollapsed(section))
         } else {
-            // An item navigates the pane (or runs its query); `activate` hands focus back to the
-            // pane on its own, so browsing continues there without another keystroke.
-            activate(rowAt: row)
+            // An item navigates the pane (or runs its query), in a new tab under ⌘ — the keyboard
+            // twin of a ⌘-click. `activate` hands focus back to the pane on its own, so browsing
+            // continues there without another keystroke.
+            activate(rowAt: row, inNewTab: inNewTab)
         }
     }
 

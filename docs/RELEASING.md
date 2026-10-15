@@ -193,6 +193,25 @@ open -n /Applications/Dirnex.app --args -SUFeedURL http://127.0.0.1:8766/appcast
   real preferences. A release build accepts only keys signed with the production key; a Debug build
   also accepts test keys.
 
+## Report a Bug's address
+
+A third value baked into `Info.plist` (PLAN.md §M30): **`DirnexBugReportURL`**, where *Help ▸ Report
+a Bug…* sends. The item and its command exist only in a build that carries one.
+
+It comes from the repository **variable** `DIRNEX_BUG_REPORT_URL` (Settings → Secrets and
+variables → Actions → **Variables**), for beta and stable builds alike:
+
+- **unset or empty:** no Report a Bug in the build;
+- **`https://dirnex.app/api/bug-reports`:** the item shows, and reports go to the store's server.
+
+Anything that isn't an `https://` address fails the run, since the app would ignore it and hide the
+item without a word. Each run's log says which it used ("Report a Bug: …"), and
+`scripts/build_app.sh` reads the value back out of the exported app, as it does the other two.
+
+Builds made any other way carry none. A Debug build shows the item when launched with
+`-DirnexDebugBugReportURL <address>`, which also accepts plain `http` to this Mac (for
+`Tooling/fake-bug-report-endpoint.py`, or the store's server on a laptop).
+
 ## What the app does with it
 
 - **Check for Updates…** lives in the app menu (and the ⌘K palette as `app.checkForUpdates`); it

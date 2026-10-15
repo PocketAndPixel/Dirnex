@@ -127,24 +127,20 @@ extension PanelViewController {
             return
         }
         view.window?.makeFirstResponder(field)
-        selectBaseName(in: field)
+        selectBaseName(in: field, isDirectory: entry.isDirectoryLike)
     }
 
-    /// Preselect the base name (everything before the last dot), Finder-style, so typing
-    /// replaces the name but keeps the extension — unless the name is all-extension (a
-    /// leading dot) or has none, in which case the whole thing is selected. Done here,
-    /// right after the field takes first responder (which selects all by default), rather
-    /// than in `controlTextDidBeginEditing`: that notification fires on the first *edit*,
-    /// not on focus, so a selection set there would land a keystroke too late.
-    private func selectBaseName(in field: NSTextField) {
+    /// Preselect the base name, so typing replaces the name but keeps a file's extension; a folder
+    /// is selected whole (`RenameSelection` has the rule). Done here, right after the field takes
+    /// first responder (which selects all by default), rather than in
+    /// `controlTextDidBeginEditing`: that notification fires on the first *edit*, not on focus, so
+    /// a selection set there would land a keystroke too late.
+    private func selectBaseName(in field: NSTextField, isDirectory: Bool) {
         guard let editor = field.currentEditor() else { return }
-        let name = field.stringValue as NSString
-        let dot = name.range(of: ".", options: .backwards)
-        if dot.location != NSNotFound, dot.location > 0 {
-            editor.selectedRange = NSRange(location: 0, length: dot.location)
-        } else {
-            editor.selectedRange = NSRange(location: 0, length: name.length)
-        }
+        editor.selectedRange = RenameSelection.range(
+            forName: field.stringValue,
+            isDirectory: isDirectory
+        )
     }
 
     /// Display index of the Name column, resolved live so a user-reordered column layout

@@ -88,6 +88,7 @@ final class SidebarViewController: NSViewController {
         // A header click folds its section rather than doing nothing (PLAN.md §M8); it re-focuses
         // the active pane too, which is why it doesn't simply reuse `refocusActivePane`.
         tableView.onHeaderClick = { [weak self] row in self?.toggleSection(atRow: row) }
+        tableView.onCommandClick = { [weak self] row in self?.activate(rowAt: row, inNewTab: true) }
         registerKeyboardHandlers()
         let clipView = SidebarClipView()
         clipView.onBackgroundClick = refocusActivePane
@@ -257,13 +258,14 @@ final class SidebarViewController: NSViewController {
     /// doesn't cross files.
     ///
     /// Only the disclosure row is handled here — everything else is a place, and goes through the
-    /// funnel below.
-    func activate(rowAt index: Int) {
+    /// funnel below. `inNewTab` is a ⌘-click's or ⌘Return's; the disclosure row has no tab to open,
+    /// so it expands either way.
+    func activate(rowAt index: Int, inNewTab: Bool = false) {
         guard rows.indices.contains(index) else { return }
         if case .allTags = rows[index] {
             expandAllTags()
         } else if let place = rows[index].place {
-            activate(place)
+            activate(place, inNewTab: inNewTab)
         }
     }
 
@@ -276,7 +278,12 @@ final class SidebarViewController: NSViewController {
     /// built out of paths would have been wrong rather than merely duplicated — and why a favorite
     /// hands over its **entry**: a pin on a connected account carries where to reconnect beside
     /// where to go, which a path cannot express.
-    func activate(_ place: SidebarPlace) {
+    ///
+    /// `inNewTab` (⌘-click, ⌘Return) opens the place in a new tab of the active pane instead of
+    /// replacing what that tab shows. Only the places that *replace* a listing take it: Recents, the
+    /// Trash, a saved search and a tag already open their results in a tab of their own on every
+    /// click, so for them ⌘ has nothing left to change.
+    func activate(_ place: SidebarPlace, inNewTab: Bool = false) {
         switch place {
         case .recents:
             delegate?.sidebarDidActivateRecents(self)
@@ -285,25 +292,25 @@ final class SidebarViewController: NSViewController {
         case let .savedSearch(savedSearch):
             delegate?.sidebar(self, didActivateSavedSearch: savedSearch)
         case let .server(server):
-            delegate?.sidebar(self, didActivateServer: server)
+            delegate?.sidebar(self, didActivateServer: server, inNewTab: inNewTab)
         case let .vault(vault):
-            delegate?.sidebar(self, didActivateVault: vault)
+            delegate?.sidebar(self, didActivateVault: vault, inNewTab: inNewTab)
         case let .tag(tag):
             delegate?.sidebar(self, didActivateTag: tag)
         case .iCloudDrive:
             // Dispatched rather than navigated even though the place *has* a path: what it opens is
             // the merge of that container with the app libraries beside it, which is a listing to
             // assemble rather than a directory to list (PLAN.md §M9).
-            delegate?.sidebarDidActivateICloud(self)
+            delegate?.sidebarDidActivateICloud(self, inNewTab: inNewTab)
         case .photos:
             // Dispatched for a reason of its own: the first click is where macOS is asked for access
             // to the library, which a bare navigation would never do (PLAN.md §M28).
-            delegate?.sidebarDidActivatePhotos(self)
+            delegate?.sidebarDidActivatePhotos(self, inNewTab: inNewTab)
         case let .favorite(entry):
-            delegate?.sidebar(self, didActivateFavorite: entry)
+            delegate?.sidebar(self, didActivateFavorite: entry, inNewTab: inNewTab)
         case .cloudMount, .volume:
             guard let path = place.path else { return }
-            delegate?.sidebar(self, didActivate: path)
+            delegate?.sidebar(self, didActivate: path, inNewTab: inNewTab)
         }
     }
 }

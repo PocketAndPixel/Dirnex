@@ -63,6 +63,10 @@ extension PanelViewController {
     /// the tab may have gone stale while inactive (nothing watches an inactive tab). A virtual
     /// results tab has no directory to re-list; its snapshot stands until the tab is closed.
     private func refreshActiveDirectory() {
+        // A search tab's snapshot stands, except for hits that left it by a delete or a move: ⌘Z
+        // refreshes only the tabs on screen, so one undone while this tab sat in the background
+        // comes back here.
+        reconcileDepartedSearchHits()
         // A tree tab re-lists every level it holds and re-arms its multi-path watcher — the flat
         // re-list below would refresh only the root and leave expanded children stale (PLAN.md §M15).
         if panel.isTree {
@@ -101,10 +105,22 @@ extension PanelViewController {
     }
 
     /// Rebuild the tab strip from the current tab list; the strip hides itself when a
-    /// pane has a single tab so the browser looks unchanged until a second one is opened.
+    /// pane has a single tab so the browser looks unchanged until a second one is opened —
+    /// except while a tab from the other pane is being dragged, when it is the drop target.
     func refreshTabBar() {
-        tabBar.isHidden = tabs.count <= 1
-        tabBar.setTabs(tabs.map(\.title), activeIndex: activeTabIndex)
+        tabBar.isHidden = tabs.count <= 1 && !tabBar.isRevealedForDrag
+        // Read once for the whole strip. Both are answered without asking any file system, so a
+        // share that has stopped answering cannot stall a tab switch (`LocationSource.of`).
+        let mounts = MountTable.current()
+        let vaults = VaultMounts.shared.mountPoints
+        let items = tabs.map { tab in
+            let source = LocationSource.of(tab.panel.path, mounts: mounts, vaultMountPoints: vaults)
+            return TabBarView.Item(
+                title: tab.title,
+                symbolName: SidebarPlacePresentation.symbolName(for: source)
+            )
+        }
+        tabBar.setTabs(items, activeIndex: activeTabIndex)
         tabBar.isActivePane = isActivePanel
     }
 
@@ -117,7 +133,16 @@ extension PanelViewController {
     ///
     /// `activate` switches to the new tab (loading it) when `true`; when `false` the tab is
     /// inserted in the background and the currently shown tab (e.g. the search results) stays put.
-    func openInNewTab(_ path: VFSPath, activate: Bool = true) {
+    ///
+    /// `pendingConnection` is what the tab has to reconnect before it can list — a pin on a server
+    /// account opened from the sidebar with ⌘. It is set on the new tab before anything loads it,
+    /// because the load is where it is read (`canListAfterReconnecting`); recorded afterwards, it
+    /// would land on the tab the user was leaving.
+    func openInNewTab(
+        _ path: VFSPath,
+        activate: Bool = true,
+        pendingConnection: ServerEndpoint? = nil
+    ) {
         captureColumnLayout()
         let tab = PanelTab(
             path: path,
@@ -128,6 +153,7 @@ extension PanelViewController {
             columns: tabs[activeTabIndex].columnLayout
         )
         tab.viewMode = tabs[activeTabIndex].viewMode
+        tab.pendingConnection = pendingConnection
         tabs.insert(tab, at: activeTabIndex + 1)
         if activate {
             activeTabIndex += 1
@@ -136,6 +162,19 @@ extension PanelViewController {
             refreshTabBar()
         }
         persistState()
+    }
+
+    /// Show `path` in the active tab, or — for a sidebar place picked with ⌘ — in a new tab beside
+    /// it, leaving the active one where it was. A saved server lands here too, once it connects.
+    ///
+    /// `focus` lands the cursor on that row when the path opens in place: the bucket a walk up out
+    /// of it came from. A new tab opens at the top, since nothing that asks for one is returning.
+    func navigate(to path: VFSPath, focus child: VFSPath? = nil, inNewTab: Bool) {
+        if inNewTab {
+            openInNewTab(path)
+        } else {
+            navigate(to: path, focus: child)
+        }
     }
 
     /// Open a new tab beside the current one, showing the same directory and inheriting
@@ -173,7 +212,10 @@ extension PanelViewController {
         duplicate.hasLoaded = true
         duplicate.searchQuery = currentTab.searchQuery
         duplicate.searchScope = currentTab.searchScope
+        duplicate.searchOrigin = currentTab.searchOrigin
         duplicate.customTitle = currentTab.customTitle
+        duplicate.titleBeforeEdit = currentTab.titleBeforeEdit
+        duplicate.departedSearchHits = currentTab.departedSearchHits
         return duplicate
     }
 
@@ -245,27 +287,30 @@ extension PanelViewController {
     /// window instead, matching macOS Cmd+W), so this reports whether one was removed.
     @discardableResult
     func closeTab(at index: Int) -> Bool {
-        guard tabs.count > 1, index >= 0, index < tabs.count else { return false }
-        tabs.remove(at: index)
-        if activeTabIndex >= tabs.count {
-            activeTabIndex = tabs.count - 1
-        } else if index < activeTabIndex {
-            activeTabIndex -= 1
-        }
+        guard updateTabList({ $0.remove(at: index) }) != nil else { return false }
         activateTab()
         persistState()
         return true
     }
 
-    /// Reorder a tab, keeping the same tab active across the move (identity, not index).
-    func moveTab(from source: Int, to destination: Int) {
-        guard source >= 0, source < tabs.count, source != destination else { return }
-        let activeTab = tabs[activeTabIndex]
-        let tab = tabs.remove(at: source)
-        tabs.insert(tab, at: min(max(destination, 0), tabs.count))
-        activeTabIndex = tabs.firstIndex { $0 === activeTab } ?? activeTabIndex
+    /// Reorder a tab by dropping it into `slot`, a gap between tabs (`TabSlot`), keeping the same
+    /// tab active across the move. A drop that leaves the tab where it was changes nothing.
+    func moveTab(from source: Int, toSlot slot: Int) {
+        guard updateTabList({ $0.move(from: source, toSlot: slot) }) else { return }
         refreshTabBar()
         persistState()
+    }
+
+    /// Apply `change` to this pane's tabs through `TabList`, which owns where a tab lands and which
+    /// tab shows afterwards, and hand back what `change` returned. The tabs are stored as a plain
+    /// array and an index because every `panel` read goes through them; this is the one place they
+    /// are rearranged.
+    func updateTabList<Result>(_ change: (inout TabList<PanelTab>) -> Result) -> Result {
+        var list = TabList(tabs: tabs, activeIndex: activeTabIndex)
+        let result = change(&list)
+        tabs = list.tabs
+        activeTabIndex = list.activeIndex
+        return result
     }
 
     // MARK: - Menu actions (dispatched to the focused pane via the responder chain)
@@ -303,8 +348,26 @@ extension PanelViewController: TabBarViewDelegate {
         focusTable()
     }
 
-    func tabBar(_ bar: TabBarView, didMoveTabFrom source: Int, to destination: Int) {
-        moveTab(from: source, to: destination)
+    func tabBar(_ bar: TabBarView, didMoveTabFrom source: Int, toSlot slot: Int) {
+        moveTab(from: source, toSlot: slot)
+    }
+
+    func tabBar(
+        _ bar: TabBarView,
+        didReceiveTabAt index: Int,
+        from source: TabBarView,
+        atSlot slot: Int
+    ) {
+        guard let sourcePane = source.delegate as? PanelViewController else { return }
+        sourcePane.handOverTab(at: index, to: self, atSlot: slot)
+    }
+
+    func tabBar(_ bar: TabBarView, didRequestOtherPanelForTabAt index: Int) {
+        moveTabToOtherPanel(at: index)
+    }
+
+    func tabBar(_ bar: TabBarView, tabDragIsInFlight inFlight: Bool) {
+        revealCounterpartTabBar(inFlight)
     }
 
     func tabBarDidRequestNewTab(_ bar: TabBarView) {
