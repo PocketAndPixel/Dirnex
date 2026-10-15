@@ -2518,6 +2518,23 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     ring and a dimmed placeholder, which the borderless one drew in the text's own color (Settings ▸
     License's key, probed 2026-10-09).
 
+- **AppKit's expansion tooltip (`allowsExpansionToolTips`) cannot be made to look like a panel of
+  your own, even when you override its drawing.** Measured 2026-10-15 with a log in
+  `draw(withExpansionFrame:in:)`: AppKit hands the cell an `NSCustomToolTipDrawView` inside an
+  `NSVisualEffectView`, in an `NSToolTipPanel` that is **opaque**, with a square white layer behind
+  everything. So a rounded panel the cell draws comes out square-cornered, and vibrancy turns its
+  `labelColor` text gray. The same drawing in an ordinary borderless child window (not opaque, clear
+  background) was rounded and dark: on the same row, the old hover panel differed from the ⌘-hold
+  panel by a mean of 25 in 255, and our own hover panel by 0.09. Changing that private window from
+  inside a draw call is the only way to bend it, so Dirnex floats its own (`ExpansionPanel`,
+  `HoverExpansion`) and leaves `allowsExpansionToolTips` off on file cells.
+  - **Its timing and size are worth copying, and both are measurable.** The panel appears **1.5 s**
+    after the last mouse-moved event (1.508 and 1.501 s), with no `NSInitialToolTipDelay` set
+    anywhere. The window is exactly the cell's `expansionFrame(withFrame:in:)` in screen
+    coordinates, rounded out to whole points. It has a shadow and sits at window level 103.
+  - **There is no public call to show it**, only the hover, so anything keyboard-driven needs its
+    own window anyway (`CursorNamePeek`).
+
 ### Views, layout and hit testing
 
 - **A view at zero alpha is still hit-tested, so a fading overlay goes on taking clicks after it

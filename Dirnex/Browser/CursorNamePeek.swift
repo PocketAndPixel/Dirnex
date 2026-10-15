@@ -1,25 +1,17 @@
 import AppKit
 
-/// Holding ⌘ floats the full name of the cursor row when the Name column cuts it short: the panel a
-/// hover floats (`ExpandingLabel`), reached from the keyboard. A file manager driven from the keys
-/// otherwise had no way to read a truncated name without the mouse or a wider column.
+/// Holding ⌘ floats the full name of the cursor row when the Name column cuts it short, in the
+/// panel a hover floats (`ExpansionPanel`), reached from the keyboard. A file manager driven from the
+/// keys otherwise had no way to read a truncated name without the mouse or a wider column.
 ///
 /// **It waits ``TabShortcuts/revealDelay`` before appearing**, the same hold that shows a dialog's tab
 /// numbers, so a quick ⌘C or ⌘↑ does not flash a panel. Any key or click while ⌘ is down hides it
 /// and keeps it hidden until ⌘ is pressed again: the chord may move the cursor or replace the
 /// listing, and a panel left up would float one row's name over another.
-///
-/// **AppKit has no call that shows its own expansion tooltip**, which appears only on hover, so this
-/// draws its own: a borderless child window at the frame the hover panel would take, whose content
-/// is drawn by an `ExpandingLabelCell` holding a copy of the name. A copy rather than the row's own
-/// cell, because that cell goes back to the table's reuse pool and may be showing another name by
-/// the next redraw. Reusing the cell's drawing keeps the two panels identical, padding and resting
-/// ink included.
 @MainActor
 enum CursorNamePeek {
     private static var monitors: [Any] = []
     private static var revealTimer: Timer?
-    private static var panel: NSPanel?
 
     /// Install once, when the app starts. Later calls do nothing.
     static func install() {
@@ -58,42 +50,17 @@ enum CursorNamePeek {
     /// panel went up.
     @discardableResult
     static func show(for table: NSTableView) -> Bool {
-        hide()
-        guard let window = table.window,
-              let label = cursorNameLabel(in: table),
-              let frame = panelFrame(for: label) else { return false }
-        let panel = NSPanel(
-            contentRect: frame,
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = true
-        panel.ignoresMouseEvents = true
-        panel.appearance = window.effectiveAppearance
-        panel.contentView = NamePeekView(
-            cell: snapshot(of: label),
-            frame: NSRect(origin: .zero, size: frame.size)
-        )
-        window.addChildWindow(panel, ordered: .above)
-        self.panel = panel
-        return true
+        guard let label = cursorNameLabel(in: table) else { return false }
+        return ExpansionPanel.show(over: label, for: .commandHold)
     }
 
-    /// Take the panel away, and forget a reveal that has not happened yet.
+    /// Take the hold's panel away, and forget a reveal that has not happened yet. A hover's panel is
+    /// left alone.
     static func hide() {
         revealTimer?.invalidate()
         revealTimer = nil
-        guard let panel else { return }
-        panel.parent?.removeChildWindow(panel)
-        panel.orderOut(nil)
-        self.panel = nil
+        ExpansionPanel.hide(ifShownBy: .commandHold)
     }
-
-    /// The panel on screen now, if any. For tests.
-    static var shownPanel: NSPanel? { panel }
 
     /// The cursor row's name label, when the row is on screen. `nil` for a table with no Name column,
     /// no cursor, or a cursor scrolled out of view.
@@ -108,28 +75,6 @@ enum CursorNamePeek {
         return cell.textField
     }
 
-    /// Where on screen the panel goes: the frame `label`'s cell asks AppKit for on hover, so the
-    /// name lands over the truncated one exactly as the hover panel's does. `nil` when the name fits.
-    /// Rounded out to whole points, as AppKit's own window is.
-    static func panelFrame(for label: NSTextField) -> NSRect? {
-        guard let cell = label.cell, let window = label.window else { return nil }
-        let frame = cell.expansionFrame(withFrame: label.bounds, in: label)
-        guard !frame.isEmpty else { return nil }
-        return window.convertToScreen(label.convert(frame, to: nil)).integral
-    }
-
-    /// A cell drawing what `label` shows, in the ink its own cell would float.
-    static func snapshot(of label: NSTextField) -> ExpandingLabelCell {
-        let cell = ExpandingLabelCell(textCell: label.stringValue)
-        cell.font = label.font
-        cell.alignment = label.alignment
-        cell.lineBreakMode = label.lineBreakMode
-        cell.usesSingleLineMode = true
-        cell.textColor = label.textColor
-        cell.expansionInk = (label.cell as? ExpandingLabelCell)?.expansionInk
-        return cell
-    }
-
     // MARK: - Monitors
 
     private static func handleFlagsChanged(_ event: NSEvent) {
@@ -139,7 +84,7 @@ enum CursorNamePeek {
             return
         }
         // Already up, or on its way: Caps Lock or fn changing under a held ⌘ is not a new hold.
-        guard revealTimer == nil, panel == nil else { return }
+        guard revealTimer == nil, ExpansionPanel.owner != .commandHold else { return }
         let timer = Timer(timeInterval: TabShortcuts.revealDelay, repeats: false) { [weak table] _ in
             MainActor.assumeIsolated {
                 revealTimer = nil
@@ -150,24 +95,5 @@ enum CursorNamePeek {
         }
         RunLoop.main.add(timer, forMode: .common)
         revealTimer = timer
-    }
-}
-
-/// The floated panel's content: the name drawn by its own `ExpandingLabelCell`, fill and border
-/// included, exactly as the hover panel draws it.
-private final class NamePeekView: NSView {
-    private let cell: ExpandingLabelCell
-
-    init(cell: ExpandingLabelCell, frame: NSRect) {
-        self.cell = cell
-        super.init(frame: frame)
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func draw(_ dirtyRect: NSRect) {
-        cell.draw(withExpansionFrame: bounds, in: self)
     }
 }
