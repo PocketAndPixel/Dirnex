@@ -14267,6 +14267,44 @@ so it turns white with it on the active chip, and it rides along in the drag ima
   nothing while others keep theirs. That uneven squeeze predates this change; the glyph takes about
   18 pt per chip, so it starts with fewer tabs than before.
 
+**2026-10-15: an overfull tab strip shrinks its chips evenly.** Follow-up to the squeeze seen in the
+entry above. When the chips no longer fit, the widest come down to one shared width, and a chip
+already narrower than that keeps its whole label. A strip with room is unchanged.
+
+- **The squeeze was a tie, not a bug in any one chip.** Every label resisted compression at the same
+  priority (`.defaultLow`), so the shortfall cost Auto Layout the same wherever it went, and it put
+  all of it on some labels. A probe laid out nine chips at 600 pt: Downloads and Documents whole, the
+  other seven at 4 pt, which is too narrow to draw even an ellipsis. Below 488 pt the strip did not
+  fit at all and widened its window.
+- **The fix is one shared cap that wants to be small.** `TabBarView` gains a layout guide. Every chip
+  is held at or under its width (required), and the guide's own width wants 0 at
+  `.defaultLow - 1`, just under the labels' compression resistance. Lowering the cap is then worth
+  something, but never worth compressing a label that has room, so the cheapest layout spreads the
+  shortfall evenly over the widest chips. Probed after the fix: nine chips at 800 pt all 84 pt; at
+  600 pt all 62 pt, every label 16 pt; with a one-letter tab among them, that chip kept its own 55 pt
+  while the rest shared 59–60. Drop slots still come from chip midpoints, so they follow the
+  squeezed frames unchanged.
+- `TabStripSqueezeTests` (app, 4 tests) lays strips out in real windows. The rule checked is that
+  each chip is drawn at its own width or at the widest chip's, whichever is less, and that the strip
+  stays inside its window. Cases: nine chips at 600 pt, every label at least 12 pt; a one-letter chip
+  keeping its whole width at 900 pt; a roomy strip untouched; and a drop on each side of every
+  squeezed chip landing in the gap beside it. Negative control: without the cap the first two failed
+  (22 issues), and the other two passed, as they should. `TabMoveTests` and `TabSourceGlyphTests`
+  still pass. Core green (3952 tests), app green (1657), both linters clean.
+- **Verified live** on the Debug build launched by path, with nothing else running and settings
+  backed up and restored (65 keys, identical by value). Nine tabs built with `reveal` and
+  `file.newTab` in the left pane, about 600 pt wide. Every chip came out the same width (close
+  buttons 66–67 pt apart), and the one-letter tab kept its own narrower width (57 pt). Fair, but
+  not readable: at about 18 pt a label shows only an ellipsis, and "L…" for Library was the only
+  title that kept a letter.
+- **Left open, and proposed rather than built: what the strip does when even an even share is
+  unreadable.** Thirteen tabs in that pane put every chip at its floor (glyph and ×, about 51 pt),
+  and because the stack's minimum width is required, the strip pushed the split divider about 80 pt
+  right and squeezed the other pane. The same is already true before this change. The proposal is a
+  minimum chip width (about six characters of label) plus a trailing overflow menu listing the tabs
+  that don't fit, with the active tab always kept on the strip. That also removes the strip's hard
+  minimum, so it can no longer move the divider.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

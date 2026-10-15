@@ -2625,6 +2625,16 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     - The instrument that found it without guessing was the window's accessibility tree:
       `app_screenshot` listed the checkboxes at y 233–293 inside a window 168 pt tall, which says
       "laid out, scrolled out of sight" where a screenshot only says "blank".
+- **Siblings that share a compression-resistance priority do not share a squeeze.** The cost of
+  breaking an optional constraint is linear, so a shortfall costs the same wherever it lands, and
+  the solver puts all of it on some views and none on others. Measured on the tab strip
+  (2026-10-15): nine labels at `.defaultLow` in 600 pt came out as two whole titles and seven 4 pt
+  slivers. Giving each label its own priority only fixes the order in which they collapse. What
+  works is a shared cap that wants to be small: an `NSLayoutGuide` every sibling must fit under
+  (required), whose width wants 0 *just below* the siblings' compression resistance
+  (`TabBarView.chipCap`). The siblings that are over the cap come down to one common width, and
+  any already narrower keep their size. Because the cap sits below that priority, it never
+  compresses a sibling that has room, so a roomy layout is untouched.
 
 ### Mouse, trackpad and animation
 
