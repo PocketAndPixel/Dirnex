@@ -68,7 +68,11 @@ public struct CloudStorageMount: Sendable, Hashable, Identifiable {
     /// every provider: none of them has an SF Symbol, and picking a differently-shaped stand-in
     /// per brand would read as a meaningful distinction where there is none. iCloud Drive keeps
     /// its own `icloud` symbol because Apple ships one.
-    public var symbolName: String { "cloud" }
+    public var symbolName: String { Self.symbolName }
+
+    /// The same glyph, for a surface that knows a location is inside *some* mount without holding
+    /// the mount: a tab chip names the kind of source, which this one symbol already is.
+    public static let symbolName = "cloud"
 }
 
 /// Finds the cloud provider mounts on this Mac by reading `~/Library/CloudStorage`.

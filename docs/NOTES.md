@@ -3302,6 +3302,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Drag and drop, and handing files to other apps
 
+- **A template SF Symbol drawn into a hand-drawn drag image comes out black.** Nothing tints it
+  outside a view, so a tab chip's glyph that is white on the accent in the strip turned black in
+  the image the pointer carries. Measured 2026-10-15 in `TabSourceGlyphTests`: color it with
+  `SymbolConfiguration(paletteColors: [text])`, and draw it at the live subview's frame so the image
+  matches the chip rather than repeating its layout. The `.sourceAtop` rule under ▸ Tables is the
+  general answer for any template image; this one is only ever a symbol.
 - **An `NSFilePromiseProvider` can carry a private pasteboard type alongside its promise, and that
   is what keeps one drag from being two.** Measured 2026-08-26 on a real board while building M23's
   drag-out: a subclass overriding `writableTypes(for:)`, `writingOptions(forType:pasteboard:)` and

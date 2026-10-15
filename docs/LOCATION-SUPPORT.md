@@ -84,6 +84,7 @@ capabilities and has not been exercised against it.
 | Back / forward, history (`⌥↓`) | yes | yes | yes | yes | yes | yes | yes | yes | yes, limited<sup>c</sup> | yes, limited<sup>c</sup> |
 | Tabs, split panes, `Tab` focus | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Move a tab along its strip or to the other pane (`⌥⌘[` `⌥⌘]` `⇧⌘M`, dragging a chip)<sup>aae</sup> | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| A tab chip names its source with the sidebar's glyph<sup>aaf</sup> | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Sort, column layout, hidden files | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Type-to-filter, marks, `⌘A`, invert | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 | Tree view (`→` to expand) | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
@@ -195,6 +196,12 @@ a server, inside an archive or in a vault moves as it is, without reconnecting o
 pane's last tab stays. The keyboard moves were exercised live on local folders (2026-10-15). Dragging
 a chip is tested through the strips' drop methods only, because a drag session cannot be synthesized;
 the other columns follow from the shared backend and are not exercised live.
+
+<sup>aaf</sup> A share, an external drive or a disk image, a vault, iCloud Drive and a cloud provider are all
+local paths, told apart by territory and then by the volume the kernel's mount table puts them on, so
+the classification never waits on a share that has stopped answering. Exercised live on local
+folders, a disk image, Dropbox, iCloud Drive, Recents and a zip (2026-10-15); the other columns are
+pinned by tests and not exercised live.
 
 ## 2. File operations
 

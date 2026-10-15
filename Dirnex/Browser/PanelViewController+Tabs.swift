@@ -109,7 +109,18 @@ extension PanelViewController {
     /// except while a tab from the other pane is being dragged, when it is the drop target.
     func refreshTabBar() {
         tabBar.isHidden = tabs.count <= 1 && !tabBar.isRevealedForDrag
-        tabBar.setTabs(tabs.map(\.title), activeIndex: activeTabIndex)
+        // Read once for the whole strip. Both are answered without asking any file system, so a
+        // share that has stopped answering cannot stall a tab switch (`LocationSource.of`).
+        let mounts = MountTable.current()
+        let vaults = VaultMounts.shared.mountPoints
+        let items = tabs.map { tab in
+            let source = LocationSource.of(tab.panel.path, mounts: mounts, vaultMountPoints: vaults)
+            return TabBarView.Item(
+                title: tab.title,
+                symbolName: SidebarPlacePresentation.symbolName(for: source)
+            )
+        }
+        tabBar.setTabs(items, activeIndex: activeTabIndex)
         tabBar.isActivePane = isActivePanel
     }
 

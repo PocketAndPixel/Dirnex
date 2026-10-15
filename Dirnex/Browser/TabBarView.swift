@@ -123,16 +123,23 @@ final class TabBarView: NSView {
         registerForDraggedTypes([Self.tabDragType])
     }
 
+    /// What one chip shows: the tab's label, and the SF Symbol for where its listing comes from
+    /// (`SidebarPlacePresentation.symbolName(for: LocationSource)`).
+    struct Item: Equatable {
+        let title: String
+        let symbolName: String
+    }
+
     /// Rebuild the chip row. Cheap enough to call on every tab-list change — a pane
     /// rarely has more than a handful of tabs.
-    func setTabs(_ titles: [String], activeIndex: Int) {
+    func setTabs(_ items: [Item], activeIndex: Int) {
         self.activeIndex = activeIndex
         for view in stack.arrangedSubviews {
             stack.removeArrangedSubview(view)
             view.removeFromSuperview()
         }
-        chips = titles.enumerated().map { index, title in
-            let chip = TabChipView(index: index, title: title, bar: self)
+        chips = items.enumerated().map { index, item in
+            let chip = TabChipView(index: index, item: item, bar: self)
             chip.isActive = index == activeIndex
             chip.isPaneActive = isActivePane
             chip.alphaValue = index == draggedIndex ? TabChipView.draggedAlpha : 1
@@ -177,7 +184,10 @@ final class TabChipView: NSView {
     static let dragThreshold: CGFloat = 4
 
     let index: Int
+    /// The SF Symbol drawn before the label, naming where the tab's listing comes from.
+    let symbolName: String
     private weak var bar: TabBarView?
+    private let icon = NSImageView()
     private let label = NSTextField(labelWithString: "")
     private let closeButton = NSButton()
 
@@ -193,15 +203,32 @@ final class TabChipView: NSView {
         label.stringValue
     }
 
-    init(index: Int, title: String, bar: TabBarView) {
+    /// The glyph's size: the label's own point size, as the path bar's leading glyph is drawn.
+    static var symbolConfiguration: NSImage.SymbolConfiguration {
+        NSImage.SymbolConfiguration(pointSize: NSFont.smallSystemFontSize, weight: .regular)
+    }
+
+    init(index: Int, item: TabBarView.Item, bar: TabBarView) {
         self.index = index
+        symbolName = item.symbolName
         self.bar = bar
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
         wantsLayer = true
         layer?.cornerRadius = 5
 
-        label.stringValue = title
+        // No description: the label beside it names the tab, and the glyph is not a control.
+        icon.image = NSImage(systemSymbolName: item.symbolName, accessibilityDescription: nil)?
+            .withSymbolConfiguration(Self.symbolConfiguration)
+        icon.image?.isTemplate = true
+        icon.imageScaling = .scaleNone
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        icon.setAccessibilityElement(false)
+        // The glyph is what names the kind of source, so the label truncates first.
+        icon.setContentCompressionResistancePriority(.required, for: .horizontal)
+        icon.setContentHuggingPriority(.required, for: .horizontal)
+
+        label.stringValue = item.title
         label.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         label.lineBreakMode = .byTruncatingTail
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -228,12 +255,15 @@ final class TabChipView: NSView {
             comment: "Tooltip on a tab chip's close (×) button; ⌘W is the keyboard shortcut."
         )
 
+        addSubview(icon)
         addSubview(label)
         addSubview(closeButton)
         NSLayoutConstraint.activate([
             heightAnchor.constraint(equalToConstant: 20),
             widthAnchor.constraint(lessThanOrEqualToConstant: 180),
-            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 9),
+            icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 7),
+            icon.centerYAnchor.constraint(equalTo: centerYAnchor),
+            label.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 4),
             label.centerYAnchor.constraint(equalTo: centerYAnchor),
             closeButton.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: 5),
             closeButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
@@ -271,12 +301,17 @@ final class TabChipView: NSView {
     private func applyStyle() {
         let (background, text) = colors
         layer?.backgroundColor = background.cgColor
+        icon.contentTintColor = text
         label.textColor = text
         closeButton.contentTintColor = isActive && isPaneActive ? text : .secondaryLabelColor
     }
 
+    /// Where the glyph and the label sit in the chip, for the drag image to draw them in place.
+    var iconFrame: NSRect { icon.frame }
+    var labelFrame: NSRect { label.frame }
+
     /// Route clicks anywhere on the chip to the chip; only the close button keeps its
-    /// own hit area, so the label never swallows a select click.
+    /// own hit area, so neither the label nor the glyph swallows a select click.
     override func hitTest(_ point: NSPoint) -> NSView? {
         guard let hit = super.hitTest(point) else { return nil }
         return hit === closeButton ? closeButton : self

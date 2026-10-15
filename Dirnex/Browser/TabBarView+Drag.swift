@@ -197,10 +197,18 @@ extension TabChipView {
     /// The chip as the pointer carries it: drawn rather than snapshotted, because its fill is a layer
     /// property a view snapshot does not reliably capture. An inactive chip has no fill of its own,
     /// so it is given the control background and a hairline to stand out from what it passes over.
+    ///
+    /// The glyph and the label are drawn where the live chip lays them out, so the image is the chip
+    /// rather than a second layout of it. The glyph is colored by its configuration rather than
+    /// tinted: a template image drawn by hand comes out black.
     func dragImage() -> NSImage {
         let (background, text) = colors
         let fill = background.alphaComponent > 0 ? background : NSColor.controlBackgroundColor
         let title = title
+        let iconFrame = iconFrame
+        let labelFrame = labelFrame
+        let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)?
+            .withSymbolConfiguration(Self.symbolConfiguration.applying(.init(paletteColors: [text])))
         return NSImage(size: bounds.size, flipped: false) { rect in
             let chip = NSBezierPath(
                 roundedRect: rect.insetBy(dx: 0.5, dy: 0.5),
@@ -211,6 +219,7 @@ extension TabChipView {
             chip.fill()
             NSColor.separatorColor.setStroke()
             chip.stroke()
+            symbol?.draw(in: iconFrame)
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
                 .foregroundColor: text
@@ -218,9 +227,9 @@ extension TabChipView {
             let height = NSString(string: title).size(withAttributes: attributes).height
             NSString(string: title).draw(
                 in: NSRect(
-                    x: 9,
+                    x: labelFrame.minX,
                     y: (rect.height - height) / 2,
-                    width: max(rect.width - 18, 0),
+                    width: max(labelFrame.width, 0),
                     height: height
                 ),
                 withAttributes: attributes
