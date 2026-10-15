@@ -249,6 +249,13 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     button. Key equivalents run ahead of `keyDown:`, so the field editor's own "revert the edit"
     never gets the key. Worth stating because the opposite is the natural worry, and it is the
     reason `enableEscapeToCancel` needs no carve-out for a sheet that opens with a field focused.
+- **Background computer-use works on a window in its own full-screen space, but cannot summon that
+  space's title bar.** Seen 2026-10-15 checking ⌃⌥Q: `app_screenshot` captured the full-screen
+  window from another space and `app_drag` selected text in it. Nothing in the background tools puts
+  the pointer on the screen's top edge, which is what drops the menu bar and title bar. Only
+  display-scope `mouse_move` can, and that needs full-screen control. Without it, measure the title
+  bar instead (its height is the close button's superview, NOTES.md ▸ Windows) and say the drop was
+  not seen.
 - **Background computer-use cannot ⌘-click, so reach a sidebar row's ⌘ gesture by keyboard.** Its
   `app_click` takes no modifiers. Measured 2026-10-14 checking servers opening in a new tab: View ▸
   Focus Sidebar, then `down` keys, then `app_key cmd+return` arrived as ⌘Return. Two cautions. Section

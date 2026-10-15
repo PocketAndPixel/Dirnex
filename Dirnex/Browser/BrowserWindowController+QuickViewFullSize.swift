@@ -30,7 +30,8 @@ extension BrowserWindowController {
     /// The ⌃⌥Q surface: the window's whole content view, black behind the document, no chrome.
     /// The window carries `.fullSizeContentView`, so this reaches the top of the screen with
     /// nothing but the auto-hiding title bar over it. Its header floats and fades — this is a
-    /// viewing surface, and permanent chrome is the thing being escaped.
+    /// viewing surface, and permanent chrome is the thing being escaped. A document starts below
+    /// the strip the two of them come down over (`QuickViewPreviewView+TopStrip`).
     func ensureFullScreenPreview() -> QuickViewPreviewView {
         if let preview = fullScreenPreview { return preview }
         let preview = QuickViewPreviewView(
@@ -44,8 +45,29 @@ extension BrowserWindowController {
         // Verified live — two synthetic moves over the photo left the header at zero alpha.
         window?.acceptsMouseMovedEvents = true
         install(preview, pinnedTo: content)
+        preview.menuBarOverlap = fullScreenMenuBarOverlap
         fullScreenPreview = preview
         return preview
+    }
+
+    /// How far the menu bar comes down over the window when the pointer summons it in full screen,
+    /// pushing the title bar down by as much — what the full-screen surface's strip deepens by
+    /// (`QuickViewPreviewView+TopStrip`). Zero outside full screen, where nothing drops over the
+    /// content.
+    ///
+    /// On a display without a camera housing the space runs to the top edge, and the menu bar covers
+    /// the window. On one with a housing, the space starts below the menu bar's band and the menu bar
+    /// drops into that band and covers nothing — measured 2026-10-15 on a 16-inch MacBook Pro, a
+    /// 1084 pt window under a 33 pt band on a 1117 pt screen, and a 33 pt menu bar. What is left of
+    /// the menu bar once the band has taken its share is the overlap. The display without a housing
+    /// is reasoned from the same numbers rather than measured: that Mac had none attached.
+    var fullScreenMenuBarOverlap: CGFloat {
+        guard let window, window.styleMask.contains(.fullScreen), let screen = window.screen else {
+            return 0
+        }
+        let band = screen.frame.maxY - window.frame.maxY
+        let menuBar = NSApp.mainMenu?.menuBarHeight ?? 0
+        return max(0, menuBar - band)
     }
 
     /// Add `preview` to the window's content view and pin it over `anchor`'s bounds. Added last so
@@ -255,8 +277,9 @@ extension BrowserWindowController {
     }
 
     /// Watch for the user leaving full screen by the green button or ⌃⌘F, so the mode doesn't go
-    /// on claiming something untrue. A selector-based observer (not a block/token one) because the
-    /// class's `deinit` is nonisolated and tears observers down with `removeObserver(self)`.
+    /// on claiming something untrue, and for the space having been entered, which is when its
+    /// geometry is final. Selector-based observers (not block/token ones) because the class's
+    /// `deinit` is nonisolated and tears observers down with `removeObserver(self)`.
     func observeQuickViewFullScreen() {
         NotificationCenter.default.addObserver(
             self,
@@ -264,6 +287,18 @@ extension BrowserWindowController {
             name: NSWindow.willExitFullScreenNotification,
             object: window
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(quickViewWindowDidEnterFullScreen(_:)),
+            name: NSWindow.didEnterFullScreenNotification,
+            object: window
+        )
+    }
+
+    /// Measure the menu bar again now the window has landed: ⌃⌥Q builds the surface while the window
+    /// is still on its way into the space, before it knows where its top edge will be.
+    @objc func quickViewWindowDidEnterFullScreen(_ notification: Notification) {
+        fullScreenPreview?.menuBarOverlap = fullScreenMenuBarOverlap
     }
 
     @objc func quickViewWindowWillExitFullScreen(_ notification: Notification) {

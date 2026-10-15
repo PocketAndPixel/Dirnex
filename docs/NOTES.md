@@ -1396,6 +1396,15 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   "Button", in the titlebar of a licensed copy. Hide the accessory's *content* and collapse the
   accessory's view to zero width (`LicenseTitlebarLabel.update`). Test what is drawn (the button's
   `isHidden` and the view's width), not the accessory's flag.
+- **In full screen, a `.fullSizeContentView` window is told nothing when its title bar drops over
+  the content.** Probed 2026-10-15 with a throwaway app on a 16-inch MacBook Pro: in the space, the
+  content view's `safeAreaInsets.top` is 0, `contentLayoutRect` is the whole window, and the title
+  bar has moved into a separate window. So a layout that must stay clear of the bar sizes for it
+  ahead of time (`QuickViewPreviewView+TopStrip`). The numbers: the window is 1084 pt under a 33 pt
+  band on a 1117 pt screen, and `NSApp.mainMenu?.menuBarHeight` is 33, so on a display with a camera
+  housing the menu bar drops into the band and only the title bar covers content. The title bar's
+  height is the close button's superview: 28 pt for a bare window, 32 pt for Dirnex, whose titlebar
+  accessories grow it. An accessory with a hand-set 40 pt frame did not grow it.
 
 ### Alerts, sheets and dialogs
 
@@ -2510,6 +2519,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     License's key, probed 2026-10-09).
 
 ### Views, layout and hit testing
+
+- **A view at zero alpha is still hit-tested, so a fading overlay goes on taking clicks after it
+  has faded.** `hitTest` skips hidden views, never transparent ones. The full-screen Quick View
+  header fades out to alpha 0, and its 30 pt kept answering the mouse over the first line of a text
+  file, which could then never be selected (2026-10-15). Moving what is underneath out of the
+  overlay's way fixed it (`QuickViewPreviewView+TopStrip`). The other way out is overriding
+  `hitTest` to return `nil` while faded, which a strip that also carries the system title bar
+  would not have been enough for.
 
 - **`NSView.clipsToBounds` is `false` by default, and `draw(_:)`'s `dirtyRect` can be larger than
   the view's bounds.** A backing fill of `dirtyRect` therefore paints over the view's *siblings*:
