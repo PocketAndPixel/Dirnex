@@ -6,14 +6,27 @@ import AppKit
 protocol TabBarViewDelegate: AnyObject {
     func tabBar(_ bar: TabBarView, didSelectTabAt index: Int)
     func tabBar(_ bar: TabBarView, didCloseTabAt index: Int)
-    func tabBar(_ bar: TabBarView, didMoveTabFrom source: Int, to destination: Int)
+    /// One of this bar's chips was dropped into `slot`, a gap between its tabs (`TabSlot`).
+    func tabBar(_ bar: TabBarView, didMoveTabFrom source: Int, toSlot slot: Int)
+    /// The chip at `index` of `source` — the other pane's strip — was dropped into `slot` of this one.
+    func tabBar(
+        _ bar: TabBarView,
+        didReceiveTabAt index: Int,
+        from source: TabBarView,
+        atSlot slot: Int
+    )
+    /// A chip's menu asked for its tab to move to the other pane.
+    func tabBar(_ bar: TabBarView, didRequestOtherPanelForTabAt index: Int)
+    /// A drag of one of this bar's chips started (`true`) or ended, however it ended.
+    func tabBar(_ bar: TabBarView, tabDragIsInFlight inFlight: Bool)
     func tabBarDidRequestNewTab(_ bar: TabBarView)
 }
 
 /// A pane's tab strip: one chip per open directory plus a trailing `+`. The active
 /// chip is filled (accent when the pane is active, muted otherwise); chips carry a
-/// close button and can be dragged to reorder. Hidden when a pane has a single tab so
-/// the browser looks unchanged until you actually open a second one.
+/// close button and a menu, and can be dragged along the strip or onto the other pane's
+/// (`TabBarView+Drag`). Hidden when a pane has a single tab so the browser looks unchanged
+/// until you actually open a second one.
 @MainActor
 final class TabBarView: NSView {
     weak var delegate: TabBarViewDelegate?
@@ -26,10 +39,25 @@ final class TabBarView: NSView {
         }
     }
 
+    /// Set by the pane while a chip from the *other* pane's strip is being dragged: the strip shows
+    /// even at a single tab, because it is the drop target and a hidden view receives no drops.
+    var isRevealedForDrag = false
+
+    /// The pasteboard type of a chip being dragged, carrying its index. Private to the app and
+    /// offered to nothing outside it, so a tab dropped anywhere else is never read as a folder.
+    static let tabDragType = NSPasteboard.PasteboardType("com.dirnex.tab")
+
+    /// Gap between chips; the insertion marker sits in the middle of it.
+    static let chipSpacing: CGFloat = 3
+
     private let stack = NSStackView()
     private let newButton = NSButton()
-    private var chips: [TabChipView] = []
+    private(set) var chips: [TabChipView] = []
     private(set) var activeIndex = 0
+    /// The chip of this bar being dragged right now, drawn faded until the drag ends.
+    var draggedIndex: Int?
+    /// The line drawn in the gap a dragged chip would drop into.
+    let insertionMarker = NSView()
 
     /// Re-apply the user's accent to every chip after it changes (PLAN.md §M15 Slice 2). Unlike
     /// `isActivePane`, nothing about a chip's own state has moved — only the color it resolves —
@@ -58,7 +86,7 @@ final class TabBarView: NSView {
 
         stack.orientation = .horizontal
         stack.alignment = .centerY
-        stack.spacing = 3
+        stack.spacing = Self.chipSpacing
         stack.translatesAutoresizingMaskIntoConstraints = false
 
         newButton.image = NSImage(
@@ -87,6 +115,12 @@ final class TabBarView: NSView {
             stack.trailingAnchor.constraint(equalTo: trailingAnchor),
             stack.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
+
+        // Laid out by hand, outside the stack, so showing it never shifts a chip.
+        insertionMarker.wantsLayer = true
+        insertionMarker.isHidden = true
+        addSubview(insertionMarker)
+        registerForDraggedTypes([Self.tabDragType])
     }
 
     /// Rebuild the chip row. Cheap enough to call on every tab-list change — a pane
@@ -101,6 +135,7 @@ final class TabBarView: NSView {
             let chip = TabChipView(index: index, title: title, bar: self)
             chip.isActive = index == activeIndex
             chip.isPaneActive = isActivePane
+            chip.alphaValue = index == draggedIndex ? TabChipView.draggedAlpha : 1
             return chip
         }
         for chip in chips {
@@ -126,31 +161,21 @@ final class TabBarView: NSView {
         delegate?.tabBar(self, didCloseTabAt: chip.index)
     }
 
-    /// A chip was dragged and released at `locationX` (this view's coordinates); move
-    /// it to whichever slot that x falls into.
-    func chipDidDrag(_ chip: TabChipView, toLocationX locationX: CGFloat) {
-        let destination = destinationIndex(forX: locationX)
-        guard destination != chip.index else { return }
-        delegate?.tabBar(self, didMoveTabFrom: chip.index, to: destination)
-    }
-
-    private func destinationIndex(forX x: CGFloat) -> Int {
-        for chip in chips where x < chip.frame.midX {
-            return chip.index
-        }
-        return max(chips.count - 1, 0)
-    }
-
     @objc private func newTabClicked() {
         delegate?.tabBarDidRequestNewTab(self)
     }
 }
 
-/// One tab chip. Handles its own click (select), close-button, and drag-to-reorder;
+/// One tab chip. Handles its own click (select), close button, menu and the start of a drag;
 /// the bar routes those to the pane. `hitTest` funnels clicks anywhere on the chip
 /// (including its label) to the chip itself, reserving only the close button.
 @MainActor
 final class TabChipView: NSView {
+    /// How faded the chip being dragged is drawn, so the gap it left is legible.
+    static let draggedAlpha: CGFloat = 0.35
+    /// How far the pointer must travel before a press becomes a drag rather than a click.
+    static let dragThreshold: CGFloat = 4
+
     let index: Int
     private weak var bar: TabBarView?
     private let label = NSTextField(labelWithString: "")
@@ -159,8 +184,14 @@ final class TabChipView: NSView {
     var isActive = false { didSet { applyStyle() } }
     var isPaneActive = false { didSet { applyStyle() } }
 
-    private var pressOriginX: CGFloat = 0
+    private var pressOrigin: NSPoint = .zero
+    /// Set once this press has turned into a drag, which then owns the gesture: the session runs its
+    /// own event loop and the chip sees no `mouseUp`, so a click must not fire either.
     private var didDrag = false
+
+    var title: String {
+        label.stringValue
+    }
 
     init(index: Int, title: String, bar: TabBarView) {
         self.index = index
@@ -224,22 +255,21 @@ final class TabChipView: NSView {
         applyStyle()
     }
 
-    private func applyStyle() {
-        let background: NSColor
-        let text: NSColor
+    /// The fill and text color the chip is drawn in now; the drag image is drawn from the same pair.
+    var colors: (background: NSColor, text: NSColor) {
         // Untouched, these are `.controlAccentColor` and `.alternateSelectedControlTextColor`
         // verbatim, so the shipped chip is unchanged (PLAN.md §M15 Slice 2).
         let palette = AppPreferences.shared.palette
         if isActive, isPaneActive {
-            background = palette.resolvedAccent
-            text = palette.accentForeground
+            return (palette.resolvedAccent, palette.accentForeground)
         } else if isActive {
-            background = .unemphasizedSelectedContentBackgroundColor
-            text = .labelColor
-        } else {
-            background = .clear
-            text = .secondaryLabelColor
+            return (.unemphasizedSelectedContentBackgroundColor, .labelColor)
         }
+        return (.clear, .secondaryLabelColor)
+    }
+
+    private func applyStyle() {
+        let (background, text) = colors
         layer?.backgroundColor = background.cgColor
         label.textColor = text
         closeButton.contentTintColor = isActive && isPaneActive ? text : .secondaryLabelColor
@@ -253,24 +283,27 @@ final class TabChipView: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
-        pressOriginX = event.locationInWindow.x
+        pressOrigin = event.locationInWindow
         didDrag = false
     }
 
     override func mouseDragged(with event: NSEvent) {
-        if abs(event.locationInWindow.x - pressOriginX) > 4 {
-            didDrag = true
+        guard !didDrag, let bar else { return }
+        let location = event.locationInWindow
+        guard hypot(location.x - pressOrigin.x, location.y - pressOrigin.y) > Self.dragThreshold else {
+            return
         }
+        didDrag = true
+        bar.beginDrag(of: self, with: event)
     }
 
     override func mouseUp(with event: NSEvent) {
-        guard let bar else { return }
-        if didDrag {
-            let x = bar.convert(event.locationInWindow, from: nil).x
-            bar.chipDidDrag(self, toLocationX: x)
-        } else {
-            bar.chipDidClick(self)
-        }
+        guard !didDrag else { return }
+        bar?.chipDidClick(self)
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        bar?.chipMenu(for: self)
     }
 
     @objc private func closeClicked() {

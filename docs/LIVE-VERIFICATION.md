@@ -108,6 +108,12 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     `Cloud` after the type's own and `strings`/`nm` counted **0** for `iCloudContainer` in a build
     that contained it (2026-09-16). `nm <dylib> | xcrun swift-demangle | command grep <name>` finds
     it. Grep for a string literal the change added, or demangle, before concluding a build is stale.
+- **A `reveal` sent straight after `run operation "file.newTab"` can be lost.** Measured 2026-10-15
+  building three tabs for the tab-move check: reveal, new tab, reveal, new tab, reveal came out as
+  [one, one, three], because the second reveal raced the new tab's own first listing. The pane looked
+  healthy and every verb returned true. Put a short `delay` (0.7 s was enough) after each step, and
+  read the saved tabs back (`Dirnex.tabs.left`, JSON inside a data value) before trusting the fixture.
+
 - **When no gesture can reach a state, drive the *reader* from outside through whatever seam it
   already reads.** M23 Slice 5 had to prove that pasting a row from inside a `.zip` really extracts
   and copies it in the running app, and the gesture is unreachable headlessly twice over: session

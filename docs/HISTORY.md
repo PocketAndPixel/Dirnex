@@ -14158,6 +14158,64 @@ it in. On `..`, ⌘ also changes nothing and the pane goes up.
   Not run live: vaults and buckets (both read the Keychain, which prompts for the Debug build's
   signature) and archives on a server or nested in another.
 
+**2026-10-15: tabs move along their strip and to the other pane, by keyboard and by drag.** ⌥⌘[ and
+⌥⌘] step the showing tab left and right, stopping at either end rather than wrapping. ⇧⌘M (Move Tab to
+Other Panel) sends it to the other pane, beside the tab showing there, and the focus goes with it. A
+chip can be dragged along its strip or onto the other pane's, and a chip's right-click menu offers
+Move Tab to Other Panel and Close Tab for the tab clicked, which need not be the one showing. A
+pane's last tab stays: the menu item is disabled there, and a drag cannot start from a hidden strip.
+
+- **The M1 strip had a slot/index bug and had never been run live.** `destinationIndex` named a
+  *gap* ("before chip N") and `moveTab` read it as the final index, so a tab dragged right landed one
+  place past the pointer, and a nudge right that stayed short of the next chip's middle jumped it over
+  that chip. The M1 entry above records drag-reorder as unverified because the LanguageTool overlay
+  ate the clicks. `TabList` (core) now owns positions, with the two kinds named apart: `TabSlot` turns
+  chip midpoints into a gap, and `TabList.move(from:toSlot:)` turns a gap into an index. Close Tab
+  goes through `TabList.remove`, which keeps the rule it always had: the neighbour sliding into the
+  closed tab's place takes over.
+- **A real `NSDraggingSession` replaced the hand-rolled mouse tracking**, which acted on mouse-up
+  and could not see the other pane. Each strip is a drop target for the other, with an accent-coloured
+  marker in the gap. A drop that would leave the tab where it is is refused, so the image slides back.
+  The payload is a private type (`com.dirnex.tab`) offered to nothing outside the app, the line the
+  sidebar's reorder drag already draws. While a chip is in flight the other pane's strip is shown even
+  at one tab (`TabBarView.isRevealedForDrag`), because a hidden view receives no drops. The drag image
+  is drawn rather than snapshotted, since the chip's fill is a layer property.
+- **Moving between panes is one funnel in two halves** (`PanelViewController+TabMoves`): the source
+  removes the tab and re-shows whichever takes over, bumping `loadToken` so a listing still in flight
+  for the leaving tab cannot land on its replacement; the destination inserts and activates it. Both
+  halves go through `activateTab`, which already re-points the folder watcher, the Git watcher, the
+  remote poll and size walks, and both panes persist. Both panes share the window's backend, so server,
+  archive, vault, search and Trash tabs move as they are. One thing stays behind: undoing a marking
+  change is keyed by side and folder, so ⌘Z after the tab has moved does nothing (never the wrong rows).
+- **The defaults were measured before they were picked.** `NSMenu.performKeyEquivalent` on hand-built
+  events in a `-swift-version 6` probe told ⌥⌘[ and ⌥⌘] apart from ⌘[ and ⌘] with the items in either
+  order. The same probe could not judge ⇧: a plain ⌘W matched a ⇧⌘W item, which the shipped app does
+  not do, so shift-matching through hand-built events in a command-line process is not evidence.
+  ⇧⌘M has the shape of ⇧⌘W, which ships.
+- `TabListTests` and `TabMoveCommandTests` (core, 15 tests). `TabMoveTests` (app, 12 tests): the
+  keyboard steps, end stops and saved order; ⇧⌘M's landing, focus, marks and both panes' saved tabs;
+  the last-tab refusal; drops along a strip and onto the other one through the strips' own
+  `NSDraggingDestination` methods with a hand-made `NSDraggingInfo`; the reveal and its undoing; a
+  stray drag refused; the chip menu; the Window menu's keys; an opaque drag image; and the three
+  `NSDraggingSource` callbacks present by selector string (NOTES.md ▸ Delegates in Swift 6), with plain
+  `NSView` checked to answer none of them. Negative controls each failed their own tests: the old
+  slot-as-index rule; a strip that ignores the reveal; a move that leaves the focus behind; and a drop
+  method without the no-op check. Core green (3939 tests), app green (1649), both linters clean.
+- **Verified live** on the Debug build, launched by path after quitting a stale Debug copy left running
+  since 12:07, with settings backed up and restored (65 keys, identical by value). The tabs were built
+  and moved through `reveal` and `run operation`, with the saved tab state read back after each step.
+  Left [one, two, three] showing three: Move Tab Left twice gave [three, one, two], a third did nothing,
+  and Move Tab Right three times came back to [one, two, three]. Move Tab to Other Panel left [one,
+  two] showing two and gave the right pane [Home, three] showing three. A plain Move Tab Left then
+  moved the *right* pane's tab, so the focus had followed. Moving it back put it beside two. The Window
+  menu listed the three items, and a screenshot showed the left strip in the saved order. Building the
+  fixture first came out [one, one, three]: `reveal` sent straight after `file.newTab` lost the race
+  with the new tab's own first listing. That is the verb's, not the strip's, and short pauses fixed it.
+- **Not verified live: dragging a chip.** A background `app_drag` on a chip reached nothing at all,
+  neither a drag nor a click, which matches M23's finding that a drag session cannot be synthesized.
+  The drop logic is pinned by the app tests above; one physical drag in each direction is left for a
+  person.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

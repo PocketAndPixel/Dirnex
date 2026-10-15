@@ -151,7 +151,9 @@ enum MainMenuBuilder {
         ]),
         MenuSpec(category: .window, items: [
             .command("window.minimize"), .command("window.close"), .separator,
-            .command("window.previousTab"), .command("window.nextTab")
+            .command("window.previousTab"), .command("window.nextTab"), .separator,
+            .command("window.moveTabLeft"), .command("window.moveTabRight"),
+            .command("window.moveTabToOtherPanel")
         ], isWindow: true),
         // Report a Bug… last, after a separator, so a build without it (`BugReportSwitch`) keeps
         // the two links and drops the separator with it.

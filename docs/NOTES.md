@@ -2047,6 +2047,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 - **Right-click menu items must capture their paths at build time** into `representedObject`,
   and entry-vs-`..` must be decided from the clicked row, not a cursor flag — a right-click on a
   marked row leaves that flag stale.
+- **A key-equivalent probe run as a command-line `swiftc` binary judges ⌥ correctly and ⇧ not at
+  all.** Measured 2026-10-15 choosing the tab-move keys: `NSMenu.performKeyEquivalent` on hand-built
+  events told ⌥⌘[ from ⌘[ with the items in either order, while a plain ⌘W matched a ⇧⌘W item and
+  ⇧⌘M (characters `M`) matched nothing. The shipped menu does neither, so in that process shift
+  matching is not evidence in either direction. Settle a ⇧ chord inside the app's test target, or by
+  analogy with one that already ships, and keep a bare-chord item in the probe as the control.
 
 ### Tables and outline views
 

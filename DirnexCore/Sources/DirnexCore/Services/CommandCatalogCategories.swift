@@ -437,6 +437,31 @@ extension CommandCatalog {
             category: .window,
             keywords: ["tab"],
             shortcut: CommandShortcut(key: "]", modifiers: [.command, .shift])
+        ),
+        // The move pair takes ⌥ over the brackets that already mean history (⌘[ ⌘]) and switching
+        // tabs (⇧⌘[ ⇧⌘]), which is also Xcode's chord for moving a line. ⌥ is told apart from the
+        // bare chord whichever item the menu holds first (measured with `performKeyEquivalent`).
+        Command(
+            id: "window.moveTabLeft",
+            title: "Move Tab Left",
+            category: .window,
+            keywords: ["tab", "reorder", "order", "rearrange"],
+            shortcut: CommandShortcut(key: "[", modifiers: [.command, .option])
+        ),
+        Command(
+            id: "window.moveTabRight",
+            title: "Move Tab Right",
+            category: .window,
+            keywords: ["tab", "reorder", "order", "rearrange"],
+            shortcut: CommandShortcut(key: "]", modifiers: [.command, .option])
+        ),
+        Command(
+            id: "window.moveTabToOtherPanel",
+            title: "Move Tab to Other Panel",
+            category: .window,
+            keywords: ["tab", "pane", "side", "opposite", "send", "transfer"],
+            // ⇧⌘M, for Move. Nothing else here claims it, and the text system binds no ⌘ chord.
+            shortcut: CommandShortcut(key: "m", modifiers: [.command, .shift])
         )
     ]
 }
