@@ -11,6 +11,8 @@
 		1000000000000000000000206 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 1000000000000000000000205 /* SwiftTerm */; };
 		1000000000000000000000303 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 1000000000000000000000302 /* Sparkle */; };
 		1000000000000000000000401 /* gpr_tools in Helpers */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000402 /* gpr_tools */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		1000000000000000000000503 /* NOTICE in Resources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000501 /* NOTICE */; };
+		1000000000000000000000504 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000502 /* LICENSE */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -45,6 +47,8 @@
 		1000000000000000000000C3 /* PLAN.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PLAN.md; sourceTree = "<group>"; };
 		1000000000000000000000C4 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		1000000000000000000000402 /* gpr_tools */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = gpr_tools; path = Packaging/Helpers/gpr_tools; sourceTree = "<group>"; };
+		1000000000000000000000501 /* NOTICE */ = {isa = PBXFileReference; lastKnownFileType = text; path = NOTICE; sourceTree = "<group>"; };
+		1000000000000000000000502 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -87,6 +91,8 @@
 			children = (
 				1000000000000000000000C3 /* PLAN.md */,
 				1000000000000000000000C4 /* README.md */,
+				1000000000000000000000501 /* NOTICE */,
+				1000000000000000000000502 /* LICENSE */,
 				1000000000000000000000402 /* gpr_tools */,
 				1000000000000000000000D1 /* Dirnex */,
 				1000000000000000000000D2 /* DirnexTests */,
@@ -215,6 +221,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1000000000000000000000503 /* NOTICE in Resources */,
+				1000000000000000000000504 /* LICENSE in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -394,7 +402,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Dirnex/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Dirnex";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Dirnex shows your Photos library as folders of original files, so you can browse, preview and copy them.";
 				INFOPLIST_KEY_NSMainNibFile = "";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
@@ -426,7 +434,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Dirnex/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Dirnex";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Dirnex shows your Photos library as folders of original files, so you can browse, preview and copy them.";
 				INFOPLIST_KEY_NSMainNibFile = "";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;

@@ -108,4 +108,14 @@ fi
 echo "Licensing switch: $BAKED_SWITCH. Release date: ${BAKED_DATE:-none}." \
     "Report a Bug: ${BAKED_URL:-hidden}." >&2
 
+# NOTICE and LICENSE ride in Resources (the project's Resources phase), as they are in the repo. The
+# MIT and BSD licenses of the bundled code ask for their text in every copy, and About ▸
+# Acknowledgments shows these two files.
+for FILE in NOTICE LICENSE; do
+    if ! cmp -s "$ROOT_DIR/$FILE" "$APP_PATH/Contents/Resources/$FILE"; then
+        echo "The exported app doesn't carry this $FILE in Contents/Resources." >&2
+        exit 1
+    fi
+done
+
 echo "$APP_PATH"

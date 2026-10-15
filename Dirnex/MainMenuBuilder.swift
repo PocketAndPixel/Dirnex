@@ -324,7 +324,7 @@ enum MainMenuBuilder {
                 localized: "About \(appName)",
                 comment: "App-menu item opening the About panel; %@ is the app name."
             ),
-            action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
+            action: #selector(AppDelegate.showAbout(_:)),
             keyEquivalent: ""
         )
         appMenu.addItem(.separator())

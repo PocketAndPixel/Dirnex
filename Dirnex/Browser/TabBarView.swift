@@ -388,11 +388,21 @@ final class TabChipView: NSView {
     }
 
     private func applyStyle() {
-        let (background, text) = colors
-        layer?.backgroundColor = background.cgColor
+        let text = colors.text
         icon.contentTintColor = text
         label.textColor = text
         closeButton.contentTintColor = isActive && isPaneActive ? text : .secondaryLabelColor
+        needsDisplay = true
+    }
+
+    override var wantsUpdateLayer: Bool { true }
+
+    /// The fill is a layer's `CGColor`, which keeps the appearance it was resolved under, so it is
+    /// resolved here: AppKit runs this under the chip's own appearance, and again whenever that
+    /// changes. Set once in `applyStyle`, a light window kept the inactive pane's tab in the
+    /// dark-mode gray (`#464646`) after a switch from dark.
+    override func updateLayer() {
+        layer?.backgroundColor = colors.background.cgColor
     }
 
     /// Where the glyph and the label sit in the chip, for the drag image to draw them in place.

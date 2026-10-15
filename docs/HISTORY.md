@@ -14434,6 +14434,58 @@ reads it (`QuickViewPreviewView+TopStrip`).
 - **Not verified live:** a display without a camera housing, where the menu bar adds its own height
   to the strip; none was attached.
 
+**2026-10-15: the About window says when this version came out, where it stands with the license,
+and what open-source code is inside.** Asked for with a screenshot of the plain panel. It is still
+macOS's standard panel (`AboutPanel`), now given credits: the release day, because a license covers
+versions by release day and nothing else in the app showed it; a license line; and links to
+dirnex.app and **Acknowledgments**. The license line is "Licensed · updates until …", "Licensed ·
+updates ended … · Renew", "Your license doesn’t cover this version · Renew" or "Not licensed · Buy
+a License", and absent where licensing is off. The copyright line is `NSHumanReadableCopyright`, now
+"© 2026 Dirnex", the website's wording. Seven new strings, in all 14 languages.
+
+- **The license line never names who it is for.** People paste About screenshots into bug reports,
+  the issues are public, and a key's `to` is often an email address. Settings ▸ License shows it.
+- **`NOTICE` was incomplete, and the app shipped none of it.** It named Sparkle and GPR with
+  copyright lines but no license texts, left SwiftTerm out, called Adobe's DNG SDK and XMP Core "the
+  Adobe license agreement" where GPR's source has a BSD license for both, and missed two more parts
+  `gpr_tools` links: cJSON (MIT) and ITU/ISO/IEC's md5 and program-options code (BSD). Read from
+  Sparkle 2.9.4's and SwiftTerm 1.14.0's checkouts, GPR at the pinned commit, and Expat 2.1.0's
+  `COPYING`. MIT and BSD ask for their text with every copy, and the bundle had neither `NOTICE` nor
+  `LICENSE`. Now `NOTICE` lists every component and carries each license in full (GPR under its MIT
+  option), the Resources phase copies `NOTICE` and `LICENSE` into the app, and `build_app.sh`
+  refuses an export whose copies differ from the repo's (docs/NOTES.md ▸ Distribution and licensing).
+- **Acknowledgments is a `dirnex://` link, and that was probed, not assumed.** The panel's credits
+  view has AppKit's private `NSSystemInfoPanel` as its delegate, and a throwaway app with
+  `NSWorkspace.open` swapped out showed the click arriving there as `dirnex://acknowledgments`. So
+  the app can't catch the click itself; the link comes back through `application(_:open:)`, ahead
+  of the license link. `AcknowledgmentsWindowController` shows `NOTICE` and then `LICENSE`, as they
+  are, monospaced and read-only. The same probe showed the panel shrinking its credits box to fit
+  (42 pt for three lines, no scroller).
+- **A date never splits across lines.** Russian wrapped "29 / сентября 2027 г." in a render of the
+  panel, so the date's spaces are no-break (`AboutPanel.dayText`). The links line sits 4 pt below the
+  others.
+- `AboutPanelTests` (app, 14): no release line when undated and the day when dated, unbroken; no
+  license line with licensing off; each license state's link (none, Buy, Renew, Renew); the name in
+  no text and no link; the links line; the credits' link attributes and `labelColor`; the menu item's
+  action; the acknowledgments link in any case and nothing else, and the license handler leaving it
+  alone; both files in the app and in the window, and missing from a bundle without them; and
+  `NOTICE` naming each Swift package in the project and `gpr_tools`, with the package list pinned so
+  a new one fails until `NOTICE` has it. Negative controls on the source, all at once: the name put
+  back into the licensed line, plain spaces in the date, and "SwiftTerm" taken out of `NOTICE`
+  failed exactly their three tests. Core green (3962 tests), app green (1692), both linters clean,
+  `check_localization_keys.py` clean (1130 keys).
+- **Verified live** on the Debug build launched by path with `-DirnexDebugLicenseBuildDate
+  2026-10-14`, after quitting a Debug instance from before the change. App menu ▸ About Dirnex
+  showed "Released 14 October 2026", "Licensed · updates until …" with no name, the two links, and
+  "© 2026 Dirnex", in dark mode. `open location "dirnex://acknowledgments"` sent to that instance
+  opened the window, with `NOTICE`, the rule and the Apache License in it. Light mode and a Russian
+  wrap were checked in a render of the same credits.
+- **Not verified live:** the click on Acknowledgments in the real panel going all the way round.
+  On this Mac Launch Services gives `dirnex://` to `/Applications/Dirnex.app` (1.0.12-beta.4), which
+  has no handler for it yet; the two halves were checked apart, above. The panel writes "0.0.1 (1)"
+  without "Version" in a Debug build: AppKit leaves the word out for a 0.x version (a render with
+  1.0.12 showed it), so a release build is unaffected.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
