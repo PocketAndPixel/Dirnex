@@ -33,7 +33,6 @@ struct RemoteFetchPromptTests {
     @Test("the confirmation's Download button starts the transfer")
     func confirmationDownloadStartsTheTransfer() async throws {
         let window = Self.probeWindow()
-        defer { window.close() }
         let backend = CountingBackend(outcome: .block)
         let cache = RemoteFileCache()
         let entry = Fixture.entry("panorama.jpg", byteSize: Self.unmissablySized)
@@ -62,7 +61,6 @@ struct RemoteFetchPromptTests {
     @Test("dismissing the confirmation starts nothing")
     func confirmationCancelStartsNothing() async throws {
         let window = Self.probeWindow()
-        defer { window.close() }
         let backend = CountingBackend(outcome: .block)
         let cache = RemoteFileCache()
         let entry = Fixture.entry("panorama.jpg", byteSize: Self.unmissablySized)
@@ -167,10 +165,6 @@ struct RemoteFetchPromptTests {
     func noSheetWhereTheCardReports() async throws {
         let covered = Self.probeWindow()
         let pacer = Self.probeWindow()
-        defer {
-            covered.close()
-            pacer.close()
-        }
         let backend = CountingBackend(outcome: .block)
         let cache = RemoteFileCache()
         let entry = Fixture.entry("panorama.jpg", byteSize: Self.unmissablySized)
@@ -211,7 +205,6 @@ struct RemoteFetchPromptTests {
     @Test("the progress sheet still appears where nothing else is drawing the transfer")
     func sheetAppearsWhereNothingElseReports() async throws {
         let window = Self.probeWindow()
-        defer { window.close() }
         let backend = CountingBackend(outcome: .block)
         let cache = RemoteFileCache()
         let entry = Fixture.entry("panorama.jpg", byteSize: Self.unmissablySized)
@@ -264,13 +257,13 @@ struct RemoteFetchPromptTests {
 
     /// A window to hang a sheet on. Never ordered front: a sheet attaches and answers without it,
     /// and a test that puts a window on somebody's screen is a test that interrupts them.
+    ///
+    /// **Never closed**, and kept for the life of the test host. Closing a window that carried one
+    /// of these sheets segfaulted the host in CI (2026-10-15, `objc_release` in an autorelease pool
+    /// the main actor popped, during "dismissing the confirmation starts nothing"); xcodebuild then
+    /// restarts and names the test as if the prompt were broken (docs/NOTES.md ▸ Testing).
     private static func probeWindow() -> NSWindow {
-        NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 320),
-            styleMask: [.titled, .closable],
-            backing: .buffered,
-            defer: false
-        )
+        TrashlessProbe.window()
     }
 
     /// The button an alert binds Return to — its first, found without reading a title, which would

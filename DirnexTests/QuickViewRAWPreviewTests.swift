@@ -128,31 +128,34 @@ struct QuickViewRAWPreviewTests {
             "no ~/swtest/raw"
         )
     )
-    func decodesRealRAWFiles() throws {
-        let directory = Self.liveRAWDirectory
-        for name in ["DSC02467.ARW", "DSC_0004.NEF", "P1011960.RW2", "P1060804.dng"] {
-            let url = directory.appendingPathComponent(name)
-            guard FileManager.default.fileExists(atPath: url.path) else { continue }
-            let decoded = try #require(RAWImageDecoder.decode(url), "\(name) should decode")
-            #expect(
-                decoded.width * decoded.height > 1_000_000,
-                "\(name) came back \(decoded.width)x\(decoded.height) — the embedded thumbnail, not the frame"
-            )
-            let started = Date()
-            _ = decoded.dataProvider?.data
-            let residual = Date().timeIntervalSince(started)
-            #expect(
-                residual < 0.01,
-                "\(name) needed \(Int(residual * 1000)) ms for its pixels — the demosaic was deferred"
-            )
-        }
-        let portrait = directory.appendingPathComponent("MG_3010.CR2")
-        if FileManager.default.fileExists(atPath: portrait.path) {
-            let decoded = try #require(RAWImageDecoder.decode(portrait))
-            #expect(
-                decoded.height > decoded.width,
-                "orientation 8 should come back portrait, not \(decoded.width)x\(decoded.height)"
-            )
+    func decodesRealRAWFiles() async throws {
+        // Keep the decode and its residual-work clock together, off the main actor.
+        try await offCooperativePool {
+            let directory = Self.liveRAWDirectory
+            for name in ["DSC02467.ARW", "DSC_0004.NEF", "P1011960.RW2", "P1060804.dng"] {
+                let url = directory.appendingPathComponent(name)
+                guard FileManager.default.fileExists(atPath: url.path) else { continue }
+                let decoded = try #require(RAWImageDecoder.decode(url), "\(name) should decode")
+                #expect(
+                    decoded.width * decoded.height > 1_000_000,
+                    "\(name) came back \(decoded.width)x\(decoded.height) — the embedded thumbnail, not the frame"
+                )
+                let started = Date()
+                _ = decoded.dataProvider?.data
+                let residual = Date().timeIntervalSince(started)
+                #expect(
+                    residual < 0.01,
+                    "\(name) needed \(Int(residual * 1000)) ms for its pixels — the demosaic was deferred"
+                )
+            }
+            let portrait = directory.appendingPathComponent("MG_3010.CR2")
+            if FileManager.default.fileExists(atPath: portrait.path) {
+                let decoded = try #require(RAWImageDecoder.decode(portrait))
+                #expect(
+                    decoded.height > decoded.width,
+                    "orientation 8 should come back portrait, not \(decoded.width)x\(decoded.height)"
+                )
+            }
         }
     }
 }

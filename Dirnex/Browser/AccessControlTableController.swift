@@ -33,7 +33,7 @@ final class AccessControlTableController: NSObject {
     /// Named `entryTable` rather than `tableView`: a stored `tableView` on a type that also conforms
     /// to `NSTableViewDelegate` resolves, in a *companion file*, to the delegate method of that name
     /// instead of the property (docs/NOTES.md §"Lint ceilings"). Sidestepped rather than debugged.
-    private let entryTable = NSTableView()
+    private let entryTable = StripedTableView()
     private let editor: AccessControlEntryEditor
     private var removeButton: NSButton?
     private var moveUpButton: NSButton?

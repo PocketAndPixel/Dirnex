@@ -148,17 +148,31 @@ final class AlertKeyCatcher: NSView {
 
 /// A responder that owns Escape for itself, so the window-wide monitor must leave it alone.
 ///
-/// A marker rather than a list of class names inside the monitor: the knowledge belongs with the
+/// A conformance rather than a list of class names inside the monitor: the knowledge belongs with the
 /// control that wants the key ("Escape cancels *my* recording"), not with the window that would
 /// otherwise close over it. Anything added to Settings later opts in the same way.
 @MainActor
-protocol EscapeKeyConsuming: NSResponder {}
+protocol EscapeKeyConsuming: NSResponder {
+    /// Whether Escape is this responder's right now. A control that owns it only in one state — the
+    /// shortcut pill while it records, and not while Tab has merely put focus on it — answers that.
+    var consumesEscape: Bool { get }
+}
+
+extension EscapeKeyConsuming {
+    var consumesEscape: Bool { true }
+}
 
 /// Escape-to-close for a window whose content is SwiftUI, where `EscapeDismissingView` cannot reach.
 ///
 /// Scoped to one window and installed only while it is on screen. Three responders keep Escape:
-/// a field editor mid-edit (it reverts the edit — the same carve-out `EscapeDismissingView` makes),
-/// anything marked ``EscapeKeyConsuming``, and any window that is not this one.
+/// an input method mid-composition (Escape cancels the composition), anything marked
+/// ``EscapeKeyConsuming``, and any window that is not this one.
+///
+/// **A focused text field is not one of them.** This used to stand aside for any field editor, on the
+/// belief that Escape reverts the edit, as it does in `EscapeDismissingView`'s inline renames. A
+/// SwiftUI `TextField` has no such delegate: probed 2026-10-11, Escape left the typed text, the
+/// binding and the focus exactly as they were, and the user got a beep. So Settings ▸ License, whose
+/// key field holds the focus, could not be closed with Escape at all.
 @MainActor
 final class EscapeToCloseMonitor {
     private var monitor: Any?
@@ -172,8 +186,7 @@ final class EscapeToCloseMonitor {
                   event.keyCode == 53,
                   event.modifierFlags.isDisjoint(with: [.command, .control, .option, .shift])
             else { return event }
-            let focused = window.firstResponder
-            if focused is NSText || focused is any EscapeKeyConsuming { return event }
+            if Self.leavesEscape(to: window.firstResponder) { return event }
             onEscape()
             return nil // handled — don't also deliver it to the responder chain
         }
@@ -183,6 +196,12 @@ final class EscapeToCloseMonitor {
     func remove() {
         if let monitor { NSEvent.removeMonitor(monitor) }
         monitor = nil
+    }
+
+    /// Whether Escape belongs to `focused` rather than closing the window.
+    static func leavesEscape(to focused: NSResponder?) -> Bool {
+        if let composing = focused as? any NSTextInputClient, composing.hasMarkedText() { return true }
+        return (focused as? any EscapeKeyConsuming)?.consumesEscape ?? false
     }
 }
 

@@ -13,9 +13,9 @@ import Testing
 /// every one of them from `~/Library` (Chrome's cache, Spotlight's index, a sync client's metrics),
 /// and **152 full `reloadData` calls in 31 idle seconds** over 27 rows that never changed.
 ///
-/// That is not merely wasted work: the user sees it. AppKit's expansion tooltip — what floats a name
-/// too long for its column (`FileCellView`, `ExpandingLabel`) — is torn down with the cell view a
-/// reload discards, and at five reloads a second it can no longer survive its own appearance delay.
+/// That is not merely wasted work: the user saw it. AppKit's expansion tooltip — what floated a name
+/// too long for its column before `ExpansionPanel` replaced it — was torn down with the cell view a
+/// reload discards, and at five reloads a second it could no longer survive its own appearance delay.
 /// Reported as a tooltip that "blinks" on any long folder in the home directory; A/B'd live on the
 /// same pointer position, the panel was present in 3/3 samples with the guard in and absent in 4/4
 /// without it.

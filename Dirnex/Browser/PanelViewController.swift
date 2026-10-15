@@ -38,6 +38,17 @@ protocol PanelHost: AnyObject {
         label: UndoActionLabel
     )
 
+    /// Take back the marking change `recordSelectionChange` just journaled with these same values,
+    /// as though it had never been recorded: the first click of a Cmd-double-click, whose mark the
+    /// second click removes again. Call it before the marks go back. `false` when that change is no
+    /// longer the newest entry, in which case nothing was taken back.
+    func withdrawSelectionChange(
+        on pane: PanelViewController,
+        directory: VFSPath,
+        previousMarks: Set<VFSPath>,
+        label: UndoActionLabel
+    ) -> Bool
+
     /// Reverse the most recent operation on the window's undo journal (Cmd+Z). Refreshes
     /// both panes and reports anything that couldn't be put back.
     func undoLastOperation()
@@ -103,7 +114,14 @@ protocol PanelHost: AnyObject {
     /// owns the unlock funnel — the sidebar click, the Unlock command and Enter on the image are one
     /// gesture as far as the user is concerned — so the pane hands the vault over rather than
     /// growing a second copy of it.
-    func panelRequestsVaultOpen(_ vault: VaultLocation, showingIn pane: PanelViewController)
+    ///
+    /// `inNewTab` opens it in a new tab of `pane`, which is then the *other* pane (Cmd+Return on the
+    /// image), and leaves the focus in the pane that asked.
+    func panelRequestsVaultOpen(
+        _ vault: VaultLocation,
+        showingIn pane: PanelViewController,
+        inNewTab: Bool
+    )
 
     /// The window's shared cache of archive members extracted for preview (Quick Look / Quick
     /// View inside a browsed archive). Owned by the window so both panes and both preview
@@ -207,6 +225,9 @@ final class PanelViewController: NSViewController {
     /// when the anchor entry disappears. Reset on navigation and when the marks are cleared.
     var mouseSelectionAnchor: VFSPath?
     var mouseSelectionBase: Set<VFSPath> = []
+    /// The row the last click toggled with Cmd, and the marks from before it, so the second click
+    /// of a Cmd-double-click can put them back. `nil` after any other click.
+    var lastCommandClick: (entry: VFSPath, previousMarks: Set<VFSPath>)?
     /// Guards the column-layout capture against feedback: applying a tab's stored widths
     /// and order itself posts resize/move notifications, which must not be recorded back
     /// as if the user had dragged them. Internal for `PanelViewController+Columns`.

@@ -14,7 +14,7 @@ final class QuickViewTreeItem: NSObject {
 /// The tree itself, which puts the selected value on the pasteboard — the twin of the table's
 /// `QuickViewDataTableView`.
 @MainActor
-final class QuickViewTreeOutlineView: NSOutlineView, NSMenuItemValidation {
+final class QuickViewTreeOutlineView: StripedOutlineView, NSMenuItemValidation {
     var copiedText: (() -> String?)?
     /// Where ⌘C writes. The general pasteboard, except in a test, which must not overwrite the
     /// clipboard of whoever is running it.

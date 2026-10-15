@@ -1,4 +1,4 @@
-# Dirnex — build history (M0 → M29)
+# Dirnex — build history (M0 → M30)
 
 The shipped record of Dirnex's milestones: the milestone checklists as they were completed,
 plus the per-pass progress log — what was probed, what was decided, what was rejected and why.
@@ -20,7 +20,9 @@ which is how the bug in the last of them was found. **M28** (iCloud Photos, as f
 originals) opened and closed 09-13, the first to take back one of the plan's non-goals, and the one
 whose own measurement rewrote its last slice. **M29** (a license, and the reminder it removes)
 was planned 09-29 and closed 10-01, the app's share of selling Dirnex. It closed on a real beta,
-which found two bugs every test had passed over. **After M19** carries the thirty-one dated
+which found two bugs every test had passed over. **M30** (Report a Bug, and a Help menu to hold it)
+was planned 09-29 and closed 10-07, once the store's server took reports, on a report from a real
+beta. **After M19** carries the thirty-one dated
 passes from 2026-08-07 → 08-25 that landed outside a milestone of their own — it sits at the end
 rather than in date order, because it is the file's catch-all rather than a numeric slot. Two
 sections frame them, both handed over by the plan on 2026-09-01 once it had nothing left to say
@@ -13345,6 +13347,1144 @@ of the **Done when** above was seen on a real beta.
   - **an update the key covers installed with no notice**: Sparkle offered beta.26 to beta.25, and
     its window came straight up. The release's DMG went from 0 downloads to 1;
   - in beta.26, Tab reached every button in Settings with a real keyboard.
+
+---
+
+### M30 — Report a Bug, and a Help menu to hold it (S)
+
+**Closed 2026-10-07**, eight days after it was planned, once the store's server took reports (the
+private repo's C8). Dirnex has a Help menu (*Dirnex Website*, *Release Notes* and, in a build whose
+`Info.plist` carries `DirnexBugReportURL`, *Report a Bug…*). The dialog shows each fact on its box,
+*Show What Will Be Sent…* shows the exact body, Send posts it to
+`https://dirnex.app/api/bug-reports`, and Copy Report and Email Instead are there whenever Send is.
+The release workflow writes the address from the repository variable `DIRNEX_BUG_REPORT_URL`, so
+every release built while it is set carries it, stable included. A report from 1.0.12-beta.1
+reached the server's inbox and Oleg's Telegram. Three findings are worth not re-deriving. Every
+limit counts UTF-8 bytes and "blank" is a written-out list, because Swift and TypeScript disagree
+otherwise (docs/NOTES.md ▸ Bug reports). `URLSession` adds a `User-Agent` and an
+`Accept-Language` that would send what an unticked box holds back, and only a real server shows
+them. And macOS moves a crash report to `DiagnosticReports/Retired/` within days.
+
+Some paths were not exercised by the close, and are recorded rather than argued. **Email Instead**
+was never sent live, since it opens a draft in the mail app; core tests pin its link. The
+**rate-limit and refusal messages** are pinned by app tests, and the server's answers by its own.
+**Escape** can't be tried live (LIVE-VERIFICATION.md). And one thing was seen once and is open: in
+a computer-use run, a click in the email field left the focus in Steps, so the address was typed
+there; whether a real click does the same isn't known.
+
+Left deliberately undone: **anything the user didn't type or tick** — no logs, no screenshots, no
+file names or paths, and one crash report at most, the newest from the last 7 days, without the
+IDs that name the Mac; and **the website's FAQ and Contact page** naming Help ▸ Report a Bug…,
+which waits for a stable release that has it (the private repo's C8).
+
+The section as the plan carried it through the milestone:
+
+**Planned 2026-09-29.** A way to tell Oleg something broke without a GitHub account. The report goes
+to the store's server (`https://dirnex.app/api/bug-reports`, built in the private repo), which keeps
+it and messages him. Apart from Sparkle's update check, it is the only thing in Dirnex that talks to
+a server of ours. It sends only when the user presses Send, and only what the user was shown.
+
+Decided before Slice 1:
+
+- **A Help menu, finally.** M20 left adding one as its own decision; this takes it. It holds *Report
+  a Bug…*, *Dirnex Website* and *Release Notes*, which is where every Mac user looks, and it brings
+  macOS's menu search with it. `app.reportBug` is in the palette too.
+- **What is sent.**
+  - A description (required).
+  - Steps to reproduce and a reply email (both optional; the email is remembered for next time).
+  - Each behind its own checkbox, on by default: the Dirnex version and build, the macOS version,
+    the Mac model, the UI language, and whether a license is present (never the key itself).
+  - Optional and off by default: the newest Dirnex crash report from the last 7 days in
+    `~/Library/Logs/DiagnosticReports`.
+
+  The home folder is shortened to `~` everywhere.
+- **Shown before it's sent.** *Show What Will Be Sent* opens the exact JSON body. File names and
+  paths are personal data, so nothing reaches the payload that the user didn't type or tick.
+- **When the server can't be reached,** the dialog keeps the text and offers *Copy Report* and *Email
+  Instead* (a `mailto:` with the same body), rather than losing it.
+- **Hidden until the endpoint exists.** The menu item and the command appear only when the build
+  carries `DirnexBugReportURL` in `Info.plist`. The release workflow adds it once the server is
+  live; until then the feature ships inert.
+
+#### Slices
+
+1. **The core** (additive).
+   - `BugReport`: the payload and its redaction (home folder to `~`, a size cap, crash-report
+     trimming).
+   - Encoding to the server's JSON contract, which is defined in the private repo and mirrored here
+     as a fixture.
+   - Tests, including a negative control that leaves the home path in.
+2. **The app.**
+   - The Help menu, the command, the dialog, the preview, sending with a timeout, and the fallbacks.
+   - A fake endpoint in `Tooling/` (the `fake-s3-endpoint.py` pattern) for the app tests to post to.
+   - Translated into all 14 languages.
+3. **Live.** Against the real endpoint once it exists (staging first), then in a beta with
+   `DirnexBugReportURL` set.
+
+**Done when:**
+- a report sent from a beta arrives in the server's inbox with exactly what the preview showed;
+- the same report with the network off survives as Copy or Email;
+- a build without the URL shows no trace of the feature.
+
+#### Progress
+
+**2026-10-01: Slice 1 landed** (core only; the app is untouched).
+
+- **The contract** is in the private repo, `web/src/bug-reports/contract.ts`, with 43 shared cases
+  copied here unchanged as `Fixtures/bug-report-vectors.json`. The body is flat JSON: `v` (1),
+  `description`, `steps`, `email`, `appVersion`, `appBuild`, `macOS`, `macModel`, `language`,
+  `licensed` and `crashReport`. An unticked box leaves its field out entirely.
+- **Core:** `BugReport` (the body, `problem` in the server's order, and `body()`, the exact bytes),
+  `BugReportText` (the blank list, trimming, the email rule, cutting at a character boundary),
+  `BugReportForm` (the dialog's texts and boxes, and the one place they become a report),
+  `BugReportSystemInfo`, `BugReportRedaction` (the home to `~`), `CrashReportTrimmer` and
+  `CrashReportLocator`. 39 tests in 4 suites, with negative controls: a redaction that leaves the
+  home in, a blank test built on `Character.isWhitespace`, and an `@` looked for among
+  `Character`s.
+- **Decided in the slice:**
+  - **Every limit counts UTF-8 bytes:** the body 512 KiB, the description and the steps 20,000
+    each, the email 254, the five short fields 100 each, the crash report 256 KiB. The typed texts
+    always fit even when JSON escapes every character, so only the crash report can push a body
+    over, and `body()` cuts it until the body fits.
+  - **The body is written in the contract's order, pretty-printed, slashes unescaped,** so the
+    preview reads top to bottom and the crash report comes last. `JSONEncoder` without
+    `.sortedKeys` promises no order, so the object is assembled by hand from encoded values.
+  - **The crash report is the newest `Dirnex-*.ips` modified in the last 7 days,** in
+    `DiagnosticReports` or its `Retired/` folder. It is trimmed as text: home to `~`, the four
+    values that identify the Mac or the boot blanked, at most 256 KiB, cut at the start's end with
+    a marker. The start holds the exception, the reason and the crashed thread.
+  - **The home is replaced only where its name ends** (`/Users/janet` and `/Users/jane.doe` stay),
+    case-insensitively, in the plain and the escaped spelling.
+  - **The request will send `User-Agent: Dirnex`, with no version** (Slice 2). URLSession's
+    default carries the build and the Darwin version, which would leak what an unticked box holds
+    back.
+  - **The server answers** 201 with an id, 400 (413 for `tooLarge`) with the refusal's name, or
+    429 `rateLimited` with `Retry-After`. Anything but 201 keeps the text and offers Copy Report
+    and Email Instead.
+
+**2026-10-01: Slice 2 landed** (the app; Slice 3 waits for the store's endpoint).
+
+- **Core:** a `help` category with `help.reportBug`, `help.website` and `help.releaseNotes`
+  (the plan's `app.reportBug` became `help.reportBug` once Help was a category of its own), and
+  `CommandCatalog.bugReportCommandIDs`. `BugReportDelivery.swift`: `HelpLinks`, `BugReportEndpoint`
+  (only `https`; plain `http` to this Mac only when allowed), `BugReportRequest`,
+  `BugReportOutcome` (the server's answer, read as the contract describes it) and `BugReportMail`
+  (the `mailto:` for Email Instead).
+- **App** (`Dirnex/BugReport/`): `BugReportSwitch` (`DirnexBugReportURL` in `Info.plist`, or
+  `-DirnexDebugBugReportURL` in a Debug build), `AvailableCommands` (the registry minus the
+  licensing commands and Report a Bug… where each is off, now read by the palette, the menus,
+  Settings ▸ Shortcuts, AppleScript and Shortcuts), the Help menu (`NSApp.helpMenu`, so macOS adds
+  its menu search), `BugReportController` (the dialog), `BugReportPreviewController`,
+  `BugReportSender` and `BugReportPresenter`. 42 new catalog entries in all 14 languages.
+  `Tooling/fake-bug-report-endpoint.py` stands in for the server in a live run.
+- **Decided in the slice:**
+  - **The Help menu holds Dirnex Website, Release Notes, then Report a Bug…** after a separator, so
+    a build without the address keeps the two links and loses the separator with the item
+    (`MainMenuBuilder.removeStraySeparators`). Release Notes opens the GitHub releases page until the
+    website has its changelog.
+  - **The boxes show their values** ("Mac model: Mac16,5"), so the user reads what is sent rather
+    than a description of it. A fact that can't be read is grayed out, the license box exists only
+    where licensing is on, and the crash report box names the file or says there is none.
+  - **Send is ⌘Return, not Return**, since Return starts a new line in the two text fields; Tab and
+    ⇧Tab leave a text field instead of typing a tab. Escape is Cancel's.
+  - **Copy Report and Email Instead are there from the start**, enabled whenever Send would be,
+    rather than appearing only after a failure: there was no room for them to appear (five buttons
+    don't fit one row in German or Russian), and offering email up front costs nothing. *Show What
+    Will Be Sent…* moved under the boxes for the same reason.
+  - **A report closed unsent is kept until Dirnex quits**, so Escape loses nothing; a sent one
+    starts the next fresh. The reply email of a sent report is remembered across launches
+    (`Dirnex.pref.bugReportEmail`), and forgotten when one is sent without it.
+  - **The request overrides `Accept-Language` too** (`*`), not only `User-Agent`: the system adds
+    it by itself and it names the user's languages whatever the language box says.
+  - **The app tests answer through a `URLProtocol` stub** rather than posting to the fake endpoint,
+    so they need no server and no port. The stub cannot see headers the system adds on the way out,
+    so the live run checks those against the fake endpoint.
+  - **`DirnexBugReportURL` is in `Info.plist` as `$(DIRNEX_BUG_REPORT_URL)`**, empty in every build.
+    Passing it through `build_app.sh` and `release.yml` (a repository variable, like
+    `DIRNEX_LICENSING`) is Slice 3's first step, once the endpoint exists.
+- **Verified live** (2026-10-01, computer use, Debug build with `-DirnexDebugBugReportURL` on the
+  fake endpoint): the Help menu with all three items, and with two when launched without the
+  argument; the dialog with this Mac's real facts and the newest crash report found in
+  `DiagnosticReports/Retired/`; the preview; Send, which delivered a body **byte-identical** to Copy
+  Report's (8,683 bytes, the crash report's four identifiers blanked, the home shortened to `~`),
+  with `User-Agent: Dirnex` and `Accept-Language: *` on the wire; the thank-you sheet with the
+  server's reference; the server stopped, which kept the text and said so in red; and a report
+  cancelled and reopened, still there. The run found one bug the tests could not: the preview sheet
+  was 640 pt wide over the 560 pt dialog and cut off at both edges.
+- **Measured after the live run:** with the crash report box ticked, each keystroke re-trimmed the
+  crash report, which costs 16 ms for a real 43 KB report and 200 ms at the 1 MiB read cap
+  (release build). The dialog now trims once (`TrimmedCrashReport`), and a keystroke's check takes
+  under 0.2 ms.
+- **Not tried live:** Email Instead (it would have opened a draft in the mail app; the link is
+  pinned by core tests), the rate-limit and refusal messages (pinned by app tests), and Escape
+  (synthetic Escape never reaches the app, LIVE-VERIFICATION.md).
+
+**2026-10-07: Slice 3, first step** (the release workflow; the beta waits for the store's server to be
+live).
+
+- **`DIRNEX_BUG_REPORT_URL`, a repository variable,** reaches `Info.plist` as `DirnexBugReportURL`
+  the way `DIRNEX_LICENSING` reaches the licensing switch: *Resolve release values* reads it,
+  `scripts/build_app.sh` passes it as a build setting and reads it back out of the exported app.
+  Unset, no build shows Report a Bug; set, beta and stable builds both do. Anything but an
+  `https://` address fails the run, since the app would ignore it and hide the item without a word.
+  See docs/RELEASING.md ▸ Report a Bug's address.
+- **Probed first:** a Debug build with `DIRNEX_BUG_REPORT_URL=https://dirnex.app/api/bug-reports`
+  on the `xcodebuild` command line carries exactly that in its `Info.plist`. The worry was the
+  `//`, which starts a comment inside an `.xcconfig` file. The workflow's check was tried on six
+  values in `bash`; the workflow itself hasn't run yet, and no Swift changed.
+- **Next:** once the store's server takes reports at `https://dirnex.app/api/bug-reports`, set the
+  variable to that address, cut a beta, and send a report from it (the first "done when").
+
+**2026-10-07: Slice 3 landed; M30 is done.**
+
+- **Against the store's server** (the private repo's C8), first from a Debug build with
+  `-DirnexDebugBugReportURL`: to the server on a laptop, where the saved report matched Copy
+  Report field for field, non-ASCII text included; then to `https://dirnex.app/api/bug-reports`,
+  where it reached the admin inbox and a Telegram message reached Oleg.
+- **From a beta:** with the repository variable `DIRNEX_BUG_REPORT_URL` set to that address, the
+  Beta workflow cut 1.0.12-beta.1 (build 48), and a report sent from it reached the inbox with
+  every field. That is the first "done when". The other two were met in Slice 2: with the server
+  stopped, the text stayed for Copy Report and Email Instead, and a build without the address
+  shows no Help ▸ Report a Bug….
+- **From now on every release carries Report a Bug,** stable included, while the variable is set.
+  The website names Help ▸ Report a Bug… in its FAQ and Contact page once a stable release has it
+  (the private repo's C8).
+- **Open:** in a computer-use run, a click in the dialog's email field left the focus in Steps,
+  so the address was typed there; a second click worked. Not yet known whether a real click
+  does the same.
+
+**2026-10-09: the text boxes look like the email field, and the thanks waits for the dialog to go.**
+Both were reported with screenshots of 1.0.12-beta.1.
+
+- **The text boxes** were `.bezelBorder` scroll views: square, gray-edged and ringless under a modern
+  email field. `MultiLineField` puts a real, inert text field behind a transparent scroll view,
+  because on macOS 26 a field's look comes from a private hosting view and can't be drawn by hand.
+  The scroll view draws the focus ring, and the text sits where a field's does. How each part was
+  measured is in NOTES.md ▸ Text fields and text views.
+- **The thank-you alert** came up in the middle of an empty Report a Bug window. The dialog is still
+  `NSApp.modalWindow` while it closes, and the alert hangs on the modal window first, so it brought
+  the emptied window back as its host. It is now raised one turn later, on the main window.
+- **Verified live** against `Tooling/fake-bug-report-endpoint.py`, in Dark Mode: the boxes match the
+  email field, the focused one has the ring, the server got exactly what was typed, and the thanks
+  came up on the main window with no other window open. Light Mode is covered by the pixel test
+  only. The ring was seen on the description box only: computer-use couldn't move focus to Steps,
+  and a window it drives in the background isn't key, so no ring draws there anyway.
+- **The scripts organizer's Command** uses the same box, beside its Name and Keywords fields. The box
+  stretches to fill the form and, with no script selected, draws disabled the way those fields do.
+  Seen live with a script selected; the disabled look is covered by the pixel test only, since
+  driving the organizer saves every edit to the real script store.
+- **Show What Will Be Sent…** uses it too, read-only: drawn as AppKit draws a read-only field (no
+  fill, a fainter border, no focus ring), and still selectable for copying. Seen live in Dark Mode.
+- **The bordered lists keep their square bezel** (the scripts list, Multi-Rename's preview,
+  Synchronize, the checksum report, the workspaces organizer, Get Info's attribute and permission
+  tables). Oleg's call: a field's look around a table reads as somewhere to type.
+- **Every text field's border is stronger** (`FieldBorder`), asked for with a screenshot of the New
+  Folder prompt. The system's own faint ring, 1 pt outside the field at 9%, is drawn again with
+  `separatorColor`, about doubling it. Oleg chose that "subtle" strength over a medium and a strong
+  one rendered beside it. It is a patch on `NSTextField`, so it reaches alerts, Settings' SwiftUI
+  fields and the field behind each multi-line box. Seen live in Dark Mode: New Folder (focused, the
+  blue ring unchanged), Report a Bug, and Settings ▸ Shortcuts' Filter.
+- **Settings ▸ License's key field has a box now.** SwiftUI's grouped `Form` drew it with no bezel,
+  the one text field in the app with no border; `.textFieldStyle(.roundedBorder)` gives it one, and
+  with it the stronger ring. Seen live in Dark Mode.
+
+**2026-10-11: a folder that can't be listed says so in a tree too.** The same day's list-mode fix
+(a Synology `#recycle` the mounting account may not list now raises *"Can’t open “#recycle”"* with
+the server's sentence, NOTES.md ▸ SMB) left the tree telling the old story: `→` on the bin drew it
+expanded with nothing beneath it, which is what an empty folder looks like. The tree's lazy load
+threw the error away with a `try?` and left the row open, by design.
+
+- **A folder the user opens (→ or the disclosure triangle) whose listing fails closes again** and
+  raises the sheet list mode raises for the same folder. This is `navigate`'s rule: a gesture gets an
+  alert. Oleg approved it over the status line a bucket row's failed expansion uses: that line names
+  the row and drops the reason, and the reason was the point of the fix.
+- **A restored expansion that fails closes without a word**, and drops out of the saved tab. Nobody
+  asked for it, so nobody is told; the next → asks again and reports.
+- **A live refresh keeps its last good listing**, as before. It re-reads only folders that listed,
+  and a watcher must not raise a sheet.
+- A folder closed again before its failure lands, or a pane that has moved on, says nothing. A
+  bucket row closes too, without a second report, since its route already named it on the status
+  line.
+- No core change: `Panel.collapse(_:)` already keeps the cursor on the same row, and a failed load
+  installs nothing. The load's body became `performTreeChildLoad`, which a test can await, the same
+  split `refreshTree` made. `PanelTreeLoadFailureTests` pins all four rules on a real `chmod 000`
+  folder. Putting the old behaviour back failed all five of the failure tests (three in that suite,
+  two in the bucket suite).
+- **The suite's first runs crashed the test host**, and the cause is older than this change:
+  `DirectoryWatcher` gives FSEvents an unretained pointer to itself, so deleting a watched root
+  while its pane is freed runs the callback on a freed watcher (NOTES.md ▸ Testing). The fixture now
+  stops the watcher before touching the disk. The core fix is a separate piece of work.
+- **Verified live** in the Debug build, launched by path, on a local `chmod 000` folder. The share's
+  `#recycle` lists fine now, so the NAS refusal could not be reproduced. A tab seeded as a tree with
+  `locked` and `open` expanded came back with `open` listed and `locked` closed, no sheet, and its
+  saved `expandedPaths` down to `["open"]`. → on `locked` and a click on its triangle each raised
+  *"Can’t open “locked”"* over a row that was closed again. Making `open` unreadable while a new file
+  appeared at the root ran a refresh, which showed the new row, kept `open`'s `a.txt`, and said
+  nothing.
+
+**2026-10-11: Remove License asks first, and says how to get the key back.** It used to forget the
+key at one click. Now *"Remove the license from this Mac?"* comes up, with **Remove License**
+(destructive, not the default button) and **Cancel**: *"To add it back later, paste the key from
+your license email, or get it again at dirnex.app/account. If you can’t, write to
+support@dirnex.app."*
+
+- **Oleg asked for two messages**: one pointing at the website, and one pointing at support when the
+  license has no email. The app can't tell those apart. The key's payload has no email and no kind,
+  and only a special license can lack an address (the private repo's C5/C7: paid licenses always
+  have the buyer's). So it's one message covering both. "Your licenses" (`/account`) returns every
+  license that has an address, and support finds the rest by name or email.
+- **Each translation names its own page** (`dirnex.app/de/account`, `/pt-br/account`,
+  `/zh-hans/account`…): the site picks the language from the address alone, so the bare `/account`
+  is English (`localeDetection: false`).
+- **The license ID was in the message at first, and came out live as `HMPPP4D3ZOPNAREKXVL-` /
+  `HJ3D5LQ`.** The alert hyphenates a word too long for its line, its text is 220 pt wide in
+  English, and many IDs are wider (docs/NOTES.md ▸ AppKit, Laying out a dialog). A hidden break
+  character would put an invisible character into whatever the customer pastes to support, and an
+  AppKit alert with a copyable field is a lot of dialog for a rare path. So the ID came out, and
+  support asks for the name instead.
+- **The sheet was rendered in all fourteen languages** to check the two addresses survive the line
+  breaks. Thirteen kept both whole, or wrapped the page only after a `/` (Portuguese and both
+  Chinese, `dirnex.app/pt-br/` / `account`). Korean split them after `.` and `@` in both phrasings
+  tried, so its message gives each address a line of its own.
+- `LicenseRemovalTests` presses the tab's real button and the alert's own buttons: the question names
+  the page and support and leaves the key in place, confirming forgets it, and Cancel keeps it.
+  Removing at one click again failed all three. **Escape is the alert's Cancel even in Russian**
+  (`keyEquivalent` 27 on «Отмена», run with `xcodebuild -testLanguage ru`, with the text checked to
+  be Russian). So SwiftUI's `.alert` doesn't fall into `NSAlert`'s English-only Escape
+  (docs/NOTES.md ▸ Escape on a translated alert).
+- **Verified live** in the Debug build, launched by path, on Oleg's own license (the defaults
+  domain backed up first). License… ▸ Remove License brought the dialog as rendered, four lines
+  with no break inside either address, and the keyboard focus on Cancel. Cancel closed it, and the
+  key was still in preferences afterwards. The confirming half was left to the tests, so the real
+  key was never at risk.
+
+**2026-10-11: Escape closes Settings while a text field has the focus.** Reported on License: with
+the focus in the key field, Escape beeped and the window stayed. `EscapeToCloseMonitor` stood aside
+for any field editor (`focused is NSText`), on the belief that Escape reverts the edit. A SwiftUI
+`TextField` does nothing with it. Probed on a `text:` field with `axis: .vertical` and on a
+`value:format:` one: the typed text, the binding and the focus all stayed as they were. So License,
+whose field holds the focus, could never be closed with Escape, and neither could any other tab
+while its field was focused.
+
+- **The one text-field state that does own Escape is an input method's composition**, where Escape
+  cancels the marked text. Closing over it would discard the half-typed word along with the window,
+  so the monitor now stands aside only while the focused responder `hasMarkedText()`.
+- **Nothing is lost by closing mid-edit.** The same probe showed a `value:format:` field writing its
+  binding on every keystroke (`30` was in the preference before any Return), and License's pasted
+  text is `@State` in a view the window keeps, so it is still in the field when Settings reopens.
+- `SettingsEscapeTests` runs on the real License tab: a focused field with text in it leaves Escape
+  to close, the same editor composing keeps it, and committing the composition gives it back. Put
+  back to `focused is NSText`, both tests fail.
+- **Verified end to end with posted events** (docs/NOTES.md ▸ the SwiftUI Escape monitor): a
+  throwaway app compiled against the shipped `EscapeToDismiss.swift`, with the monitor installed over
+  an `NSHostingController` and a vertical `TextField` focused. Composing, a posted Escape left the
+  window up; with plain text typed, the next one closed it. The physical keypress was left to Oleg.
+
+**2026-10-14: a search's conditions can be changed from its results.** Asked for with a screenshot
+of a "test" results tab. ⌥F7 on a tab of search hits now opens Find Files filled in with that
+search, and Find runs the edited search back into the same tab. Total Commander's Alt+F7 does the
+same from its results. Before, ⌥F7 there opened an empty dialog scoped to Home. Clicking the path
+bar's "Results for …" label does the same as ⌥F7.
+
+- **Oleg chose both forks:** the hits are replaced in place rather than opened in a new tab (`+`
+  already copies a results tab, for keeping the old hits), and an edit takes a saved search's name
+  off the tab. Save Search… offers that name again, so updating the saved search goes through the
+  existing replace confirmation. Running the search again unchanged keeps the name, which is also
+  how the sidebar recognizes a saved search's tab.
+- **The trap was the dialog's fields.** A results tab's path is `search:/…`, which
+  `SearchFields.answerable(by:)` answers with the listing set, so a dialog built from it hides
+  Content and Tags and the edited search silently drops them. `SearchPlace` (core) turns what the
+  tab stored back into the real folder and the "This Folder or everything" choice, and is also what
+  ⌥F7 now runs a fresh search through, so the two directions have one definition. The tab now keeps
+  the folder ⌥F7 was pressed in (`searchOrigin`), since an everywhere scope no longer names it.
+- **The hits land in the tab that was edited, found by identity.** A content search can take
+  seconds, so the user may have switched tabs; a background tab is updated without being brought
+  forward. A tab closed or navigated off to a folder meanwhile is no longer the search, and the hits
+  open a tab of their own.
+- **The dialog never widens an edited search.** The Kind menu holds one kind and Size four
+  thresholds, so a query holding more (only a hand-written saved search could) gets an extra item
+  naming it, rather than opening on "Any". One new string, the label's tooltip "Edit this search",
+  in all 13 languages.
+- `SearchPlaceTests` (core) and `SearchEditTests` (app) pin it. The round trip from query to dialog
+  and back is tested over every menu value, and the landing in place, in a background tab and in a
+  departed one. Reverting the walk rule, the extra item or the title rule each fails its tests.
+- **Verified live** on the Debug build, launched by path with the release copy quit, on the Spotlight
+  route: ⌥F7 on a results tab reopened "dirnex" with This Folder (“translations”) rather than Home;
+  a click on "Results for “test”" in `swtest` opened the dialog on "test", and changing it to "dtest"
+  replaced the 5 hits with 1 in the same tab, the label and chip following. **Inside a zip** (the
+  walk route), "text" found both members; ⌥F7 reopened it without the Content and Tags rows and
+  with the second option reading "All of “swtest copy.zip”", selected because at the archive root
+  both options search the same thing; "text2" then replaced the 2 hits with 1 in the same tab.
+  Servers and Photos take the same walk route and are covered by tests only.
+
+**2026-10-14: a search hit can be deleted where it was found.** Asked for with the same screenshot
+of a "test" results tab. F8, ⇧F8, File ▸ Move to Trash and the right-click's Move to Trash were all
+gray over search results, and Recents too, which rides the same listing. They now work there, and
+⌘Z brings the row back with the file.
+
+- **The gate asked the pane, and a results pane is the synthetic `search:` path**, which
+  `CompositeBackend.capabilities(for:)` answers `.read`, so `deleteStrategy` was `.unsupported`
+  for every search there was. `DeleteRouting` (core) asks each row's *own* directory, the way F2
+  already did (`renameDirectory`), and the key and its menu item both read the one
+  `deleteStrategy(for:)`. One more instance of NOTES.md's results-tab family (▸ "One rule, many
+  copies"), on a gate nobody had asked about. In a plain listing the answer is the pane's, as before; in a tree it is
+  now right for a folder expanded inside a Trash too.
+- **The weakest answer wins**: one row that cannot be deleted refuses the gesture, one that can
+  only be deleted for good makes it the confirmed permanent delete. The reverse would fail the row
+  that is already in a Trash, which `LocalBackend` refuses by name (`alreadyInTrash`). A mixed set
+  is rare: probed that Spotlight returns nothing in `~/.Trash` (`mdls` read a trashed file and
+  `mdfind -name` on the same name returned nothing), and a walk's hits share one backend. A hit
+  inside an archive stays refused, as in a browsed nested archive.
+- **A snapshot re-lists nothing, so a delete is applied to it by hand**, the rename's
+  `substituteSearchHit` again. `DeletePass.Outcome.deleted(from:)` says what actually left (not
+  `restorations`, which a permanent pass leaves empty), and those rows are dropped from the tab the
+  delete started in, found by identity. Hits sent to the Trash are remembered on the tab
+  (`trashedSearchHits`), and every refresh of it, and switching back to it, re-checks them on disk
+  (`SearchSnapshot.reconciled`): undo refreshes only the tabs on screen and says nothing when it
+  succeeds, so without this the file came back and its row did not. Asked of the disk rather than
+  the journal, so redo and a partial undo need no branch.
+- `DeleteRoutingTests` and `SearchSnapshotTests` (core), `SearchHitDeleteTests` (app). Reverting the
+  gate, the drop, the refresh's re-check or the tab switch's each fails its own tests. The first run
+  of the app suite had a test passing on an empty pane, and a negative control passing because the
+  delete's own re-check did the work; both are in NOTES.md ▸ Testing.
+- **Verified live** on the Debug build, launched by path with no other copy running: ⌥F7 for
+  "qzxdelprobe" over three fixture files, then File ▸ Move to Trash on the first hit put it in
+  `~/.Trash` and took its row out, the cursor moving to the next. Edit ▸ Undo Move to Trash put the
+  file and the row back; Redo took both away again. Delete Immediately… on the next hit asked
+  "Delete “qzxdelprobe-b.txt” permanently?", and Delete removed the file and the row. A hit on a
+  server takes the same permanent path and is covered by tests only.
+- **Left as it was**, from reading the code rather than a run: a hit **moved** with F6 still keeps
+  its row until the search runs again, the queued rename's limit (`substituteSearchHit`); and a
+  second tab showing the same hits is not told about a delete in the first.
+
+**2026-10-14: a hit moved with F6 leaves the results too.** Asked for straight after the delete
+entry above, and it closes both of that entry's leftovers. A move is a queued job, so the pane never
+learns how it ended; the window does, when it finalizes the job, with the report's outcomes and no
+tab attached. It now hands `SearchSnapshot.changes(made:by:)` to both panes, and each applies them to
+every results tab it has (`applySearchHitChanges`), asking by content rather than by the tab the key
+was pressed in, as NOTES.md ▸ "One rule, many copies" says a window-level handler must.
+
+- **Only what really moved.** An outcome is recorded once the source is gone, and `landedAt` is
+  `nil` for a skipped item, so a Stop, an Abort or a conflict answered with Skip leaves those rows.
+  Pinned against the real `CopyEngine` (a two-hit move with one name already at the destination),
+  not only against a hand-built report.
+- **A move that stays in its own folder is a rename**, the shape a rename takes when it has to run as
+  a job (an S3 prefix, `EXDEV`). Such a row now takes its new name and keeps the cursor. Before, it
+  kept its old name until the search ran again, the limit `substituteSearchHit`'s comment recorded;
+  dropping it would have been worse, since the file is still where it was found.
+- **⌘Z brings the row back**, through the delete's machinery renamed for the job:
+  `trashedSearchHits` became `departedSearchHits`. Only for a hit on this Mac: following one costs a
+  `stat` on every refresh of the tab, a round trip apiece on a server, so a server hit leaves and is
+  not followed.
+- **Deletes now ask by content too.** `noteSearchHitsDeleted` drops the hit from every results tab in
+  both panes rather than only the tab F8 was pressed in. And F6 *into an archive* from a results tab,
+  which trashes the originals through its own loop, now drops them as well.
+- `SearchSnapshotTests` (core) and `SearchHitMoveTests` (app). Reverting the skipped-item rule or the
+  rename rule fails the three core tests for them; following server hits, or dropping the cursor
+  move, fails the two app tests for them. The window's one call is not reachable from a test (no
+  test builds a `BrowserWindowController`), so it was checked live. One full app run failed an
+  unrelated archive-encoding test at its 30 s wait; it passed alone twice and the next full run was
+  green (1591 tests).
+- **Verified live** on the Debug build, launched by path with no other copy running: ⌥F7 for
+  "qzxmoveprobe" over three fixture files, with the other pane on a fixture destination. File ▸ Move
+  to Other Panel moved the first hit there and took its row out of the results; Edit ▸ Undo Move put
+  the file and the row back; Redo took both away again.
+
+**2026-10-14: Get Info in the right-click menu.** Asked for with two screenshots, the item menu and
+File ▸ Get Info. It is the registry's `file.attributes`, added after Quick Look and before Show in
+Finder, which is the File menu's order. Both item menus have it, the Trash's too: a trashed row
+carries its real local path, so the ordinary panel describes it. Nothing new was needed for a marked
+set. `retargetSelection` keeps the marks when the click lands inside them, and `showAttributes`
+already opens the bulk panel for marks.
+
+- `ContextMenuGetInfoTests` (app): one row, a marked set, a trashed row. Each builds the real menu
+  with `contextMenu(forRow:)` and checks the item validates and is aimed at the right rows. All three
+  fail with the menu change reverted. Full app run green (1594 tests).
+- **Verified live** on the Debug build, launched by path with no other copy running. A right-click on
+  one of three fixture files showed Get Info enabled between Quick Look and Show in Finder, and it
+  opened the single-item panel on that file. With all three marked, it opened the bulk panel for
+  "3 items".
+
+**2026-10-14: Get Info on the folder, from the background menu.** Asked for straight after the entry
+above. The empty space and the `..` row get a menu about a folder, and the registry's Get Info would
+have described the cursor row instead. So the background menu has its own item, aimed like Copy
+Path: it captures the folder when the menu is built, and shares the registry's title so it reads and
+translates the same. It sits between Paste and Copy Path. Choosing it stats the folder off the main
+thread, through the routing backend, and opens whichever panel `AttributesRoute` picks.
+
+- **Where there is no folder, there is no item.** A search, Recents or iCloud results tab is a
+  synthetic container (the Trash has its own background menu). At an **archive's root** it describes
+  the archive file, the one Copy Path names there. The archive's table of contents answers its root
+  as `/` with no name and no date. A nested or downloaded archive points to the member or server file
+  it came from, which is where `archiveParent` walks back to.
+- `ContextMenuGetInfoTests` gained four tests: the empty space aims at the pane's folder while the
+  cursor sits on a file, `..` aims at the parent, a results tab has no item, and an archive root
+  resolves to the file or to its origin. Removing the menu line, the results guard or the archive
+  rule each fails its own test. The results guard was checked alone, since with the menu line gone
+  its test passes for the wrong reason. One full app run failed `RemoteDirectorySizeTests` at its
+  listing wait, the load flake NOTES.md ▸ Testing describes. It passed alone, and the next full run
+  was green (1598 tests).
+- **Verified live** on the Debug build, launched by path with no other copy running. The empty space
+  under a cursor on `b.txt` opened the panel on the folder itself, with *Apply to enclosed items*.
+  `..` opened it on the parent. Inside `bundle.zip`, with New Folder grayed, it opened the local
+  panel on `bundle.zip`, a 162-byte file.
+
+**2026-10-14: ⌃Q gets the header, and covers the path bar and the item count.** Asked for with a
+screenshot of a pane-size preview. ⌃⇧Q and ⌃⌥Q name the two styles in their header, and ⌃Q had no
+header, so nothing at that size said `1` / `2` would do anything. The keys themselves already worked
+there. The covered pane's path bar and "3 items" also stayed on screen. Both describe that pane's
+folder, while the file on show comes from the other pane.
+
+- The pane's surface is now built with the **pinned** header, the full-window one: style, name,
+  position. It is pinned from the top of the path bar to the foot of the status line, so the header
+  takes the path bar's place. The surface covers those views rather than hiding them, so nothing in
+  the pane moves and uncovering needs no relayout. The tab strip above stays. The window hands the
+  caption over in pane mode through the same `quickViewCaption(for:style:from:)` as the full sizes,
+  and the JavaScript preference's caption refresh now reaches the pane's surface too. That closes
+  M16's undone "(no JavaScript)" mark in the pane-size preview.
+- `QuickViewPaneSurfaceTests` pins both halves. The surface's top is the path bar's top and its foot
+  is the status line's foot, and its header carries the caption and draws both style names. With the
+  old anchors and `header: .none` put back, both tests fail (4 issues). Full app run green, 1600 tests.
+- **Verified live** on the Debug build, launched by path after the copy that was running had quit.
+  The settings were backed up and restored around the run. On `people.csv` the covered pane showed
+  *1 Source · 2 Table · people.csv · 3 of 4* where its path bar had been, with no item count below.
+  Its tab strip was still there. `1` dimmed *Table* and showed the CSV's text. `page.html` showed
+  *2 Page (no JavaScript)*, and `readme.txt` showed only its name and *4 of 4*. With ⌃Q off, the
+  path bar, the branch and "3 items" came back.
+
+**2026-10-14: the stripes under a pane's last row stay in step.** Reported with screenshots of two
+panes whose empty space had two dark rows in a row, with a sliver of a light one between them, near
+the bottom edge. In both, the band below the break was exactly as tall as the rows the folder had
+just lost: three going up from Common to Dev, five from llm-rag to Common. AppKit paints that space
+with a private view of its own, and on a resize it repaints all of it only when it grows past the
+largest size it was last drawn at (NOTES.md ▸ AppKit, Drawing rows and cells). When the pane's height
+changed between two draws and the folder then lost rows, `reloadData` repainted the view's old bounds
+and the bottom band kept pixels drawn for the rows that were gone. The pane's table now repaints
+any of its subviews but the rows, whole, whenever that subview's frame changes.
+
+- Reproduced in a scratch table (10 rows, the pane 100 pt shorter, then 7: the bottom three rows
+  inverted) and in the app (Common, terminal drawer open, up to Dev). Fuzzed six-step runs of
+  reloads, scrolls and resizes: stock 2 of 30 broken, fixed 0 of 60. What made the reported panes'
+  height change is not known. The drawer is one way, a window resize another.
+- Tests (app, now in `StripedTableViewTests`) pin both halves of the fix. AppKit lays a view from
+  the last row to the table's bottom, and a view under the rows that redraws only when told is
+  repainted whole on a resize and on a move alone. With the fix out of the build, both repaint
+  checks fail. Full app run green (1602 tests).
+- **Verified live** on the Debug build, launched by path after the copy that was running had quit.
+  The drawer-and-Dev sequence that had drawn the inverted band before the fix drew even stripes to
+  the bottom, twice.
+
+**2026-10-14: every striped table, not only the panes.** Asked for straight after the entry above.
+The fix moved into `StripedTableView` and `StripedOutlineView`, which share `TableFillerRepaint`.
+All eight striped tables in the app are now one of the two: the file pane's (`FileTableView`
+derives from it), Quick View's table and tree, Synchronize, Verify Checksums, Multi-Rename, and Get
+Info's Sharing and Attributes tabs.
+
+- `StripedTableViewTests` builds each of the seven surfaces besides the pane the way the app does,
+  and fails on any striped table in one that is neither class. With all seven put back on a plain
+  `NSTableView` or `NSOutlineView`, it failed seven times, once per surface. The repaint check runs
+  on both classes and on `FileTableView`, and all three fail with the watch switched off. Full app
+  run green (1603 tests).
+- **Verified live** on Quick View's table, which the drawer resizes the way it does a pane: ⌃Q on a
+  7-row CSV, the drawer opened, then the cursor moved to a 4-row one. A build with the watch
+  switched off drew a light sliver three rows above the table's foot. The fixed build, same
+  sequence, drew even stripes.
+
+**2026-10-14: F5 copies a tree's marks flat, and ⇧F5 keeps their folders.** Asked for with a
+screenshot: in a tree, one file marked inside an expanded `oleg` folder and one at the top level,
+and F5 made an `oleg` folder in the other pane to hold the first. That was M15's branch-view rule
+(`TreeSelection.transferGroups`). F5 and F6 now put every mark side by side in the other pane's
+folder, as drag-and-drop and ⌘V always did. The old behaviour moved to two new commands: Copy to
+Other Panel, Keeping Folders on ⇧F5, and Move to Other Panel, Keeping Folders with no key, since ⇧F6
+is rename on the Total Commander preset. Oleg chose to move F6 with F5 so the two keys agree.
+
+- **M15's reason for not going flat does not hold.** It said two expanded folders each holding an
+  `x.jpg` would overwrite each other silently. The engine stats each landing name just before it
+  writes, so the second meets the first as an ordinary conflict. `CopyEngineAskTests` pins it, and
+  the live run below saw the dialog.
+- **A mark already in the destination is dropped from a flat transfer.** A tree reaches this
+  whenever the other pane shows one of its expanded folders. Copying such a file would hit the
+  self-landing rule `submit` keeps for ⌘V and become "<name> copy" without a prompt, and a move
+  would be a silent rename. Paste drops a same-folder move for the same reason. With nothing left,
+  F5 raises the same-folder alert it always raised for two panes on one folder.
+- ⇧F5 does what F5 does out of an archive and into one: an archive pane is never a tree, and
+  add-into lands by name alone.
+- The two commands took `CommandCatalog.swift` over `type_body_length`, so Edit and Select moved to
+  `CommandCatalogEdit.swift`, the way earlier categories did.
+- `TreeTransferTests` (app, 5 tests), and one test each in `CopyEngineAskTests` and
+  `CommandCatalogTests` (core). Putting F5 back to keeping folders fails two of the app tests, and
+  removing the drop fails two. Titles and keywords in all 14 languages. Core green (3917 tests). The
+  first full app run failed three sheet waits in unrelated suites (`ArchiveNameEncodingGestureTests`,
+  `RemoteFetchPromptTests`) under load; they passed run beside the new suite, and the next full run
+  was green (1608 tests).
+- **Verified live** on the Debug build, launched by path after the running copy had quit, with the
+  settings backed up and restored around the run. A tree over a fixture, `sub` expanded, `a.txt` and
+  `sub/b.txt` marked: File ▸ Copy to Other Panel put `a.txt` and `b.txt` side by side, and File ▸
+  Copy to Other Panel, Keeping Folders put `a.txt` beside a new `sub/b.txt`. With `sub/x.txt` and the
+  top-level `x.txt` marked, F5 raised the conflict dialog on the second, and Keep Both left `x.txt`
+  and `x copy.txt` with the right contents. The keys themselves were not pressed: background
+  computer use cannot send an F-key, so the menu items stood in for them.
+
+**2026-10-14: Save with only *Apply to enclosed items* ticked gives the folder's mode to everything
+inside.** Asked for with a screenshot of a `700` folder's Permissions tab, the box ticked and Save
+grayed. Save used to need an edit, since a recursive job was only ever the edit. Now the ticked box
+alone lights it, and with nothing edited the job carries the folder's own mode, all twelve bits,
+the way a changed mode already travelled. The target popup still decides which items get it. The
+folder already has that mode, so the run skips it and changes only what differs underneath.
+
+- **An edit on the sheet still travels alone.** Ticking Hidden with the box ticked hides what is
+  inside and leaves each item's mode as it was. Taking the mode along would quietly rewrite the
+  permissions of a tree the user meant to hide. Group, dates and the ACL never travel unedited. The
+  rule is `AttributeApplyJob(from:to:accessControlList:target:)` in the core. The multi-selection
+  sheet is unchanged, since several folders have no single mode to give.
+- `AttributeApplyJobTests` (core, 5 tests): an untouched sheet forces the mode alone, a flag or ACL
+  edit does not drag the mode along, and a run over a real tree gives the mode to the five items
+  inside while the root stays as it was. `AttributesRecursiveSaveTests` (app, 2 tests) clicks the
+  real checkbox and checks Save and the job it hands over. Both app tests fail with the sheet file
+  put back to before. Core green (3922 tests). The first full app run failed `RemoteDirectorySizeTests`
+  at its listing wait, the known load flake. It passed alone, and the next full run was green (1610 tests).
+- **Verified live** on the Debug build, launched by path with no other copy running, settings backed
+  up and restored around the run. On a `700` folder holding `a.txt` (644), `sub` (755) and
+  `sub/b.txt` (644), ticking the box lit Save, Save asked "Change 4 items?", and Apply left all
+  three at `700`, with "Changed 3 items" in the status line. Edit ▸ Undo Change Attributes put back
+  644, 755 and 644.
+
+**2026-10-14: ⌘-click or ⌘Return opens a sidebar place in a new tab.** Asked for in one line. A
+plain click still replaces what the active tab shows. With ⌘ the place opens in a new tab of the
+active pane, beside the current one, and that tab is left as it was. ⌘Return is the same for the
+row the keyboard has selected. ⌘ on a header still only folds it, and ⌘ on All Tags… still only
+expands it.
+
+- **The flag travels through the one funnel.** `SidebarViewController.activate(_:inNewTab:)` stays
+  the only switch over places, and the six window verbs whose place replaces a listing carry it:
+  volumes and cloud mounts, favorites, iCloud Drive, Photos, servers and vaults. Recents, the Trash,
+  a saved search and a tag already open a results tab on every click, so ⌘ changes nothing for them.
+- **A ⌘-click is handled in `SidebarTableView.mouseDown`, ahead of `super`.** A single-selection
+  table reads ⌘ as "toggle this row" and would deselect the row being opened, so the row is selected
+  by hand. ⌘Return reaches `keyDown` because Return cannot be bound in the catalog, and no menu item
+  or key monitor claims it. A test pins the menu half.
+- **Each place opens its tab once there is something to show.** A path goes through
+  `navigate(to:inNewTab:)`. iCloud Drive opens through `openResults`, in `showTrash`'s order. Photos
+  opens after the access question is answered, and a vault after it unlocks, so a cancelled
+  passphrase leaves no tab behind. A pin on a server needs its endpoint on the *new* tab before that
+  tab loads, since the load is where it is read; recorded the old way it would land on the tab being
+  left. `openInNewTab` takes it as `pendingConnection`.
+- **A server opens its tab when the connection lands, as a vault does.** Every connect path ends in
+  its own `navigate`, so the flag rides on the request: `inNewTab` on the SFTP, FTP, S3, S3 account
+  and SMB requests, landing through `navigate(to:inNewTab:)`. The retries after a changed host key,
+  an FTPS certificate and an S3 region or path-style correction copy the request, so they keep it.
+  A saved server whose secret is not in the Keychain falls back to the prefilled sheet, and
+  `editServer` and `apply` carry the flag there too. So a connect that fails, a changed key the user
+  turns down or a cancelled sheet leaves the pane as it was. A first version opened the tab before
+  connecting and left it behind on any of those.
+- **The row's request is built by one pure function.** `connectRequest(for:secret:inNewTab:)` decides
+  which saved servers need the sheet and builds the attempt for the rest, and its twin does the same
+  for the sheet's form. The Keychain is read once per click, where the old switch read it twice.
+  `PanelViewController+Connect.swift` was at 492 lines, so the SFTP half moved first into
+  `+ConnectSFTP.swift`, beside the FTP and S3 halves. SMB got a request struct like the other four.
+- `SidebarNewTabTests` (app, 9 tests): ⌘Return and ⌘Enter against plain Return and Enter, a real
+  ⌘-mouse-down on a laid-out sidebar opening a row and selecting it, ⌘ on a header still folding,
+  every place carrying the flag (and none without ⌘), and a pin's endpoint landing on the new tab
+  only. A source-list group row placed *first* answers `row(at:)` with -1 at the middle of its own
+  `rect(ofRow:)` in a headless window, so the header test puts an item above it, as the real sidebar
+  does. Three negative controls in one build each failed their own tests: ignoring ⌘ in `keyDown`,
+  dropping the flag for favorites, and not setting the endpoint on the new tab. Core green (3922
+  tests). The first full app run failed `RemoteDirectorySizeTests` and
+  `ArchiveNameEncodingGestureTests` at their waits, the known load flakes. Both passed alone, and
+  the next full run was green (1619 tests).
+- **Verified live** on the Debug build, launched by path after the running copy had quit, settings
+  backed up and restored around the run. ⌘-click on Downloads opened a third tab listing
+  `~/Downloads`. ⌥⌘S, ↓ to Pictures and ⌘Return opened a fourth. ⌘-click on iCloud Drive opened a
+  fifth with the merged listing. A plain click on Documents then replaced that tab in place, and the
+  tab the first ⌘-click came from still showed its folder with the cursor where it was. Not run
+  live: Photos (a Debug build raises its own access prompt) and vaults (which read the Keychain,
+  and that prompts for the Debug build's different signature).
+- `ServerConnectNewTabTests` (app, 7 tests): every saved server's attempt carries the flag, and only
+  when asked, for all five protocols. Rows whose secret is missing fall back to the sheet, rows that
+  need none connect, a guest share is handed no secret, and the sheet's form carries the flag too.
+  The landing opens the new tab and leaves the old one, and passes a focus row on in place. Three
+  negative controls in one build each failed their own tests: dropping the flag from the row's SFTP
+  attempt, dropping it from the form's SMB attempt, and dropping `focus` in the landing. Core green
+  (3922 tests). Full app runs were not green under the machine's load that evening (load average
+  about 9): each failed `ArchiveNameEncodingGestureTests` at its sheet wait, some also
+  `RemoteDirectorySizeTests` at its 15 s listing wait. A run without the new suite failed the same
+  way, and the flaky suites passed alone with it (32 tests). The landing tests first used loaded
+  panes, and dropped them, since nothing in them reads the table.
+- **Servers verified live** on the Debug build, launched by path after the running copy had quit,
+  settings and `known_hosts` backed up and restored around the run, against the throwaway sshd. No
+  fixture account had a Keychain item, so nothing prompted. ⌥⌘S and ⌘Return on a server whose port
+  was closed raised "Couldn't connect" and left one tab. ⌘Return on a reachable one opened a second
+  tab on its home over SFTP. That showed the ⌘ arrived, and the closed one then failed again with
+  the tab count still two. ⌘Return on a password server with nothing saved opened the prefilled
+  sheet, and Cancel left two tabs. A plain click then connected in the tab it was made in.
+
+**2026-10-14: `RemoteDirectorySizeTests` waits out the start of a full run.** The entry above met it
+twice: in several full runs all five tests failed at the pane fixture's 15 s listing wait, ten
+issues at its two lines, and the suite passed alone every time. The wait was the suite's own copy
+of the poll, at half the shared `settleUntil`'s 30 s.
+
+- **Measured before changing a number.** Alone, the listing lands in 25 ms. In seven full runs it
+  landed **18.2–30.5 s** in, so the old 15 s would have failed every one. Three meters showed why:
+  the cooperative pool was never more than 53 ms late, the main actor went **12.4–20.8 s** without
+  one poll waking, and the fake backend's first `listDirectory` came 7–21 s in. The pane's listing
+  `Task` could not even start until the main thread came free. All five tests' listings landed in
+  the same instant each run. It is the main-actor work every suite queues as a run starts, and
+  nothing in this suite.
+- **The profile named the wrong suite, and a control caught it.** `sample` on the test host during
+  the stall put 40% of main-thread samples in `MultiLineFieldTests.looksLikeAField`, which reads
+  every pixel of two captures through `colorAt(x:y:)` on the main actor. With that suite skipped,
+  the listing still landed at 30.1–30.5 s behind a 12.8 s stall. The rest of the queue filled the
+  time.
+- **Every wait here that waits *for* something now calls `settleUntil`.** The pane's first listing
+  gets `within: .seconds(60)`, since it is the first thing each test does and so sits in that queue.
+  The walk and size waits measured 2–14.4 s and keep the shared 30 s. The private `wait` stays only
+  for the two 2 s looks at a walk already under way, whose expiry is not a failure, and lost its
+  default. The cancel test's 400 ms grace window is unchanged.
+- **30 s passed by the order of checks, not by margin.** On `settleUntil`'s default the suite passed
+  all seven runs, two of them with the listing at 30.06 and 30.5 s. The helper checks the predicate
+  before the deadline, and its late wake-up sat in the same queue as the listing, behind it. That is
+  why the listing gets 60.
+- Alone green (5 tests). Three full runs of the final code passed the suite every time, and two of
+  them were green throughout (1626 tests). The third failed only `ArchiveNameEncodingGestureTests`
+  at its sheet wait. swiftformat and swiftlint clean. Across the measuring runs
+  `ArchiveNameEncodingCallSiteTests`, `ArchiveNameEncodingGestureTests`, `RemoteFetchPromptTests`
+  and `RemotePreviewFetchTests` also failed at their own 30 s waits, behind the same queue. They are
+  not touched here.
+
+
+**2026-10-15: less main-actor work at the start of the app tests.** Follow-up to the wait above.
+No wait budget changed, and no production code changed. The two initial full runs had a longest
+main-actor pause of **24.54 and 24.39 s**; their pane listings took **24.80–24.81 and 20.60–20.62 s**.
+Both failed the archive-name chooser's wait.
+
+- **Measured the work as well as the delay.** A temporary 25 ms main-actor sleeper and a detached
+  sleeper started at the first shared wait; the pane fixture timed its own listing separately.
+  `sample` at 10 ms over the first 30 s grouped main-thread stacks by test frame. In the complete
+  baseline profile, `MultiLineFieldTests` held 15.3% of samples, `LicenseReminderSheetTests` 13.4%,
+  `LicenseReminderControllerTests` 4.9%, and its presentation tasks another 3.9%. Across all callers,
+  AppKit's sheet animation loop held **43.7%**. The per-window animation setting, a zero animation
+  context and the two window-animation defaults did not shorten a standalone sheet probe (~266 ms).
+  The sheets and their assertions stay intact.
+- **Compare capture bytes, keeping the same colors and tolerance.** The six field cases took
+  **4.47–4.57 s** synchronously before, **0.39–0.46 s** after. `BitmapPixels` validates the capture's
+  format once and reads its RGBA bytes, including row padding. RGB is divided by alpha: these are
+  premultiplied captures, and dividing by 255 would change the test at the antialiased edges.
+  A temporary comparison with `colorAt` over all 3.06 million captured pixels differed by at most
+  **1.11e-16** per component. The 0.02 field and 0.01 border tolerances, alpha coverage, changed-pixel
+  count, and border-position checks are unchanged. The border suite uses the same reader; a small
+  fixture pins zero and partial alpha and padded rows.
+- **Run the RAW decode off the main actor.** Its five real camera files took ~0.8 s on that actor.
+  The whole body now uses `offCooperativePool`, including the clock that checks for deferred pixel
+  work. Resolution, portrait orientation and the residual-work limit are all still checked.
+- **A routing fixture was watching the whole temp folder.** `PanelTreeBucketExpansionTests` expanded
+  a missing child beneath `NSTemporaryDirectory()`. That installed a real tree watcher over about
+  **13,000 entries**, while every other suite kept changing the folder. A temporary timer found
+  **76 refresh tails totaling 30.1 s**, largely sorting on the main actor, in one full run. The test
+  now owns a small temp directory and stops its watcher at cleanup. It also checks that its seeded
+  row is still present, so a refresh cannot make the collapse assertion pass by deleting the row.
+  The large refresh tails disappeared, and the full run fell from 78.72 to 50.06 s at this step.
+- **One change at a time was not enough.** Bytes alone left a 21.86 s pause and failures in other
+  suites. Adding the RAW move gave 20.66 s; isolating the watched folder gave 20.46 s and removed the
+  later repeated work. After the border comparison changed too, three completed full runs measured:
+
+  | Run | Largest main-actor pause | Pane listing wait | Full test run |
+  |---|---:|---:|---:|
+  | Final 1 | 10.80 s | 17.16–17.17 s | 49.55 s |
+  | Final 2, SFTP + FTP enabled | 10.55 s | 20.58–20.59 s | 49.61 s |
+  | Final 3, SFTP + FTP enabled | 15.08 s | 15.06–15.11 s | 48.91 s |
+
+- **The control separates less work from a lucky place in the queue.** Temporarily restoring all
+  four old test implementations brought back **79 large refresh tails totaling 32.46 s** and the
+  ~4.5 s pixel loop. That run finished in 61.73 s, yet its pane listing happened to land in 14.22 s.
+  So a single listing time proves neither version faster; the repeated timings, direct body times
+  and removed refresh work are the evidence. Nothing was skipped or serialized to obtain the gain.
+- **The assertions still fail their controls.** Forcing the wrong bezel failed both read-only
+  appearances; omitting the border stroke failed both border cases; treating a missing folder as an
+  empty listing failed the tree test; returning a lazy RAW image failed all four residual-work
+  checks. Dividing RGB by 255 failed the new byte-reader test with ten issues. Every control was
+  restored. All probes were removed too.
+- **Verification caveats are separate from wait failures.** One live attempt lost its background FTP
+  server when the tool's shell ended; it was rerun with the server held in a foreground session.
+  Another run hit `NSRangeException` in `PDFKit.PDFTilePool.workQueue` → `PDFPage.lazilyLoadAnnotations`
+  after the startup measurements, and was not counted as a completed run. No PDF code was changed.
+  The three runs in the table passed (1627 tests reported, including the existing known-issue control).
+  S3 remained gated without its config. A final full run with every probe removed also passed in
+  49.02 s, with SFTP and FTP enabled. Core passed (3922 tests); both linters were clean. Changes
+  remain uncommitted.
+
+**2026-10-15: ⌘Return or a ⌘-double-click opens a folder or an archive in the other pane.** Asked
+for in one line. The row opens in a new tab of the other pane, which becomes the tab that pane shows,
+so it is the target of the next F5 or F6. This pane and the focus stay where they were, as a search
+hit's folder already did by default. A file opens as Return opens it, since there is no tab to put
+it in. On `..`, ⌘ also changes nothing and the pane goes up.
+
+- **One flag through the one chain.** `openCurrentEntry(inOtherPane:)` stays the only place that
+  decides what a row is, because its order is the rule: a saved vault and a bucket row are
+  directories that must not be entered as directories. Each folder-shaped branch hands the flag to
+  its landing. A folder and a local archive go through `navigate(to:inOtherPane:)`. A nested archive
+  and an archive on a server are extracted or fetched *here*, since that reads this pane's archive,
+  and land over there. The registry they record into is the window's, so the other pane walks out of
+  them the same way. A vault unlocks and opens in a new tab of the other pane without taking the
+  focus. A bucket row connects in the other pane, with `runConnect(focusing: false)`. A results tab
+  keeps its own route, which already opened folders over there and answers to the focus setting.
+- **⌘Return is caught in `FileTableView.keyDown`.** No menu item or monitor claims it, which
+  `SidebarNewTabTests` already pins. ⌘ is read off ⌘⇧⌥⌃ alone, because keypad Enter carries the
+  numeric-pad flag, fn+Return the function flag, and Caps Lock its own.
+- **A ⌘-double-click starts with a ⌘-click, and that click marks the row.** The second click
+  (`clickCount == 2`) reaches `mouseDown` before the ⌘-click handling, since a ⌘-click never reaches
+  `super`, so `doubleAction` never fires for one. The pane remembers the row the last ⌘-click toggled
+  and the marks from before it. The second click puts those marks back and withdraws that click's
+  journal entry. Otherwise ⌘Z would stop on a mark nobody meant. `UndoJournal.withdraw` (core) takes
+  an entry off the top only if it is still the top, and nothing goes to redo. Any other click forgets
+  the row, so a ⌘-click made on its own earlier keeps its mark. A third click is swallowed.
+- `FileTableView` went 3 lines over `type_body_length`, so the two recognizers moved into an
+  extension of their own in the same file.
+- `OpenInOtherPaneTests` (app, 10 tests): real key and mouse events into a pane laid out in a window,
+  with a loaded pane beside it. They cover ⌘Return on a folder and on a local zip, and the spellings
+  of the key (keypad, fn, Caps Lock; ⌥⌘ and ⇧⌘ open nothing). Plain Return, ⌘ on `..` and ⌘ on a file
+  are the narrowness controls. The ⌘-double-click restores earlier marks and leaves the journal
+  empty, a third click opens and marks nothing, and a mark from an earlier lone ⌘-click stays. Two
+  core tests cover `withdraw`. Negative controls each failed their own tests: `withdraw` without its
+  top check; the key read as `flags == .command`; no mark restore; a plain click not forgetting the
+  ⌘-click; and the landing ignoring the flag. Core green (3924 tests), app green (1637), both linters
+  clean.
+- **Verified live** on the Debug build, launched by path with nothing else running, settings backed
+  up and restored (65 keys, identical by value). ⌘Return on a folder opened a fourth tab in the right
+  pane listing it, beside the tab that pane had been showing. The left pane did not move, and ↓
+  then moved its cursor, so the focus had stayed. ⌘Return on a zip opened another tab at the
+  archive's root. Then Space marked a file and a ⌘-double-click (full-screen computer-use, which can
+  hold ⌘ through a click) opened a folder in a further tab, with only the file marked afterwards.
+  One ⌘Z then unmarked the file, so the Space's entry was on top and the double-click had left none.
+  Not run live: vaults and buckets (both read the Keychain, which prompts for the Debug build's
+  signature) and archives on a server or nested in another.
+
+**2026-10-15: tabs move along their strip and to the other pane, by keyboard and by drag.** ⌥⌘[ and
+⌥⌘] step the showing tab left and right, stopping at either end rather than wrapping. ⇧⌘M (Move Tab to
+Other Panel) sends it to the other pane, beside the tab showing there, and the focus goes with it. A
+chip can be dragged along its strip or onto the other pane's, and a chip's right-click menu offers
+Move Tab to Other Panel and Close Tab for the tab clicked, which need not be the one showing. A
+pane's last tab stays: the menu item is disabled there, and a drag cannot start from a hidden strip.
+
+- **The M1 strip had a slot/index bug and had never been run live.** `destinationIndex` named a
+  *gap* ("before chip N") and `moveTab` read it as the final index, so a tab dragged right landed one
+  place past the pointer, and a nudge right that stayed short of the next chip's middle jumped it over
+  that chip. The M1 entry above records drag-reorder as unverified because the LanguageTool overlay
+  ate the clicks. `TabList` (core) now owns positions, with the two kinds named apart: `TabSlot` turns
+  chip midpoints into a gap, and `TabList.move(from:toSlot:)` turns a gap into an index. Close Tab
+  goes through `TabList.remove`, which keeps the rule it always had: the neighbour sliding into the
+  closed tab's place takes over.
+- **A real `NSDraggingSession` replaced the hand-rolled mouse tracking**, which acted on mouse-up
+  and could not see the other pane. Each strip is a drop target for the other, with an accent-coloured
+  marker in the gap. A drop that would leave the tab where it is is refused, so the image slides back.
+  The payload is a private type (`com.dirnex.tab`) offered to nothing outside the app, the line the
+  sidebar's reorder drag already draws. While a chip is in flight the other pane's strip is shown even
+  at one tab (`TabBarView.isRevealedForDrag`), because a hidden view receives no drops. The drag image
+  is drawn rather than snapshotted, since the chip's fill is a layer property.
+- **Moving between panes is one funnel in two halves** (`PanelViewController+TabMoves`): the source
+  removes the tab and re-shows whichever takes over, bumping `loadToken` so a listing still in flight
+  for the leaving tab cannot land on its replacement; the destination inserts and activates it. Both
+  halves go through `activateTab`, which already re-points the folder watcher, the Git watcher, the
+  remote poll and size walks, and both panes persist. Both panes share the window's backend, so server,
+  archive, vault, search and Trash tabs move as they are. One thing stays behind: undoing a marking
+  change is keyed by side and folder, so ⌘Z after the tab has moved does nothing (never the wrong rows).
+- **The defaults were measured before they were picked.** `NSMenu.performKeyEquivalent` on hand-built
+  events in a `-swift-version 6` probe told ⌥⌘[ and ⌥⌘] apart from ⌘[ and ⌘] with the items in either
+  order. The same probe could not judge ⇧: a plain ⌘W matched a ⇧⌘W item, which the shipped app does
+  not do, so shift-matching through hand-built events in a command-line process is not evidence.
+  ⇧⌘M has the shape of ⇧⌘W, which ships.
+- `TabListTests` and `TabMoveCommandTests` (core, 15 tests). `TabMoveTests` (app, 12 tests): the
+  keyboard steps, end stops and saved order; ⇧⌘M's landing, focus, marks and both panes' saved tabs;
+  the last-tab refusal; drops along a strip and onto the other one through the strips' own
+  `NSDraggingDestination` methods with a hand-made `NSDraggingInfo`; the reveal and its undoing; a
+  stray drag refused; the chip menu; the Window menu's keys; an opaque drag image; and the three
+  `NSDraggingSource` callbacks present by selector string (NOTES.md ▸ Delegates in Swift 6), with plain
+  `NSView` checked to answer none of them. Negative controls each failed their own tests: the old
+  slot-as-index rule; a strip that ignores the reveal; a move that leaves the focus behind; and a drop
+  method without the no-op check. Core green (3939 tests), app green (1649), both linters clean.
+- **Verified live** on the Debug build, launched by path after quitting a stale Debug copy left running
+  since 12:07, with settings backed up and restored (65 keys, identical by value). The tabs were built
+  and moved through `reveal` and `run operation`, with the saved tab state read back after each step.
+  Left [one, two, three] showing three: Move Tab Left twice gave [three, one, two], a third did nothing,
+  and Move Tab Right three times came back to [one, two, three]. Move Tab to Other Panel left [one,
+  two] showing two and gave the right pane [Home, three] showing three. A plain Move Tab Left then
+  moved the *right* pane's tab, so the focus had followed. Moving it back put it beside two. The Window
+  menu listed the three items, and a screenshot showed the left strip in the saved order. Building the
+  fixture first came out [one, one, three]: `reveal` sent straight after `file.newTab` lost the race
+  with the new tab's own first listing. That is the verb's, not the strip's, and short pauses fixed it.
+- **Not verified live: dragging a chip.** A background `app_drag` on a chip reached nothing at all,
+  neither a drag nor a click, which matches M23's finding that a drag session cannot be synthesized.
+  The drop logic is pinned by the app tests above; one physical drag in each direction is left for a
+  person.
+
+**2026-10-15: a tab chip shows where its listing comes from.** Each chip draws a glyph before its
+label, taken from the sidebar row that stands for that kind of source: a folder on this Mac, an
+external drive or disk image, a share (the SMB server row's connected drive), a vault's open padlock,
+a cloud provider, iCloud Drive, Photos, an archive, SFTP, FTP, S3 (an account and a bucket alike), the
+Trash, Recents, and a magnifying glass for any results listing. The glyph is tinted with the label,
+so it turns white with it on the active chip, and it rides along in the drag image.
+
+- **The source is not the sidebar place.** `SidebarPlaceLocator` answers which row a pane is *in*, so
+  a folder in Downloads is in Downloads. The chip names the source instead, so that folder wears a
+  plain folder, and an archive, a share or a disk image, which have no row of their own, still get a
+  glyph. `LocationSource` (core) classifies the path. For a local path the more specific territories
+  come first: a trash directory (a folder opened from the Trash), an unlocked vault (a disk image
+  the volume rule would call external), a `CloudStorage` provider, then all of `Mobile Documents`.
+  Whatever is left is decided by the volume it lies on.
+- **The volume comes from the kernel's mount table, not from the path.** `URL.resourceValues` for a
+  volume key resolves the path itself, which blocks for as long as a dead share does, and the strip
+  is rebuilt on every navigation on the main thread. `MountTable.current()` is
+  `getmntinfo_r_np(MNT_NOWAIT)`, which asks no file system anything: measured at 3 µs for 13 mounts.
+  It finds the deepest mount point holding the path on whole components. `MNT_LOCAL` absent means a
+  share. A local mount other than `/` is external only if Finder lists it (`MNT_DONTBROWSE` absent,
+  so `/dev` and simulator runtimes stay folders) and its root does not report `volumeIsInternal`.
+  That read touches a local volume only. Probed on a throwaway disk image: it reports
+  `volumeIsInternal` as **nil**, not `false`, which the sidebar's `?? false` already draws as
+  external, so the chip agrees with the Volumes row.
+- **One spelling per glyph.** `SidebarPlacePresentation.symbolName(for: LocationSource)` maps each
+  source to a sidebar symbol. The sidebar's own Recents, Trash, iCloud Drive, Photos, saved-search,
+  archive-pin and folder-pin glyphs now route through it, and the cloud glyph became
+  `CloudStorageMount.symbolName` (static) so the chip doesn't repeat the literal.
+- **The drag image is drawn by hand and had to learn the glyph.** A template symbol drawn in an
+  `NSImage` drawing handler comes out black, so the drag image colors it with
+  `SymbolConfiguration(paletteColors:)` and draws glyph and label at the live chip's own frames.
+- `LocationSourceTests` (core, 13 tests): every territory, the volume split, whole-component
+  boundaries, each remote backend, Recents against other results, and the live mount table.
+  `TabSourceGlyphTests` (app, 4): every source's glyph equals the matching sidebar row's (which also
+  pins that every case is covered), every glyph exists on this system, a pane's strip draws five
+  kinds in order with the glyph before the label, and the drag image carries ink in the chip's text
+  color. Negative control: the drag image without the palette color failed the color test. Core
+  green (3952 tests), app green (1653), both linters clean.
+- **Verified live** on the Debug build launched by path (after quitting a stale Debug copy from 12:49),
+  with settings backed up and restored (65 keys, identical by value). Tabs built with `reveal` and
+  `file.newTab`, then a sidebar click and a double-click: Home and other local folders drew the
+  folder, a folder on a mounted disk image the external drive, Dropbox the cloud, CloudDocs the
+  iCloud glyph, Recents the clock, and the inside of a zip on that disk image the zipper. The active
+  chip's glyph was white on the accent. The Trash would not list (the Debug build has no Full Disk
+  Access), so its glyph is pinned by the tests only.
+- **Not verified live:** a share, a vault and the servers (each reads a secret from the Keychain,
+  which prompts for the Debug build's signature), Photos, and a real drag of a chip. **Seen live:**
+  with nine tabs in a half-width pane the strip overflows, and the labels of some chips truncate to
+  nothing while others keep theirs. That uneven squeeze predates this change; the glyph takes about
+  18 pt per chip, so it starts with fewer tabs than before.
+
+**2026-10-15: an overfull tab strip shrinks its chips evenly.** Follow-up to the squeeze seen in the
+entry above. When the chips no longer fit, the widest come down to one shared width, and a chip
+already narrower than that keeps its whole label. A strip with room is unchanged.
+
+- **The squeeze was a tie, not a bug in any one chip.** Every label resisted compression at the same
+  priority (`.defaultLow`), so the shortfall cost Auto Layout the same wherever it went, and it put
+  all of it on some labels. A probe laid out nine chips at 600 pt: Downloads and Documents whole, the
+  other seven at 4 pt, which is too narrow to draw even an ellipsis. Below 488 pt the strip did not
+  fit at all and widened its window.
+- **The fix is one shared cap that wants to be small.** `TabBarView` gains a layout guide. Every chip
+  is held at or under its width (required), and the guide's own width wants 0 at
+  `.defaultLow - 1`, just under the labels' compression resistance. Lowering the cap is then worth
+  something, but never worth compressing a label that has room, so the cheapest layout spreads the
+  shortfall evenly over the widest chips. Probed after the fix: nine chips at 800 pt all 84 pt; at
+  600 pt all 62 pt, every label 16 pt; with a one-letter tab among them, that chip kept its own 55 pt
+  while the rest shared 59–60. Drop slots still come from chip midpoints, so they follow the
+  squeezed frames unchanged.
+- `TabStripSqueezeTests` (app, 4 tests) lays strips out in real windows. The rule checked is that
+  each chip is drawn at its own width or at the widest chip's, whichever is less, and that the strip
+  stays inside its window. Cases: nine chips at 600 pt, every label at least 12 pt; a one-letter chip
+  keeping its whole width at 900 pt; a roomy strip untouched; and a drop on each side of every
+  squeezed chip landing in the gap beside it. Negative control: without the cap the first two failed
+  (22 issues), and the other two passed, as they should. `TabMoveTests` and `TabSourceGlyphTests`
+  still pass. Core green (3952 tests), app green (1657), both linters clean.
+- **Verified live** on the Debug build launched by path, with nothing else running and settings
+  backed up and restored (65 keys, identical by value). Nine tabs built with `reveal` and
+  `file.newTab` in the left pane, about 600 pt wide. Every chip came out the same width (close
+  buttons 66–67 pt apart), and the one-letter tab kept its own narrower width (57 pt). Fair, but
+  not readable: at about 18 pt a label shows only an ellipsis, and "L…" for Library was the only
+  title that kept a letter.
+- **Left open, and proposed rather than built: what the strip does when even an even share is
+  unreadable.** Thirteen tabs in that pane put every chip at its floor (glyph and ×, about 51 pt),
+  and because the stack's minimum width is required, the strip pushed the split divider about 80 pt
+  right and squeezed the other pane. The same is already true before this change. The proposal is a
+  minimum chip width (about six characters of label) plus a trailing overflow menu listing the tabs
+  that don't fit, with the active tab always kept on the strip. That also removes the strip's hard
+  minimum, so it can no longer move the divider.
+
+**2026-10-15: tabs that don't fit go behind a ».** Built from the proposal above, as Oleg chose it.
+A chip shrinks with the others until its label is about six letters wide; past that its tab leaves
+the strip. A » after the last chip lists the tabs that left, with their glyphs, and choosing one
+shows it. The showing tab always keeps a chip, and the strip no longer pushes the divider.
+
+- **The strip shows a run, never a subset.** `TabOverflow` (core) picks a run of adjacent tabs that
+  fits at each chip's minimum width (its whole width when that is less) and holds the showing tab.
+  The run stays where it is while the showing tab is in it. When the showing tab leaves it, the run
+  slides by the least that brings it back. A run that reaches the last tab with room to spare takes
+  earlier tabs back. A run is what keeps drag-and-drop honest: the gap after the last chip is the
+  gap before the first tab hidden past it, so `dropSlot` is the run's start plus the slot among the
+  chips shown, and the marker draws where the tab will land. The » menu splits the hidden tabs into
+  those before the run and those after it, with a separator.
+- **The floor is a label six lowercase letters and an ellipsis wide** ("xxxxxx…", measured as a
+  label so its padding is in it: 44 pt), about 93 pt for a folder chip. In a 600 pt pane, nine
+  tabs show five or six chips depending on their titles, at or near their whole width.
+- **The divider fix needed two priorities, and a control showed both are needed.** The strip's
+  stack resisted clipping at *required*, while the strip fills its pane at about 250, so its
+  minimum width won. Clipping resistance now sits at 240, and the labels' compression resistance
+  drops from 250 to 230 so they still shorten first. Hiding chips in `layout()` alone is not
+  enough. With the clipping resistance put back to required, thirteen tabs still widened the pane,
+  because `setTabs` adds every chip and the solve runs before `layout()` hides any.
+- **Found live after every test passed: hidden chips still pulled on the shared cap.** With
+  eighteen tabs, Documents came out at "Doc…", under the floor, beside a whole Downloads. The probe
+  that settled it: hidden chips never leave the view tree (`detachesHiddenViews` takes them out of
+  the arrangement only), so their caps stayed active, and long hidden titles made lowering the cap
+  cost more than cutting one shown chip. Each chip's cap is now switched off while it is hidden.
+  Afterwards Documents and Downloads were both 95.5 pt with 50 pt labels.
+- `TabOverflowTests` (core, 10): all fit, the leading run, sliding right and left, staying put,
+  filling back from the end, no growth at the front of a run that did not move, uneven widths with
+  room given to the tabs after the showing one, the showing tab alone, and clamping.
+  `TabStripOverflowTests` (app, 7): an overfull strip with readable labels and nothing overlapping;
+  resizing wider and back; the showing tab kept, and the run staying put; the » menu's order,
+  separator, glyphs and selection; drop slots counted in the whole list; the eighteen-tab fair
+  share; and thirteen tabs leaving a real pane's window width alone. `TabStripSqueezeTests` now
+  runs at widths where every chip still fits. Negative controls each failed their own tests:
+  clipping resistance back to required (the pane test), no overflow pass (five tests), the slot
+  without the run's start (the drop test), hidden chips keeping their cap (the fair-share test),
+  and in the core, growth at the front of any run and no filling after a slide. "More Tabs" (the
+  »'s label and tooltip) is in the catalog in all 14 languages, and
+  `scripts/check_localization_keys.py` found all 1123 extracted keys. Core green (3962 tests), app
+  green (1664), both linters clean.
+- **Verified live** on the Debug build launched by path, with nothing else running and settings
+  backed up and restored twice (65 keys, identical by value each time). With twelve tabs in the
+  left pane (about 600 pt), six chips showed whole or nearly so, the showing tab last, then » and
+  +. The » opened a menu of the six hidden tabs in strip order with folder glyphs. Choosing
+  Downloads made it the first chip of the run; the menu then showed three tabs, a separator and
+  four. Choosing the last one slid the run back to end on it. Eighteen tabs left the divider where
+  it was (x ≈ 770 before and after), and on the fixed build Documents and Downloads read "Docum…"
+  and "Downl…" at the same width. Dragging the divider to x ≈ 560 worked, and the strip went to
+  three whole chips plus the ». Dragging it back gave six.
+- **Not verified live:** dragging a chip on an overfull strip (a drag session cannot be
+  synthesized; the slot arithmetic is pinned by the drop test), and the » at a translated
+  language.
+
+**2026-10-15: the pane divider holds where the panes are the same width.** Asked for in one line:
+equal panes were hard to hit by hand. A drag that comes within 8 pt of the even split puts the
+divider exactly there and holds it until the pointer is more than 8 pt away. Entering that band taps
+the trackpad (`NSHapticFeedbackManager`'s `.alignment`, the feedback macOS gives at an alignment
+guide). The panes split is now a `PanesSplitViewController`, a subclass of
+`LockableDividerSplitViewController`; the sidebar and drawer splits are unchanged.
+
+- **Probed before writing it.** Swift requires `override` on
+  `splitView(_:constrainSplitPosition:ofSubviewAt:)` for an `NSSplitViewController` subclass, but
+  `NSSplitViewController.instancesRespond(to:)` is false, so there is no `super` to call (a `super`
+  call compiles and raises an unrecognized selector). AppKit sends it for every step of a drag and
+  once for a programmatic `setPosition`, and the leading pane's frame still holds the previous
+  step's position when it arrives. That last fact makes the tap stateless: tap when the result is
+  the even split and the leading pane was outside the band. A tap also needs `NSApp.currentEvent`
+  to be a `.leftMouseDragged`, so the first launch's centering, which goes through `setPosition`,
+  stays silent.
+- **A drag can be driven headlessly.** `NSSplitView` tracks a drag in its own loop, pulling events
+  off the queue, so a test posts the drags and the release with `NSApp.postEvent` and then sends
+  the press with `window.sendEvent`. That runs AppKit's whole path, the delegate call included.
+- `PanesDividerDetentTests` (app, 9): the position rule at both edges of the band, the even split,
+  the selector by string, a drag released inside the band, one past it, one tap per entry over a
+  drag that leaves and comes back, no tap leaving the band, and no tap for `setPosition`. The same
+  drag on a plain `LockableDividerSplitViewController` stops at 395 (the negative control for the
+  drag test). Negative controls on the source each failed their own tests: no snap (four tests),
+  no "was outside the band" check (the entry and leaving tests), and no drag-event check (the
+  `setPosition` test, and the leaving test, whose fixture places the divider with `setPosition`).
+  Core green (3962 tests), app green (1673), both linters clean.
+- **Verified live** on the Debug build launched by path, after quitting a Debug instance from before
+  the change. Read from the split's autosave after each drag: a control drag to the left gave 548 /
+  687; a drag released about 4 pt right of the middle gave 617.5 / 617.5; dragging out of it gave
+  643 / 592; released about 5 pt left of the middle gave 617.5 / 617.5 again; about 10 pt off gave
+  627.5 / 607.5, so the band ends where it should. The divider was left at 617.5 / 617.5, as found.
+- **Not verified live:** the trackpad tap, which only a hand on a Force Touch trackpad can feel.
+
+**2026-10-15: in full-screen Quick View a document starts below the top strip.** Reported with
+two screenshots: moving the pointer to the top of the screen in ⌃⌥Q drops the title bar over the
+content, which is fine over a photo and hides the first line of a text file, so it cannot be
+selected. A document (text, rich text, a rendered page, a PDF, a table, a tree) now starts that far
+down, and the strip above it is the surface's black backing. A picture still runs to the top edge.
+The strip is the floating header's 30 pt, plus whatever of the menu bar the window runs up under
+(`fullScreenMenuBarOverlap`, zero on a display with a camera housing). The title bar is 32 pt, so its
+last 2 pt land in the document's own top margin. The first version sized the strip to the title bar
+(32 pt); 30 was asked for the same day. Decided in `show` by what the file is, before any backend
+reads it (`QuickViewPreviewView+TopStrip`).
+
+- **The header was hiding the line too.** It floats over the top 30 pt and still takes clicks after
+  it fades, because a view at zero alpha is hit-tested. So the first line could not be clicked even
+  when the title bar was up out of the way. The negative control showed it: with the strip set to
+  zero, a click on the text view's first line came back as the header.
+- **Measured, not assumed.** A throwaway app with the same chrome on this 16-inch MacBook Pro: in
+  full screen the window is 1084 pt under a 33 pt band on a 1117 pt screen, the menu bar is 33 pt,
+  the safe area is 0, and `contentLayoutRect` is the whole window. Nothing in the window reports the
+  bar dropping, so the strip is sized ahead of time. Dirnex's title bar is 32 pt there (the close
+  button's superview), against 28 for a bare one; the accessories make the difference. The
+  screenshot's strip measures the same 32 pt (37 to 74 px at 1.157 px/pt).
+- `QuickViewTopStripTests` (app, 5): a document starts at 30 pt; a click on the first line reaches
+  the text view and one in the strip does not; a 24 pt menu bar overlap deepens the strip to 54 and
+  back to 30 without it; a `.png` runs to the top edge and the next text file comes back below the
+  strip; a pinned header's surface is unchanged. With the strip forced to zero, four of the five
+  failed, the first-line click among them. Core green (3962 tests), app green (1678), both linters
+  clean.
+- **Verified live** on the Debug build launched by path, after quitting a Debug instance from before
+  the change. A text fixture in ⌃⌥Q, first at 32 pt and then at 30: the text started below a black
+  strip, and a drag across the first line selected it, while the floating header (name, "1 of 2")
+  drew in the strip. A drag inside the strip selected nothing. A 1000 × 3000 PNG ran to the top
+  edge. At 30, read from the capture's pixels: the strip ends at 30.0 pt and the first line's
+  capitals start at 41.4 pt. The dropped bar in the report's screenshot ends at 32 pt, with its
+  shadow at about 35, so the glyphs are about 6 pt clear of it.
+- **The title bar coming down over the strip was checked by hand**, since background computer-use
+  cannot put the pointer on the top edge: at 30 pt the dropped bar clears the first line and the
+  strip looks right.
+- **Not verified live:** a display without a camera housing, where the menu bar adds its own height
+  to the strip; none was attached.
+
+**2026-10-15: the About window says when this version came out, where it stands with the license,
+and what open-source code is inside.** Asked for with a screenshot of the plain panel. It is still
+macOS's standard panel (`AboutPanel`), now given credits: the release day, because a license covers
+versions by release day and nothing else in the app showed it; a license line; and links to
+dirnex.app and **Acknowledgments**. The license line is "Licensed · updates until …", "Licensed ·
+updates ended … · Renew", "Your license doesn’t cover this version · Renew" or "Not licensed · Buy
+a License", and absent where licensing is off. The copyright line is `NSHumanReadableCopyright`, now
+"© 2026 Dirnex", the website's wording. Seven new strings, in all 14 languages.
+
+- **The license line never names who it is for.** People paste About screenshots into bug reports,
+  the issues are public, and a key's `to` is often an email address. Settings ▸ License shows it.
+- **`NOTICE` was incomplete, and the app shipped none of it.** It named Sparkle and GPR with
+  copyright lines but no license texts, left SwiftTerm out, called Adobe's DNG SDK and XMP Core "the
+  Adobe license agreement" where GPR's source has a BSD license for both, and missed two more parts
+  `gpr_tools` links: cJSON (MIT) and ITU/ISO/IEC's md5 and program-options code (BSD). Read from
+  Sparkle 2.9.4's and SwiftTerm 1.14.0's checkouts, GPR at the pinned commit, and Expat 2.1.0's
+  `COPYING`. MIT and BSD ask for their text with every copy, and the bundle had neither `NOTICE` nor
+  `LICENSE`. Now `NOTICE` lists every component and carries each license in full (GPR under its MIT
+  option), the Resources phase copies `NOTICE` and `LICENSE` into the app, and `build_app.sh`
+  refuses an export whose copies differ from the repo's (docs/NOTES.md ▸ Distribution and licensing).
+- **Acknowledgments is a `dirnex://` link, and that was probed, not assumed.** The panel's credits
+  view has AppKit's private `NSSystemInfoPanel` as its delegate, and a throwaway app with
+  `NSWorkspace.open` swapped out showed the click arriving there as `dirnex://acknowledgments`. So
+  the app can't catch the click itself; the link comes back through `application(_:open:)`, ahead
+  of the license link. `AcknowledgmentsWindowController` shows `NOTICE` and then `LICENSE`, as they
+  are, monospaced and read-only. The same probe showed the panel shrinking its credits box to fit
+  (42 pt for three lines, no scroller).
+- **A date never splits across lines.** Russian wrapped "29 / сентября 2027 г." in a render of the
+  panel, so the date's spaces are no-break (`AboutPanel.dayText`). The links line sits 4 pt below the
+  others.
+- `AboutPanelTests` (app, 14): no release line when undated and the day when dated, unbroken; no
+  license line with licensing off; each license state's link (none, Buy, Renew, Renew); the name in
+  no text and no link; the links line; the credits' link attributes and `labelColor`; the menu item's
+  action; the acknowledgments link in any case and nothing else, and the license handler leaving it
+  alone; both files in the app and in the window, and missing from a bundle without them; and
+  `NOTICE` naming each Swift package in the project and `gpr_tools`, with the package list pinned so
+  a new one fails until `NOTICE` has it. Negative controls on the source, all at once: the name put
+  back into the licensed line, plain spaces in the date, and "SwiftTerm" taken out of `NOTICE`
+  failed exactly their three tests. Core green (3962 tests), app green (1692), both linters clean,
+  `check_localization_keys.py` clean (1130 keys).
+- **Verified live** on the Debug build launched by path with `-DirnexDebugLicenseBuildDate
+  2026-10-14`, after quitting a Debug instance from before the change. App menu ▸ About Dirnex
+  showed "Released 14 October 2026", "Licensed · updates until …" with no name, the two links, and
+  "© 2026 Dirnex", in dark mode. `open location "dirnex://acknowledgments"` sent to that instance
+  opened the window, with `NOTICE`, the rule and the Apache License in it. Light mode and a Russian
+  wrap were checked in a render of the same credits.
+- **Not verified live:** the click on Acknowledgments in the real panel going all the way round.
+  On this Mac Launch Services gives `dirnex://` to `/Applications/Dirnex.app` (1.0.12-beta.4), which
+  has no handler for it yet; the two halves were checked apart, above. The panel writes "0.0.1 (1)"
+  without "Version" in a Debug build: AppKit leaves the word out for a 0.x version (a render with
+  1.0.12 showed it), so a release build is unaffected.
 
 ---
 

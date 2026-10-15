@@ -44,9 +44,20 @@ extension PanelViewController {
     /// Show iCloud Drive in this pane — the sidebar's iCloud row, and walking up out of one of the
     /// folders the listing stands in front of, which is what `selecting` is for: the cursor lands on
     /// the row just left, exactly as walking up out of any folder does.
-    func showICloudDrive(selecting target: VFSPath? = nil) {
+    ///
+    /// `inNewTab` (the row picked with ⌘) lands the merge in a tab of its own, the way the Trash
+    /// always opens, and leaves the active tab showing what it was.
+    func showICloudDrive(selecting target: VFSPath? = nil, inNewTab: Bool = false) {
         gatherICloudDrive { [weak self] entries, sources in
             guard let self else { return }
+            if inNewTab {
+                // `showTrash`'s order: the sources are recorded once the new tab is the active one,
+                // since they are the active tab's, and the forced watch is what makes a file added
+                // to iCloud Drive elsewhere show up in it.
+                openResults(entries, truncated: false, as: iCloudPresentation())
+                watchMergedListing(sources: sources, force: true)
+                return
+            }
             // Recorded *before* the install, so the watcher `installResults` starts is the merged
             // one — a file added to iCloud Drive elsewhere then shows up without re-clicking.
             mergedSources = sources

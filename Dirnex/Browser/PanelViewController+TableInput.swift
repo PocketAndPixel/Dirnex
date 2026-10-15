@@ -16,6 +16,15 @@ extension PanelViewController: FileTableViewInput {
         }
     }
 
+    /// Cmd+Return. On `..` it goes up, as Return does: there is nothing to open in another pane.
+    func fileTableOpenSelectionInOtherPane(_ tableView: FileTableView) {
+        if cursorOnParentRow {
+            goToParent()
+        } else {
+            openCurrentEntry(inOtherPane: true)
+        }
+    }
+
     func fileTableGoToParent(_ tableView: FileTableView) {
         goToParent()
     }

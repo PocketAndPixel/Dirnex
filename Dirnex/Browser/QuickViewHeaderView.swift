@@ -1,9 +1,10 @@
 import AppKit
 
-/// What a full-size Quick View says about the file it is showing (PLAN.md §M11): the name, and
-/// where it sits in the pane's list. In pane mode the file list is right there beside the preview;
-/// in the two full modes it is behind it, and arrowing through files you cannot see is flying
-/// blind — this is the readout that replaces the row you would otherwise be looking at.
+/// What a Quick View says about the file it is showing (PLAN.md §M11): the name, and where it sits
+/// in the pane's list. In the two full modes the list is behind the preview, and arrowing through
+/// files you cannot see is flying blind — this is the readout that replaces the row you would
+/// otherwise be looking at. Pane mode took the same header on 2026-10-14, for the style it names:
+/// there the list is beside the preview, but nothing else says that `1` / `2` would do anything.
 struct QuickViewCaption: Equatable {
     let name: String
     /// The cursor's 1-based position among the pane's visible *entries*, and how many there are.
@@ -33,9 +34,9 @@ struct QuickViewCaption: Equatable {
     }
 }
 
-/// The name-and-position strip a full-size Quick View draws across its top. A vibrant bar rather
-/// than a flat one because it sits over arbitrary content — a white page in full window, a photo
-/// bled to the edges in full screen — where any fixed color is wrong against half of it.
+/// The name-and-position strip a Quick View draws across its top. A vibrant bar rather than a flat
+/// one because it sits over arbitrary content — a white page in full window, a photo bled to the
+/// edges in full screen — where any fixed color is wrong against half of it.
 @MainActor
 final class QuickViewHeaderView: NSVisualEffectView {
     static let height: CGFloat = 30

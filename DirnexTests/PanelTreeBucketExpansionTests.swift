@@ -96,22 +96,54 @@ struct PanelTreeBucketExpansionTests {
         #expect(status?.contains("amzn-s3-df") == true, "the row that could not be opened is named")
     }
 
+    /// A bucket that would not open closes again, like any folder that fails to list. The route has
+    /// already named it on the status line, so the "Can’t open" sheet would say it a second time.
+    @Test("a bucket row that would not open closes again without a second report")
+    func failedBucketFoldsBackOnce() async {
+        let pane = Self.pane(at: Self.accountRoot)
+        let bucket = Self.accountRoot.appending("amzn-s3-df")
+        Self.seed(pane, [Self.folder(bucket)])
+        pane.panel.expand(bucket)
+
+        let outcome = await pane.performTreeChildLoad(pane.treeChildLoadPlan(for: bucket))
+
+        #expect(outcome == .collapsed(reported: false))
+        #expect(pane.panel.tree?.isExpanded(bucket) == false)
+        #expect(pane.transientStatus?.contains("amzn-s3-df") == true)
+    }
+
     /// The narrowness control, and the one that matters more: answering for everything would send
-    /// every ordinary folder down a connect it has no business making. An unreadable local folder
-    /// stays childless and silent, exactly as it did before.
+    /// every ordinary folder down a connect it has no business making. A local folder that fails to
+    /// list writes nothing on the status line, which only the bucket route does; it closes again
+    /// instead, and `PanelTreeLoadFailureTests` pins how that failure is reported.
     @Test("an ordinary folder row is still a plain listing")
-    func localRowIsUntouched() async {
-        let root = VFSPath.local(NSTemporaryDirectory())
+    func localRowIsUntouched() async throws {
+        // Expanding installs a live watcher. The shared temp root changes throughout a full run
+        // and has thousands of unrelated entries to sort on every event. Own the watched folder.
+        let directory = try TempDirectory()
+        defer { directory.cleanup() }
+        let root = VFSPath.local(directory.root.path)
         let pane = Self.pane(at: root)
-        let missing = root.appending("dirnex-tree-expansion-fixture-\(UUID().uuidString)")
+        defer {
+            pane.loadToken += 1
+            pane.watcher = nil
+        }
+        let missing = root.appending("missing")
         Self.seed(pane, [Self.folder(missing)])
 
         pane.toggleTreeExpansion(for: missing)
 
-        // Give the load the same window the bucket case gets before concluding it said nothing.
-        try? await Task.sleep(for: .milliseconds(400))
+        // The row closing is the load finishing, so the silence after it is a result rather than a
+        // load that has not landed yet. A fixed 400 ms wait was not enough in a full run, where the
+        // main actor is shared with every other suite (2026-10-11).
+        var polls = 0
+        while pane.panel.tree?.isExpanded(missing) == true, polls < 500 {
+            try? await Task.sleep(for: .milliseconds(20))
+            polls += 1
+        }
+        #expect(pane.panel.tree?.isExpanded(missing) == false)
+        #expect(pane.panel.displayedEntries.map(\.path) == [missing])
         #expect(pane.transientStatus == nil)
-        #expect(pane.panel.tree?.isExpanded(missing) == true)
     }
 
     /// Two edges of the bucket route that need no network and would otherwise be reached by a

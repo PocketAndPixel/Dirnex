@@ -49,9 +49,23 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 - **Block/token `NotificationCenter` observers can't be torn down from a `nonisolated deinit`**
   — the `[NSObjectProtocol]` token array is non-Sendable. Use selector-based observers plus
   `removeObserver(self)`.
-- **An `FSEventStream` must hold an *unretained* `Unmanaged` pointer to its watcher.** Retained
-  is a cycle that never stops. The non-capturing C callback recovers the watcher and calls an
-  immutable `@Sendable` closure; `stop()` is idempotent and runs from `deinit`.
+- **An `FSEventStream`'s `info` must be retained by the stream, and must not be the watcher.**
+  `FSEventStreamInvalidate` and `FSEventStreamRelease` return without waiting for FSEvents. Measured
+  2026-10-11 by deleting a watched root and dropping the watcher straight after, 200 rounds: a
+  callback was still running when they returned in 172 rounds, and 19 root-changed callbacks
+  started afterwards. So an unretained pointer to the watcher runs callbacks on a freed object
+  (it crashed the app's test host, ▸ Testing ▸ Fixtures and shared state). A retained watcher is a
+  cycle that never stops. `DirectoryWatcher` therefore hands the stream a separate checked-`Sendable`
+  box (the closure and an armed flag), retained through the context's `retain`/`release` callbacks.
+  FSEvents releases it only after its last callback: none of 600 releases came while a callback was
+  running. `stop()` disarms the box, is idempotent, and runs from `deinit`.
+  - **Invalidating on the stream's queue (`queue.sync`) also measured clean, and was not taken.**
+    It blocks the owner on the queue, deadlocks when the last reference drops on that queue, and
+    rests on how FSEvents times an invalidation, where the retain is the API's own rule for `info`.
+  - **Don't detect "already stopped" by the `info` address in a probe.** malloc hands the next
+    watcher the freed one's slot, so the first probe here counted 191 of 193 callbacks as late, every
+    one of them a live watcher at a reused address. A per-watcher token the probe never frees
+    separates the cases.
 - **Two-phase init forbids passing `self` as a delegate before `super.init()`.** A stored
   controller that needs `self` as its delegate becomes `var`, assigned once after `super.init()`.
 - **A protocol witness that must be `nonisolated`** (e.g. `SPUUpdaterDelegate`) can either read
@@ -216,6 +230,15 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     at once), and the termination handler needing a cooperative thread.
     `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1` passed as `TEST_RUNNER_…` did not limit the test host's
     pool (two tests still ran side by side), so it can't stand in for a small runner.
+- **The CI runner's display is 1x, so a pixel test that passes on a Retina Mac can fail there.**
+  `bitmapImageRepForCachingDisplay` captures at the window's screen scale. Measured 2026-10-15 on
+  `FieldBorderTests.darkensTheRingOnly`: CI found 24 changed pixels outside the allowed band in Light
+  and 32 in Dark, and a probe capturing the same field into an explicit 1x bitmap here found exactly
+  24 and 32, all on the four rounded corners, against 0 at 2x. At 1x a curve's anti-aliased pixels
+  have centers up to about 0.7 pt off the stroke. Capture at a fixed scale
+  (`BitmapPixels(capturing:scale:)`) rather than widening a margin until 1x passes, which can cost
+  the assertion its point: here it would have let a stroke drawn inside the field through. With the
+  scale pinned at 2x, a stroke moved 1 pt inside still fails the test.
 
 ### Windows, sheets and key events in a test
 
@@ -224,6 +247,11 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   because AppKit builds the loop when a window first appears. `orderFront` the test window (and close
   it after), and have the controller set `autorecalculatesKeyViewLoop = true` in `viewDidAppear`, so
   the real dialog doesn't depend on that timing either.
+
+- **A synthesized ⇧Tab is a forward Tab unless it carries the back-tab character.** keyCode 48 with
+  Shift held and `"\t"` as its characters moved focus *forward* (measured 2026-10-11 in
+  `ShortcutRecorderFocusTests`); a real ⇧Tab carries U+0019, and with that it went back. A test of
+  backward Tab built the obvious way passes or fails for reasons that have nothing to do with the code.
 
 - **`NSWindow.sendEvent` skips key equivalents, so a synthesized Escape or Return sent that way never
   reaches a button.** `NSApplication.sendEvent` offers a key event to the key window's
@@ -255,6 +283,11 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     let the probe **retain** its windows for the life of the process (`TrashlessProbe.window()`). A
     handful of retained windows in a test host costs nothing against a crash that reads as several
     broken features. Re-measured: 7/7 green, no restarts, and the full app suite 6/6.
+  - **Met again in CI on 2026-10-15, in `RemoteFetchPromptTests`.** Its Download test answered the
+    confirmation and then closed its window. The host died about 20 s into the next test,
+    "dismissing the confirmation starts nothing" (`objc_release` in an autorelease pool the main
+    actor popped), and CI listed that test. Its `probeWindow()` now hands out
+    `TrashlessProbe.window()`. Any suite that presents a real sheet needs the same.
   - **The wall clock lies about which fix worked.** The crashing runs took 23 s against a 12 s
     baseline, which reads as "these tests are slow" and invites tuning the waits; the restarts were
     the whole difference, and with them gone the suite costs ~6 s.
@@ -458,6 +491,36 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     process. It is a run-loop observer, so nothing main-actor-isolated is drained while it runs.
     Two clocks stalling identically while an independent thread does not is the whole discriminator,
     and it costs twenty lines.
+    - **By 2026-10-14 it was 12–21 s in one piece at the start of a full run**, at 1626 tests. A
+      wait that is the first thing its test does sits in it whole. `RemoteDirectorySizeTests`' first
+      listing landed 18–30.5 s in across seven runs (25 ms alone), and the pane's `Task` could not
+      even start until 7–21 s in. A detached task beside it was never more than 53 ms late. Such a
+      wait needs more than the house 30 s, and that one got 60 (HISTORY.md ▸ the 2026-10-14 entries).
+    - **A `sample` names whose code is on the main thread, not what makes the queue long.** The
+      stall's profile put 40% of samples in `MultiLineFieldTests`' per-pixel `colorAt` loop. Skipped,
+      the same wait landed at 30.1–30.5 s behind a 12.8 s stall: the other suites filled the time.
+      Skip the suspect for one run before believing a profile of a shared queue.
+    - **Count work after the test body too (2026-10-15).** A 30 s profile grouped by test frame
+      put 15.3% in `MultiLineFieldTests` and 43.7% across callers inside AppKit's blocking sheet
+      animation loop. Later profiles put 19–21% in `refreshTree` tasks with no test frame left.
+      Those tasks came from `PanelTreeBucketExpansionTests.localRowIsUntouched`: expanding its
+      missing row installed a watcher over `NSTemporaryDirectory()`, about 13,000 entries on this
+      Mac. Other suites' temp files kept it busy: 76 refresh tails cost 30.1 s of main-actor work.
+      Give a watched fixture its own directory and stop its watcher at cleanup. Replacing the
+      per-pixel `colorAt`/`#require` loops with checked raw-byte reads and moving the RAW decode to
+      `offCooperativePool` removed another ~5 s. No wait budget changed. Three completed full runs
+      had 10.6–15.1 s peak pauses and 15.1–20.6 s pane listing waits, against the initial 24.4–24.5 s
+      pauses. HISTORY.md's 2026-10-15 entry has the stages and controls.
+      - **The restore control still got an earlier listing once.** Restoring the old tests brought
+        back 79 large refresh tails (32.46 s) and the 4.5 s pixel loop, yet its listing landed in
+        14.22 s. Queue order can improve one clock while total work grows. Measure body time,
+        repeated work and several full runs alongside a stall meter; never use one latency alone.
+      - **Display capture bytes are premultiplied RGBA.** For these 8-bit, interleaved captures,
+        `colorAt` reports RGB divided by alpha, and alpha divided by 255. A byte comparison using
+        `/ 255` for every channel changes the tolerance at translucent edges. `BitmapPixels`
+        checks the format and row stride; its fixture covers transparent pixels, partial alpha and
+        padded rows. Comparing every component of the real field captures with `colorAt` differed
+        by at most 1.11e-16, with the old 0.02 and 0.01 difference thresholds kept.
   - **A negative wait sized in seconds goes vacuous under that stall, and only a control finds it.**
     The sibling test pinning "no progress sheet over the placeholder card" held 2.5 s — "the 1200 ms
     delay, twice" — while the sheet actually lands 2.9–6.3 s in, so it expired before one could have
@@ -872,9 +935,42 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   failure a test file has available (a green suite that ran nothing), and the only tell is the test
   *count*, which is why a run's count is worth reading rather than its verdict. It invalidated a
   measurement taken while it was in place, so re-take any measurement made across such an edit.
+- **A hosted pane seeded by assigning `pane.panel` is overwritten by the pane's own first listing,
+  and a test that rows *went away* then passes on a pane that never held them.** `loadViewIfNeeded`
+  starts `navigate(to: defaultPath)`, and its completion installs into whichever tab is in front
+  when it lands, guarded only by `loadToken`. Measured 2026-10-14 on `SearchHitDeleteTests`: three
+  tests failed, and the permanent-delete one *passed*, because its listing came up empty for the
+  wrong reason. Wait for `tabs[0].hasLoaded` first, then land the rows the way the product does
+  (`installResults` bumps `loadToken` for exactly this), and `#require` the rows are there before
+  acting on them. An unloaded pane does not have the race, which is why the validator tests beside
+  them could assign `panel` freely.
+  - **The same file's negative controls found a second one: an async re-check that the gesture
+    itself starts is still in flight when the test moves on.** The delete's own refresh re-reads the
+    disk, so a test that put the file back straight after was answered by *that* read, and passed
+    with the tab-switch hook it was written for deleted. `holdOutTheDeletePasses()` after the gesture
+    lets it finish first. Without reverting each hook in turn, both tests would have looked fine.
 
 ### Fixtures and shared state
 
+- **A test that deleted a directory a pane was watching crashed the test host. Fixed in the core on
+  2026-10-11, so a fixture no longer has to stop the watcher first.** Seen twice that day in
+  `PanelTreeLoadFailureTests`: `EXC_BAD_ACCESS` at address 0, on the `com.dirnex.fsevents` queue,
+  under `root_dir_event_callback` and `DirectoryWatcher.start`'s callback, while the main thread was
+  freeing the pane. A tree render starts a watcher on the root (`kFSEventStreamCreateFlagWatchRoot`),
+  and the fixture's cleanup deleted that root right as the pane went away. The stream then held an
+  unretained pointer to the watcher, and tearing it down does not wait for FSEvents (▸ Swift 6 and
+  concurrency), so the callback ran on a freed watcher and called a zeroed `onChange`. The run
+  showed *"Restarting after unexpected exit"* and ended `0 tests … passed` over `** TEST FAILED **`.
+  The app could hit it too, whenever a watcher was replaced or freed while its folder was changing.
+  `DirectoryWatcherTests` now reproduces it on purpose ("dropping a watcher while its root is
+  deleted"), which crashed 8 runs of 8 before the fix. The fixture's `pane.watcher = nil`
+  workaround is gone: without it, the suite crashed 8 runs of 10 against the old watcher, every
+  report the stack above, and passed 11 of 11 with the fix.
+  - **That test makes the `DirectoryWatcher` suite `.serialized`.** It starts and tears down a hundred
+    streams in under three seconds, and run beside it, "a file watcher stays silent for its siblings"
+    saw a stray callback after its 50 ms quiesce in 2 runs of 10. The same churn with plain
+    directories and no watchers failed it 0 times in 20, so the cause is the streams, not the disk.
+    Serialized, the suite passed 20 of 20.
 - **A date parsed from a year-less `ls` stamp lands at local midnight** (the formatter sets no
   zone), so read `.day` in the local calendar or the day shifts by one.
 - **A fixture that uses a process-wide cache must adopt a cached value in the same main-actor turn
@@ -1314,6 +1410,15 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   "Button", in the titlebar of a licensed copy. Hide the accessory's *content* and collapse the
   accessory's view to zero width (`LicenseTitlebarLabel.update`). Test what is drawn (the button's
   `isHidden` and the view's width), not the accessory's flag.
+- **In full screen, a `.fullSizeContentView` window is told nothing when its title bar drops over
+  the content.** Probed 2026-10-15 with a throwaway app on a 16-inch MacBook Pro: in the space, the
+  content view's `safeAreaInsets.top` is 0, `contentLayoutRect` is the whole window, and the title
+  bar has moved into a separate window. So a layout that must stay clear of the bar sizes for it
+  ahead of time (`QuickViewPreviewView+TopStrip`). The numbers: the window is 1084 pt under a 33 pt
+  band on a 1117 pt screen, and `NSApp.mainMenu?.menuBarHeight` is 33, so on a display with a camera
+  housing the menu bar drops into the band and only the title bar covers content. The title bar's
+  height is the close button's superview: 28 pt for a bare window, 32 pt for Dirnex, whose titlebar
+  accessories grow it. An accessory with a hand-set 40 pt frame did not grow it.
 
 ### Alerts, sheets and dialogs
 
@@ -1446,16 +1551,25 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   monitor is the way in.** A monitor runs *ahead of responder dispatch*, so it sees the key whatever
   the hosting view would have done with it — the same lever Quick View already uses to take Esc back
   from a focused `PDFView`. The cost is that it now sees **every** Escape in that window, so it has to
-  hand the key back to whoever legitimately owns it: a field editor mid-edit (which reverts the edit),
-  and any control that means something else by it — in Settings, the shortcut recorder, where Escape
-  cancels the capture. Mark those with a protocol on the *control* rather than listing class names in
-  the monitor; the knowledge belongs with the thing that wants the key.
+  hand the key back to whoever legitimately owns it: an input method mid-composition (Escape cancels
+  the marked text), and any control that means something else by it — in Settings, the shortcut
+  recorder, where Escape cancels the capture. Mark those with a protocol on the *control* rather than
+  listing class names in the monitor; the knowledge belongs with the thing that wants the key.
+  - **A focused SwiftUI `TextField` is *not* an owner, though it looks like one.** The monitor first
+    stood aside for any field editor, on the belief that Escape reverts the edit. Probed 2026-10-11
+    on both a `text:` field (with `axis: .vertical`) and a `value:format:` one: `performKeyEquivalent`
+    returned `false`, `interpretKeyEvents` left the typed text, the binding and the focus exactly as
+    they were, and the user got a beep. Reverting is a *delegate's* doing (`control(_:textView:
+    doCommandBy:)`, as the inline renames have), and SwiftUI installs none for it. So Settings ▸
+    License, whose key field holds the focus, could not be closed with Escape at all. Before standing
+    aside for a responder, check what it does with the key, rather than what such a responder usually
+    does.
   - Verify it in a **probe with `postEvent`, not through computer-use**: synthetic Escape is swallowed
     before the app entirely (LIVE-VERIFICATION.md), so the tool cannot tell a working monitor from a broken one — it
     shows the window simply staying open either way. `NSApp.postEvent` does reach a local monitor, so
-    a throwaway app carrying the identical monitor over a real `NSHostingController` pins all three
-    branches (nothing focused → closes; `_SystemTextFieldFieldEditor` focused → does not;
-    marked control focused → does not). The one step left for a human is the physical keypress.
+    a throwaway app carrying the identical monitor over a real `NSHostingController` pins the
+    branches (nothing focused → closes; marked control focused → does not). The one step left for a
+    human is the physical keypress.
 
 - **A Send button for a form with multi-line text fields is ⌘Return, and the key equivalent
   `"\r"` with `.command` does not claim a plain Return.** Pinned 2026-10-01 by
@@ -1557,6 +1671,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - A title bar arriving also makes any in-content headline a **duplicate**, and a display string
     that exists twice gets localized once (▸ Localization). Promote the existing headline to the window title
     and delete the label — its translations carry over untouched, since the key is the English text.
+  - **While one of these closes, it is still `NSApp.modalWindow`**: in its controller's
+    `viewDidDisappear`, and still when `dismiss(_:)` returns. It is `nil` one main-queue turn later
+    (probed 2026-10-08). So an alert raised from the close, through `NSAlert.sheetHost(over:)`,
+    attaches to the dying window and brings it back on screen, empty, with the alert in the middle.
+    Report a Bug…'s thank-you did exactly that. Raise it a turn later
+    (`BugReportPresenter`).
 - **`setFrameUsingName` restores the *position only* on a non-resizable window, and preserves the
   top-left while doing it.** Probed after the move above, because the obvious worry — a size saved by
   an older build coming back and fighting a fixed-size container — turns out not to exist: a frame
@@ -1610,6 +1730,28 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     reasoning was really protecting: build the view **expanded** so anything that has to be
     *measured* (a wrapping footer) is measured holding its real text, and collapse before the alert
     first lays out, since there is nothing to re-fit yet.
+- **An alert's message hyphenates a word too long for its line, so a code in it comes out with a
+  hyphen in the middle.** Seen live 2026-10-11 on Settings ▸ License's Remove License confirmation
+  (a SwiftUI `.alert`, an `NSAlert` underneath, macOS 26). Its message named the license ID, and a
+  real ID drew as `HMPPP4D3ZOPNAREKXVL-` / `HJ3D5LQ`. The English message's text box was 220 pt
+  wide in 13 pt SF. The test key's 26-character base32 ID measured 219.7 pt, and an all-`W` one
+  would be 325 pt. So no line holds every ID, and a line of its own doesn't help. Keep anything a
+  person must copy exactly (an ID, a key) out of an alert's message, or put it in a selectable
+  accessory field.
+  - **The width isn't fixed: the alert widens for some messages.** The same alert's text box was
+    220 pt in English, Japanese and Korean, and 252–268 pt in Italian, German, French and Spanish.
+  - **A TextKit layout of the field's string doesn't predict the hyphen.** `attributedStringValue`
+    reports `hyphenationFactor` 0, and an `NSLayoutManager` over it at the field's width reproduced
+    the live line breaks and never hyphenated. To see what the alert really draws, render the sheet
+    under each `-testLanguage`. `cacheDisplay` on its `contentView` works once
+    `sheet.appearance = NSAppearance(named: .aqua)` is set. Without that, Dark Mode's white text
+    draws on the bitmap's white, and the render looks empty apart from the buttons, as does
+    `dataWithPDF`.
+  - **Korean breaks a line inside an address, after `.` or `@`, where no other language did.** In
+    the other thirteen languages' renders every address stayed whole, or wrapped only after a `/`.
+    Korean split `dirnex.` / `app/ko/account` and `support@` / `dirnex.app`, with a
+    particle glued on and again with a space after the address. Only a line of its own kept it whole,
+    so the Korean message puts each address on one.
 
 ### Keyboard focus and the responder chain
 
@@ -1692,6 +1834,16 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     draws only while the system switch is off. At a 3 pt outset in `keyboardFocusIndicatorColor` it
     matched the system rings on the neighbouring stepper and switch. Nothing between a Settings well
     and its grouped row clips that close: the row leaves 10 pt around it.
+  - **A custom `NSView` that accepts first responder is on the Tab loop already, and draws no ring
+    until it supplies a mask.** Probed 2026-10-11 on the Settings ▸ Shortcuts pill, with the system
+    switch off: `canBecomeKeyView == true` without any patch, Tab from Filter walked pill → pill →
+    Filter, and `focusRingMaskBounds` was empty, so the focus went somewhere nobody could see.
+    `focusRingMaskBounds` plus `drawFocusRingMask` is the whole fix, as on `MultiLineField`'s scroll
+    view. The half worth carrying to the next custom control: the pill had been written on the
+    assumption that it holds focus *only* while recording, and marked itself `EscapeKeyConsuming`
+    outright, so a pill Tab had merely landed on swallowed Escape and Settings wouldn't close.
+    `consumesEscape` now answers per state. Once Tab can focus a control without activating it,
+    check every "focused means active" shortcut in it.
   - **The loop is built once, from where each control sits, and a row shown or hidden later leaves
     it wrong.** Connect to Server computes it from the SMB layout; switching to SFTP then tabbed
     Protocol → Password → Save as → Cancel → Connect → Host. Text fields had this problem all along,
@@ -1918,6 +2070,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 - **Right-click menu items must capture their paths at build time** into `representedObject`,
   and entry-vs-`..` must be decided from the clicked row, not a cursor flag — a right-click on a
   marked row leaves that flag stale.
+- **A key-equivalent probe run as a command-line `swiftc` binary judges ⌥ correctly and ⇧ not at
+  all.** Measured 2026-10-15 choosing the tab-move keys: `NSMenu.performKeyEquivalent` on hand-built
+  events told ⌥⌘[ from ⌘[ with the items in either order, while a plain ⌘W matched a ⇧⌘W item and
+  ⇧⌘M (characters `M`) matched nothing. The shipped menu does neither, so in that process shift
+  matching is not evidence in either direction. Settle a ⇧ chord inside the app's test target, or by
+  analogy with one that already ships, and keep a bare-chord item in the probe as the control.
 
 ### Tables and outline views
 
@@ -2068,6 +2226,38 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - The window-key state is a third one and is not reachable from either side: states 2 (window key,
     pane focused) and 3 (window not key) both read `isEmphasized == false` with no callback between
     them, so the tint stays on in a background window where macOS would drop it.
+- **The stripes under the last row are a separate view, and it repaints on a resize only when it
+  grows past the largest size it was last drawn at.** With `usesAlternatingRowBackgroundColors`, a
+  view-based table lays a private `NSTableBackgroundView` from `rect(ofRow: numberOfRows)` to its own
+  bottom, in `-[NSTableView layout]` (`_updateBackgroundViews`). Its `setFrameSize:` calls
+  `setNeedsDisplay:` only when the new width or height exceeds a size its `drawRect:` records, or
+  when its layer has no contents. Read off `dyld_info -disassemble` on AppKit, 2026-10-14. The layer
+  is top-left placed and redraws on `setNeedsDisplay` only. So when the pane's height changes between
+  two draws (the terminal drawer, a window resize) and the folder then loses rows, the view grows back
+  inside that size. `reloadData` repaints its *old* bounds, and the bottom band, as tall as the rows
+  that went, keeps pixels drawn for those rows. An odd count inverts the stripes there: two dark
+  rows in a row with a sliver of a light one between, on the pane's bottom edge. An even count is the
+  same staleness drawn right by luck. A resize clears it, which is why it comes and goes.
+  `TableFillerRepaint` repaints every non-row subview whole on `frameDidChangeNotification`, a move
+  alone included. **A striped table is a `StripedTableView` or a `StripedOutlineView`**, never a
+  plain `NSTableView`, and `StripedTableViewTests` builds every striped surface and fails on one
+  that isn't.
+  - **Repro**: in the app, Common (15 rows), open the drawer, go up to Dev (12 rows). For Quick View's
+    table: ⌃Q on a 7-row CSV, open the drawer, move to a 4-row one. In a scratch
+    table: 10 rows, the scroll view 100 pt shorter, 7 rows.
+  - **Instruments that can't see it**: `cacheDisplay` and `CALayer.render(in:)` redraw through the
+    view rather than reading the layer's backing store (`NSViewBackingLayerContents`, private), so
+    both show correct stripes over a broken screen. `NSView.needsDisplay` reads `false` straight after
+    being set on a layer-backed view, and `layer.needsDisplay()` is one bool that can't tell a partial
+    repaint from a whole one. What saw it: a scratch app capturing its own on-screen window with
+    `CGWindowListCreateImage` (obsoleted in the macOS 15 SDK, still exported, reached through
+    `dlsym`) and sampling every 22 pt cell, and a computer-use zoom of the live pane.
+  - **Overriding `drawBackground(inClipRect:)` makes AppKit drop that view altogether**, even an
+    override that only calls `super` (`_subclassOverridesDrawBackgroundInRect`): the table then
+    paints the whole visible background itself on every change. Not taken. It hangs on a hidden
+    switch, and a draw override is the kind of thing that can cost a table responsive scrolling.
+  - In a test, the view exists only in a window that is **on screen** (`orderFront`) and only after
+    the table's **second** layout pass: the first one makes the rows.
 
 #### Reloading and the row model
 
@@ -2289,8 +2479,85 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - **A probe disagreed with the app by three orders of magnitude.** A scratch app measured
     `scrollRangeToVisible` at 3.7–4.6 s for the same file, against 1 ms in Dirnex, and its screenshot
     drew no text at all, so what it measured was its own text view. Time TextKit in the app's own view.
+- **On macOS 26 a text field's look can't be drawn by hand; borrow a real field.** Probed 2026-10-08
+  for Report a Bug…'s text boxes, which sat as `.bezelBorder` scroll views under a modern email field.
+  The bezel, fill and focus ring come from a private `_NSCoreHostingView<AppKitTextField>` subview,
+  not the cell: `NSTextFieldCell.draw(withFrame:in:)` by hand differed in almost every pixel in Dark
+  Mode, and both the field's and the cell's focus-ring mask are empty. What works is
+  `MultiLineField`: a real field, inert, behind a transparent scroll view. Unfocused, it is
+  pixel-identical to a field of the same size, which a `cacheDisplay` test pins in both appearances.
+  - **Keep the inert field *editable*.** A non-editable one draws its border differently in Dark
+    Mode, about 90 pixels off on a 300 × 96 box; refusing first responder and a `hitTest` override
+    keep it from ever editing. To look *disabled* beside disabled fields, disable it: a disabled
+    field draws differently in both appearances, so the box forwards `isEnabled` to it.
+  - **A read-only field has a look of its own, and no focus ring.** Probed 2026-10-09: a
+    non-editable, selectable field draws differently from an editable one in both appearances (no
+    fill, a fainter border), and one clicked into takes focus and shows its selection but draws no
+    ring. So a read-only box makes its inert field read-only and turns its scroll view's ring off.
+  - **A field on screen animates a state change**, so a pixel test that sets editable, read-only
+    or disabled *after* the field is in a window catches it mid-change: the read-only case differed
+    in Light Mode that way. Set the state before hosting.
+  - **Drop the inert field's hugging and compression resistance to 1**, or it sizes the box. Pinned
+    to the box's edges, it held a box that a stack view should stretch (the scripts organizer's
+    Command) to its own one-line 24 pt.
+  - **A view inside a scroll view is never asked for a focus ring**, whatever its `focusRingType`:
+    `drawFocusRingMask` ran 0 times for an `NSTextView` and for a plain responder, against once each
+    outside one. The scroll view *is* asked, while its document view has focus, once its own type is
+    `.exterior` (not `.default`). It draws the system ring, with Keyboard navigation off as well.
+  - **The mask's radius is 6 pt, measured** against a focused 96 pt field: only anti-aliasing on the
+    arcs differed, and 5.5 or 6.5 pt left about twice as many pixels off.
+  - **`setAccessibilityElement(false)` on the inert field puts an empty `AXTextField` in the tree**,
+    the hosting view promoted into the field's place. Override the container's
+    `accessibilityChildren()` instead, and check by walking the tree in a test, not by reading the
+    property: the property test passed while the running app had the extra element.
+- **A macOS 26 field's border is a 1 pt ring just *outside* its frame, at 9% opacity**, which is why
+  it is so faint. Measured 2026-10-09: black at 9% in Light Mode, light gray at 9% in Dark Mode, the
+  same for editable, read-only and disabled fields, and for secure and token fields (only the fill
+  changes with state). There is no property for it, and giving one field a high-contrast appearance
+  changes nothing, pixel-identical, since the hosting view follows the system's Increase Contrast
+  setting instead. `FieldBorder` draws the ring again with `separatorColor` from a back-most subview
+  of every bezeled field, attached by patching `NSTextField.viewDidMoveToWindow`.
+  - **Stroke the centerline 0.5 pt outside the frame with a 6.5 pt radius.** A first try stroked
+    0.5 pt *inside* the frame and read as a second border inside the first; the pixel test that pins
+    the position (every changed pixel lies in the rounded band outside the frame) fails it by 2,240
+    pixels. At the corners the band has to be rounded too: a square band counts 36 pixels per corner
+    of a correct stroke as outside it.
+  - **A search field's ring is a capsule**, a radius of half its height, and white at 9% in Dark
+    Mode.
+  - **`isBordered = false` clears `isBezeled` too** (probed), so a table cell built from
+    `NSTextField()` and then unbordered is no bezeled field, and gets no ring.
+  - **SwiftUI's `TextField` is a bezeled `NSTextField`** (Settings ▸ Shortcuts' Filter got the ring),
+    except in a grouped `Form`, where it draws no bezel and gets none. `.textFieldStyle(.roundedBorder)`
+    makes it bezeled there too, multi-line (`axis: .vertical`) included, and with that it gets the
+    ring and a dimmed placeholder, which the borderless one drew in the text's own color (Settings ▸
+    License's key, probed 2026-10-09).
+
+- **AppKit's expansion tooltip (`allowsExpansionToolTips`) cannot be made to look like a panel of
+  your own, even when you override its drawing.** Measured 2026-10-15 with a log in
+  `draw(withExpansionFrame:in:)`: AppKit hands the cell an `NSCustomToolTipDrawView` inside an
+  `NSVisualEffectView`, in an `NSToolTipPanel` that is **opaque**, with a square white layer behind
+  everything. So a rounded panel the cell draws comes out square-cornered, and vibrancy turns its
+  `labelColor` text gray. The same drawing in an ordinary borderless child window (not opaque, clear
+  background) was rounded and dark: on the same row, the old hover panel differed from the ⌘-hold
+  panel by a mean of 25 in 255, and our own hover panel by 0.09. Changing that private window from
+  inside a draw call is the only way to bend it, so Dirnex floats its own (`ExpansionPanel`,
+  `HoverExpansion`) and leaves `allowsExpansionToolTips` off on file cells.
+  - **Its timing and size are worth copying, and both are measurable.** The panel appears **1.5 s**
+    after the last mouse-moved event (1.508 and 1.501 s), with no `NSInitialToolTipDelay` set
+    anywhere. The window is exactly the cell's `expansionFrame(withFrame:in:)` in screen
+    coordinates, rounded out to whole points. It has a shadow and sits at window level 103.
+  - **There is no public call to show it**, only the hover, so anything keyboard-driven needs its
+    own window anyway (`CursorNamePeek`).
 
 ### Views, layout and hit testing
+
+- **A view at zero alpha is still hit-tested, so a fading overlay goes on taking clicks after it
+  has faded.** `hitTest` skips hidden views, never transparent ones. The full-screen Quick View
+  header fades out to alpha 0, and its 30 pt kept answering the mouse over the first line of a text
+  file, which could then never be selected (2026-10-15). Moving what is underneath out of the
+  overlay's way fixed it (`QuickViewPreviewView+TopStrip`). The other way out is overriding
+  `hitTest` to return `nil` while faded, which a strip that also carries the system title bar
+  would not have been enough for.
 
 - **`NSView.clipsToBounds` is `false` by default, and `draw(_:)`'s `dirtyRect` can be larger than
   the view's bounds.** A backing fill of `dirtyRect` therefore paints over the view's *siblings*:
@@ -2347,6 +2614,22 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   `invalidateCursorRects(for:)` or the old cursor lingers until the pointer leaves the region. Still
   worth doing even once the overlay swallows the mouse (above): cursor rects are a separate
   mechanism from hit testing, so the `< | >` would otherwise still appear over a photograph.
+- **On an `NSSplitViewController` subclass, Swift demands `override` on
+  `splitView(_:constrainSplitPosition:ofSubviewAt:)`, but there is no `super` to call.** The header
+  says overrides of its delegate methods must call super, and
+  `super.splitView(…constrainSplitPosition…)` compiles clean in Swift 6 mode. But
+  `NSSplitViewController.instancesRespond(to:)` is **false** for that selector, and the call raises
+  `NSInvalidArgumentException` (unrecognized selector) on the first `setPosition` (both probed
+  2026-10-15). Only the five methods its header lists (`canCollapseSubview`, `shouldHideDivider`,
+  `effectiveRect`, `additionalEffectiveRect`, and the deprecated double-click one) take a super
+  call. AppKit sends `constrainSplitPosition` for every step of a drag and once
+  for each programmatic `setPosition(_:ofDividerAt:)`, and the subviews' frames still hold the
+  previous step when it arrives (`PanesSplitViewController`).
+  - **A divider drag can be driven in a test.** `NSSplitView` tracks the drag in its own loop,
+    pulling events off the queue, so post the `.leftMouseDragged` steps and the `.leftMouseUp` with
+    `NSApp.postEvent(_:atStart: false)` first, then `window.sendEvent` the `.leftMouseDown` on the
+    divider. It returns after the release, with the delegate called for each step and
+    `NSApp.currentEvent` set to each drag (`PanesDividerDetentTests`).
 - **Constraining a content-view subview to a view *inside* an `NSSplitView` works and is the way to
   overlay panes.** An `NSSplitView` treats a plain subview as a pane, so the overlay cannot be added
   to it; anchoring across the hierarchy to its edges tracks the divider, the sidebar and the drawer
@@ -2406,6 +2689,35 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     - The instrument that found it without guessing was the window's accessibility tree:
       `app_screenshot` listed the checkboxes at y 233–293 inside a window 168 pt tall, which says
       "laid out, scrolled out of sight" where a screenshot only says "blank".
+- **Siblings that share a compression-resistance priority do not share a squeeze.** The cost of
+  breaking an optional constraint is linear, so a shortfall costs the same wherever it lands, and
+  the solver puts all of it on some views and none on others. Measured on the tab strip
+  (2026-10-15): nine labels at `.defaultLow` in 600 pt came out as two whole titles and seven 4 pt
+  slivers. Giving each label its own priority only fixes the order in which they collapse. What
+  works is a shared cap that wants to be small: an `NSLayoutGuide` every sibling must fit under
+  (required), whose width wants 0 *just below* the siblings' compression resistance
+  (`TabBarView.chipCap`). The siblings that are over the cap come down to one common width, and
+  any already narrower keep their size. Because the cap sits below that priority, it never
+  compresses a sibling that has room, so a roomy layout is untouched.
+  - **A hidden sibling still pulls on the cap.** `NSStackView.detachesHiddenViews` takes a hidden
+    view out of the arrangement but **not** out of the view tree (probed: 12 of 12 hidden chips
+    still had a superview), so every constraint it has to views outside the stack stays active.
+    With eighteen tabs and twelve hidden, the hidden ones with long titles made lowering the cap
+    cost more than cutting one shown chip short, so Documents went to 83 pt ("Doc…", under the
+    floor) beside a whole 107 pt Downloads. Found live, after every test had passed, because no
+    test had hidden a long title. Switch a hidden sibling's cap constraint off and back on with
+    its `isHidden`. Activating it again is safe precisely because the view never left the tree.
+- **An `NSStackView` resists clipping at *required* by default, and that is what lets a full row
+  push its whole container wider.** A pane's tab strip fills the pane only at about 250 (the
+  pane's vertical stack edges it at `249.99998`), the same as the split view's holding priority,
+  so thirteen chips at their minimum width moved the divider 80 pt into the other pane. Read it
+  with `constraintsAffectingLayout(for: .horizontal)` on the row, then
+  `clippingResistancePriority(for:)` on its stack. Lowering the clipping resistance below 250
+  stays necessary even when `layout()` hides what does not fit (`TabBarView+Overflow`). Restoring
+  it to required, with the hiding in place, widened the pane again (negative control, 2026-10-15),
+  because the first solve after `setTabs` runs with every chip arranged, before `layout()` has
+  hidden any. Keep the labels' compression resistance below the clipping resistance, so labels
+  shorten before anything clips.
 
 ### Mouse, trackpad and animation
 
@@ -2581,6 +2893,19 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     because M17 authored those values against `.textBackgroundColor` and they clear AA *there*. So a
     code fence that carries syntax colors is delimited by a **border** and keeps the page's own
     background; the fill is only safe on inline code, which carries `.textColor` and nothing else.
+- **A layer's `cgColor` is frozen at whichever appearance was current when it was taken.** The tab
+  chip set `layer.backgroundColor` from `.unemphasizedSelectedContentBackgroundColor` whenever its
+  state changed, so after a switch from dark the inactive pane's tab stayed `#464646` in a light
+  window, black text on it, beside a cursor row correctly drawn `#DCDCDC` (2026-10-15). A view's
+  `textColor` and `contentTintColor` resolve at draw time and never show this, which is why only the
+  layer fill went wrong. Set it in `updateLayer()` with `wantsUpdateLayer` true: AppKit runs that
+  under the view's own appearance and re-runs it when the appearance changes, with no
+  `viewDidChangeEffectiveAppearance` override (probed).
+  - **In a test, only the view's own `displayIfNeeded()` reaches `updateLayer`.** In a window that
+    is never ordered in, `display()` on the window, or `displayIfNeeded()` on any ancestor, clears
+    the view's `needsDisplay` and leaves its layer untouched (probed, so the first test read a nil
+    fill). Then `window.appearance = …` plus `chip.displayIfNeeded()` drives the real mechanism,
+    the appearance made current included (`TabChipAppearanceTests`).
 
 ### Progress and status displays
 
@@ -3083,6 +3408,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Drag and drop, and handing files to other apps
 
+- **A template SF Symbol drawn into a hand-drawn drag image comes out black.** Nothing tints it
+  outside a view, so a tab chip's glyph that is white on the accent in the strip turned black in
+  the image the pointer carries. Measured 2026-10-15 in `TabSourceGlyphTests`: color it with
+  `SymbolConfiguration(paletteColors: [text])`, and draw it at the live subview's frame so the image
+  matches the chip rather than repeating its layout. The `.sourceAtop` rule under ▸ Tables is the
+  general answer for any template image; this one is only ever a symbol.
 - **An `NSFilePromiseProvider` can carry a private pasteboard type alongside its promise, and that
   is what keeps one drag from being two.** Measured 2026-08-26 on a real board while building M23's
   drag-out: a subclass overriding `writableTypes(for:)`, `writingOptions(forType:pasteboard:)` and
@@ -3426,6 +3757,17 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
     `Bundle(url:)?.preferredLocalizations.first?.hasPrefix("en")` — and keep the
     language-independent claims (no `.app` suffix, the bundle id) unconditional. Those are the
     claims the test existed for anyway; the app name was the incidental part.
+  - **`xcodebuild test … -testLanguage en -testRegion US` runs the suite in English without
+    touching the pin.** It passes `-AppleLanguages` as a launch argument, which outranks the app's
+    own domain. Under a pin it is the only way the `readsEnglish`-guarded half of a wording suite
+    runs at all, so run the suite both ways after touching one. Measured 2026-10-11 under a
+    Ukrainian pin, 7 tests in `ArchiveWriteBackBatchTests`, `WriteBackBatchTests` and
+    `QueueBarDetailReadoutTests` failed on English literals, and were moved to that guard.
+  - **A negative assertion on an English word passes in every other language without testing
+    anything.** `#expect(!line.contains("No matches"))` holds under a Ukrainian pin whatever the
+    line says, so the pinned run never fails and never measures. Compare against the app's own
+    `String(localized:)` with the same key and comment instead, or guard it by `readsEnglish` and
+    give the test a claim that holds in every language beside it.
 - **Locale-dependent formatting came free and region stays put.** `ByteCountFormatter` and
   `DateFormatter` already follow the current locale, so sizes and dates localized with no code
   change — and because `AppleLanguages` sets the *language* only, a Russian UI on a European region
@@ -3766,6 +4108,14 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
     macOS 26 a second sheet on a window that already has one is **no longer queued invisibly** —
     it stacks, visible and key, which retires the older observation recorded above under
     `sheetHost(over:)`. The bug was in the binding all along, not in who held focus.
+- **A translated SwiftUI `.alert` keeps Escape on its `role: .cancel` button**, where a plain
+  `NSAlert` loses it. Measured 2026-10-11 on Settings ▸ License's Remove License confirmation under
+  `xcodebuild test -testLanguage ru`: the sheet is an `NSAlert` underneath, and its «Отмена», from
+  `Button("Cancel", role: .cancel)`, carried `keyEquivalent` 27. The Russian text was read back from
+  the sheet in the same run, since a pass under `-testLanguage` proves nothing until the host is
+  shown to be in that language. Only the role-carrying spelling was measured, not a cancel button
+  without one. `scripts/check_alert_escape.py` doesn't see these alerts. `LicenseRemovalTests` pins
+  the one measured.
 
 ## Lint ceilings and file splitting
 
@@ -4098,6 +4448,27 @@ do not share a resolver, and neither half of that is obvious from either call si
     password** silently mangles the URL's host and the tool answers *"No route to host"* — which
     reads as the NAS being unreachable, on a host that pings and whose 445 is open. Percent-encode
     the password before believing any `smbutil` failure.
+
+- **A share can grant the `opendir` and refuse the `readdir`, and a loop that stops on `NULL` shows
+  that refusal as an empty folder.** Measured 2026-10-11 on the NAS's `media` share, whose
+  `#recycle` the mounting account may not list: `opendir` succeeds, the first `readdir` returns
+  `NULL` with `errno` **`EACCES`**, and `ls` says *"fts_read: Permission denied"* — while DSM's File
+  Station listed three items in it. `LocalBackend` read `NULL` as the end of
+  the directory, so the pane showed `..` alone and no error. No local filesystem behaves this way
+  (APFS refuses at the `open`), which is why nothing caught it; the listing now takes `readdir` as a
+  seam so the tests can fail it at the first read and partway.
+  - **The cause was DSM's per-folder *Restrict access to administrators only*** (Control Panel ▸
+    Shared Folder ▸ Edit ▸ General, under *Enable Recycle Bin*), confirmed by Oleg the same day: ticked
+    on `media`, unticked on `home`, which is why the 2026-09-20 Put Back work never met it. It closes
+    the whole bin, not only its listing — `stat` of a name inside was refused too. Two shares on one
+    NAS can disagree, so a bin that works on one proves nothing about the next.
+  - **Clear `errno` before every `readdir`, not once.** With the clearing removed, folders of plain
+    files failed with `notFound`: an `ENOENT` is nearly always left on the thread from something
+    earlier, and a dangling symlink's follow-up `fstatat` leaves its own just before the end.
+  - **A refusal under `/Volumes/<share>` is the server's, and Full Disk Access cannot change it.**
+    The share is browsed by `LocalBackend`, so the remote test in `VFSErrorText` cannot see it; the
+    sentence now asks `NetworkVolume.root(of:)` (`volumeIsLocal == false`) and gives the server's
+    wording.
 
 ### bsdtar
 
@@ -8046,6 +8417,26 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
 - The fork checklist in [TRADEMARKS.md](../TRADEMARKS.md) includes **the Sparkle appcast URL**;
   that's the row with teeth, since a fork left pointing at our feed would push official Dirnex
   builds onto its users.
+- **A NOTICE that names a component without its license text does not meet MIT or BSD, and neither
+  does one left in the repo.** Both ask for their text with every copy, binary copies included. Until
+  2026-10-15 `NOTICE` listed Sparkle and GPR with copyright lines only, missed SwiftTerm, and the app
+  bundle carried no `NOTICE` or `LICENSE` at all. Now `NOTICE` holds every license in full, the
+  project's Resources phase copies both files into the app, `scripts/build_app.sh` refuses an export
+  whose copies differ from the repo's, and `AboutPanelTests` fails when a Swift package is added
+  without a word in `NOTICE`.
+  - **Read what a bundled binary links, not what its README says.** `gpr_tools`'s CMake target
+    (`source/app/gpr_tools/CMakeLists.txt` at the pinned commit) also links cJSON (MIT) and
+    ITU/ISO/IEC's md5 and program-options code (BSD), which nothing had listed. Adobe's DNG SDK and
+    XMP Core are **BSD** there (`source/lib/*/BSD-License.txt`), not the "Adobe license agreement"
+    the per-file headers mention.
+  - **Sparkle's `LICENSE` carries four more licenses inside it** (bsdiff, sais-lite, Ed25519,
+    SUSignatureVerifier.m), so it is copied whole rather than summarized.
+- **The About panel opens a link in its credits through Launch Services; the app never sees the
+  click.** The credits text view's delegate is AppKit's private `NSSystemInfoPanel`, and it hands the
+  URL to `NSWorkspace` (probed 2026-10-15). So **Acknowledgments** is `dirnex://acknowledgments`,
+  which comes back through `application(_:open:)`, and with two copies of Dirnex on the Mac it reaches
+  whichever one Launch Services picks (▸ Release pipeline, the `dirnex://` trap). The panel shrinks
+  its credits box to fit short credits, with no scroller; past about 140 pt it scrolls.
 
 ### License keys: one format, two languages (M29)
 
@@ -9631,6 +10022,13 @@ overturned the obvious implementation.
   iCloud row, a bucket, an SFTP directory and a folder inside an archive were all expandable the
   whole time, and widening the gate needed **no core change at all**. The tell is a gate whose stated
   justification describes the rows while its expression reads the container.
+  - **F8 was the same gate, found on 2026-10-14.** `deleteSelection` and its validator read
+    `capabilities(for: panel.path)`, which a results pane answers `.read`, so every search hit was
+    refused while it sat in a folder that could delete it. `DeleteRouting` asks each row's own
+    directory, as F2 has since 2026-08-22, and the weakest answer wins. The grep that finds the
+    next one: `capabilities(for: panel.path)` behind a gesture that acts on `selectionTargets()`.
+    The two left at that date are F7's and ⇧F4's *create* gates, where the pane's own folder is the
+    right subject.
   - **It failed as a *dead end* rather than as an absence, because the shape outlives the gate.**
     `Panel.setModel` re-roots a tree across a navigation instead of dropping one, and
     `installResults` — the in-place install a merged listing uses — never called `applyViewMode`, the

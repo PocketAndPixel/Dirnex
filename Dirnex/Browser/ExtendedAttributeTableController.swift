@@ -11,7 +11,7 @@ import DirnexCore
 @MainActor
 final class ExtendedAttributeTableController: NSObject {
     private let attributes: [ExtendedAttribute]
-    private let tableView = NSTableView()
+    private let tableView = StripedTableView()
 
     init(attributes: [ExtendedAttribute]) {
         self.attributes = attributes

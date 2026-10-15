@@ -7,17 +7,18 @@ import DirnexCore
 /// The window (`BrowserWindowController`) owns the mode and decides where the preview goes — the
 /// inactive pane at ⌃Q, over both panes at ⌃⇧Q, over the whole window at ⌃⌥Q. The preview itself
 /// is a `QuickViewPreviewView`, identical at every size; a pane only knows how to (a) keep one
-/// pinned over its own list and (b) report the file under its cursor.
+/// pinned over its own list, path bar and status line, and (b) report the file under its cursor.
 extension PanelViewController {
     /// Cover this pane's file list with a live preview of `url` (the file under the *other* pane's
     /// cursor), drawn in `style`. Lazily builds the surface on first use. `nil` clears it to a blank
     /// preview — the cursor is on `..` or an empty directory, so there is nothing to show.
     ///
-    /// The style is handed in rather than read here, so the window that owns the mode is the one
-    /// place that answers "which style are we in" for every surface it drives.
+    /// The style and the caption are handed in rather than worked out here, so the window that owns
+    /// the mode is the one place that answers "which style are we in" for every surface it drives.
     func showQuickViewPreview(
         of url: URL?,
         style: QuickViewRenderStyle,
+        caption: QuickViewCaption?,
         placeholder: RemotePreviewPlaceholder? = nil,
         actions: RemotePreviewActions? = nil
     ) {
@@ -25,6 +26,7 @@ extension PanelViewController {
         preview.isHidden = false
         preview.placeholderActions = actions
         preview.show(url, style: style, placeholder: placeholder)
+        preview.setCaption(caption)
     }
 
     /// Uncover the file list, restoring the normal pane. Safe to call when Quick View was never
@@ -84,7 +86,7 @@ extension PanelViewController {
         tableView.scrollRowToVisible(parentRowCount)
     }
 
-    /// What a full-size preview's header says about this pane's cursor (PLAN.md §M11). Counts
+    /// What a preview's header says about this pane's cursor (PLAN.md §M11). Counts
     /// entries, not table rows: `..` is not one of the files being flipped through, so counting it
     /// would put the last file at "7 of 8" with no eighth to reach. `nil` when there is nothing to
     /// name — an empty directory, or the `..` row of one.
@@ -93,23 +95,31 @@ extension PanelViewController {
         return QuickViewCaption(name: entry.name, position: panel.cursor + 1, count: panel.count)
     }
 
-    /// Build this pane's preview surface on first use and pin it over the scroll view. The list
-    /// under it stays laid out (only covered), so uncovering it needs no relayout. Backed with the
-    /// dynamic `textBackgroundColor` so a preview that doesn't fill the pane can't let the table
-    /// bleed through.
+    /// Build this pane's preview surface on first use and pin it from the top of the path bar to the
+    /// bottom of the status line, covering the file list between them. Both of those describe *this*
+    /// pane's folder, which is not what the surface is showing — the file comes from the other pane —
+    /// so the header takes the path bar's place and the item count goes with it (2026-10-14). The
+    /// tab strip above it stays.
+    ///
+    /// Covered rather than hidden, so nothing in the pane moves: the list stays laid out under the
+    /// surface and uncovering it needs no relayout. Backed with the dynamic `textBackgroundColor` so
+    /// a preview that doesn't fill the pane can't let the table bleed through.
+    ///
+    /// The header is the full-window one, pinned: the same name, position and `1` / `2` styles, at
+    /// the size where the keys work too.
     private func ensureQuickViewPreview() -> QuickViewPreviewView {
         if let preview = quickViewPreview { return preview }
         let preview = QuickViewPreviewView(
             backingColor: .textBackgroundColor,
-            header: .none,
+            header: .pinned,
             findOptions: .standard
         )
         view.addSubview(preview)
         NSLayoutConstraint.activate([
             preview.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
             preview.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            preview.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            preview.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor)
+            preview.topAnchor.constraint(equalTo: pathBar.topAnchor),
+            preview.bottomAnchor.constraint(equalTo: statusLabel.bottomAnchor)
         ])
         quickViewPreview = preview
         return preview

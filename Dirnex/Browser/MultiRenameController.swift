@@ -39,7 +39,7 @@ final class MultiRenameController: NSViewController {
     private let digitsField = NSTextField()
 
     // Preview + footer
-    private let tableView = NSTableView()
+    private let tableView = StripedTableView()
     private let scrollView = NSScrollView()
     private let statusLabel = NSTextField(labelWithString: "")
     private let renameButton = NSButton()

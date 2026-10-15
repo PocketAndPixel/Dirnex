@@ -4,13 +4,14 @@ import Testing
 
 @testable import Dirnex
 
-/// The expansion tooltip a file row floats when its column is too narrow for the name.
+/// The cell that sizes and draws the panel a file row floats when its column is too narrow for the
+/// name (`ExpansionPanel`).
 ///
 /// Presentation, so it is tested here rather than in `DirnexCore`, like `PanelPaletteTests` and
 /// `RowDensityTests`. What a headless test *can* reach is the part that fails quietly: the
 /// mechanism that installs the custom cell, and the color pushed into it. The drawing itself was
 /// verified against the live pane in both appearances — no bitmap here would prove it, since the
-/// panel is painted into a window AppKit makes on hover.
+/// panel is painted into a window that exists only while it is up.
 @Suite("Expansion tooltip")
 @MainActor
 struct ExpandingLabelTests {
@@ -24,18 +25,56 @@ struct ExpandingLabelTests {
         #expect(label.cell is ExpandingLabelCell)
     }
 
-    /// The opt-in itself. Every column gets it — a Date narrowed past its content truncates the
-    /// same way a name does.
-    @Test("every file cell offers to expand a truncated value")
-    func fileCellsOptIn() {
+    /// The padding is added around AppKit's own width at the label's own height, measured against a
+    /// stock label of the same string and width. AppKit's frame is a point taller than the label, all
+    /// of it below, which hung the panel a point low; the stock height here keeps that visible. The
+    /// empty case matters more than the padded one: AppKit answers an empty frame for a value that
+    /// fits, and padding that would float a panel over every row.
+    @Test("a truncated value floats in a padded panel, and one that fits floats nothing")
+    func expansionFrameIsPaddedOnlyWhenTruncated() throws {
+        let name = "WestWorld.S01E09.The.Well-Tempered.Clavier.mkv"
+        let label = ExpandingLabel(labelWithString: name)
+        let stock = NSTextField(labelWithString: name)
+        let cell = try #require(label.cell)
+        let stockCell = try #require(stock.cell)
+
+        // At its natural height, as the row lays it out: AppKit's extra point is relative to that.
+        for field in [label, stock] {
+            field.frame = NSRect(x: 0, y: 0, width: 120, height: field.intrinsicContentSize.height)
+        }
+        let stockFrame = stockCell.expansionFrame(withFrame: stock.bounds, in: stock)
+        #expect(!stockFrame.isEmpty)
+        #expect(stockFrame.height > stock.bounds.height)
+        let padding = ExpandingLabelCell.padding
+        let atLabelHeight = NSRect(
+            x: stockFrame.minX,
+            y: label.bounds.minY,
+            width: stockFrame.width,
+            height: label.bounds.height
+        )
+        #expect(
+            cell.expansionFrame(withFrame: label.bounds, in: label)
+                == atLabelHeight.insetBy(dx: -padding.width, dy: -padding.height)
+        )
+
+        label.frame.size.width = 1000
+        #expect(cell.expansionFrame(withFrame: label.bounds, in: label).isEmpty)
+    }
+
+    /// Every column floats a truncated value through the custom cell — a Date narrowed past its
+    /// content truncates the same way a name does — and none through AppKit's own tooltip, whose
+    /// panel looks different from the ⌘ hold's (`ExpansionPanel`). Both at once would float two.
+    @Test("every file cell floats through the custom cell, never AppKit's own tooltip")
+    func fileCellsUseTheCustomPanel() {
         for showsImage in [true, false] {
             let cell = FileCellView(
                 showsImage: showsImage,
                 identifier: NSUserInterfaceItemIdentifier("test")
             )
             let field = try? #require(cell.textField)
-            #expect(field?.allowsExpansionToolTips == true)
+            #expect(field is ExpandingLabel)
             #expect(field?.cell is ExpandingLabelCell)
+            #expect(field?.allowsExpansionToolTips == false)
         }
     }
 

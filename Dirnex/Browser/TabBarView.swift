@@ -6,14 +6,28 @@ import AppKit
 protocol TabBarViewDelegate: AnyObject {
     func tabBar(_ bar: TabBarView, didSelectTabAt index: Int)
     func tabBar(_ bar: TabBarView, didCloseTabAt index: Int)
-    func tabBar(_ bar: TabBarView, didMoveTabFrom source: Int, to destination: Int)
+    /// One of this bar's chips was dropped into `slot`, a gap between its tabs (`TabSlot`).
+    func tabBar(_ bar: TabBarView, didMoveTabFrom source: Int, toSlot slot: Int)
+    /// The chip at `index` of `source` — the other pane's strip — was dropped into `slot` of this one.
+    func tabBar(
+        _ bar: TabBarView,
+        didReceiveTabAt index: Int,
+        from source: TabBarView,
+        atSlot slot: Int
+    )
+    /// A chip's menu asked for its tab to move to the other pane.
+    func tabBar(_ bar: TabBarView, didRequestOtherPanelForTabAt index: Int)
+    /// A drag of one of this bar's chips started (`true`) or ended, however it ended.
+    func tabBar(_ bar: TabBarView, tabDragIsInFlight inFlight: Bool)
     func tabBarDidRequestNewTab(_ bar: TabBarView)
 }
 
 /// A pane's tab strip: one chip per open directory plus a trailing `+`. The active
 /// chip is filled (accent when the pane is active, muted otherwise); chips carry a
-/// close button and can be dragged to reorder. Hidden when a pane has a single tab so
-/// the browser looks unchanged until you actually open a second one.
+/// close button and a menu, and can be dragged along the strip or onto the other pane's
+/// (`TabBarView+Drag`). Tabs that do not fit at a readable width wait behind a » before the `+`
+/// (`TabBarView+Overflow`). Hidden when a pane has a single tab so the browser looks unchanged
+/// until you actually open a second one.
 @MainActor
 final class TabBarView: NSView {
     weak var delegate: TabBarViewDelegate?
@@ -26,10 +40,45 @@ final class TabBarView: NSView {
         }
     }
 
+    /// Set by the pane while a chip from the *other* pane's strip is being dragged: the strip shows
+    /// even at a single tab, because it is the drop target and a hidden view receives no drops.
+    var isRevealedForDrag = false
+
+    /// The pasteboard type of a chip being dragged, carrying its index. Private to the app and
+    /// offered to nothing outside it, so a tab dropped anywhere else is never read as a folder.
+    static let tabDragType = NSPasteboard.PasteboardType("com.dirnex.tab")
+
+    /// Gap between chips; the insertion marker sits in the middle of it.
+    static let chipSpacing: CGFloat = 3
+
     private let stack = NSStackView()
-    private let newButton = NSButton()
-    private var chips: [TabChipView] = []
+    let newButton = NSButton()
+    /// The » after the last chip when some tabs do not fit, listing them (`TabBarView+Overflow`).
+    let overflowButton = NSButton()
+    /// One width every chip is held under, kept as small as the strip allows, so an overfull strip
+    /// shrinks its chips fairly. Every label resists compression at the same priority, and a tie
+    /// lets Auto Layout put the whole shortfall on whichever labels it likes: some collapse to
+    /// nothing while others stay whole. With a shared cap that wants to be small, the cheapest
+    /// layout is the even one. The widest chips come down to one common width, and a chip already
+    /// narrower than that keeps its whole label. A roomy strip is untouched, because the cap gives
+    /// way to every label's compression resistance.
+    private let chipCap = NSLayoutGuide()
+    /// Each chip's hold under `chipCap`, in chip order. Only the chips on the strip are held: a
+    /// hidden chip stays in the view tree, and a long title held there makes lowering the cap cost
+    /// more than cutting one shown chip short, so the squeeze stops being shared.
+    private(set) var capConstraints: [NSLayoutConstraint] = []
+    private(set) var chips: [TabChipView] = []
     private(set) var activeIndex = 0
+    /// The tabs that have a chip on the strip now: all of them, or a run holding the active one
+    /// (`TabOverflow`). Worked out again on every layout, from the strip's width.
+    var visibleRange: Range<Int> = 0..<0
+    /// Where the last overfull run started. It outlives `setTabs`, so switching to a tab already
+    /// on the strip leaves the run where it was.
+    var runStart = 0
+    /// The chip of this bar being dragged right now, drawn faded until the drag ends.
+    var draggedIndex: Int?
+    /// The line drawn in the gap a dragged chip would drop into.
+    let insertionMarker = NSView()
 
     /// Re-apply the user's accent to every chip after it changes (PLAN.md §M15 Slice 2). Unlike
     /// `isActivePane`, nothing about a chip's own state has moved — only the color it resolves —
@@ -52,14 +101,30 @@ final class TabBarView: NSView {
         NSSize(width: NSView.noIntrinsicMetric, height: 24)
     }
 
+    /// Which tabs fit is decided here, from the width the pane has just given the strip, before
+    /// the chips are placed. Hiding a chip detaches it from the stack.
+    override func layout() {
+        updateOverflow()
+        super.layout()
+    }
+
     private func configure() {
         translatesAutoresizingMaskIntoConstraints = false
         setContentHuggingPriority(.required, for: .vertical)
 
         stack.orientation = .horizontal
         stack.alignment = .centerY
-        stack.spacing = 3
+        stack.spacing = Self.chipSpacing
         stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.detachesHiddenViews = true
+        // The strip fills its pane only at about 250, the split view's holding priority too, and a
+        // stack resists clipping at required by default: so chips that did not fit pushed the
+        // divider into the other pane. Below 250 the strip clips instead, which lasts only until
+        // `layout()` hides the chips that do not fit. Above the labels', so they shorten first.
+        stack.setClippingResistancePriority(
+            TabChipView.labelCompressionResistance + 10,
+            for: .horizontal
+        )
 
         newButton.image = NSImage(
             systemSymbolName: "plus",
@@ -80,32 +145,64 @@ final class TabBarView: NSView {
             localized: "New Tab (⌘T)",
             comment: "Tooltip on the new-tab (+) button; ⌘T is the keyboard shortcut."
         )
+        configureOverflowButton()
 
         addSubview(stack)
+        addLayoutGuide(chipCap)
+        // Below the labels' compression resistance, so the cap only ever breaks their tie.
+        let smallestCap = chipCap.widthAnchor.constraint(equalToConstant: 0)
+        smallestCap.priority = TabChipView.labelCompressionResistance - 1
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: trailingAnchor),
-            stack.centerYAnchor.constraint(equalTo: centerYAnchor)
+            stack.centerYAnchor.constraint(equalTo: centerYAnchor),
+            chipCap.leadingAnchor.constraint(equalTo: leadingAnchor),
+            chipCap.topAnchor.constraint(equalTo: topAnchor),
+            chipCap.heightAnchor.constraint(equalToConstant: 0),
+            smallestCap
         ])
+
+        // Laid out by hand, outside the stack, so showing it never shifts a chip.
+        insertionMarker.wantsLayer = true
+        insertionMarker.isHidden = true
+        addSubview(insertionMarker)
+        registerForDraggedTypes([Self.tabDragType])
+    }
+
+    /// What one chip shows: the tab's label, and the SF Symbol for where its listing comes from
+    /// (`SidebarPlacePresentation.symbolName(for: LocationSource)`).
+    struct Item: Equatable {
+        let title: String
+        let symbolName: String
     }
 
     /// Rebuild the chip row. Cheap enough to call on every tab-list change — a pane
     /// rarely has more than a handful of tabs.
-    func setTabs(_ titles: [String], activeIndex: Int) {
+    func setTabs(_ items: [Item], activeIndex: Int) {
         self.activeIndex = activeIndex
         for view in stack.arrangedSubviews {
             stack.removeArrangedSubview(view)
             view.removeFromSuperview()
         }
-        chips = titles.enumerated().map { index, title in
-            let chip = TabChipView(index: index, title: title, bar: self)
+        chips = items.enumerated().map { index, item in
+            let chip = TabChipView(index: index, item: item, bar: self)
             chip.isActive = index == activeIndex
             chip.isPaneActive = isActivePane
+            chip.alphaValue = index == draggedIndex ? TabChipView.draggedAlpha : 1
             return chip
         }
         for chip in chips {
             stack.addArrangedSubview(chip)
         }
+        capConstraints = chips.map { $0.widthAnchor.constraint(
+            lessThanOrEqualTo: chipCap.widthAnchor
+        ) }
+        NSLayoutConstraint.activate(capConstraints)
+        // Every chip shows until the next layout has the width to say which fit.
+        visibleRange = chips.indices
+        overflowButton.isHidden = true
+        needsLayout = true
+        stack.addArrangedSubview(overflowButton)
         stack.addArrangedSubview(newButton)
 
         // A greedy trailing spacer keeps chips packed to the left.
@@ -126,55 +223,96 @@ final class TabBarView: NSView {
         delegate?.tabBar(self, didCloseTabAt: chip.index)
     }
 
-    /// A chip was dragged and released at `locationX` (this view's coordinates); move
-    /// it to whichever slot that x falls into.
-    func chipDidDrag(_ chip: TabChipView, toLocationX locationX: CGFloat) {
-        let destination = destinationIndex(forX: locationX)
-        guard destination != chip.index else { return }
-        delegate?.tabBar(self, didMoveTabFrom: chip.index, to: destination)
-    }
-
-    private func destinationIndex(forX x: CGFloat) -> Int {
-        for chip in chips where x < chip.frame.midX {
-            return chip.index
-        }
-        return max(chips.count - 1, 0)
-    }
-
     @objc private func newTabClicked() {
         delegate?.tabBarDidRequestNewTab(self)
     }
 }
 
-/// One tab chip. Handles its own click (select), close-button, and drag-to-reorder;
+/// One tab chip. Handles its own click (select), close button, menu and the start of a drag;
 /// the bar routes those to the pane. `hitTest` funnels clicks anywhere on the chip
 /// (including its label) to the chip itself, reserving only the close button.
 @MainActor
 final class TabChipView: NSView {
+    /// How faded the chip being dragged is drawn, so the gap it left is legible.
+    static let draggedAlpha: CGFloat = 0.35
+    /// How far the pointer must travel before a press becomes a drag rather than a click.
+    static let dragThreshold: CGFloat = 4
+    /// How hard a label holds out against being shortened. Low enough that the strip's clipping
+    /// resistance, ten above it, still sits below the 250 at which the strip fills its pane.
+    static let labelCompressionResistance = NSLayoutConstraint.Priority.defaultLow - 20
+    /// The widest a chip is drawn, whatever its title.
+    static let maximumWidth: CGFloat = 180
+    /// The shortest label a chip keeps before its tab goes to the overflow menu: about six letters
+    /// and an ellipsis, measured as a label so the field's own padding is in it.
+    static let minimumLabelWidth: CGFloat = {
+        let sample = NSTextField(labelWithString: "xxxxxx…")
+        sample.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        return sample.intrinsicContentSize.width
+    }()
+
+    /// The chip's fixed gaps, from its leading edge: before the glyph, glyph to label, label to the
+    /// close button, the close button's width, and after it.
+    private enum Gap {
+        static let leading: CGFloat = 7
+        static let glyph: CGFloat = 4
+        static let label: CGFloat = 5
+        static let close: CGFloat = 12
+        static let trailing: CGFloat = 6
+    }
+
     let index: Int
+    /// The SF Symbol drawn before the label, naming where the tab's listing comes from.
+    let symbolName: String
     private weak var bar: TabBarView?
+    private let icon = NSImageView()
     private let label = NSTextField(labelWithString: "")
     private let closeButton = NSButton()
 
     var isActive = false { didSet { applyStyle() } }
     var isPaneActive = false { didSet { applyStyle() } }
 
-    private var pressOriginX: CGFloat = 0
+    private var pressOrigin: NSPoint = .zero
+    /// Set once this press has turned into a drag, which then owns the gesture: the session runs its
+    /// own event loop and the chip sees no `mouseUp`, so a click must not fire either.
     private var didDrag = false
 
-    init(index: Int, title: String, bar: TabBarView) {
+    var title: String {
+        label.stringValue
+    }
+
+    /// The glyph's size: the label's own point size, as the path bar's leading glyph is drawn.
+    static var symbolConfiguration: NSImage.SymbolConfiguration {
+        NSImage.SymbolConfiguration(pointSize: NSFont.smallSystemFontSize, weight: .regular)
+    }
+
+    init(index: Int, item: TabBarView.Item, bar: TabBarView) {
         self.index = index
+        symbolName = item.symbolName
         self.bar = bar
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
         wantsLayer = true
         layer?.cornerRadius = 5
 
-        label.stringValue = title
+        // No description: the label beside it names the tab, and the glyph is not a control.
+        icon.image = NSImage(systemSymbolName: item.symbolName, accessibilityDescription: nil)?
+            .withSymbolConfiguration(Self.symbolConfiguration)
+        icon.image?.isTemplate = true
+        icon.imageScaling = .scaleNone
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        icon.setAccessibilityElement(false)
+        // The glyph is what names the kind of source, so the label truncates first.
+        icon.setContentCompressionResistancePriority(.required, for: .horizontal)
+        icon.setContentHuggingPriority(.required, for: .horizontal)
+
+        label.stringValue = item.title
         label.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         label.lineBreakMode = .byTruncatingTail
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        label.setContentCompressionResistancePriority(
+            Self.labelCompressionResistance,
+            for: .horizontal
+        )
 
         closeButton.image = NSImage(
             systemSymbolName: "xmark",
@@ -197,20 +335,32 @@ final class TabChipView: NSView {
             comment: "Tooltip on a tab chip's close (×) button; ⌘W is the keyboard shortcut."
         )
 
+        addSubview(icon)
         addSubview(label)
         addSubview(closeButton)
         NSLayoutConstraint.activate([
             heightAnchor.constraint(equalToConstant: 20),
-            widthAnchor.constraint(lessThanOrEqualToConstant: 180),
-            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 9),
+            widthAnchor.constraint(lessThanOrEqualToConstant: Self.maximumWidth),
+            icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Gap.leading),
+            icon.centerYAnchor.constraint(equalTo: centerYAnchor),
+            label.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: Gap.glyph),
             label.centerYAnchor.constraint(equalTo: centerYAnchor),
-            closeButton.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: 5),
-            closeButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
+            closeButton.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: Gap.label),
+            closeButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Gap.trailing),
             closeButton.centerYAnchor.constraint(equalTo: centerYAnchor),
-            closeButton.widthAnchor.constraint(equalToConstant: 12),
-            closeButton.heightAnchor.constraint(equalToConstant: 12)
+            closeButton.widthAnchor.constraint(equalToConstant: Gap.close),
+            closeButton.heightAnchor.constraint(equalToConstant: Gap.close)
         ])
         applyStyle()
+    }
+
+    /// The narrowest this chip is drawn before its tab goes to the overflow menu: the glyph, the
+    /// shortest readable label and the close button, or its whole self when that is narrower.
+    var minimumWidth: CGFloat {
+        let chrome = Gap.leading + icon.intrinsicContentSize.width + Gap.glyph + Gap.label + Gap.close
+            + Gap.trailing
+        let whole = min(chrome + label.intrinsicContentSize.width, Self.maximumWidth)
+        return min(whole, chrome + Self.minimumLabelWidth)
     }
 
     @available(*, unavailable)
@@ -224,53 +374,70 @@ final class TabChipView: NSView {
         applyStyle()
     }
 
-    private func applyStyle() {
-        let background: NSColor
-        let text: NSColor
+    /// The fill and text color the chip is drawn in now; the drag image is drawn from the same pair.
+    var colors: (background: NSColor, text: NSColor) {
         // Untouched, these are `.controlAccentColor` and `.alternateSelectedControlTextColor`
         // verbatim, so the shipped chip is unchanged (PLAN.md §M15 Slice 2).
         let palette = AppPreferences.shared.palette
         if isActive, isPaneActive {
-            background = palette.resolvedAccent
-            text = palette.accentForeground
+            return (palette.resolvedAccent, palette.accentForeground)
         } else if isActive {
-            background = .unemphasizedSelectedContentBackgroundColor
-            text = .labelColor
-        } else {
-            background = .clear
-            text = .secondaryLabelColor
+            return (.unemphasizedSelectedContentBackgroundColor, .labelColor)
         }
-        layer?.backgroundColor = background.cgColor
-        label.textColor = text
-        closeButton.contentTintColor = isActive && isPaneActive ? text : .secondaryLabelColor
+        return (.clear, .secondaryLabelColor)
     }
 
+    private func applyStyle() {
+        let text = colors.text
+        icon.contentTintColor = text
+        label.textColor = text
+        closeButton.contentTintColor = isActive && isPaneActive ? text : .secondaryLabelColor
+        needsDisplay = true
+    }
+
+    override var wantsUpdateLayer: Bool { true }
+
+    /// The fill is a layer's `CGColor`, which keeps the appearance it was resolved under, so it is
+    /// resolved here: AppKit runs this under the chip's own appearance, and again whenever that
+    /// changes. Set once in `applyStyle`, a light window kept the inactive pane's tab in the
+    /// dark-mode gray (`#464646`) after a switch from dark.
+    override func updateLayer() {
+        layer?.backgroundColor = colors.background.cgColor
+    }
+
+    /// Where the glyph and the label sit in the chip, for the drag image to draw them in place.
+    var iconFrame: NSRect { icon.frame }
+    var labelFrame: NSRect { label.frame }
+
     /// Route clicks anywhere on the chip to the chip; only the close button keeps its
-    /// own hit area, so the label never swallows a select click.
+    /// own hit area, so neither the label nor the glyph swallows a select click.
     override func hitTest(_ point: NSPoint) -> NSView? {
         guard let hit = super.hitTest(point) else { return nil }
         return hit === closeButton ? closeButton : self
     }
 
     override func mouseDown(with event: NSEvent) {
-        pressOriginX = event.locationInWindow.x
+        pressOrigin = event.locationInWindow
         didDrag = false
     }
 
     override func mouseDragged(with event: NSEvent) {
-        if abs(event.locationInWindow.x - pressOriginX) > 4 {
-            didDrag = true
+        guard !didDrag, let bar else { return }
+        let location = event.locationInWindow
+        guard hypot(location.x - pressOrigin.x, location.y - pressOrigin.y) > Self.dragThreshold else {
+            return
         }
+        didDrag = true
+        bar.beginDrag(of: self, with: event)
     }
 
     override func mouseUp(with event: NSEvent) {
-        guard let bar else { return }
-        if didDrag {
-            let x = bar.convert(event.locationInWindow, from: nil).x
-            bar.chipDidDrag(self, toLocationX: x)
-        } else {
-            bar.chipDidClick(self)
-        }
+        guard !didDrag else { return }
+        bar?.chipDidClick(self)
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        bar?.chipMenu(for: self)
     }
 
     @objc private func closeClicked() {

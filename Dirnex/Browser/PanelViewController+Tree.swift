@@ -1,6 +1,41 @@
 import AppKit
 import DirnexCore
 
+/// The staleness guards a tree folder's lazy load runs under, read at the instant it was asked for —
+/// the same capture, for the same reason, as ``TreeRefreshPlan``.
+struct TreeChildLoadPlan {
+    let path: VFSPath
+    let token: Int
+    let root: VFSPath
+    let tabIndex: Int
+    /// A load `restorePendingTreeExpansion` started rather than a gesture: nobody is waiting on it.
+    let duringRestore: Bool
+}
+
+/// How listing one tree folder came out.
+enum TreeChildListing {
+    case listed([FileEntry])
+    /// The listing failed. `error` is what to tell the user, or `nil` when the route that failed has
+    /// already said so, as a bucket row's connect does on the status line.
+    case failed(Error?)
+
+    var entries: [FileEntry]? {
+        if case let .listed(entries) = self { entries } else { nil }
+    }
+}
+
+/// What a tree folder's lazy load did with its listing, returned so a test can tell a silent fold
+/// from a reported one without a window to raise the sheet in.
+enum TreeChildLoadOutcome: Equatable {
+    /// The children are installed beneath the row.
+    case listed
+    /// The listing failed and the row closed again; `reported` says whether the failure sheet was
+    /// asked for.
+    case collapsed(reported: Bool)
+    /// Nothing changed: the pane moved on, the row was already closed, or a rename held the landing.
+    case dropped
+}
+
 /// Tree view in a file pane (PLAN.md §M15 Slice 4): the inline-expanding list where folders open in
 /// place and show their children indented. The whole design bet is that this is **not a second
 /// surface** — it is the same `FileTableView` over the same `VFSPath` index space the flat list uses,
@@ -263,46 +298,106 @@ extension PanelViewController {
     // MARK: - Lazy per-level listing
 
     /// List `path`'s children off the main thread and install them in the tree — its lazy load on
-    /// expand or on restore. Guarded on `loadToken` so a navigation that lands first wins, and on the
-    /// pane still being this tree. A folder that fails to list (deleted, unreadable) stays childless.
+    /// expand or on restore. The work is `performTreeChildLoad`, split off so a test can await it.
     ///
     /// `duringRestore` marks a load kicked off by `restorePendingTreeExpansion`: the rows it brings in
     /// are the ones a restored cursor or mark may be waiting on, so the landing re-runs
     /// `applyPendingRestore` (scrolling to the cursor when this is the level that carried it), and
     /// every exit path reports back so the restore window closes even when the folder never listed.
     private func loadTreeChild(_ path: VFSPath, duringRestore: Bool = false) {
-        let token = loadToken
-        let root = panel.path
-        let tabIndex = activeTabIndex
-        Task {
-            defer { if duringRestore { finishRestoreTreeLoad(inTab: tabIndex) } }
-            guard let entries = await treeChildEntries(at: path) else { return }
-            guard token == loadToken, panel.isTree, panel.path == root else { return }
-            if deferRefreshIfRenaming() { return }
-            reconcileCursorFromTable()
-            panel.setTreeChildListing(path, entries: entries)
-            var anchoredCursor = false
-            if duringRestore { anchoredCursor = applyPendingRestore(toTab: tabIndex) }
-            renderTreeChange()
-            // `renderTreeChange` deliberately doesn't scroll (it is the live-refresh render); a cursor
-            // the user last left deep in the tree has to be brought into view, as a navigation would.
-            if anchoredCursor { syncCursorToTable(scroll: true) }
-            persistState()
+        let plan = treeChildLoadPlan(for: path, duringRestore: duringRestore)
+        Task { await performTreeChildLoad(plan) }
+    }
+
+    /// The staleness guards for `path`'s load, read now — the caller's moment, not the listing's.
+    func treeChildLoadPlan(for path: VFSPath, duringRestore: Bool = false) -> TreeChildLoadPlan {
+        TreeChildLoadPlan(
+            path: path,
+            token: loadToken,
+            root: panel.path,
+            tabIndex: activeTabIndex,
+            duringRestore: duringRestore
+        )
+    }
+
+    /// The lazy load itself. Guarded on `loadToken` so a navigation that lands first wins, and on the
+    /// pane still being this tree.
+    @discardableResult
+    func performTreeChildLoad(_ plan: TreeChildLoadPlan) async -> TreeChildLoadOutcome {
+        defer { if plan.duringRestore { finishRestoreTreeLoad(inTab: plan.tabIndex) } }
+        let listing = await treeChildListing(at: plan.path)
+        guard plan.token == loadToken, panel.isTree, panel.path == plan.root else { return .dropped }
+        switch listing {
+        case let .listed(entries):
+            return installTreeChild(entries, plan)
+        case let .failed(error):
+            return foldBackUnlistedTreeChild(plan, error: error)
         }
     }
 
-    /// What to draw beneath an expanded row — and what a refresh re-reads it with: ordinarily one
-    /// listing, and for a **bucket row in an S3 account pane** a connection, since
-    /// `S3AccountBackend` answers for its root and nothing deeper. See `s3BucketChildren(at:)` for
-    /// why that is a crossing rather than a walk, and why its rows keep their own `s3://` paths.
+    private func installTreeChild(_ entries: [FileEntry], _ plan: TreeChildLoadPlan) -> TreeChildLoadOutcome {
+        if deferRefreshIfRenaming() { return .dropped }
+        reconcileCursorFromTable()
+        panel.setTreeChildListing(plan.path, entries: entries)
+        var anchoredCursor = false
+        if plan.duringRestore { anchoredCursor = applyPendingRestore(toTab: plan.tabIndex) }
+        renderTreeChange()
+        // `renderTreeChange` deliberately doesn't scroll (it is the live-refresh render); a cursor
+        // the user last left deep in the tree has to be brought into view, as a navigation would.
+        if anchoredCursor { syncCursorToTable(scroll: true) }
+        persistState()
+        return .listed
+    }
+
+    /// A folder whose listing failed closes again, so its row stops claiming to be open and empty.
     ///
-    /// `nil` for anything that failed to list — the folder stays childless, as an unreadable or
-    /// deleted one does.
-    func treeChildEntries(at path: VFSPath) async -> [FileEntry]? {
+    /// Until 2026-10-11 it stayed open with nothing beneath it, which is the answer an empty folder
+    /// gives. On a Synology share whose `#recycle` the mounting account may not list, that read as an
+    /// empty bin while the NAS held three items in it (docs/NOTES.md ▸ SMB). List mode got the
+    /// refusal the same day; this is the tree's half.
+    ///
+    /// The sheet is the one list mode raises for the same folder, and it goes only to a **gesture**,
+    /// the rule `navigate` keeps. A restore is unasked, so its folder closes silently and the next →
+    /// asks again. A live refresh never comes here: it re-reads only listed folders, through
+    /// `treeChildEntries`, and keeps the last good listing when one fails.
+    ///
+    /// A folder the user has already closed again withdrew its question, so it stays closed and
+    /// says nothing. An open rename holds the render, as it holds every background one, and the
+    /// sheet too, which would take the field editor's focus: the model folds now, and the chevron
+    /// catches up at the pane's next render.
+    private func foldBackUnlistedTreeChild(_ plan: TreeChildLoadPlan, error: Error?) -> TreeChildLoadOutcome {
+        guard panel.tree?.isExpanded(plan.path) == true else { return .dropped }
+        reconcileCursorFromTable()
+        panel.collapse(plan.path)
+        persistState()
+        if deferRefreshIfRenaming() { return .collapsed(reported: false) }
+        renderTreeChange()
+        guard !plan.duringRestore, let error else { return .collapsed(reported: false) }
+        presentLoadFailure(error, path: plan.path)
+        return .collapsed(reported: true)
+    }
+
+    /// What to draw beneath an expanded row: ordinarily one listing, and for a **bucket row in an
+    /// S3 account pane** a connection, since `S3AccountBackend` answers for its root and nothing
+    /// deeper. See `s3BucketChildren(at:)` for why that is a crossing rather than a walk, and why its
+    /// rows keep their own `s3://` paths.
+    func treeChildListing(at path: VFSPath) async -> TreeChildListing {
         if path.isS3BucketRow {
-            return await s3BucketChildren(at: path)
+            // The bucket route has already said which bucket would not open, on the status line.
+            guard let entries = await s3BucketChildren(at: path) else { return .failed(nil) }
+            return .listed(entries)
         }
-        return try? await DirectoryLoader.list(backend, at: path).entries
+        do {
+            return try await .listed(DirectoryLoader.list(backend, at: path).entries)
+        } catch {
+            return .failed(error)
+        }
+    }
+
+    /// The same listing as a refresh reads it: `nil` for one that failed, which keeps the folder's
+    /// last good rows on screen and says nothing — a watcher must not raise a sheet.
+    func treeChildEntries(at path: VFSPath) async -> [FileEntry]? {
+        await treeChildListing(at: path).entries
     }
 
     // MARK: - Expansion persistence

@@ -274,6 +274,19 @@ struct BugReportDialogTests {
         #expect(controller.statusLabel.stringValue == BugReportController.message(for: outcome))
     }
 
+    @Test("the preview shows the body to select and copy, and can't be typed in")
+    func previewIsReadOnly() throws {
+        let controller = dialog().controller
+        type("The pane froze.", into: controller.descriptionView)
+        let preview = BugReportPreviewController(body: try controller.body())
+        preview.loadView()
+        #expect(preview.textView.string == preview.text)
+        #expect(!preview.textView.isEditable)
+        #expect(preview.textView.isSelectable)
+        let box = try #require(preview.textView.enclosingScrollView?.superview as? MultiLineField)
+        #expect(!box.isEditable)
+    }
+
     @Test("Copy Report puts the exact body on the clipboard")
     func copyReport() throws {
         let controller = dialog().controller

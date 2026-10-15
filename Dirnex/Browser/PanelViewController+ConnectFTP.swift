@@ -39,6 +39,8 @@ extension PanelViewController {
         /// server is *already* saved; without this the new pin would have nowhere to go and the
         /// next click on the same row would present the old one again.
         let savedServerName: String?
+        /// As `SFTPConnectRequest.inNewTab`; the trust retry copies the request, and the flag with it.
+        var inNewTab = false
         /// Whether a certificate has already been put to the user in this attempt. One decision per
         /// connect: the changed-certificate branch retries, so without this a server that keeps
         /// answering with a key that doesn't match the one just accepted — a load balancer serving
@@ -90,7 +92,7 @@ extension PanelViewController {
             } else if let savedName = request.savedServerName {
                 repinSavedFTPServer(name: savedName, request: request)
             }
-            navigate(to: VFSPath(backend: .ftp(location), path: "/"))
+            navigate(to: VFSPath(backend: .ftp(location), path: "/"), inNewTab: request.inNewTab)
             return .succeeded
         case let .failure(error):
             return await handleFTPFailure(error, request: request)

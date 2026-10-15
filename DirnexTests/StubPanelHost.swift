@@ -64,12 +64,48 @@ final class StubPanelHost: PanelHost {
     private(set) var recordedUndo: [UndoRecord] = []
 
     func recordUndoableAction(_ record: UndoRecord) { recordedUndo.append(record) }
+    /// The marking changes a gesture journaled, in a real journal, so that withdrawing one is the
+    /// core's own rule rather than a second copy of it. Every pane is `.left` here: a stub has no
+    /// sides to tell apart.
+    private(set) var selectionJournal = UndoJournal()
+
     func recordSelectionChange(
         on pane: PanelViewController,
         directory: VFSPath,
         previousMarks: Set<VFSPath>,
         label: UndoActionLabel
-    ) {}
+    ) {
+        selectionJournal.record(
+            .selection(selectionChange(on: pane, directory, previousMarks, label))
+        )
+    }
+
+    func withdrawSelectionChange(
+        on pane: PanelViewController,
+        directory: VFSPath,
+        previousMarks: Set<VFSPath>,
+        label: UndoActionLabel
+    ) -> Bool {
+        selectionJournal.withdraw(
+            .selection(selectionChange(on: pane, directory, previousMarks, label))
+        )
+    }
+
+    private func selectionChange(
+        on pane: PanelViewController,
+        _ directory: VFSPath,
+        _ previousMarks: Set<VFSPath>,
+        _ label: UndoActionLabel
+    ) -> SelectionChange {
+        SelectionChange(
+            pane: .left,
+            directory: directory,
+            priorSelection: previousMarks,
+            newSelection: pane.panel.selection,
+            label: label
+        )
+    }
+
     func undoLastOperation() {}
     func redoLastOperation() {}
     func captureWorkspace(named name: String) -> Workspace {
@@ -92,7 +128,11 @@ final class StubPanelHost: PanelHost {
     private(set) var frecencyVisits: [VFSPath] = []
 
     func recordFrecencyVisit(_ path: VFSPath) { frecencyVisits.append(path) }
-    func panelRequestsVaultOpen(_ vault: VaultLocation, showingIn pane: PanelViewController) {}
+    func panelRequestsVaultOpen(
+        _ vault: VaultLocation,
+        showingIn pane: PanelViewController,
+        inNewTab: Bool
+    ) {}
 
     /// The one requirement that records rather than shrugging, because it is the seam a whole
     /// milestone's gestures run through: a test hands back `materializeReport` and asserts on what

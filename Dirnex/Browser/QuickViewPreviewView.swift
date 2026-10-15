@@ -19,8 +19,8 @@ enum QuickViewMode {
     /// full-screen space. A viewing mode: black backing, no chrome.
     case fullScreen
 
-    /// Whether this size covers the file list the cursor is walking, which is what makes a header
-    /// and the ← / → cursor steps necessary rather than redundant.
+    /// Whether this size covers the file list the cursor is walking, which is what makes the ← / →
+    /// cursor steps necessary rather than redundant.
     var isFullSize: Bool { self == .fullWindow || self == .fullScreen }
 }
 
@@ -37,9 +37,11 @@ enum QuickViewMode {
 final class QuickViewPreviewView: NSView {
     /// Whether this surface carries a header, and how it behaves.
     enum Header {
-        /// No header — pane mode, where the file list is visible right beside the preview.
+        /// No header. The app builds none of these since pane mode took the pinned one (2026-10-14);
+        /// it is for a test about the content alone, which a header would only offset.
         case none
-        /// Always visible, taking its own strip above the preview (full window: a working surface).
+        /// Always visible, taking its own strip above the preview (pane and full window: the two
+        /// working surfaces).
         case pinned
         /// Floating over the preview, fading in on mouse movement and back out after a pause
         /// (full screen: a viewing surface, where permanent chrome is the thing being escaped).
@@ -129,6 +131,20 @@ final class QuickViewPreviewView: NSView {
     /// rather than being mistaken for "already showing nil".
     private var hasLoaded = false
 
+    /// Where `content` starts below the top edge under a `.floating` header, `nil` under any other.
+    /// Moved by `QuickViewPreviewView+TopStrip`, which owns every rule about it.
+    var contentTop: NSLayoutConstraint?
+    /// How far the menu bar comes down over this surface when the pointer summons it. Set by the
+    /// window, and zero everywhere but full screen on a display without a camera housing.
+    var menuBarOverlap: CGFloat = 0 {
+        didSet { updateContentTop() }
+    }
+
+    /// Whether the file on screen is a picture, which runs to the top edge under the strip.
+    var showsPicture = false {
+        didSet { updateContentTop() }
+    }
+
     /// Bumped by every reveal of a `.floating` header, so a fade-out scheduled by an earlier
     /// mouse movement knows it has been superseded and stands down. A counter rather than a
     /// `Timer` because the timer's block is `@Sendable` and this view is not.
@@ -199,6 +215,7 @@ final class QuickViewPreviewView: NSView {
         loadedStyle = style
         loadedPlaceholder = placeholder
         hasLoaded = true
+        showsPicture = url.map(Self.isImage) == true
         // The table and the tree are put away here rather than by every other backend, for the reason
         // the card below is: a sixth hand-written list is six chances to forget one. Each stays up while
         // the next file is data too, so stepping between two keeps the old one on screen until the new
@@ -411,16 +428,18 @@ final class QuickViewPreviewView: NSView {
             content.bottomAnchor.constraint(equalTo: bottomAnchor)
         ]
         // Pinned: the header owns a strip and the preview starts below it. Floating: the preview
-        // owns the whole surface and the header rides over it, so nothing shifts as it fades.
-        constraints.append(
-            headerStyle == .pinned
-                ? content.topAnchor.constraint(equalTo: headerView.bottomAnchor)
-                : content.topAnchor.constraint(equalTo: topAnchor)
-        )
-        NSLayoutConstraint.activate(constraints)
-        if headerStyle == .floating {
+        // owns the whole surface and the header rides over it, so nothing shifts as it fades — a
+        // picture's whole surface, and a document's below the strip the header fades in over.
+        if headerStyle == .pinned {
+            constraints.append(content.topAnchor.constraint(equalTo: headerView.bottomAnchor))
+        } else {
+            let top = content.topAnchor.constraint(equalTo: topAnchor)
+            contentTop = top
+            constraints.append(top)
             headerView.alphaValue = 0
         }
+        NSLayoutConstraint.activate(constraints)
+        updateContentTop()
     }
 
     /// Pin `subview` edge to edge inside `container`, so every backend fills the surface and they

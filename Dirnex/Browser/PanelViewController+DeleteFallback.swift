@@ -32,28 +32,12 @@ extension PanelViewController {
         var governing: VFSPath?
         for path in paths {
             guard path.backend == .local, !ShareRecycleBin.isBinOrInside(path),
-                  let root = networkVolumeRoot(of: path) else { return nil }
+                  let root = NetworkVolume.root(of: path) else { return nil }
             let bin = ShareRecycleBin.bin(atShareRoot: root)
             guard isDirectory(bin), governing == nil || governing == bin else { return nil }
             governing = bin
         }
         return governing
-    }
-
-    /// The mount point of the **network** volume `path` is on, or `nil` for anything else.
-    ///
-    /// `resourceValues` is bound before either key is read: `try?` on the whole expression would
-    /// flatten "the read threw" into "the key is absent" (docs/NOTES.md), and here those must both
-    /// land on the same safe answer for the same reason rather than by luck.
-    private func networkVolumeRoot(of path: VFSPath) -> VFSPath? {
-        let url = URL(fileURLWithPath: path.path)
-        guard let values = try? url.resourceValues(forKeys: [.volumeURLKey, .volumeIsLocalKey]),
-              values.volumeIsLocal == false,
-              let volume = values.volume
-        else {
-            return nil
-        }
-        return .local(volume.path)
     }
 
     private func isDirectory(_ path: VFSPath) -> Bool {

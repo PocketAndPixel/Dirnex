@@ -86,23 +86,57 @@ struct PathBarPlacesTests {
         // Which pane a place opens in is the pane's business (`PathBarViewDelegate`'s contract, and
         // the reason `showPlaces` makes its pane active first — a click on the *inactive* pane's
         // glyph never moves first responder).
-        final class Spy: NSObject, PathBarViewDelegate {
-            var requests = 0
-            func pathBar(_ bar: PathBarView, didActivate path: VFSPath) {}
-            func pathBar(_ bar: PathBarView, didCommit rawText: String, resolved: VFSPath) {}
-            func pathBarDidCancel(_ bar: PathBarView) {}
-            func pathBarDidBeginEditing(_ bar: PathBarView) {}
-            func pathBarDidRequestPlaces(_ bar: PathBarView) { requests += 1 }
-            func pathBar(
-                _ bar: PathBarView,
-                childDirectoriesOf directory: VFSPath
-            ) async -> [String] { [] }
-        }
         let spy = Spy()
         let bar = bar(.local("/Users/oleg"))
         bar.delegate = spy
         leadingGlyph(bar)?.performClick(nil)
         #expect(spy.requests == 1)
+    }
+
+    // MARK: - The search label
+
+    /// The text beside the glyph in a virtual label's row.
+    private func virtualLabel(_ bar: PathBarView) -> NSView? {
+        (bar.crumbStack.arrangedSubviews.first as? NSStackView)?.arrangedSubviews.dropFirst().first
+    }
+
+    @Test("a search's label reports an edit, and nothing else's does")
+    func searchLabelReportsAnEdit() throws {
+        let spy = Spy()
+        let search = bar(searchPath)
+        search.delegate = spy
+        let label = try #require(virtualLabel(search) as? NSButton)
+        #expect(label.action == NSSelectorFromString("requestSearchEdit:"))
+        #expect(label.title.contains("report"))
+        #expect(label.toolTip?.isEmpty == false)
+        label.performClick(nil)
+        #expect(spy.searchEdits == 1)
+        #expect(spy.requests == 0)
+
+        // The narrowness control: Recents and the Trash draw the same row with no search behind it,
+        // so their labels stay plain text a click cannot reach.
+        for path in [recentsPath, VFSPath(backend: .trash, path: "/")] {
+            let label = virtualLabel(bar(path))
+            #expect(label is NSTextField, "\(path)")
+            #expect(!(label is NSButton), "\(path)")
+        }
+    }
+
+    /// Which pane a place opens in, and which tab a search edit runs in, are the pane's business
+    /// (`PathBarViewDelegate`'s contract) — the bar only counts what it was asked.
+    private final class Spy: NSObject, PathBarViewDelegate {
+        var requests = 0
+        var searchEdits = 0
+        func pathBar(_ bar: PathBarView, didActivate path: VFSPath) {}
+        func pathBar(_ bar: PathBarView, didCommit rawText: String, resolved: VFSPath) {}
+        func pathBarDidCancel(_ bar: PathBarView) {}
+        func pathBarDidBeginEditing(_ bar: PathBarView) {}
+        func pathBarDidRequestPlaces(_ bar: PathBarView) { requests += 1 }
+        func pathBarDidRequestSearchEdit(_ bar: PathBarView) { searchEdits += 1 }
+        func pathBar(
+            _ bar: PathBarView,
+            childDirectoriesOf directory: VFSPath
+        ) async -> [String] { [] }
     }
 
     // MARK: - One glyph vocabulary, not two

@@ -63,6 +63,13 @@ final class UndoController {
         persist()
     }
 
+    /// Take `change` back off the top of the stack, as though it had never been recorded
+    /// (`UndoJournal.withdraw`). `false`, with nothing changed, when it is not the newest entry.
+    /// Nothing is persisted: a selection change never is.
+    func withdrawSelection(_ change: SelectionChange) -> Bool {
+        journal.withdraw(.selection(change))
+    }
+
     /// Pop the top action, moving its inverse onto the redo stack, and apply it: a file
     /// operation is reversed on a background thread and returns a report; a selection change is
     /// handed back for the window to apply on the main thread. `nil` when there was nothing to

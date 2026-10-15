@@ -205,10 +205,9 @@ extension PanelViewController {
         // Degrade off the owning backend's capabilities (PLAN.md §M5): a read-only location has
         // nothing to delete; a backend without a Trash (SFTP) turns even F8 into a confirmed
         // permanent delete rather than silently failing on a missing Trash.
-        let strategy = backend.capabilities(for: panel.path).deleteStrategy
-        guard strategy != .unsupported else { return }
         let targets = recursiveTargets()
-        guard !targets.isEmpty else { return }
+        let strategy = deleteStrategy(for: targets)
+        guard strategy != .unsupported else { return }
         let goesToTrash = !permanent && strategy == .trash
         if !goesToTrash {
             confirmPermanentDelete(of: targets) { [weak self] in
@@ -220,6 +219,19 @@ extension PanelViewController {
             }
         } else {
             runDelete(targets.map(\.path), permanent: false)
+        }
+    }
+
+    /// How F8 and ⇧F8 would delete `targets` — the one answer the key and its menu item both read.
+    ///
+    /// Asked of each row's **own** directory (`DeleteRouting`), not of `panel.path`. The two agree
+    /// in a plain listing; in search results they do not, because the container is the synthetic
+    /// `search:` path, which deletes nothing, while every hit is an ordinary file in an ordinary
+    /// folder — so asking the pane kept F8 gray over every search there was. F2 asks the row for
+    /// the same reason (`renameDirectory`). Empty answers `.unsupported`.
+    func deleteStrategy(for targets: [FileEntry]) -> DeleteStrategy {
+        DeleteRouting.strategy(for: targets.map(\.path), paneDirectory: panel.path) {
+            backend.capabilities(for: $0)
         }
     }
 
@@ -325,6 +337,8 @@ extension PanelViewController {
             }
 
             panel.clearSelection()
+            // A search snapshot re-lists nothing, so the refresh below leaves it alone.
+            noteSearchHitsDeleted(outcome.deleted(from: paths), permanent: permanent)
             refreshCurrentDirectory()
             focusTable()
             // Permanent delete is irreversible and never journaled; Trash is restorable, and a
@@ -413,6 +427,10 @@ extension PanelViewController {
             reloadICloudDrive(selecting: target)
             return
         }
+        // A search snapshot keeps the hits it was given, except the ones the app trashed or moved,
+        // which ⌘Z may have put back (`+Results`). Then on to the tree, which still re-lists any
+        // folder expanded under a hit.
+        reconcileDepartedSearchHits()
         // A tree spans several directories, and an operation the app just performed (a rename, a
         // New Folder, a delete) can land in a child the *root* re-list below would never touch — so
         // the display would go stale until an FSEvents ping caught up, and the cursor would never

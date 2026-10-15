@@ -1087,19 +1087,19 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "quedan %@"
+            "value": "tiempo restante: %@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ restant"
+            "value": "il reste %@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ rimanenti"
+            "value": "tempo rimanente: %@"
           }
         },
         "ja": {
@@ -1123,7 +1123,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "pozostało %@"
+            "value": "pozostały czas: %@"
           }
         },
         "ru": {
@@ -1141,7 +1141,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ restante"
+            "value": "tempo restante: %@"
           }
         },
         "zh-Hans": {
@@ -8266,19 +8266,85 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld de %lld seleccionados · %@"
+            "value": "%1$lld de %2$lld %#@selected@ · %3$@"
+          },
+          "substitutions": {
+            "selected": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "seleccionado"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "seleccionados"
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld sur %lld sélectionnés · %@"
+            "value": "%1$lld sur %2$lld %#@selected@ · %3$@"
+          },
+          "substitutions": {
+            "selected": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "sélectionné"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "sélectionnés"
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld di %lld selezionati · %@"
+            "value": "%1$lld di %2$lld %#@selected@ · %3$@"
+          },
+          "substitutions": {
+            "selected": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "selezionato"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "selezionati"
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -8320,7 +8386,29 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld de %lld selecionados · %@"
+            "value": "%1$lld de %2$lld %#@selected@ · %3$@"
+          },
+          "substitutions": {
+            "selected": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "selecionado"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "selecionados"
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "zh-Hans": {
@@ -10423,15 +10511,39 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "(+%lld plus)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "(+%lld autre)"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "(+%lld autres)"
+                }
+              }
+            }
           }
         },
         "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "(+ altri %lld)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "(+ un altro)"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "(+ altri %lld)"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -10461,13 +10573,13 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "(+%lld ещё)"
+            "value": "(ещё %lld)"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "(і ще %lld)"
+            "value": "(ще %lld)"
           }
         },
         "pt-BR": {
@@ -10728,7 +10840,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uma vista rápida no modo página (2) a renderiza ali mesmo, e um relatório autocontido normalmente precisa dos próprios scripts para desenhar gráficos ou fórmulas. As pré-visualizações nunca acessam a rede, diga o que disser esta opção — toda requisição que não seja o próprio arquivo é bloqueada —, então um script só pode mudar o que você vê. Vem desativado, porque a pré-visualização é renderizada ao mover o cursor: ative quando uma página precisar dos seus scripts."
+            "value": "O Painel de Visualização Rápida no modo página (2) a renderiza ali mesmo, e um relatório autocontido normalmente precisa dos próprios scripts para desenhar gráficos ou fórmulas. As pré-visualizações nunca acessam a rede, diga o que disser esta opção — toda requisição que não seja o próprio arquivo é bloqueada —, então um script só pode mudar o que você vê. Vem desativado, porque a pré-visualização é renderizada ao mover o cursor: ative quando uma página precisar dos seus scripts."
           }
         },
         "ru": {
@@ -11911,6 +12023,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "存取："
+          }
+        }
+      }
+    },
+    "Acknowledgments": {
+      "comment": "About panel link, and the title of the window listing the open-source code in Dirnex.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Danksagungen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acknowledgments"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconocimientos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remerciements"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riconoscimenti"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "謝辞"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "감사의 말"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dankbetuigingen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podziękowania"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agradecimentos"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Благодарности"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подяки"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "致谢"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "致謝"
           }
         }
       }
@@ -17250,6 +17451,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "儲存桶："
+          }
+        }
+      }
+    },
+    "Buy a License": {
+      "comment": "About panel: link to the store, after “Not licensed”.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lizenz kaufen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buy a License"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprar una licencia"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acheter une licence"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acquista una licenza"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンスを購入"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 구입"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koop een licentie"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kup licencję"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprar uma licença"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Купить лицензию"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Купити ліцензію"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "购买许可证"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "購買授權"
           }
         }
       }
@@ -27227,7 +27517,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Copia %@"
+            "value": "Copia di %@"
           }
         },
         "ja": {
@@ -44716,6 +45006,95 @@
         }
       }
     },
+    "Edit this search": {
+      "comment": "Tooltip on the path bar's search-results label, which opens Find Files on that search.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Suche bearbeiten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit this search"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar esta búsqueda"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier cette recherche"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifica questa ricerca"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この検索を編集"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 검색 편집"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wijzig deze zoekopdracht"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edytuj to wyszukiwanie"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar esta busca"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменить этот поиск"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Змінити цей пошук"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑此搜索"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編輯此搜尋"
+          }
+        }
+      }
+    },
     "Edit with %@": {
       "comment": "F4 menu title naming the chosen text editor; %@ is the app name.",
       "localizations": {
@@ -52723,7 +53102,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quanto a Visualização rápida baixa por conta própria enquanto o cursor passa por um arquivo em um servidor. Arquivos maiores continuam podendo ser vistos: o cartão informa o nome e o tamanho e espera você tocar em Baixar (⌘D) ou ⌘Y. Defina 0 para não baixar nada sem pedir. Arquivos neste Mac nunca são afetados."
+            "value": "Quanto o Painel de Visualização Rápida baixa por conta própria enquanto o cursor passa por um arquivo em um servidor. Arquivos maiores continuam podendo ser vistos: o cartão informa o nome e o tamanho e espera você tocar em Baixar (⌘D) ou ⌘Y. Defina 0 para não baixar nada sem pedir. Arquivos neste Mac nunca são afetados."
           }
         },
         "ru": {
@@ -56773,6 +57152,184 @@
         }
       }
     },
+    "Licensed · updates ended %@": {
+      "comment": "About panel, with a license that covers this version but no later ones; %@ is a date.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lizenziert · Updates endeten am %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licensed · updates ended %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con licencia · las actualizaciones terminaron el %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avec licence · mises à jour terminées le %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con licenza · aggiornamenti terminati il %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンス登録済み · アップデートは%@に終了"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 있음 · 업데이트 %@ 종료"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Met licentie · updates beëindigd op %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licencja aktywna · aktualizacje zakończyły się %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licenciado · atualizações encerradas em %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Есть лицензия · обновления закончились %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Є ліцензія · оновлення закінчилися %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已授权 · 更新已于 %@ 结束"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已授權 · 更新已於 %@ 結束"
+          }
+        }
+      }
+    },
+    "Licensed · updates until %@": {
+      "comment": "About panel, with a license that covers this version; %@ is the last release day it covers.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lizenziert · Updates bis zum %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licensed · updates until %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con licencia · actualizaciones hasta el %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avec licence · mises à jour jusqu’au %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con licenza · aggiornamenti fino al %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンス登録済み · %@までのアップデート"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 있음 · %@까지 업데이트"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Met licentie · updates tot en met %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licencja aktywna · aktualizacje do %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licenciado · atualizações até %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Есть лицензия · обновления до %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Є ліцензія · оновлення до %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已授权 · 更新截至 %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已授權 · 更新截至 %@"
+          }
+        }
+      }
+    },
     "List": {
       "comment": "ACL right on a folder (list): see what is inside it.",
       "localizations": {
@@ -58108,6 +58665,95 @@
         }
       }
     },
+    "More Tabs": {
+      "comment": "Label and tooltip of the » button listing the tabs that don't fit on a pane's tab strip.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weitere Tabs"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "More Tabs"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Más pestañas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autres onglets"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altre schede"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "その他のタブ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "탭 더 보기"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meer tabbladen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Więcej kart"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mais Abas"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Другие вкладки"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Інші вкладки"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更多标签页"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更多標籤頁"
+          }
+        }
+      }
+    },
     "Move %@": {
       "comment": "Queue row label; %@ is the file being moved.",
       "localizations": {
@@ -59131,7 +59777,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Spostando %@"
+            "value": "Spostamento di %@"
           }
         },
         "ja": {
@@ -69649,7 +70295,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pausato"
+            "value": "In pausa"
           }
         },
         "ja": {
@@ -69667,7 +70313,7 @@
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pausgezet"
+            "value": "Gepauzeerd"
           }
         },
         "pl": {
@@ -69738,7 +70384,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pausato — %@"
+            "value": "In pausa — %@"
           }
         },
         "ja": {
@@ -69756,7 +70402,7 @@
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pausgezet — %@"
+            "value": "Gepauzeerd — %@"
           }
         },
         "pl": {
@@ -74020,6 +74666,95 @@
         }
       }
     },
+    "Released %@": {
+      "comment": "About panel, under the version: the day this version came out; %@ is a date.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Veröffentlicht am %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Released %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publicada el %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publiée le %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pubblicata il %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リリース日：%@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "출시일: %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uitgebracht op %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wydana %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lançada em %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выпущена %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Випущена %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发布于 %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "發佈於 %@"
+          }
+        }
+      }
+    },
     "Remove": {
       "comment": "Saved-server context-menu item: remove the bookmark.",
       "localizations": {
@@ -74461,6 +75196,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "從側邊欄移除"
+          }
+        }
+      }
+    },
+    "Remove the license from this Mac?": {
+      "comment": "Settings ▸ License: the title of the confirmation Remove License shows.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lizenz von diesem Mac entfernen?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove the license from this Mac?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Eliminar la licencia de este Mac?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer la licence de ce Mac ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimuovere la licenza da questo Mac?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このMacからライセンスを削除しますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 Mac에서 라이선스를 제거하겠습니까?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licentie van deze Mac verwijderen?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usunąć licencję z tego Maca?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить лицензию с этого Mac?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вилучити ліцензію з цього Mac?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover a licença deste Mac?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要从这台 Mac 上移除许可证吗？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要從這台 Mac 移除授權嗎？"
           }
         }
       }
@@ -76462,6 +77286,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "重新命名…"
+          }
+        }
+      }
+    },
+    "Renew": {
+      "comment": "About panel: link that renews the license on dirnex.app.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verlängern"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renew"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renovar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renouveler"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rinnova"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "갱신"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verleng"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odnów"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renovar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Продлить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Продовжити"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "续期"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "續訂"
           }
         }
       }
@@ -102503,6 +103416,95 @@
         }
       }
     },
+    "To add it back later, paste the key from your license email, or get it again at dirnex.app/account. If you can’t, write to support@dirnex.app.": {
+      "comment": "Settings ▸ License: the Remove License confirmation’s message. Each language names its own page, dirnex.app/<locale>/account (pt-br, zh-hans, zh-hant in lower case), called “Your licenses” on the site.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um sie später wieder zu aktivieren, fügen Sie den Schlüssel aus Ihrer Lizenz-E-Mail ein oder rufen Sie ihn unter dirnex.app/de/account erneut ab. Falls das nicht möglich ist, schreiben Sie an support@dirnex.app."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To add it back later, paste the key from your license email, or get it again at dirnex.app/account. If you can’t, write to support@dirnex.app."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para volver a añadirla, pega la clave del correo de tu licencia o recupérala en dirnex.app/es/account. Si no puedes, escribe a support@dirnex.app."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour la rajouter plus tard, collez la clé de l’e-mail de votre licence ou récupérez-la sur dirnex.app/fr/account. Si ce n’est pas possible, écrivez à support@dirnex.app."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per aggiungerla di nuovo, incolla la chiave dall’email della licenza o recuperala su dirnex.app/it/account. Se non puoi, scrivi a support@dirnex.app."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "あとで戻すには、ライセンスのメールにあるキーをペーストするか、dirnex.app/ja/account で再度取得してください。それができない場合は、support@dirnex.app までご連絡ください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나중에 다시 추가하려면 라이선스 이메일에 있는 키를 붙여 넣거나 아래 페이지에서 다시 받으세요.\ndirnex.app/ko/account\n그럴 수 없다면 아래 주소로 문의하세요.\nsupport@dirnex.app"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Om de licentie later terug te zetten, plak je de sleutel uit je licentiemail of haal je hem opnieuw op via dirnex.app/nl/account. Lukt dat niet, schrijf dan naar support@dirnex.app."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aby ją później przywrócić, wklej klucz z e-maila z licencją lub pobierz go ponownie na dirnex.app/pl/account. Jeśli to niemożliwe, napisz na support@dirnex.app."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Чтобы вернуть её, вставьте ключ из письма с лицензией или получите его снова на dirnex.app/ru/account. Если не получится, напишите на support@dirnex.app."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Щоб повернути її, вставте ключ із листа з ліцензією або отримайте його знову на dirnex.app/uk/account. Якщо не вийде, напишіть на support@dirnex.app."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para adicioná-la de novo, cole a chave do e-mail da licença ou obtenha-a novamente em dirnex.app/pt-br/account. Se não conseguir, escreva para support@dirnex.app."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如需重新添加，请粘贴许可证邮件中的密钥，或在 dirnex.app/zh-hans/account 重新获取。如果无法做到，请写信至 support@dirnex.app。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如需重新加入，請貼上授權郵件中的金鑰，或在 dirnex.app/zh-hant/account 重新取得。如果無法這麼做，請寫信至 support@dirnex.app。"
+          }
+        }
+      }
+    },
     "Toggle Sidebar": {
       "comment": "Accessibility label for the sidebar toggle button.",
       "localizations": {
@@ -111167,6 +112169,95 @@
         }
       }
     },
+    "Your license doesn’t cover this version": {
+      "comment": "About panel, when the license ended before this version came out.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihre Lizenz deckt diese Version nicht ab"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your license doesn’t cover this version"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu licencia no cubre esta versión"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre licence ne couvre pas cette version"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La tua licenza non copre questa versione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このバージョンはライセンスの対象外です"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 버전에는 라이선스가 적용되지 않습니다"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je licentie geldt niet voor deze versie"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twoja licencja nie obejmuje tej wersji"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sua licença não cobre esta versão"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лицензия не распространяется на эту версию"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ліцензія не поширюється на цю версію"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此版本不在许可证范围内"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此版本不在授權範圍內"
+          }
+        }
+      }
+    },
     "Your search matched more items. Narrow it to see the rest.": {
       "comment": "Search-results truncation body.",
       "localizations": {
@@ -119025,7 +120116,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "f5, 拷貝, 拷貝, 傳輸"
+            "value": "f5, 拷貝, 複製, 傳輸"
           }
         }
       }
@@ -119116,6 +120207,186 @@
           "stringUnit": {
             "state": "translated",
             "value": "拷貝到另一面板"
+          }
+        }
+      }
+    },
+    "command.file.copyKeepingFolders.keywords": {
+      "comment": "Extra command-palette search terms, comma-separated. Added to the English terms, not replacing them, so the English words keep working. Synonyms a user might type — not a translation of the title.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, kopieren, Baum, Struktur, Unterordner, relative Pfade"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, tree, branch, structure, subfolders, relative paths"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, copiar, árbol, estructura, subcarpetas, rutas relativas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, copier, arborescence, structure, sous-dossiers, chemins relatifs"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, copiare, albero, struttura, sottocartelle, percorsi relativi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, コピー, ツリー, 構造, サブフォルダ, 相対パス"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, 복사, 트리, 구조, 하위 폴더, 상대 경로"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, kopiëren, boom, structuur, submappen, relatieve paden"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, kopiuj, drzewo, struktura, podfoldery, ścieżki względne"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, copiar, árvore, estrutura, subpastas, caminhos relativos"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, копировать, дерево, структура, подпапки, относительные пути"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, копіювати, дерево, структура, підпапки, відносні шляхи"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, 拷贝, 复制, 树状, 结构, 子文件夹, 相对路径"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shift+f5, 拷貝, 複製, 樹狀, 結構, 子檔案夾, 相對路徑"
+          }
+        }
+      }
+    },
+    "command.file.copyKeepingFolders.title": {
+      "comment": "Menu and command-palette title for the “file.copyKeepingFolders” command. Copies the marked items to the other panel and recreates the folders they sit in (tree view), where plain Copy puts them all side by side.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mit Ordnerstruktur in den anderen Bereich kopieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy to Other Panel, Keeping Folders"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar al otro panel conservando las carpetas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copier vers l’autre panneau en conservant les dossiers"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia nell’altro pannello mantenendo le cartelle"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォルダ構造を保ってほかのパネルにコピー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더 구조를 유지하며 다른 패널로 복사"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopieer naar ander paneel met mapstructuur"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopiuj do drugiego panelu z zachowaniem folderów"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar para o Outro Painel Mantendo as Pastas"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копировать на другую панель со структурой папок"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копіювати зі структурою папок"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拷贝到另一面板并保留文件夹结构"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拷貝到另一面板並保留檔案夾結構"
           }
         }
       }
@@ -120196,6 +121467,186 @@
           "stringUnit": {
             "state": "translated",
             "value": "移動到另一面板"
+          }
+        }
+      }
+    },
+    "command.file.moveKeepingFolders.keywords": {
+      "comment": "Extra command-palette search terms, comma-separated. Added to the English terms, not replacing them, so the English words keep working. Synonyms a user might type — not a translation of the title.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "verschieben, Baum, Struktur, Unterordner, relative Pfade, übertragen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tree, branch, structure, subfolders, relative paths, transfer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mover, árbol, estructura, subcarpetas, rutas relativas, transferir"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "déplacer, arborescence, structure, sous-dossiers, chemins relatifs, transfert"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "spostare, albero, struttura, sottocartelle, percorsi relativi, trasferire"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移動, ツリー, 構造, サブフォルダ, 相対パス, 転送"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이동, 트리, 구조, 하위 폴더, 상대 경로, 전송"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "verplaatsen, boom, structuur, submappen, relatieve paden, overdracht"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "przenieś, drzewo, struktura, podfoldery, ścieżki względne, transfer"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mover, árvore, estrutura, subpastas, caminhos relativos, transferir"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "переместить, дерево, структура, подпапки, относительные пути, перенести"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "перемістити, дерево, структура, підпапки, відносні шляхи, перенести"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移动, 树状, 结构, 子文件夹, 相对路径, 传输"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移動, 樹狀, 結構, 子檔案夾, 相對路徑, 傳輸"
+          }
+        }
+      }
+    },
+    "command.file.moveKeepingFolders.title": {
+      "comment": "Menu and command-palette title for the “file.moveKeepingFolders” command. Moves the marked items to the other panel and recreates the folders they sit in (tree view), where plain Move puts them all side by side.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mit Ordnerstruktur in den anderen Bereich verschieben"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move to Other Panel, Keeping Folders"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover al otro panel conservando las carpetas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déplacer vers l’autre panneau en conservant les dossiers"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sposta nell’altro pannello mantenendo le cartelle"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォルダ構造を保ってほかのパネルに移動"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더 구조를 유지하며 다른 패널로 이동"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verplaats naar ander paneel met mapstructuur"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przenieś do drugiego panelu z zachowaniem folderów"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover para o Outro Painel Mantendo as Pastas"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переместить на другую панель со структурой папок"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перемістити зі структурою папок"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移动到另一面板并保留文件夹结构"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移動到另一面板並保留檔案夾結構"
           }
         }
       }
@@ -124389,7 +125840,7 @@
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "ouder, uit"
+            "value": "bovenliggende map, naar boven"
           }
         },
         "pl": {
@@ -125823,7 +127274,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "마크, 모든 것, 전체"
+            "value": "표시, 마크, 모든 것, 전체"
           }
         },
         "nl": {
@@ -126003,7 +127454,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "wildcard, glob, mark"
+            "value": "와일드카드, glob, 표시"
           }
         },
         "nl": {
@@ -126188,7 +127639,7 @@
         },
         "nl": {
           "stringUnit": {
-            "value": "schakelen, draaien",
+            "value": "omschakelen, omdraaien",
             "state": "translated"
           }
         },
@@ -130816,6 +132267,546 @@
           "stringUnit": {
             "state": "translated",
             "value": "最小化"
+          }
+        }
+      }
+    },
+    "command.window.moveTabLeft.keywords": {
+      "comment": "Extra command-palette search terms, comma-separated. Added to the English terms, not replacing them, so the English words keep working. Synonyms a user might type — not a translation of the title.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tab, verschieben, anordnen, reihenfolge"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tab, reorder, order, rearrange"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pestaña, mover, reordenar, orden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "onglet, déplacer, réorganiser, ordre"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "scheda, spostare, riordinare, ordine"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブ, 移動, 並べ替え, 順序"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "탭, 이동, 순서, 재정렬"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tabblad, verplaatsen, volgorde, herschikken"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "karta, przesuń, kolejność, uporządkuj"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "вкладка, переместить, порядок, упорядочить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "вкладка, перемістити, порядок, впорядкувати"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "aba, mover, reordenar, ordem"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页, 移动, 重新排序, 顺序"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "標籤頁, 移動, 重新排序, 順序"
+          }
+        }
+      }
+    },
+    "command.window.moveTabLeft.title": {
+      "comment": "Menu and command-palette title for the “window.moveTabLeft” command.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab nach links verschieben"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move Tab Left"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover pestaña a la izquierda"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déplacer l’onglet vers la gauche"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sposta la scheda a sinistra"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブを左へ移動"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "탭을 왼쪽으로 이동"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verplaats tabblad naar links"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przesuń kartę w lewo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переместить вкладку влево"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перемістити вкладку ліворуч"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover Aba para a Esquerda"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "向左移动标签页"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "向左移動標籤頁"
+          }
+        }
+      }
+    },
+    "command.window.moveTabRight.keywords": {
+      "comment": "Extra command-palette search terms, comma-separated. Added to the English terms, not replacing them, so the English words keep working. Synonyms a user might type — not a translation of the title.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tab, verschieben, anordnen, reihenfolge"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tab, reorder, order, rearrange"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pestaña, mover, reordenar, orden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "onglet, déplacer, réorganiser, ordre"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "scheda, spostare, riordinare, ordine"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブ, 移動, 並べ替え, 順序"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "탭, 이동, 순서, 재정렬"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tabblad, verplaatsen, volgorde, herschikken"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "karta, przesuń, kolejność, uporządkuj"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "вкладка, переместить, порядок, упорядочить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "вкладка, перемістити, порядок, впорядкувати"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "aba, mover, reordenar, ordem"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页, 移动, 重新排序, 顺序"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "標籤頁, 移動, 重新排序, 順序"
+          }
+        }
+      }
+    },
+    "command.window.moveTabRight.title": {
+      "comment": "Menu and command-palette title for the “window.moveTabRight” command.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab nach rechts verschieben"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move Tab Right"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover pestaña a la derecha"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déplacer l’onglet vers la droite"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sposta la scheda a destra"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブを右へ移動"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "탭을 오른쪽으로 이동"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verplaats tabblad naar rechts"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przesuń kartę w prawo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переместить вкладку вправо"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перемістити вкладку праворуч"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover Aba para a Direita"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "向右移动标签页"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "向右移動標籤頁"
+          }
+        }
+      }
+    },
+    "command.window.moveTabToOtherPanel.keywords": {
+      "comment": "Extra command-palette search terms, comma-separated. Added to the English terms, not replacing them, so the English words keep working. Synonyms a user might type — not a translation of the title.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tab, bereich, seite, gegenüber, senden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tab, pane, side, opposite, send, transfer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pestaña, panel, lado, opuesto, enviar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "onglet, panneau, côté, opposé, envoyer"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "scheda, pannello, lato, opposto, inviare"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブ, パネル, 反対側, 送る"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "탭, 패널, 반대편, 보내기"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tabblad, paneel, kant, overkant, sturen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "karta, panel, strona, przeciwny, wyślij"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "вкладка, панель, сторона, противоположная, отправить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "вкладка, панель, сторона, протилежна, надіслати"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "aba, painel, lado, oposto, enviar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页, 面板, 另一侧, 发送"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "標籤頁, 面板, 另一側, 傳送"
+          }
+        }
+      }
+    },
+    "command.window.moveTabToOtherPanel.title": {
+      "comment": "Menu and command-palette title for the “window.moveTabToOtherPanel” command.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab in den anderen Bereich verschieben"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move Tab to Other Panel"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover pestaña al otro panel"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déplacer l’onglet vers l’autre panneau"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sposta la scheda nell’altro pannello"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブをほかのパネルに移動"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "탭을 다른 패널로 이동"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verplaats tabblad naar ander paneel"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przenieś kartę do drugiego panelu"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переместить вкладку на другую панель"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перемістити вкладку на іншу панель"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover Aba para o Outro Painel"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将标签页移到另一面板"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "將標籤頁移到另一面板"
           }
         }
       }
@@ -137197,13 +139188,13 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nuage"
+            "value": "Cloud"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "iCloud"
+            "value": "Cloud"
           }
         },
         "ja": {
@@ -137221,7 +139212,7 @@
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "iCloud"
+            "value": "Cloud"
           }
         },
         "pl": {
@@ -137239,7 +139230,7 @@
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "iCloud"
+            "value": "Хмара"
           }
         },
         "pt-BR": {
@@ -137251,13 +139242,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "iCloud Drive"
+            "value": "云存储"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "iCloud 雲碟"
+            "value": "雲端"
           }
         }
       }

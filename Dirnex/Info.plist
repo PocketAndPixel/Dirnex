@@ -46,7 +46,7 @@
     <key>OSAScriptingDefinition</key>
     <string>Dirnex.sdef</string>
     <key>SUFeedURL</key>
-    <string>https://github.com/olegasd123/Dirnex/releases/download/appcast/appcast.xml</string>
+    <string>https://github.com/PocketAndPixel/Dirnex/releases/download/appcast/appcast.xml</string>
     <key>SUPublicEDKey</key>
     <string>fCW4U7xNZWXNVPxhNxIbqRSbPk12zzDW1MjmmEv5oWA=</string>
 </dict>

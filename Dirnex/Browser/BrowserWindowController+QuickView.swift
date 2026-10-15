@@ -103,16 +103,17 @@ extension BrowserWindowController {
         ] {
             surface?.webSurface?.reloadPage()
         }
-        refreshFullSizeCaption()
+        refreshQuickViewCaption()
     }
 
-    /// Re-state the visible full-size header, because the JavaScript mark lives in its caption and
-    /// the reload above says nothing about it. Only the caption is touched: re-delivering would ask
-    /// the surface to show a file it is already showing, which it rightly skips, and the page has
-    /// just been reloaded by the loop above anyway.
-    private func refreshFullSizeCaption() {
-        guard isQuickViewEnabled, quickViewMode.isFullSize else { return }
-        let preview = quickViewMode == .fullScreen ? fullScreenPreview : fullWindowPreview
+    /// Re-state the visible header, because the JavaScript mark lives in its caption and the reload
+    /// above says nothing about it. Only the caption is touched: re-delivering would ask the surface
+    /// to show a file it is already showing, which it rightly skips, and the page has just been
+    /// reloaded by the loop above anyway.
+    private func refreshQuickViewCaption() {
+        let preview = quickViewMode == .pane
+            ? counterpart(of: focusedPanel).quickViewPreview
+            : activeFullSizePreview
         guard let preview, !preview.isHidden else { return }
         let active = focusedPanel
         preview.setCaption(quickViewCaption(
@@ -214,7 +215,11 @@ extension BrowserWindowController {
             return
         case .pane:
             counterpart(of: active).showQuickViewPreview(
-                of: url, style: style, placeholder: placeholder, actions: content.actions
+                of: url,
+                style: style,
+                caption: quickViewCaption(for: url, style: style, from: active),
+                placeholder: placeholder,
+                actions: content.actions
             )
         case .fullWindow:
             present(ensureFullWindowPreview(), content, from: active)

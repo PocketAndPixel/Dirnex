@@ -21,6 +21,8 @@ extension PanelViewController {
     ) -> Bool {
         let command = modifiers.contains(.command)
         let shift = modifiers.contains(.shift)
+        // Set again below for the one click that can be the first half of a Cmd-double-click.
+        lastCommandClick = nil
 
         // No selection modifier: let the table run its own click (cursor move + drag).
         // A plain click never touches the marks — it only re-anchors the range for a
@@ -43,11 +45,46 @@ extension PanelViewController {
             panel.toggleMarkMovingCursor(to: index)
             setAnchor(to: index)
             recordMarkChange(since: previousMarks, label: .mark)
+            if let entry = panel.displayedEntry(at: index) {
+                lastCommandClick = (entry.id, previousMarks)
+            }
         }
         cursorOnParentRow = false
         reloadEverything()
         refreshQuickLookIfVisible()
         return true
+    }
+
+    /// The second click of a Cmd-double-click: open the row in the other pane, as Cmd+Return does.
+    ///
+    /// The first click was an ordinary Cmd-click and toggled the row's mark. The user was opening
+    /// the row, not marking it, so the marks go back to what they were and the journal entry that
+    /// click made is taken back. Otherwise Cmd+Z would stop on a mark nobody meant to make. Only when
+    /// that click was on this row: a Cmd-click made on its own a moment earlier is left alone.
+    ///
+    /// The `..` row has no mark to put back and nothing to open in another pane, so it goes up, as
+    /// a double-click does.
+    func fileTable(_ tableView: FileTableView, didCommandDoubleClickRow row: Int) {
+        if isParentRow(row) {
+            goToParent()
+            return
+        }
+        guard let index = entryIndex(forRow: row),
+              let entry = panel.displayedEntry(at: index) else { return }
+        if let click = lastCommandClick, click.entry == entry.id,
+           host?.withdrawSelectionChange(
+               on: self,
+               directory: panel.path,
+               previousMarks: click.previousMarks,
+               label: .mark
+           ) == true {
+            panel.setSelection(click.previousMarks)
+        }
+        lastCommandClick = nil
+        panel.moveCursor(to: index)
+        cursorOnParentRow = false
+        reloadEverything()
+        openCurrentEntry(inOtherPane: true)
     }
 
     /// Drop the range anchor — call sites where the marks reset (navigation, Esc-clear)

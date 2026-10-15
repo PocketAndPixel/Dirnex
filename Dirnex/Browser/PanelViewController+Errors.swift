@@ -11,6 +11,9 @@ extension PanelViewController {
     /// lists a path nobody has just clicked, so a pane with no window has nobody to tell.
     /// ``NSAlert/beginSheetIfVisible(over:completionHandler:)`` is where that rule and the
     /// measurement behind it live; the failure is still reported wherever it can be seen.
+    ///
+    /// `viewIfLoaded`, because reading `view` *loads* it, and loading it runs the launch listing
+    /// (`isRemoteRefreshWanted` gives the same rule). A pane with no view has no window either.
     func presentLoadFailure(_ error: Error, path: VFSPath) {
         let alert = NSAlert()
         alert.messageText = String(localized: "Can’t open “\(path.displayName)”")
@@ -18,7 +21,7 @@ extension PanelViewController {
         alert.alertStyle = .warning
         alert.addButton(withTitle: String(localized: "OK"))
         alert.enableEscapeToCancel()
-        alert.beginSheetIfVisible(over: view.window)
+        alert.beginSheetIfVisible(over: viewIfLoaded?.window)
     }
 
     /// A human-readable sentence for an error. Internal (not private) so the file-op
@@ -31,6 +34,13 @@ extension PanelViewController {
 /// dialog (`ErrorDialog`). Free of any view state so it can run on any actor.
 enum VFSErrorText {
     static func sentence(for error: Error) -> String {
+        sentence(for: error) { NetworkVolume.root(of: $0) != nil }
+    }
+
+    /// The sentence with the network-share question handed in — the seam the tests fill, because
+    /// the real answer needs a mounted share. Asked only for a local `permissionDenied`, so every
+    /// other failure costs no syscall.
+    static func sentence(for error: Error, isOnNetworkShare: (VFSPath) -> Bool) -> String {
         // The encrypted-archive vocabulary reaches the screen through the same `describe(_:)` calls
         // a `VFSError` does, and its `localizedDescription` is the useless synthesized one
         // ("…error 1."). Joined here, once, so no call site has to know which family it caught.
@@ -75,6 +85,17 @@ enum VFSErrorText {
             if CloudStorageMounts.isInsideCloudStorage(path) {
                 return String(localized: """
                 The sync client refused that. This account may not have permission for it.
+                """)
+            }
+            // **And a mounted share is the server's refusal arriving under a local path.** An SMB
+            // volume is browsed by `LocalBackend`, so the remote test above cannot see it either.
+            // Measured 2026-10-11: a Synology share's `#recycle` refuses its listing to the account
+            // the share was mounted as, and once that refusal surfaced, the sentence below would
+            // have sent the user to a switch on this Mac for a decision the NAS made. The server's own sentence is the right one word for word,
+            // so it shares that catalog key and needs no new translations.
+            if isOnNetworkShare(path) {
+                return String(localized: """
+                The server refused that. This account may not have permission for it.
                 """)
             }
             return String(localized: """

@@ -110,15 +110,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         application(NSApp, open: urls)
     }
 
-    /// `dirnex://` links (PLAN.md §M29): the license email's **Open in Dirnex**. Anything else that
-    /// reaches here is ignored, as it was before Dirnex handled any link. Dirnex declares no document
-    /// types, so no file is ever opened this way.
+    /// `dirnex://` links: the license email's **Open in Dirnex** (PLAN.md §M29), and the About panel's
+    /// **Acknowledgments**. Anything else that reaches here is ignored, as it was before Dirnex handled
+    /// any link. Dirnex declares no document types, so no file is ever opened this way.
     func application(_ application: NSApplication, open urls: [URL]) {
         guard browserWindowController != nil else {
             pendingURLs += urls
             return
         }
-        for url in urls {
+        for url in urls where !AcknowledgmentsWindowController.handle(url) {
             LicenseLinkActivation.handle(url, over: activeBrowserWindowController?.window)
         }
     }
@@ -196,6 +196,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// with the app delegate as its final link.
     @objc func showFirstRunTour(_ sender: Any?) {
         FirstRunTourPresenter.present(over: NSApp.keyWindow ?? browserWindowController?.window)
+    }
+
+    // MARK: - About
+
+    /// App menu ▸ "About Dirnex": the standard panel, with the release day, the license and the links
+    /// (``AboutPanel``).
+    @objc func showAbout(_ sender: Any?) {
+        AboutPanel.show()
     }
 
     // MARK: - Software update

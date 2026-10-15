@@ -9,11 +9,9 @@ import DirnexCore
 /// the machinery that was already there and needed no changes at all.
 extension PanelViewController {
     /// Walk `root`'s subtree for `query`, with a sheet showing progress and offering Stop, then
-    /// install the hits as a results tab.
-    ///
-    /// `title` is the results tab's chip label — a saved search's name, exactly as the Spotlight
-    /// route takes one. A fresh ⌥F7 leaves it `nil` and the chip shows the query summary.
-    func performWalkSearch(_ query: FileQuery, under root: VFSPath, title: String? = nil) {
+    /// land the hits where `landing` says — a new results tab, or the one being edited — exactly as
+    /// the Spotlight route does (`+SearchEdit`).
+    func performWalkSearch(_ query: FileQuery, under root: VFSPath, landing: SearchLanding) {
         let predicate: SearchPredicate
         let fields = SearchFields.answerable(by: root.backend)
         do {
@@ -44,7 +42,7 @@ extension PanelViewController {
                     control: control
                 )
                 sheet.finish()
-                install(results, query: query, scope: root, title: title)
+                install(results, query: query, scope: root, landing: landing)
             } catch {
                 sheet.finish()
                 presentOperationFailure(
@@ -63,20 +61,16 @@ extension PanelViewController {
         _ results: SubtreeSearch.Results,
         query: FileQuery,
         scope: VFSPath,
-        title: String?
+        landing: SearchLanding
     ) {
-        openResults(
+        landSearchResults(
             results.hits,
             // The shared truncation alert is the right words for exactly one of the three
             // completions; the other two get their own below.
             truncated: results.completion == .truncated,
-            as: ResultsPresentation(
-                pathSummary: LocalizedCatalog.summary(of: query),
-                sort: panel.model.sort,
-                query: query,
-                scope: scope,
-                title: title
-            )
+            query: query,
+            scope: scope,
+            landing: landing
         )
         report(results.completion, hits: results.hits.count, listed: results.directoriesListed)
     }
@@ -88,7 +82,7 @@ extension PanelViewController {
     private func report(_ completion: SubtreeSearch.Completion, hits: Int, listed: Int) {
         switch completion {
         case .complete, .truncated:
-            break // nothing more to say; `openResults` raised the truncation alert
+            break // nothing more to say; `landSearchResults` raised the truncation alert
         case .stopped:
             showTransientStatus(
                 String(
@@ -152,8 +146,9 @@ extension PanelViewController {
     /// Reachable from a *saved* search — the Find Files dialog hides the fields a scope cannot
     /// answer, so nothing typed there can produce this. The sentence names the term rather than
     /// merely refusing: a search that works perfectly at home and does nothing here reads as the
-    /// feature being broken unless it says which half of the query is the problem.
-    private func presentUnanswerable(_ error: SearchQueryUnanswerable, at root: VFSPath) {
+    /// feature being broken unless it says which half of the query is the problem. Internal for the
+    /// edit's guard (`+SearchEdit`), which refuses for the same reason before the dialog opens.
+    func presentUnanswerable(_ error: SearchQueryUnanswerable, at root: VFSPath) {
         presentOperationFailure(
             message: String(
                 localized: "Can’t run this search on “\(root.displayName)”",

@@ -117,6 +117,18 @@ struct LocalizationCoverageTests {
         }
     }
 
+    /// The sidebar headers a language genuinely renders as its English spelling, by language code.
+    ///
+    /// French, Italian and Dutch all say "Cloud" for cloud storage. Before this list existed the
+    /// three read "iCloud" instead, which got past the check below and mislabeled a section that
+    /// also holds Google Drive, Box, Dropbox and OneDrive: the padding the command list above warns
+    /// about, met for real.
+    private let sectionsThatCoincideWithEnglish: [String: Set<SidebarSection>] = [
+        "fr": [.icloud],
+        "it": [.icloud],
+        "nl": [.icloud]
+    ]
+
     @Test("every sidebar section header is translated in every shipped language")
     func everySidebarSectionIsTranslated() throws {
         for language in LocalizedBundles.translated {
@@ -125,7 +137,9 @@ struct LocalizationCoverageTests {
                 let key = LocalizationKey.sidebarSection(section)
                 let value = LocalizedBundles.translation(key, in: bundle)
                 #expect(value != nil, "\(language.code): no \(key)")
-                if let value {
+                let coincides = sectionsThatCoincideWithEnglish[language.code]?
+                    .contains(section) ?? false
+                if let value, !coincides {
                     #expect(value != section.title, "\(language.code): \(key) is still English")
                 }
             }
