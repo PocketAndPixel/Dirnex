@@ -157,6 +157,12 @@ struct FieldBorderTests {
     /// The point of it, pinned at its position: the stroke falls exactly on the system's ring, the
     /// 1 pt band just outside the frame, and changes no pixel inside the field. A stroke inside the
     /// frame, which is where a first attempt put it, reads as a second border and fails here.
+    ///
+    /// Captured at 2x on every Mac. At 1x a corner's anti-aliased pixels have centers up to about
+    /// 0.7 pt off the stroke, past the band's quarter-point margin: CI's 1x runner failed with 24
+    /// such pixels in Light and 32 in Dark, all on the four corners, while the same capture at 2x
+    /// finds none (2026-10-15). Widening the margin to cover 1x would stop a stroke inside the frame
+    /// from failing, so the scale is pinned instead.
     @Test("only the ring just outside the field gets darker", arguments: [
         NSAppearance.Name.aqua,
         .darkAqua
@@ -170,9 +176,9 @@ struct FieldBorderTests {
         let content = try #require(window.contentView)
         let border = try #require(FieldBorder.border(of: field))
 
-        let with = try BitmapPixels(capturing: content)
+        let with = try BitmapPixels(capturing: content, scale: 2)
         border.isHidden = true
-        let without = try BitmapPixels(capturing: content)
+        let without = try BitmapPixels(capturing: content, scale: 2)
         border.isHidden = false
         try #require(with.width == without.width && with.height == without.height)
         try #require(with.colorSpace == without.colorSpace)

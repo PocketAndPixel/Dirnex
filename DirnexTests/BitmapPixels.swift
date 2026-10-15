@@ -18,6 +18,23 @@ struct BitmapPixels {
         try self.init(rep)
     }
 
+    /// `view` drawn at `scale` pixels per point, whatever display the test host is on. The capture
+    /// above follows the window's screen, which is 2x on a Mac with a Retina display and 1x on the
+    /// CI runner, so an assertion about where anti-aliasing lands needs this one.
+    @MainActor
+    init(capturing view: NSView, scale: CGFloat) throws {
+        let rep = try #require(NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: Int((view.bounds.width * scale).rounded(.up)),
+            pixelsHigh: Int((view.bounds.height * scale).rounded(.up)),
+            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 32
+        ))
+        rep.size = view.bounds.size
+        view.cacheDisplay(in: view.bounds, to: rep)
+        try self.init(rep)
+    }
+
     init(_ rep: NSBitmapImageRep) throws {
         // Fail on a different format instead of silently comparing the wrong channels.
         try #require(rep.bitsPerSample == 8 && rep.samplesPerPixel == 4 && rep.bitsPerPixel == 32)
