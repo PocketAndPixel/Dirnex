@@ -14394,6 +14394,46 @@ guide). The panes split is now a `PanesSplitViewController`, a subclass of
   627.5 / 607.5, so the band ends where it should. The divider was left at 617.5 / 617.5, as found.
 - **Not verified live:** the trackpad tap, which only a hand on a Force Touch trackpad can feel.
 
+**2026-10-15: in full-screen Quick View a document starts below the top strip.** Reported with
+two screenshots: moving the pointer to the top of the screen in ⌃⌥Q drops the title bar over the
+content, which is fine over a photo and hides the first line of a text file, so it cannot be
+selected. A document (text, rich text, a rendered page, a PDF, a table, a tree) now starts that far
+down, and the strip above it is the surface's black backing. A picture still runs to the top edge.
+The strip is the floating header's 30 pt, plus whatever of the menu bar the window runs up under
+(`fullScreenMenuBarOverlap`, zero on a display with a camera housing). The title bar is 32 pt, so its
+last 2 pt land in the document's own top margin. The first version sized the strip to the title bar
+(32 pt); 30 was asked for the same day. Decided in `show` by what the file is, before any backend
+reads it (`QuickViewPreviewView+TopStrip`).
+
+- **The header was hiding the line too.** It floats over the top 30 pt and still takes clicks after
+  it fades, because a view at zero alpha is hit-tested. So the first line could not be clicked even
+  when the title bar was up out of the way. The negative control showed it: with the strip set to
+  zero, a click on the text view's first line came back as the header.
+- **Measured, not assumed.** A throwaway app with the same chrome on this 16-inch MacBook Pro: in
+  full screen the window is 1084 pt under a 33 pt band on a 1117 pt screen, the menu bar is 33 pt,
+  the safe area is 0, and `contentLayoutRect` is the whole window. Nothing in the window reports the
+  bar dropping, so the strip is sized ahead of time. Dirnex's title bar is 32 pt there (the close
+  button's superview), against 28 for a bare one; the accessories make the difference. The
+  screenshot's strip measures the same 32 pt (37 to 74 px at 1.157 px/pt).
+- `QuickViewTopStripTests` (app, 5): a document starts at 30 pt; a click on the first line reaches
+  the text view and one in the strip does not; a 24 pt menu bar overlap deepens the strip to 54 and
+  back to 30 without it; a `.png` runs to the top edge and the next text file comes back below the
+  strip; a pinned header's surface is unchanged. With the strip forced to zero, four of the five
+  failed, the first-line click among them. Core green (3962 tests), app green (1678), both linters
+  clean.
+- **Verified live** on the Debug build launched by path, after quitting a Debug instance from before
+  the change. A text fixture in ⌃⌥Q, first at 32 pt and then at 30: the text started below a black
+  strip, and a drag across the first line selected it, while the floating header (name, "1 of 2")
+  drew in the strip. A drag inside the strip selected nothing. A 1000 × 3000 PNG ran to the top
+  edge. At 30, read from the capture's pixels: the strip ends at 30.0 pt and the first line's
+  capitals start at 41.4 pt. The dropped bar in the report's screenshot ends at 32 pt, with its
+  shadow at about 35, so the glyphs are about 6 pt clear of it.
+- **The title bar coming down over the strip was checked by hand**, since background computer-use
+  cannot put the pointer on the top edge: at 30 pt the dropped bar clears the first line and the
+  strip looks right.
+- **Not verified live:** a display without a camera housing, where the menu bar adds its own height
+  to the strip; none was attached.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
