@@ -2566,6 +2566,22 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   `invalidateCursorRects(for:)` or the old cursor lingers until the pointer leaves the region. Still
   worth doing even once the overlay swallows the mouse (above): cursor rects are a separate
   mechanism from hit testing, so the `< | >` would otherwise still appear over a photograph.
+- **On an `NSSplitViewController` subclass, Swift demands `override` on
+  `splitView(_:constrainSplitPosition:ofSubviewAt:)`, but there is no `super` to call.** The header
+  says overrides of its delegate methods must call super, and
+  `super.splitView(…constrainSplitPosition…)` compiles clean in Swift 6 mode. But
+  `NSSplitViewController.instancesRespond(to:)` is **false** for that selector, and the call raises
+  `NSInvalidArgumentException` (unrecognized selector) on the first `setPosition` (both probed
+  2026-10-15). Only the five methods its header lists (`canCollapseSubview`, `shouldHideDivider`,
+  `effectiveRect`, `additionalEffectiveRect`, and the deprecated double-click one) take a super
+  call. AppKit sends `constrainSplitPosition` for every step of a drag and once
+  for each programmatic `setPosition(_:ofDividerAt:)`, and the subviews' frames still hold the
+  previous step when it arrives (`PanesSplitViewController`).
+  - **A divider drag can be driven in a test.** `NSSplitView` tracks the drag in its own loop,
+    pulling events off the queue, so post the `.leftMouseDragged` steps and the `.leftMouseUp` with
+    `NSApp.postEvent(_:atStart: false)` first, then `window.sendEvent` the `.leftMouseDown` on the
+    divider. It returns after the release, with the delegate called for each step and
+    `NSApp.currentEvent` set to each drag (`PanesDividerDetentTests`).
 - **Constraining a content-view subview to a view *inside* an `NSSplitView` works and is the way to
   overlay panes.** An `NSSplitView` treats a plain subview as a pane, so the overlay cannot be added
   to it; anchoring across the hierarchy to its edges tracks the divider, the sidebar and the drawer
