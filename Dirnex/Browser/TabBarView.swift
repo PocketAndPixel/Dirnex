@@ -52,6 +52,14 @@ final class TabBarView: NSView {
 
     private let stack = NSStackView()
     private let newButton = NSButton()
+    /// One width every chip is held under, kept as small as the strip allows, so an overfull strip
+    /// shrinks its chips fairly. Every label resists compression at the same priority, and a tie
+    /// lets Auto Layout put the whole shortfall on whichever labels it likes: some collapse to
+    /// nothing while others stay whole. With a shared cap that wants to be small, the cheapest
+    /// layout is the even one. The widest chips come down to one common width, and a chip already
+    /// narrower than that keeps its whole label. A roomy strip is untouched, because the cap gives
+    /// way to every label's compression resistance.
+    private let chipCap = NSLayoutGuide()
     private(set) var chips: [TabChipView] = []
     private(set) var activeIndex = 0
     /// The chip of this bar being dragged right now, drawn faded until the drag ends.
@@ -110,10 +118,18 @@ final class TabBarView: NSView {
         )
 
         addSubview(stack)
+        addLayoutGuide(chipCap)
+        // Below the labels' compression resistance, so the cap only ever breaks their tie.
+        let smallestCap = chipCap.widthAnchor.constraint(equalToConstant: 0)
+        smallestCap.priority = .defaultLow - 1
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: trailingAnchor),
-            stack.centerYAnchor.constraint(equalTo: centerYAnchor)
+            stack.centerYAnchor.constraint(equalTo: centerYAnchor),
+            chipCap.leadingAnchor.constraint(equalTo: leadingAnchor),
+            chipCap.topAnchor.constraint(equalTo: topAnchor),
+            chipCap.heightAnchor.constraint(equalToConstant: 0),
+            smallestCap
         ])
 
         // Laid out by hand, outside the stack, so showing it never shifts a chip.
@@ -148,6 +164,9 @@ final class TabBarView: NSView {
         for chip in chips {
             stack.addArrangedSubview(chip)
         }
+        NSLayoutConstraint.activate(
+            chips.map { $0.widthAnchor.constraint(lessThanOrEqualTo: chipCap.widthAnchor) }
+        )
         stack.addArrangedSubview(newButton)
 
         // A greedy trailing spacer keeps chips packed to the left.
