@@ -2862,6 +2862,19 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     because M17 authored those values against `.textBackgroundColor` and they clear AA *there*. So a
     code fence that carries syntax colors is delimited by a **border** and keeps the page's own
     background; the fill is only safe on inline code, which carries `.textColor` and nothing else.
+- **A layer's `cgColor` is frozen at whichever appearance was current when it was taken.** The tab
+  chip set `layer.backgroundColor` from `.unemphasizedSelectedContentBackgroundColor` whenever its
+  state changed, so after a switch from dark the inactive pane's tab stayed `#464646` in a light
+  window, black text on it, beside a cursor row correctly drawn `#DCDCDC` (2026-10-15). A view's
+  `textColor` and `contentTintColor` resolve at draw time and never show this, which is why only the
+  layer fill went wrong. Set it in `updateLayer()` with `wantsUpdateLayer` true: AppKit runs that
+  under the view's own appearance and re-runs it when the appearance changes, with no
+  `viewDidChangeEffectiveAppearance` override (probed).
+  - **In a test, only the view's own `displayIfNeeded()` reaches `updateLayer`.** In a window that
+    is never ordered in, `display()` on the window, or `displayIfNeeded()` on any ancestor, clears
+    the view's `needsDisplay` and leaves its layer untouched (probed, so the first test read a nil
+    fill). Then `window.appearance = …` plus `chip.displayIfNeeded()` drives the real mechanism,
+    the appearance made current included (`TabChipAppearanceTests`).
 
 ### Progress and status displays
 
@@ -8373,6 +8386,26 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
 - The fork checklist in [TRADEMARKS.md](../TRADEMARKS.md) includes **the Sparkle appcast URL**;
   that's the row with teeth, since a fork left pointing at our feed would push official Dirnex
   builds onto its users.
+- **A NOTICE that names a component without its license text does not meet MIT or BSD, and neither
+  does one left in the repo.** Both ask for their text with every copy, binary copies included. Until
+  2026-10-15 `NOTICE` listed Sparkle and GPR with copyright lines only, missed SwiftTerm, and the app
+  bundle carried no `NOTICE` or `LICENSE` at all. Now `NOTICE` holds every license in full, the
+  project's Resources phase copies both files into the app, `scripts/build_app.sh` refuses an export
+  whose copies differ from the repo's, and `AboutPanelTests` fails when a Swift package is added
+  without a word in `NOTICE`.
+  - **Read what a bundled binary links, not what its README says.** `gpr_tools`'s CMake target
+    (`source/app/gpr_tools/CMakeLists.txt` at the pinned commit) also links cJSON (MIT) and
+    ITU/ISO/IEC's md5 and program-options code (BSD), which nothing had listed. Adobe's DNG SDK and
+    XMP Core are **BSD** there (`source/lib/*/BSD-License.txt`), not the "Adobe license agreement"
+    the per-file headers mention.
+  - **Sparkle's `LICENSE` carries four more licenses inside it** (bsdiff, sais-lite, Ed25519,
+    SUSignatureVerifier.m), so it is copied whole rather than summarized.
+- **The About panel opens a link in its credits through Launch Services; the app never sees the
+  click.** The credits text view's delegate is AppKit's private `NSSystemInfoPanel`, and it hands the
+  URL to `NSWorkspace` (probed 2026-10-15). So **Acknowledgments** is `dirnex://acknowledgments`,
+  which comes back through `application(_:open:)`, and with two copies of Dirnex on the Mac it reaches
+  whichever one Launch Services picks (▸ Release pipeline, the `dirnex://` trap). The panel shrinks
+  its credits box to fit short credits, with no scroller; past about 140 pt it scrolls.
 
 ### License keys: one format, two languages (M29)
 
