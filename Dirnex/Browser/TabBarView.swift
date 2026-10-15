@@ -25,7 +25,8 @@ protocol TabBarViewDelegate: AnyObject {
 /// A pane's tab strip: one chip per open directory plus a trailing `+`. The active
 /// chip is filled (accent when the pane is active, muted otherwise); chips carry a
 /// close button and a menu, and can be dragged along the strip or onto the other pane's
-/// (`TabBarView+Drag`). Hidden when a pane has a single tab so the browser looks unchanged
+/// (`TabBarView+Drag`). Tabs that do not fit at a readable width wait behind a » before the `+`
+/// (`TabBarView+Overflow`). Hidden when a pane has a single tab so the browser looks unchanged
 /// until you actually open a second one.
 @MainActor
 final class TabBarView: NSView {
@@ -51,7 +52,9 @@ final class TabBarView: NSView {
     static let chipSpacing: CGFloat = 3
 
     private let stack = NSStackView()
-    private let newButton = NSButton()
+    let newButton = NSButton()
+    /// The » after the last chip when some tabs do not fit, listing them (`TabBarView+Overflow`).
+    let overflowButton = NSButton()
     /// One width every chip is held under, kept as small as the strip allows, so an overfull strip
     /// shrinks its chips fairly. Every label resists compression at the same priority, and a tie
     /// lets Auto Layout put the whole shortfall on whichever labels it likes: some collapse to
@@ -60,8 +63,18 @@ final class TabBarView: NSView {
     /// narrower than that keeps its whole label. A roomy strip is untouched, because the cap gives
     /// way to every label's compression resistance.
     private let chipCap = NSLayoutGuide()
+    /// Each chip's hold under `chipCap`, in chip order. Only the chips on the strip are held: a
+    /// hidden chip stays in the view tree, and a long title held there makes lowering the cap cost
+    /// more than cutting one shown chip short, so the squeeze stops being shared.
+    private(set) var capConstraints: [NSLayoutConstraint] = []
     private(set) var chips: [TabChipView] = []
     private(set) var activeIndex = 0
+    /// The tabs that have a chip on the strip now: all of them, or a run holding the active one
+    /// (`TabOverflow`). Worked out again on every layout, from the strip's width.
+    var visibleRange: Range<Int> = 0..<0
+    /// Where the last overfull run started. It outlives `setTabs`, so switching to a tab already
+    /// on the strip leaves the run where it was.
+    var runStart = 0
     /// The chip of this bar being dragged right now, drawn faded until the drag ends.
     var draggedIndex: Int?
     /// The line drawn in the gap a dragged chip would drop into.
@@ -88,6 +101,13 @@ final class TabBarView: NSView {
         NSSize(width: NSView.noIntrinsicMetric, height: 24)
     }
 
+    /// Which tabs fit is decided here, from the width the pane has just given the strip, before
+    /// the chips are placed. Hiding a chip detaches it from the stack.
+    override func layout() {
+        updateOverflow()
+        super.layout()
+    }
+
     private func configure() {
         translatesAutoresizingMaskIntoConstraints = false
         setContentHuggingPriority(.required, for: .vertical)
@@ -96,6 +116,15 @@ final class TabBarView: NSView {
         stack.alignment = .centerY
         stack.spacing = Self.chipSpacing
         stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.detachesHiddenViews = true
+        // The strip fills its pane only at about 250, the split view's holding priority too, and a
+        // stack resists clipping at required by default: so chips that did not fit pushed the
+        // divider into the other pane. Below 250 the strip clips instead, which lasts only until
+        // `layout()` hides the chips that do not fit. Above the labels', so they shorten first.
+        stack.setClippingResistancePriority(
+            TabChipView.labelCompressionResistance + 10,
+            for: .horizontal
+        )
 
         newButton.image = NSImage(
             systemSymbolName: "plus",
@@ -116,12 +145,13 @@ final class TabBarView: NSView {
             localized: "New Tab (⌘T)",
             comment: "Tooltip on the new-tab (+) button; ⌘T is the keyboard shortcut."
         )
+        configureOverflowButton()
 
         addSubview(stack)
         addLayoutGuide(chipCap)
         // Below the labels' compression resistance, so the cap only ever breaks their tie.
         let smallestCap = chipCap.widthAnchor.constraint(equalToConstant: 0)
-        smallestCap.priority = .defaultLow - 1
+        smallestCap.priority = TabChipView.labelCompressionResistance - 1
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: trailingAnchor),
@@ -164,9 +194,15 @@ final class TabBarView: NSView {
         for chip in chips {
             stack.addArrangedSubview(chip)
         }
-        NSLayoutConstraint.activate(
-            chips.map { $0.widthAnchor.constraint(lessThanOrEqualTo: chipCap.widthAnchor) }
-        )
+        capConstraints = chips.map { $0.widthAnchor.constraint(
+            lessThanOrEqualTo: chipCap.widthAnchor
+        ) }
+        NSLayoutConstraint.activate(capConstraints)
+        // Every chip shows until the next layout has the width to say which fit.
+        visibleRange = chips.indices
+        overflowButton.isHidden = true
+        needsLayout = true
+        stack.addArrangedSubview(overflowButton)
         stack.addArrangedSubview(newButton)
 
         // A greedy trailing spacer keeps chips packed to the left.
@@ -201,6 +237,28 @@ final class TabChipView: NSView {
     static let draggedAlpha: CGFloat = 0.35
     /// How far the pointer must travel before a press becomes a drag rather than a click.
     static let dragThreshold: CGFloat = 4
+    /// How hard a label holds out against being shortened. Low enough that the strip's clipping
+    /// resistance, ten above it, still sits below the 250 at which the strip fills its pane.
+    static let labelCompressionResistance = NSLayoutConstraint.Priority.defaultLow - 20
+    /// The widest a chip is drawn, whatever its title.
+    static let maximumWidth: CGFloat = 180
+    /// The shortest label a chip keeps before its tab goes to the overflow menu: about six letters
+    /// and an ellipsis, measured as a label so the field's own padding is in it.
+    static let minimumLabelWidth: CGFloat = {
+        let sample = NSTextField(labelWithString: "xxxxxx…")
+        sample.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        return sample.intrinsicContentSize.width
+    }()
+
+    /// The chip's fixed gaps, from its leading edge: before the glyph, glyph to label, label to the
+    /// close button, the close button's width, and after it.
+    private enum Gap {
+        static let leading: CGFloat = 7
+        static let glyph: CGFloat = 4
+        static let label: CGFloat = 5
+        static let close: CGFloat = 12
+        static let trailing: CGFloat = 6
+    }
 
     let index: Int
     /// The SF Symbol drawn before the label, naming where the tab's listing comes from.
@@ -251,7 +309,10 @@ final class TabChipView: NSView {
         label.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         label.lineBreakMode = .byTruncatingTail
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        label.setContentCompressionResistancePriority(
+            Self.labelCompressionResistance,
+            for: .horizontal
+        )
 
         closeButton.image = NSImage(
             systemSymbolName: "xmark",
@@ -279,18 +340,27 @@ final class TabChipView: NSView {
         addSubview(closeButton)
         NSLayoutConstraint.activate([
             heightAnchor.constraint(equalToConstant: 20),
-            widthAnchor.constraint(lessThanOrEqualToConstant: 180),
-            icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 7),
+            widthAnchor.constraint(lessThanOrEqualToConstant: Self.maximumWidth),
+            icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Gap.leading),
             icon.centerYAnchor.constraint(equalTo: centerYAnchor),
-            label.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 4),
+            label.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: Gap.glyph),
             label.centerYAnchor.constraint(equalTo: centerYAnchor),
-            closeButton.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: 5),
-            closeButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
+            closeButton.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: Gap.label),
+            closeButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Gap.trailing),
             closeButton.centerYAnchor.constraint(equalTo: centerYAnchor),
-            closeButton.widthAnchor.constraint(equalToConstant: 12),
-            closeButton.heightAnchor.constraint(equalToConstant: 12)
+            closeButton.widthAnchor.constraint(equalToConstant: Gap.close),
+            closeButton.heightAnchor.constraint(equalToConstant: Gap.close)
         ])
         applyStyle()
+    }
+
+    /// The narrowest this chip is drawn before its tab goes to the overflow menu: the glyph, the
+    /// shortest readable label and the close button, or its whole self when that is narrower.
+    var minimumWidth: CGFloat {
+        let chrome = Gap.leading + icon.intrinsicContentSize.width + Gap.glyph + Gap.label + Gap.close
+            + Gap.trailing
+        let whole = min(chrome + label.intrinsicContentSize.width, Self.maximumWidth)
+        return min(whole, chrome + Self.minimumLabelWidth)
     }
 
     @available(*, unavailable)
