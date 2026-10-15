@@ -2635,6 +2635,25 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   (`TabBarView.chipCap`). The siblings that are over the cap come down to one common width, and
   any already narrower keep their size. Because the cap sits below that priority, it never
   compresses a sibling that has room, so a roomy layout is untouched.
+  - **A hidden sibling still pulls on the cap.** `NSStackView.detachesHiddenViews` takes a hidden
+    view out of the arrangement but **not** out of the view tree (probed: 12 of 12 hidden chips
+    still had a superview), so every constraint it has to views outside the stack stays active.
+    With eighteen tabs and twelve hidden, the hidden ones with long titles made lowering the cap
+    cost more than cutting one shown chip short, so Documents went to 83 pt ("Doc…", under the
+    floor) beside a whole 107 pt Downloads. Found live, after every test had passed, because no
+    test had hidden a long title. Switch a hidden sibling's cap constraint off and back on with
+    its `isHidden`. Activating it again is safe precisely because the view never left the tree.
+- **An `NSStackView` resists clipping at *required* by default, and that is what lets a full row
+  push its whole container wider.** A pane's tab strip fills the pane only at about 250 (the
+  pane's vertical stack edges it at `249.99998`), the same as the split view's holding priority,
+  so thirteen chips at their minimum width moved the divider 80 pt into the other pane. Read it
+  with `constraintsAffectingLayout(for: .horizontal)` on the row, then
+  `clippingResistancePriority(for:)` on its stack. Lowering the clipping resistance below 250
+  stays necessary even when `layout()` hides what does not fit (`TabBarView+Overflow`). Restoring
+  it to required, with the hiding in place, widened the pane again (negative control, 2026-10-15),
+  because the first solve after `setTabs` runs with every chip arranged, before `layout()` has
+  hidden any. Keep the labels' compression resistance below the clipping resistance, so labels
+  shorten before anything clips.
 
 ### Mouse, trackpad and animation
 

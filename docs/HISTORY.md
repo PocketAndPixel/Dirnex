@@ -14305,6 +14305,61 @@ already narrower than that keeps its whole label. A strip with room is unchanged
   that don't fit, with the active tab always kept on the strip. That also removes the strip's hard
   minimum, so it can no longer move the divider.
 
+**2026-10-15: tabs that don't fit go behind a ».** Built from the proposal above, as Oleg chose it.
+A chip shrinks with the others until its label is about six letters wide; past that its tab leaves
+the strip. A » after the last chip lists the tabs that left, with their glyphs, and choosing one
+shows it. The showing tab always keeps a chip, and the strip no longer pushes the divider.
+
+- **The strip shows a run, never a subset.** `TabOverflow` (core) picks a run of adjacent tabs that
+  fits at each chip's minimum width (its whole width when that is less) and holds the showing tab.
+  The run stays where it is while the showing tab is in it. When the showing tab leaves it, the run
+  slides by the least that brings it back. A run that reaches the last tab with room to spare takes
+  earlier tabs back. A run is what keeps drag-and-drop honest: the gap after the last chip is the
+  gap before the first tab hidden past it, so `dropSlot` is the run's start plus the slot among the
+  chips shown, and the marker draws where the tab will land. The » menu splits the hidden tabs into
+  those before the run and those after it, with a separator.
+- **The floor is a label six lowercase letters and an ellipsis wide** ("xxxxxx…", measured as a
+  label so its padding is in it: 44 pt), about 93 pt for a folder chip. In a 600 pt pane, nine
+  tabs show five or six chips depending on their titles, at or near their whole width.
+- **The divider fix needed two priorities, and a control showed both are needed.** The strip's
+  stack resisted clipping at *required*, while the strip fills its pane at about 250, so its
+  minimum width won. Clipping resistance now sits at 240, and the labels' compression resistance
+  drops from 250 to 230 so they still shorten first. Hiding chips in `layout()` alone is not
+  enough. With the clipping resistance put back to required, thirteen tabs still widened the pane,
+  because `setTabs` adds every chip and the solve runs before `layout()` hides any.
+- **Found live after every test passed: hidden chips still pulled on the shared cap.** With
+  eighteen tabs, Documents came out at "Doc…", under the floor, beside a whole Downloads. The probe
+  that settled it: hidden chips never leave the view tree (`detachesHiddenViews` takes them out of
+  the arrangement only), so their caps stayed active, and long hidden titles made lowering the cap
+  cost more than cutting one shown chip. Each chip's cap is now switched off while it is hidden.
+  Afterwards Documents and Downloads were both 95.5 pt with 50 pt labels.
+- `TabOverflowTests` (core, 10): all fit, the leading run, sliding right and left, staying put,
+  filling back from the end, no growth at the front of a run that did not move, uneven widths with
+  room given to the tabs after the showing one, the showing tab alone, and clamping.
+  `TabStripOverflowTests` (app, 7): an overfull strip with readable labels and nothing overlapping;
+  resizing wider and back; the showing tab kept, and the run staying put; the » menu's order,
+  separator, glyphs and selection; drop slots counted in the whole list; the eighteen-tab fair
+  share; and thirteen tabs leaving a real pane's window width alone. `TabStripSqueezeTests` now
+  runs at widths where every chip still fits. Negative controls each failed their own tests:
+  clipping resistance back to required (the pane test), no overflow pass (five tests), the slot
+  without the run's start (the drop test), hidden chips keeping their cap (the fair-share test),
+  and in the core, growth at the front of any run and no filling after a slide. "More Tabs" (the
+  »'s label and tooltip) is in the catalog in all 14 languages, and
+  `scripts/check_localization_keys.py` found all 1123 extracted keys. Core green (3962 tests), app
+  green (1664), both linters clean.
+- **Verified live** on the Debug build launched by path, with nothing else running and settings
+  backed up and restored twice (65 keys, identical by value each time). With twelve tabs in the
+  left pane (about 600 pt), six chips showed whole or nearly so, the showing tab last, then » and
+  +. The » opened a menu of the six hidden tabs in strip order with folder glyphs. Choosing
+  Downloads made it the first chip of the run; the menu then showed three tabs, a separator and
+  four. Choosing the last one slid the run back to end on it. Eighteen tabs left the divider where
+  it was (x ≈ 770 before and after), and on the fixed build Documents and Downloads read "Docum…"
+  and "Downl…" at the same width. Dragging the divider to x ≈ 560 worked, and the strip went to
+  three whole chips plus the ». Dragging it back gave six.
+- **Not verified live:** dragging a chip on an overfull strip (a drag session cannot be
+  synthesized; the slot arithmetic is pinned by the drop test), and the » at a translated
+  language.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

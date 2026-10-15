@@ -41,10 +41,12 @@ extension TabBarView {
         return (source, index)
     }
 
-    /// The gap a drag at `info`'s pointer would drop into.
+    /// The gap a drag at `info`'s pointer would drop into. Only the chips on the strip count, and
+    /// they are a run (`TabOverflow`), so a gap among them is the same gap in the whole list.
     func dropSlot(for info: NSDraggingInfo) -> Int {
         let x = convert(info.draggingLocation, from: nil).x
-        return TabSlot.slot(forDropAt: Double(x), chipMidpoints: chipFrames.map { Double($0.midX) })
+        let midpoints = chipFrames.map { Double($0.midX) }
+        return visibleRange.lowerBound + TabSlot.slot(forDropAt: Double(x), chipMidpoints: midpoints)
     }
 
     /// What a drop at `info`'s pointer would do: `.move` with the marker in its gap, or nothing for
@@ -94,17 +96,19 @@ extension TabBarView {
         return true
     }
 
-    /// Each chip's frame in this view's coordinates, in strip order.
+    /// The frame of each chip on the strip, in this view's coordinates and strip order.
     private var chipFrames: [NSRect] {
-        chips.map { $0.convert($0.bounds, to: self) }
+        chips[visibleRange].map { $0.convert($0.bounds, to: self) }
     }
 
-    /// Draw the marker in the middle of the gap `slot` names: before chip `slot`, or after the last.
+    /// Draw the marker in the middle of the gap `slot` names: before tab `slot`'s chip, or after the
+    /// last chip on the strip.
     private func showInsertionMarker(at slot: Int) {
         let frames = chipFrames
         guard let last = frames.last else { return }
         let gap = Self.chipSpacing / 2
-        let x = frames.indices.contains(slot) ? frames[slot].minX - gap : last.maxX + gap
+        let local = slot - visibleRange.lowerBound
+        let x = frames.indices.contains(local) ? frames[local].minX - gap : last.maxX + gap
         let width: CGFloat = 2
         insertionMarker.frame = NSRect(
             x: max(x - width / 2, 0),
