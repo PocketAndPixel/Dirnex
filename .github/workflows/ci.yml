@@ -1,8 +1,8 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
+  # Pull requests only, not the push that merging one makes: the pull request run already tested
+  # the merge result, and a second 20-minute run of the same tree on main bought nothing.
   pull_request:
     branches: [main]
   # Run by hand on any branch (Actions ▸ CI ▸ Run workflow), without opening a pull request.
