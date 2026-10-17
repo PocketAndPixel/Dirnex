@@ -128,11 +128,17 @@ final class StubPanelHost: PanelHost {
     private(set) var frecencyVisits: [VFSPath] = []
 
     func recordFrecencyVisit(_ path: VFSPath) { frecencyVisits.append(path) }
+    /// Every vault a pane asked the window to open, in order — what the right-click's Unlock Vault
+    /// hands over is the whole of its effect from the pane's side.
+    private(set) var vaultOpenRequests: [VaultLocation] = []
+
     func panelRequestsVaultOpen(
         _ vault: VaultLocation,
         showingIn pane: PanelViewController,
         inNewTab: Bool
-    ) {}
+    ) {
+        vaultOpenRequests.append(vault)
+    }
 
     /// The one requirement that records rather than shrugging, because it is the seam a whole
     /// milestone's gestures run through: a test hands back `materializeReport` and asserts on what
