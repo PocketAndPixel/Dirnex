@@ -6913,6 +6913,35 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   a second account is a *directory appearing inside* `~/Library/CloudStorage`, so FSEvents on that
   parent is what notices it; the volume notifications that refresh the Volumes section never fire.
   Watch the parent, not the mounts — watching the mounts wakes the watcher on every file Drive syncs.
+- **Not every directory under `~/Library/CloudStorage` is a mount, and only
+  `com.apple.file-provider-domain-id` tells a leftover from a live one.** Found 2026-10-18: Dropbox
+  set its domain up again as `Dropbox` and left `Dropbox-Home (18.10.2026 00:09)` beside it, renamed
+  and no longer synced. The scan listed it as a second account, "Home (18.10.2026 00:09) — Dropbox";
+  Finder showed nothing. The leftover kept Dropbox's own `com.dropbox.*` attributes and lost only that
+  one, which every live root carries (Box, Dropbox, OneDrive, both Drive accounts, streaming and
+  mirror alike) with the value `<extension bundle id>/<domain id>`. **`fileproviderctl dump -l` is the
+  tool**: its "CloudStorage xattrs" section prints exactly this attribute per directory, and its domains
+  cache listed one Dropbox domain. The leftover also answers no `isUbiquitousItem`, so F8 there takes
+  `trashItem` like any local folder (▸ The Trash). `CloudStorageMounts.named` drops leftovers, so the
+  sidebar, the path bar, the tab title, the merged Trash and the account-label count all agree.
+  - **The read is cheap and ungated.** From an ad-hoc-signed app launched through LaunchServices with no
+    Full Disk Access, the size-only `getxattr` (`XATTR_NOFOLLOW`) answered in a median of 9–16 µs per
+    directory, `ENOATTR` on the leftover, and raised no prompt. It reads the directory itself, so no
+    provider is asked anything.
+  - **A no-FDA control has to be a directory that refuses silently.** The first run of that probe
+    opened `~/Library/Mobile Documents` to prove the grant was missing, and blocked in `open` (sampled
+    in `__open_nocancel`) behind a TCC prompt on Oleg's screen, because iCloud Drive asks. `~/Library/Mail`
+    and `~/Library/Safari` answer `EPERM` and ask nothing.
+  - **Two guards keep it from hiding a real account.** Nothing is dropped unless some directory carries
+    the marker, since it is measured on macOS 26 only and the app targets 14: a system that never wrote
+    it would otherwise lose the whole section. And only `ENOATTR` drops a directory. A read that failed
+    some other way keeps it.
+  - **Two edges are left alone, both pure classifications by position.** `TrashLocations` still
+    reads `<leftover>/.Trash` as a trash (F8 there is a confirmed permanent delete rather than a move;
+    this leftover has none), and the tab chip draws the cloud glyph for anything under `CloudStorage`.
+    The order "folder first, marker later" during a domain's setup was not exercised: stamping a fake
+    domain id onto a test folder risks `fileproviderd` acting on it. The parent's FSEvents stream is
+    recursive, so the marker landing should wake the sidebar, but that is reasoning, not a measurement.
 
 #### What a read costs
 
