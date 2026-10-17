@@ -14684,6 +14684,36 @@ lists every directory under `~/Library/CloudStorage`. So the sidebar showed "Hom
 - Core green (3972 tests), both linters clean. App: 1733 tests, and two full runs each failed only
   the six `PanesDividerDetentTests` at line 219, the flake recorded above.
 
+**2026-10-18: a Force Click on a row renames it.** Asked for by Oleg. The deeper second click of a
+Force Touch trackpad now does what F2 does, as a Force Click on a name does in Finder.
+
+- **Probed before written**, with Oleg's trackpad, because a pressure event cannot be synthesized.
+  The press's `.pressure` events are not delivered while `NSTableView.mouseDown` tracks the click.
+  They all arrive within 3 ms of it returning, so the rename opens on release, after the click has
+  put the cursor on the row (docs/NOTES.md ▸ Mouse, trackpad and animation).
+- **`ForceClickRecognizer`** holds the one row a press may answer for. `mouseDown` disarms every
+  press and arms only a plain single click that reaches `super`. The first stage 2 answers once, and
+  the release or a drag disarms. `PanelViewController.fileTable(_:didForceClickRow:)` then calls
+  `beginRename()` if the row is still the table's selection, so `..`, a read-only location and a
+  trash refuse exactly as F2 does.
+- **The drag guard is `beginDraggingSession(with:event:source:)`**, measured with a computer-use
+  drag to run inside `mouseDown`, 1 ms before it returns. Oleg's two hard-press drags logged no drag
+  hook at all, so they had never become drags, and the guard was measured that way instead.
+- **`FileTableViewInput` moved to its own file**, to keep `FileTableView.swift` under the 500-line
+  ceiling. It is the table's contract, so it is a concept of its own rather than a line count.
+- **Verified live** on the Debug build launched by path, in a scratch folder. A Force Click on a file
+  opened its name with the base name selected and fired once per press. Ordinary clicks fired
+  nothing. A ⌘-Force Click marked the row and opened nothing: presses consumed before `super`
+  delivered their pressure to the table and fired nothing. On `..` it fired at the table and the pane
+  refused it. No Look Up popover appeared, though Look Up on this Mac is Force Click.
+- **Pinned** by `ForceClickRenameTests` (nine tests): the recognizer's stages as numbers, and the
+  real press through the table's own `mouseDown`. Negative controls: without the arming line the
+  positive test fails, and without the disarm at the top of `mouseDown`, or without the
+  cursor-row guard, the ⌘ test and the cursor test fail. In the test host the table's own click
+  selects nothing (NOTES.md ▸ Testing), so each plain press sets the selection first.
+- Core green (3972 tests), both linters clean. App: 1742 tests. The only failures are the six
+  `PanesDividerDetentTests` at line 219, which fail the same way with the suite run alone.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

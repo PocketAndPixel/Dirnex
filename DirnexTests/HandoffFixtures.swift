@@ -24,7 +24,7 @@ enum Handoff {
     /// may be written where its names resolve from, and it must be answerable per *path*.
     struct StubBackend: VFSBackend {
         let id: VFSBackendID = .local
-        let capabilities: VFSCapabilities = [.read, .write]
+        var capabilities: VFSCapabilities = [.read, .write]
         var listings: [VFSPath: [FileEntry]] = [:]
         var readOnlyPaths: Set<VFSPath> = []
 
