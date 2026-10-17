@@ -32,6 +32,18 @@ extension PanelViewController {
         beginRename()
     }
 
+    // MARK: - Force Click
+
+    /// A Force Click renames the row, as one on a file's name does in Finder. The click it grew out
+    /// of has already put the cursor on the row, so from here it is F2: the same `beginRename`,
+    /// silent wherever F2 is (`..`, a read-only location, a trash).
+    func fileTable(_ tableView: FileTableView, didForceClickRow row: Int) {
+        // F2 renames the cursor row, so that has to be the row pressed. They differ only if the click
+        // did not select it, and the field would then open on some other file.
+        guard tableView.selectedRow == row else { return }
+        beginRename()
+    }
+
     /// How `path` would be renamed, or `.unavailable`.
     ///
     /// `nil` — the `..` row, or an empty pane — asks about the *location* rather than about a row,

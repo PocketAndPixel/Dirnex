@@ -322,6 +322,15 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - **The wall clock lies about which fix worked.** The crashing runs took 23 s against a 12 s
     baseline, which reads as "these tests are slow" and invites tuning the waits; the restarts were
     the whole difference, and with them gone the suite costs ~6 s.
+- **A plain click on a file table in a test runs `NSTableView`'s tracking loop and selects
+  nothing.** Measured 2026-10-18 in `ForceClickRenameTests`. With the release queued first
+  (`postEvent(_, atStart: true)`), `table.mouseDown` took it and returned, and `selectedRow` had not
+  moved. Ordering the window front and `makeKeyAndOrderFront` changed nothing: the test host is never
+  the active app, so the window never becomes key. `window.sendEvent` is worse. It spent the press on
+  activating the window, delivered nothing, and left the queued release behind for a later press.
+  The fix is to arrange what the click would have done (`selectRowIndexes`) and still drive the
+  press, which proves everything after the selection. A ⌘ or ⇧ click needs none of this: the pane
+  consumes it before `super.mouseDown`, which is why the earlier mouse tests never met it.
 
 ### Waits, run loops and timing
 
@@ -2872,6 +2881,27 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 - **A window posts no mouse-moved events unless `acceptsMouseMovedEvents` is set** — an
   `NSTrackingArea` carrying `.mouseMoved` is not enough on its own. A header meant to fade in on
   pointer movement simply never appears, with no error anywhere.
+- **A Force Click on a table row arrives after the button is up, all at once.** Measured 2026-10-18
+  with a logging probe and Oleg's trackpad, for Force Click → rename. A press is `.pressure` events
+  to `pressureChange(with:)`: `stage` 1 for the click, 2 at the deeper second click, 0 at the
+  release. `NSTableView.mouseDown` runs its own tracking loop, which leaves them all queued. Every
+  one was delivered within 3 ms of `mouseDown` returning, timestamps spanning the 0.6 s press, with
+  the two first stage-1 events arriving just *before* `mouseDown`. So act on the first stage 2 after
+  `mouseDown` returns. By then the click has selected the row, and the loop is not running.
+  - **Arm in `mouseDown`, and disarm there too.** Every press starts unarmed, and only a plain single
+    click arms. A ⌘ or ⇧ click consumed before `super` still delivers its pressure events to the
+    table. After a click that delivered no pressure, such as one from a mouse, that ⌘-click would
+    otherwise fire for the earlier row.
+  - **A drag starts inside `mouseDown`.** `beginDraggingSession(with:event:source:)` was called 1 ms
+    before `mouseDown` returned, ahead of the data source's `willBeginAt`. So disarming there runs
+    before any queued stage 2, and pressing hard mid-drag (spring-loading) cannot rename on the drop.
+  - **No `quickLook(with:)` reached the table**, though this Mac's Look Up gesture is Force Click.
+    Measured only on a row, where the tracking loop holds the events.
+  - **Neither half can be synthesized.** `NSEvent` has no factory for a pressure event, and
+    computer-use's drag carries no pressure. Put the stage logic in a value
+    (`ForceClickRecognizer`), let `pressureChange` hand its `stage` to an internal method a test
+    calls, and ask the person with the trackpad. A press they think was a drag may not have been
+    one: two such runs here logged no drag hook at all, so `app_drag` measured the hook instead.
 
 ### Color and contrast
 
