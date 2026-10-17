@@ -66,6 +66,7 @@ extension NSViewController {
 /// with both tops at y=587). So a size saved by an older build can never come back, and none of that
 /// arithmetic has to be written by hand. On a resizable window the same call would restore the stale
 /// size too.
+@MainActor
 enum DialogWindowPlacement {
     /// Restore `window` to its remembered position under `key`, or center it over `parent` when
     /// there is nothing remembered — or when what is remembered is on a display the app is no longer
@@ -148,6 +149,7 @@ enum DialogTitle {
 /// Six controllers spelled this out identically — the same insets, the same four anchors — and the
 /// margin is exactly the kind of number that drifts when it lives in six places. What stays at the
 /// call site is the part that genuinely differs: which rows, and the container's own fixed size.
+@MainActor
 enum DialogLayout {
     /// The margin between the container's edge and the content, on all four sides.
     static let inset: CGFloat = 20

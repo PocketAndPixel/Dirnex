@@ -26,7 +26,9 @@ import DirnexCore
 /// which otherwise ends its sheet on every button press before anything has been checked.
 ///
 /// An object because it is the Create button's target, and kept alive by the sheet's completion
-/// closure, which captures it: `NSControl.target` is weak.
+/// closure, which captures it: `NSControl.target` is weak. Main-actor isolated, like every control
+/// it holds.
+@MainActor
 final class VaultCreateAccessory: NSObject {
     let view: NSView
     let nameField: NSTextField
