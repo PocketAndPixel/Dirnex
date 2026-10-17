@@ -7,6 +7,8 @@ import DirnexCore
 /// both panes and the sidebar. The image file is written into the pane you are standing in, the
 /// unlocked volume opens in the *other* one — the dual-pane shape the whole app is built around, and
 /// what you want next is to copy things in — and a row appears in the sidebar for both windows.
+/// It opens in a **new tab** there, so the folder that pane was showing is still one tab away
+/// rather than replaced by a place the user never chose to leave it for.
 ///
 /// **There is no progress bar, and that is a measurement rather than an omission.** A sparse bundle's
 /// creation is constant-time in its declared ceiling: 100 GB, 500 GB and 2 TB each took **1.02 s**
@@ -131,7 +133,12 @@ extension BrowserWindowController {
                 VaultStore.remember(vault)
                 SecretKeychain.store(passphrase: passphrase, for: vault)
                 focusedPanel.refreshCurrentDirectory(selecting: .local(path))
-                openVault(vault, with: passphrase, showingIn: panelCounterpart(of: focusedPanel))
+                openVault(
+                    vault,
+                    with: passphrase,
+                    showingIn: panelCounterpart(of: focusedPanel),
+                    inNewTab: true
+                )
             } catch {
                 self?.presentVaultError((error as? VaultError) ?? .couldNotCreate)
             }

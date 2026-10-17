@@ -14486,6 +14486,28 @@ a License", and absent where licensing is off. The copyright line is `NSHumanRea
   without "Version" in a Debug build: AppKit leaves the word out for a 0.x version (a render with
   1.0.12 showed it), so a release build is unaffected.
 
+**2026-10-17: a new vault opens in a new tab.** Asked for in one line. New Vault still writes the
+image into the pane you are in and unlocks the volume in the other pane, which takes the focus, but
+the volume now gets a new tab there instead of replacing the folder that pane was showing. One
+argument at the call site: `createVault` passes `inNewTab: true` to `openVault`, which already took
+it for a sidebar row picked with ⌘.
+
+- **No new unit test.** No test builds a `BrowserWindowController`, and the create runs `hdiutil`.
+  The pane's half, a tab opened with `inNewTab` landing beside the one it came from, is already
+  pinned by `ServerConnectNewTabTests.newTabLanding`.
+- **Verified live** on the Debug build launched by path, settings backed up and restored (66 keys,
+  identical). The right pane was active in a scratch folder and the left pane had three tabs,
+  Downloads active. New Vault made `LiveTabCheck`: the left pane gained a fourth tab, active and
+  focused, listing the empty volume, with Downloads still beside it, and the right pane's cursor
+  was on the new `.sparsebundle`. Locking moved that tab to the image's folder. The passphrase
+  fields were filled by a temporary probe, removed afterwards (LIVE-VERIFICATION.md, password
+  fields). The vault, its saved entry and its Keychain item were removed afterwards.
+- **Not run live:** the same gesture on the build before the change, as a control.
+- Core green (3962 tests), app green (1706), both linters clean. The first app run never built:
+  the Metal toolchain trap now in NOTES.md ▸ Testing. The second failed four
+  `PanesDividerDetentTests` tests at 12.5 s each; the suite then passed alone (9 tests in 0.09 s),
+  and so did the full rerun.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
