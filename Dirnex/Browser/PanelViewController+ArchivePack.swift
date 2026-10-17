@@ -91,11 +91,18 @@ extension PanelViewController {
 
     // MARK: - Sheet
 
+    /// The sheet stays up until the passphrases pass: Pack checks them while it is on screen, a
+    /// failure is said under the form, and only a pair that passes (or Cancel) takes it down.
+    ///
+    /// Sheet-only, like New Vault's: ending a `runModal` loop from the retargeted button would need
+    /// a second way out beside `endSheet`, and ⌥F5 is a pane's own command, so there is always a
+    /// window to hang it on.
     private func presentPackSheet(
         sources: [FileEntry],
         destinationPane: PanelViewController,
         defaults: PackAccessory.Defaults
     ) {
+        guard let window = view.window else { return }
         let destination = destinationPane.panel.path
         let alert = NSAlert()
         alert.messageText = sources.count == 1
@@ -111,50 +118,43 @@ extension PanelViewController {
         let accessory = PackAccessory.make(defaults)
         alert.accessoryView = accessory.view
         alert.window.initialFirstResponder = accessory.nameField
-        // Choosing a cipher grows the accessory and choosing None shrinks it again; an `NSAlert`
-        // takes the height from that frame, so it has to be told to re-fit around it (measured:
-        // `layout()` does this synchronously on a live sheet — docs/NOTES.md). Weak because the
-        // completion handler below already owns `accessory`, and `alert` owns the accessory's view.
+        accessory.routePack(through: alert.buttons[0])
+        // Choosing a cipher grows the accessory, choosing None shrinks it again, and an error row
+        // grows it too; an `NSAlert` takes the height from that frame, so it has to be told to
+        // re-fit around it (measured: `layout()` does this synchronously on a live sheet —
+        // docs/NOTES.md). Weak because the completion handler below already owns `accessory`, and
+        // `alert` owns the accessory's view.
         accessory.onHeightChange = { [weak alert] in alert?.layout() }
-
-        // `accessory` is captured (and so kept alive) by this closure for the sheet's lifetime,
-        // which is what keeps the popups' target — the accessory itself — from being deallocated
-        // under it: `NSControl.target` is weak.
-        let apply: (NSApplication.ModalResponse) -> Void = { [weak self] response in
-            guard response == .alertFirstButtonReturn else { return }
-            self?.packChosen(
+        accessory.onPack = { [weak self, weak alert, weak accessory] in
+            guard let self, let alert, let accessory else { return }
+            packPressed(
+                on: alert,
                 accessory: accessory,
                 sources: sources,
                 destinationPane: destinationPane
             )
         }
-        if let window = view.window {
-            alert.beginSheetModal(for: window, completionHandler: apply)
-            accessory.nameField.selectText(nil)
-        } else {
-            apply(alert.runModal())
-        }
+
+        // `accessory` is captured (and so kept alive) by this closure for the sheet's lifetime,
+        // which is what keeps the popups' and the Pack button's target — the accessory itself —
+        // from being deallocated under them: `NSControl.target` is weak. Nothing is left to do once
+        // the sheet is down: a pack that passed its checks was sent on before it ended.
+        alert.beginSheetModal(for: window) { _ in accessory.onPack = nil }
+        accessory.nameField.selectText(nil)
     }
 
-    /// Read the sheet back, check the passphrase pair, and go on to the conflict guard.
+    /// Check the passphrase pair with the sheet still up, then take it down and go on to the
+    /// conflict guard — or say what was wrong under the form and put the cursor where the fix goes.
     ///
-    /// A rejected passphrase re-raises the sheet with every *other* choice intact rather than
-    /// dropping the user back into the pane — they have already picked a name, a format and a
-    /// level, and none of that is what they got wrong. The passphrase fields come back empty,
-    /// which is the one thing they do have to type again.
-    private func packChosen(
+    /// A rejected passphrase leaves every *other* choice where it was — the user has already picked
+    /// a name, a format and a level, and none of that is what they got wrong.
+    private func packPressed(
+        on alert: NSAlert,
         accessory: PackAccessory,
         sources: [FileEntry],
         destinationPane: PanelViewController
     ) {
         let encryption = accessory.encryption
-        let defaults = PackAccessory.Defaults(
-            baseName: accessory.nameField.stringValue,
-            format: accessory.format,
-            level: accessory.level,
-            encryption: encryption,
-            namePrivacy: accessory.namePrivacy
-        )
         var passphrase: ArchivePassphrase?
         if encryption.isEncrypted {
             let typed = ArchivePassphrase(accessory.passphraseField.stringValue)
@@ -162,26 +162,37 @@ extension PanelViewController {
             // Both checks run on `ArchivePassphrase`, never on the two fields' `String`s: comparing
             // the text at this call site is exactly what that type exists to remove the reason for.
             guard !typed.isEmpty else {
-                return retryPackSheet(
-                    after: .emptyPassphrase,
-                    sources: sources,
-                    destinationPane: destinationPane,
-                    defaults: defaults
+                accessory.showError(
+                    LocalizedCatalog.sentence(for: EncryptedArchiveError.emptyPassphrase)
                 )
+                alert.window.makeFirstResponder(accessory.passphraseField)
+                return
             }
             guard typed.matches(repeated) else {
-                return retryPackSheet(
-                    after: .passphrasesDoNotMatch,
-                    sources: sources,
-                    destinationPane: destinationPane,
-                    defaults: defaults
+                // Both go: with the text hidden there is no telling which of the two was mistyped.
+                accessory.passphraseField.stringValue = ""
+                accessory.confirmField.stringValue = ""
+                accessory.showError(
+                    LocalizedCatalog.sentence(for: EncryptedArchiveError.passphrasesDoNotMatch)
                 )
+                alert.window.makeFirstResponder(accessory.passphraseField)
+                return
             }
             passphrase = typed
         }
 
-        let name = ArchivePacking.archiveFileName(
+        let defaults = PackAccessory.Defaults(
             baseName: accessory.nameField.stringValue,
+            format: accessory.format,
+            level: accessory.level,
+            encryption: encryption,
+            namePrivacy: accessory.namePrivacy
+        )
+        // Down first, so the collision question lands on the window rather than on a sheet that is
+        // about to go.
+        alert.window.sheetParent?.endSheet(alert.window, returnCode: .alertFirstButtonReturn)
+        let name = ArchivePacking.archiveFileName(
+            baseName: defaults.baseName,
             format: defaults.format
         )
         confirmAndPack(
@@ -191,35 +202,6 @@ extension PanelViewController {
             passphrase: passphrase,
             destinationPane: destinationPane
         )
-    }
-
-    private func retryPackSheet(
-        after error: EncryptedArchiveError,
-        sources: [FileEntry],
-        destinationPane: PanelViewController,
-        defaults: PackAccessory.Defaults
-    ) {
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = String(
-            localized: "Check the passphrase",
-            comment: "Title of the alert shown when the pack sheet's two passphrases don't match."
-        )
-        alert.informativeText = LocalizedCatalog.sentence(for: error)
-        alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
-        alert.enableEscapeToCancel()
-        let reopen: (NSApplication.ModalResponse) -> Void = { [weak self] _ in
-            self?.presentPackSheet(
-                sources: sources,
-                destinationPane: destinationPane,
-                defaults: defaults
-            )
-        }
-        if let window = view.window {
-            alert.beginSheetModal(for: window, completionHandler: reopen)
-        } else {
-            reopen(alert.runModal())
-        }
     }
 
     // MARK: - Conflict + run
