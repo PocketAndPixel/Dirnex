@@ -97,6 +97,9 @@ extension PanelViewController {
         )
         open.target = self
         menu.addItem(open)
+        // Over a disk image only. Open on an image Dirnex has no record of browses it as the folder
+        // it is, so this is the one way to its volume from here.
+        if let unlock = unlockVaultItem() { menu.addItem(unlock) }
         menu.addItem(openWithMenuItem())
         // Get Info beside Quick Look: both look at the item rather than do anything to it. Before
         // Show in Finder, the order the File menu has. Over a marked set it is the bulk panel, by the

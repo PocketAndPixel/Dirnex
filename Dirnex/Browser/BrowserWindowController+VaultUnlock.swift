@@ -48,15 +48,7 @@ extension BrowserWindowController {
     /// opened, and how it gets *into* the sidebar.
     @objc func unlockVault(_ sender: Any?) {
         guard let entry = vaultImageUnderCursor else { return }
-        openVault(
-            VaultLocation(
-                imagePath: entry.path.path,
-                // Nothing can be asked of a locked image — the volume name lives inside the
-                // encrypted filesystem — so the file's own name stands in until an attach reports
-                // the real mount, which is where `openVault` corrects it.
-                volumeName: (entry.name as NSString).deletingPathExtension
-            )
-        )
+        openVault(VaultLocation(lockedImage: entry))
     }
 
     /// Lock the vault the focused pane is standing in. The gesture for "I'm done here", which is why
@@ -66,14 +58,11 @@ extension BrowserWindowController {
         lock(vault)
     }
 
-    /// The image under the cursor, if it is one — a `.sparsebundle` or a `.dmg` in a real local
-    /// pane. Also what the menu item and the palette entry gate on, so the command is grayed rather
-    /// than silently doing nothing.
+    /// The image under the cursor, if it is one (`PanelViewController.vaultImage`, the rule the
+    /// right-click item shares). Also what the menu item and the palette entry gate on, so the
+    /// command is grayed rather than silently doing nothing.
     var vaultImageUnderCursor: FileEntry? {
-        guard focusedPanel.panel.path.backend == .local, !focusedPanel.isVirtualDirectory,
-              let entry = focusedPanel.panel.currentEntry,
-              DiskImageArguments.Kind.isImageName(entry.name) else { return nil }
-        return entry
+        focusedPanel.vaultImage(focusedPanel.panel.currentEntry)
     }
 
     /// The saved vault whose volume the focused pane is inside, if any.

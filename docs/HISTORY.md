@@ -14533,6 +14533,30 @@ traced full runs measured **0.7–18.8 ms**, not a tracking timeout.
   (the same pre-existing known issue in each). Core green, 3962 tests; SwiftFormat and SwiftLint
   clean. Changes left uncommitted.
 
+**2026-10-17: Unlock Vault in the right-click menu.** Asked for in one line, "the same logic as
+Go ▸ Unlock Vault". The item sits under Open, over a `.sparsebundle` or `.dmg` only, and is left out
+everywhere else, the way Show in Finder is left out over a server's file. Go ▸ Unlock Vault and the
+item share the image rule (`PanelViewController.vaultImage`) and the name a locked image is given
+(`VaultLocation(lockedImage:)`), and both end in the window's `openVault`.
+
+- **It captures the clicked row instead of dispatching on the cursor**, per NOTES.md ▸ Key
+  equivalents, key monitors and menus. A right-click on a marked row leaves the cursor where it
+  was, so the Go menu's responder-chain item would have unlocked the cursor's row, or done nothing.
+  It reaches the window through `panelRequestsVaultOpen`, the seam Enter on a saved vault already
+  used. Offered only when the menu is about exactly one image: one vault in a larger marked set
+  gets no item.
+- **Pinned** by `ContextMenuUnlockVaultTests` (six tests). `StubPanelHost` now records vault-open
+  requests. Negative control: aiming the item at `panel.currentEntry` failed the marked-image test.
+- **Verified live** on the Debug build launched by path, settings backed up and restored
+  (byte-identical). A throwaway unencrypted `.dmg` was attached with `hdiutil -nobrowse` first, so
+  the funnel took its already-mounted branch and read no Keychain. The right-click showed Open,
+  Unlock Vault, Open With. Choosing it moved the pane to `/Volumes/DirnexProbe`, and
+  `Dirnex.vaults` was unchanged. A plain `.txt` showed no item. Needed full-screen control, since
+  background computer-use refuses context menus.
+- **Not run live:** an unlock that attaches (passphrase prompt or Keychain read). That path is the
+  Go command's, unchanged.
+- Core green (3962 tests), app green (1717, the same pre-existing known issue), both linters clean.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
