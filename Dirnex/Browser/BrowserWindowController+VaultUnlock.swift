@@ -152,8 +152,15 @@ extension BrowserWindowController {
             body(point)
             return
         }
+        // A second request while this vault is still unlocking — the other half of a double-click
+        // — waits for that unlock instead of racing it into `hdiutil` (``VaultUnlocksInFlight``).
+        let id = vault.resolvedImagePath
+        guard VaultUnlocksInFlight.shared.join(id, then: body) else { return }
+        let settle: @MainActor (String?) -> Void = { point in
+            VaultUnlocksInFlight.shared.settle(id, mountedAt: point)
+        }
         if let passphrase {
-            attach(vault, with: passphrase, retrying: false, then: body)
+            attach(vault, with: passphrase, retrying: false, settle: settle)
             return
         }
         // A passphrase filed in the Keychain is tried silently first — that is what "Dirnex saves it
@@ -161,24 +168,26 @@ extension BrowserWindowController {
         // the prompt rather than to an error, since a stale item is exactly what a re-created vault
         // at the same path leaves behind.
         if let stored = SecretKeychain.passphrase(for: vault) {
-            attach(vault, with: stored, retrying: false, isStored: true, then: body)
+            attach(vault, with: stored, retrying: false, isStored: true, settle: settle)
             return
         }
-        askAndAttach(vault, retrying: false, then: body)
+        askAndAttach(vault, retrying: false, settle: settle)
     }
 
+    /// `settle` is the unlock's one way out, called exactly once on every path: the mount point, or
+    /// `nil` for a cancelled prompt or a failure that raised its own alert.
     private func askAndAttach(
         _ vault: VaultLocation,
         retrying: Bool,
-        then body: @escaping @MainActor (String) -> Void
+        settle: @escaping @MainActor (String?) -> Void
     ) {
         PassphrasePrompt.ask(
             forItemNamed: vault.volumeName,
             retrying: retrying,
             over: window
         ) { [weak self] passphrase in
-            guard let self, let passphrase else { return }
-            attach(vault, with: passphrase, retrying: true, then: body)
+            guard let self, let passphrase else { return settle(nil) }
+            attach(vault, with: passphrase, retrying: true, settle: settle)
         }
     }
 
@@ -190,7 +199,7 @@ extension BrowserWindowController {
         with passphrase: ArchivePassphrase,
         retrying: Bool,
         isStored: Bool = false,
-        then body: @escaping @MainActor (String) -> Void
+        settle: @escaping @MainActor (String?) -> Void
     ) {
         SidebarRowActivity.shared.begin(vault.resolvedImagePath)
         let imagePath = vault.imagePath
@@ -210,7 +219,7 @@ extension BrowserWindowController {
                         )
                     }
                 }.get()
-                guard let self else { return }
+                guard let self else { return settle(nil) }
                 // The volume's real name is only knowable once it is mounted, so this is where a
                 // vault opened from the pane (named after its file) gets the name it will keep.
                 var opened = vault
@@ -221,11 +230,13 @@ extension BrowserWindowController {
                 VaultMounts.shared.note(mountPoint: mounted.mountPoint)
                 VaultStore.remember(opened)
                 SecretKeychain.store(passphrase: passphrase, for: opened)
-                body(mounted.mountPoint)
+                settle(mounted.mountPoint)
             } catch VaultError.incorrectPassphrase {
                 // A typo, not a dead end. A refused *stored* passphrase asks for the first time.
-                self?.askAndAttach(vault, retrying: retrying && !isStored, then: body)
+                guard let self else { return settle(nil) }
+                askAndAttach(vault, retrying: retrying && !isStored, settle: settle)
             } catch {
+                settle(nil)
                 self?.presentVaultError((error as? VaultError) ?? .couldNotUnlock)
             }
         }
