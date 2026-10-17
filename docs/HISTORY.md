@@ -14630,6 +14630,29 @@ carried over (`retryPackSheet`, now gone).
   failed 2 of 3 with the same signature. Untouched HEAD's full run that hour passed. Every other
   suite passed in every run, both pack suites included.
 
+**2026-10-17: the sheet accessories are main-actor isolated.** Noticed while the pack sheet gained
+its error row. `PackAccessory` and `VaultCreateAccessory` were non-isolated `NSObject` subclasses
+whose initializers, factories and methods all touch AppKit, so every build that recompiled one of
+their files printed a concurrency warning per AppKit access: 61 for the two pack files, 50 for the
+vault one. An incremental build shows warnings only for the files it recompiles, so they looked
+new each time one of those files was edited.
+
+- **Both classes are `@MainActor`.** Every caller already was: the pane and window controllers, and
+  all four suites that build them. Their nested value types (`Defaults`, `EncryptionRows`, `Rows`,
+  `Metrics`) stay non-isolated, since isolation does not reach a nested type. The static strings
+  are read only from inside the classes.
+- **Two more files had the same warnings for the same reason**, found in a clean build's log:
+  caseless enums of non-isolated static AppKit builders. `AttributeRow` had 57, and `DialogWindowPlacement` and
+  `DialogLayout` in `DialogWindow.swift` had 25. They take the same attribute.
+  `AttributesControllerLayout` and `DialogTitle`, which touch no AppKit, are left non-isolated.
+- **Measured** with two fresh `-derivedDataPath` builds: the app target went from 204 warnings to
+  11, none of them this kind (eight weak-capture, two captured-var mutations in
+  `SFTPProcessTransport+Process`, one unused `self`). The test target has three of this kind left,
+  in `StatusSentenceWidthTests`' non-isolated `width(_:)` helper, not touched here.
+- Core green (3962 tests), both linters clean. App: 1733 tests, and two full runs each failed only
+  the six `PanesDividerDetentTests` at line 219, release at y −270, the flake recorded in the entry
+  above. Every suite that builds these types passed in both runs.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

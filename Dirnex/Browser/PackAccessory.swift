@@ -33,6 +33,10 @@ import DirnexCore
 /// reads every control back as a core value so the presenter never touches an index. Kept alive by
 /// the completion closure that captures it — `NSControl.target` is weak, so the accessory would
 /// otherwise be gone by the time the user changes anything.
+///
+/// Main-actor isolated, like every control it holds. Its nested value types (`Defaults`,
+/// `EncryptionRows`) are not, since isolation does not reach a nested type.
+@MainActor
 final class PackAccessory: NSObject {
     /// The rows that exist only while a cipher is chosen, and what putting them away costs.
     ///
