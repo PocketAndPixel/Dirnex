@@ -212,10 +212,9 @@ extension BrowserWindowController {
     private static func title(for error: VaultError) -> String {
         switch error {
         case .emptyPassphrase, .passphrasesDoNotMatch:
-            // Shared with the pack sheet: same problem, same words, one catalog entry.
             return String(
                 localized: "Check the passphrase",
-                comment: "Title of the alert shown when the pack sheet's two passphrases don't match."
+                comment: "Title of the vault alert for an empty or mismatched passphrase."
             )
         case .alreadyExists, .couldNotCreate:
             return String(

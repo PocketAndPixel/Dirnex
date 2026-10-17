@@ -14586,6 +14586,50 @@ failure closed the sheet and raised an alert, so the user lost the name and size
   pane. The probes were removed and the build checked for them afterwards.
 - Core green (3962 tests), app green (1724, the same pre-existing known issue), both linters clean.
 
+**2026-10-17: the pack sheet stays open when the passphrases are wrong.** Follow-up to the New Vault
+change, so the two passphrase sheets behave the same. Before, an empty or mismatched pair closed
+⌥F5's sheet, raised a "Check the passphrase" alert, and opened a fresh sheet with the other choices
+carried over (`retryPackSheet`, now gone).
+
+- **Pack no longer ends the sheet.** `PackAccessory.routePack(through:)` retargets the alert's Pack
+  button, as `VaultCreateAccessory.routeCreate(through:)` does, so a click and Return both run the
+  checks with the sheet up. An empty passphrase or a mismatch is said in a red row under the footer
+  note, which grows the accessory and calls `alert.layout()` through the existing `onHeightChange`.
+  A mismatch clears both fields and puts the cursor in the first. A pair that passes ends the sheet
+  with `endSheet(_:returnCode:)` first, so the collision question lands on the window, then goes on
+  into `confirmAndPack` unchanged. Like New Vault, the sheet no longer has a `runModal` fallback.
+- **The error row and the collapse are two independent translations.** The row moves every other
+  subview up, the hidden passphrase block included; the collapse moves only the rows above the
+  block. So they commute, and the block comes back above the row. Choosing None clears the error in
+  the same relayout, since every error the sheet can show is about a passphrase.
+- **Pinned** by a new `PackAccessoryErrorTests` suite (nine tests), split out because adding them to
+  `PackAccessoryTests` put it over the type-body ceiling: the row's geometry (no room until needed,
+  the form shifted by exactly the row, cleared back, a second error re-measured), the coexistence
+  (None clears the error onto a never-encrypted form's exact frames; a run of errors, collapses and
+  a format change ends on a fresh sheet's frames), and the routing (click and Return reach the
+  retargeted button, Cancel still ends the sheet).
+- **Verified live** on the Debug build launched by path, settings backed up and restored
+  (byte-identical). A temporary probe filled the passphrase fields from an environment variable on
+  each Pack press, and on marked steps switched the cipher through the popup's own action, since
+  background computer-use refuses both password fields and pop-up menus. Mismatch: the sheet stayed,
+  red row under the note, both fields cleared, focus in Passphrase (accessory 276 → 298 pt). Empty:
+  the two-line message replaced it. None: the error went with the block, back to the opening
+  geometry, and AES-256 again came back with no error at the first expansion's geometry. A matching
+  pair closed the sheet and raised "payload.zip already exists"; Replace wrote an AES zip that
+  `bsdtar --passphrase` refused with a wrong passphrase and extracted byte-identical with the right
+  one. Cancel after a mismatch closed the sheet with nothing written. A plain pack closed the sheet
+  at once and wrote `plain.zip`. The probe was removed and the build checked for it afterwards.
+- **Not run live:** Return and Escape on the sheet. Every press above was an `AXPress` on the
+  button. Return's routing is pinned by the key-catcher test.
+- "Check the passphrase" is now used by the vault alerts alone, so its translator comment no longer
+  names the pack sheet.
+- Core green (3962 tests), both linters clean. The first app run was green (1733, the same
+  pre-existing known issue). Two later full runs failed six `PanesDividerDetentTests` tests, all at
+  line 219, with the release dequeued at y −270 where 150 was posted. **The flake predates this
+  change:** run alone, alternating untouched HEAD and HEAD plus this diff in fresh worktrees, each
+  failed 2 of 3 with the same signature. Untouched HEAD's full run that hour passed. Every other
+  suite passed in every run, both pack suites included.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

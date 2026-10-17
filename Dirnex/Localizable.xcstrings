@@ -22101,7 +22101,7 @@
       }
     },
     "Check the passphrase": {
-      "comment": "Title of the alert shown when the pack sheet’s two passphrases don’t match.",
+      "comment": "Title of the vault alert for an empty or mismatched passphrase.",
       "localizations": {
         "de": {
           "stringUnit": {
