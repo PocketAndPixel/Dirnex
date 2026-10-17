@@ -1727,6 +1727,15 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     catch is a saved position that is perfectly valid on a display the app is no longer using: that
     needs its own check (is the restored center on the parent window's screen?), or every dialog
     opens back on the laptop screen the day an external display arrives.
+- **An `NSAlert` sheet can stay up across a failed confirm: retarget its button.** `NSAlert` ends
+  the sheet from every button it made, before the caller can check anything. Setting the confirming
+  button's `target`/`action` to your own object keeps it from doing so. Probed 2026-10-17 on macOS 26
+  for the New Vault sheet: the target survives presentation, a click runs your action with the sheet
+  still up, a disabled button runs nothing, `alert.layout()` re-fits a taller accessory, and
+  `sheetParent.endSheet(_:returnCode:)` closes it and runs the completion handler with that code.
+  Return still works, because `AlertKeyCatcher` answers it with `performClick` on the default button.
+  It is the cheap alternative to rebuilding the dialog as a custom sheet, which is what Connect to
+  Server did.
 
 #### Laying out a dialog
 
