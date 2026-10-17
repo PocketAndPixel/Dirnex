@@ -14653,6 +14653,37 @@ new each time one of those files was edited.
   the six `PanesDividerDetentTests` at line 219, release at y −270, the flake recorded in the entry
   above. Every suite that builds these types passed in both runs.
 
+**2026-10-18: a folder a sync client left behind is no longer a cloud account.** Reported by Oleg
+as two Dropbox rows. Dropbox had set its domain up again as `Dropbox` and left
+`Dropbox-Home (18.10.2026 00:09)` beside it, renamed and no longer synced, and the Cloud section
+lists every directory under `~/Library/CloudStorage`. So the sidebar showed "Home (18.10.2026
+00:09) — Dropbox" next to "Dropbox". Finder showed only the real one.
+
+- **What tells them apart is `com.apple.file-provider-domain-id`**, which macOS writes on every
+  domain's root directory. All five live roots here carry it and the leftover does not, though it
+  kept Dropbox's own attributes. `fileproviderctl dump -l` agrees: one Dropbox domain registered.
+  From a no-FDA, LaunchServices-launched probe, the size-only read answers in 9–16 µs per directory
+  and asks nothing (docs/NOTES.md ▸ Google Drive ▸ Mounts, paths and modes).
+- **Oleg chose to hide the leftover rather than mark it.** `CloudStorageMounts.named` drops it before
+  the naming, so every caller agrees with no app change: no sidebar row, real crumbs in the path bar,
+  the folder's own name on a tab, no `.Trash` merged into the Trash (Empty Trash would otherwise
+  delete files Finder's leaves alone), and no second account in the count, so a lone labeled
+  account reads plain "Dropbox" again. It is still reachable by browsing `CloudStorage`.
+- **Two guards, both toward showing too much.** Nothing is dropped unless some directory carries the
+  marker, because it is measured on macOS 26 only and the app targets 14. And only `ENOATTR` drops a
+  directory, so a read that fails some other way keeps it.
+- **Verified live** on the Debug build, launched by path, with the real leftover still on disk plus
+  an empty `Dropbox-Test`: Cloud lists Photos, iCloud Drive, both Drive accounts, Box, OneDrive and a
+  plain "Dropbox". A `reveal` into the leftover drew `Macintosh HD › … › CloudStorage ›
+  Dropbox-Home (18.10.2026 00:09) › Oleg V`, beside `Dropbox › Home Team Folder` on the real one.
+  The CloudStorage listing still showed all seven folders. Afterwards the fixture was removed and
+  the defaults domain imported back, byte-identical. In tests, ten new cases in
+  `CloudStorageLeftoverTests` and `TrashLocationsTests` run on real directories stamped with
+  `setxattr`. With the filter disabled, seven of them fail: all but the no-marker guard, the reader
+  and the literal pin.
+- Core green (3972 tests), both linters clean. App: 1733 tests, and two full runs each failed only
+  the six `PanesDividerDetentTests` at line 219, the flake recorded above.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

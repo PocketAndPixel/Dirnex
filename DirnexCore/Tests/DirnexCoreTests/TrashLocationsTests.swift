@@ -204,6 +204,26 @@ struct TrashLocationsTests {
         )
     }
 
+    @Test("a folder a sync client left behind contributes no trash")
+    func leftoverFolderTrashIsNotMerged() throws {
+        // A leftover is no domain, so its `.Trash` is not one Finder shows, and merging it would let
+        // Empty Trash delete files Finder's Empty Trash leaves alone (CloudStorageMounts ▸
+        // domainMarkerAttribute).
+        let temp = try TempTree()
+        defer { temp.cleanup() }
+        let cloud = "Library/CloudStorage"
+        try temp.makeDomainRoot("\(cloud)/GoogleDrive-a@gmail.com")
+        try temp.makeDir("\(cloud)/GoogleDrive-a@gmail.com/.Trash")
+        try temp.makeDir("\(cloud)/GoogleDrive-old@gmail.com/.Trash")
+
+        let directories = SidebarLocations.trashDirectories(
+            home: temp.root.path,
+            volumes: [],
+            uid: 501
+        )
+        #expect(directories == [VFSPath.local(temp.path("\(cloud)/GoogleDrive-a@gmail.com/.Trash"))])
+    }
+
     @Test("a Mac with no sync client contributes no provider trashes")
     func noCloudStorageDirectoryIsNotAnError() throws {
         let temp = try TempTree()
