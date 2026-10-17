@@ -180,6 +180,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - **The one exception is the `TEST_RUNNER_` prefix** (`man xcodebuild`): `TEST_RUNNER_FOO=1`
     reaches the tests as `FOO=1`. CI uses it to say it is CI (`TEST_RUNNER_DIRNEX_CI`, read as
     `DIRNEX_CI`), since 2026-10-02.
+- **A build that stops at `CompileMetalFile` with "missing Metal Toolchain" while
+  `xcodebuild -showComponent MetalToolchain` says `installed` is `xcrun`'s lookup cache, not the
+  toolchain.** Met 2026-10-17 on SwiftTerm's `Shaders.metal`, with Xcode 27.1. The toolchain lives
+  in a cryptex mounted under `/private/var/run/com.apple.security.cryptexd/mnt/`, and the `metal`
+  there ran fine when called by path. Running outside the shell sandbox failed the same way, so the
+  sandbox was not it. `xcrun --kill-cache` fixed it, after which `xcrun -v --find metal` resolved
+  through `$TMPDIR/xcrun_db` to that mount. Don't reach for the `-downloadComponent` the error
+  suggests: nothing was missing.
 - **An Objective-C exception raised inside a Swift Testing body does not fail the test — it wedges
   the test host, and `xcodebuild` sits there until something kills it.** Measured 2026-09-14: a test
   read `textStorage.attribute(_:at:6:)` before an asynchronous RTF read had landed, the storage was

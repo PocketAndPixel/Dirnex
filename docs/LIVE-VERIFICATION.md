@@ -262,6 +262,13 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   headers are keyboard stops, so count them or zoom on the sidebar after each key. And a vault row
   passed on the way opens if ⌘Return lands on it, which reads its passphrase from the Keychain. A
   plain Return proves nothing about ⌘, so run a case whose result only ⌘ can produce first.
+- **Background computer-use will not touch a password field at all.** Met 2026-10-17 on New Vault:
+  typing by `element_index` and clicking the `NSSecureTextField` were both refused ("this is a
+  password field"), while the plain name field beside it took text. Only full-screen control is
+  offered instead, which takes over Oleg's screen. What worked was a temporary probe: two lines in
+  the sheet's factory filling both fields from an environment variable, the app launched by path
+  with `open --env NAME=value`, and the probe removed and the app rebuilt afterwards. It only fills
+  the sheet, so everything after its button still runs the shipped path.
 - **computer-use refuses a key aimed at a point inside a text view, saying it "belongs to a different
   process".** Seen 2026-10-08 on both of Report a Bug…'s text boxes: `app_key tab` at the box's center
   was refused twice, before and after a fix to the boxes' accessibility tree, while the app's own

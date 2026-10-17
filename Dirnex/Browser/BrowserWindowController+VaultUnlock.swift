@@ -105,8 +105,9 @@ extension BrowserWindowController {
     /// user's intent is identical in all three — *show me what is in there* — and the lock state is
     /// a fact to look up rather than a mode the caller should have to know.
     ///
-    /// `inNewTab` (the sidebar row picked with ⌘) opens the volume in a new tab of `pane`. The tab
-    /// is opened only once the vault is unlocked, so a cancelled passphrase leaves nothing behind.
+    /// `inNewTab` (the sidebar row picked with ⌘, and the just-created vault) opens the volume in a
+    /// new tab of `pane`. The tab is opened only once the vault is unlocked, so a cancelled
+    /// passphrase leaves nothing behind.
     func openVault(
         _ vault: VaultLocation,
         with passphrase: ArchivePassphrase? = nil,
