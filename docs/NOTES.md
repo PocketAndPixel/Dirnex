@@ -250,6 +250,29 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Windows, sheets and key events in a test
 
+- **A synthetic drag uses the process event queue, and a new window can change its coordinates.**
+  Measured 2026-10-17 in `PanesDividerDetentTests`: tracing `NSApplication.nextEvent` and the split
+  delegate showed `NSSplitView` pulling `.leftMouseDragged` and `.leftMouseUp` (mask 68) in
+  `.eventTracking`. A queued release from another window ended the drag before its own steps ran.
+  Prepend the complete sequence in reverse with `postEvent(_, atStart: true)`, then send the press
+  synchronously on the main actor. Do not drain the process queue or add an `await` between those
+  steps. The regression test keeps a foreign release queued and checks that it survives the drag;
+  restoring tail insertion fails it.
+  - **Turn off the fixture window's opening animation before showing it.** With the default
+    animation, a posted x=380 arrived at x=379.582, and x=430 at x=430.601. With `.none`, the
+    coordinates stayed exact. An `.alertPanel` animation amplified this into five failed drag tests
+    in 0.16 s. Check the consumed release's type, window and coordinates, so a bad gesture fails at
+    the helper as well as at the feature assertion. Restoring the default animation fails all six
+    drag calls' coordinate checks. Require every event before posting any: dropping a missing
+    release with `compactMap` can leave AppKit waiting for real input.
+  - **A test's reported duration need not be time spent inside its body.** The original four
+    failures and many unrelated passing tests all reported 12.561 s. Direct clocks around the
+    drag measured milliseconds, with no tracking timeout. Three traced full baseline runs passed,
+    with no foreign event or overlapping drag blocks; a 125-drag probe also passed while the real
+    pointer moved. Those runs rule out neither an earlier queued release nor an animation in the
+    historical failure: its log did not record events. Keep the measured hazards separate from
+    claims about who supplied an event in a run that was not traced.
+
 - **A window that was never shown has no key view loop, so Tab from a field goes nowhere.** Found
   2026-10-01 testing Report a Bug…'s text views: `selectNextKeyView` left the focus where it was,
   because AppKit builds the loop when a window first appears. `orderFront` the test window (and close

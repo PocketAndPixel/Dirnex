@@ -14508,6 +14508,31 @@ it for a sidebar row picked with ⌘.
   `PanesDividerDetentTests` tests at 12.5 s each; the suite then passed alone (9 tests in 0.09 s),
   and so did the full rerun.
 
+**2026-10-17: pane-divider drag tests control their queued input.** Follow-up to those four
+failures. The saved log showed moved dividers and one tap, not four untouched dividers. Many
+unrelated passing tests also reported 12.561 s. Direct clocks around the drag helper in three
+traced full runs measured **0.7–18.8 ms**, not a tracking timeout.
+
+- **Two fixture hazards measured.** `NSApplication.nextEvent` reads drags and releases in
+  `.eventTracking`, without filtering by window: an injected foreign release ended the drag before
+  its own steps ran. The fixture now prepends its whole sequence, in order, before sending the
+  press synchronously. Separately, the opening animation changed posted x=380 to 379.582 and
+  x=430 to 430.601. The fixture window now uses `.none` before `orderFront`. Every event is required
+  before posting, and the helper checks the consumed release's type, window and coordinates.
+- **Controls.** The new queued-release test brings the suite to ten tests. Restoring tail insertion
+  fails it both alone and in a full run; the full control failed only this test, on four assertions.
+  Restoring default animation fails all six drag calls' coordinate checks. Amplifying the animation
+  with `.alertPanel` failed all five original drag tests in 0.16 s. Removing the product's snap rule
+  still fails four feature tests. All controls and tracing were removed; the app code is unchanged.
+- **Limit of the diagnosis.** The old fixture passed three full baseline runs and a 125-drag probe
+  with many retained windows and a moving physical pointer. The traces showed no overlapping drag
+  blocks or foreign events in those full runs. The original run had no event trace, so neither the
+  exact trigger nor a particular event producer can be named from it. Both demonstrated hazards
+  are fixed; the general rule is in NOTES.md ▸ Testing.
+- **Final checks:** three full app runs green, 1707 tests each, in 30.229 / 34.903 / 28.470 s
+  (the same pre-existing known issue in each). Core green, 3962 tests; SwiftFormat and SwiftLint
+  clean. Changes left uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
