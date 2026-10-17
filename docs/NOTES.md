@@ -7745,6 +7745,16 @@ overturned the decision the milestone opened on.
     sheet — a measurement that deleted a whole piece of planned UI rather than confirming it. It is
     also why the size field can offer a generous default: a bigger ceiling costs nothing, in bytes or
     in seconds.
+- **Two overlapping attaches of one image do not share: the second fails while the first mounts.**
+  Probed 2026-10-17 on macOS 26 with two `hdiutil attach -stdinpass` started together: one exit 0
+  with `/Volumes/<name>`, the other exit 1 with `attach failed - Resource temporarily unavailable`,
+  which classifies as `couldNotUnlock`. A sequential attach of an image that is already mounted is
+  fine (exit 0, the same mount point), so only the overlap is a problem — and a double-click on a
+  locked sidebar vault is exactly that, because the sidebar acts on each click and the stored
+  passphrase makes the first attach start at once. Reported as "it opens, and says it couldn't".
+  `VaultUnlocksInFlight` makes the second request wait for the first and answers both with its
+  mount point. The entry lasts through the passphrase prompt too, so a click while the prompt is up
+  does not raise a second one.
 - **`-nobrowse` can be withdrawn from a *mounted* volume, unprivileged — but a remount keeps only the
   options it is handed.** `mount -u -o browse <point>` puts an unlocked vault into Finder's Locations
   immediately, and `nobrowse` puts it back, with no unmount and no passphrase; that is what makes

@@ -269,6 +269,17 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   the sheet's factory filling both fields from an environment variable, the app launched by path
   with `open --env NAME=value`, and the probe removed and the app rebuilt afterwards. It only fills
   the sheet, so everything after its button still runs the shipped path.
+- **A path that reads a saved secret can be driven without the Keychain, through the store it already
+  has for tests.** Done 2026-10-17 for the vault double-click: a temporary probe made
+  `SecretKeychain.backing` pick `InMemorySecretStore` when an environment variable was set, and made
+  `passphrase(for:)` return that variable's value. The binary was launched by path with the variable
+  set. Nothing reached the login Keychain, so there was no prompt for Oleg and no item left behind,
+  and everything after the read ran the shipped path. Back the defaults domain up with
+  `defaults export` first. Delete `Dirnex.tabs.left`/`.right` before launch so no server tab
+  reconnects and asks the real Keychain. Afterwards, quit, `defaults import` the backup and `cmp` the
+  two exports. A second variable that turned the fix off gave the negative control from the same
+  build. **`app_click` with `count: 2` on a sidebar row is a real double-click**: the row's action
+  ran twice, 113–122 ms apart, which reproduced the reported bug first time.
 - **computer-use refuses a key aimed at a point inside a text view, saying it "belongs to a different
   process".** Seen 2026-10-08 on both of Report a Bug…'s text boxes: `app_key tab` at the box's center
   was refused twice, before and after a fix to the boxes' accessibility tree, while the app's own
