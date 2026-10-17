@@ -14557,6 +14557,35 @@ item share the image rule (`PanelViewController.vaultImage`) and the name a lock
   Go command's, unchanged.
 - Core green (3962 tests), app green (1717, the same pre-existing known issue), both linters clean.
 
+**2026-10-17: the New Vault sheet stays open until the vault exists.** Asked for in one line: don't
+close it until the vault is created, for example when the passphrases don't match. Before, every
+failure closed the sheet and raised an alert, so the user lost the name and size and started over.
+
+- **Create no longer ends the sheet.** `VaultCreateAccessory.routeCreate(through:)` retargets the
+  alert's Create button, so a click, Return and keypad Enter all run the checks with the sheet up
+  (NOTES.md ▸ Alerts, sheets and dialogs). An empty passphrase, a mismatch, a name already taken and
+  an `hdiutil` failure are each said in a red row under the passphrase note, which grows the form
+  and calls `alert.layout()`, like the pack sheet's collapse. A mismatch clears both passphrase
+  fields and puts the cursor in the first, since the text is hidden and there is no telling which
+  was mistyped. A taken name is selected for retyping.
+- **Both buttons are off while `hdiutil` runs.** The sheet ends only once the image exists, and
+  before the vault is opened, so anything opening it has to say lands on the window. The sheet no
+  longer has a `runModal` fallback, which could not be ended from the create's `Task`.
+- **Pinned** by `VaultCreateAccessoryTests` (seven tests): the error row's geometry (no room until
+  needed, the form shifted by exactly the row, cleared back to the original frames, a second error
+  re-measured rather than stacked) and the routing (click and Return reach the retargeted button,
+  Cancel still ends the sheet, a disabled Create runs nothing).
+- **Verified live** on the Debug build launched by path, settings backed up and restored
+  (byte-identical), with two temporary probes: the passphrase fields filled from environment
+  variables, and secrets kept in `InMemorySecretStore`, so nothing reached the login Keychain.
+  Mismatch: the sheet stayed with the error, fields cleared. Create again: the empty-passphrase
+  error replaced it. Cancel closed it with nothing made. A read-only folder: both buttons grayed
+  mid-create, then "The vault couldn’t be created." with the buttons back. A folder already holding
+  `Vault.sparsebundle`: the "already here" error with the name selected, retyped as `Probe`, then
+  Create made `Probe.sparsebundle`, closed the sheet and opened the vault in a new tab in the other
+  pane. The probes were removed and the build checked for them afterwards.
+- Core green (3962 tests), app green (1724, the same pre-existing known issue), both linters clean.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
