@@ -3,102 +3,109 @@ import Testing
 
 @testable import DirnexCore
 
-/// Folders a sync client left behind under `~/Library/CloudStorage`, which are not File Provider
-/// domains and must not be read as mounts (``CloudStorageMounts/domainMarkerAttribute``).
-///
-/// These run against real directories stamped with the real attribute, like `FinderTagStorage`'s
-/// suite: the subject is what macOS writes and what `getxattr` answers, and a fake would only hand
-/// this pass's assumptions back to it. The one injected read is the failure no directory can be
-/// made to produce on demand.
+/// Real directory scans with marker results supplied through the existing `named` seam.
+/// macOS can refuse writes to its File Provider marker, so a test must not mint a fake domain.
+/// The system marker's positive read is covered by the live probe in docs/NOTES.md ▸ Google Drive.
 @Suite("CloudStorageMounts — leftover folders")
 struct CloudStorageLeftoverTests {
     @Test("the marker is the attribute macOS writes, spelled out")
     func markerIsTheSystemsName() {
-        // Every fixture below stamps through the constant, so a typo in it would pass them all while
-        // the real mounts read as leftovers. The literal is copied from `xattr` on this Mac's mounts
-        // and from the "CloudStorage xattrs" section of `fileproviderctl dump -l`.
+        // Copied from `xattr` on this Mac's mounts and the "CloudStorage xattrs" section of
+        // `fileproviderctl dump -l`. Injected marker results cannot catch a typo in this name.
         #expect(CloudStorageMounts.domainMarkerAttribute == "com.apple.file-provider-domain-id")
     }
 
-    /// The real shape found on this Mac 2026-10-18: Dropbox set its domain up again as `Dropbox`
-    /// and left the old folder beside it under a dated name, without the domain marker.
-    private func dropboxWithLeftover() throws -> TempTree {
-        let temp = try TempTree()
-        try temp.makeDomainRoot("Library/CloudStorage/Dropbox")
+    /// Only these exact paths answer as marked. No shared state or system attributes are changed.
+    private func namedMounts(in temp: TempTree, marked names: [String]) -> [CloudStorageMount] {
+        let marked = Set(names.map { temp.path("Library/CloudStorage/\($0)") })
+        return CloudStorageMounts.named(home: temp.root.path) { marked.contains($0) }
+    }
+
+    /// The shape found on this Mac: Dropbox set its domain up again and left a dated folder behind.
+    private func makeDropboxWithLeftover(in temp: TempTree) throws {
+        try temp.makeDir("Library/CloudStorage/Dropbox")
         try temp.makeDir("Library/CloudStorage/Dropbox-Home (18.10.2026 00:09)/Oleg V")
-        try temp.makeDomainRoot("Library/CloudStorage/GoogleDrive-a@gmail.com")
-        return temp
+        try temp.makeDir("Library/CloudStorage/GoogleDrive-a@gmail.com")
     }
 
     @Test("a folder a sync client left behind is not a mount")
     func leftoverFolderIsNotAMount() throws {
-        // Before the filter this listed "Dropbox" beside "Home (18.10.2026 00:09) — Dropbox".
-        let temp = try dropboxWithLeftover()
+        let temp = try TempTree()
         defer { temp.cleanup() }
+        try makeDropboxWithLeftover(in: temp)
 
-        let mounts = CloudStorageMounts.mounts(home: temp.root.path)
+        let mounts = namedMounts(in: temp, marked: ["Dropbox", "GoogleDrive-a@gmail.com"])
         #expect(mounts.map(\.name) == ["Dropbox", "Google Drive"])
         #expect(mounts.map(\.directoryName) == ["Dropbox", "GoogleDrive-a@gmail.com"])
     }
 
     @Test("the real account is named as if the leftover were not there")
     func leftoverDoesNotMakeTheRealAccountAmbiguous() throws {
-        // The real mount needs an account label for this to bite: a bare `Dropbox` reads "Dropbox"
-        // either way. Counted with the leftover, this one was "Personal — Dropbox".
+        // A bare `Dropbox` reads "Dropbox" either way; this label makes the wrong count visible.
         let temp = try TempTree()
         defer { temp.cleanup() }
-        try temp.makeDomainRoot("Library/CloudStorage/Dropbox-Personal")
+        try temp.makeDir("Library/CloudStorage/Dropbox-Personal")
         try temp.makeDir("Library/CloudStorage/Dropbox-Home (18.10.2026 00:09)")
 
-        #expect(CloudStorageMounts.mounts(home: temp.root.path).map(\.name) == ["Dropbox"])
+        #expect(namedMounts(in: temp, marked: ["Dropbox-Personal"]).map(\.name) == ["Dropbox"])
     }
 
     @Test("two real accounts of one provider are still both listed and told apart")
     func twoMarkedAccountsAreBothKept() throws {
-        // The control for the test above: the filter drops the folder without the marker, not the
-        // second account of a provider.
         let temp = try TempTree()
         defer { temp.cleanup() }
-        try temp.makeDomainRoot("Library/CloudStorage/Dropbox-Home")
-        try temp.makeDomainRoot("Library/CloudStorage/Dropbox-Personal")
+        try temp.makeDir("Library/CloudStorage/Dropbox-Home")
+        try temp.makeDir("Library/CloudStorage/Dropbox-Personal")
         try temp.makeDir("Library/CloudStorage/Dropbox-Home (18.10.2026 00:09)")
 
-        #expect(CloudStorageMounts.mounts(home: temp.root.path).map(\.name) == [
+        #expect(namedMounts(in: temp, marked: ["Dropbox-Home", "Dropbox-Personal"]).map(\.name) == [
             "Home — Dropbox", "Personal — Dropbox"
         ])
     }
 
-    @Test("a path inside a leftover folder has no provider to name it")
-    func pathInsideLeftoverHasNoMount() throws {
-        let temp = try dropboxWithLeftover()
+    @Test("the shared mount list contains only current root paths")
+    func sharedMountPathsExcludeLeftovers() throws {
+        let temp = try TempTree()
         defer { temp.cleanup() }
-        let home = temp.root.path
+        try makeDropboxWithLeftover(in: temp)
 
-        let leftover = temp.vfsPath("Library/CloudStorage/Dropbox-Home (18.10.2026 00:09)/Oleg V")
-        #expect(CloudStorageMounts.mount(containing: leftover, home: home) == nil)
-        let real = temp.vfsPath("Library/CloudStorage/Dropbox/Team")
-        #expect(CloudStorageMounts.mount(containing: real, home: home)?.name == "Dropbox")
+        // This is the list the public path lookup consumes. Its matching logic has separate tests
+        // in CloudStorageMountEntryTests; the marker-dependent filtering is checked here.
+        let mounts = namedMounts(in: temp, marked: ["Dropbox", "GoogleDrive-a@gmail.com"])
+        #expect(mounts.map(\.path) == [
+            temp.vfsPath("Library/CloudStorage/Dropbox"),
+            temp.vfsPath("Library/CloudStorage/GoogleDrive-a@gmail.com")
+        ])
+    }
+
+    @Test("a leftover with a trash folder is absent from the shared mount list")
+    func leftoverWithTrashIsNotAMount() throws {
+        let temp = try TempTree()
+        defer { temp.cleanup() }
+        let cloud = "Library/CloudStorage"
+        try temp.makeDir("\(cloud)/GoogleDrive-a@gmail.com/.Trash")
+        try temp.makeDir("\(cloud)/GoogleDrive-old@gmail.com/.Trash")
+
+        // Trash enumeration consumes `named` too. Its public entry point has no marker seam:
+        // pin the shared filtered input here, and leave trash-path assembly to TrashLocationsTests.
+        let mounts = namedMounts(in: temp, marked: ["GoogleDrive-a@gmail.com"])
+        #expect(mounts.map(\.path) == [temp.vfsPath("\(cloud)/GoogleDrive-a@gmail.com")])
     }
 
     @Test("a Mac whose system writes no domain marker keeps every folder")
     func noMarkerAnywhereKeepsEverything() throws {
-        // The package targets macOS 14 and the marker is measured on 26 only. If a system does not
-        // write it, every folder reads as a leftover, and filtering anyway would empty the section.
         let temp = try TempTree()
         defer { temp.cleanup() }
         try temp.makeDir("Library/CloudStorage/Dropbox")
         try temp.makeDir("Library/CloudStorage/Dropbox-Home (18.10.2026 00:09)")
 
-        #expect(CloudStorageMounts.mounts(home: temp.root.path).map(\.directoryName) == [
+        #expect(namedMounts(in: temp, marked: []).map(\.directoryName) == [
             "Dropbox", "Dropbox-Home (18.10.2026 00:09)"
         ])
     }
 
     @Test("a marker that cannot be read keeps its folder")
     func unreadableMarkerKeepsTheFolder() throws {
-        // A failed read says nothing about the folder, and hiding a real account costs far more than
-        // showing a stale one. The read is injected because a real directory cannot be made to fail
-        // it on demand.
         let temp = try TempTree()
         defer { temp.cleanup() }
         try temp.makeDir("Library/CloudStorage/Box-Box")
@@ -113,31 +120,35 @@ struct CloudStorageLeftoverTests {
         #expect(mounts.map(\.directoryName) == ["Box-Box", "Dropbox"])
     }
 
-    @Test("a symlink beside the mounts is not a domain, whatever it points at")
-    func symlinkToADomainIsNotOne() throws {
-        // `isDirectory` follows the link, so only `XATTR_NOFOLLOW` keeps it out. Following would
-        // read the target's marker and list the same account twice.
+    @Test("the scan asks for the symlink's marker, not its target's")
+    func markerReadUsesTheSymlinkPath() throws {
         let temp = try TempTree()
         defer { temp.cleanup() }
-        try temp.makeDomainRoot("Library/CloudStorage/Dropbox")
-        try temp.symlink(
-            "Library/CloudStorage/Dropbox-Alias",
-            to: temp.path("Library/CloudStorage/Dropbox")
-        )
+        let root = try temp.makeDir("Library/CloudStorage/Dropbox")
+        let alias = temp.path("Library/CloudStorage/Dropbox-Alias")
+        try temp.symlink("Library/CloudStorage/Dropbox-Alias", to: root)
+        var queried: Set<String> = []
 
-        #expect(CloudStorageMounts.mounts(home: temp.root.path).map(\.directoryName) == ["Dropbox"])
+        let mounts = CloudStorageMounts.named(home: temp.root.path) { path in
+            queried.insert(path)
+            return path == root
+        }
+        #expect(queried == [root, alias])
+        #expect(mounts.map(\.directoryName) == ["Dropbox"])
     }
 
-    @Test("the marker read answers present, absent, and failed")
-    func markerReadHasThreeAnswers() throws {
+    @Test(
+        "the marker reader separates an absent attribute from a failed read without following links"
+    )
+    func markerReaderHandlesMissingAttributesAndPaths() throws {
         let temp = try TempTree()
         defer { temp.cleanup() }
-        try temp.makeDomainRoot("domain")
         try temp.makeDir("leftover")
+        try temp.symlink("dangling", to: temp.path("missing"))
 
-        #expect(CloudStorageMounts.carriesDomainMarker(atPath: temp.path("domain")) == true)
         #expect(CloudStorageMounts.carriesDomainMarker(atPath: temp.path("leftover")) == false)
-        // `ENOENT` is not `ENOATTR`: a read that failed is not evidence of a leftover.
+        // ENOENT is not ENOATTR. The missing target fails a read, but the link itself has no marker.
         #expect(CloudStorageMounts.carriesDomainMarker(atPath: temp.path("missing")) == nil)
+        #expect(CloudStorageMounts.carriesDomainMarker(atPath: temp.path("dangling")) == false)
     }
 }

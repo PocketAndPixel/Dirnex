@@ -59,21 +59,4 @@ struct TempTree {
     func setModificationDate(_ relative: String, to date: Date) throws {
         try fileManager.setAttributes([.modificationDate: date], ofItemAtPath: path(relative))
     }
-
-    /// Create a directory and stamp it the way macOS stamps a File Provider domain's root under
-    /// `~/Library/CloudStorage` (``CloudStorageMounts/domainMarkerAttribute``). The value has the
-    /// real shape, `<extension bundle id>/<domain id>`, though only its presence is read.
-    func makeDomainRoot(_ relative: String) throws {
-        let full = try makeDir(relative)
-        let value = Array("com.example.fileprovider/\(UUID().uuidString)".utf8)
-        let result = setxattr(
-            full,
-            CloudStorageMounts.domainMarkerAttribute,
-            value,
-            value.count,
-            0,
-            XATTR_NOFOLLOW
-        )
-        if result != 0 { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
-    }
 }
