@@ -212,6 +212,14 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   in the view's `draw(_:)` dumping frames and `convert(_:to:)`-ed rects, with the binary run
   straight from a shell
   (`.../Dirnex.app/Contents/MacOS/Dirnex > log 2>&1 &`) to capture stderr.
+- **A flash shorter than a screenshot needs the app to sample its own window.** The white flash in
+  dark Quick View (2026-10-18) lasted 25–120 ms, too short for a screenshot to catch reliably. What
+  worked was a temporary probe in the app. It loads `CGWindowListCreateImage` through `dlsym`, since
+  the SDK marks it obsoleted but it still runs. A `.common`-mode timer captures the app's *own*
+  window every 8 ms and logs the pixel under the view whenever it changes. A process can capture its
+  own windows without Screen Recording permission. Gate the probe on an environment variable,
+  launch by path, and drive the app with the `.sdef` verbs. For the control, run the old code
+  beside the new: `git stash push -- <file>` swaps out the one file.
 - **SF Symbols carry ~1.25–1.5 pt of transparent margin inside their box**, so a symbol is
   never flush with its view's edge. Measure the ink, not the box.
   - **The corollary is that a gap constant copied from a symbol buys less space next to text.** The

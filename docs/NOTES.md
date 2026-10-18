@@ -891,6 +891,16 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   in as `updater(_:userDidMake:forUpdate:state:)`, not `userDidMakeChoice:`). A drifted Swift
   signature silently stops being the witness; `#expect(x.responds(to: #selector(...)))` catches
   it, and `#selector` only compiles when the mapping is right.
+- **Reading a pixel back for a color assertion has two traps, one in each direction.** Both were met
+  on 2026-10-18 testing Quick View's cleared page (`QuickViewClearedPageTests`).
+  - **`NSBitmapImageRep.colorAt` tags its color *Generic* RGB, even when the image is sRGB.** So
+    `usingColorSpace(.sRGB)` changes the numbers: a `takeSnapshot` image named `kCGColorSpaceSRGB`
+    holding `#1E1E1E` came back as `#282828`, and the test failed a page that was painting exactly
+    the right color. Require the image's space by name, then build the color from the raw channels
+    with `NSColor(srgbRed:…)`.
+  - **`getComputedStyle(document.documentElement).colorScheme` reads `normal` under a
+    `<meta name="color-scheme">`**, both with and without the meta. A check written against it
+    passes or fails whatever the page declares. The pixel is the thing to assert.
 - **A security assertion that searches rendered *text* for a dangerous string is testing the
   document, not the renderer.** Three of M18 Slice 1's own assertions over the Markdown renderer
   were written that way and all three were wrong, in both directions. `!html.contains("onerror")`
@@ -3293,10 +3303,24 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     on `viewDidChangeEffectiveAppearance` — and the difference is not cosmetic: a reload throws away
     the user's reading position every time the system crosses sunset. Emit **both** palettes under
     one media query instead. Two neighbors from the same run: `underPageBackgroundColor` already
-    resolves to `#1E1E1E` in dark so there is no white flash to fix, and *assigning* it freezes it at
-    the current appearance (the captured-`cgColor` trap); and the system fonts have no usable CSS
-    family name (`.AppleSystemUIFont`), so the family comes from the CSS generics and only the
-    **size** is read from AppKit.
+    resolves to `#1E1E1E` in dark, and *assigning* it freezes it at the current appearance (the
+    captured-`cgColor` trap); and the system fonts have no usable CSS family name
+    (`.AppleSystemUIFont`), so the family comes from the CSS generics and only the **size** is read
+    from AppKit.
+    - **That did not mean there was no white flash.** The under-page color only covers a view with
+      no document. An **empty document** paints the canvas, and without a `color-scheme` declaration
+      the canvas is `#FFFFFF` in dark too. `clearPage()` loaded `""`, the surface was put away
+      holding it, and the next Markdown file unhid it *before* its own first paint: 40–120 ms of
+      white each time Quick View reopened on a `.md`, reported 2026-10-18. A blank of
+      `<meta name="color-scheme" content="light dark">` holds `#1E1E1E` (light stays `#FFFFFF`, and a
+      live flip follows). Window capture in the running app: white on 3 of 4 steps before, 0 of 16
+      after.
+    - **A brand-new view's first page still paints a frame or two of `#FFFFFF`, once per surface per
+      launch, and nothing tried moved it in the app.** Not the page's palette (tinting the light
+      one yellow left it white). Not the declaration either: adding it to the Markdown page changed
+      nothing. Loading the blank first and holding the page until it *finished* was clean in a
+      harness, but in the app it measured 1–2 white frames against 2 without. So it was not shipped.
+      The harness never reproduced what the app does here, so start any further attempt in the app.
   - **A generated `<svg>` with only a `viewBox` has no intrinsic size, so `max-width: 100%` makes it
     fill its container instead of constraining it.** M18's diagram emitter deliberately omitted
     `width`/`height` on the reasoning that the stylesheet should own the size — and a three-node

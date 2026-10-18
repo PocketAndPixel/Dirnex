@@ -319,8 +319,26 @@ final class QuickViewWebView: NSView {
         page = nil
         resetFindForNewPage()
         webView.stopLoading()
-        webView.loadHTMLString("", baseURL: nil)
+        webView.loadHTMLString(Self.blankPage, baseURL: nil)
     }
+
+    /// The empty document a cleared surface holds, declaring both color schemes so that WebKit paints
+    /// its canvas in the view's own appearance.
+    ///
+    /// It is on screen for longer than its name suggests. The next rendered file unhides the surface
+    /// and *then* loads, so this page is what shows until that one first paints — 40–120 ms for a
+    /// Markdown file, and each time Quick View reopens on one. Measured 2026-10-18 by sampling a dark
+    /// window's pixels every 8 ms: a bare `""` paints `#FFFFFF`, a white flash ahead of every dark
+    /// page, while this holds `#1E1E1E`, `.textBackgroundColor`'s own dark value, so the step into the
+    /// page does not show. Light paints `#FFFFFF` either way, and a blank cleared in light follows a
+    /// flip to dark with no reload.
+    ///
+    /// What it cannot reach is a brand-new view's very first page, which still paints a frame or two
+    /// of `#FFFFFF` in dark, once per surface per launch. That is not this page and not the page's
+    /// palette (tinting the light one yellow left it white); loading this blank into a new view and
+    /// holding the first page until it finished, and declaring `color-scheme` in the Markdown page,
+    /// each measured no change in the app.
+    private static let blankPage = #"<meta name="color-scheme" content="light dark">"#
 
     private func load(_ page: Page) {
         self.page = page
