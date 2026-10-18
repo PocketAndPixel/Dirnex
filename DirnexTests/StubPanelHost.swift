@@ -115,7 +115,15 @@ final class StubPanelHost: PanelHost {
 
     func applyWorkspace(_ workspace: Workspace) {}
     func toggleQuickView(_ mode: QuickViewMode) {}
-    func closeQuickView() {}
+
+    /// How many times a pane asked to close Quick View. Recorded since the header grew a Close
+    /// button (2026-10-18): in ⌃Q the surface belongs to the covered pane, and the button's whole
+    /// answer is this call.
+    private(set) var quickViewCloses = 0
+    func closeQuickView() {
+        quickViewCloses += 1
+    }
+
     func flipQuickView(steps: Int) {}
     func panelCursorDidChange(_ panel: PanelViewController) {}
     func panelDidNavigate(_ panel: PanelViewController) {}

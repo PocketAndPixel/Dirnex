@@ -14758,6 +14758,31 @@ failures above. Writing `com.apple.file-provider-domain-id` to an owned test dir
   `GestureWaitTests` issue); both linters clean. NOTES.md ▸ Testing records the fixture rule.
   Changes left uncommitted.
 
+**2026-10-18: a Close button in the Quick View header.** Asked for by Oleg, to close the preview
+from the trackpad; every other way out was a key. A `xmark.circle.fill` after the file name closes
+Quick View at all three sizes, through the header's `onClose`: the window's `closeQuickView()` for
+the two full sizes, the covered pane's host for ⌃Q.
+
+- **The name stays centered and the × hangs off its end.** The button, not the name, keeps 12 pt
+  clear of the position readout, so a long name truncates and the button keeps its 20 pt.
+  `refusesFirstResponder` keeps the arrows on the file list after a click.
+- **A faded full-screen header keeps the button out of reach.** A view at zero alpha is still
+  hit-tested (NOTES.md ▸ Views, layout and hit testing), so the header's `hitTest` hands a click on
+  the invisible button to the strip, which swallows it as before. The other half is the fade: it
+  now waits while the pointer rests on the strip and asks again after the same delay, so the
+  button cannot fade from under a pointer that has stopped on it.
+- **The fade moved to `QuickViewPreviewView+Header`**, with `onClose`, to keep
+  `QuickViewPreviewView.swift` under the 500-line ceiling.
+- **Verified live** on the Debug build launched by path: in ⌃Q and ⌃⇧Q the × sat after the name,
+  and a click closed the preview with focus left on the active pane's cursor row. Full screen was
+  not run: the fade needs a real pointer, and it would have taken over the screen.
+- **Pinned** by `QuickViewCloseButtonTests` (five tests): placement after the name, a long name
+  giving way, the ⌃Q surface reaching the host, the faded hit test with the pinned header as its
+  control, and focus. Negative control: without the alpha guard the hit-test test fails.
+- Core green (3972 tests), app green (1747, only the expected `GestureWaitTests` issue), both
+  linters clean. "Close Quick View" is translated in all 14 catalog languages. Changes left
+  uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

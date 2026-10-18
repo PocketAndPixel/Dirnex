@@ -34,9 +34,10 @@ struct QuickViewCaption: Equatable {
     }
 }
 
-/// The name-and-position strip a Quick View draws across its top. A vibrant bar rather than a flat
-/// one because it sits over arbitrary content — a white page in full window, a photo bled to the
-/// edges in full screen — where any fixed color is wrong against half of it.
+/// The name-and-position strip a Quick View draws across its top, with the × that closes the preview
+/// after the name. A vibrant bar rather than a flat one because it sits over arbitrary content — a
+/// white page in full window, a photo bled to the edges in full screen — where any fixed color is
+/// wrong against half of it.
 @MainActor
 final class QuickViewHeaderView: NSVisualEffectView {
     static let height: CGFloat = 30
@@ -47,6 +48,13 @@ final class QuickViewHeaderView: NSVisualEffectView {
     /// the two keys announce themselves, so it names *both* and dims the one you are not in rather
     /// than naming only the alternative — which reads as a label for what you are looking at.
     private let styleLabel = NSTextField(labelWithString: "")
+    /// Closes Quick View, for a hand on the trackpad: every other way out is a key (Esc, or the
+    /// mode's own ⌃Q / ⌃⇧Q / ⌃⌥Q). It sits right after the name, and stays when the cursor lands on
+    /// `..` and the name goes blank: there is still a preview to close. Internal, for the tests.
+    let closeButton = NSButton()
+    /// What `closeButton` does. Set by whoever owns the surface, since the header cannot tell which
+    /// of the three sizes it is in or what turns that one off.
+    var onClose: (() -> Void)?
 
     /// The file being previewed, or `nil` when there is nothing under the cursor — which blanks
     /// the strip rather than hiding it, so the preview underneath doesn't jump.
@@ -72,6 +80,7 @@ final class QuickViewHeaderView: NSVisualEffectView {
         state = .active
         translatesAutoresizingMaskIntoConstraints = false
         buildLabels()
+        buildCloseButton()
     }
 
     @available(*, unavailable)
@@ -105,13 +114,58 @@ final class QuickViewHeaderView: NSVisualEffectView {
                 greaterThanOrEqualTo: styleLabel.trailingAnchor,
                 constant: 12
             ),
-            nameLabel.trailingAnchor.constraint(
-                lessThanOrEqualTo: positionLabel.leadingAnchor,
-                constant: -12
-            ),
             positionLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
             positionLabel.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
+    }
+
+    /// The × after the name. The name stays centered, where it always was, and the button hangs off
+    /// its end rather than the two being centered as a pair. So it is the button rather than the name
+    /// that keeps clear of the position readout, and a long name gives way to both.
+    private func buildCloseButton() {
+        let title = String(
+            localized: "Close Quick View",
+            comment: "Quick View header: tooltip and accessibility label of the close (×) button."
+        )
+        let symbol = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: title)
+        closeButton.image = symbol?.withSymbolConfiguration(.init(pointSize: 12, weight: .regular))
+        closeButton.isBordered = false
+        closeButton.imagePosition = .imageOnly
+        closeButton.contentTintColor = .secondaryLabelColor
+        closeButton.toolTip = title
+        // A click must not take focus: the arrow keys keep driving the file list under the preview.
+        closeButton.refusesFirstResponder = true
+        closeButton.target = self
+        closeButton.action = #selector(closeClicked(_:))
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(closeButton)
+        NSLayoutConstraint.activate([
+            closeButton.widthAnchor.constraint(equalToConstant: Self.closeButtonSize),
+            closeButton.heightAnchor.constraint(equalToConstant: Self.closeButtonSize),
+            closeButton.leadingAnchor.constraint(equalTo: nameLabel.trailingAnchor, constant: 2),
+            closeButton.centerYAnchor.constraint(equalTo: centerYAnchor),
+            closeButton.trailingAnchor.constraint(
+                lessThanOrEqualTo: positionLabel.leadingAnchor,
+                constant: -12
+            )
+        ])
+    }
+
+    /// Wider than the 12 pt glyph, so a trackpad click that lands just beside it still counts.
+    private static let closeButtonSize: CGFloat = 20
+
+    @objc private func closeClicked(_ sender: NSButton) {
+        onClose?()
+    }
+
+    /// Keep the close button out of reach while a floating header is faded out. A view at zero alpha
+    /// is still hit-tested (docs/NOTES.md ▸ Views, layout and hit testing), so without this a click
+    /// on the top of a full-screen photograph, where nothing can be seen, would close the preview.
+    /// The strip itself still takes the click, as it did before it had a button.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let hit = super.hitTest(point)
+        guard hit === closeButton, alphaValue == 0 else { return hit }
+        return self
     }
 
     /// "1 Source · 2 Page", with the current style in full strength and the other dimmed — one
