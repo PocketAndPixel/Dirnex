@@ -3316,11 +3316,18 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
       live flip follows). Window capture in the running app: white on 3 of 4 steps before, 0 of 16
       after.
     - **A brand-new view's first page still paints a frame or two of `#FFFFFF`, once per surface per
-      launch, and nothing tried moved it in the app.** Not the page's palette (tinting the light
+      launch, and nothing tried *removed* it in the app.** Not the page's palette (tinting the light
       one yellow left it white). Not the declaration either: adding it to the Markdown page changed
       nothing. Loading the blank first and holding the page until it *finished* was clean in a
       harness, but in the app it measured 1–2 white frames against 2 without. So it was not shipped.
       The harness never reproduced what the app does here, so start any further attempt in the app.
+      - **What shipped hides it instead: a new view starts at alpha 0 and fades in when its first
+        load ends** (`QuickViewWebView.fadeInOnce`). The frame lands 7–40 ms *after* `didFinish`,
+        and that decides the curve. Over 0.15 s, ease-out was already a third opaque by then and the
+        frame read `#63`–`#76`; ease-in read `#35`–`#3E` over the `#1E1E1E` backing, which the eye
+        does not pick out. A fade started when the surface appears would be nearly opaque when the
+        frame lands. Fade on a failed load too, or a first load that never finishes leaves the page
+        invisible for good.
   - **A generated `<svg>` with only a `viewBox` has no intrinsic size, so `max-width: 100%` makes it
     fill its container instead of constraining it.** M18's diagram emitter deliberately omitted
     `width`/`height` on the reasoning that the stylesheet should own the size — and a three-node

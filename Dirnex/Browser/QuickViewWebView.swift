@@ -103,6 +103,9 @@ final class QuickViewWebView: NSView {
     let webView: QuickViewDocumentWebView
     /// What is on screen, which is the *one* navigation `decidePolicyFor` allows.
     private var page: Page?
+    /// Whether the web view has faded in. A new one starts transparent over the surface's own
+    /// backing, and fades in when its first load ends (`fadeInOnce`).
+    private var hasFadedIn = false
 
     /// The view the surface must let the mouse reach for the page to scroll at all.
     var interactiveSubtree: NSView { webView }
@@ -337,7 +340,7 @@ final class QuickViewWebView: NSView {
     /// of `#FFFFFF` in dark, once per surface per launch. That is not this page and not the page's
     /// palette (tinting the light one yellow left it white); loading this blank into a new view and
     /// holding the first page until it finished, and declaring `color-scheme` in the Markdown page,
-    /// each measured no change in the app.
+    /// each measured no change in the app. A new view fades in over it instead (`fadeInOnce`).
     private static let blankPage = #"<meta name="color-scheme" content="light dark">"#
 
     private func load(_ page: Page) {
@@ -362,6 +365,7 @@ final class QuickViewWebView: NSView {
         webView.translatesAutoresizingMaskIntoConstraints = false
         webView.navigationDelegate = self
         webView.allowsMagnification = true
+        webView.alphaValue = 0
         addSubview(webView)
         let top = webView.topAnchor.constraint(equalTo: topAnchor)
         filterTopToSurface = top
@@ -374,6 +378,27 @@ final class QuickViewWebView: NSView {
         installFilterBar()
         installFinding()
     }
+
+    /// Fade the web view in over the surface's backing, the first time a load ends.
+    ///
+    /// A new view's first page paints a frame or two of `#FFFFFF` before its own background, in
+    /// dark, once per surface per launch (`blankPage`). Measured 2026-10-18 by window capture, that
+    /// frame lands 7–40 ms *after* `didFinish`, so the fade starts there and eases **in**: still a
+    /// few percent opaque when it arrives, it peaked at `#35`–`#3E` over the `#1E1E1E` backing across
+    /// four launches, where ease-out reached `#63`–`#76`. A fade begun when the surface appears would
+    /// be most of the way opaque by then. The first load only, so stepping between files stays
+    /// instant, and a failed one fades in too, so a view is never left invisible.
+    private func fadeInOnce() {
+        guard !hasFadedIn else { return }
+        hasFadedIn = true
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = Self.fadeInDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            webView.animator().alphaValue = 1
+        }
+    }
+
+    private static let fadeInDuration: TimeInterval = 0.15
 }
 
 // MARK: - Navigation
@@ -415,7 +440,20 @@ extension QuickViewWebView: WKNavigationDelegate {
     /// A load finished. The DOM a reload rebuilds carries none of the highlights the search drew, so
     /// they go back on rather than the user having to retype.
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        fadeInOnce()
         redrawFindAfterReload()
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        didFailProvisionalNavigation navigation: WKNavigation!,
+        withError error: any Error
+    ) {
+        fadeInOnce()
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: any Error) {
+        fadeInOnce()
     }
 
     /// The empty document `clearPage` loads, and the page this preview is showing — compared
