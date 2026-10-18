@@ -33,8 +33,8 @@ struct PanesDividerDetentTests {
     }
 
     @Test("the even split leaves both panes the same width")
-    func equalPositionSplitsEvenly() {
-        let splitView = Self.makeSplit()
+    func equalPositionSplitsEvenly() async throws {
+        let splitView = try await Self.makeSplit()
         #expect(PanesSplitViewController.equalPosition(in: splitView) == Self.equal)
         splitView.setPosition(Self.equal, ofDividerAt: 0)
         splitView.layoutSubtreeIfNeeded()
@@ -50,35 +50,35 @@ struct PanesDividerDetentTests {
     }
 
     @Test("a drag released near the even split leaves the panes equal")
-    func dragReleasedInsideDetent() throws {
-        let splitView = Self.makeSplit()
+    func dragReleasedInsideDetent() async throws {
+        let splitView = try await Self.makeSplit()
         try Self.drag(splitView, through: [340, 380, 395])
         #expect(splitView.subviews[0].frame.width == Self.equal)
         #expect(splitView.subviews[0].frame.width == splitView.subviews[1].frame.width)
     }
 
     @Test("the same drag on a split without the detent stops where the pointer did")
-    func dragWithoutDetent() throws {
+    func dragWithoutDetent() async throws {
         // The negative control: without it, the test above cannot tell the detent from a drag that
         // happens to land on the middle.
-        let splitView = Self.makeSplit(LockableDividerSplitViewController())
+        let splitView = try await Self.makeSplit(LockableDividerSplitViewController())
         try Self.drag(splitView, through: [340, 380, 395])
         #expect(abs(splitView.subviews[0].frame.width - 395) <= 1)
     }
 
     @Test("past the detent the divider follows the pointer")
-    func dragPastDetent() throws {
-        let splitView = Self.makeSplit()
+    func dragPastDetent() async throws {
+        let splitView = try await Self.makeSplit()
         try Self.drag(splitView, through: [380, 400, 430])
         #expect(abs(splitView.subviews[0].frame.width - 430) <= 1)
     }
 
     @Test("the trackpad taps once each time a drag enters the detent")
-    func feedbackOnEntry() throws {
+    func feedbackOnEntry() async throws {
         let controller = PanesSplitViewController()
         var taps = 0
         controller.detentFeedback = { taps += 1 }
-        let splitView = Self.makeSplit(controller)
+        let splitView = try await Self.makeSplit(controller)
         // In at 395, held through 405, out at 430, back in at 405.
         try Self.drag(splitView, through: [380, 390, 395, 400, 405, 430, 440, 405, 400])
         #expect(taps == 2)
@@ -86,19 +86,19 @@ struct PanesDividerDetentTests {
     }
 
     @Test("a drag that starts on the even split leaves it without a tap")
-    func noFeedbackLeaving() throws {
+    func noFeedbackLeaving() async throws {
         let controller = PanesSplitViewController()
         var taps = 0
         controller.detentFeedback = { taps += 1 }
-        let splitView = Self.makeSplit(controller, at: Self.equal)
+        let splitView = try await Self.makeSplit(controller, at: Self.equal)
         try Self.drag(splitView, through: [403, 397, 430])
         #expect(taps == 0)
         #expect(abs(splitView.subviews[0].frame.width - 430) <= 1)
     }
 
     @Test("a queued release from another window cannot end the divider drag")
-    func queuedReleaseFromAnotherWindow() throws {
-        let other = Self.makeSplit()
+    func queuedReleaseFromAnotherWindow() async throws {
+        let other = try await Self.makeSplit()
         let otherWindow = try #require(other.window)
         let release = try #require(NSEvent.mouseEvent(
             with: .leftMouseUp,
@@ -111,7 +111,7 @@ struct PanesDividerDetentTests {
             clickCount: 1,
             pressure: 0
         ))
-        let splitView = Self.makeSplit()
+        let splitView = try await Self.makeSplit()
         let window = try #require(splitView.window)
         NSApp.postEvent(release, atStart: true)
         defer {
@@ -138,11 +138,11 @@ struct PanesDividerDetentTests {
     }
 
     @Test("setting the position in code snaps too, without a tap")
-    func programmaticPositionIsSilent() {
+    func programmaticPositionIsSilent() async throws {
         let controller = PanesSplitViewController()
         var taps = 0
         controller.detentFeedback = { taps += 1 }
-        let splitView = Self.makeSplit(controller)
+        let splitView = try await Self.makeSplit(controller)
         splitView.setPosition(396, ofDividerAt: 0)
         splitView.layoutSubtreeIfNeeded()
         #expect(splitView.subviews[0].frame.width == Self.equal)
@@ -154,7 +154,7 @@ struct PanesDividerDetentTests {
     private static func makeSplit(
         _ controller: LockableDividerSplitViewController = PanesSplitViewController(),
         at position: CGFloat = 300
-    ) -> NSSplitView {
+    ) async throws -> NSSplitView {
         controller.splitView.isVertical = true
         controller.splitView.dividerStyle = .thin
         for _ in 0..<2 {
@@ -176,13 +176,43 @@ struct PanesDividerDetentTests {
         // A newly shown window can still be scaled by its opening animation. AppKit transforms
         // posted mouse coordinates through that scale when it takes them off the event queue.
         window.animationBehavior = .none
-        window.orderFront(nil)
         windows.append(window)
+        try await waitForEventCoordinates(in: window)
+        window.orderFront(nil)
         let splitView = controller.splitView
         splitView.layoutSubtreeIfNeeded()
         splitView.setPosition(position, ofDividerAt: 0)
         splitView.layoutSubtreeIfNeeded()
         return splitView
+    }
+
+    /// A new window can report its final frame before queued mouse events use that frame.
+    /// Poll the actual conversion while it is hidden, so this wait cannot hide an opening animation.
+    /// Each probe is prepended and consumed synchronously; no other window's events are drained.
+    private static func waitForEventCoordinates(in window: NSWindow) async throws {
+        let location = NSPoint(x: 200, y: 150)
+        let probe = try #require(NSEvent.mouseEvent(
+            with: .leftMouseUp,
+            location: location,
+            modifierFlags: [],
+            timestamp: ProcessInfo.processInfo.systemUptime,
+            windowNumber: window.windowNumber,
+            context: nil,
+            eventNumber: 0,
+            clickCount: 1,
+            pressure: 0
+        ))
+        let deadline = ContinuousClock.now + .seconds(30)
+        while true {
+            NSApp.postEvent(probe, atStart: true)
+            let received = try #require(NSApp.nextEvent(
+                matching: .leftMouseUp, until: .distantPast, inMode: .eventTracking, dequeue: true
+            ))
+            try #require(received.windowNumber == window.windowNumber)
+            if received.locationInWindow == location { return }
+            try #require(ContinuousClock.now < deadline, "window event coordinates did not settle")
+            try await Task.sleep(for: .milliseconds(10))
+        }
     }
 
     /// Presses on the divider, drags the pointer through `steps` and releases at the last one.
