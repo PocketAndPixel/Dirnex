@@ -7,6 +7,7 @@ import AppKit
 /// live: the pack sheet's hardcoded 48 pt label column cut «Формат:» in half, and a wrapping label
 /// with no width constraint overran the connect sheet's edge in Russian. Neither is visible in an
 /// English screenshot.
+@MainActor
 enum AttributeRow {
     /// The width every label column is laid out at: the widest caption any of these tabs uses, in
     /// the system font, measured at build time rather than guessed.

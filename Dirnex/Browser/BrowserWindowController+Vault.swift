@@ -7,6 +7,8 @@ import DirnexCore
 /// both panes and the sidebar. The image file is written into the pane you are standing in, the
 /// unlocked volume opens in the *other* one — the dual-pane shape the whole app is built around, and
 /// what you want next is to copy things in — and a row appears in the sidebar for both windows.
+/// It opens in a **new tab** there, so the folder that pane was showing is still one tab away
+/// rather than replaced by a place the user never chose to leave it for.
 ///
 /// **There is no progress bar, and that is a measurement rather than an omission.** A sparse bundle's
 /// creation is constant-time in its declared ceiling: 100 GB, 500 GB and 2 TB each took **1.02 s**
@@ -41,7 +43,13 @@ extension BrowserWindowController {
 
     // MARK: - Sheet
 
+    /// The sheet stays up until the vault exists: Create checks and creates while it is on screen,
+    /// any failure is said under the form, and only a vault on disk (or Cancel) takes it down.
+    ///
+    /// Sheet-only, unlike this file's alerts: a `runModal` loop cannot be ended cleanly from the
+    /// create's `Task`, and the command is the window's own, so there is always a window to hang on.
     private func presentVaultSheet(in directory: VFSPath) {
+        guard let window else { return }
         let alert = NSAlert()
         alert.messageText = String(
             localized: "New Vault",
@@ -61,29 +69,45 @@ extension BrowserWindowController {
         let accessory = VaultCreateAccessory.make()
         alert.accessoryView = accessory.view
         alert.window.initialFirstResponder = accessory.nameField
+        accessory.routeCreate(through: alert.buttons[0])
+        // Weak: the completion handler below owns `accessory`, and `alert` owns its view.
+        accessory.onHeightChange = { [weak alert] in alert?.layout() }
+        accessory.onCreate = { [weak self, weak alert, weak accessory] in
+            guard let self, let alert, let accessory else { return }
+            createPressed(on: alert, accessory: accessory, directory: directory)
+        }
 
         // `accessory` is captured — and so kept alive — by this closure for the sheet's lifetime.
-        let apply: (NSApplication.ModalResponse) -> Void = { [weak self] response in
-            guard response == .alertFirstButtonReturn else { return }
-            self?.vaultChosen(accessory: accessory, directory: directory)
-        }
-        if let window {
-            alert.beginSheetModal(for: window, completionHandler: apply)
-            accessory.nameField.selectText(nil)
-        } else {
-            apply(alert.runModal())
-        }
+        // Nothing is left to do once the sheet is down: a created vault was opened before it ended.
+        alert.beginSheetModal(for: window) { _ in accessory.onCreate = nil }
+        accessory.nameField.selectText(nil)
     }
 
-    /// Check the passphrase pair, refuse an existing vault, and create.
+    /// Check the passphrase pair, refuse an existing vault, and create — saying what was wrong
+    /// under the form, and putting the cursor where the fix goes, if any of it fails.
     ///
     /// Both checks run on `ArchivePassphrase`, never on the fields' `String`s — the same rule the
     /// pack sheet follows, and the reason that type has a `matches` at all.
-    private func vaultChosen(accessory: VaultCreateAccessory, directory: VFSPath) {
+    private func createPressed(
+        on alert: NSAlert,
+        accessory: VaultCreateAccessory,
+        directory: VFSPath
+    ) {
         let typed = ArchivePassphrase(accessory.passphraseField.stringValue)
         let repeated = ArchivePassphrase(accessory.confirmField.stringValue)
-        guard !typed.isEmpty else { return presentVaultError(.emptyPassphrase) }
-        guard typed.matches(repeated) else { return presentVaultError(.passphrasesDoNotMatch) }
+        guard !typed.isEmpty else {
+            accessory.showError(LocalizedCatalog.sentence(for: VaultError.emptyPassphrase))
+            alert.window.makeFirstResponder(accessory.passphraseField)
+            return
+        }
+        guard typed.matches(repeated) else {
+            // Both go: with the text hidden there is no telling which of the two was mistyped.
+            accessory.passphraseField.stringValue = ""
+            accessory.confirmField.stringValue = ""
+            accessory.showError(LocalizedCatalog.sentence(for: VaultError.passphrasesDoNotMatch))
+            alert.window.makeFirstResponder(accessory.passphraseField)
+            return
+        }
 
         let name = accessory.name
         let path = DiskImageArguments.vaultPath(
@@ -95,20 +119,37 @@ extension BrowserWindowController {
         // Trash and no undo journal to recover from — the one confirmation this milestone must not
         // offer (PLAN.md §6).
         guard !FileManager.default.fileExists(atPath: path) else {
-            return presentVaultError(.alreadyExists(name: (path as NSString).lastPathComponent))
+            let taken = VaultError.alreadyExists(name: (path as NSString).lastPathComponent)
+            accessory.showError(LocalizedCatalog.sentence(for: taken))
+            accessory.nameField.selectText(nil)
+            return
         }
-        createVault(atPath: path, named: name, megabytes: accessory.megabytes, passphrase: typed)
+        accessory.showError(nil)
+        createVault(
+            VaultLocation(imagePath: path, volumeName: name),
+            megabytes: accessory.megabytes,
+            passphrase: typed,
+            from: alert,
+            accessory: accessory
+        )
     }
 
     // MARK: - Create
 
+    /// Create the image with the sheet still up and its buttons off, then take the sheet down and
+    /// open the vault — or turn the buttons back on and say why not.
     private func createVault(
-        atPath path: String,
-        named name: String,
+        _ vault: VaultLocation,
         megabytes: Int,
-        passphrase: ArchivePassphrase
+        passphrase: ArchivePassphrase,
+        from alert: NSAlert,
+        accessory: VaultCreateAccessory
     ) {
-        let vault = VaultLocation(imagePath: path, volumeName: name)
+        let path = vault.imagePath
+        let name = vault.volumeName
+        for button in alert.buttons {
+            button.isEnabled = false
+        }
         SidebarRowActivity.shared.begin(vault.resolvedImagePath)
         Task { [weak self] in
             defer { SidebarRowActivity.shared.end(vault.resolvedImagePath) }
@@ -124,17 +165,30 @@ extension BrowserWindowController {
                         )
                     }
                 }.get()
-                guard let self else { return }
-                // Saved before it is opened, so a vault that creates and then fails to mount is
-                // still in the sidebar to try again — rather than a file the user has to go and
-                // find, holding a passphrase nothing recorded.
-                VaultStore.remember(vault)
-                SecretKeychain.store(passphrase: passphrase, for: vault)
-                focusedPanel.refreshCurrentDirectory(selecting: .local(path))
-                openVault(vault, with: passphrase, showingIn: panelCounterpart(of: focusedPanel))
             } catch {
-                self?.presentVaultError((error as? VaultError) ?? .couldNotCreate)
+                for button in alert.buttons {
+                    button.isEnabled = true
+                }
+                let reason = (error as? VaultError) ?? .couldNotCreate
+                accessory.showError(LocalizedCatalog.sentence(for: reason))
+                return
             }
+            // Down first, so anything opening the vault has to say lands on the window rather than
+            // on a sheet that is about to go.
+            alert.window.sheetParent?.endSheet(alert.window, returnCode: .alertFirstButtonReturn)
+            guard let self else { return }
+            // Saved before it is opened, so a vault that creates and then fails to mount is
+            // still in the sidebar to try again — rather than a file the user has to go and
+            // find, holding a passphrase nothing recorded.
+            VaultStore.remember(vault)
+            SecretKeychain.store(passphrase: passphrase, for: vault)
+            focusedPanel.refreshCurrentDirectory(selecting: .local(path))
+            openVault(
+                vault,
+                with: passphrase,
+                showingIn: panelCounterpart(of: focusedPanel),
+                inNewTab: true
+            )
         }
     }
 
@@ -142,7 +196,8 @@ extension BrowserWindowController {
 
     /// A vault failure always interrupts. Every one of them means the thing the user asked for did
     /// not happen and the screen looks exactly as it did before, so there is no other way to find
-    /// out — unlike a finished pack, whose result is a file they can see.
+    /// out — unlike a finished pack, whose result is a file they can see. The New Vault sheet is the
+    /// exception that proves it: it is still on screen when its create fails, so it says so itself.
     ///
     /// The title names *which* of the three things failed rather than saying "Vault", because the
     /// sentence under it explains a cause and the title is the only place the user is told what was
@@ -157,10 +212,9 @@ extension BrowserWindowController {
     private static func title(for error: VaultError) -> String {
         switch error {
         case .emptyPassphrase, .passphrasesDoNotMatch:
-            // Shared with the pack sheet: same problem, same words, one catalog entry.
             return String(
                 localized: "Check the passphrase",
-                comment: "Title of the alert shown when the pack sheet's two passphrases don't match."
+                comment: "Title of the vault alert for an empty or mismatched passphrase."
             )
         case .alreadyExists, .couldNotCreate:
             return String(

@@ -14486,6 +14486,353 @@ a License", and absent where licensing is off. The copyright line is `NSHumanRea
   without "Version" in a Debug build: AppKit leaves the word out for a 0.x version (a render with
   1.0.12 showed it), so a release build is unaffected.
 
+**2026-10-17: a new vault opens in a new tab.** Asked for in one line. New Vault still writes the
+image into the pane you are in and unlocks the volume in the other pane, which takes the focus, but
+the volume now gets a new tab there instead of replacing the folder that pane was showing. One
+argument at the call site: `createVault` passes `inNewTab: true` to `openVault`, which already took
+it for a sidebar row picked with ⌘.
+
+- **No new unit test.** No test builds a `BrowserWindowController`, and the create runs `hdiutil`.
+  The pane's half, a tab opened with `inNewTab` landing beside the one it came from, is already
+  pinned by `ServerConnectNewTabTests.newTabLanding`.
+- **Verified live** on the Debug build launched by path, settings backed up and restored (66 keys,
+  identical). The right pane was active in a scratch folder and the left pane had three tabs,
+  Downloads active. New Vault made `LiveTabCheck`: the left pane gained a fourth tab, active and
+  focused, listing the empty volume, with Downloads still beside it, and the right pane's cursor
+  was on the new `.sparsebundle`. Locking moved that tab to the image's folder. The passphrase
+  fields were filled by a temporary probe, removed afterwards (LIVE-VERIFICATION.md, password
+  fields). The vault, its saved entry and its Keychain item were removed afterwards.
+- **Not run live:** the same gesture on the build before the change, as a control.
+- Core green (3962 tests), app green (1706), both linters clean. The first app run never built:
+  the Metal toolchain trap now in NOTES.md ▸ Testing. The second failed four
+  `PanesDividerDetentTests` tests at 12.5 s each; the suite then passed alone (9 tests in 0.09 s),
+  and so did the full rerun.
+
+**2026-10-17: pane-divider drag tests control their queued input.** Follow-up to those four
+failures. The saved log showed moved dividers and one tap, not four untouched dividers. Many
+unrelated passing tests also reported 12.561 s. Direct clocks around the drag helper in three
+traced full runs measured **0.7–18.8 ms**, not a tracking timeout.
+
+- **Two fixture hazards measured.** `NSApplication.nextEvent` reads drags and releases in
+  `.eventTracking`, without filtering by window: an injected foreign release ended the drag before
+  its own steps ran. The fixture now prepends its whole sequence, in order, before sending the
+  press synchronously. Separately, the opening animation changed posted x=380 to 379.582 and
+  x=430 to 430.601. The fixture window now uses `.none` before `orderFront`. Every event is required
+  before posting, and the helper checks the consumed release's type, window and coordinates.
+- **Controls.** The new queued-release test brings the suite to ten tests. Restoring tail insertion
+  fails it both alone and in a full run; the full control failed only this test, on four assertions.
+  Restoring default animation fails all six drag calls' coordinate checks. Amplifying the animation
+  with `.alertPanel` failed all five original drag tests in 0.16 s. Removing the product's snap rule
+  still fails four feature tests. All controls and tracing were removed; the app code is unchanged.
+- **Limit of the diagnosis.** The old fixture passed three full baseline runs and a 125-drag probe
+  with many retained windows and a moving physical pointer. The traces showed no overlapping drag
+  blocks or foreign events in those full runs. The original run had no event trace, so neither the
+  exact trigger nor a particular event producer can be named from it. Both demonstrated hazards
+  are fixed; the general rule is in NOTES.md ▸ Testing.
+- **Final checks:** three full app runs green, 1707 tests each, in 30.229 / 34.903 / 28.470 s
+  (the same pre-existing known issue in each). Core green, 3962 tests; SwiftFormat and SwiftLint
+  clean. Changes left uncommitted.
+
+**2026-10-17: Unlock Vault in the right-click menu.** Asked for in one line, "the same logic as
+Go ▸ Unlock Vault". The item sits under Open, over a `.sparsebundle` or `.dmg` only, and is left out
+everywhere else, the way Show in Finder is left out over a server's file. Go ▸ Unlock Vault and the
+item share the image rule (`PanelViewController.vaultImage`) and the name a locked image is given
+(`VaultLocation(lockedImage:)`), and both end in the window's `openVault`.
+
+- **It captures the clicked row instead of dispatching on the cursor**, per NOTES.md ▸ Key
+  equivalents, key monitors and menus. A right-click on a marked row leaves the cursor where it
+  was, so the Go menu's responder-chain item would have unlocked the cursor's row, or done nothing.
+  It reaches the window through `panelRequestsVaultOpen`, the seam Enter on a saved vault already
+  used. Offered only when the menu is about exactly one image: one vault in a larger marked set
+  gets no item.
+- **Pinned** by `ContextMenuUnlockVaultTests` (six tests). `StubPanelHost` now records vault-open
+  requests. Negative control: aiming the item at `panel.currentEntry` failed the marked-image test.
+- **Verified live** on the Debug build launched by path, settings backed up and restored
+  (byte-identical). A throwaway unencrypted `.dmg` was attached with `hdiutil -nobrowse` first, so
+  the funnel took its already-mounted branch and read no Keychain. The right-click showed Open,
+  Unlock Vault, Open With. Choosing it moved the pane to `/Volumes/DirnexProbe`, and
+  `Dirnex.vaults` was unchanged. A plain `.txt` showed no item. Needed full-screen control, since
+  background computer-use refuses context menus.
+- **Not run live:** an unlock that attaches (passphrase prompt or Keychain read). That path is the
+  Go command's, unchanged.
+- Core green (3962 tests), app green (1717, the same pre-existing known issue), both linters clean.
+
+**2026-10-17: the New Vault sheet stays open until the vault exists.** Asked for in one line: don't
+close it until the vault is created, for example when the passphrases don't match. Before, every
+failure closed the sheet and raised an alert, so the user lost the name and size and started over.
+
+- **Create no longer ends the sheet.** `VaultCreateAccessory.routeCreate(through:)` retargets the
+  alert's Create button, so a click, Return and keypad Enter all run the checks with the sheet up
+  (NOTES.md ▸ Alerts, sheets and dialogs). An empty passphrase, a mismatch, a name already taken and
+  an `hdiutil` failure are each said in a red row under the passphrase note, which grows the form
+  and calls `alert.layout()`, like the pack sheet's collapse. A mismatch clears both passphrase
+  fields and puts the cursor in the first, since the text is hidden and there is no telling which
+  was mistyped. A taken name is selected for retyping.
+- **Both buttons are off while `hdiutil` runs.** The sheet ends only once the image exists, and
+  before the vault is opened, so anything opening it has to say lands on the window. The sheet no
+  longer has a `runModal` fallback, which could not be ended from the create's `Task`.
+- **Pinned** by `VaultCreateAccessoryTests` (seven tests): the error row's geometry (no room until
+  needed, the form shifted by exactly the row, cleared back to the original frames, a second error
+  re-measured rather than stacked) and the routing (click and Return reach the retargeted button,
+  Cancel still ends the sheet, a disabled Create runs nothing).
+- **Verified live** on the Debug build launched by path, settings backed up and restored
+  (byte-identical), with two temporary probes: the passphrase fields filled from environment
+  variables, and secrets kept in `InMemorySecretStore`, so nothing reached the login Keychain.
+  Mismatch: the sheet stayed with the error, fields cleared. Create again: the empty-passphrase
+  error replaced it. Cancel closed it with nothing made. A read-only folder: both buttons grayed
+  mid-create, then "The vault couldn’t be created." with the buttons back. A folder already holding
+  `Vault.sparsebundle`: the "already here" error with the name selected, retyped as `Probe`, then
+  Create made `Probe.sparsebundle`, closed the sheet and opened the vault in a new tab in the other
+  pane. The probes were removed and the build checked for them afterwards.
+- Core green (3962 tests), app green (1724, the same pre-existing known issue), both linters clean.
+
+**2026-10-17: the pack sheet stays open when the passphrases are wrong.** Follow-up to the New Vault
+change, so the two passphrase sheets behave the same. Before, an empty or mismatched pair closed
+⌥F5's sheet, raised a "Check the passphrase" alert, and opened a fresh sheet with the other choices
+carried over (`retryPackSheet`, now gone).
+
+- **Pack no longer ends the sheet.** `PackAccessory.routePack(through:)` retargets the alert's Pack
+  button, as `VaultCreateAccessory.routeCreate(through:)` does, so a click and Return both run the
+  checks with the sheet up. An empty passphrase or a mismatch is said in a red row under the footer
+  note, which grows the accessory and calls `alert.layout()` through the existing `onHeightChange`.
+  A mismatch clears both fields and puts the cursor in the first. A pair that passes ends the sheet
+  with `endSheet(_:returnCode:)` first, so the collision question lands on the window, then goes on
+  into `confirmAndPack` unchanged. Like New Vault, the sheet no longer has a `runModal` fallback.
+- **The error row and the collapse are two independent translations.** The row moves every other
+  subview up, the hidden passphrase block included; the collapse moves only the rows above the
+  block. So they commute, and the block comes back above the row. Choosing None clears the error in
+  the same relayout, since every error the sheet can show is about a passphrase.
+- **Pinned** by a new `PackAccessoryErrorTests` suite (nine tests), split out because adding them to
+  `PackAccessoryTests` put it over the type-body ceiling: the row's geometry (no room until needed,
+  the form shifted by exactly the row, cleared back, a second error re-measured), the coexistence
+  (None clears the error onto a never-encrypted form's exact frames; a run of errors, collapses and
+  a format change ends on a fresh sheet's frames), and the routing (click and Return reach the
+  retargeted button, Cancel still ends the sheet).
+- **Verified live** on the Debug build launched by path, settings backed up and restored
+  (byte-identical). A temporary probe filled the passphrase fields from an environment variable on
+  each Pack press, and on marked steps switched the cipher through the popup's own action, since
+  background computer-use refuses both password fields and pop-up menus. Mismatch: the sheet stayed,
+  red row under the note, both fields cleared, focus in Passphrase (accessory 276 → 298 pt). Empty:
+  the two-line message replaced it. None: the error went with the block, back to the opening
+  geometry, and AES-256 again came back with no error at the first expansion's geometry. A matching
+  pair closed the sheet and raised "payload.zip already exists"; Replace wrote an AES zip that
+  `bsdtar --passphrase` refused with a wrong passphrase and extracted byte-identical with the right
+  one. Cancel after a mismatch closed the sheet with nothing written. A plain pack closed the sheet
+  at once and wrote `plain.zip`. The probe was removed and the build checked for it afterwards.
+- **Not run live:** Return and Escape on the sheet. Every press above was an `AXPress` on the
+  button. Return's routing is pinned by the key-catcher test.
+- "Check the passphrase" is now used by the vault alerts alone, so its translator comment no longer
+  names the pack sheet.
+- Core green (3962 tests), both linters clean. The first app run was green (1733, the same
+  pre-existing known issue). Two later full runs failed six `PanesDividerDetentTests` tests, all at
+  line 219, with the release dequeued at y −270 where 150 was posted. **The flake predates this
+  change:** run alone, alternating untouched HEAD and HEAD plus this diff in fresh worktrees, each
+  failed 2 of 3 with the same signature. Untouched HEAD's full run that hour passed. Every other
+  suite passed in every run, both pack suites included.
+
+**2026-10-17: the sheet accessories are main-actor isolated.** Noticed while the pack sheet gained
+its error row. `PackAccessory` and `VaultCreateAccessory` were non-isolated `NSObject` subclasses
+whose initializers, factories and methods all touch AppKit, so every build that recompiled one of
+their files printed a concurrency warning per AppKit access: 61 for the two pack files, 50 for the
+vault one. An incremental build shows warnings only for the files it recompiles, so they looked
+new each time one of those files was edited.
+
+- **Both classes are `@MainActor`.** Every caller already was: the pane and window controllers, and
+  all four suites that build them. Their nested value types (`Defaults`, `EncryptionRows`, `Rows`,
+  `Metrics`) stay non-isolated, since isolation does not reach a nested type. The static strings
+  are read only from inside the classes.
+- **Two more files had the same warnings for the same reason**, found in a clean build's log:
+  caseless enums of non-isolated static AppKit builders. `AttributeRow` had 57, and `DialogWindowPlacement` and
+  `DialogLayout` in `DialogWindow.swift` had 25. They take the same attribute.
+  `AttributesControllerLayout` and `DialogTitle`, which touch no AppKit, are left non-isolated.
+- **Measured** with two fresh `-derivedDataPath` builds: the app target went from 204 warnings to
+  11, none of them this kind (eight weak-capture, two captured-var mutations in
+  `SFTPProcessTransport+Process`, one unused `self`). The test target has three of this kind left,
+  in `StatusSentenceWidthTests`' non-isolated `width(_:)` helper, not touched here.
+- Core green (3962 tests), both linters clean. App: 1733 tests, and two full runs each failed only
+  the six `PanesDividerDetentTests` at line 219, release at y −270, the flake recorded in the entry
+  above. Every suite that builds these types passed in both runs.
+
+**2026-10-18: a folder a sync client left behind is no longer a cloud account.** Reported by Oleg
+as two Dropbox rows. Dropbox had set its domain up again as `Dropbox` and left
+`Dropbox-Home (18.10.2026 00:09)` beside it, renamed and no longer synced, and the Cloud section
+lists every directory under `~/Library/CloudStorage`. So the sidebar showed "Home (18.10.2026
+00:09) — Dropbox" next to "Dropbox". Finder showed only the real one.
+
+- **What tells them apart is `com.apple.file-provider-domain-id`**, which macOS writes on every
+  domain's root directory. All five live roots here carry it and the leftover does not, though it
+  kept Dropbox's own attributes. `fileproviderctl dump -l` agrees: one Dropbox domain registered.
+  From a no-FDA, LaunchServices-launched probe, the size-only read answers in 9–16 µs per directory
+  and asks nothing (docs/NOTES.md ▸ Google Drive ▸ Mounts, paths and modes).
+- **Oleg chose to hide the leftover rather than mark it.** `CloudStorageMounts.named` drops it before
+  the naming, so every caller agrees with no app change: no sidebar row, real crumbs in the path bar,
+  the folder's own name on a tab, no `.Trash` merged into the Trash (Empty Trash would otherwise
+  delete files Finder's leaves alone), and no second account in the count, so a lone labeled
+  account reads plain "Dropbox" again. It is still reachable by browsing `CloudStorage`.
+- **Two guards, both toward showing too much.** Nothing is dropped unless some directory carries the
+  marker, because it is measured on macOS 26 only and the app targets 14. And only `ENOATTR` drops a
+  directory, so a read that fails some other way keeps it.
+- **Verified live** on the Debug build, launched by path, with the real leftover still on disk plus
+  an empty `Dropbox-Test`: Cloud lists Photos, iCloud Drive, both Drive accounts, Box, OneDrive and a
+  plain "Dropbox". A `reveal` into the leftover drew `Macintosh HD › … › CloudStorage ›
+  Dropbox-Home (18.10.2026 00:09) › Oleg V`, beside `Dropbox › Home Team Folder` on the real one.
+  The CloudStorage listing still showed all seven folders. Afterwards the fixture was removed and
+  the defaults domain imported back, byte-identical. In tests, ten new cases in
+  `CloudStorageLeftoverTests` and `TrashLocationsTests` run on real directories stamped with
+  `setxattr`. With the filter disabled, seven of them fail: all but the no-marker guard, the reader
+  and the literal pin.
+- Core green (3972 tests), both linters clean. App: 1733 tests, and two full runs each failed only
+  the six `PanesDividerDetentTests` at line 219, the flake recorded above.
+
+**2026-10-18: a Force Click on a row renames it.** Asked for by Oleg. The deeper second click of a
+Force Touch trackpad now does what F2 does, as a Force Click on a name does in Finder.
+
+- **Probed before written**, with Oleg's trackpad, because a pressure event cannot be synthesized.
+  The press's `.pressure` events are not delivered while `NSTableView.mouseDown` tracks the click.
+  They all arrive within 3 ms of it returning, so the rename opens on release, after the click has
+  put the cursor on the row (docs/NOTES.md ▸ Mouse, trackpad and animation).
+- **`ForceClickRecognizer`** holds the one row a press may answer for. `mouseDown` disarms every
+  press and arms only a plain single click that reaches `super`. The first stage 2 answers once, and
+  the release or a drag disarms. `PanelViewController.fileTable(_:didForceClickRow:)` then calls
+  `beginRename()` if the row is still the table's selection, so `..`, a read-only location and a
+  trash refuse exactly as F2 does.
+- **The drag guard is `beginDraggingSession(with:event:source:)`**, measured with a computer-use
+  drag to run inside `mouseDown`, 1 ms before it returns. Oleg's two hard-press drags logged no drag
+  hook at all, so they had never become drags, and the guard was measured that way instead.
+- **`FileTableViewInput` moved to its own file**, to keep `FileTableView.swift` under the 500-line
+  ceiling. It is the table's contract, so it is a concept of its own rather than a line count.
+- **Verified live** on the Debug build launched by path, in a scratch folder. A Force Click on a file
+  opened its name with the base name selected and fired once per press. Ordinary clicks fired
+  nothing. A ⌘-Force Click marked the row and opened nothing: presses consumed before `super`
+  delivered their pressure to the table and fired nothing. On `..` it fired at the table and the pane
+  refused it. No Look Up popover appeared, though Look Up on this Mac is Force Click.
+- **Pinned** by `ForceClickRenameTests` (nine tests): the recognizer's stages as numbers, and the
+  real press through the table's own `mouseDown`. Negative controls: without the arming line the
+  positive test fails, and without the disarm at the top of `mouseDown`, or without the
+  cursor-row guard, the ⌘ test and the cursor test fail. In the test host the table's own click
+  selects nothing (NOTES.md ▸ Testing), so each plain press sets the selection first.
+- Core green (3972 tests), both linters clean. App: 1742 tests. The only failures are the six
+  `PanesDividerDetentTests` at line 219, which fail the same way with the suite run alone.
+
+**2026-10-18: pane-divider tests wait for the window's event coordinates.** Follow-up to the
+six release-coordinate failures above. The frame-movement idea was ruled out by logging frames
+at event creation and after `sendEvent`: both were `(0,365,801,332)`. The CGEvent screen point also
+stayed unchanged, but local y=150 became −270. The missing 420 points were the window's top edge
+in screen coordinates. Moving the fixture to `(100,100)` exposed the missing x offset too.
+
+- A plain post/dequeue probe reproduced this on a **hidden window**, without a split view. Its
+  queued-event conversion was not ready, even though its frame was final. A later probe became
+  exact with no frame change. Display calls, visibility flags, a yield and an animation-group
+  completion were not reliable fixes.
+- The fixture now polls its own mouse-up's coordinate round trip before showing the window,
+  with 10 ms between attempts and a 30-second deadline. Each probe is prepended and consumed in
+  one main-actor turn. The real drag remains synchronous, and its exact assertions stay in place.
+  The hidden wait leaves the opening-animation control effective. No app code changed.
+- **Controls still fail:** removing only the wait gives six coordinate failures; default animation
+  gives six, `.alertPanel` gives six tests / 14 issues, tail insertion gives the foreign-release
+  test / four issues, and removing the product's snap rule gives four tests / eight issues.
+  The fixed fixture also passes at `(100,100)`. All temporary tracing and controls were removed.
+- **Checks:** five focused runs green (10 tests, 0.112–0.122 s); five full app runs green
+  (1742 tests, 51.751–53.660 s, only the expected `GestureWaitTests` issue). Both linters clean.
+  Core ran all 3972 tests but had seven unrelated `EPERM` failures in the cloud-folder fixtures:
+  writing `com.apple.file-provider-domain-id` was denied. A standalone write to a throwaway folder
+  failed the same way; an ordinary extended attribute succeeded. Those fixtures were left alone.
+  The general rule is in NOTES.md ▸ Testing. Changes left uncommitted.
+
+**2026-10-18: cloud-folder tests use the existing marker seam.** Follow-up to the seven core
+failures above. Writing `com.apple.file-provider-domain-id` to an owned test directory returned
+`EPERM`; the tests failed during setup. The production reader had already been verified live.
+
+- The tests now supply marker results through `CloudStorageMounts.named`, which already accepted
+  a reader. Directory scans and naming still run on real folders. The marker-dependent path and
+  trash cases pin the shared filtered list; existing suites cover public path matching and trash
+  assembly. No production source changed, and the unused marker-writing helper was removed.
+- The real reader checks absent attributes, missing paths and a dangling symlink. That link pins
+  `XATTR_NOFOLLOW`: its own missing marker returns `false`, while its missing target returns `nil`.
+  The positive system-marker read remains covered by the recorded live probe, with the attribute
+  name pinned separately. Injected marker results do not stand in for that live check.
+- Controls ran in a scratch copy, without changing production files in this checkout. Removing
+  filtering fails seven tests / eight assertions; following symlinks and treating failed reads
+  as absent markers each fail the reader test.
+- Focused core tests green (62); full core green (3972); full app green (1742, only the expected
+  `GestureWaitTests` issue); both linters clean. NOTES.md ▸ Testing records the fixture rule.
+  Changes left uncommitted.
+
+**2026-10-18: a Close button in the Quick View header.** Asked for by Oleg, to close the preview
+from the trackpad; every other way out was a key. A `xmark.circle.fill` after the file name closes
+Quick View at all three sizes, through the header's `onClose`: the window's `closeQuickView()` for
+the two full sizes, the covered pane's host for ⌃Q.
+
+- **The name stays centered and the × hangs off its end.** The button, not the name, keeps 12 pt
+  clear of the position readout, so a long name truncates and the button keeps its 20 pt.
+  `refusesFirstResponder` keeps the arrows on the file list after a click.
+- **A faded full-screen header keeps the button out of reach.** A view at zero alpha is still
+  hit-tested (NOTES.md ▸ Views, layout and hit testing), so the header's `hitTest` hands a click on
+  the invisible button to the strip, which swallows it as before. The other half is the fade: it
+  now waits while the pointer rests on the strip and asks again after the same delay, so the
+  button cannot fade from under a pointer that has stopped on it.
+- **The fade moved to `QuickViewPreviewView+Header`**, with `onClose`, to keep
+  `QuickViewPreviewView.swift` under the 500-line ceiling.
+- **Verified live** on the Debug build launched by path: in ⌃Q and ⌃⇧Q the × sat after the name,
+  and a click closed the preview with focus left on the active pane's cursor row. Full screen was
+  not run: the fade needs a real pointer, and it would have taken over the screen.
+- **Pinned** by `QuickViewCloseButtonTests` (five tests): placement after the name, a long name
+  giving way, the ⌃Q surface reaching the host, the faded hit test with the pinned header as its
+  control, and focus. Negative control: without the alpha guard the hit-test test fails.
+- Core green (3972 tests), app green (1747, only the expected `GestureWaitTests` issue), both
+  linters clean. "Close Quick View" is translated in all 14 catalog languages. Changes left
+  uncommitted.
+
+**2026-10-18: the keyboard scrolls the Quick View preview.** Asked for by Oleg: ⇧↑ / ⇧↓ to scroll,
+⇧← / ⇧→ to go to the top and the end, and ⇧Page Up / ⇧Page Down (fn⇧↑ / fn⇧↓) for a screenful.
+⇧Home / ⇧End go to the top and end too, since on a laptop they are fn⇧← and fn⇧→, and without them
+that key would have jumped the file cursor to the first file. The cursor stays where it is, so a
+plain arrow walks on to the next file. It works at all three sizes. At full size a bare ← / → still
+flips files, and ⇧ now separates the two: before, every arrow went to the flip before ⇧ was checked.
+
+- **The keys are caught by the file table**, in `FileTableView.handleQuickViewScroll`, and nowhere
+  else. A menu key equivalent would have taken ⇧-arrow selection out of every text field in the app
+  (NOTES.md ▸ Key equivalents). The Quick View key monitor runs whatever holds focus, and a click
+  into the preview's text gives it the focus so ⇧-arrows can extend that selection. With no preview
+  up the table's delegate says no and every key does what it did before.
+- **One routine for five backends.** Text, a PDF, a CSV table, a JSON or XML tree and a zoomed image
+  scroll through their clip view (`NSScrollView.scrollDocument`): the move is proposed and
+  `constrainBoundsRect` decides where it lands, so the ends are AppKit's own, a table's floating
+  header included. A page is measured over what is actually seen, which is the document's height
+  less the distance between the two resting origins. Paged by the clip's height, the table skipped
+  20 points of rows per press in a full-size-content window (NOTES.md ▸ Tables). The distances are
+  `DirnexCore`'s `QuickViewScroll`: a 40-point line step, which is WebKit's own, and a page of the
+  seen height less one line, never under half of it.
+- **A rendered page scrolls by script**, in the find's isolated world, so it works with the page's
+  scripts off. The main document goes first and then the captured frames, newest first: a converted
+  workbook's page does not scroll, and only a script sent into the sheet's iframe moved it. WebKit's
+  own `scrollLineDown:` did not (probed, NOTES.md ▸ Previews: web views). Quick Look's own view and
+  the remote placeholder have nothing to scroll, and the keys do nothing there.
+- **`PDFView` says nothing when its clip view moves**: no `PDFViewPageChanged`, and `currentPage`
+  stays put. So the PDF surface redraws the find's highlights itself after a keyboard scroll. The
+  find's "pages in view" moved from `visiblePages`, which lags in a window that is not frontmost,
+  to the page under the view's top and bottom edges (NOTES.md ▸ Previews: Quick Look, PDF).
+- `ZoomTarget` became `QuickViewPreviewView.ContentTarget`, shared by zoom and scroll, so a backend
+  added for one cannot be missed by the other.
+- **Verified live** on the Debug build launched by path, with the `.sdef` verbs and background
+  computer-use keys. In ⌃Q, on a 2000-line text file, three ⇧↓ presses moved the preview seven
+  lines, ⇧Page Down moved it one screen with two lines of overlap, ⇧→ reached Line 2000 and ⇧←
+  went back to Line 0001, while the cursor stayed on the file throughout. The same held for a
+  500-row CSV (row 500), a 33-page PDF (its last page), a 400-paragraph HTML page with scripts off
+  (Paragraph 400) and a real `qlmanage` two-sheet workbook (Row 400 inside the sheet's frame). In
+  ⌃⇧Q, ← flipped to the previous file and ⇧→ scrolled to the end without flipping. Full screen was
+  not run. Defaults backed up and restored byte-identical.
+- **Pinned** by `QuickViewScrollKeysTests` (five: each key's move, no preview leaves the keys alone,
+  unshifted keys unchanged, flip against scroll at full size, the key map),
+  `QuickViewScrollSurfaceTests` (text including TextKit 2's real last character, table with the
+  last row read still in view after a page, tree, image fitted and zoomed, Quick Look) and
+  `QuickViewScrollPageTests` (PDF ends and line step, the find's highlights following, a rendered
+  page against the core's page step, the workbook's frame), plus `DirnexCore`'s
+  `QuickViewScrollTests`. Negative controls: paging by the clip's height fails text, table and tree;
+  dropping the PDF redraw fails the highlight test; the main document alone fails the workbook.
+- Core green (3977 tests), app green (1768, only the expected `GestureWaitTests` issue), both
+  linters clean. No user-visible strings. Changes left uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

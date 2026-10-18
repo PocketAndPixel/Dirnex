@@ -180,6 +180,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - **The one exception is the `TEST_RUNNER_` prefix** (`man xcodebuild`): `TEST_RUNNER_FOO=1`
     reaches the tests as `FOO=1`. CI uses it to say it is CI (`TEST_RUNNER_DIRNEX_CI`, read as
     `DIRNEX_CI`), since 2026-10-02.
+- **A build that stops at `CompileMetalFile` with "missing Metal Toolchain" while
+  `xcodebuild -showComponent MetalToolchain` says `installed` is `xcrun`'s lookup cache, not the
+  toolchain.** Met 2026-10-17 on SwiftTerm's `Shaders.metal`, with Xcode 27.1. The toolchain lives
+  in a cryptex mounted under `/private/var/run/com.apple.security.cryptexd/mnt/`, and the `metal`
+  there ran fine when called by path. Running outside the shell sandbox failed the same way, so the
+  sandbox was not it. `xcrun --kill-cache` fixed it, after which `xcrun -v --find metal` resolved
+  through `$TMPDIR/xcrun_db` to that mount. Don't reach for the `-downloadComponent` the error
+  suggests: nothing was missing.
 - **An Objective-C exception raised inside a Swift Testing body does not fail the test — it wedges
   the test host, and `xcodebuild` sits there until something kills it.** Measured 2026-09-14: a test
   read `textStorage.attribute(_:at:6:)` before an asynchronous RTF read had landed, the storage was
@@ -242,6 +250,52 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Windows, sheets and key events in a test
 
+- **A preview in a window that has never been on screen is one screen long.** Measured 2026-10-18
+  in `QuickViewScrollSurfaceTests`: a TextKit 2 text view showing 3000 lines in a deferred,
+  never-ordered window had a frame **394 points** tall, so a scroll had nowhere to go, and a
+  `PDFView` there reported no `visiblePages` at all. `displayIfNeeded()` alone changed neither. Order
+  the window front and wait, sleeping so the run loop turns, until the frame or the page list has
+  caught up (`QuickViewScrollFixtures.drawn`), and order it out afterwards. The app never meets this,
+  since nobody presses a key at a preview they cannot see.
+
+- **A synthetic drag uses the process event queue, and a new window can change its coordinates.**
+  Measured 2026-10-17 in `PanesDividerDetentTests`: tracing `NSApplication.nextEvent` and the split
+  delegate showed `NSSplitView` pulling `.leftMouseDragged` and `.leftMouseUp` (mask 68) in
+  `.eventTracking`. A queued release from another window ended the drag before its own steps ran.
+  Prepend the complete sequence in reverse with `postEvent(_, atStart: true)`, then send the press
+  synchronously on the main actor. Do not drain the process queue or add an `await` between those
+  steps. The regression test keeps a foreign release queued and checks that it survives the drag;
+  restoring tail insertion fails it.
+  - **Turn off the fixture window's opening animation before showing it.** With the default
+    animation, a posted x=380 arrived at x=379.582, and x=430 at x=430.601. With `.none`, the
+    coordinates stayed exact. An `.alertPanel` animation amplified this into five failed drag tests
+    in 0.16 s. Check the consumed release's type, window and coordinates, so a bad gesture fails at
+    the helper as well as at the feature assertion. Restoring the default animation fails all six
+    drag calls' coordinate checks. Require every event before posting any: dropping a missing
+    release with `compactMap` can leave AppKit waiting for real input.
+  - **A stable window frame does not mean queued mouse coordinates are ready.** Measured again
+    2026-10-18: all six drag calls could receive y=−270 after posting y=150, with the window frame
+    unchanged at `(0,365,801,332)` throughout. The CGEvent's screen point also stayed unchanged.
+    On the 1117-point-high display, 420 was the window's top edge in screen coordinates. Moving
+    the fixture to `(100,100)` also exposed a 100-point x error. A plain post/dequeue probe on a
+    hidden window reproduced this without a split view: its initial coordinate conversion was
+    not ready. `isVisible`, `occlusionState`, `display`, a run-loop turn, `Task.yield()` and an
+    animation-group completion were not reliable readiness checks.
+    `PanesDividerDetentTests` now polls its own mouse-up's round trip **before showing the window**,
+    sleeping 10 ms between attempts with a 30-second deadline. Prepend and consume each probe
+    synchronously on the main actor, check its window, and suspend only after it is consumed.
+    Retain the window before waiting. This drains no foreign input and waits on the conversion
+    the gesture needs. Keeping the window hidden during the wait leaves the opening-animation
+    control effective; `.none` and the synchronous drag sequence are still needed. Removing only
+    the readiness wait reproduced all six coordinate failures.
+  - **A test's reported duration need not be time spent inside its body.** The original four
+    failures and many unrelated passing tests all reported 12.561 s. Direct clocks around the
+    drag measured milliseconds, with no tracking timeout. Three traced full baseline runs passed,
+    with no foreign event or overlapping drag blocks; a 125-drag probe also passed while the real
+    pointer moved. Those runs rule out neither an earlier queued release nor an animation in the
+    historical failure: its log did not record events. Keep the measured hazards separate from
+    claims about who supplied an event in a run that was not traced.
+
 - **A window that was never shown has no key view loop, so Tab from a field goes nowhere.** Found
   2026-10-01 testing Report a Bug…'s text views: `selectNextKeyView` left the focus where it was,
   because AppKit builds the loop when a window first appears. `orderFront` the test window (and close
@@ -291,6 +345,15 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - **The wall clock lies about which fix worked.** The crashing runs took 23 s against a 12 s
     baseline, which reads as "these tests are slow" and invites tuning the waits; the restarts were
     the whole difference, and with them gone the suite costs ~6 s.
+- **A plain click on a file table in a test runs `NSTableView`'s tracking loop and selects
+  nothing.** Measured 2026-10-18 in `ForceClickRenameTests`. With the release queued first
+  (`postEvent(_, atStart: true)`), `table.mouseDown` took it and returned, and `selectedRow` had not
+  moved. Ordering the window front and `makeKeyAndOrderFront` changed nothing: the test host is never
+  the active app, so the window never becomes key. `window.sendEvent` is worse. It spent the press on
+  activating the window, delivered nothing, and left the queued release behind for a later press.
+  The fix is to arrange what the click would have done (`selectRowIndexes`) and still drive the
+  press, which proves everything after the selection. A ⌘ or ⇧ click needs none of this: the pane
+  consumes it before `super.mouseDown`, which is why the earlier mouse tests never met it.
 
 ### Waits, run loops and timing
 
@@ -836,6 +899,16 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   in as `updater(_:userDidMake:forUpdate:state:)`, not `userDidMakeChoice:`). A drifted Swift
   signature silently stops being the witness; `#expect(x.responds(to: #selector(...)))` catches
   it, and `#selector` only compiles when the mapping is right.
+- **Reading a pixel back for a color assertion has two traps, one in each direction.** Both were met
+  on 2026-10-18 testing Quick View's cleared page (`QuickViewClearedPageTests`).
+  - **`NSBitmapImageRep.colorAt` tags its color *Generic* RGB, even when the image is sRGB.** So
+    `usingColorSpace(.sRGB)` changes the numbers: a `takeSnapshot` image named `kCGColorSpaceSRGB`
+    holding `#1E1E1E` came back as `#282828`, and the test failed a page that was painting exactly
+    the right color. Require the image's space by name, then build the color from the raw channels
+    with `NSColor(srgbRed:…)`.
+  - **`getComputedStyle(document.documentElement).colorScheme` reads `normal` under a
+    `<meta name="color-scheme">`**, both with and without the meta. A check written against it
+    passes or fails whatever the page declares. The pixel is the thing to assert.
 - **A security assertion that searches rendered *text* for a dangerous string is testing the
   document, not the renderer.** Three of M18 Slice 1's own assertions over the Markdown renderer
   were written that way and all three were wrong, in both directions. `!html.contains("onerror")`
@@ -951,6 +1024,19 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     lets it finish first. Without reverting each hook in turn, both tests would have looked fine.
 
 ### Fixtures and shared state
+
+- **Reading a system attribute does not mean a test may write it.** Measured 2026-10-18 in the
+  cloud-folder fixtures: `setxattr` on `com.apple.file-provider-domain-id` returned `EPERM`, even
+  on a new owned directory outside `CloudStorage`. The same bytes under
+  `com.dirnex.tests.file-provider-domain-id` wrote and read successfully. The seven failing tests
+  never reached their assertions. Use the existing `CloudStorageMounts.named` reader argument
+  to supply marker results while scanning real directories. Check the shared list there; do not
+  add production hooks just to mint a protected state. Public path lookup and trash assembly have
+  separate tests; their marker-dependent cases now test the shared filtered input. The real marker
+  reader still tests absent attributes and missing paths. A dangling symlink pins `XATTR_NOFOLLOW`:
+  the link has no marker (`false`), while following its missing target fails the read (`nil`). Keep
+  the positive system-marker read covered by the recorded live probe (▸ Google Drive), and pin its
+  name separately. Do not claim that injected results test the system's positive read.
 
 - **A test that deleted a directory a pane was watching crashed the test host. Fixed in the core on
   2026-10-11, so a fixture no longer has to stop the watcher first.** Seen twice that day in
@@ -1696,6 +1782,15 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     catch is a saved position that is perfectly valid on a display the app is no longer using: that
     needs its own check (is the restored center on the parent window's screen?), or every dialog
     opens back on the laptop screen the day an external display arrives.
+- **An `NSAlert` sheet can stay up across a failed confirm: retarget its button.** `NSAlert` ends
+  the sheet from every button it made, before the caller can check anything. Setting the confirming
+  button's `target`/`action` to your own object keeps it from doing so. Probed 2026-10-17 on macOS 26
+  for the New Vault sheet: the target survives presentation, a click runs your action with the sheet
+  still up, a disabled button runs nothing, `alert.layout()` re-fits a taller accessory, and
+  `sheetParent.endSheet(_:returnCode:)` closes it and runs the completion handler with that code.
+  Return still works, because `AlertKeyCatcher` answers it with `performClick` on the default button.
+  It is the cheap alternative to rebuilding the dialog as a custom sheet, which is what Connect to
+  Server did.
 
 #### Laying out a dialog
 
@@ -2089,6 +2184,13 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   origin by the header's height (in a fixture window with `.fullSizeContentView`, by the title bar's as
   well: origin −60 for a 28 pt header and 32 pt of title bar). `scroll(.zero)` pins it to 0 anyway.
   `scrollRowToVisible(0)` and `scrollColumnToVisible(0)` land where AppKit would.
+  - **The same header makes the clip view's height the wrong page size.** Found 2026-10-18 writing
+    Quick View's ⇧Page Down: paged by `contentView.bounds.height` less a 40-point overlap, the table
+    in that test window skipped 20 points of rows at every press, because the header and title bar
+    cover 60. Push the clip past each end of the document and let `constrainBoundsRect` say where it
+    rests. The document's height less the distance between the two resting origins is what is
+    actually seen. It needs no knowledge of headers or insets, and it gives a flipped text view and
+    an unflipped PDF the same answer.
   - **The plain test window measured the other layout.** With `styleMask: [.titled]` the header takes a
     strip of its own and the clip starts below it, so origin 0 is right and the test passed against the
     bug. It took `.fullSizeContentView` (the browser window's) *and* a surface laid out before the table
@@ -2832,6 +2934,27 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 - **A window posts no mouse-moved events unless `acceptsMouseMovedEvents` is set** — an
   `NSTrackingArea` carrying `.mouseMoved` is not enough on its own. A header meant to fade in on
   pointer movement simply never appears, with no error anywhere.
+- **A Force Click on a table row arrives after the button is up, all at once.** Measured 2026-10-18
+  with a logging probe and Oleg's trackpad, for Force Click → rename. A press is `.pressure` events
+  to `pressureChange(with:)`: `stage` 1 for the click, 2 at the deeper second click, 0 at the
+  release. `NSTableView.mouseDown` runs its own tracking loop, which leaves them all queued. Every
+  one was delivered within 3 ms of `mouseDown` returning, timestamps spanning the 0.6 s press, with
+  the two first stage-1 events arriving just *before* `mouseDown`. So act on the first stage 2 after
+  `mouseDown` returns. By then the click has selected the row, and the loop is not running.
+  - **Arm in `mouseDown`, and disarm there too.** Every press starts unarmed, and only a plain single
+    click arms. A ⌘ or ⇧ click consumed before `super` still delivers its pressure events to the
+    table. After a click that delivered no pressure, such as one from a mouse, that ⌘-click would
+    otherwise fire for the earlier row.
+  - **A drag starts inside `mouseDown`.** `beginDraggingSession(with:event:source:)` was called 1 ms
+    before `mouseDown` returned, ahead of the data source's `willBeginAt`. So disarming there runs
+    before any queued stage 2, and pressing hard mid-drag (spring-loading) cannot rename on the drop.
+  - **No `quickLook(with:)` reached the table**, though this Mac's Look Up gesture is Force Click.
+    Measured only on a row, where the tracking loop holds the events.
+  - **Neither half can be synthesized.** `NSEvent` has no factory for a pressure event, and
+    computer-use's drag carries no pressure. Put the stage logic in a value
+    (`ForceClickRecognizer`), let `pressureChange` hand its `stage` to an internal method a test
+    calls, and ask the person with the trackpad. A press they think was a drag may not have been
+    one: two such runs here logged no drag hook at all, so `app_drag` measured the hook instead.
 
 ### Color and contrast
 
@@ -3089,6 +3212,19 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   Calling `layoutDocumentView()` and then `go(to: PDFDestination(page:, at: top))` after assigning the
   document lands at 841.7. A view built in the same turn also needs its container laid out first, or
   the scale is worked out against a zero frame.
+- **Moving `PDFView`'s clip view yourself scrolls the document and tells nobody.** Measured
+  2026-10-18 for Quick View's ⇧-arrow scroll: after a clip-view jump to the end of a six-page PDF,
+  `visiblePages` read the last page while `currentPage` stayed on page 0, and no
+  `PDFViewPageChanged` was posted, through four jumps and twelve steps. Anything that follows the
+  reader through that notification, like the find's highlights, has to be told by whoever moved the
+  clip (`QuickViewPDFSurface.visiblePagesDidMove`).
+  - **`visiblePages` itself is not dependable straight after the move.** It was fresh at once in a
+    probe's frontmost window, and **empty** in the test host's window, an inactive app's, until the
+    run loop turned. The page under the view's top and bottom edges
+    (`page(for:nearest:)`) agreed with it wherever it had caught up and is answered at once, so the
+    find now reads that.
+  - The document view is **not flipped**: toward the end of the document is down the y axis, and a
+    scroll written for a flipped text or table view goes the wrong way.
 - **`PDFDocument.string` is exactly the pages' strings joined by one `\n`, it is cached after the
   first call, and it is safe to read off the main thread.** All measured 2026-09-17 before the PDF
   find was written, on real documents of 1, 78 and 231 pages: re-joining the pages reproduced the
@@ -3195,10 +3331,31 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     on `viewDidChangeEffectiveAppearance` — and the difference is not cosmetic: a reload throws away
     the user's reading position every time the system crosses sunset. Emit **both** palettes under
     one media query instead. Two neighbors from the same run: `underPageBackgroundColor` already
-    resolves to `#1E1E1E` in dark so there is no white flash to fix, and *assigning* it freezes it at
-    the current appearance (the captured-`cgColor` trap); and the system fonts have no usable CSS
-    family name (`.AppleSystemUIFont`), so the family comes from the CSS generics and only the
-    **size** is read from AppKit.
+    resolves to `#1E1E1E` in dark, and *assigning* it freezes it at the current appearance (the
+    captured-`cgColor` trap); and the system fonts have no usable CSS family name
+    (`.AppleSystemUIFont`), so the family comes from the CSS generics and only the **size** is read
+    from AppKit.
+    - **That did not mean there was no white flash.** The under-page color only covers a view with
+      no document. An **empty document** paints the canvas, and without a `color-scheme` declaration
+      the canvas is `#FFFFFF` in dark too. `clearPage()` loaded `""`, the surface was put away
+      holding it, and the next Markdown file unhid it *before* its own first paint: 40–120 ms of
+      white each time Quick View reopened on a `.md`, reported 2026-10-18. A blank of
+      `<meta name="color-scheme" content="light dark">` holds `#1E1E1E` (light stays `#FFFFFF`, and a
+      live flip follows). Window capture in the running app: white on 3 of 4 steps before, 0 of 16
+      after.
+    - **A brand-new view's first page still paints a frame or two of `#FFFFFF`, once per surface per
+      launch, and nothing tried *removed* it in the app.** Not the page's palette (tinting the light
+      one yellow left it white). Not the declaration either: adding it to the Markdown page changed
+      nothing. Loading the blank first and holding the page until it *finished* was clean in a
+      harness, but in the app it measured 1–2 white frames against 2 without. So it was not shipped.
+      The harness never reproduced what the app does here, so start any further attempt in the app.
+      - **What shipped hides it instead: a new view starts at alpha 0 and fades in when its first
+        load ends** (`QuickViewWebView.fadeInOnce`). The frame lands 7–40 ms *after* `didFinish`,
+        and that decides the curve. Over 0.15 s, ease-out was already a third opaque by then and the
+        frame read `#63`–`#76`; ease-in read `#35`–`#3E` over the `#1E1E1E` backing, which the eye
+        does not pick out. A fade started when the surface appears would be nearly opaque when the
+        frame lands. Fade on a failed load too, or a first load that never finishes leaves the page
+        invisible for good.
   - **A generated `<svg>` with only a `viewBox` has no intrinsic size, so `max-width: 100%` makes it
     fill its container instead of constraining it.** M18's diagram emitter deliberately omitted
     `width`/`height` on the reasoning that the stylesheet should own the size — and a three-node
@@ -3285,6 +3442,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     DOM-based find would have found the sheet names and none of the cells. A `WKFrameInfo` **captured
     from `decidePolicyFor`** is reachable through `callAsyncJavaScript(in:)`, reading and highlighting
     inside the frame; it is the only place one for a child frame can be had.
+  - **The same frame is the only thing that scrolls in such a workbook.** Probed 2026-10-18 on a real
+    `qlmanage` conversion of a two-sheet `.xlsx`: the page is an absolutely positioned wrapper with
+    `scrollHeight` equal to `innerHeight`, and the iframe inside it scrolls. `window.scrollBy` in the
+    main document, and WebKit's own `scrollLineDown:` and `scrollToEndOfDocument:` on the view, all
+    left the sheet at 0. The same `scrollBy` sent with `callAsyncJavaScript(in:)` into the captured
+    frame moved it to 40. On a plain page both kinds worked, the WebKit command animating a page step
+    over about half a second. So Quick View's ⇧-arrow scroll tries the main document and then the
+    frames, newest first (`QuickViewWebView+Scroll`).
   - Costs, so nobody designs around a price that is not there: 1.57 MB of page text extracted in
     **18 ms** and handed to Swift in 13 ms, 20 000 matches counted in 2 ms and highlighted in
     **38 ms** end to end — which is why the page highlights every match where the text preview can
@@ -6873,6 +7038,35 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   a second account is a *directory appearing inside* `~/Library/CloudStorage`, so FSEvents on that
   parent is what notices it; the volume notifications that refresh the Volumes section never fire.
   Watch the parent, not the mounts — watching the mounts wakes the watcher on every file Drive syncs.
+- **Not every directory under `~/Library/CloudStorage` is a mount, and only
+  `com.apple.file-provider-domain-id` tells a leftover from a live one.** Found 2026-10-18: Dropbox
+  set its domain up again as `Dropbox` and left `Dropbox-Home (18.10.2026 00:09)` beside it, renamed
+  and no longer synced. The scan listed it as a second account, "Home (18.10.2026 00:09) — Dropbox";
+  Finder showed nothing. The leftover kept Dropbox's own `com.dropbox.*` attributes and lost only that
+  one, which every live root carries (Box, Dropbox, OneDrive, both Drive accounts, streaming and
+  mirror alike) with the value `<extension bundle id>/<domain id>`. **`fileproviderctl dump -l` is the
+  tool**: its "CloudStorage xattrs" section prints exactly this attribute per directory, and its domains
+  cache listed one Dropbox domain. The leftover also answers no `isUbiquitousItem`, so F8 there takes
+  `trashItem` like any local folder (▸ The Trash). `CloudStorageMounts.named` drops leftovers, so the
+  sidebar, the path bar, the tab title, the merged Trash and the account-label count all agree.
+  - **The read is cheap and ungated.** From an ad-hoc-signed app launched through LaunchServices with no
+    Full Disk Access, the size-only `getxattr` (`XATTR_NOFOLLOW`) answered in a median of 9–16 µs per
+    directory, `ENOATTR` on the leftover, and raised no prompt. It reads the directory itself, so no
+    provider is asked anything.
+  - **A no-FDA control has to be a directory that refuses silently.** The first run of that probe
+    opened `~/Library/Mobile Documents` to prove the grant was missing, and blocked in `open` (sampled
+    in `__open_nocancel`) behind a TCC prompt on Oleg's screen, because iCloud Drive asks. `~/Library/Mail`
+    and `~/Library/Safari` answer `EPERM` and ask nothing.
+  - **Two guards keep it from hiding a real account.** Nothing is dropped unless some directory carries
+    the marker, since it is measured on macOS 26 only and the app targets 14: a system that never wrote
+    it would otherwise lose the whole section. And only `ENOATTR` drops a directory. A read that failed
+    some other way keeps it.
+  - **Two edges are left alone, both pure classifications by position.** `TrashLocations` still
+    reads `<leftover>/.Trash` as a trash (F8 there is a confirmed permanent delete rather than a move;
+    this leftover has none), and the tab chip draws the cloud glyph for anything under `CloudStorage`.
+    The order "folder first, marker later" during a domain's setup was not exercised: stamping a fake
+    domain id onto a test folder risks `fileproviderd` acting on it. The parent's FSEvents stream is
+    recursive, so the marker landing should wake the sidebar, but that is reasoning, not a measurement.
 
 #### What a read costs
 
@@ -7714,6 +7908,16 @@ overturned the decision the milestone opened on.
     sheet — a measurement that deleted a whole piece of planned UI rather than confirming it. It is
     also why the size field can offer a generous default: a bigger ceiling costs nothing, in bytes or
     in seconds.
+- **Two overlapping attaches of one image do not share: the second fails while the first mounts.**
+  Probed 2026-10-17 on macOS 26 with two `hdiutil attach -stdinpass` started together: one exit 0
+  with `/Volumes/<name>`, the other exit 1 with `attach failed - Resource temporarily unavailable`,
+  which classifies as `couldNotUnlock`. A sequential attach of an image that is already mounted is
+  fine (exit 0, the same mount point), so only the overlap is a problem — and a double-click on a
+  locked sidebar vault is exactly that, because the sidebar acts on each click and the stored
+  passphrase makes the first attach start at once. Reported as "it opens, and says it couldn't".
+  `VaultUnlocksInFlight` makes the second request wait for the first and answers both with its
+  mount point. The entry lasts through the passphrase prompt too, so a click while the prompt is up
+  does not raise a second one.
 - **`-nobrowse` can be withdrawn from a *mounted* volume, unprivileged — but a remount keeps only the
   options it is handed.** `mount -u -o browse <point>` puts an unlocked vault into Finder's Locations
   immediately, and `nobrowse` puts it back, with no unmount and no passphrase; that is what makes

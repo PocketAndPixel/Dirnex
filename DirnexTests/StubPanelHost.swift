@@ -115,8 +115,32 @@ final class StubPanelHost: PanelHost {
 
     func applyWorkspace(_ workspace: Workspace) {}
     func toggleQuickView(_ mode: QuickViewMode) {}
-    func closeQuickView() {}
-    func flipQuickView(steps: Int) {}
+
+    /// How many times a pane asked to close Quick View. Recorded since the header grew a Close
+    /// button (2026-10-18): in ⌃Q the surface belongs to the covered pane, and the button's whole
+    /// answer is this call.
+    private(set) var quickViewCloses = 0
+    func closeQuickView() {
+        quickViewCloses += 1
+    }
+
+    /// Every flip a pane asked for, and every scroll. Recorded since the ⇧-arrows learned to scroll
+    /// the preview (2026-10-18): at full size the same arrow key flips or scrolls depending on ⇧, and
+    /// which of the two calls a key made is the table's whole answer.
+    private(set) var quickViewFlips: [Int] = []
+    private(set) var quickViewScrolls: [QuickViewScroll] = []
+
+    func flipQuickView(steps: Int) {
+        quickViewFlips.append(steps)
+    }
+
+    /// Like the window's: consumed while a preview is up, and not otherwise.
+    func scrollQuickView(_ move: QuickViewScroll) -> Bool {
+        guard isQuickViewEnabled else { return false }
+        quickViewScrolls.append(move)
+        return true
+    }
+
     func panelCursorDidChange(_ panel: PanelViewController) {}
     func panelDidNavigate(_ panel: PanelViewController) {}
 
@@ -128,11 +152,17 @@ final class StubPanelHost: PanelHost {
     private(set) var frecencyVisits: [VFSPath] = []
 
     func recordFrecencyVisit(_ path: VFSPath) { frecencyVisits.append(path) }
+    /// Every vault a pane asked the window to open, in order — what the right-click's Unlock Vault
+    /// hands over is the whole of its effect from the pane's side.
+    private(set) var vaultOpenRequests: [VaultLocation] = []
+
     func panelRequestsVaultOpen(
         _ vault: VaultLocation,
         showingIn pane: PanelViewController,
         inNewTab: Bool
-    ) {}
+    ) {
+        vaultOpenRequests.append(vault)
+    }
 
     /// The one requirement that records rather than shrugging, because it is the seam a whole
     /// milestone's gestures run through: a test hands back `materializeReport` and asserts on what

@@ -48,15 +48,7 @@ extension BrowserWindowController {
     /// opened, and how it gets *into* the sidebar.
     @objc func unlockVault(_ sender: Any?) {
         guard let entry = vaultImageUnderCursor else { return }
-        openVault(
-            VaultLocation(
-                imagePath: entry.path.path,
-                // Nothing can be asked of a locked image — the volume name lives inside the
-                // encrypted filesystem — so the file's own name stands in until an attach reports
-                // the real mount, which is where `openVault` corrects it.
-                volumeName: (entry.name as NSString).deletingPathExtension
-            )
-        )
+        openVault(VaultLocation(lockedImage: entry))
     }
 
     /// Lock the vault the focused pane is standing in. The gesture for "I'm done here", which is why
@@ -66,14 +58,11 @@ extension BrowserWindowController {
         lock(vault)
     }
 
-    /// The image under the cursor, if it is one — a `.sparsebundle` or a `.dmg` in a real local
-    /// pane. Also what the menu item and the palette entry gate on, so the command is grayed rather
-    /// than silently doing nothing.
+    /// The image under the cursor, if it is one (`PanelViewController.vaultImage`, the rule the
+    /// right-click item shares). Also what the menu item and the palette entry gate on, so the
+    /// command is grayed rather than silently doing nothing.
     var vaultImageUnderCursor: FileEntry? {
-        guard focusedPanel.panel.path.backend == .local, !focusedPanel.isVirtualDirectory,
-              let entry = focusedPanel.panel.currentEntry,
-              DiskImageArguments.Kind.isImageName(entry.name) else { return nil }
-        return entry
+        focusedPanel.vaultImage(focusedPanel.panel.currentEntry)
     }
 
     /// The saved vault whose volume the focused pane is inside, if any.
@@ -105,8 +94,9 @@ extension BrowserWindowController {
     /// user's intent is identical in all three — *show me what is in there* — and the lock state is
     /// a fact to look up rather than a mode the caller should have to know.
     ///
-    /// `inNewTab` (the sidebar row picked with ⌘) opens the volume in a new tab of `pane`. The tab
-    /// is opened only once the vault is unlocked, so a cancelled passphrase leaves nothing behind.
+    /// `inNewTab` (the sidebar row picked with ⌘, and the just-created vault) opens the volume in a
+    /// new tab of `pane`. The tab is opened only once the vault is unlocked, so a cancelled
+    /// passphrase leaves nothing behind.
     func openVault(
         _ vault: VaultLocation,
         with passphrase: ArchivePassphrase? = nil,
@@ -151,8 +141,15 @@ extension BrowserWindowController {
             body(point)
             return
         }
+        // A second request while this vault is still unlocking — the other half of a double-click
+        // — waits for that unlock instead of racing it into `hdiutil` (``VaultUnlocksInFlight``).
+        let id = vault.resolvedImagePath
+        guard VaultUnlocksInFlight.shared.join(id, then: body) else { return }
+        let settle: @MainActor (String?) -> Void = { point in
+            VaultUnlocksInFlight.shared.settle(id, mountedAt: point)
+        }
         if let passphrase {
-            attach(vault, with: passphrase, retrying: false, then: body)
+            attach(vault, with: passphrase, retrying: false, settle: settle)
             return
         }
         // A passphrase filed in the Keychain is tried silently first — that is what "Dirnex saves it
@@ -160,24 +157,26 @@ extension BrowserWindowController {
         // the prompt rather than to an error, since a stale item is exactly what a re-created vault
         // at the same path leaves behind.
         if let stored = SecretKeychain.passphrase(for: vault) {
-            attach(vault, with: stored, retrying: false, isStored: true, then: body)
+            attach(vault, with: stored, retrying: false, isStored: true, settle: settle)
             return
         }
-        askAndAttach(vault, retrying: false, then: body)
+        askAndAttach(vault, retrying: false, settle: settle)
     }
 
+    /// `settle` is the unlock's one way out, called exactly once on every path: the mount point, or
+    /// `nil` for a cancelled prompt or a failure that raised its own alert.
     private func askAndAttach(
         _ vault: VaultLocation,
         retrying: Bool,
-        then body: @escaping @MainActor (String) -> Void
+        settle: @escaping @MainActor (String?) -> Void
     ) {
         PassphrasePrompt.ask(
             forItemNamed: vault.volumeName,
             retrying: retrying,
             over: window
         ) { [weak self] passphrase in
-            guard let self, let passphrase else { return }
-            attach(vault, with: passphrase, retrying: true, then: body)
+            guard let self, let passphrase else { return settle(nil) }
+            attach(vault, with: passphrase, retrying: true, settle: settle)
         }
     }
 
@@ -189,7 +188,7 @@ extension BrowserWindowController {
         with passphrase: ArchivePassphrase,
         retrying: Bool,
         isStored: Bool = false,
-        then body: @escaping @MainActor (String) -> Void
+        settle: @escaping @MainActor (String?) -> Void
     ) {
         SidebarRowActivity.shared.begin(vault.resolvedImagePath)
         let imagePath = vault.imagePath
@@ -209,7 +208,7 @@ extension BrowserWindowController {
                         )
                     }
                 }.get()
-                guard let self else { return }
+                guard let self else { return settle(nil) }
                 // The volume's real name is only knowable once it is mounted, so this is where a
                 // vault opened from the pane (named after its file) gets the name it will keep.
                 var opened = vault
@@ -220,11 +219,13 @@ extension BrowserWindowController {
                 VaultMounts.shared.note(mountPoint: mounted.mountPoint)
                 VaultStore.remember(opened)
                 SecretKeychain.store(passphrase: passphrase, for: opened)
-                body(mounted.mountPoint)
+                settle(mounted.mountPoint)
             } catch VaultError.incorrectPassphrase {
                 // A typo, not a dead end. A refused *stored* passphrase asks for the first time.
-                self?.askAndAttach(vault, retrying: retrying && !isStored, then: body)
+                guard let self else { return settle(nil) }
+                askAndAttach(vault, retrying: retrying && !isStored, settle: settle)
             } catch {
+                settle(nil)
                 self?.presentVaultError((error as? VaultError) ?? .couldNotUnlock)
             }
         }
