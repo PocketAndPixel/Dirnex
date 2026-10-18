@@ -278,6 +278,8 @@ final class FileTableView: StripedTableView {
     }
 
     private func handleTypingKey(_ event: NSEvent) -> Bool {
+        if handleQuickViewScroll(event) { return true }
+
         switch event.keyCode {
         case 48: // Tab
             inputDelegate?.fileTableSwitchPanel(self)
@@ -332,7 +334,8 @@ final class FileTableView: StripedTableView {
     /// `NSTableView` would walk onto the `..` row and preview nothing. Otherwise a bare ←/→ drives
     /// tree expansion (PLAN.md §M15 Slice 4), a no-op that falls through to the table in list mode.
     /// ⇧-arrow and ↑/↓ are left to `super`: the first must keep whatever the table does with it, the
-    /// latter move the cursor by row. Returns `true` when consumed.
+    /// latter move the cursor by row. A ⇧-arrow only gets this far with no preview up; with one, it
+    /// scrolled the preview in `handleTypingKey` instead. Returns `true` when consumed.
     private func handleArrow(_ event: NSEvent) -> Bool {
         let backwards = event.keyCode == 123 || event.keyCode == 126
         if inputDelegate?.fileTable(self, stepQuickViewCursorBy: backwards ? -1 : 1) == true {
@@ -417,5 +420,37 @@ extension FileTableView {
 
     private static func holdsCommandAlone(_ event: NSEvent) -> Bool {
         event.modifierFlags.intersection([.command, .shift, .option, .control]) == .command
+    }
+}
+
+// MARK: - Scrolling a Quick View preview
+
+extension FileTableView {
+    /// ⇧ with an arrow, Page Up/Down or Home/End scrolls a Quick View preview, and only while one is
+    /// up: with none, each key falls through to what it did before. `true` when it was taken.
+    fileprivate func handleQuickViewScroll(_ event: NSEvent) -> Bool {
+        guard event.modifierFlags.contains(.shift),
+              let move = QuickViewScroll(shiftedKeyCode: event.keyCode)
+        else { return false }
+        return inputDelegate?.fileTable(self, scrollQuickView: move) == true
+    }
+}
+
+extension QuickViewScroll {
+    /// The move a key asks for when ⇧ is held with it, by key code, or `nil` for any other key.
+    ///
+    /// ⇧↑ / ⇧↓ step a line and ⇧Page Up / ⇧Page Down a screenful. ⇧← / ⇧→ go to the top and the end,
+    /// and so do ⇧Home / ⇧End, because on a laptop those *are* fn⇧← and fn⇧→: left out, the key
+    /// beside ⇧Page Down would jump the file cursor to the first file instead.
+    init?(shiftedKeyCode keyCode: UInt16) {
+        switch keyCode {
+        case 126: self = .lineUp // ↑
+        case 125: self = .lineDown // ↓
+        case 116: self = .pageUp // Page Up
+        case 121: self = .pageDown // Page Down
+        case 123, 115: self = .top // ←, Home
+        case 124, 119: self = .end // →, End
+        default: return nil
+        }
     }
 }

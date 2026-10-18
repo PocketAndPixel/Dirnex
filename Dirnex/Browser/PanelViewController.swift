@@ -87,6 +87,10 @@ protocol PanelHost: AnyObject {
     /// The window owns it because the preview surface being turned is the window's, not the pane's.
     func flipQuickView(steps: Int)
 
+    /// Scroll the Quick View preview the user is looking at, whichever pane or size holds it (⇧-arrows).
+    /// `false` when no preview is up, so the key can do what it does without one.
+    func scrollQuickView(_ move: QuickViewScroll) -> Bool
+
     /// The size Quick View is currently showing at. Drives the three View-menu checkmarks, and
     /// tells the pane whether its file list is covered (see `QuickViewMode.isFullSize`).
     var quickViewMode: QuickViewMode { get }

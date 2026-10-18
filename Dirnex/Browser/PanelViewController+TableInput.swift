@@ -154,6 +154,10 @@ extension PanelViewController: FileTableViewInput {
         return true
     }
 
+    func fileTable(_ tableView: FileTableView, scrollQuickView move: QuickViewScroll) -> Bool {
+        host?.scrollQuickView(move) == true
+    }
+
     func fileTableEditPath(_ tableView: FileTableView) {
         // Editing a virtual results path as text makes no sense — base the field at Home so a
         // typed path navigates out of the results into a real directory. Same rule the bar's own
