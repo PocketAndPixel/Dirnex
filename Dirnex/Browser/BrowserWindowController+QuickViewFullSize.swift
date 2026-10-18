@@ -21,6 +21,7 @@ extension BrowserWindowController {
             header: .pinned,
             findOptions: .standard
         )
+        preview.onClose = { [weak self] in self?.closeQuickView() }
         let panes = panesSplitViewController.view
         install(preview, pinnedTo: panes)
         fullWindowPreview = preview
@@ -39,6 +40,7 @@ extension BrowserWindowController {
             header: .floating,
             findOptions: .standard
         )
+        preview.onClose = { [weak self] in self?.closeQuickView() }
         guard let content = window?.contentView else { return preview }
         // Without this the fading header never appears: a window does not post mouse-moved events
         // by default, so the tracking area that reveals the strip is never told the pointer moved.

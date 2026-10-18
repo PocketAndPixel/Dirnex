@@ -53,8 +53,10 @@ final class QuickViewPreviewView: NSView {
     /// `cgColor` would freeze at whichever appearance was current when it was taken.
     /// Internal, not private: the PDF backend paints behind its pages with it, from its own file.
     let backingColor: NSColor
-    private let headerStyle: Header
-    private let headerView: QuickViewHeaderView?
+    /// Internal, not private, with the header itself: its fade and its close button live in
+    /// `QuickViewPreviewView+Header`, and Swift's `private` does not cross files.
+    let headerStyle: Header
+    let headerView: QuickViewHeaderView?
 
     /// Where both backends are pinned. A separate view so a `.pinned` header can take a strip of
     /// its own above it while a `.floating` one overlaps it.
@@ -147,9 +149,9 @@ final class QuickViewPreviewView: NSView {
 
     /// Bumped by every reveal of a `.floating` header, so a fade-out scheduled by an earlier
     /// mouse movement knows it has been superseded and stands down. A counter rather than a
-    /// `Timer` because the timer's block is `@Sendable` and this view is not.
-    private var headerFadeGeneration = 0
-    private static let headerFadeDelay: TimeInterval = 2.5
+    /// `Timer` because the timer's block is `@Sendable` and this view is not. Internal, from
+    /// `QuickViewPreviewView+Header`.
+    var headerFadeGeneration = 0
 
     /// Bumped by every asynchronous load, so a slow one landing after the cursor moved on is
     /// discarded rather than replacing the file now on screen. One counter across the image and text
@@ -453,42 +455,5 @@ final class QuickViewPreviewView: NSView {
             subview.topAnchor.constraint(equalTo: container.topAnchor),
             subview.bottomAnchor.constraint(equalTo: container.bottomAnchor)
         ])
-    }
-
-    // MARK: - The floating header's fade
-
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        guard headerStyle == .floating else { return }
-        trackingAreas.forEach(removeTrackingArea)
-        addTrackingArea(NSTrackingArea(
-            rect: bounds,
-            options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
-            owner: self
-        ))
-    }
-
-    override func mouseMoved(with event: NSEvent) {
-        super.mouseMoved(with: event)
-        revealFloatingHeader()
-    }
-
-    override func mouseEntered(with event: NSEvent) {
-        super.mouseEntered(with: event)
-        revealFloatingHeader()
-    }
-
-    /// Fade the floating header in and arm its fade-out. Every movement restarts the delay, so the
-    /// strip stays up while the pointer is busy and goes away once it settles.
-    private func revealFloatingHeader() {
-        guard let headerView, headerStyle == .floating else { return }
-        headerFadeGeneration += 1
-        let generation = headerFadeGeneration
-        headerView.animator().alphaValue = 1
-        Task { [weak self] in
-            try? await Task.sleep(for: .seconds(Self.headerFadeDelay))
-            guard let self, headerFadeGeneration == generation else { return }
-            headerView.animator().alphaValue = 0
-        }
     }
 }
