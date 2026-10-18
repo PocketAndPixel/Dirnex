@@ -14714,6 +14714,31 @@ Force Touch trackpad now does what F2 does, as a Force Click on a name does in F
 - Core green (3972 tests), both linters clean. App: 1742 tests. The only failures are the six
   `PanesDividerDetentTests` at line 219, which fail the same way with the suite run alone.
 
+**2026-10-18: pane-divider tests wait for the window's event coordinates.** Follow-up to the
+six release-coordinate failures above. The frame-movement idea was ruled out by logging frames
+at event creation and after `sendEvent`: both were `(0,365,801,332)`. The CGEvent screen point also
+stayed unchanged, but local y=150 became −270. The missing 420 points were the window's top edge
+in screen coordinates. Moving the fixture to `(100,100)` exposed the missing x offset too.
+
+- A plain post/dequeue probe reproduced this on a **hidden window**, without a split view. Its
+  queued-event conversion was not ready, even though its frame was final. A later probe became
+  exact with no frame change. Display calls, visibility flags, a yield and an animation-group
+  completion were not reliable fixes.
+- The fixture now polls its own mouse-up's coordinate round trip before showing the window,
+  with 10 ms between attempts and a 30-second deadline. Each probe is prepended and consumed in
+  one main-actor turn. The real drag remains synchronous, and its exact assertions stay in place.
+  The hidden wait leaves the opening-animation control effective. No app code changed.
+- **Controls still fail:** removing only the wait gives six coordinate failures; default animation
+  gives six, `.alertPanel` gives six tests / 14 issues, tail insertion gives the foreign-release
+  test / four issues, and removing the product's snap rule gives four tests / eight issues.
+  The fixed fixture also passes at `(100,100)`. All temporary tracing and controls were removed.
+- **Checks:** five focused runs green (10 tests, 0.112–0.122 s); five full app runs green
+  (1742 tests, 51.751–53.660 s, only the expected `GestureWaitTests` issue). Both linters clean.
+  Core ran all 3972 tests but had seven unrelated `EPERM` failures in the cloud-folder fixtures:
+  writing `com.apple.file-provider-domain-id` was denied. A standalone write to a throwaway folder
+  failed the same way; an ordinary extended attribute succeeded. Those fixtures were left alone.
+  The general rule is in NOTES.md ▸ Testing. Changes left uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

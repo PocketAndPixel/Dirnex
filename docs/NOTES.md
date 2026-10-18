@@ -265,6 +265,21 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     the helper as well as at the feature assertion. Restoring the default animation fails all six
     drag calls' coordinate checks. Require every event before posting any: dropping a missing
     release with `compactMap` can leave AppKit waiting for real input.
+  - **A stable window frame does not mean queued mouse coordinates are ready.** Measured again
+    2026-10-18: all six drag calls could receive y=−270 after posting y=150, with the window frame
+    unchanged at `(0,365,801,332)` throughout. The CGEvent's screen point also stayed unchanged.
+    On the 1117-point-high display, 420 was the window's top edge in screen coordinates. Moving
+    the fixture to `(100,100)` also exposed a 100-point x error. A plain post/dequeue probe on a
+    hidden window reproduced this without a split view: its initial coordinate conversion was
+    not ready. `isVisible`, `occlusionState`, `display`, a run-loop turn, `Task.yield()` and an
+    animation-group completion were not reliable readiness checks.
+    `PanesDividerDetentTests` now polls its own mouse-up's round trip **before showing the window**,
+    sleeping 10 ms between attempts with a 30-second deadline. Prepend and consume each probe
+    synchronously on the main actor, check its window, and suspend only after it is consumed.
+    Retain the window before waiting. This drains no foreign input and waits on the conversion
+    the gesture needs. Keeping the window hidden during the wait leaves the opening-animation
+    control effective; `.none` and the synchronous drag sequence are still needed. Removing only
+    the readiness wait reproduced all six coordinate failures.
   - **A test's reported duration need not be time spent inside its body.** The original four
     failures and many unrelated passing tests all reported 12.561 s. Direct clocks around the
     drag measured milliseconds, with no tracking timeout. Three traced full baseline runs passed,
