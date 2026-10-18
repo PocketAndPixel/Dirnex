@@ -18,12 +18,36 @@ import DirnexCore
 /// core, tested, for the day something wants it. And there is no "save the passphrase" checkbox: the
 /// passphrase is filed in the Keychain, which is where the user's other secrets already are and
 /// which they can revoke there.
+///
+/// **The sheet stays up until the vault exists.** A mismatched passphrase, a name already taken or
+/// `hdiutil` refusing is said in ``errorLabel`` under the form, with the name and size the user
+/// chose still in place, so they fix the one thing that was wrong rather than starting over — the
+/// Connect sheet's rule. ``routeCreate(through:)`` is what makes that possible on an `NSAlert`,
+/// which otherwise ends its sheet on every button press before anything has been checked.
+///
+/// An object because it is the Create button's target, and kept alive by the sheet's completion
+/// closure, which captures it: `NSControl.target` is weak. Main-actor isolated, like every control
+/// it holds.
+@MainActor
 final class VaultCreateAccessory: NSObject {
     let view: NSView
     let nameField: NSTextField
     let sizeField: NSTextField
     let passphraseField: NSSecureTextField
     let confirmField: NSSecureTextField
+    /// Why the last Create did not make a vault, at the bottom of the form. Hidden and taking no
+    /// height until there is something to say (``showError(_:)``).
+    let errorLabel: NSTextField
+
+    /// Called after ``view``'s frame changes, for the presenter to re-lay out the alert around it —
+    /// `NSAlert` sizes itself from the accessory's frame, so a grown error row needs `layout()`.
+    var onHeightChange: (() -> Void)?
+
+    /// What pressing Create does, once ``routeCreate(through:)`` has taken the button over.
+    var onCreate: (() -> Void)?
+
+    /// The height the error row adds, gap included; zero while it is hidden.
+    private var errorRowHeight: CGFloat = 0
 
     /// Sizes in gigabytes. A *ceiling*, not an allocation — the whole reason a vault is a sparse
     /// bundle — so the default is generous rather than careful, and the hint beside the field says
@@ -36,14 +60,31 @@ final class VaultCreateAccessory: NSObject {
         nameField: NSTextField,
         sizeField: NSTextField,
         passphraseField: NSSecureTextField,
-        confirmField: NSSecureTextField
+        confirmField: NSSecureTextField,
+        errorLabel: NSTextField
     ) {
         self.view = view
         self.nameField = nameField
         self.sizeField = sizeField
         self.passphraseField = passphraseField
         self.confirmField = confirmField
+        self.errorLabel = errorLabel
         super.init()
+    }
+
+    /// Make `button` — the alert's Create — run ``onCreate`` instead of ending the sheet.
+    ///
+    /// A click, Return and keypad Enter all reach the button through `performClick`, the
+    /// `AlertKeyCatcher` included, so retargeting it covers every way of pressing it. Probed on
+    /// macOS 26: the target survives presentation, a click leaves the sheet up, and a disabled
+    /// button runs nothing — which is how a create already in flight cannot be started twice.
+    func routeCreate(through button: NSButton) {
+        button.target = self
+        button.action = #selector(createPressed)
+    }
+
+    @objc private func createPressed(_ sender: Any?) {
+        onCreate?()
     }
 
     /// The vault's name, trimmed, falling back to a sensible one rather than refusing — an empty
@@ -100,6 +141,7 @@ extension VaultCreateAccessory {
         static let fieldHeight: CGFloat = 24
         static let labelHeight: CGFloat = 18
         static let labelRise: CGFloat = 3
+        static let errorGap: CGFloat = 8
     }
 
     /// Where each row sits, bottom-up from the footer.
@@ -178,13 +220,52 @@ extension VaultCreateAccessory {
             container.addSubview(subview)
         }
 
+        let errorLabel = NSTextField(wrappingLabelWithString: "")
+        errorLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        errorLabel.textColor = .systemRed
+        errorLabel.isSelectable = false
+        errorLabel.preferredMaxLayoutWidth = rows.width
+        errorLabel.frame = NSRect(x: 0, y: 0, width: rows.width, height: 0)
+        errorLabel.isHidden = true
+        container.addSubview(errorLabel)
+
         return VaultCreateAccessory(
             view: container,
             nameField: nameField,
             sizeField: sizeField,
             passphraseField: passphraseField,
-            confirmField: confirmField
+            confirmField: confirmField,
+            errorLabel: errorLabel
         )
+    }
+
+    // MARK: - Error row
+
+    /// Say why the vault was not made, under the passphrase note — or, with `nil`, take the row away.
+    ///
+    /// The row is measured for *this* message in *this* language and the form above it slides up by
+    /// exactly that much, the pack sheet's collapse run the other way: an `NSAlert` takes its
+    /// accessory's height from the frame, so a label merely unhidden would draw over the note.
+    func showError(_ message: String?) {
+        let text = message ?? ""
+        errorLabel.stringValue = text
+        errorLabel.isHidden = text.isEmpty
+        let width = view.frame.width
+        let labelHeight = text.isEmpty
+            ? 0
+            : ceil(errorLabel.sizeThatFits(
+                NSSize(width: width, height: .greatestFiniteMagnitude)
+            ).height)
+        let rowHeight = text.isEmpty ? 0 : labelHeight + Metrics.errorGap
+        errorLabel.frame = NSRect(x: 0, y: 0, width: width, height: labelHeight)
+        let shift = rowHeight - errorRowHeight
+        guard shift != 0 else { return }
+        errorRowHeight = rowHeight
+        for subview in view.subviews where subview !== errorLabel {
+            subview.frame.origin.y += shift
+        }
+        view.frame.size.height += shift
+        onHeightChange?()
     }
 
     // MARK: - Control factories

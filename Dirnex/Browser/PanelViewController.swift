@@ -87,6 +87,10 @@ protocol PanelHost: AnyObject {
     /// The window owns it because the preview surface being turned is the window's, not the pane's.
     func flipQuickView(steps: Int)
 
+    /// Scroll the Quick View preview the user is looking at, whichever pane or size holds it (⇧-arrows).
+    /// `false` when no preview is up, so the key can do what it does without one.
+    func scrollQuickView(_ move: QuickViewScroll) -> Bool
+
     /// The size Quick View is currently showing at. Drives the three View-menu checkmarks, and
     /// tells the pane whether its file list is covered (see `QuickViewMode.isFullSize`).
     var quickViewMode: QuickViewMode { get }
@@ -110,10 +114,10 @@ protocol PanelHost: AnyObject {
     /// ages real visits out (docs/NOTES.md ▸ Testing).
     func recordFrecencyVisit(_ path: VFSPath)
 
-    /// Open a saved vault in `pane`, unlocking it first if it is locked (PLAN.md §M19). The window
-    /// owns the unlock funnel — the sidebar click, the Unlock command and Enter on the image are one
-    /// gesture as far as the user is concerned — so the pane hands the vault over rather than
-    /// growing a second copy of it.
+    /// Open a vault in `pane`, unlocking it first if it is locked (PLAN.md §M19). The window owns the
+    /// unlock funnel — the sidebar click, the Unlock command, Enter on a saved vault's image and the
+    /// right-click's Unlock Vault are one gesture as far as the user is concerned — so the pane hands
+    /// the vault over rather than growing a second copy of it.
     ///
     /// `inNewTab` opens it in a new tab of `pane`, which is then the *other* pane (Cmd+Return on the
     /// image), and leaves the focus in the pane that asked.

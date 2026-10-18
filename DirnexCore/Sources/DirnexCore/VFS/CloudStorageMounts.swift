@@ -82,6 +82,9 @@ public struct CloudStorageMount: Sendable, Hashable, Identifiable {
 /// The scan is deliberately provider-agnostic: recognizing only `GoogleDrive-*` would be the
 /// same code with a narrower answer, and would need rewriting the first time Dropbox is
 /// installed.
+///
+/// Not every directory there is a mount, though: a sync client that sets its domain up again can
+/// leave the old folder behind, renamed and no longer synced (▸ ``domainMarkerAttribute``).
 public enum CloudStorageMounts {
     /// `~/Library/CloudStorage`, the parent of every provider mount.
     ///
@@ -138,7 +141,11 @@ public enum CloudStorageMounts {
     /// `~/Library/CloudStorage` before touching the disk, so an ordinary navigation pays nothing.
     /// A hit costs one small local `readdir` — of `CloudStorage` itself, never of the mounts, which
     /// is why this uses `named` rather than `mounts` (a File Provider mount's own `readdir` can
-    /// reach the network, and the path bar rebuilds on every navigation).
+    /// reach the network, and the path bar rebuilds on every navigation) — plus one `getxattr` per
+    /// directory there, 9–16 µs each (▸ ``carriesDomainMarker(atPath:)``).
+    ///
+    /// A folder a sync client left behind is not a mount, so a path inside one answers `nil` and the
+    /// path bar draws its real crumbs rather than a provider name it no longer has.
     public static func mount(
         containing path: VFSPath,
         home: String = NSHomeDirectory(),
@@ -180,9 +187,16 @@ public enum CloudStorageMounts {
     /// to construct each one's `.Trash`, and wants exactly this cheap form: a File Provider mount's
     /// own `readdir` can reach the network, so the trash enumeration must not use `mounts()`, which
     /// looks inside each one to find its entry directory.
+    ///
+    /// Leftover folders are dropped here, ahead of the naming, so every caller gets the same answer:
+    /// no sidebar row, no provider name in the path bar, no trash merged into the Trash, and no
+    /// second account for the disambiguation to count (▸ ``domainRoots(_:in:_:)``). `domainMarker`
+    /// is the seam a test uses for the read that fails, which a real directory cannot produce on
+    /// demand.
     static func named(
         home: String = NSHomeDirectory(),
-        fileManager: FileManager = .default
+        fileManager: FileManager = .default,
+        domainMarker: (String) -> Bool? = carriesDomainMarker(atPath:)
     ) -> [CloudStorageMount] {
         let parent = cloudStorage(home: home)
         guard let names = try? fileManager.contentsOfDirectory(atPath: parent.path) else {
@@ -191,9 +205,11 @@ public enum CloudStorageMounts {
 
         // Two passes, because a mount's *name* cannot be decided from the mount alone: the
         // account is shown only when a second mount of the same provider makes it load-bearing.
-        let directoryNames = names.filter {
-            !$0.hasPrefix(".") && isDirectory(parent.appending($0).path, fileManager)
-        }
+        let directoryNames = domainRoots(
+            names.filter { !$0.hasPrefix(".") && isDirectory(parent.appending($0).path, fileManager) },
+            in: parent,
+            domainMarker
+        )
 
         var countByProvider: [String: Int] = [:]
         for name in directoryNames {
@@ -223,6 +239,59 @@ public enum CloudStorageMounts {
             if providers != .orderedSame { return providers == .orderedAscending }
             return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
         }
+    }
+
+    /// The attribute macOS writes on the root directory of every File Provider domain under
+    /// `~/Library/CloudStorage`. Its value is `<extension bundle id>/<domain id>`, e.g.
+    /// `com.getdropbox.dropbox.fileprovider/358400b9-…`.
+    ///
+    /// **A folder without it is one a sync client left behind**, and Finder does not show it.
+    /// Found 2026-10-18: Dropbox set its domain up again as `Dropbox` and left
+    /// `Dropbox-Home (18.10.2026 00:09)` beside it, renamed and no longer synced, which the scan
+    /// listed as a second account and named "Home (18.10.2026 00:09) — Dropbox". The leftover still
+    /// carries Dropbox's own `com.dropbox.*` attributes, so only this one tells them apart. Measured
+    /// on macOS 26 against all six directories on this Mac: Box, Dropbox, OneDrive and both Google
+    /// Drive accounts (one streaming, one mirror) carry it, the leftover does not, and
+    /// `fileproviderctl dump` registers exactly one Dropbox domain.
+    static let domainMarkerAttribute = "com.apple.file-provider-domain-id"
+
+    /// Whether the directory at `path` is a File Provider domain's root: `true` when it carries
+    /// ``domainMarkerAttribute``, `false` when the read says it does not (`ENOATTR`), `nil` when the
+    /// read itself failed.
+    ///
+    /// Cheap and ungated, which is what lets ``named(home:fileManager:domainMarker:)`` ask it of
+    /// every directory on every path bar rebuild. Probed 2026-10-18 from an ad-hoc-signed app
+    /// launched through LaunchServices, with no Full Disk Access (`~/Library/Mail` refused it
+    /// `EPERM`): no prompt, and a median of 9–16 µs per directory against the 650–1000 µs a resource
+    /// read inside a domain costs (docs/NOTES.md ▸ Google Drive). Only the size is asked for. The
+    /// value is not needed, and the attribute is on the directory itself, so no provider is asked
+    /// anything. `XATTR_NOFOLLOW`, as everywhere else (docs/NOTES.md ▸ Extended attributes): a
+    /// symlink placed in `CloudStorage` is not a domain root, whatever it points at.
+    static func carriesDomainMarker(atPath path: String) -> Bool? {
+        if getxattr(path, domainMarkerAttribute, nil, 0, 0, XATTR_NOFOLLOW) >= 0 { return true }
+        return errno == ENOATTR ? false : nil
+    }
+
+    /// `directoryNames` without the folders a sync client left behind, in the same order.
+    ///
+    /// Two guards keep it from hiding a real account. Erring the other way is cheap: a stale row
+    /// costs a confusing name, while a missing account leaves the user no way to their files from
+    /// the sidebar.
+    ///
+    /// - **Nothing is dropped unless some directory carries the marker.** The package targets
+    ///   macOS 14, and the marker is measured only on 26. On a system that does not write it, every
+    ///   directory reads `false`, and without this guard the whole section would go empty. With it,
+    ///   such a Mac keeps the listing it had before the filter existed.
+    /// - **Only a definite `false` drops a directory.** A read that failed (`nil`) is not evidence
+    ///   that the folder is no domain, so it stays.
+    static func domainRoots(
+        _ directoryNames: [String],
+        in parent: VFSPath,
+        _ domainMarker: (String) -> Bool?
+    ) -> [String] {
+        let markers = directoryNames.map { domainMarker(parent.appending($0).path) }
+        guard markers.contains(true) else { return directoryNames }
+        return zip(directoryNames, markers).compactMap { name, marker in marker == false ? nil : name }
     }
 
     /// Splits `GoogleDrive-someone@gmail.com` into its provider and its account.

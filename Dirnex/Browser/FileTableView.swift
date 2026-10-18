@@ -1,91 +1,6 @@
 import AppKit
 import DirnexCore
 
-/// Keyboard commands a file pane's table forwards to its controller. Kept as an
-/// explicit protocol (rather than target/action) so the Total Commander key model —
-/// where Space marks and the cursor is separate from selection — stays readable and
-/// testable, and so it can be regenerated from the action registry in M3.
-@MainActor
-protocol FileTableViewInput: AnyObject {
-    /// Return / Enter / Cmd+Down — open the directory under the cursor or launch the file.
-    func fileTableOpenSelection(_ tableView: FileTableView)
-    /// Cmd+Return / Cmd+Enter — open the folder or archive under the cursor in a new tab of the
-    /// other pane.
-    func fileTableOpenSelectionInOtherPane(_ tableView: FileTableView)
-    /// The second click of a Cmd-double-click on `row` — what Cmd+Return does, for the row clicked.
-    /// The first click has already toggled that row's mark as any Cmd-click does.
-    func fileTable(_ tableView: FileTableView, didCommandDoubleClickRow row: Int)
-    /// Cmd+Up — navigate to the parent directory (unconditional, ignores any filter).
-    func fileTableGoToParent(_ tableView: FileTableView)
-    /// Backspace — trim the active type-to-filter, or go to the parent when it is empty.
-    func fileTableBackspace(_ tableView: FileTableView)
-    /// Esc — clear the filter, then (if none) clear the marks.
-    func fileTableCancel(_ tableView: FileTableView)
-    /// A printable character was typed — append it to the type-to-filter.
-    func fileTable(_ tableView: FileTableView, didType text: String)
-    /// Space / Insert — toggle the cursor row's mark and advance (TC's mark-a-run gesture).
-    func fileTableToggleMarkAndAdvance(_ tableView: FileTableView)
-    /// Tab — hand keyboard focus to the other pane.
-    func fileTableSwitchPanel(_ tableView: FileTableView)
-    /// Cmd+A — mark every visible entry.
-    func fileTableMarkAll(_ tableView: FileTableView)
-    /// `*` — invert the mark set.
-    func fileTableInvertMarks(_ tableView: FileTableView)
-    /// Keypad `+` — add entries matching a wildcard to the marks (TC's "select group").
-    func fileTableSelectByPattern(_ tableView: FileTableView)
-    /// Keypad `-` — remove entries matching a wildcard from the marks (TC's "unselect group").
-    func fileTableDeselectByPattern(_ tableView: FileTableView)
-    /// Cmd+Y — toggle the Quick Look preview panel.
-    func fileTableToggleQuickLook(_ tableView: FileTableView)
-    /// An arrow key — step the cursor one file while a full-size Quick View covers the list
-    /// (PLAN.md §M11). Returns `true` when the arrows belong to Quick View, whether or not the
-    /// cursor could move: at the ends of the list they stop rather than falling through to the
-    /// table, and they never reach `..`.
-    func fileTable(_ tableView: FileTableView, stepQuickViewCursorBy delta: Int) -> Bool
-
-    /// → in tree mode (PLAN.md §M15 Slice 4) — expand the closed folder under the cursor, or step
-    /// into an open one. Returns `false` in list mode, so the arrow falls through to the table
-    /// unchanged there.
-    func fileTableExpandOrStepIn(_ tableView: FileTableView) -> Bool
-    /// ← in tree mode — collapse the open folder under the cursor, or step out to its parent's row.
-    /// Returns `false` in list mode.
-    func fileTableCollapseOrStepOut(_ tableView: FileTableView) -> Bool
-
-    /// The lowest row the cursor may land on. `..` is off limits while a full-size Quick View
-    /// covers the list — it is not a file to preview, so Home and Page Up stop at the first real
-    /// row instead of parking on it and showing an empty surface.
-    func fileTableMinimumCursorRow(_ tableView: FileTableView) -> Int
-    /// A bare function key (F1–F12) reached the table unclaimed by a menu key-equivalent — the
-    /// function bar dispatches its slot's command, if any. Returns `true` when a slot handled it.
-    func fileTable(_ tableView: FileTableView, functionKey number: Int) -> Bool
-    /// Cmd+L — edit the location as text in the path bar.
-    func fileTableEditPath(_ tableView: FileTableView)
-    /// Cmd+Shift+N (also File ▸ New Folder / F7) — create a folder here.
-    func fileTableNewFolder(_ tableView: FileTableView)
-    /// Cmd+Delete (also File ▸ Move to Trash / F8) — move the selection to the Trash.
-    func fileTableDeleteToTrash(_ tableView: FileTableView)
-    /// Cmd+Shift+Delete (also Delete Immediately / Shift+F8) — delete permanently.
-    func fileTableDeletePermanently(_ tableView: FileTableView)
-    /// The table became first responder — its pane should become the active one.
-    func fileTableDidBecomeFirstResponder(_ tableView: FileTableView)
-    /// A right-click (or Ctrl-click) landed on `row`, or `-1` in the empty space below the rows —
-    /// the pane's context menu for it.
-    func fileTable(_ tableView: FileTableView, menuForRow row: Int) -> NSMenu?
-    /// A mouse button went down on `row` (or `-1` in empty space) with `modifiers`
-    /// held — the Finder-style click selection (plain / Cmd-toggle / Shift-range).
-    /// Returns `true` when the controller consumed it as a modifier selection and the
-    /// table should skip its own click handling (no cursor move, no drag); `false` for a
-    /// plain click, which the table still runs for cursor movement and drag-out.
-    func fileTable(
-        _ tableView: FileTableView,
-        didClickRow row: Int,
-        modifiers: NSEvent.ModifierFlags
-    ) -> Bool
-    /// The pointer moved onto `row`, or `-1` when it left the pane's rows. Only the tree's active
-    /// indent guide reads it today; the cursor and the marks are deliberately untouched by hovering.
-    func fileTable(_ tableView: FileTableView, didHoverRow row: Int)
-}
-
 /// `NSTableView` subclass that intercepts the file-manager key model before the
 /// default table behavior. Arrow keys and mouse selection fall through to `super`,
 /// which moves the cursor (the table's own selection); everything else — navigation,
@@ -107,6 +22,10 @@ final class FileTableView: StripedTableView {
     /// installs tracking areas of its own and also owns them, so "remove every area owned by self"
     /// would take the table's with it.
     private var hoverTracking: NSTrackingArea?
+
+    /// The press in progress, read for a Force Click (`FileTableView+ForceClick`). Armed by
+    /// `mouseDown` only for a plain single click on a row.
+    var forceClick = ForceClickRecognizer()
 
     override var acceptsFirstResponder: Bool { true }
 
@@ -223,6 +142,8 @@ final class FileTableView: StripedTableView {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let point = convert(event.locationInWindow, from: nil)
         let row = row(at: point)
+        // Every press starts unarmed. Only the plain single click that reaches `super` below arms.
+        forceClick.disarm()
 
         // A plain click on a folder's disclosure triangle toggles it here, at press time, and stops.
         // The triangle itself is transparent to the mouse (`DisclosureTriangleView.hitTest` → nil),
@@ -252,6 +173,9 @@ final class FileTableView: StripedTableView {
             window?.makeFirstResponder(self)
             return
         }
+        // Not a second click: the double click has already opened the row by the time its pressure
+        // events arrive.
+        if event.clickCount == 1 { forceClick.arm(row: row) }
         super.mouseDown(with: event)
     }
 
@@ -354,6 +278,8 @@ final class FileTableView: StripedTableView {
     }
 
     private func handleTypingKey(_ event: NSEvent) -> Bool {
+        if handleQuickViewScroll(event) { return true }
+
         switch event.keyCode {
         case 48: // Tab
             inputDelegate?.fileTableSwitchPanel(self)
@@ -408,7 +334,8 @@ final class FileTableView: StripedTableView {
     /// `NSTableView` would walk onto the `..` row and preview nothing. Otherwise a bare ←/→ drives
     /// tree expansion (PLAN.md §M15 Slice 4), a no-op that falls through to the table in list mode.
     /// ⇧-arrow and ↑/↓ are left to `super`: the first must keep whatever the table does with it, the
-    /// latter move the cursor by row. Returns `true` when consumed.
+    /// latter move the cursor by row. A ⇧-arrow only gets this far with no preview up; with one, it
+    /// scrolled the preview in `handleTypingKey` instead. Returns `true` when consumed.
     private func handleArrow(_ event: NSEvent) -> Bool {
         let backwards = event.keyCode == 123 || event.keyCode == 126
         if inputDelegate?.fileTable(self, stepQuickViewCursorBy: backwards ? -1 : 1) == true {
@@ -493,5 +420,37 @@ extension FileTableView {
 
     private static func holdsCommandAlone(_ event: NSEvent) -> Bool {
         event.modifierFlags.intersection([.command, .shift, .option, .control]) == .command
+    }
+}
+
+// MARK: - Scrolling a Quick View preview
+
+extension FileTableView {
+    /// ⇧ with an arrow, Page Up/Down or Home/End scrolls a Quick View preview, and only while one is
+    /// up: with none, each key falls through to what it did before. `true` when it was taken.
+    fileprivate func handleQuickViewScroll(_ event: NSEvent) -> Bool {
+        guard event.modifierFlags.contains(.shift),
+              let move = QuickViewScroll(shiftedKeyCode: event.keyCode)
+        else { return false }
+        return inputDelegate?.fileTable(self, scrollQuickView: move) == true
+    }
+}
+
+extension QuickViewScroll {
+    /// The move a key asks for when ⇧ is held with it, by key code, or `nil` for any other key.
+    ///
+    /// ⇧↑ / ⇧↓ step a line and ⇧Page Up / ⇧Page Down a screenful. ⇧← / ⇧→ go to the top and the end,
+    /// and so do ⇧Home / ⇧End, because on a laptop those *are* fn⇧← and fn⇧→: left out, the key
+    /// beside ⇧Page Down would jump the file cursor to the first file instead.
+    init?(shiftedKeyCode keyCode: UInt16) {
+        switch keyCode {
+        case 126: self = .lineUp // ↑
+        case 125: self = .lineDown // ↓
+        case 116: self = .pageUp // Page Up
+        case 121: self = .pageDown // Page Down
+        case 123, 115: self = .top // ←, Home
+        case 124, 119: self = .end // →, End
+        default: return nil
+        }
     }
 }

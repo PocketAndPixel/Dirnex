@@ -21,10 +21,22 @@ import DirnexCore
 /// therefore one call, handed to the presenter through ``onHeightChange`` — the accessory owns the
 /// arithmetic, the sheet owns the alert.
 ///
-/// An object rather than a struct because it is the popups' target/action, and it reads every
-/// control back as a core value so the sheet's completion handler never touches an index. Kept alive
-/// by the completion closure that captures it — `NSControl.target` is weak, so the accessory would
+/// **The sheet stays up until the passphrases pass**, the New Vault sheet's rule. An empty or
+/// mismatched pair is said in ``errorLabel`` under the form, with the name, format and level the
+/// user chose still in place. ``routePack(through:)`` is what makes that possible on an `NSAlert`,
+/// which otherwise ends its sheet on every button press before anything has been checked. The error
+/// row and the collapse are independent translations — the row lifts every control off the floor,
+/// the collapse drops only what sits above the passphrase block — so they commute, and a collapse
+/// clears the error first because it is about rows that are no longer on screen.
+///
+/// An object rather than a struct because it is the popups' and the Pack button's target, and it
+/// reads every control back as a core value so the presenter never touches an index. Kept alive by
+/// the completion closure that captures it — `NSControl.target` is weak, so the accessory would
 /// otherwise be gone by the time the user changes anything.
+///
+/// Main-actor isolated, like every control it holds. Its nested value types (`Defaults`,
+/// `EncryptionRows`) are not, since isolation does not reach a nested type.
+@MainActor
 final class PackAccessory: NSObject {
     /// The rows that exist only while a cipher is chosen, and what putting them away costs.
     ///
@@ -48,16 +60,24 @@ final class PackAccessory: NSObject {
     let passphraseField: NSSecureTextField
     let confirmField: NSSecureTextField
     let hideNamesCheckbox: NSButton
+    /// Why the last Pack did not start, at the bottom of the form. Hidden and taking no height until
+    /// there is something to say (``showError(_:)``).
+    let errorLabel: NSTextField
 
     /// Called after ``view``'s frame changes, for the presenter to re-lay out the alert around it.
     /// Left `nil` while the sheet is being built: the initializer collapses a no-cipher form before
     /// the alert has ever measured it, so there is nothing to re-lay out yet.
     var onHeightChange: (() -> Void)?
 
+    /// What pressing Pack does, once ``routePack(through:)`` has taken the button over.
+    var onPack: (() -> Void)?
+
     private let levelLabel: NSTextField
     private let encryptionRows: EncryptionRows
     /// The built layout is the expanded one; `init` collapses it if the defaults carry no cipher.
     private var showingEncryptionRows = true
+    /// The height the error row adds, gap included; zero while it is hidden.
+    private var errorRowHeight: CGFloat = 0
 
     init(
         view: NSView,
@@ -69,6 +89,7 @@ final class PackAccessory: NSObject {
         passphraseField: NSSecureTextField,
         confirmField: NSSecureTextField,
         hideNamesCheckbox: NSButton,
+        errorLabel: NSTextField,
         encryptionRows: EncryptionRows
     ) {
         self.view = view
@@ -80,6 +101,7 @@ final class PackAccessory: NSObject {
         self.passphraseField = passphraseField
         self.confirmField = confirmField
         self.hideNamesCheckbox = hideNamesCheckbox
+        self.errorLabel = errorLabel
         self.encryptionRows = encryptionRows
         super.init()
         formatPopup.target = self
@@ -88,6 +110,20 @@ final class PackAccessory: NSObject {
         encryptionPopup.action = #selector(encryptionChanged)
         syncLevelEnabled()
         syncEncryptionEnabled()
+    }
+
+    /// Make `button` — the alert's Pack — run ``onPack`` instead of ending the sheet.
+    ///
+    /// A click, Return and keypad Enter all reach the button through `performClick`, the
+    /// `AlertKeyCatcher` included, so retargeting it covers every way of pressing it (docs/NOTES.md
+    /// ▸ Alerts, sheets and dialogs).
+    func routePack(through button: NSButton) {
+        button.target = self
+        button.action = #selector(packPressed)
+    }
+
+    @objc private func packPressed(_ sender: Any?) {
+        onPack?()
     }
 
     /// The chosen container format. The popup is built from `Format.allCases` in order, so the
@@ -163,6 +199,11 @@ final class PackAccessory: NSObject {
     private func setEncryptionRowsVisible(_ visible: Bool) {
         guard visible != showingEncryptionRows else { return }
         showingEncryptionRows = visible
+        if !visible {
+            // Every error this sheet can show is about a passphrase, and those rows are going.
+            // Folded into this one relayout rather than reported as a second.
+            resizeErrorRow(for: nil)
+        }
         let shift = visible ? encryptionRows.delta : -encryptionRows.delta
         for row in encryptionRows.hidden {
             row.isHidden = !visible
@@ -173,6 +214,49 @@ final class PackAccessory: NSObject {
         view.frame.size.height += shift
         onHeightChange?()
     }
+
+    /// Say why the pack did not start, under the footer note — or, with `nil`, take the row away.
+    ///
+    /// The row is measured for *this* message in *this* language and the form above it slides up by
+    /// exactly that much — the collapse run the other way, and for the same reason: an `NSAlert`
+    /// takes its accessory's height from the frame, so a label merely unhidden would draw over the
+    /// note.
+    func showError(_ message: String?) {
+        guard resizeErrorRow(for: message) else { return }
+        onHeightChange?()
+    }
+
+    /// Put `message` in the error row and move everything else by the height that changed, without
+    /// telling the presenter. Returns whether the accessory's height changed.
+    ///
+    /// **Every other subview moves, the hidden passphrase block included**, so the block keeps its
+    /// place relative to the floor while it is collapsed and comes back exactly above the row. Both
+    /// this and the collapse are plain translations, so the order they run in does not matter.
+    @discardableResult
+    private func resizeErrorRow(for message: String?) -> Bool {
+        let text = message ?? ""
+        errorLabel.stringValue = text
+        errorLabel.isHidden = text.isEmpty
+        let width = view.frame.width
+        let labelHeight = text.isEmpty
+            ? 0
+            : ceil(errorLabel.sizeThatFits(
+                NSSize(width: width, height: .greatestFiniteMagnitude)
+            ).height)
+        let rowHeight = text.isEmpty ? 0 : labelHeight + Self.errorGap
+        errorLabel.frame = NSRect(x: 0, y: 0, width: width, height: labelHeight)
+        let shift = rowHeight - errorRowHeight
+        guard shift != 0 else { return false }
+        errorRowHeight = rowHeight
+        for subview in view.subviews where subview !== errorLabel {
+            subview.frame.origin.y += shift
+        }
+        view.frame.size.height += shift
+        return true
+    }
+
+    /// The space between the error row and the lowest control above it.
+    private static let errorGap: CGFloat = 8
 
     /// The two things a user must know *before* typing a passphrase, in the order they matter.
     ///

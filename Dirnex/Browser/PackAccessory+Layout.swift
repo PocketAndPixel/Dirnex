@@ -21,9 +21,9 @@ import DirnexCore
 /// when a cipher *is* chosen, and a footer measured empty would leave the sentence saying the files
 /// are unrecoverable drawn outside the sheet.
 extension PackAccessory {
-    /// What the sheet opens with. Carried as a value so a sheet re-raised after a rejected
-    /// passphrase comes back with every other choice the user already made still in it — the one
-    /// thing not carried is the passphrase itself, which is exactly what they need to retype.
+    /// What the sheet opens with, and — read back once Pack passes its checks — what it settled on.
+    /// The passphrase is deliberately not one of them: it travels on its own, as an
+    /// `ArchivePassphrase`, from the field straight to the writer.
     struct Defaults {
         var baseName: String
         var format: ArchivePacking.Format = .zip
@@ -124,6 +124,8 @@ extension PackAccessory {
         for subview in controls {
             container.addSubview(subview)
         }
+        let errorLabel = makeErrorLabel(width: rows.width)
+        container.addSubview(errorLabel)
 
         return PackAccessory(
             view: container,
@@ -135,6 +137,7 @@ extension PackAccessory {
             passphraseField: passphraseField,
             confirmField: confirmField,
             hideNamesCheckbox: hideNames,
+            errorLabel: errorLabel,
             // The split is the encryption row: it and everything above it survive a collapse and
             // slide down onto the floor the block below them vacates. That distance needs no
             // arithmetic of its own — the encryption row already sits `rows.encryption` points up,
@@ -294,5 +297,18 @@ extension PackAccessory {
         )
         footer.frame = NSRect(x: 0, y: 0, width: width, height: ceil(fitted.height))
         return footer
+    }
+
+    /// The error row, empty, hidden and zero-high on the floor: `showError(_:)` measures it for
+    /// whatever it is handed and makes the room then.
+    private static func makeErrorLabel(width: CGFloat) -> NSTextField {
+        let label = NSTextField(wrappingLabelWithString: "")
+        label.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        label.textColor = .systemRed
+        label.isSelectable = false
+        label.preferredMaxLayoutWidth = width
+        label.frame = NSRect(x: 0, y: 0, width: width, height: 0)
+        label.isHidden = true
+        return label
     }
 }

@@ -42,6 +42,13 @@ operation downloads first, visibly, with a Stop (`CloudDownloadPrompt`), and a r
 refuses to materialize a placeholder rather than silently pulling a whole cloud drive
 (`SF_DATALESS`). Google Drive in **mirror** mode exposes no sync state to anyone but Finder, so
 badges are blank there — measured, not a gap.
+A folder a sync client **left behind** in `~/Library/CloudStorage` (renamed, no longer a File
+Provider domain, so without `com.apple.file-provider-domain-id`) is not a Cloud mount: like Finder,
+Dirnex gives it no sidebar row, no provider name in the path bar, no place in the merged Trash, and
+leaves it out when deciding whether "Dropbox" needs an account label. It is still reachable by browsing
+`CloudStorage`, and behaves as a Local folder. The tab chip still draws the cloud glyph there, because
+it classifies by territory without touching the disk (<sup>aaf</sup>). Verified live 2026-10-18 on a
+real leftover Dropbox folder and an empty `Dropbox-Test`.
 
 <sup>2</sup> A **nested** archive is read-only: its own bytes are already a temp copy, so writes
 have nowhere to land. So is a **Windows self-extractor** — an `.exe` with a zip or 7z appended,

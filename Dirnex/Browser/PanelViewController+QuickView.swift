@@ -114,6 +114,7 @@ extension PanelViewController {
             header: .pinned,
             findOptions: .standard
         )
+        preview.onClose = { [weak self] in self?.host?.closeQuickView() }
         view.addSubview(preview)
         NSLayoutConstraint.activate([
             preview.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
