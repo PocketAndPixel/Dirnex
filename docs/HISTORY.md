@@ -14739,6 +14739,25 @@ in screen coordinates. Moving the fixture to `(100,100)` exposed the missing x o
   failed the same way; an ordinary extended attribute succeeded. Those fixtures were left alone.
   The general rule is in NOTES.md ▸ Testing. Changes left uncommitted.
 
+**2026-10-18: cloud-folder tests use the existing marker seam.** Follow-up to the seven core
+failures above. Writing `com.apple.file-provider-domain-id` to an owned test directory returned
+`EPERM`; the tests failed during setup. The production reader had already been verified live.
+
+- The tests now supply marker results through `CloudStorageMounts.named`, which already accepted
+  a reader. Directory scans and naming still run on real folders. The marker-dependent path and
+  trash cases pin the shared filtered list; existing suites cover public path matching and trash
+  assembly. No production source changed, and the unused marker-writing helper was removed.
+- The real reader checks absent attributes, missing paths and a dangling symlink. That link pins
+  `XATTR_NOFOLLOW`: its own missing marker returns `false`, while its missing target returns `nil`.
+  The positive system-marker read remains covered by the recorded live probe, with the attribute
+  name pinned separately. Injected marker results do not stand in for that live check.
+- Controls ran in a scratch copy, without changing production files in this checkout. Removing
+  filtering fails seven tests / eight assertions; following symlinks and treating failed reads
+  as absent markers each fail the reader test.
+- Focused core tests green (62); full core green (3972); full app green (1742, only the expected
+  `GestureWaitTests` issue); both linters clean. NOTES.md ▸ Testing records the fixture rule.
+  Changes left uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

@@ -1007,6 +1007,19 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Fixtures and shared state
 
+- **Reading a system attribute does not mean a test may write it.** Measured 2026-10-18 in the
+  cloud-folder fixtures: `setxattr` on `com.apple.file-provider-domain-id` returned `EPERM`, even
+  on a new owned directory outside `CloudStorage`. The same bytes under
+  `com.dirnex.tests.file-provider-domain-id` wrote and read successfully. The seven failing tests
+  never reached their assertions. Use the existing `CloudStorageMounts.named` reader argument
+  to supply marker results while scanning real directories. Check the shared list there; do not
+  add production hooks just to mint a protected state. Public path lookup and trash assembly have
+  separate tests; their marker-dependent cases now test the shared filtered input. The real marker
+  reader still tests absent attributes and missing paths. A dangling symlink pins `XATTR_NOFOLLOW`:
+  the link has no marker (`false`), while following its missing target fails the read (`nil`). Keep
+  the positive system-marker read covered by the recorded live probe (▸ Google Drive), and pin its
+  name separately. Do not claim that injected results test the system's positive read.
+
 - **A test that deleted a directory a pane was watching crashed the test host. Fixed in the core on
   2026-10-11, so a fixture no longer has to stop the watcher first.** Seen twice that day in
   `PanelTreeLoadFailureTests`: `EXC_BAD_ACCESS` at address 0, on the `com.dirnex.fsevents` queue,
