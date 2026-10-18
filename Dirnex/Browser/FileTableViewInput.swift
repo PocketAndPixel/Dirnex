@@ -1,4 +1,5 @@
 import AppKit
+import DirnexCore
 
 /// Keyboard commands a file pane's table forwards to its controller. Kept as an
 /// explicit protocol (rather than target/action) so the Total Commander key model —
@@ -41,6 +42,10 @@ protocol FileTableViewInput: AnyObject {
     /// cursor could move: at the ends of the list they stop rather than falling through to the
     /// table, and they never reach `..`.
     func fileTable(_ tableView: FileTableView, stepQuickViewCursorBy delta: Int) -> Bool
+    /// ⇧ with an arrow, Page Up/Down or Home/End — scroll the Quick View preview on screen, at any of
+    /// its three sizes. Returns `true` when a preview is up, whether or not it could scroll, so the key
+    /// never also moves the cursor; `false` with none, and the key does what it always did.
+    func fileTable(_ tableView: FileTableView, scrollQuickView move: QuickViewScroll) -> Bool
 
     /// → in tree mode (PLAN.md §M15 Slice 4) — expand the closed folder under the cursor, or step
     /// into an open one. Returns `false` in list mode, so the arrow falls through to the table

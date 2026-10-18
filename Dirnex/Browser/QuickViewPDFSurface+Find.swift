@@ -143,6 +143,14 @@ extension QuickViewPDFSurface: QuickViewFindHost {
         )
     }
 
+    /// Redraw for the pages now on screen after a move `PDFView` does not report: the keyboard scroll
+    /// (`QuickViewPreviewView+Scroll`) moves the clip view directly, and measured, that posts no
+    /// `PDFViewPageChanged` and leaves `currentPage` where it was while `visiblePages` follows. Without
+    /// this the highlights would stay on the pages the reader just left.
+    func visiblePagesDidMove() {
+        redrawHighlightsForVisiblePages()
+    }
+
     // MARK: - Private
 
     /// The current match's color. The others take the find yellow the other surfaces mark with.
@@ -167,18 +175,34 @@ extension QuickViewPDFSurface: QuickViewFindHost {
     /// Everything off screen is left undrawn — a one-letter query over a long document has tens of
     /// thousands of matches, and `highlightedSelections` is assigned whole on every keystroke.
     private func highlightableIndices(of matches: TextFindMatches) -> Range<Int> {
-        guard let document = pdfView.document else { return 0..<0 }
-        let visible = pdfView.visiblePages.map { document.index(for: $0) }
-        guard let lowest = visible.min(), let highest = visible.max() else {
-            return 0..<min(matches.count, 1)
-        }
-        let first = max(0, lowest - Self.pageMargin)
-        let last = min(pages.readyCount - 1, highest + Self.pageMargin)
+        guard let visible = pageIndicesInView else { return 0..<min(matches.count, 1) }
+        let first = max(0, visible.lowerBound - Self.pageMargin)
+        let last = min(pages.readyCount - 1, visible.upperBound + Self.pageMargin)
         guard first <= last,
               let start = pages.offset(ofPage: first),
               let end = pages.offset(ofPage: last).map({ $0 + pages.segments.lengths[last] })
         else { return 0..<0 }
         return matches.indices(overlapping: start..<end)
+    }
+
+    /// The pages in view, from the view's own geometry: the page under its top edge through the page
+    /// under its bottom edge. Not `visiblePages`, which `PDFView` refreshes when it gets round to it:
+    /// measured right after a keyboard scroll to the end, it read the last page in a probe's frontmost
+    /// window and **nothing** in the test host's window, an inactive app's, where the highlights then
+    /// fell back to the first match alone. The geometry agreed with `visiblePages` wherever that had
+    /// caught up.
+    private var pageIndicesInView: ClosedRange<Int>? {
+        guard let document = pdfView.document else { return nil }
+        let bounds = pdfView.bounds
+        guard let top = pdfView.page(for: NSPoint(x: bounds.midX, y: bounds.maxY - 1), nearest: true),
+              let bottom = pdfView.page(
+                  for: NSPoint(x: bounds.midX, y: bounds.minY + 1),
+                  nearest: true
+              )
+        else { return nil }
+        let ends = [document.index(for: top), document.index(for: bottom)]
+        guard let lowest = ends.min(), let highest = ends.max() else { return nil }
+        return lowest...highest
     }
 
     /// The selection a match's offsets name on a page that has a text layer.

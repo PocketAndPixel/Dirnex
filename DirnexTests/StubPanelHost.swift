@@ -124,7 +124,23 @@ final class StubPanelHost: PanelHost {
         quickViewCloses += 1
     }
 
-    func flipQuickView(steps: Int) {}
+    /// Every flip a pane asked for, and every scroll. Recorded since the ⇧-arrows learned to scroll
+    /// the preview (2026-10-18): at full size the same arrow key flips or scrolls depending on ⇧, and
+    /// which of the two calls a key made is the table's whole answer.
+    private(set) var quickViewFlips: [Int] = []
+    private(set) var quickViewScrolls: [QuickViewScroll] = []
+
+    func flipQuickView(steps: Int) {
+        quickViewFlips.append(steps)
+    }
+
+    /// Like the window's: consumed while a preview is up, and not otherwise.
+    func scrollQuickView(_ move: QuickViewScroll) -> Bool {
+        guard isQuickViewEnabled else { return false }
+        quickViewScrolls.append(move)
+        return true
+    }
+
     func panelCursorDidChange(_ panel: PanelViewController) {}
     func panelDidNavigate(_ panel: PanelViewController) {}
 

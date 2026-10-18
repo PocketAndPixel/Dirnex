@@ -250,6 +250,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Windows, sheets and key events in a test
 
+- **A preview in a window that has never been on screen is one screen long.** Measured 2026-10-18
+  in `QuickViewScrollSurfaceTests`: a TextKit 2 text view showing 3000 lines in a deferred,
+  never-ordered window had a frame **394 points** tall, so a scroll had nowhere to go, and a
+  `PDFView` there reported no `visiblePages` at all. `displayIfNeeded()` alone changed neither. Order
+  the window front and wait, sleeping so the run loop turns, until the frame or the page list has
+  caught up (`QuickViewScrollFixtures.drawn`), and order it out afterwards. The app never meets this,
+  since nobody presses a key at a preview they cannot see.
+
 - **A synthetic drag uses the process event queue, and a new window can change its coordinates.**
   Measured 2026-10-17 in `PanesDividerDetentTests`: tracing `NSApplication.nextEvent` and the split
   delegate showed `NSSplitView` pulling `.leftMouseDragged` and `.leftMouseUp` (mask 68) in
@@ -2176,6 +2184,13 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   origin by the header's height (in a fixture window with `.fullSizeContentView`, by the title bar's as
   well: origin −60 for a 28 pt header and 32 pt of title bar). `scroll(.zero)` pins it to 0 anyway.
   `scrollRowToVisible(0)` and `scrollColumnToVisible(0)` land where AppKit would.
+  - **The same header makes the clip view's height the wrong page size.** Found 2026-10-18 writing
+    Quick View's ⇧Page Down: paged by `contentView.bounds.height` less a 40-point overlap, the table
+    in that test window skipped 20 points of rows at every press, because the header and title bar
+    cover 60. Push the clip past each end of the document and let `constrainBoundsRect` say where it
+    rests. The document's height less the distance between the two resting origins is what is
+    actually seen. It needs no knowledge of headers or insets, and it gives a flipped text view and
+    an unflipped PDF the same answer.
   - **The plain test window measured the other layout.** With `styleMask: [.titled]` the header takes a
     strip of its own and the clip starts below it, so origin 0 is right and the test passed against the
     bug. It took `.fullSizeContentView` (the browser window's) *and* a surface laid out before the table
@@ -3197,6 +3212,19 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   Calling `layoutDocumentView()` and then `go(to: PDFDestination(page:, at: top))` after assigning the
   document lands at 841.7. A view built in the same turn also needs its container laid out first, or
   the scale is worked out against a zero frame.
+- **Moving `PDFView`'s clip view yourself scrolls the document and tells nobody.** Measured
+  2026-10-18 for Quick View's ⇧-arrow scroll: after a clip-view jump to the end of a six-page PDF,
+  `visiblePages` read the last page while `currentPage` stayed on page 0, and no
+  `PDFViewPageChanged` was posted, through four jumps and twelve steps. Anything that follows the
+  reader through that notification, like the find's highlights, has to be told by whoever moved the
+  clip (`QuickViewPDFSurface.visiblePagesDidMove`).
+  - **`visiblePages` itself is not dependable straight after the move.** It was fresh at once in a
+    probe's frontmost window, and **empty** in the test host's window, an inactive app's, until the
+    run loop turned. The page under the view's top and bottom edges
+    (`page(for:nearest:)`) agreed with it wherever it had caught up and is answered at once, so the
+    find now reads that.
+  - The document view is **not flipped**: toward the end of the document is down the y axis, and a
+    scroll written for a flipped text or table view goes the wrong way.
 - **`PDFDocument.string` is exactly the pages' strings joined by one `\n`, it is cached after the
   first call, and it is safe to read off the main thread.** All measured 2026-09-17 before the PDF
   find was written, on real documents of 1, 78 and 231 pages: re-joining the pages reproduced the
@@ -3414,6 +3442,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     DOM-based find would have found the sheet names and none of the cells. A `WKFrameInfo` **captured
     from `decidePolicyFor`** is reachable through `callAsyncJavaScript(in:)`, reading and highlighting
     inside the frame; it is the only place one for a child frame can be had.
+  - **The same frame is the only thing that scrolls in such a workbook.** Probed 2026-10-18 on a real
+    `qlmanage` conversion of a two-sheet `.xlsx`: the page is an absolutely positioned wrapper with
+    `scrollHeight` equal to `innerHeight`, and the iframe inside it scrolls. `window.scrollBy` in the
+    main document, and WebKit's own `scrollLineDown:` and `scrollToEndOfDocument:` on the view, all
+    left the sheet at 0. The same `scrollBy` sent with `callAsyncJavaScript(in:)` into the captured
+    frame moved it to 40. On a plain page both kinds worked, the WebKit command animating a page step
+    over about half a second. So Quick View's ⇧-arrow scroll tries the main document and then the
+    frames, newest first (`QuickViewWebView+Scroll`).
   - Costs, so nobody designs around a price that is not there: 1.57 MB of page text extracted in
     **18 ms** and handed to Swift in 13 ms, 20 000 matches counted in 2 ms and highlighted in
     **38 ms** end to end — which is why the page highlights every match where the text preview can

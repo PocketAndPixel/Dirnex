@@ -12,32 +12,8 @@ import DirnexCore
 /// drawn with. Quick Look's out-of-process view and the remote placeholder card have nothing to zoom,
 /// so the commands are disabled there.
 extension QuickViewPreviewView {
-    /// The zooming backend on screen, if any.
-    private enum ZoomTarget {
-        case web(QuickViewWebView)
-        case pdf
-        case text(QuickViewTextView)
-        case image(QuickViewImageScrollView)
-        case table(QuickViewTableView)
-        case tree(QuickViewTreeView)
-    }
-
-    private var zoomTarget: ZoomTarget? {
-        if placeholderCard?.isHidden == false { return nil }
-        if let tableSurface, !tableSurface.isHidden, tableSurface.table != nil {
-            return .table(tableSurface)
-        }
-        if let treeSurface, !treeSurface.isHidden, treeSurface.document != nil {
-            return .tree(treeSurface)
-        }
-        if let webSurface, !webSurface.isHidden { return .web(webSurface) }
-        if let pdfSurface, !pdfSurface.isHidden, pdfSurface.pdfView.document != nil { return .pdf }
-        if let textSurface, !textSurface.isHidden { return .text(textSurface) }
-        if let imageScrollView, !imageScrollView.isHidden, imageScrollView.imageView.image != nil {
-            return .image(imageScrollView)
-        }
-        return nil
-    }
+    /// The zooming backend on screen, if any — every backend on `ContentTarget`'s list zooms.
+    private var zoomTarget: ContentTarget? { contentTarget }
 
     /// The current level relative to how the file opened, or `nil` when nothing on screen zooms.
     private var zoomLevel: Double? {

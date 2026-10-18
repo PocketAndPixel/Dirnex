@@ -14783,6 +14783,56 @@ the two full sizes, the covered pane's host for ⌃Q.
   linters clean. "Close Quick View" is translated in all 14 catalog languages. Changes left
   uncommitted.
 
+**2026-10-18: the keyboard scrolls the Quick View preview.** Asked for by Oleg: ⇧↑ / ⇧↓ to scroll,
+⇧← / ⇧→ to go to the top and the end, and ⇧Page Up / ⇧Page Down (fn⇧↑ / fn⇧↓) for a screenful.
+⇧Home / ⇧End go to the top and end too, since on a laptop they are fn⇧← and fn⇧→, and without them
+that key would have jumped the file cursor to the first file. The cursor stays where it is, so a
+plain arrow walks on to the next file. It works at all three sizes. At full size a bare ← / → still
+flips files, and ⇧ now separates the two: before, every arrow went to the flip before ⇧ was checked.
+
+- **The keys are caught by the file table**, in `FileTableView.handleQuickViewScroll`, and nowhere
+  else. A menu key equivalent would have taken ⇧-arrow selection out of every text field in the app
+  (NOTES.md ▸ Key equivalents). The Quick View key monitor runs whatever holds focus, and a click
+  into the preview's text gives it the focus so ⇧-arrows can extend that selection. With no preview
+  up the table's delegate says no and every key does what it did before.
+- **One routine for five backends.** Text, a PDF, a CSV table, a JSON or XML tree and a zoomed image
+  scroll through their clip view (`NSScrollView.scrollDocument`): the move is proposed and
+  `constrainBoundsRect` decides where it lands, so the ends are AppKit's own, a table's floating
+  header included. A page is measured over what is actually seen, which is the document's height
+  less the distance between the two resting origins. Paged by the clip's height, the table skipped
+  20 points of rows per press in a full-size-content window (NOTES.md ▸ Tables). The distances are
+  `DirnexCore`'s `QuickViewScroll`: a 40-point line step, which is WebKit's own, and a page of the
+  seen height less one line, never under half of it.
+- **A rendered page scrolls by script**, in the find's isolated world, so it works with the page's
+  scripts off. The main document goes first and then the captured frames, newest first: a converted
+  workbook's page does not scroll, and only a script sent into the sheet's iframe moved it. WebKit's
+  own `scrollLineDown:` did not (probed, NOTES.md ▸ Previews: web views). Quick Look's own view and
+  the remote placeholder have nothing to scroll, and the keys do nothing there.
+- **`PDFView` says nothing when its clip view moves**: no `PDFViewPageChanged`, and `currentPage`
+  stays put. So the PDF surface redraws the find's highlights itself after a keyboard scroll. The
+  find's "pages in view" moved from `visiblePages`, which lags in a window that is not frontmost,
+  to the page under the view's top and bottom edges (NOTES.md ▸ Previews: Quick Look, PDF).
+- `ZoomTarget` became `QuickViewPreviewView.ContentTarget`, shared by zoom and scroll, so a backend
+  added for one cannot be missed by the other.
+- **Verified live** on the Debug build launched by path, with the `.sdef` verbs and background
+  computer-use keys. In ⌃Q, on a 2000-line text file, three ⇧↓ presses moved the preview seven
+  lines, ⇧Page Down moved it one screen with two lines of overlap, ⇧→ reached Line 2000 and ⇧←
+  went back to Line 0001, while the cursor stayed on the file throughout. The same held for a
+  500-row CSV (row 500), a 33-page PDF (its last page), a 400-paragraph HTML page with scripts off
+  (Paragraph 400) and a real `qlmanage` two-sheet workbook (Row 400 inside the sheet's frame). In
+  ⌃⇧Q, ← flipped to the previous file and ⇧→ scrolled to the end without flipping. Full screen was
+  not run. Defaults backed up and restored byte-identical.
+- **Pinned** by `QuickViewScrollKeysTests` (five: each key's move, no preview leaves the keys alone,
+  unshifted keys unchanged, flip against scroll at full size, the key map),
+  `QuickViewScrollSurfaceTests` (text including TextKit 2's real last character, table with the
+  last row read still in view after a page, tree, image fitted and zoomed, Quick Look) and
+  `QuickViewScrollPageTests` (PDF ends and line step, the find's highlights following, a rendered
+  page against the core's page step, the workbook's frame), plus `DirnexCore`'s
+  `QuickViewScrollTests`. Negative controls: paging by the clip's height fails text, table and tree;
+  dropping the PDF redraw fails the highlight test; the main document alone fails the workbook.
+- Core green (3977 tests), app green (1768, only the expected `GestureWaitTests` issue), both
+  linters clean. No user-visible strings. Changes left uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
