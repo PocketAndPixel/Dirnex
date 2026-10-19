@@ -69,7 +69,8 @@ struct NavigationHistoryTests {
         var history = NavigationHistory(initialPath: path("/a"))
         history.visit(path("/b"))
         history.visit(path("/c"))
-        _ = history.back() // now at /b, /c is ahead
+        _ = history.back() // heading for /b, /c is ahead
+        history.land(on: path("/b")) // /b listed: the pane is there
 
         history.visit(path("/d"))
         #expect(history.entries == [path("/a"), path("/b"), path("/d")])
@@ -106,6 +107,18 @@ struct NavigationHistoryTests {
 
         // Back still walks the retained trail correctly after trimming.
         #expect(history.back() == path("/p2"))
+    }
+
+    @Test("a trail keeps 80 entries unless told otherwise")
+    func defaultCapacity() {
+        var history = NavigationHistory(initialPath: path("/p0"))
+        for index in 1...100 {
+            history.visit(path("/p\(index)"))
+        }
+        #expect(history.capacity == 80)
+        #expect(history.entries.count == 80)
+        #expect(history.entries.first == path("/p21"))
+        #expect(history.currentPath == path("/p100"))
     }
 
     @Test("capacity is clamped to at least one entry")

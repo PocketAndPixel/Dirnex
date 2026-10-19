@@ -67,6 +67,15 @@ struct PersistedTab: Codable {
     /// cannot read to `nil` instead of throwing, which matters more here than anywhere, because a
     /// pane's tabs are one array in one blob — a throw would empty the pane rather than drop a tab.
     var endpoint: StoredServerEndpoint?
+    /// The tab's back/forward trail, so ⌘[, ⌘] and the ⌥↓ list still know where it has been after a
+    /// relaunch. Absent for a tab that has been nowhere else, which is most of them, and for state
+    /// written before trails were kept.
+    ///
+    /// Safe to add to a blob that holds a whole pane's tabs because ``StoredNavigationHistory``
+    /// decodes to an empty trail rather than throwing, so an unreadable one costs only itself. What
+    /// it leaves out — a vault, a nested archive, a listing that cannot be restored, a server with no
+    /// way back — is decided when it is written (`NavigationHistory.stored`).
+    var history: StoredNavigationHistory?
 }
 
 struct PersistedPane: Codable {
@@ -148,7 +157,8 @@ extension PersistedTab {
         cursorPath: String? = nil,
         cursorOnParent: Bool = false,
         markedPaths: [String]? = nil,
-        endpoint: ServerEndpoint? = nil
+        endpoint: ServerEndpoint? = nil,
+        history: StoredNavigationHistory? = nil
     ) {
         backend = path.backend.rawValue
         self.path = path.path
@@ -163,6 +173,7 @@ extension PersistedTab {
         // `map`, so a local tab writes no field rather than a null — and so a `nil` read back out of
         // a stored one can only ever mean "written, and unreadable by this build".
         self.endpoint = endpoint.map(StoredServerEndpoint.init)
+        self.history = history
     }
 
     var vfsPath: VFSPath {

@@ -15054,6 +15054,69 @@ SFTP has it in one route.
   server's clock. That is read from OpenSSH's client behavior, not measured, since no such server
   was reachable. No user-visible strings. Changes left uncommitted.
 
+**2026-10-19: a tab's history survives a relaunch, and ⇧⌘T reopens a closed tab.** Asked for by
+Oleg: 80 last visited places per tab, kept across a relaunch, and a closed tab reopenable with its
+history for the rest of the run. Each tab's back/forward trail is now written with the tab, forward
+entries included, so ⌘[, ⌘] and the ⌥↓ list carry on after a relaunch. File ▸ Reopen Closed Tab (⇧⌘T)
+puts the last closed tab back in the pane and the place it left.
+
+- **The trail is a field of `PersistedTab`** (`history: StoredNavigationHistory?`), which decodes to
+  an empty trail rather than throwing, since a pane's tabs are one blob. What it leaves out is decided
+  in the core (`NavigationHistory.stored`) by the rule a tab's own restore uses (`TabRestorePolicy`),
+  plus the two facts only the app has: a folder in an unlocked vault (implicit memory, M19) and a
+  nested archive's temp extraction. Neighbours that meet once something between them is gone fold into
+  one. A trail that visits a server keeps one endpoint per server, restored into
+  `PanelTab.trailEndpoints`, and the reconnect decision reads it through `PanelTab.endpoint(for:)`.
+  Without that, ⌘[ back onto a server after a relaunch had nothing to reconnect with, since a tab holds
+  one endpoint for the place it is in. The cap went from 100 to 80, so what you can walk now is what
+  comes back.
+- **A walk is over only when its folder lists.** ⌘[ moved the trail's position at the press, and a
+  failed listing never moved it back, so ⌘[ into a deleted folder raised the alert and left the trail
+  on the dead folder while the pane still showed the old one. That was rare in a session and would
+  have been routine across relaunches. `NavigationHistory` now keeps `landedIndex` (what the pane
+  shows) beside `currentIndex` (where the walk is heading), so three quick ⌘[ still go three back. A
+  failure puts the trail back (`revert`). A folder that is gone (`VFSError.meansPlaceIsGone`: not found,
+  or a file where it was) is dropped and the walk carries on past it (`dropUnreachableTarget`), from the
+  gone entry rather than from the screen. A gone folder picked by name from ⌥↓ is dropped and still
+  reported. A fresh navigation during a walk now branches from the folder on screen, which is where its
+  click happened. A walk to a server that cannot reconnect unattended keeps the listing and says why
+  on the status line, where `standDown` would have blanked it.
+- **No disk check at launch.** Stat-ing 80 entries per tab costs a syscall each, and one on a share
+  that stopped answering can block. A dead entry is dealt with when ⌘[ reaches it.
+- **The cost was measured first**, in a scratch package against the core: the worst case, ten tabs
+  each with a full trail of real 59-character paths, is a 79 KB pane and **0.8 ms** to encode and
+  `set` per save (against 0.01 ms without trails). `persistState` runs once per navigation, so it
+  stayed in the tab blob with no debounce.
+- **A closed tab is kept as itself** (`ClosedTabs<Tab>` in the core, one per window, newest first,
+  20 deep), the way a move to the other pane keeps it, so it comes back with its trail, cursor, marks,
+  shape and a search's hits. The pane hands it to the window through `ClosedTabHost`, a protocol of
+  its own that `PanelHost` inherits, since `PanelViewController.swift` sits at the file-length ceiling.
+  Closing a tab mid-walk settles its trail first. Closing the tab on screen now invalidates a listing
+  still in flight for it, as a move to the other pane already did, so it cannot land on the tab that
+  takes over; closing a background tab leaves the listing on screen alone. Tabs standing on a volume that unmounts (a vault locked, a
+  disk ejected) are forgotten then. ⇧⌘T was free (⌘T is New Tab, ⌃T Tags); the title and keywords are
+  in all 14 catalogs.
+- `NavigationHistoryTests`, `NavigationHistoryWalkTests`, `NavigationHistoryStorageTests` and
+  `ClosedTabsTests` (core). `TabHistoryTests` (app, 9 tests): a real pane writes the trail where
+  restore reads it; a restored server endpoint reaches the reconnect verdict; ⌘[ past a real deleted
+  folder; the other failures revert; a gone ⌥↓ pick is reported; close and reopen hand over the same
+  tab; the last tab is not handed over; a tab closed mid-walk settles; and the File menu item, its
+  ⇧⌘T, and that nothing else claims the key. Negative control: with the skip taken out of `navigate`,
+  the deleted-folder test failed and only it. Core green (4104 tests), both linters clean. App: 1789
+  tests with one known issue and one failure, `QuickViewScrollSurfaceTests`' text test missing its
+  10 s draw deadline. It fails the same way on HEAD with these changes stashed (1780 tests), and
+  passes run alone, so it is not this change's. The first full run of this change passed it.
+- **Verified live** on the Debug build, launched by path after quitting a stale Debug copy left running
+  since 21:13, with settings backed up and restored (66 keys, identical by value). Driven through
+  `reveal` and `run operation`, with the saved tabs read back after each step. Home → a → b → c saved
+  `[Home, a, b, c]`. After a quit, deleting `b` and a relaunch, one ⌘[ landed on `a` with the trail
+  `[Home, a, c]`, and ⌘] went to `c`. A tab walked `c → a`, closed and reopened came back in its slot
+  with `[c, a]`, and ⌘[ from it went to `c`. A tab closed on the right came back on the right with the
+  focus on the left. Through computer use: File ▸ Close Tab, then File ▸ Reopen Closed Tab, and the
+  item was disabled with nothing to reopen. ⇧⌘T after a Close Tab reopened it: the item was disabled
+  afterwards, which a ⌘T taken for New Tab would have left enabled. Not exercised live: any server or
+  archive entry in a trail, and the vault and nested-archive exclusions, which are pinned by tests.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

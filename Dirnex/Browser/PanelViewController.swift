@@ -4,7 +4,7 @@ import DirnexCore
 /// The pane's owner (the window controller) — receives focus changes so it can track
 /// which of the two panes is active and route Tab between them.
 @MainActor
-protocol PanelHost: AnyObject {
+protocol PanelHost: ClosedTabHost {
     func panelDidBecomeActive(_ panel: PanelViewController)
     func panelRequestsFocusSwitch(_ panel: PanelViewController)
     /// The opposite pane — the default destination for a copy/move (F5/F6), whose

@@ -51,6 +51,13 @@ public enum CommandCatalog {
             shortcut: CommandShortcut(key: "w", modifiers: .command)
         ),
         Command(
+            id: "file.reopenClosedTab",
+            title: "Reopen Closed Tab",
+            category: .file,
+            keywords: ["tab", "closed", "restore", "undo close", "reopen"],
+            shortcut: CommandShortcut(key: "t", modifiers: [.command, .shift])
+        ),
+        Command(
             id: "file.openWith",
             title: "Open With",
             category: .file,

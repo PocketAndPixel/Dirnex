@@ -284,12 +284,25 @@ extension PanelViewController {
     }
 
     /// Close the tab at `index`. The last tab is never closed here (the caller closes the
-    /// window instead, matching macOS Cmd+W), so this reports whether one was removed.
+    /// window instead, matching macOS Cmd+W), so this reports whether one was removed. The window
+    /// keeps the tab that closed, so ⇧⌘T can bring it back (`BrowserWindowController+ClosedTabs`).
     @discardableResult
     func closeTab(at index: Int) -> Bool {
-        guard updateTabList({ $0.remove(at: index) }) != nil else { return false }
+        let wasShowing = index == activeTabIndex
+        // The live column widths of the tab on screen are only copied into it on a tab change, and
+        // closing it is one: it should come back the width it went.
+        if wasShowing { captureColumnLayout() }
+        guard let closed = updateTabList({ $0.remove(at: index) }) else { return false }
+        // A listing still in flight was asked for the tab that just closed; landing on the tab that
+        // takes over, it would put one folder's rows under another folder's path. Only then: one
+        // for the tab still on screen is still wanted.
+        if wasShowing { loadToken += 1 }
+        // …and a walk along its trail that had not landed never will, so the trail is put back on
+        // the folder the tab was showing, which is where it reopens.
+        closed.history.revert()
         activateTab()
         persistState()
+        host?.panelDidCloseTab(closed, at: index, in: self)
         return true
     }
 

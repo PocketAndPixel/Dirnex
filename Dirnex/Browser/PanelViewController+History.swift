@@ -7,6 +7,11 @@ import DirnexCore
 /// tab-relative — Cmd+[ steps *this* tab back, and the Alt+Down popup lists *this* tab's
 /// visited directories. Walking the trail navigates without recording, so back/forward move
 /// through history rather than rewriting it (the browser model in `NavigationHistory`).
+///
+/// A walk moves the trail's position at the press and is over only when its folder lists
+/// (`recordVisit` lands it). Until then it can fail, and the two ways it ends early are here: a
+/// folder that is gone is forgotten and ⌘[ / ⌘] carry on past it, and anything else puts the trail
+/// back on the folder still on screen.
 extension PanelViewController {
     // MARK: - Trail state (drives the titlebar Back/Forward buttons' enabled state)
 
@@ -36,6 +41,43 @@ extension PanelViewController {
         // Drop the menu from the path bar's bottom edge, matching the favorites popup.
         let origin = NSPoint(x: 8, y: pathBar.isFlipped ? pathBar.bounds.maxY : 0)
         menu.popUp(positioning: nil, at: origin, in: pathBar)
+    }
+
+    // MARK: - A walk that did not land
+
+    /// The walk's listing failed with `error`. Returns `true` when that is the end of it here — a
+    /// gone folder was skipped, by trying the next one or by stopping where the trail runs out — and
+    /// `false` when the failure is still to be reported the ordinary way: anything that is not
+    /// "gone", or a gone folder picked by name from the ⌥↓ list, whose user is owed the reason.
+    ///
+    /// Asked only of the tab the walk started in, and only while it is still the one on screen: the
+    /// next step is a navigation of the active tab, so a tab switched away from just has its trail
+    /// put back and is not walked behind the user's back.
+    func settleFailedWalk(after error: Error, inTab index: Int) -> Bool {
+        guard tabs.indices.contains(index), let walk = tabs[index].history.walk else { return false }
+        let gone = (error as? VFSError)?.meansPlaceIsGone == true
+        guard gone, index == activeTabIndex else {
+            tabs[index].history.revert()
+            host?.panelDidNavigate(self)
+            return false
+        }
+        if let next = tabs[index].history.dropUnreachableTarget() {
+            navigate(to: next, recordHistory: false)
+            return true
+        }
+        // Nothing further that way. The trail lost an entry, so write it down now rather than at the
+        // next navigation, and re-validate ⌘[ / ⌘], which may just have run out.
+        persistState()
+        host?.panelDidNavigate(self)
+        return walk != .jump
+    }
+
+    /// The walk was refused before it could list — no way to reconnect to its server — and the pane
+    /// has said why. The trail goes back to the folder on screen.
+    func settleRefusedWalk() {
+        guard tabs[activeTabIndex].history.walk != nil else { return }
+        tabs[activeTabIndex].history.revert()
+        host?.panelDidNavigate(self)
     }
 
     // MARK: - Popup menu
