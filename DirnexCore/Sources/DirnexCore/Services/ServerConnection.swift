@@ -24,10 +24,18 @@ public enum ServerEndpoint: Sendable, Hashable, Codable {
     /// key digest, not a secret, so it belongs in the store rather than the Keychain — and storing
     /// it *here*, per saved server, is what makes trust a decision about one server rather than a
     /// global setting.
+    ///
+    /// `serverTimeZone` is the IANA identifier (`Europe/Paris`) of the clock the server writes its
+    /// `LIST` stamps on, or `nil` for this Mac's own — which is what every saved server meant before
+    /// it could be set, and what a record written before then decodes as. It lives here rather than
+    /// in the `FTPLocation` because it is a setting *about* the server, not part of its identity:
+    /// the location keys the backend id, the Keychain item and every restored tab, none of which may
+    /// move when the user corrects a clock. Only rows `MLSD` could not time are read by it.
     case ftp(
         location: FTPLocation,
         authentication: FTPAuthentication,
-        trustedPublicKey: String? = nil
+        trustedPublicKey: String? = nil,
+        serverTimeZone: String? = nil
     )
     case smb(SMBLocation)
     /// One bucket on one endpoint. There is no authentication *method* to carry beside it the way
@@ -104,7 +112,7 @@ public struct ServerConnection: Sendable, Hashable, Identifiable, Codable {
     public var address: String {
         switch endpoint {
         case let .sftp(location, _): return location.descriptor
-        case let .ftp(location, _, _): return location.descriptor
+        case let .ftp(location, _, _, _): return location.descriptor
         case let .smb(location): return location.url
         case let .s3(location):
             // The same `bucket — host` the path bar's root crumb draws, so a saved row and the pane
@@ -186,12 +194,14 @@ public struct ServerConnections: Sendable, Equatable, Codable {
     @discardableResult
     public mutating func repinFTP(name: String, trustedPublicKey: String?) -> Bool {
         guard let index = connections.firstIndex(where: { $0.name == name }),
-              case let .ftp(location, authentication, storedKey) = connections[index].endpoint,
+              case let .ftp(location, authentication, storedKey, serverTimeZone) = connections[index]
+              .endpoint,
               storedKey != trustedPublicKey else { return false }
         connections[index].endpoint = .ftp(
             location: location,
             authentication: authentication,
-            trustedPublicKey: trustedPublicKey
+            trustedPublicKey: trustedPublicKey,
+            serverTimeZone: serverTimeZone
         )
         return true
     }
@@ -336,7 +346,7 @@ public extension ServerEndpoint {
     var backendID: VFSBackendID? {
         switch self {
         case let .sftp(location, _): return location.backendID
-        case let .ftp(location, _, _): return location.backendID
+        case let .ftp(location, _, _, _): return location.backendID
         case let .s3(location): return location.backendID
         case let .s3Account(account): return account.backendID
         case .smb: return nil

@@ -158,11 +158,83 @@ struct ServerConnectionFTPTests {
         let decoded = try JSONDecoder().decode(ServerConnection.self, from: data)
         #expect(decoded == connection)
 
-        guard case let .ftp(_, _, trustedPublicKey) = decoded.endpoint else {
+        guard case let .ftp(_, _, trustedPublicKey, _) = decoded.endpoint else {
             Issue.record("expected an FTP endpoint")
             return
         }
         #expect(trustedPublicKey == "NWrJwng2ZjCZklZSMVK1IsolOd+LavrDTCcNa+oHnJ4=")
+    }
+
+    /// **Hand-written, in the shape every saved FTP server took before a server could have a zone**
+    /// — minted by hand rather than by today's encoder, because what is under test is that the
+    /// reader still accepts the old bytes. It must come back as this Mac's clock, not fail: a store
+    /// that failed to decode would empty the user's Servers section.
+    @Test("a server saved before time zones decodes with none")
+    func legacyRecordDecodes() throws {
+        let json = """
+        {"name":"NAS","endpoint":{"ftp":{"location":{"host":"nas.local","port":21,\
+        "username":"sa","security":"explicit"},"authentication":{"password":{}},\
+        "trustedPublicKey":"KEY"}}}
+        """
+        let decoded = try JSONDecoder().decode(ServerConnection.self, from: Data(json.utf8))
+        guard case let .ftp(decodedLocation, _, key, zone) = decoded.endpoint else {
+            Issue.record("expected an FTP endpoint")
+            return
+        }
+        #expect(decodedLocation == location)
+        #expect(key == "KEY")
+        #expect(zone == nil)
+    }
+
+    @Test("a server's time zone round-trips and leaves its identity alone")
+    func timeZoneRoundTrip() throws {
+        let zoned = ServerConnection(
+            name: "Paris",
+            endpoint: .ftp(
+                location: location,
+                authentication: .password,
+                serverTimeZone: "Europe/Paris"
+            )
+        )
+        let decoded = try JSONDecoder().decode(
+            ServerConnection.self,
+            from: try JSONEncoder().encode(zoned)
+        )
+        #expect(decoded == zoned)
+        guard case let .ftp(_, _, _, zone) = decoded.endpoint else {
+            Issue.record("expected an FTP endpoint")
+            return
+        }
+        #expect(zone == "Europe/Paris")
+        // A clock is a setting about the server, not who it is: the id, and with it the Keychain
+        // item and every restored tab, stay where they were.
+        #expect(zoned.endpoint.backendID == ServerEndpoint.ftp(
+            location: location,
+            authentication: .password
+        ).backendID)
+        #expect(zoned.address == "ftpes://sa@nas.local:21")
+    }
+
+    /// A re-trusted certificate rewrites the record, and must not take the user's clock with it.
+    @Test("re-pinning keeps the server's time zone")
+    func repinKeepsTimeZone() {
+        var store = ServerConnections(connections: [ServerConnection(
+            name: "Paris",
+            endpoint: .ftp(
+                location: location,
+                authentication: .password,
+                trustedPublicKey: "old",
+                serverTimeZone: "Europe/Paris"
+            )
+        )])
+        let changed = store.repinFTP(name: "Paris", trustedPublicKey: "new")
+        #expect(changed)
+        #expect(store.connection(named: "Paris")?.endpoint == .ftp(
+            location: location,
+            authentication: .password,
+            trustedPublicKey: "new",
+            serverTimeZone: "Europe/Paris"
+        ))
     }
 
     /// The stored JSON must never carry the password — only the coordinates and the *method*.

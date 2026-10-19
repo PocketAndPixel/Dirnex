@@ -34,7 +34,7 @@ struct ConnectServerFTPTrustTests {
     }
 
     private func trust(of form: ConnectServerPrompt.Form?) -> String? {
-        guard case let .ftp(_, _, trustedPublicKey)? = form?.endpoint else { return nil }
+        guard case let .ftp(_, _, trustedPublicKey, _)? = form?.endpoint else { return nil }
         return trustedPublicKey
     }
 

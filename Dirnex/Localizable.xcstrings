@@ -81270,6 +81270,95 @@
         }
       }
     },
+    "Same as this Mac": {
+      "comment": "FTP time zone choice: the server keeps this Mac’s clock. The default.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wie auf diesem Mac"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Same as this Mac"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Igual que en este Mac"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comme sur ce Mac"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Come su questo Mac"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この Mac と同じ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 Mac과 동일"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zelfde als deze Mac"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jak na tym Macu"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Как на этом Mac"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Як на цьому Mac"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Igual a este Mac"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "与这台 Mac 相同"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "與這台 Mac 相同"
+          }
+        }
+      }
+    },
     "Save": {
       "comment": "Confirm button of the Save Workspace prompt.",
       "localizations": {
@@ -93180,6 +93269,95 @@
         }
       }
     },
+    "The clock this server writes file times on. Used only when the server can’t report exact times itself.": {
+      "comment": "Tooltip on the FTP time zone picker in the Connect dialog.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Uhr, nach der dieser Server Dateizeiten angibt. Wird nur verwendet, wenn der Server keine genauen Zeiten selbst melden kann."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The clock this server writes file times on. Used only when the server can’t report exact times itself."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El reloj con el que este servidor anota las horas de los archivos. Solo se usa cuando el servidor no puede indicar horas exactas por sí mismo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’horloge selon laquelle ce serveur note l’heure des fichiers. Utilisée uniquement si le serveur ne peut pas fournir lui-même des heures exactes."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’orologio con cui questo server registra gli orari dei file. Usato solo quando il server non può indicare da sé orari esatti."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このサーバがファイルの時刻を記録する時計です。サーバ自身が正確な時刻を報告できない場合にのみ使われます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 서버가 파일 시간을 기록하는 기준 시계입니다. 서버가 정확한 시간을 직접 알려 주지 못할 때만 사용됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De klok waarop deze server bestandstijden noteert. Wordt alleen gebruikt als de server zelf geen exacte tijden kan doorgeven."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zegar, według którego ten serwer zapisuje czasy plików. Używany tylko wtedy, gdy serwer nie potrafi sam podać dokładnych czasów."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Часы, по которым этот сервер записывает время файлов. Используются, только если сервер не может сам сообщить точное время."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Годинник, за яким цей сервер записує час файлів. Використовується, лише якщо сервер не може сам повідомити точний час."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O relógio em que este servidor registra os horários dos arquivos. Usado apenas quando o servidor não consegue informar horários exatos por conta própria."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此服务器记录文件时间所用的时钟。仅当服务器无法自行报告准确时间时使用。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此伺服器記錄檔案時間所用的時鐘。僅在伺服器無法自行回報準確時間時使用。"
+          }
+        }
+      }
+    },
     "The connection couldn’t be set up.": {
       "comment": "Generic server-connect failure with no more specific reason.",
       "localizations": {
@@ -103501,6 +103679,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "勾選某個日期即可將其設定到每個選取項目；不勾選則保留各項目自己的日期。"
+          }
+        }
+      }
+    },
+    "Time zone:": {
+      "comment": "Connect field label: the clock an FTP server writes its file times on.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeitzone:"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time zone:"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zona horaria:"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuseau horaire :"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuso orario:"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タイムゾーン:"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시간대:"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tijdzone:"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Strefa czasowa:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Часовой пояс:"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Часовий пояс:"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuso horário:"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "时区："
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "時區："
           }
         }
       }

@@ -20,9 +20,13 @@ public extension FTPBackend {
         // why the batch has none). A tree with nothing expanded is this case, and so is list mode.
         guard paths.count > 1 else { return try listEach(paths, isCancelled: isCancelled) }
 
-        let answers: [String?]
+        let answers: [FTPListing?]
         do {
-            answers = try transport.listDirectories(paths.map(\.path), isCancelled: isCancelled)
+            answers = try transport.listings(
+                of: paths.map(\.path),
+                askingFacts: facts.asksWithBatch,
+                isCancelled: isCancelled
+            )
         } catch is CancellationError {
             throw CancellationError()
         } catch {
@@ -36,8 +40,8 @@ public extension FTPBackend {
         guard answers.count == paths.count, answers.contains(where: { $0 != nil }) else {
             return try listEach(paths, isCancelled: isCancelled)
         }
-        return zip(paths, answers).map { path, raw in
-            raw.map { entries(fromListing: $0, in: path) }
+        return zip(paths, answers).map { path, listing in
+            listing.map { parsedRows(of: $0).map { entry(from: $0, in: path) } }
         }
     }
 

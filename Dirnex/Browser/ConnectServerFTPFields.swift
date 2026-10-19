@@ -1,8 +1,9 @@
 import AppKit
 import DirnexCore
 
-/// The FTP half of the Connect-to-Server form: security mode, host, port, user (or anonymous) and
-/// password, plus the cleartext note that appears only when plain FTP is chosen.
+/// The FTP half of the Connect-to-Server form: security mode, host, port, user (or anonymous),
+/// password and the server's time zone, plus the cleartext note that appears only when plain FTP is
+/// chosen.
 ///
 /// It is its own object rather than more stored properties on `ConnectServerForm` because that class
 /// already sits at SwiftLint's `type_body_length` with two protocols in it; a third would not fit,
@@ -29,6 +30,14 @@ final class ConnectServerFTPFields {
         target: nil,
         action: nil
     )
+
+    /// The clock the server writes its `LIST` stamps on: this Mac's own (the first item, and the
+    /// default), UTC, then every zone this Mac knows. Each item carries its IANA identifier as its
+    /// `representedObject`, and the first carries none — which is the record's `nil`.
+    ///
+    /// Last among the FTP rows because most servers never need it: one that answers `MLSD` reports
+    /// exact UTC times and this is not consulted (`FTPFactsParser`).
+    let timeZoneControl = NSPopUpButton(frame: .zero, pullsDown: false)
 
     /// The cleartext note. Shown only for plain FTP — a warning that is always on screen is one
     /// nobody reads.
@@ -81,6 +90,10 @@ final class ConnectServerFTPFields {
             grid.addRow(with: [ConnectFormFactory.label(ConnectText.user), user]),
             grid.addRow(with: [ConnectFormFactory.label(ConnectText.password), password])
         ]
+        rows.append(grid.addRow(with: [
+            ConnectFormFactory.label(ConnectText.timeZone), timeZoneControl
+        ]))
+        buildTimeZoneItems()
 
         securityControl.addItems(withTitles: [
             ConnectText.ftpsExplicit, ConnectText.ftpsImplicit, ConnectText.ftpPlain
@@ -100,7 +113,74 @@ final class ConnectServerFTPFields {
         // losing its final period (caught only by the live Russian run — docs/NOTES.md). Pinning it
         // to the field width makes it wrap instead, and `reservedSize` measures the FTP layout with
         // the note visible, so the second line is already inside the reserved height.
-        return [host, port, securityControl, user, password, securityNote]
+        return [host, port, securityControl, user, password, timeZoneControl, securityNote]
+    }
+
+    /// Fill the time-zone picker. UTC is lifted to the top beside the default because it is the
+    /// other answer that comes up most: vsftpd and pyftpdlib both list in UTC unless told otherwise.
+    /// The offset in each title is today's, so a zone that keeps summer time shows the one in force.
+    private func buildTimeZoneItems() {
+        timeZoneControl.removeAllItems()
+        timeZoneControl.toolTip = ConnectText.timeZoneHelp
+        let menu = timeZoneControl.menu ?? NSMenu()
+        menu.addItem(Self.timeZoneItem(title: ConnectText.sameTimeZoneAsThisMac, identifier: nil))
+        menu.addItem(Self.timeZoneItem(title: "UTC", identifier: "UTC"))
+        menu.addItem(.separator())
+        for identifier in TimeZone.knownTimeZoneIdentifiers.sorted() {
+            menu.addItem(Self.timeZoneItem(identifier: identifier))
+        }
+        timeZoneControl.selectItem(at: 0)
+    }
+
+    private static func timeZoneItem(title: String, identifier: String?) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        item.representedObject = identifier
+        return item
+    }
+
+    /// `Europe/Paris (GMT+2)`: the identifier as people read it, with the offset in force today.
+    static func timeZoneItem(identifier: String, at date: Date = Date()) -> NSMenuItem {
+        let readable = identifier.replacingOccurrences(of: "_", with: " ")
+        guard let zone = TimeZone(identifier: identifier) else {
+            return timeZoneItem(title: readable, identifier: identifier)
+        }
+        let title = "\(readable) (\(offset(of: zone, at: date)))"
+        return timeZoneItem(title: title, identifier: identifier)
+    }
+
+    /// `GMT`, `GMT+2`, `GMT−3`, `GMT+5:30` — the offset from Greenwich at `date`.
+    static func offset(of zone: TimeZone, at date: Date) -> String {
+        let seconds = zone.secondsFromGMT(for: date)
+        guard seconds != 0 else { return "GMT" }
+        let sign = seconds < 0 ? "−" : "+"
+        let hours = abs(seconds) / 3600
+        let minutes = abs(seconds) % 3600 / 60
+        let tail = minutes == 0 ? "" : ":" + String(format: "%02d", minutes)
+        return "GMT\(sign)\(hours)\(tail)"
+    }
+
+    /// The identifier the picker has selected, or `nil` for this Mac's own clock.
+    var serverTimeZone: String? {
+        timeZoneControl.selectedItem?.representedObject as? String
+    }
+
+    /// Select `identifier`, or the first item for `nil`. An identifier this Mac does not list — a
+    /// record saved on another Mac, or an alias a later macOS dropped — gets an item of its own
+    /// rather than falling back to the default, because an edit reads the picker back into the
+    /// record and a fallback would erase the user's setting the moment they pressed Connect.
+    private func selectTimeZone(_ identifier: String?) {
+        guard let identifier else {
+            timeZoneControl.selectItem(at: 0)
+            return
+        }
+        let index = timeZoneControl.indexOfItem(withRepresentedObject: identifier)
+        if index >= 0 {
+            timeZoneControl.selectItem(at: index)
+            return
+        }
+        // After UTC and the separator, so the two fixed choices stay where they are.
+        timeZoneControl.menu?.insertItem(Self.timeZoneItem(identifier: identifier), at: 3)
+        timeZoneControl.selectItem(at: 3)
     }
 
     /// Every row this field set owns, for the form's show/hide and its size reservation.
@@ -169,9 +249,11 @@ final class ConnectServerFTPFields {
     func apply(
         location: FTPLocation,
         authentication: FTPAuthentication,
-        trustedPublicKey: String? = nil
+        trustedPublicKey: String? = nil,
+        serverTimeZone: String? = nil
     ) {
         trusted = trustedPublicKey.map { (publicKey: $0, location: location) }
+        selectTimeZone(serverTimeZone)
         host.stringValue = location.host
         port.stringValue = String(location.port)
         user.stringValue = location.username
@@ -209,7 +291,8 @@ final class ConnectServerFTPFields {
                 endpoint: .ftp(
                     location: location,
                     authentication: .anonymous,
-                    trustedPublicKey: pin(for: location)
+                    trustedPublicKey: pin(for: location),
+                    serverTimeZone: serverTimeZone
                 ),
                 password: nil,
                 saveName: saveName
@@ -233,7 +316,8 @@ final class ConnectServerFTPFields {
             endpoint: .ftp(
                 location: location,
                 authentication: .password,
-                trustedPublicKey: pin(for: location)
+                trustedPublicKey: pin(for: location),
+                serverTimeZone: serverTimeZone
             ),
             password: secretValue,
             saveName: saveName

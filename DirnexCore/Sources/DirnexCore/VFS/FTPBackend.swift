@@ -28,6 +28,13 @@ public struct FTPBackend: RemoteTransportBackend {
     /// failed to carry so far — held by reference for the reason ``segmentation`` is, so a fact
     /// about the *server* is not copied away with this value type (``RemoteMetadataSupport``).
     let metadata: RemoteMetadataSupport
+    /// What this connection has learned about `MLSD`, held by reference for the reason
+    /// ``segmentation`` is (``FTPFactsSupport``).
+    let facts = FTPFactsSupport()
+    /// The clock the server writes its `LIST` stamps on, which the user sets per saved server;
+    /// `nil` reads them as this Mac's. Consulted only for rows `MLSD` did not time, since an `MLSD`
+    /// time carries its own zone (``FTPFactsParser``).
+    public let serverTimeZone: TimeZone?
     /// The most entries the subtree shortcut may gather before it stops and reports itself
     /// incomplete (``FTPBackend/subtreeListing(at:isCancelled:)``).
     ///
@@ -38,9 +45,10 @@ public struct FTPBackend: RemoteTransportBackend {
     /// project has already paid for once (docs/NOTES.md ▸ The SSH exec channel).
     public var subtreeRowLimit = SSHFindCommand.defaultRowLimit
 
-    public init(location: FTPLocation, transport: any FTPTransport) {
+    public init(location: FTPLocation, transport: any FTPTransport, serverTimeZone: TimeZone? = nil) {
         self.location = location
         self.transport = transport
+        self.serverTimeZone = serverTimeZone
         // What the *transport* declares, never what FTP could do in principle: a transport that has
         // not implemented the carry reports `[]`, so every plan asks for nothing and reports the
         // loss instead of claiming a mode it never wrote (PLAN.md §M25).
@@ -66,14 +74,29 @@ public struct FTPBackend: RemoteTransportBackend {
 
     public func listDirectory(at path: VFSPath) throws -> [FileEntry] {
         try requireOwnBackend(path)
-        let raw = try mapErrors(path) { try transport.listDirectory(path.path) }
-        return entries(fromListing: raw, in: path)
+        return try listing(of: path).map { entry(from: $0, in: path) }
     }
 
-    /// One `LIST`'s bytes as the rows of `directory` — shared with the batched listing, whose
-    /// sections are byte for byte what a single `LIST` returns, so the two cannot drift apart.
-    func entries(fromListing raw: String, in directory: VFSPath) -> [FileEntry] {
-        FTPListingParser.parse(raw).map { entry(from: $0, in: directory) }
+    /// One folder's rows, timed by `MLSD` where this server answers it — the single route both
+    /// ``listDirectory(at:)`` and ``stat(at:)`` read, which matters more than it looks:
+    /// `RemoteFileRevision` compares a listing's date with a later `stat`'s for **exact** equality,
+    /// so the two must never take their times from different sources (docs/NOTES.md ▸ Parsing a
+    /// year-less timestamp).
+    private func listing(of directory: VFSPath) throws -> [FTPListingParser.Entry] {
+        let listing = try mapErrors(directory) {
+            try transport.listing(of: directory.path, askingFacts: facts.asksWithSingleListing)
+        }
+        facts.record(listing.facts)
+        return parsedRows(of: listing)
+    }
+
+    /// One listing's rows: `LIST`'s, read on the server's clock, with `MLSD`'s exact time on every
+    /// row the two agree about. Shared with the batched listing and the subtree walk, whose sections
+    /// are byte for byte what a single listing returns, so the routes cannot drift apart.
+    func parsedRows(of listing: FTPListing) -> [FTPListingParser.Entry] {
+        let rows = FTPListingParser.parse(listing.rows, timeZone: serverTimeZone)
+        guard case let .listed(facts) = listing.facts else { return rows }
+        return FTPListingParser.applyingFacts(FTPFactsParser.parse(facts), to: rows)
     }
 
     /// Stat a single remote item, by finding it in its **parent's** listing.
@@ -89,8 +112,7 @@ public struct FTPBackend: RemoteTransportBackend {
     public func stat(at path: VFSPath) throws -> FileEntry {
         try requireOwnBackend(path)
         guard let parent = path.parent else { return rootEntry(at: path) }
-        let raw = try mapErrors(parent) { try transport.listDirectory(parent.path) }
-        guard let match = FTPListingParser.parse(raw).first(where: { $0.name == path.lastComponent })
+        guard let match = try listing(of: parent).first(where: { $0.name == path.lastComponent })
         else {
             throw VFSError.notFound(path)
         }

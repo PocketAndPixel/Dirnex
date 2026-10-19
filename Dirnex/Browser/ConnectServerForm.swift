@@ -256,14 +256,15 @@ final class ConnectServerForm: NSObject {
                 authSwitch.state = .off
                 sftpSecret.stringValue = SecretKeychain.password(for: location) ?? ""
             }
-        case let .ftp(location, authentication, trustedPublicKey):
+        case let .ftp(location, authentication, trustedPublicKey, serverTimeZone):
             protocolControl.selectItem(at: Protocols.ftp.rawValue)
             // The pin has no row of its own, so it is handed over to be carried rather than shown —
             // a `_` here is what erased it from every edited FTPS server until 2026-08-13.
             ftp.apply(
                 location: location,
                 authentication: authentication,
-                trustedPublicKey: trustedPublicKey
+                trustedPublicKey: trustedPublicKey,
+                serverTimeZone: serverTimeZone
             )
         case let .smb(location):
             protocolControl.selectItem(at: Protocols.smb.rawValue)

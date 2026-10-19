@@ -108,11 +108,18 @@ enum ColumnarListing {
     /// and told the user **"someone else has edited it"** on every save (measured live against a
     /// real server 2026-08-22: 36 bytes both sides, dates 39 s apart). S3 never saw it — it carries
     /// an entity tag, which settles the comparison before the date is consulted.
-    static func formatters(for formats: [String]) -> [DateFormatter] {
+    ///
+    /// `timeZone` is the clock the stamps were written on, for a listing that knows it is not this
+    /// Mac's — an FTP server given a zone of its own. `nil` keeps the formatter's default, this Mac's
+    /// zone, which is what every caller meant before one could say otherwise. The anchor still only
+    /// contributes the year in another zone: every zone in use is offset by whole minutes, so a
+    /// minute boundary here is a minute boundary there.
+    static func formatters(for formats: [String], timeZone: TimeZone? = nil) -> [DateFormatter] {
         let anchor = yearAnchor()
         return formats.map { format in
             let formatter = DateFormatter()
             formatter.locale = Locale(identifier: "en_US_POSIX")
+            if let timeZone { formatter.timeZone = timeZone }
             formatter.dateFormat = format
             if !format.contains("y") { formatter.defaultDate = anchor }
             return formatter
@@ -136,8 +143,8 @@ enum ColumnarListing {
     /// The formatters for the Unix `ls -l` time column, which is a recent entry's `HH:mm` or an
     /// older one's year. All three dialects print the identical column, in English regardless of
     /// locale, and each held its own verbatim copy of this list before it was named here.
-    static func unixDateFormatters() -> [DateFormatter] {
-        formatters(for: ["MMM d HH:mm", "MMM d yyyy", "MMM d HH:mm:ss"])
+    static func unixDateFormatters(timeZone: TimeZone? = nil) -> [DateFormatter] {
+        formatters(for: ["MMM d HH:mm", "MMM d yyyy", "MMM d HH:mm:ss"], timeZone: timeZone)
     }
 
     /// Parse `string` with the first formatter that accepts it, or ``FileEntry/unknownDate`` when
