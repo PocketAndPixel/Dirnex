@@ -151,6 +151,22 @@ public protocol VFSBackend: Sendable {
     /// ``VFSSubtreeListing/isComplete`` rather than by returning what it has and staying quiet.
     func subtreeListing(at path: VFSPath, isCancelled: () -> Bool) throws -> VFSSubtreeListing?
 
+    /// The children of **several** directories at once: one answer per path, in order, `nil` for a
+    /// directory that could not be listed — never conflated with the empty array an empty one gives.
+    ///
+    /// What a tree refresh asks, since it re-lists every expanded folder in one go. The default
+    /// lists them one at a time, which is the same answers by the same route this replaced, so a
+    /// backend that does not implement it is exactly as fast as before and never wrong. FTP
+    /// implements it because there a listing is a login: measured 2026-10-19 against a real FTPES
+    /// server 41 ms away, a tree with two folders open cost three logins of ~1 s each per refresh,
+    /// and the refresh poll's duty cycle stretched the 15 s floor to 59 s
+    /// (``RemoteRefreshPolicy``). One connection for the lot is what the subtree shortcut above
+    /// already does a level at a time.
+    ///
+    /// A refusal is an answer rather than a failure, because the caller keeps the folder's last good
+    /// rows and says nothing; `isCancelled` is the one thing that throws (`CancellationError`).
+    func listDirectories(at paths: [VFSPath], isCancelled: () -> Bool) throws -> [[FileEntry]?]
+
     /// Create a single directory at `path`. Throws `.alreadyExists` if something is
     /// already there and `.notFound` if the parent does not exist (no intermediate
     /// directories are created — mirrors `mkdir(2)`).

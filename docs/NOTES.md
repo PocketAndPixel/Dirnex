@@ -9805,6 +9805,24 @@ overturned the obvious implementation.
     quietly becoming "re-read every time" — proved by withdrawing *read* permission after the first
     mount, since `stat` still answers while `bsdtar` could not open the file, so a second listing
     that succeeds could only have come from the cache.
+- **A poll spaced by its own wall-clock cost counts latency as expense, and over a real link latency
+  is most of it.** `RemoteRefreshPolicy` holds an unattended pane to 5 % of its wall time, which was
+  argued from S3's billed requests and a 50 000-object prefix. Measured 2026-10-19 on an FTPES server
+  41 ms away, every listing is its own `curl`: TCP, TLS on the control channel, a login, and TLS
+  again on the data channel, at 0.91–0.99 s for a few hundred bytes. A tree with two folders open is
+  three of them, so the 15 s floor became a 59 s gap. The report was a file written from another app
+  that stayed out of the pane until the tab was closed and reopened, and the reporter suspected the
+  server. Nothing was wrong except the arithmetic, and the ratio was not what changed. The round
+  became one login (`VFSBackend.listDirectories`), and somebody returning to the pane waives the
+  stretch (`RemoteRefreshPolicy.catchUpDelay`), because the stretch exists for a pane nobody is
+  touching.
+  - **The instrument cost nothing**: sample `pgrep -P <app pid>` every 50 ms and log each `curl`
+    child's start and end. That times every round of the *running* app against the *real* server,
+    with no code change, no rebuild and no Keychain prompt.
+  - **Check the window is on screen first.** A covered window polls nothing by design, and 150 s of
+    no children at all read at first like a poll that never ran. `CGWindowListCopyWindowInfo` with
+    `.optionOnScreenOnly` answers it; `open <exact .app path>` then brings the *running* copy
+    forward without starting a second one.
 
 ### Layout and labels
 

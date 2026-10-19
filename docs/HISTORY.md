@@ -14872,6 +14872,61 @@ ctime equalled that mtime: the `chmod` had run and no `utimes` had followed it.
   out. It is not this change. It fails the same way in a full run with every change here stashed,
   and passes when its suite runs alone (twice). No user-visible strings. Changes left uncommitted.
 
+**2026-10-19: a file written to an FTP folder shows up without reopening the tab.** Reported by Oleg
+with a screenshot of a tree on an FTPES server, SYNERGIE and AGENCE open: a freshly generated
+`Agences_SYNERGIE_ATS.xml` did not appear until the tab was closed and opened again, "but it could
+be a server lag". It was not the server.
+
+- **Measured on the running app, against the real server, before any Swift.** The poll's `curl`
+  children were timed by sampling `pgrep -P` every 50 ms (docs/NOTES.md ▸ Caches and refreshes). A
+  round was three `curl` runs, one per listed folder, of 0.99 s, 0.91 s and 0.99 s. Each is a TCP
+  connect, a TLS handshake, a login and a second handshake on the data channel, with the server
+  41 ms away. The next round came 58.9 s later: `RemoteRefreshPolicy` spaces rounds at twenty times
+  what the last one cost, so ~3 s of logins turned the 15 s floor into a minute. The first sample
+  saw no `curl` at all for 150 s, because the window was covered and the poll had stood down, as
+  designed.
+- **Oleg chose the fix from three**: batch the round and refresh on a return, keeping the 5 % rule.
+  Relaxing the rule, and refreshing on a return alone, were the other two.
+- **One login per round.** `VFSBackend.listDirectories(at:isCancelled:)` is a new opt-in seam. Its
+  default lists each folder in turn, which is the old route. `FTPBackend` answers it with the
+  transport's existing batch, so the subtree shortcut's one-connection-per-level verb now serves
+  the tree refresh too. A single folder still takes the single `LIST`, which carries the TLS-1.2
+  retry. A batch that lands nothing falls back to single listings, and stops after the first one
+  fails, so a server refusing the login is asked twice a round rather than once per folder.
+  `CompositeBackend` forwards it, in its own file (`CompositeBackend+Listings`). The tree refresh
+  reads every listed folder through it, except a bucket row, which keeps `treeChildEntries`.
+- **A return waives the stretch.** Each (re)start of the poll loop waits
+  `RemoteRefreshPolicy.catchUpDelay`: the floor less the time since the rows last arrived. Only a
+  wait after a round the loop ran itself is stretched. The app becoming active and the pane's window
+  becoming key both restart the loop, as uncovering and a tab switch already did. The handler only
+  restarts and never stands the poll down, because at activation occlusion can still read hidden
+  (the trap the file's header records). A navigation, a tab-switch refresh and every passive refresh
+  stamp when the rows arrived, so a pane opened and then left for another app catches up on return.
+  A round still in flight counts as finishing now, so a restart cannot send a second round beside it.
+- **Pinned** by `FTPBatchedListingTests` (12, two of them on the forwarding default) and a catch-up
+  suite of four in `RemoteRefreshPolicyTests`, in the core. In the app, `TreeRefreshBatchTests`
+  checks the composite routing (two tests, including mixed and unconnected connections) and that a
+  tree refresh is one batch in which the new file lands. Negative controls, each restored afterwards:
+  with FTP's override renamed away, the three login-counting tests and the foreign-path guard failed
+  and every answer test passed; without
+  the composite forward, all three app tests failed while the new file still appeared, which is the
+  silent case; and with the tree refresh listing per folder, only the refresh test failed.
+- **Verified live** on the Debug build launched by path. The server was a throwaway anonymous
+  `pyftpdlib` that sleeps 2 s in `PASS`, so a login costs what the real one does and no Keychain was
+  read. The left pane was seeded with the reported tree. Every poll round was **one** `curl` of
+  1.98 s, and the server's log shows one session per round changing into all three folders.
+  Unattended rounds stayed 41.9 s apart, so the stretch still governs a pane nobody touches.
+  Switching to Finder and back 22 s after a round started a refresh **0.01 s** later; unattended it
+  would have waited about 20 s more. Switching back 6 s after a round did not refresh at once: the
+  next round came 15.5 s after the previous, the floor. The new row itself was seen only by the
+  app test, since the window could not be captured headlessly. Oleg's Debug build was quit first
+  and the defaults domain was imported back byte-identical. **Not yet seen on the reporting server**,
+  since relaunching there reads the FTP password from the Keychain.
+- Core green (3999 tests), both linters clean. App: 1771 tests with the live servers up, so the FTP
+  and SFTP live suites ran. One failure, `QuickViewScrollSurfaceTests` line 225 again, which passed
+  when its suite ran alone. No user-visible strings. Over SFTP a tree still costs a session per open
+  folder (docs/LOCATION-SUPPORT.md). Changes left uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

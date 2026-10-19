@@ -305,6 +305,9 @@ final class PanelViewController: NSViewController {
     /// watching the running app rather than by any test, which cannot arm a timer. Keyed by path
     /// there is nothing to clear: a measurement of another directory is simply not used.
     var remoteRefreshLastPoll: RemoteRefreshMeasurement?
+    /// Unasked refreshes still listing. A loop re-armed while one runs counts from *now*, or it
+    /// would fire a second round beside the first (`PanelViewController+RemoteRefresh`).
+    var remoteRefreshRoundsInFlight = 0
     /// The window whose occlusion this pane is observing, so the registration can be re-pointed
     /// rather than duplicated. `weak` because the observation is the only thing that would keep a
     /// closed window alive, and a pane must not be that thing.

@@ -67,7 +67,13 @@ public struct FTPBackend: RemoteTransportBackend {
     public func listDirectory(at path: VFSPath) throws -> [FileEntry] {
         try requireOwnBackend(path)
         let raw = try mapErrors(path) { try transport.listDirectory(path.path) }
-        return FTPListingParser.parse(raw).map { entry(from: $0, in: path) }
+        return entries(fromListing: raw, in: path)
+    }
+
+    /// One `LIST`'s bytes as the rows of `directory` — shared with the batched listing, whose
+    /// sections are byte for byte what a single `LIST` returns, so the two cannot drift apart.
+    func entries(fromListing raw: String, in directory: VFSPath) -> [FileEntry] {
+        FTPListingParser.parse(raw).map { entry(from: $0, in: directory) }
     }
 
     /// Stat a single remote item, by finding it in its **parent's** listing.

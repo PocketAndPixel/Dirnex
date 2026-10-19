@@ -200,6 +200,31 @@ public enum RemoteRefreshPolicy {
         return max(0, interval - elapsed)
     }
 
+    /// How long to wait when somebody has just **turned to** the pane — its window uncovered, the
+    /// app brought back to the front, the tab switched to: the floor less the time since the last
+    /// refresh, with the duty cycle's stretch waived.
+    ///
+    /// The stretch is a guard on a pane nobody is touching, and a return is the one moment that is
+    /// plainly not that. It shipped without this, and the catch-up above answered for it: measured
+    /// 2026-10-19 on a tree over FTPES 41 ms away, a refresh cost three logins of ~1 s and the next
+    /// round came 59 s later, so a pane uncovered 20 s after its last round would wait 39 s more.
+    /// The report was a file written there from elsewhere that did not appear until the tab was
+    /// closed and opened again. Measured against the floor instead, that pane re-lists on the spot.
+    ///
+    /// Still bounded by the floor, so returning twice in a second does not bill twice; still `nil`
+    /// wherever ``interval(afterRefreshTaking:floor:backend:)`` is, so a floor of zero contacts
+    /// nobody on a return either. Only the *first* wait is a catch-up: the round after it measures
+    /// itself and the stretch applies again from there.
+    public static func catchUpDelay(
+        finishedSecondsAgo elapsed: TimeInterval?,
+        floor: TimeInterval,
+        backend: VFSBackendID
+    ) -> TimeInterval? {
+        // Through `delay` with the duration withheld, so the floor, the clamp, the "off" answer and
+        // the subtraction all keep the one definition they already have.
+        delay(afterRefreshTaking: nil, finishedSecondsAgo: elapsed, floor: floor, backend: backend)
+    }
+
     // MARK: - Woken by the library
 
     /// The least a library change waits before the pane re-lists.
