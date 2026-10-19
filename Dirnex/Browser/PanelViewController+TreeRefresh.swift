@@ -211,8 +211,8 @@ extension PanelViewController {
     /// **Asked of the backend all at once**, so one that can list several folders together does:
     /// over FTP that is one login per refresh instead of one per open folder, which on the tree that
     /// reported it was three logins of ~1 s and a poll stretched from 15 s to 59 s
-    /// (`VFSBackend.listDirectories`, measured 2026-10-19). Every other backend lists them in turn,
-    /// as this did before.
+    /// (`VFSBackend.listDirectories`, measured 2026-10-19), and over SFTP one session instead of one
+    /// per folder. Every other backend lists them in turn, as this did before.
     ///
     /// A bucket row is the exception and keeps `treeChildEntries`, the funnel its expansion used: its
     /// children are a *connection*, and listing `s3account:/<bucket>` throws `notFound` into a
