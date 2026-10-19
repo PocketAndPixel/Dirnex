@@ -250,13 +250,23 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Windows, sheets and key events in a test
 
-- **A preview in a window that has never been on screen is one screen long.** Measured 2026-10-18
-  in `QuickViewScrollSurfaceTests`: a TextKit 2 text view showing 3000 lines in a deferred,
-  never-ordered window had a frame **394 points** tall, so a scroll had nowhere to go, and a
-  `PDFView` there reported no `visiblePages` at all. `displayIfNeeded()` alone changed neither. Order
-  the window front and wait, sleeping so the run loop turns, until the frame or the page list has
-  caught up (`QuickViewScrollFixtures.drawn`), and order it out afterwards. The app never meets this,
-  since nobody presses a key at a preview they cannot see.
+- **Showing a preview window does not guarantee a text layout before the next test poll.** Measured
+  2026-10-18 in `QuickViewScrollSurfaceTests`: a TextKit 2 view with 3000 lines in a deferred,
+  never-ordered window stayed **394 points** tall, and a `PDFView` reported no `visiblePages`.
+  `displayIfNeeded()` alone changed neither. Ordering the window front and sleeping until ready
+  (`QuickViewScrollFixtures.drawn`) passed alone, but failed in the full suite.
+  - **The full run delays main-actor work past the drawing wait.** Traced 2026-10-19: two 10 ms
+    sleeps resumed at **5.8 s** and **10.4 s**. The first poll still had no text; the second had all
+    **324,392 characters**, but the viewport range was still `{0, 0}` and the frame still 394 points
+    tall. Both the passing isolated run and the failing full run had an inactive app, a visible,
+    non-key fixture window and no modal window. Waiting had allowed the read to finish, but had not
+    given the new text a display pass before the 10 s deadline check.
+  - **Drive the viewport layout before checking the text frame.** Calling TextKit 2's
+    `textViewportLayoutController.layoutViewport()` at that failing poll immediately grew the frame
+    to **144,721 points** and the viewport range to `{0, 1006}`. The text test now does that in its
+    readiness closure; the deadline stays 10 s. This keeps lazy layout and the assertion that End
+    reaches the last character. Do not force layout for the whole document or read `.layoutManager`,
+    which switches to TextKit 1. PDF tests still wait for visible pages in an ordered window.
 
 - **A synthetic drag uses the process event queue, and a new window can change its coordinates.**
   Measured 2026-10-17 in `PanesDividerDetentTests`: tracing `NSApplication.nextEvent` and the split

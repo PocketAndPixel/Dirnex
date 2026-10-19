@@ -14969,6 +14969,27 @@ with two folders open paid three a round.
   keys only. Its piped-stdin shape was probed with the CLI and frames identically. No user-visible
   strings. S3 still lists a tree's open folders in turn. Changes left uncommitted.
 
+**2026-10-19: Quick View's text-scroll test drives its first viewport layout.** The full app run
+failed at `QuickViewScrollFixtures.drawn`'s 10 s deadline, while the scroll suite passed alone.
+The cause was the timing of the text read and layout under the full suite's main-actor load.
+
+- **Traced both runs.** Both had an inactive app, a visible, non-key fixture window and no modal
+  window. In the full run, two requested 10 ms sleeps resumed at 5.8 s and 10.4 s. The first poll
+  still had no text. At the second, all 324,392 characters had arrived, but the frame was still
+  394 points tall and TextKit 2's viewport range was `{0, 0}`. One explicit `layoutViewport()`
+  immediately grew the frame to 144,721 points and the range to `{0, 1006}`, matching the isolated
+  run. The wait had let the read finish, but the new text had not had its display pass.
+- **The readiness closure now lays out the viewport before checking the frame.** The deadline
+  stays 10 s, TextKit 2 stays lazy, and all scroll assertions remain, including End reaching the
+  last character. No app code changed. The fixture comment and NOTES.md now explain why sleeping
+  alone is not enough.
+- **Negative control:** restored the exact original test file with no trace code and ran the full
+  app suite. It failed again at line 225 with "the preview never finished drawing"; this was the
+  only unexpected issue. All temporary probes were removed.
+- **Verified:** two consecutive full app runs passed (1772 tests in 281 suites, 31.1 s and 41.0 s),
+  with only the expected `GestureWaitTests` issue; live-server suites were skipped. Core passed
+  (4020 tests), `swiftformat --lint .` and `swiftlint --strict` were clean. Changes left uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
