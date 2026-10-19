@@ -147,6 +147,23 @@ enum ColumnarListing {
         formatters(for: ["MMM d HH:mm", "MMM d yyyy", "MMM d HH:mm:ss"], timeZone: timeZone)
     }
 
+    /// The same formatters for a listing printed on a **UTC** clock (`TZ=UTC0`), where a stamp with a
+    /// time of day is read as UTC and a **date-only** one is not.
+    ///
+    /// `ls` prints a date alone for anything older than about six months, and it parses to midnight
+    /// in whatever zone the formatter has. Read as UTC that is 03:00 in Kyiv — a time of day the row
+    /// never had, shown as if it were real, and different from the 00:00 the pane's own `sftp`
+    /// listing gives the same file. On this Mac's clock it matches the pane, except for a file
+    /// changed within the offset of midnight, whose UTC date can be a day out — no worse than the
+    /// server's own date was.
+    static func utcUnixDateFormatters() -> [DateFormatter] {
+        let formatters = unixDateFormatters(timeZone: TimeZone(identifier: "UTC") ?? .gmt)
+        for formatter in formatters where !formatter.dateFormat.contains("H") {
+            formatter.timeZone = .current
+        }
+        return formatters
+    }
+
     /// Parse `string` with the first formatter that accepts it, or ``FileEntry/unknownDate`` when
     /// none does — so a stamp in a shape nobody anticipated draws a dash rather than year 1.
     ///

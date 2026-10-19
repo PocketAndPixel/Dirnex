@@ -33,6 +33,16 @@ import Foundation
 /// it cannot be shadowed; if it is somehow absent the command exits 127 and the caller degrades to
 /// the walk, which is the safe direction. Only the words the *shell* resolves need it — the `ls`
 /// inside `-exec` is spawned by `find` itself and is out of reach of any function.
+///
+/// ## Why `TZ=UTC0`
+///
+/// `ls` prints its date column on the **server's** clock, and the row says nothing about which clock
+/// that is. Measured 2026-10-19 against an `sshd` running in New York time: a file written at 16:41
+/// in Kyiv came back from this walk as `09:41`, while the pane's own `sftp` listing of the same file
+/// said `16:41` — a recent `sftp` client formats the protocol's epoch time itself. So a search hit
+/// was seven hours off from the row it came from. `TZ=UTC0` is POSIX's spelling of UTC (a zone named
+/// `UTC`, offset 0), which every libc reads without a zoneinfo file; under `env` it also overrides a
+/// `TZ` the user's rc exported (probed). ``SSHFindListingParser`` reads the stamps back as UTC.
 public enum SSHFindCommand {
     /// The most rows the server may print before the output is cut off.
     ///
@@ -56,7 +66,7 @@ public enum SSHFindCommand {
         // each directory it is handed (which would duplicate every row `find` already produced), and
         // `-n` prints numeric owner and group — nothing here reads them, and resolving names costs
         // the server a passwd lookup per row.
-        let find = "/usr/bin/env LC_ALL=C find \(quote(normalizedRoot(root))) -exec ls -ldn {} +"
+        let find = "/usr/bin/env TZ=UTC0 LC_ALL=C find \(quote(normalizedRoot(root))) -exec ls -ldn {} +"
         return "\(find) | /usr/bin/env head -n \(rowLimit)"
     }
 

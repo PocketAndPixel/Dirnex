@@ -5256,6 +5256,24 @@ works, which makes this whole family probeable on any Mac).
     answers `nil`. Run it in both configurations — a live test that only ever meets one kind of
     account has measured one branch.
 
+- **`ls` over the exec channel prints the *server's* clock, and the `sftp` pane does not — so
+  since 2026-10-19 the walk runs under `TZ=UTC0`.** Measured against a throwaway `sshd` started with
+  `TZ=America/New_York` (`sshd` hands its `TZ` to every session): a file written at 16:41 in Kyiv
+  listed in the pane as `16:41` and came back from the walk as `09:41`, which the parser read as this
+  Mac's time — a search hit seven hours away from the row it came from. The pane is right because a
+  recent `sftp` client formats the protocol's epoch time itself; the tell in its output is the link
+  column printed as `?`, since the protocol carries no link count to fill it with. `/usr/bin/env TZ=UTC0` gives `13:41`, matches
+  `TZ=UTC0 ls` of the file, and overrides a `TZ` the user's rc exported (probed).
+  - **A date-only stamp stays on this Mac's clock.** Anything older than about six months prints a
+    date alone, which parses to midnight in the formatter's zone; read as UTC that is 03:00 in Kyiv,
+    a time of day the row never had and not the 00:00 the pane shows
+    (`ColumnarListing.utcUnixDateFormatters()`).
+  - **An older server can still be wrong in the pane.** Without the extension that lets the client
+    resolve owner names itself, OpenSSH's `sftp` prints the line the *server* formatted, on the
+    server's clock. Read from the client's behavior, not measured: no such server was reachable.
+  - **The throwaway `sshd` now runs in another zone for every live run** (UTC+14, or UTC−11 on a Mac
+    at +14), because a server on this Mac's clock agrees with every version of this bug.
+    `SFTPLiveClockTests` asks the server its offset first and says so when the run proved nothing.
 - **The saving is the *connection*, not the walk, and it is enormous even at zero latency.** Over
   501 directories on loopback: **98 ms** for one exec against **34.3 s** as separate `sftp`
   connections (68.5 ms each). A per-directory transport pays a full TCP connect, SSH handshake and
