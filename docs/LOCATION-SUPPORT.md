@@ -375,6 +375,13 @@ A **download** is bounded by neither, because it lands on this machine: `chmod` 
 work, so it carries whatever the source's listing reported even on a connection whose server has
 refused to keep anything.
 
+**`⌘C` `⌘V` and a drag inside Dirnex carry the same as `F5`**, because the pasteboard payload holds
+the mode and the date the listing reported. Before 2026-10-19 it held neither and rebuilt the mode
+as `0`. So a pasted or dragged row was carried as mode `000` with no date: a file dragged off an FTP
+server landed `----------` with the time of the copy. Read off the code rather than run: an upload to
+FTP, and a folder over FTP or SFTP in either direction, were set to `000` at the destination the same
+way. An SFTP file upload was spared, because `put -p` reads the mode off the local file.
+
 S3 remains `n/a`: it has no settable mtime, no permissions and no symlinks at all (PLAN.md §M21), and
 a row that reports no mode is *absent* rather than dropped — the distinction the whole carry turns
 on, since folding the two together would make every S3 copy claim damage it did not do.
