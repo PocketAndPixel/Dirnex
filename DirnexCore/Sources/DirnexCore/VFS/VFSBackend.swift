@@ -78,6 +78,17 @@ public enum VFSError: Error, Sendable, Equatable {
     /// invisible to string extraction (PLAN.md §M12 Slice 11).
     case unsupported(VFSUnsupportedReason)
 
+    /// Whether this says the place itself is no longer there — nothing at the path, or a file where
+    /// a folder was — rather than that it could not be reached this time. ⌘[ steps past a folder
+    /// like that and forgets it (``NavigationHistory/dropUnreachableTarget()``); a refusal or a
+    /// server that did not answer is reported and kept, because it may list next time.
+    public var meansPlaceIsGone: Bool {
+        switch self {
+        case .notFound, .notADirectory: true
+        default: false
+        }
+    }
+
     /// Map a POSIX `errno` to the closest semantic case.
     static func fromErrno(_ code: Int32, path: VFSPath) -> VFSError {
         switch code {

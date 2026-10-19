@@ -29,6 +29,13 @@ final class StubPanelHost: PanelHost {
     var nextRedoLabel: UndoActionLabel?
 
     func panelDidBecomeActive(_ panel: PanelViewController) {}
+    /// Every tab a pane closed, in order, with where it sat — the hand-over ⇧⌘T depends on.
+    private(set) var closedTabs: [(tab: PanelTab, index: Int)] = []
+
+    func panelDidCloseTab(_ tab: PanelTab, at index: Int, in panel: PanelViewController) {
+        closedTabs.append((tab, index))
+    }
+
     func panelRequestsFocusSwitch(_ panel: PanelViewController) {}
     /// The other pane, when a test needs one.
     ///

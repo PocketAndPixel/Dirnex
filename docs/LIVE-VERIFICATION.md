@@ -300,6 +300,17 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   second capture a moment later drew it. The next Find came back with image *and* summary both
   stale — there the async search had simply not landed yet. Either way the first capture said the
   action did nothing; take another before believing it.
+- **computer-use's `app_menu` can refuse a menu item as disabled from a stale validation.** Seen
+  2026-10-19 checking Reopen Closed Tab: right after File ▸ Close Tab had filled the closed-tab list,
+  pressing the new item by path came back "disabled — it was NOT pressed". A `list` of the same menu
+  re-validates it (its dynamic titles changed in the same answer), and the same press then went
+  through. List the menu before pressing an item whose state the previous step changed, and before
+  believing a refusal.
+  - **A disabled state is also a cheap witness for a key test.** ⇧⌘T sent with `app_key` gives a
+    screenshot that looks the same whether it reopened the tab or did nothing, and a background capture
+    can be stale anyway. Reopen Closed Tab being *disabled* afterwards says the closed tab was used, and
+    a ⌘T that landed instead would have left it enabled. Ask what state only the gesture under test
+    could leave behind.
 - **computer-use reports `AXError: failure` for a button that opens a sheet, and the sheet is up.**
   Seen twice on 2026-10-01 pressing Report a Bug…'s *Show What Will Be Sent…*: the AXPress came back
   as a failure each time, and a screenshot showed the preview sheet open. The press waits for an

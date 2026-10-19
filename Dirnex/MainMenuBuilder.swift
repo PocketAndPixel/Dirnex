@@ -70,7 +70,8 @@ enum MainMenuBuilder {
     /// the window keeps Cmd+Shift+W (Window), matching Safari/Terminal.
     private static let layout: [MenuSpec] = [
         MenuSpec(category: .file, items: [
-            .command("file.newTab"), .command("file.closeTab"), .separator,
+            .command("file.newTab"), .command("file.closeTab"), .command("file.reopenClosedTab"),
+            .separator,
             // Get Info sits with Open With and Share: all three are about the item under the
             // cursor rather than about moving bytes around.
             .command("file.openWith"), .command("file.share"), .command("file.attributes"),

@@ -29,9 +29,14 @@ enum PanelViewMode: String, CaseIterable {
 final class PanelTab {
     var panel: Panel
     /// This tab's back/forward navigation trail (PLAN.md §M3 "Per-panel history"). Seeded at
-    /// the tab's starting directory and grown as navigation records visits; session-scoped,
-    /// so a relaunched tab starts a fresh trail at its restored path.
+    /// the tab's starting directory and grown as navigation records visits; written down with the
+    /// tab, so a relaunched tab comes back with the trail it had (`PersistedTab.history`).
     var history: NavigationHistory
+    /// How to reconnect to each server this tab's **restored** trail visits, keyed by the server's
+    /// backend. A tab knows one endpoint for the place it is in (`pendingConnection`); without these,
+    /// ⌘[ back onto a server after a relaunch would find nothing to reconnect with. Empty for a tab
+    /// that was not restored, whose trail only holds servers this run has already connected to.
+    var trailEndpoints: [VFSBackendID: ServerEndpoint] = [:]
     /// The visible cursor is parked on the `..` row (UI-only; see `PanelViewController`).
     var cursorOnParentRow = false
     /// Set once this tab's directory has been listed. A tab restored from disk starts
@@ -172,6 +177,15 @@ final class PanelTab {
     /// `persistState` writes back down for a tab the user never activated — otherwise a session
     /// with five server tabs, of which one was looked at, would come back with one.
     var pendingConnection: ServerEndpoint?
+
+    /// What this tab knows about reconnecting to `backend`: its own pending endpoint when that is the
+    /// one, else the one its restored trail carried. `nil` for a backend it has nothing for — which
+    /// for a server is a navigation that fails the way it always has, with `serverNotConnected`.
+    func endpoint(for backend: VFSBackendID) -> ServerEndpoint? {
+        if let pendingConnection, pendingConnection.backendID == backend { return pendingConnection }
+        return trailEndpoints[backend]
+    }
+
     /// Why this tab is showing nothing, drawn on the status line until it lists — set only when a
     /// **restored** tab could not be brought back and the app therefore has nobody to tell.
     ///

@@ -101,6 +101,8 @@ capabilities and has not been exercised against it.
 | Git status column, `.gitignore`-aware sizes | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
 | Appears in Recents | yes | yes | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a | n/a |
 | Reopens at launch / in a saved workspace | yes | yes | yes | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes | n/a | n/a |
+| Back / forward history survives a relaunch<sup>aag</sup> | yes | yes | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes | n/a | n/a |
+| Reopen a closed tab (`⇧⌘T`)<sup>aah</sup> | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 
 <sup>a</sup> Entering a bucket row is a **connect**, not a listing: `S3AccountBackend` is depth 0
 by design (everything below a bucket is the bucket backend). It carries the region-301 correction
@@ -217,6 +219,23 @@ local paths, told apart by territory and then by the volume the kernel's mount t
 the classification never waits on a share that has stopped answering. Exercised live on local
 folders, a disk image, Dropbox, iCloud Drive, Recents and a zip (2026-10-15); the other columns are
 pinned by tests and not exercised live.
+
+<sup>aag</sup> Each tab keeps its last 80 places, forward ones included, and writes them down with the
+tab. What is left out on the way down is what could not come back: a folder inside an unlocked vault
+(implicit memory never keeps one), a nested archive's temp extraction, a search or Trash listing, and
+a server with no way to reconnect. A trail that visits a server keeps one endpoint per server, so ⌘[
+back onto it after a relaunch reconnects by the rules in <sup>ww</sup>. If that cannot happen unattended
+(no secret in the Keychain), the folder on screen stays and the status line says why. Nothing is
+checked on disk at launch: a folder deleted since is skipped, and dropped from the trail, when ⌘[ or
+⌘] reaches it, while one picked by name from the `⌥↓` list is still reported. Exercised live on local
+folders (2026-10-19); the other columns are pinned by tests and not exercised live.
+
+<sup>aah</sup> The closed tab is kept as itself, as a move to the other pane keeps it (<sup>aae</sup>), so
+it comes back with its history, cursor, marks and shape, a search's hits included, into the pane and
+the place it left. One list per window, newest first, 20 deep, for this run only. A tab standing on a
+volume that goes away (a vault locked, a disk ejected) is forgotten then. Exercised live on local
+folders (2026-10-19), from the File menu, `⇧⌘T` and the scripting verb; the other columns follow from
+the shared backend and are not exercised live.
 
 ## 2. File operations
 
