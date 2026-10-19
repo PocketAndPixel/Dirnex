@@ -32,7 +32,9 @@ enum RefreshWake {
 /// — which is what lets a pane resume where it left off instead of waiting out a fresh interval.
 struct RemoteRefreshMeasurement {
     let path: VFSPath
-    let duration: TimeInterval
+    /// `nil` for rows that arrived some other way than an unasked refresh — a navigation, a tab
+    /// switch — which says when the listing is from but not what a poll of it costs.
+    let duration: TimeInterval?
     let finished: Date
     /// For a pane on the Photos library, the library generation this refresh brought it up to
     /// (`PhotosLibraryChangeMonitor`); `nil` for a server, which has no such thing to count.
@@ -69,6 +71,16 @@ struct RemoteRefreshMeasurement {
 /// *not visible* and updates a beat later on its own notification. So this arms from
 /// `didChangeOcclusionState` and never from an activation notification — reading occlusion inside
 /// the latter stands the poll down at the exact moment it should start.
+///
+/// **Activation is still listened to, as a *return* and never as a gate.** Somebody coming back to
+/// the app, or to this window, is the moment a stale pane matters most, and the duty cycle's stretch
+/// is a guard on a pane nobody is touching: measured 2026-10-19, a tree over FTPES 41 ms away cost
+/// ~3 s a round and waited 59 s between rounds, so a file written from another app stayed out of the
+/// pane long after its user had switched back to look. So every (re)start of the loop waits a
+/// *catch-up* — the floor less the time since the rows last arrived
+/// (``RemoteRefreshPolicy/catchUpDelay(finishedSecondsAgo:floor:backend:)``) — and a return
+/// restarts it. The handler only ever restarts: when occlusion has not caught up yet it does
+/// nothing, and the occlusion notification that follows arms the loop with the same catch-up.
 extension PanelViewController {
     // MARK: - Arming
 
@@ -142,8 +154,13 @@ extension PanelViewController {
             await runLibraryChangeLoop(for: path)
             return
         }
+        // Every start is somebody arriving, switching back or uncovering the pane — so the first
+        // wait is measured against the floor, and only the waits after a round this loop ran itself
+        // are stretched by what that round cost.
+        var catchingUp = true
         while !Task.isCancelled {
-            guard let delay = remoteRefreshDelay(for: path) else { return }
+            guard let delay = remoteRefreshDelay(for: path, catchingUp: catchingUp) else { return }
+            catchingUp = false
             try? await Task.sleep(for: .seconds(delay))
             guard !Task.isCancelled, panel.path == path, isRemoteRefreshWanted else { return }
             guard await refreshUnasked(path, wake: .poll) else { return }
@@ -162,6 +179,8 @@ extension PanelViewController {
         wake: RefreshWake,
         libraryGeneration: Int? = nil
     ) async -> Bool {
+        remoteRefreshRoundsInFlight += 1
+        defer { remoteRefreshRoundsInFlight -= 1 }
         let started = Date()
         if panel.isTree {
             guard let plan = treeRefreshPlan() else { return false }
@@ -186,13 +205,40 @@ extension PanelViewController {
     /// let a fresh path skip its first wait, so it is ignored rather than cleared — and that is what
     /// keeps the timings alive across a stand-down. Clearing them was the shipped bug: every
     /// stand-down threw away the elapsed time the catch-up is made of.
-    private func remoteRefreshDelay(for path: VFSPath) -> TimeInterval? {
+    ///
+    /// A round still listing counts as finishing **now**. A return can restart the loop in the
+    /// middle of one, since the round outlives the task that started it, and measuring from the
+    /// round before would send a second round to the server beside the first.
+    private func remoteRefreshDelay(for path: VFSPath, catchingUp: Bool) -> TimeInterval? {
         let last = remoteRefreshLastPoll.flatMap { $0.path == path ? $0 : nil }
+        let elapsed = remoteRefreshRoundsInFlight > 0
+            ? 0
+            : last.map { Date().timeIntervalSince($0.finished) }
+        let floor = AppPreferences.shared.remoteRefreshFloor
+        if catchingUp {
+            return RemoteRefreshPolicy.catchUpDelay(
+                finishedSecondsAgo: elapsed, floor: floor, backend: path.backend
+            )
+        }
         return RemoteRefreshPolicy.delay(
             afterRefreshTaking: last?.duration,
-            finishedSecondsAgo: last.map { Date().timeIntervalSince($0.finished) },
-            floor: AppPreferences.shared.remoteRefreshFloor,
+            finishedSecondsAgo: elapsed,
+            floor: floor,
             backend: path.backend
+        )
+    }
+
+    /// Record that `path`'s rows have just arrived from its server by some route other than the
+    /// poll — a navigation, a tab switch, an operation's own refresh — so a return measures how
+    /// stale they are from here. Without it a pane opened and then left for another app had no
+    /// record at all, and coming back waited a whole floor before asking.
+    ///
+    /// Keeps the cost of the last poll of the same folder, which only the poll can measure.
+    func noteRemoteListingArrived(at path: VFSPath) {
+        guard RemoteRefreshPolicy.polls(path.backend) else { return }
+        let duration = remoteRefreshLastPoll.flatMap { $0.path == path ? $0.duration : nil }
+        remoteRefreshLastPoll = RemoteRefreshMeasurement(
+            path: path, duration: duration, finished: Date()
         )
     }
 
@@ -208,6 +254,15 @@ extension PanelViewController {
             self,
             selector: #selector(remoteRefreshFloorDidChange),
             name: AppPreferences.remoteRefreshFloorDidChange,
+            object: nil
+        )
+        // The app coming back from another one — the commonest return, since that is where the
+        // file the user is looking for was usually written. App-wide rather than per window, so a
+        // pane in a window that is visible but not key catches up too.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(remoteRefreshPaneWasReturnedTo),
+            name: NSApplication.didBecomeActiveNotification,
             object: nil
         )
     }
@@ -235,6 +290,11 @@ extension PanelViewController {
                 name: NSWindow.didChangeOcclusionStateNotification,
                 object: occlusionObservedWindow
             )
+            NotificationCenter.default.removeObserver(
+                self,
+                name: NSWindow.didBecomeKeyNotification,
+                object: occlusionObservedWindow
+            )
         }
         NotificationCenter.default.addObserver(
             self,
@@ -242,11 +302,32 @@ extension PanelViewController {
             name: NSWindow.didChangeOcclusionStateNotification,
             object: window
         )
+        // The other return: a click from another Dirnex window into this one, which activates
+        // nothing. Scoped to this pane's own window for the reason occlusion is.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(remoteRefreshPaneWasReturnedTo),
+            name: NSWindow.didBecomeKeyNotification,
+            object: window
+        )
         occlusionObservedWindow = window
     }
 
     @objc private func remoteRefreshConditionsDidChange(_ notification: Notification) {
         updateRemoteRefreshSchedule()
+    }
+
+    /// Somebody came back to the app or to this window: restart the loop, whose first wait is a
+    /// catch-up against the floor, so rows older than the floor are asked for again at once.
+    ///
+    /// **It never stands the poll down**, and that is the activation trap above rather than
+    /// caution: when the window was covered, occlusion still reads *not visible* at this instant.
+    /// Doing nothing then is right, because the occlusion notification a beat later arms the loop
+    /// with the same catch-up. A Photos pane is left alone, since a return tells it nothing its
+    /// own change notification has not.
+    @objc private func remoteRefreshPaneWasReturnedTo(_ notification: Notification) {
+        guard isRemoteRefreshWanted, RemoteRefreshPolicy.polls(panel.path.backend) else { return }
+        updateRemoteRefreshSchedule(force: true)
     }
 
     /// A Settings edit changes the *interval* while the target path stays the same, which the

@@ -19,6 +19,15 @@ public extension VFSBackend {
         nil // no shortcut here — the caller walks
     }
 
+    /// Forwarding: one ``listDirectory(at:)`` per path, which is precisely what every caller did
+    /// before the seam existed — so a backend on this default is never slower than it was.
+    func listDirectories(at paths: [VFSPath], isCancelled: () -> Bool) throws -> [[FileEntry]?] {
+        try paths.map { path in
+            guard !isCancelled() else { throw CancellationError() }
+            return try? listDirectory(at: path)
+        }
+    }
+
     func createDirectory(at path: VFSPath) throws {
         throw VFSError.unsupported(.createDirectory)
     }

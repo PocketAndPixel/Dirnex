@@ -347,6 +347,7 @@ extension PanelViewController {
                 DirectorySizeProvider.shared.cancelScan(for: departed)
                 reloadEverything()
                 refreshTabBar()
+                noteRemoteListingArrived(at: path)
                 startPaneWatcher(path, force: true)
                 updateGitStatus()
                 updateTagStatus()

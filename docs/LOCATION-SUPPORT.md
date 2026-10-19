@@ -137,9 +137,16 @@ list is asked less often still — the interval is derived from what the *previo
 cost, holding a pane to ~5 % of its wall time, so a 50 000-object prefix (fifty billed
 `ListObjectsV2` requests, ~32 s) settles to about one refresh every eleven minutes with no
 per-backend number to keep. Nothing is repainted when the listing has not moved, so the ordinary
-answer — "the same rows" — costs one request and no work. A pane stood down catches up the
-moment it is visible again rather than waiting out a fresh interval. FSEvents stays exact and free,
-which is why the local and cloud-mount columns are a plain yes.
+answer — "the same rows" — costs one request and no work. **Coming back to a pane waives that
+stretch**: uncovering its window, returning to Dirnex from another app, clicking into its window from
+another Dirnex window or switching to its tab asks again at once if its rows are older than the
+floor, and otherwise waits out the rest of the floor. The stretch only governs a pane nobody is
+touching. A tree re-lists every open folder in one refresh, and **over FTP they all go over one
+login** rather than one each. Measured 2026-10-19 on an FTPES server 41 ms away, a tree with two
+folders open cost three ~1 s logins a refresh and the poll waited 59 s between refreshes, so a file
+written there from elsewhere could take a minute to appear. Over SFTP a tree still costs a session
+per open folder. FSEvents stays exact and free, which is why the local and cloud-mount columns are a
+plain yes.
 
 <sup>nn</sup> A bar is a row's share of **its own directory**, so it needs every sibling's total
 rather than the cursor's, where the `Space` total above needs one. That is what used to gate the mode
