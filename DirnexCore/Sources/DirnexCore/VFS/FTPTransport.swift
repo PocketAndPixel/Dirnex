@@ -133,6 +133,30 @@ public protocol FTPTransport: RemoteWriteTransport {
     /// throws for the opposite reason.
     func listDirectories(_ remotePaths: [String], isCancelled: () -> Bool) throws -> [String?]
 
+    /// One folder's `LIST`, and — when `askingFacts` — its `MLSD` beside it over the same login, for
+    /// the exact UTC times `LIST` cannot carry (``FTPFactsParser``).
+    ///
+    /// A failure of the **rows** throws exactly as ``listDirectory(_:)`` does, classified the same
+    /// way, so a caller sees no new error. A failure of the **facts** never throws: the rows are a
+    /// complete answer without them, and ``FTPListing/Facts`` says what became of them.
+    ///
+    /// Additive, with a default that answers the rows alone (``FTPListing/Facts/notAsked``): a
+    /// transport that cannot send `MLSD` gives `LIST` times, which is what every listing gave until
+    /// it could — slower to be exact, never wrong.
+    func listing(of remotePath: String, askingFacts: Bool) throws -> FTPListing
+
+    /// ``listDirectories(_:isCancelled:)`` with `MLSD` beside each `LIST` when `askingFacts` — one
+    /// answer per input path, in order, `nil` for a folder that could not be listed. A folder whose
+    /// facts did not come back is answered with its rows and ``FTPListing/Facts/unavailable``.
+    ///
+    /// Additive, with a default that forwards to ``listDirectories(_:isCancelled:)`` and answers
+    /// rows alone, for the reason ``listing(of:askingFacts:)`` gives.
+    func listings(
+        of remotePaths: [String],
+        askingFacts: Bool,
+        isCancelled: () -> Bool
+    ) throws -> [FTPListing?]
+
     /// The exact size of one remote file (`SIZE`, via `curl -I`), used to decide whether a partial
     /// is resumable. Costs a round trip, so it is a stat-one-item path and never a listing path.
     func fileSize(_ remotePath: String) throws -> Int64
@@ -146,9 +170,10 @@ public protocol FTPTransport: RemoteWriteTransport {
     func fetchCertificate() throws -> FTPCertificate
 }
 
-/// The additive halves of ``FTPTransport/listDirectories(_:isCancelled:)`` and
-/// ``FTPTransport/downloadSegments(_:of:to:progress:isCancelled:)``: a transport that predates
-/// either keeps compiling and keeps working.
+/// The additive halves of ``FTPTransport/listDirectories(_:isCancelled:)``,
+/// ``FTPTransport/listing(of:askingFacts:)``, ``FTPTransport/listings(of:askingFacts:isCancelled:)``
+/// and ``FTPTransport/downloadSegments(_:of:to:progress:isCancelled:)``: a transport that predates
+/// any of them keeps compiling and keeps working.
 ///
 /// It forwards rather than throwing — the test this project applies before letting a default stand
 /// in is whether the caller can tell it was not honoured, and here the two paths produce the
@@ -169,6 +194,20 @@ public extension FTPTransport {
             } catch {
                 return nil
             }
+        }
+    }
+
+    func listing(of remotePath: String, askingFacts _: Bool) throws -> FTPListing {
+        FTPListing(rows: try listDirectory(remotePath))
+    }
+
+    func listings(
+        of remotePaths: [String],
+        askingFacts _: Bool,
+        isCancelled: () -> Bool
+    ) throws -> [FTPListing?] {
+        try listDirectories(remotePaths, isCancelled: isCancelled).map { rows in
+            rows.map { FTPListing(rows: $0) }
         }
     }
 

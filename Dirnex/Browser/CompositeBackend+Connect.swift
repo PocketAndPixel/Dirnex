@@ -43,13 +43,16 @@ extension CompositeBackend {
     /// can test it before navigating a pane onto it. `password` is the plaintext the transport feeds
     /// to `curl` on stdin (held only in memory for the connection's lifetime, mirrored into the
     /// Keychain separately); `trustedPublicKey` is the certificate pin the user accepted, which is a
-    /// public key digest rather than a secret.
+    /// public key digest rather than a secret. `serverTimeZone` is the saved server's clock for
+    /// `LIST` stamps, an IANA identifier or `nil` for this Mac's; an identifier this Mac does not
+    /// know reads as `nil` rather than failing the connection over a display setting.
     @discardableResult
     func connectFTP(
         location: FTPLocation,
         authentication: FTPAuthentication,
         password: String = "",
-        trustedPublicKey: String? = nil
+        trustedPublicKey: String? = nil,
+        serverTimeZone: String? = nil
     ) -> FTPBackend {
         let transport = FTPCurlTransport(
             location: location,
@@ -57,14 +60,21 @@ extension CompositeBackend {
             password: password,
             trustedPublicKey: trustedPublicKey
         )
-        let backend = FTPBackend(location: location, transport: transport)
+        let backend = FTPBackend(
+            location: location,
+            transport: transport,
+            serverTimeZone: serverTimeZone.flatMap(TimeZone.init(identifier:))
+        )
         lock.lock()
         defer { lock.unlock() }
         ftpConnections[location.descriptor] = backend
+        // The zone is part of the endpoint the pane reports, so a restored tab reconnects with the
+        // clock it was opened with and `ServerConnections.name(of:)` still finds the saved record.
         endpoints[location.descriptor] = .ftp(
             location: location,
             authentication: authentication,
-            trustedPublicKey: trustedPublicKey
+            trustedPublicKey: trustedPublicKey,
+            serverTimeZone: serverTimeZone
         )
         return backend
     }

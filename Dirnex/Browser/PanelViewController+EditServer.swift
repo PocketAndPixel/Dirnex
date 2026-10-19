@@ -89,7 +89,7 @@ extension PanelViewController {
         guard let password = form.password, !password.isEmpty else { return }
         switch form.endpoint {
         case let .sftp(location, _): _ = SecretKeychain.store(password: password, for: location)
-        case let .ftp(location, _, _): _ = SecretKeychain.store(password: password, for: location)
+        case let .ftp(location, _, _, _): _ = SecretKeychain.store(password: password, for: location)
         case let .smb(location): _ = SecretKeychain.store(password: password, for: location)
         case let .s3(location): _ = SecretKeychain.store(password: password, for: location)
         case let .s3Account(account): _ = SecretKeychain.store(password: password, for: account)

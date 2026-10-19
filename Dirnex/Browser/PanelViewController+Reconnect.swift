@@ -173,7 +173,7 @@ extension PanelViewController {
         case let .sftp(location, authentication):
             guard case .password = authentication else { return true }
             return SecretKeychain.password(for: location) != nil
-        case let .ftp(location, authentication, _):
+        case let .ftp(location, authentication, _, _):
             guard case .password = authentication else { return true }
             return SecretKeychain.password(for: location) != nil
         case let .s3(location):
@@ -198,12 +198,13 @@ extension PanelViewController {
                 authentication: authentication,
                 password: SecretKeychain.password(for: location)
             )
-        case let .ftp(location, authentication, trustedPublicKey):
+        case let .ftp(location, authentication, trustedPublicKey, serverTimeZone):
             composite.connectFTP(
                 location: location,
                 authentication: authentication,
                 password: SecretKeychain.password(for: location) ?? "",
-                trustedPublicKey: trustedPublicKey
+                trustedPublicKey: trustedPublicKey,
+                serverTimeZone: serverTimeZone
             )
         case let .s3(location):
             guard let secret = SecretKeychain.password(for: location) else { return }

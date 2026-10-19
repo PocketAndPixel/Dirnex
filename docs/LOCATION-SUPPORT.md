@@ -545,9 +545,11 @@ question is asked first, so a Mac with none pays for no download).
 comparison by **size**, which is honest anywhere. Comparing by **timestamp** is withdrawn the moment
 either side is remote, and for three different reasons: `sftp`'s `ls -la` drops the seconds and, past
 about six months, the whole time of day (measured 41 617 s from the truth); FTP's `LIST` stamp is
-year-less, zone-less and on the server's clock; and S3's `LastModified` is exact and is the *upload*
-time, which nothing can set. Two sides of one coarse dialect are no better — two files thirty seconds
-apart list as the same minute, so a mirror would skip the one that changed.
+year-less, zone-less and on the server's clock (a server that answers `MLSD` is exact since
+2026-10-19, but the comparison is decided per protocol rather than per server, so FTP stays out); and
+S3's `LastModified` is exact and is the *upload* time, which nothing can set. Two sides of one coarse
+dialect are no better — two files thirty seconds apart list as the same minute, so a mirror would skip
+the one that changed.
 
 Comparing by **contents** works anywhere since §M25 Slice 5d, and it is the one comparison a coarse
 listing cannot make dishonest — bytes are bytes. The scan is two phases over **one** walk: the walk
@@ -948,8 +950,10 @@ rows, and the app is already as close as the technology permits:
   measurement is under <sup>ww</sup>; SFTP's own split, which *is* possible because `cat` over the
   exec channel can join what `sftp` cannot write in place, landed on 2026-09-01.
 - Content search and Finder-tag search on a server: both need every file's bytes or its xattrs.
-- Exact FTP timestamps: `LIST` stamps are year-less, zone-less and on the server's clock, and
-  `curl` cannot send `MLSD`.
+- Exact FTP timestamps on a server without `MLSD`: its `LIST` stamps have no seconds and, for a
+  recent file, no year. The hour is fixable and was fixed on 2026-10-19 — a saved server can be
+  given its own time zone — and a server that answers `MLSD` has given exact UTC times since the
+  same day.
 - Atomicity of an S3 prefix rename or delete: it is N copies and N deletes, whoever writes it.
 - Upload progress over SFTP: `sftp` prints no meter to a spawned process, in any configuration.
 - Per-item download percentages from macOS's cloud providers, and sync status in Google Drive's

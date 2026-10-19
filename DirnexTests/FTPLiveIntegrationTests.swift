@@ -150,6 +150,10 @@ struct FTPLiveIntegrationTests {
                 #expect(entry.kind == match.kind)
                 #expect(entry.byteSize == match.byteSize)
                 #expect(entry.name == match.name)
+                // The batch carries `MLSD` in a section of its own and the walk in a single run, so
+                // the two must still time a row identically — or a search result and the pane it
+                // came from would disagree about the same file.
+                #expect(entry.modificationDate == match.modificationDate)
             }
             // Shallowest-first, which is what a result cap must be able to truncate safely.
             #expect(listing.entries.prefix(3).allSatisfy { $0.path.parent == root })
@@ -222,6 +226,68 @@ struct FTPLiveIntegrationTests {
             let orphan = dir.appending("no_such_parent/child")
             #expect(throws: VFSError.notFound(orphan)) {
                 try backend.createDirectory(at: orphan)
+            }
+        }
+    }
+
+    // MARK: - Exact times
+
+    /// `MLSD` end to end: a file uploaded carrying a known time, which `MFMT` sets exactly, lists
+    /// back **to the second** — in the pane's listing and in a `stat`, which must agree.
+    ///
+    /// The fixture's time has **37 seconds** on purpose. `LIST` prints no seconds, so a listing that
+    /// fell back to it cannot pass by luck whatever this Mac's zone is, where the minute-aligned
+    /// fixture in `FTPMetadataCarryLiveTests` would on a Mac set to the server's own clock.
+    ///
+    /// A server without `MLSD` is a legitimate endpoint rather than a failure, so the suite does not
+    /// assume the verb: there the facts must come back `unsupported` and the rows must still arrive,
+    /// which is the fallback's half of the claim.
+    @Test("a listing reads MLSD's exact time, or falls back to LIST where the server has none")
+    func listingTimesAreExact() async throws {
+        try await offCooperativePool {
+            let (backend, config) = try makeBackend()
+            let base = VFSPath(backend: .ftp(config.location), path: config.remotePath)
+            let dir = base.appending("dirnex_mlsd_test_\(UUID().uuidString)")
+            try backend.createDirectory(at: dir)
+            defer { try? backend.removeItem(at: dir) }
+
+            let stamp = Date(timeIntervalSince1970: (
+                (Date().timeIntervalSince1970 - 7 * 86_400) / 60
+            ).rounded(.down) * 60 + 37)
+            let local = FileManager.default.temporaryDirectory
+                .appendingPathComponent("dirnex-mlsd-\(UUID().uuidString)")
+            try Data("timed".utf8).write(to: local)
+            defer { try? FileManager.default.removeItem(at: local) }
+            let remote = dir.appending("timed.txt")
+            try backend.copyFile(
+                at: .local(local.path),
+                to: remote,
+                hint: CopySourceHint(metadata: RemoteSourceMetadata(
+                    permissions: 0o644,
+                    modificationTime: stamp
+                )),
+                progress: { _ in },
+                isCancelled: { false }
+            )
+
+            let transport = FTPCurlTransport(
+                location: config.location,
+                authentication: config.authentication,
+                password: config.password,
+                trustedPublicKey: config.trustedPublicKey
+            )
+            let listing = try transport.listing(of: dir.path, askingFacts: true)
+            switch listing.facts {
+            case .listed:
+                let listed = try #require(try backend.listDirectory(at: dir).first {
+                    $0.name == "timed.txt"
+                })
+                #expect(listed.modificationDate.timeIntervalSince1970 == stamp.timeIntervalSince1970)
+                #expect(try backend.stat(at: remote).modificationDate == listed.modificationDate)
+            case .unsupported:
+                #expect(listing.rows.contains("timed.txt"))
+            case .notAsked, .unavailable:
+                Issue.record("MLSD was neither answered nor refused: \(listing.facts)")
             }
         }
     }

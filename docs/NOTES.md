@@ -5415,11 +5415,44 @@ off a man page.
 - **`LIST` is not standardized and its stamps are unusable for comparison.** Real bytes are Unix
   `ls -l` (bare names, *no* `.`/`..` rows, symlink targets shown — all three differ from `sftp`'s
   dialect); IIS emits a DOS form instead. The timestamp is year-less for recent files **and**
-  zone-less, on the *server's* clock, so an FTP mtime is approximate by construction: fine to display
-  and sort by, not fine to compare two files with (`DirectorySync` must not use `.sizeAndDate` on an
-  FTP side). `MLSD` would fix it and **`curl` cannot send it** — only `LIST` and `NLST`. A per-file
-  `-I` does give an exact, zone-anchored `Last-Modified`, so it is a stat-one-item path, never a
-  listing path.
+  zone-less, on the *server's* clock, so a `LIST` mtime is approximate by construction: fine to
+  display and sort by, not fine to compare two files with (`DirectorySync` must not use
+  `.sizeAndDate` on an FTP side). Since 2026-10-19 a saved server can be given its own zone, which
+  `LIST` stamps are read in (`ServerEndpoint.ftp`'s `serverTimeZone`); that fixes the hour and
+  nothing else.
+- **`curl` *can* send `MLSD`, which gives exact UTC times — this file said otherwise for three
+  months.** M13's probe recorded "only `LIST` and `NLST`", and the claim stood in four documents
+  until a user asked for local times on a Paris server. Traced 2026-10-19: `curl -X MLSD
+  ftp://host/dir/` sends `MLSD` on the data connection (`> MLSD`, `< 125`, `< 226`) and answers
+  `modify=20261019164100;perm=radfwMT;size=3;type=file;…; a.txt`. `-X` replaces the listing
+  command, the same mechanism `-X "LIST -R"` used below; in a config section it is
+  `request = "MLSD"`. The general lesson is the one this file keeps relearning: a "the tool cannot"
+  recorded once is worth re-probing before it is quoted again.
+  - **`MLSD` follows symlinks on pyftpdlib, so it supplies times and never rows.** A link to a
+    folder came back `type=dir` with the folder's own `unique` fact, where `LIST` printed
+    `linkdir -> sub`. RFC 3659 leaves it to the server (ProFTPD reports `OS.unix=symlink`), so no
+    client knows in advance, and a recursive delete over those rows would walk through the link and
+    empty its target. `FTPListingParser.applyingFacts` takes a row's time from `MLSD` only where both
+    listings agree what the row is.
+  - **One login carries both, and two flags make the run readable.** `LIST` then `MLSD` as two
+    sections of one `curl` is one sign-in and two data connections. The run's exit code is the last
+    transfer's, so on its own it cannot say which half failed; `--fail-early` stops at a failed
+    `LIST` with `LIST`'s own code, and a `write-out` line per section (`%{exitcode}
+    %{response_code}`) says the rest. Measured outcomes: both answered `L 0 226` / `M 0 226`; a
+    server without the verb `L 0 226` / `M 19 500`, exit **19** (`RETR response: 500`, not the `-Q`
+    family's 21); a missing folder `L 9 550` alone; a wrong password `L 67 530` alone, one attempt.
+    Both listings go to files, so stdout holds nothing but those lines.
+  - **A batch signs in again for every section after a refused login** — 3 sections, 3 failed logins
+    in pyftpdlib's log. So a batch adds `MLSD` sections only once a single listing on the connection
+    has seen the verb answer (`FTPFactsSupport`), or a stale password would cost twice the failed
+    logins a server with lockout counts.
+  - **A server can get `MLSD` wrong too, and nothing on the wire says so.** pyftpdlib started with
+    `use_gmt_times = False` sends `modify` in its *local* time, against the RFC. With its default
+    (`True`) both `LIST` and `MLSD` are UTC, which is why the live FTP suites met this Mac's +0300 in
+    `LIST` stamps. The per-server zone is deliberately not applied to `MLSD` times: on a correct server
+    it would shift exact times by the offset.
+- A per-file `-I` gives an exact, zone-anchored `Last-Modified` (`MDTM`) too, at a round trip per
+  file, so it stays a stat-one-item path, never a listing path.
   - **The coarse stamp belongs to `LIST`, not to FTP** — which matters because the obvious reading
     is that an FTP timestamp is approximate *by protocol* and therefore unfixable in both
     directions. Probed 2026-08-28 against a real server: `MDTM` reads back `20180607080910` and

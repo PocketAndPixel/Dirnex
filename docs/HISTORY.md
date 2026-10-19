@@ -14990,6 +14990,43 @@ The cause was the timing of the text read and layout under the full suite's main
   with only the expected `GestureWaitTests` issue; live-server suites were skipped. Core passed
   (4020 tests), `swiftformat --lint .` and `swiftlint --strict` were clean. Changes left uncommitted.
 
+**2026-10-19: FTP times are exact where the server answers `MLSD`, and a server can have a zone.**
+Asked for with a screenshot of a Paris server listing a file at 16:41 that was written at 17:41 Kyiv
+time. A `LIST` stamp has no zone, so the parser read it as this Mac's.
+
+- **The premise M13 recorded was wrong.** "`curl` cannot send `MLSD`" stood in NOTES.md, PLAN.md,
+  LOCATION-SUPPORT.md and a doc comment. Traced on a throwaway pyftpdlib: `curl -X MLSD` sends it on
+  the data connection and returns `modify=…` in UTC. All four now say so.
+- **`MLSD` supplies times, never rows.** The same probe showed pyftpdlib following symlinks in
+  `MLSD`: `linkdir` came back `type=dir` with `sub`'s own `unique`. A recursive delete over those rows
+  would empty the link's target. So the rows stay `LIST`'s, and `FTPListingParser.applyingFacts`
+  takes a row's time from `MLSD` only where both listings agree what the row is (`FTPFactsParser`).
+- **One login carries both.** A single listing is two sections of one `curl`, `LIST` first, under
+  `--fail-early`, with a `write-out` line per section. That keeps every failure of the folder or the
+  connection on `LIST`'s own exit code, and a refused login to one attempt. `FTPListingRun` reads the
+  outcome; reply 500/502 on the `MLSD` section latches it off for the connection (`FTPFactsSupport`).
+  A batch adds `MLSD` sections only after a single listing has seen them answer, since `curl` signs in
+  again for every section after a refused login (3 sections, 3 failed logins, measured).
+- **A per-server time zone for `LIST`.** `ServerEndpoint.ftp` gained `serverTimeZone` (an IANA
+  identifier, `nil` for this Mac's, and what an older record decodes as). It is kept out of
+  `FTPLocation`, so the backend id, the Keychain item and restored tabs do not move. The Connect sheet
+  has a Time zone row: Same as this Mac, UTC, then every zone with today's offset. A saved identifier
+  this Mac does not list keeps an item of its own, so an edit cannot erase it. Three new strings,
+  translated into all 14 languages.
+- **Pinned** by 5 new core suites (parser, `LIST` zone and the merge rule, the run's outcomes and the
+  invocation, the latch, the backend end to end) and `ConnectServerFTPTimeZoneTests`. A live test
+  uploads a file whose time has 37 seconds, set exactly by `MFMT`, and lists it back to the second;
+  the subtree live test now also compares dates between the batch and the walk. Negative controls,
+  each restored: without the kind check, both symlink tests failed; with the backend never asking for
+  `MLSD`, the live exact-time test failed, which is what shows the live run really used `MLSD`
+  (pyftpdlib does not log listing commands).
+- Core green (4061 tests), both linters clean. App: 1779 tests with the live servers up, one known
+  issue. The Connect sheet's new row was checked in a render, not in a running app. **Confirmed by
+  the reporter on their server**, relaunched on the new build: the file reads 17:41-style local
+  times, and the server answers `MLSD`. The tell is the old rows. Folders last changed in 2024 had
+  read `00:00`, because `LIST` prints only a date for them, and now show their time of day
+  (`14.06.2024, 13:04`). Changes left uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

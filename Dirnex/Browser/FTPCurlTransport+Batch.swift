@@ -36,29 +36,51 @@ extension FTPCurlTransport {
     /// falls back to the **walk**, whose `listDirectory` carries that retry already. Repeating it
     /// here would spend a second whole-level attempt to reach the same place.
     func listDirectories(_ remotePaths: [String], isCancelled: () -> Bool) throws -> [String?] {
+        try listings(of: remotePaths, askingFacts: false, isCancelled: isCancelled).map { $0?.rows }
+    }
+
+    /// The same batch, with each folder's `MLSD` in the section right after its `LIST` when
+    /// `askingFacts`. A folder whose facts did not arrive keeps its rows: the facts file's absence is
+    /// all a batch can know, so it answers ``FTPListing/Facts/unavailable`` and never `unsupported`
+    /// — learning that a server has no `MLSD` is the single listing's job (``FTPFactsSupport``).
+    func listings(
+        of remotePaths: [String],
+        askingFacts: Bool,
+        isCancelled: () -> Bool
+    ) throws -> [FTPListing?] {
         guard !remotePaths.isEmpty else { return [] }
         let scratch = try BatchScratch()
         defer { scratch.remove() }
 
-        var answers: [String?] = []
+        var answers: [FTPListing?] = []
         answers.reserveCapacity(remotePaths.count)
         // Chunked so the config string, the scratch files held at once, and the process backstop all
         // stay bounded. Each chunk is its own connection, which is the only thing a wider level
         // would have saved — the cheapest thing here to spend.
         for chunk in remotePaths.chunked(by: FTPProcessArguments.listingBatchLimit) {
             guard !isCancelled() else { throw CancellationError() }
-            answers += try listChunk(chunk, into: scratch, isCancelled: isCancelled)
+            answers += try listChunk(
+                chunk,
+                askingFacts: askingFacts,
+                into: scratch,
+                isCancelled: isCancelled
+            )
         }
         return answers
     }
 
     private func listChunk(
         _ remotePaths: [String],
+        askingFacts: Bool,
         into scratch: BatchScratch,
         isCancelled: () -> Bool
-    ) throws -> [String?] {
+    ) throws -> [FTPListing?] {
         let requests = remotePaths.map {
-            FTPListingRequest(remotePath: $0, outputPath: scratch.nextOutputPath())
+            FTPListingRequest(
+                remotePath: $0,
+                outputPath: scratch.nextOutputPath(),
+                factsOutputPath: askingFacts ? scratch.nextOutputPath() : nil
+            )
         }
         let invocation = FTPProcessArguments.listDirectories(
             session: session,
@@ -72,7 +94,7 @@ extension FTPCurlTransport {
                 // The sections run one after another, so the run's own wall clock is their budgets
                 // **summed** rather than the largest of them — the runner's default is the maximum,
                 // which is right for a parallel batch and would kill a healthy sequential one.
-                backstop: requests.count * metadataTimeout + 30,
+                backstop: requests.count * (askingFacts ? 2 : 1) * metadataTimeout + 30,
                 isCancelled: isCancelled
             )
         } catch is CancellationError {
@@ -81,25 +103,34 @@ extension FTPCurlTransport {
             // Deliberately swallowed — see the note above. The files are the answers.
         }
         return requests.map { request in
-            // `contentsOfFile` rather than an existence check followed by a read: a file that is
-            // there and unreadable is as much "no answer" as one that was never written, and the two
-            // must not be told apart here.
-            // Lenient on the way in: a name the server sent in a code page must cost its own row,
-            // never the level (``SubprocessText``). A *missing* file still answers `nil`, which is
-            // what separates "listed, and empty" from "could not be listed".
-            (try? Data(contentsOf: URL(fileURLWithPath: request.outputPath)))
-                .map(SubprocessText.lossyUTF8)
+            guard let rows = Self.readListing(at: request.outputPath) else { return nil }
+            guard let factsPath = request.factsOutputPath else { return FTPListing(rows: rows) }
+            return FTPListing(
+                rows: rows,
+                facts: Self.readListing(at: factsPath).map(FTPListing.Facts.listed) ?? .unavailable
+            )
         }
+    }
+
+    /// One listing `curl` wrote to a file, or `nil` when it wrote none.
+    ///
+    /// `contentsOfFile` rather than an existence check followed by a read: a file that is there and
+    /// unreadable is as much "no answer" as one that was never written, and the two must not be told
+    /// apart here. Lenient on the way in: a name the server sent in a code page must cost its own
+    /// row, never the level (``SubprocessText``). A *missing* file still answers `nil`, which is what
+    /// separates "listed, and empty" from "could not be listed".
+    static func readListing(at path: String) -> String? {
+        (try? Data(contentsOf: URL(fileURLWithPath: path))).map(SubprocessText.lossyUTF8)
     }
 }
 
-/// A directory the batch writes its per-section listings into, and the counter that keeps their
-/// names unique across every chunk of one call.
+/// A directory a listing run writes its per-section answers into, and the counter that keeps their
+/// names unique across every chunk of one call — the batch's, and the single listing with facts'.
 ///
 /// One directory per call rather than one shared with the process: two subtree walks can be in
 /// flight at once (a search in one pane and a folder size in the other), and a name reused across
 /// them would hand one walk the other's listing.
-private final class BatchScratch {
+final class BatchScratch {
     private let directory: String
     private var issued = 0
 

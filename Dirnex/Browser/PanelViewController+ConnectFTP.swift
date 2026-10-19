@@ -47,6 +47,9 @@ extension PanelViewController {
         /// the probe and the connect from two different machines — would raise the same question
         /// forever.
         var hasWeighedCertificate = false
+        /// The clock the server writes its `LIST` stamps on, as the saved record or the sheet gives
+        /// it — carried to the backend and into the record this connect saves.
+        var serverTimeZone: String?
     }
 
     func connectFTP(_ request: FTPConnectRequest) async -> ConnectServerPrompt.Attempt {
@@ -85,7 +88,8 @@ extension PanelViewController {
                 location: location,
                 authentication: request.authentication,
                 password: request.password,
-                trustedPublicKey: request.trustedPublicKey
+                trustedPublicKey: request.trustedPublicKey,
+                serverTimeZone: request.serverTimeZone
             )
             if let saveName = request.saveName {
                 saveFTPServer(name: saveName, request: request)
@@ -440,7 +444,8 @@ extension PanelViewController {
             endpoint: .ftp(
                 location: request.location,
                 authentication: request.authentication,
-                trustedPublicKey: request.trustedPublicKey
+                trustedPublicKey: request.trustedPublicKey,
+                serverTimeZone: request.serverTimeZone
             )
         ))
         ServerConnectionStore.save(store)

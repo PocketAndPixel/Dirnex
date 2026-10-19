@@ -14,10 +14,14 @@ public struct FTPListingRequest: Sendable, Equatable {
     /// Where `curl` writes that directory's raw listing. Must be unique within one invocation, and
     /// must not already exist — its absence afterwards is what reports a refusal.
     public let outputPath: String
+    /// Where `curl` writes the same directory's `MLSD` reply, or `nil` to ask for `LIST` alone. The
+    /// same rules as ``outputPath``: unique, and absent beforehand, since absence is the refusal.
+    public let factsOutputPath: String?
 
-    public init(remotePath: String, outputPath: String) {
+    public init(remotePath: String, outputPath: String, factsOutputPath: String? = nil) {
         self.remotePath = remotePath
         self.outputPath = outputPath
+        self.factsOutputPath = factsOutputPath
     }
 }
 
@@ -96,23 +100,35 @@ public extension FTPProcessArguments {
     ///
     /// `credentials` is the already-built config line (``FTPConfigFile/credentials(for:password:)``),
     /// passed in rather than assembled here so this stays a builder that never sees a password.
+    ///
+    /// ## Exact times
+    ///
+    /// A request carrying a ``FTPListingRequest/factsOutputPath`` gets a second section right after
+    /// its `LIST`: the same folder, asked for `MLSD`, on the same connection. Each answer is still a
+    /// file and nothing else, so a folder whose `MLSD` was refused simply has no facts file, and its
+    /// rows keep their `LIST` stamps.
     static func listDirectories(
         session: FTPSession,
         requests: [FTPListingRequest],
         credentials: String
     ) -> FTPParallelInvocation {
-        let security = securityConfiguration(session: session)
-        let sections = requests.map { request in
-            [
-                credentials.hasSuffix("\n") ? credentials : credentials + "\n",
-                "connect-timeout = \(session.connectTimeout)\n",
-                "max-time = \(session.maxTime)\n",
-                addressFamilyConfiguration(session: session),
-                utf8Configuration(),
-                security,
-                "output = \(FTPConfigFile.quote(request.outputPath))\n",
-                "url = \(FTPConfigFile.quote(listingURL(session, request.remotePath)))\n"
-            ].joined()
+        let sections = requests.flatMap { request in
+            var sections = [listingSection(
+                session: session,
+                credentials: credentials,
+                remotePath: request.remotePath,
+                output: request.outputPath
+            )]
+            if let factsOutput = request.factsOutputPath {
+                sections.append(listingSection(
+                    session: session,
+                    credentials: credentials,
+                    remotePath: request.remotePath,
+                    output: factsOutput,
+                    command: "MLSD"
+                ))
+            }
+            return sections
         }
         return FTPParallelInvocation(
             // `-sS`: no meter, but keep `curl`'s error text — a batch's stderr is the only place a
@@ -122,5 +138,78 @@ public extension FTPProcessArguments {
             arguments: ["-sS", "-K", "-"],
             configuration: sections.joined(separator: "next\n")
         )
+    }
+
+    /// List one folder with `LIST` and then `MLSD`, over **one** login, each into its own file —
+    /// the single listing once a server may have exact times to give (``FTPListingRun``).
+    ///
+    /// Three choices, each measured 2026-10-19 against a local pyftpdlib:
+    ///
+    /// - **`LIST` first.** The run's exit code is its last transfer's, and `--fail-early` stops at the
+    ///   first failure, so with `LIST` first any failure that is the folder's or the connection's —
+    ///   a refused login (67), a folder that is not there (9), the TLS 1.3 empty data channel (18) —
+    ///   ends the run with `LIST`'s own code, read exactly as a plain listing's is. Only a run whose
+    ///   rows arrived can end on `MLSD`'s.
+    /// - **`--fail-early`**, because without it a refused login is tried again for the second
+    ///   section, and failed logins are what lock an account on a server that counts them.
+    /// - **A `write-out` line per section** (`L 0 226`, then `M 19 500`), which is what tells a
+    ///   server without `MLSD` (reply 500) from one whose `MLSD` merely failed. Both listings go to
+    ///   files, so stdout carries nothing else.
+    static func listingWithFacts(
+        session: FTPSession,
+        remotePath: String,
+        rowsOutput: String,
+        factsOutput: String,
+        credentials: String
+    ) -> FTPParallelInvocation {
+        let report = " %{exitcode} %{response_code}\n"
+        let sections = [
+            listingSection(
+                session: session,
+                credentials: credentials,
+                remotePath: remotePath,
+                output: rowsOutput,
+                writeOut: FTPListingRun.rowsMarker + report
+            ),
+            listingSection(
+                session: session,
+                credentials: credentials,
+                remotePath: remotePath,
+                output: factsOutput,
+                command: "MLSD",
+                writeOut: FTPListingRun.factsMarker + report
+            )
+        ]
+        return FTPParallelInvocation(
+            arguments: ["-sS", "--fail-early", "-K", "-"],
+            configuration: sections.joined(separator: "next\n")
+        )
+    }
+
+    /// One listing section in config spelling: the credential, the budget, the address family, the
+    /// UTF-8 request and the TLS settings — every one of them per section, because `curl` reads one
+    /// option set per transfer — then the output file and the folder's URL. `command` replaces
+    /// `LIST` (`MLSD`), and `writeOut` is printed when the transfer ends.
+    private static func listingSection(
+        session: FTPSession,
+        credentials: String,
+        remotePath: String,
+        output: String,
+        command: String? = nil,
+        writeOut: String? = nil
+    ) -> String {
+        var lines = [
+            credentials.hasSuffix("\n") ? credentials : credentials + "\n",
+            "connect-timeout = \(session.connectTimeout)\n",
+            "max-time = \(session.maxTime)\n",
+            addressFamilyConfiguration(session: session),
+            utf8Configuration(),
+            securityConfiguration(session: session)
+        ]
+        if let command { lines.append("request = \(FTPConfigFile.quote(command))\n") }
+        if let writeOut { lines.append("write-out = \(FTPConfigFile.quote(writeOut))\n") }
+        lines.append("output = \(FTPConfigFile.quote(output))\n")
+        lines.append("url = \(FTPConfigFile.quote(listingURL(session, remotePath)))\n")
+        return lines.joined()
     }
 }

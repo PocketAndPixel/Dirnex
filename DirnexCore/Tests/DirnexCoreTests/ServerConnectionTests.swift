@@ -199,7 +199,7 @@ struct ServerConnectionTests {
     }
 
     private func pin(of connection: ServerConnection?) -> String?? {
-        guard case let .ftp(_, _, key)? = connection?.endpoint else { return nil }
+        guard case let .ftp(_, _, key, _)? = connection?.endpoint else { return nil }
         return key
     }
 
