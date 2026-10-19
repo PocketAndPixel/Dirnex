@@ -15027,6 +15027,33 @@ time. A `LIST` stamp has no zone, so the parser read it as this Mac's.
   read `00:00`, because `LIST` prints only a date for them, and now show their time of day
   (`14.06.2024, 13:04`). Changes left uncommitted.
 
+**2026-10-19: SFTP search results read the server's walk in UTC.** Asked straight after the entry
+above: do SFTP and S3 have the same problem? S3 does not, since every `LastModified` ends in `Z`.
+SFTP has it in one route.
+
+- **Probed against a throwaway `sshd` started with `TZ=America/New_York`.** For a file written at
+  16:41 Kyiv time, the pane's `sftp` listing said `16:41`, because a recent client formats the
+  protocol's epoch time itself. The exec-channel walk behind search, folder sizes and sync said
+  `09:41`. It runs `ls` on the server, which prints the server's clock, and the parser read that as
+  this Mac's.
+- **The walk now runs under `/usr/bin/env TZ=UTC0`** (POSIX for UTC, needs no zoneinfo, and
+  overrides a `TZ` the user's rc exports, all probed). `SSHFindListingParser` reads stamps with a
+  time of day as UTC. A date-only stamp (older than about six months) stays on this Mac's clock: read
+  as UTC it would show 03:00 in Kyiv, a time the row never had, where the pane shows 00:00
+  (`ColumnarListing.utcUnixDateFormatters()`).
+- **The throwaway `sshd` now runs in another zone** (`scripts/live_test_servers.sh`: UTC+14, or
+  UTC−11 on a Mac at +14), since a server on this Mac's clock agrees with every version of the bug.
+  `SFTPLiveClockTests` asks the server its offset first and records that a run proved nothing when
+  the two match. It uploads a file with a known time and checks that the shortcut's row equals the
+  pane's and the stamp's minute.
+- **Negative controls**, each restored: with the parser back on this Mac's clock, the core UTC test
+  failed; with the shipped walk put back, the live clock test failed both assertions against the
+  +14 server. Every other SFTP live suite passed against that server unchanged.
+- Core green (4063 tests), both linters clean. App: 1780 tests with the live servers up, one known
+  issue. Not handled: an older SFTP server whose `sftp` listing is the server's own line, on the
+  server's clock. That is read from OpenSSH's client behavior, not measured, since no such server
+  was reachable. No user-visible strings. Changes left uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
