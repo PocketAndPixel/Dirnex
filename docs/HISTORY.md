@@ -15117,6 +15117,28 @@ puts the last closed tab back in the pane and the place it left.
   afterwards, which a ⌘T taken for New Tab would have left enabled. Not exercised live: any server or
   archive entry in a trail, and the vault and nested-archive exclusions, which are pinned by tests.
 
+**2026-10-20: Quick View's text-scroll wait allows the read to reach the main actor.** The test
+still failed in full app runs after the 2026-10-19 viewport fix. It was the only unexpected issue
+in a traced run of 1789 tests; the scroll suite had passed alone.
+
+- **The view was still empty at the deadline.** The text load's task first ran at 12.04 s, read
+  the 324,392 characters in 5.6 ms, then delivered the result on the main actor at 21.34 s. The
+  drawing wait woke at 12.07 s with zero characters and a 394-point frame. The load token still
+  matched, so this was delayed work, not a cancelled or replaced preview. A passing baseline had
+  the same delay: empty at 9.96 s, ready at 17.60 s. It passed because readiness is checked before
+  the deadline; the empty poll happened just before 10 s.
+- **The fixture's name hid a missing wait.** `QuickViewTextPreviewTests.loaded` returns when the
+  text surface is visible, and `showText` makes it visible before starting the read. The scroll
+  test now requires the complete expected text before calling `layoutViewport()`. Its shared
+  drawing wait uses the same 30 s allowance as the other preview waits, on a monotonic clock.
+  Lazy TextKit 2 layout and every scroll assertion remain, including End reaching the last
+  character. No app code changed, and all temporary timing probes were removed.
+- **Verified:** four consecutive full app runs passed (1789 tests in 284 suites, 55.1 s, 53.9 s,
+  54.3 s and 53.8 s), with only the expected `GestureWaitTests` issue. Live-server suites were
+  skipped. Core passed (4104 tests), `swiftformat --lint .` and `swiftlint --strict` were clean.
+  The working tree was clean at the start; tab-history files were untouched. Changes left
+  uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

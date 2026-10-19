@@ -264,9 +264,17 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - **Drive the viewport layout before checking the text frame.** Calling TextKit 2's
     `textViewportLayoutController.layoutViewport()` at that failing poll immediately grew the frame
     to **144,721 points** and the viewport range to `{0, 1006}`. The text test now does that in its
-    readiness closure; the deadline stays 10 s. This keeps lazy layout and the assertion that End
-    reaches the last character. Do not force layout for the whole document or read `.layoutManager`,
-    which switches to TextKit 1. PDF tests still wait for visible pages in an ordered window.
+    readiness closure. This keeps lazy layout and the assertion that End reaches the last character.
+    Do not force layout for the whole document or read `.layoutManager`, which switches to TextKit 1.
+    PDF tests still wait for visible pages in an ordered window.
+  - **The read itself can still be pending after 10 s.** Traced 2026-10-20 after the viewport fix:
+    the load task first ran at **12.04 s**, read the file in **5.6 ms**, then delivered the result on
+    the main actor at **21.34 s**. The drawing wait woke at **12.07 s** with no text and failed.
+    `QuickViewTextPreviewTests.loaded` only waits for the surface to be visible; `showText` makes it
+    visible before starting the read. The scroll test now requires the full text before laying out
+    the viewport, and `drawn` allows **30 s** on a monotonic clock, like the other preview waits.
+    Checking readiness before the deadline still matters: a passing baseline woke at 9.96 s with
+    no text, then at 17.60 s with all of it. Its pass depended on that first wake staying below 10 s.
 
 - **A synthetic drag uses the process event queue, and a new window can change its coordinates.**
   Measured 2026-10-17 in `PanesDividerDetentTests`: tracing `NSApplication.nextEvent` and the split
