@@ -4894,6 +4894,22 @@ do not share a resolver, and neither half of that is obvious from either call si
   - The corollary for the exit code: an exit whose stderr is **nothing but** metadata refusals is a
     transfer that worked. The transfer's own `-p` cannot be `-`-prefixed (a failed `put` has to stay
     a failed copy), so that rule is what covers a `put -p` whose `setstat` the server refuses.
+- **Several `ls -la` in one batch can be split back per folder, but only with stderr folded into
+  stdout.** Measured 2026-10-19 against a throwaway `sshd` (OpenSSH 10.3) for the tree refresh's
+  batch (`SFTPBatchListing`). `sftp` echoes every line it runs as `sftp> <line>`, under `-b -` and
+  over piped stdin alike (the password route also prints `Connected to …` first), so the echo frames
+  each folder. A refused folder prints its echo and then nothing on stdout; the refusal goes to stderr
+  as `remote readdir("<dir>/"): Permission denied` or `Can't ls: "<dir>" not found`, both ending in
+  `\r\n`. In two pipes nothing says whose refusal it was. In one pipe it lands between its own echo
+  and the next, because `sftp` line-buffers stdout: that held behind a 3000-row listing.
+  - Three more facts the reader depends on. The exit status is 0 whether the refused folder is in
+    the middle or last, so it says nothing per folder. An empty folder on OpenSSH still prints `.` and
+    `..`, so "no rows and no text" only happens on a server that sends neither. And `sftp` prints a
+    name **raw, newline included** (`new\nline.txt` lists as two lines), so a name can forge any line
+    except one holding a `/`. That is why the batch ends on `pwd` (free, client-side), searched from
+    the end, and why a folder's block is trusted only once the next echo has arrived.
+  - **Swift reads `\r\n` as one `Character`**, so `split(separator: "\n")` on the `String` leaves the
+    refusal glued to the next echo and the frame is lost. Split the `unicodeScalars`.
 
 #### Listings and names
 

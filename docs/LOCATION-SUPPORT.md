@@ -142,11 +142,12 @@ stretch**: uncovering its window, returning to Dirnex from another app, clicking
 another Dirnex window or switching to its tab asks again at once if its rows are older than the
 floor, and otherwise waits out the rest of the floor. The stretch only governs a pane nobody is
 touching. A tree re-lists every open folder in one refresh, and **over FTP they all go over one
-login** rather than one each. Measured 2026-10-19 on an FTPES server 41 ms away, a tree with two
-folders open cost three ~1 s logins a refresh and the poll waited 59 s between refreshes, so a file
-written there from elsewhere could take a minute to appear. Over SFTP a tree still costs a session
-per open folder. FSEvents stays exact and free, which is why the local and cloud-mount columns are a
-plain yes.
+login, over SFTP through one session**, rather than one each. Measured 2026-10-19 on an FTPES server
+41 ms away, a tree with two folders open cost three ~1 s logins a refresh and the poll waited 59 s
+between refreshes, so a file written there from elsewhere could take a minute to appear. Over SFTP
+the same tree in the running app went from three `Accepted publickey` a refresh to one, against a
+throwaway `sshd`. S3 still lists the open folders in turn. FSEvents stays exact and free, which is
+why the local and cloud-mount columns are a plain yes.
 
 <sup>nn</sup> A bar is a row's share of **its own directory**, so it needs every sibling's total
 rather than the cursor's, where the `Space` total above needs one. That is what used to gate the mode

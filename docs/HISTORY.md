@@ -14927,6 +14927,48 @@ be a server lag". It was not the server.
   when its suite ran alone. No user-visible strings. Over SFTP a tree still costs a session per open
   folder (docs/LOCATION-SUPPORT.md). Changes left uncommitted.
 
+**2026-10-19: an SFTP tree refreshes through one session too.** The same seam, for the backend the
+entry above left behind: each `sftp` is a fresh connect, key exchange and authentication, so a tree
+with two folders open paid three a round.
+
+- **Probed before any Swift**, against the throwaway `sshd` (docs/NOTES.md ▸ sftp / ssh). `sftp`
+  echoes each batch line as `sftp> <line>`, so the echo frames each folder. Each `ls -la` goes in
+  allowed to fail (`-`), since a plain `-b` batch stops at the first refused folder. The refusal goes
+  to stderr, so the run folds stderr into stdout, where it lands between its own echo and the next.
+  The exit status is 0 wherever the refused folder sits, so only the transcript is read.
+- **Not core-only, as briefed**: the `sftp` process transport lives in the app. The core holds the
+  decisions. `SFTPTransport.listDirectories(_:isCancelled:)` is a new requirement whose default
+  lists each folder, as FTP's does. `SFTPBatchListing` builds the batch and splits the transcript.
+  `SFTPBackend+Listings` is the override, with FTP's fallback rules. The app adds the verb
+  (`SFTPProcessTransport+Listings`) and a merged-stream run (`run(transcript:)`), and classifies
+  nothing.
+- **A folder's answer counts only once `sftp` has moved on to the next line.** A session that ends
+  inside a folder answers `nil` for it, so a dropped connection can never empty a folder. The batch
+  ends on `pwd` to give the last folder a next line. `pwd` is free, since `sftp` answers it from
+  what it resolved at connect. `sftp` prints names raw, newline included, so a name can forge any
+  line without a `/`. The end marker is therefore searched from the end. A path with a newline stays
+  out of the batch and answers `nil`, which is what its single listing does (`Unterminated quoted
+  argument`). An echo that does not read back as sent costs its folder and the one before it, never
+  another folder's rows.
+- **Pinned** by `SFTPBatchListingTests` (10, on transcripts shaped like the probe's) and
+  `SFTPBatchedListingTests` (11, one on the forwarding default). That suite's double prints what `sftp` would and reads it through
+  the shipped splitter. `SFTPBatchedListingLiveTests` runs the real batch with a refused, a missing
+  and an empty folder in the middle, each answer equal to its single listing. Negative controls,
+  each restored afterwards. With the override renamed away, the four session-counting tests failed
+  and every answer test passed. With the end marker searched from the start, the forged-name test
+  failed. With a block trusted without a next echo, the truncated-session test failed.
+- **Verified live** on the Debug build launched by path, against the throwaway `sshd` with key auth,
+  so no Keychain was read. The left pane was seeded with a tree of three listed folders, the root
+  and two open below it. A temporary env-gated probe, removed afterwards, routed the verb back to one
+  listing per folder in the same build. Counting `Accepted publickey` in the server's log, the
+  control cost **3** sessions every 15 s round and the batch **1**, over four rounds each. The
+  defaults domain was imported back byte-identical.
+- Core green (4020 tests), both linters clean. App: 1772 tests with the live servers up, so the FTP
+  and SFTP live suites ran. One failure, `QuickViewScrollSurfaceTests` line 225 again, which passed
+  when its suite ran alone. The password route was not run live, since the throwaway server takes
+  keys only. Its piped-stdin shape was probed with the CLI and frames identically. No user-visible
+  strings. S3 still lists a tree's open folders in turn. Changes left uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
