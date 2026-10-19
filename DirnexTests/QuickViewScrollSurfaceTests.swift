@@ -84,8 +84,9 @@ struct QuickViewScrollSurfaceTests {
         let surface = try #require(preview.textSurface)
         let layout = try #require(surface.textView.textLayoutManager)
         let window = try await QuickViewScrollFixtures.drawn(preview) {
-            // In a full run the read can finish before the next display pass, with this poll already
-            // past its deadline. Lay out the viewport before checking the frame (docs/NOTES.md ▸ Testing).
+            // The surface is visible before its async read finishes. Wait for the whole text, then
+            // lay out the viewport: a resumed read need not have had a display pass yet.
+            guard surface.textView.string == text else { return false }
             layout.textViewportLayoutController.layoutViewport()
             return surface.textView.frame.height > surface.scrollView.contentView.bounds.height * 3
         }
@@ -214,6 +215,8 @@ enum QuickViewScrollFixtures {
     /// Put the preview's window on screen and wait until `ready`. `PDFView` needs this before it
     /// reports visible pages. The text test also drives its viewport layout in `ready`: sleeping
     /// allows the read to finish, but does not guarantee a display pass before the next poll.
+    /// Allow 30 seconds, like the other preview waits: a full run can delay the read's main-actor
+    /// task and its delivery past 10 seconds even though the read itself takes milliseconds.
     /// Check readiness before the deadline, so a late resume can still accept a ready preview
     /// (docs/NOTES.md ▸ Testing). The caller orders the window out afterwards.
     static func drawn(
@@ -222,9 +225,9 @@ enum QuickViewScrollFixtures {
     ) async throws -> NSWindow {
         let window = try #require(preview.window)
         window.orderFront(nil)
-        let deadline = Date().addingTimeInterval(10)
+        let deadline = ContinuousClock.now + .seconds(30)
         while !ready() {
-            try #require(Date() < deadline, "the preview never finished drawing")
+            try #require(ContinuousClock.now < deadline, "the preview never finished drawing")
             try await Task.sleep(for: .milliseconds(10))
         }
         preview.layoutSubtreeIfNeeded()
