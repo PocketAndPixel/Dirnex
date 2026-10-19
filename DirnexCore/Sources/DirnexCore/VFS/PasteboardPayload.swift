@@ -20,12 +20,22 @@ import Foundation
 /// costs *no* round trips, where re-`stat`ing each path would cost one apiece — 0.6 s each on S3, so
 /// a twelve-second stall before the job even appears. Staleness is the obvious objection, and the
 /// answer is that F5 already hands the queue entries straight out of the pane's listing, which are
-/// exactly as old; nothing here is staler than what shipped. The engine re-reads what it must (it
-/// copies metadata by *path*, not from the entry) and reports a vanished source per item.
+/// exactly as old; nothing here is staler than what shipped. The engine reports a vanished source
+/// per item.
+///
+/// **The mode and the date ride along because the engine reads them.** Since PLAN.md §M25 Slice 2 a
+/// remote copy carries its source's mode and modification time from the entry it was handed, and a
+/// pasted row is such an entry. Before 2026-10-19 the payload carried neither and rebuilt the mode as
+/// `0`, which the carry read as a real mode: a file dragged off an FTP server landed `----------`
+/// with today's date, and Quick View could only draw its icon. F5 was fine, because it hands the
+/// listing's own entry. So a paste now hands the engine exactly what F5 does.
 public struct PasteboardPayload: Sendable, Hashable, Codable {
     /// The format this build writes. A pasteboard outlives the app that filled it — the user can
     /// copy in one version and paste after an update — so a payload from a future build decodes to
     /// `nil` and the reader falls back to file URLs rather than guessing at fields it does not know.
+    ///
+    /// An *optional* field does not bump it. An older reader ignores a key it does not know, and a
+    /// newer one reads a missing key as absent, which is how the mode and date were added at 1.
     public static let currentVersion = 1
 
     /// The type name the app registers with `NSPasteboard`. It lives here, beside the encoding it
@@ -39,6 +49,12 @@ public struct PasteboardPayload: Sendable, Hashable, Codable {
     public let byteSize: Int64
     /// The raw link text for a symlink — what `CopyEngine` recreates rather than following.
     public let symlinkDestination: String?
+    /// The mode the listing reported, or `nil` where it reported none (S3, FTP's DOS dialect) — and
+    /// in a payload from a build before this field, which therefore carries nothing rather than a
+    /// guess.
+    public let permissions: UInt16?
+    /// The modification time the listing reported, or `nil` where it reported none.
+    public let modificationDate: Date?
 
     public init(
         version: Int = PasteboardPayload.currentVersion,
@@ -46,7 +62,9 @@ public struct PasteboardPayload: Sendable, Hashable, Codable {
         name: String,
         kind: FileEntry.Kind,
         byteSize: Int64,
-        symlinkDestination: String? = nil
+        symlinkDestination: String? = nil,
+        permissions: UInt16? = nil,
+        modificationDate: Date? = nil
     ) {
         self.version = version
         self.path = path
@@ -54,36 +72,44 @@ public struct PasteboardPayload: Sendable, Hashable, Codable {
         self.kind = kind
         self.byteSize = byteSize
         self.symlinkDestination = symlinkDestination
+        self.permissions = permissions
+        self.modificationDate = modificationDate
     }
 
     /// Snapshot `entry` for the pasteboard.
+    ///
+    /// The date goes through ``FileEntry/hasModificationDate`` because an unknown one is a sentinel
+    /// (`.distantPast`) rather than `nil`, and carrying the sentinel would stamp the copy with year 1.
     public init(_ entry: FileEntry) {
         self.init(
             path: entry.path,
             name: entry.name,
             kind: entry.kind,
             byteSize: entry.byteSize,
-            symlinkDestination: entry.symlinkDestination
+            symlinkDestination: entry.symlinkDestination,
+            permissions: entry.permissions,
+            modificationDate: entry.hasModificationDate ? entry.modificationDate : nil
         )
     }
 
     /// Rebuild the entry a transfer needs.
     ///
-    /// The fields this cannot know are given the same neutral values a synthesized row uses
-    /// elsewhere — `FileEntry.unknownDate`, no permissions, inode 0 — rather than plausible
-    /// invented ones, because the only consumer is the copy engine and it reads none of them. A
-    /// caller that needs a *real* stat (Get Info, an attribute edit) must go and take one; this is
-    /// a transfer's source, not a listing's row.
+    /// What the copy engine reads comes back as it was listed; a mode or date the listing did not
+    /// report comes back **absent**, never as a plausible value. Absent matters most for the mode:
+    /// the carry applies any mode it is given, so `0` here means `chmod 000` on the copy, while `nil`
+    /// means "nothing to carry". The rest (creation date, inode) gets the neutral values a
+    /// synthesized row uses elsewhere. A caller that needs a *real* stat (Get Info, an attribute
+    /// edit) must go and take one; this is a transfer's source, not a listing's row.
     public var entry: FileEntry {
         FileEntry(
             path: path,
             name: name,
             kind: kind,
             byteSize: byteSize,
-            modificationDate: FileEntry.unknownDate,
+            modificationDate: modificationDate ?? FileEntry.unknownDate,
             creationDate: FileEntry.unknownDate,
             isHidden: name.hasPrefix("."),
-            permissions: 0,
+            permissions: permissions,
             inode: 0,
             symlinkDestination: symlinkDestination
         )
@@ -99,6 +125,8 @@ public struct PasteboardPayload: Sendable, Hashable, Codable {
         case kind = "k"
         case byteSize = "s"
         case symlinkDestination = "l"
+        case permissions = "m"
+        case modificationDate = "t"
     }
 
     /// `FileEntry.Kind` has no raw value, and giving it one to satisfy this would put a wire format
@@ -140,6 +168,10 @@ public struct PasteboardPayload: Sendable, Hashable, Codable {
         kind = try container.decode(WireKind.self, forKey: .kind).kind
         byteSize = try container.decode(Int64.self, forKey: .byteSize)
         symlinkDestination = try container.decodeIfPresent(String.self, forKey: .symlinkDestination)
+        permissions = try container.decodeIfPresent(UInt16.self, forKey: .permissions)
+        modificationDate = try container
+            .decodeIfPresent(Double.self, forKey: .modificationDate)
+            .map(Date.init(timeIntervalSinceReferenceDate:))
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -151,6 +183,13 @@ public struct PasteboardPayload: Sendable, Hashable, Codable {
         try container.encode(WireKind(kind), forKey: .kind)
         try container.encode(byteSize, forKey: .byteSize)
         try container.encodeIfPresent(symlinkDestination, forKey: .symlinkDestination)
+        try container.encodeIfPresent(permissions, forKey: .permissions)
+        // Seconds since 2001-01-01 UTC, `Date`'s own reference, so the value round-trips exactly.
+        // Spelled out rather than left to `JSONEncoder`'s date strategy, which a caller can change.
+        try container.encodeIfPresent(
+            modificationDate?.timeIntervalSinceReferenceDate,
+            forKey: .modificationDate
+        )
     }
 
     /// The bytes to put on one pasteboard item, or `nil` if the payload cannot be encoded at all.

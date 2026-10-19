@@ -14833,6 +14833,45 @@ flips files, and ⇧ now separates the two: before, every arrow went to the flip
 - Core green (3977 tests), app green (1768, only the expected `GestureWaitTests` issue), both
   linters clean. No user-visible strings. Changes left uncommitted.
 
+**2026-10-19: a file dragged off a server keeps its mode and date.** Reported by Oleg with three
+screenshots. He dragged `Agences_SYNERGIE_ATS.xml` from an FTP pane into a local one, and Quick View
+showed the copy only as a generic XML icon, while the same file on the server previewed as a table.
+The copy was `----------`, so nothing could read it, and its date was the time of the copy. Its
+ctime equalled that mtime: the `chmod` had run and no `utimes` had followed it.
+
+- **The cause was `PasteboardPayload.entry`.** A drag and ⌘C/⌘V both hand the queue the entry the
+  payload rebuilds, and it rebuilt the mode as `0` and the date as unknown. Its comment said the
+  copy engine "reads none of them". That stopped being true at M25 Slice 2, when a remote copy began
+  carrying the mode and date from the entry it is given. `0` is a real mode to the carry, so an FTP
+  download ran `chmod 000` and had no date to set. F5 was never affected, because it hands the
+  listing's own entry. Read off the code, the same `000` reached an upload to FTP (`SITE CHMOD 000`)
+  and a dragged folder over FTP or SFTP in either direction. An SFTP file upload was spared, since
+  `put -p` reads the mode off the local file.
+- **The payload now carries the mode and the date**, as optional keys `m` and `t` (seconds since
+  2001, `Date`'s own reference, so the value round-trips exactly). A row that listed neither comes
+  back with neither, so the carry has nothing to do. The version stays 1: an older build ignores the
+  two keys, and a payload from one reads as absent rather than as `000`.
+- **Pinned** by four new `PasteboardPayloadTests` and a `PastedRowCarryTests` suite of two. The payload
+  tests check that a pasted row's `CopySourceHint` equals F5's (mode and date present, either
+  missing, fractional seconds), that absent stays absent, that an older payload carries nothing, and
+  the wire spelling. The suite lists real `LIST` rows through a fake FTP server, puts the entry
+  through the payload and downloads it onto a real file: a Unix row lands `0644` with its date, and
+  a DOS row, which has no mode, leaves the file's mode alone and still sets the date. The test that
+  pinned `permissions == 0` now expects the listed mode. Negative control: with the old
+  `PasteboardPayload.swift` stashed, all seven fail, and both downloads land `000`.
+- **Verified live** on the Debug build launched by path, against a throwaway anonymous `pyftpdlib`
+  server, so no Keychain was read. Its `LIST` printed `-rw-r--r-- … Jun 14 2024`. The left pane was
+  seeded on that folder with the cursor on the file. `run operation "edit.copy"` put
+  `"m":420,"t":740005200` on the general pasteboard (2024-06-14 00:00 local, the most `LIST` says of
+  an old file). Then `reveal` pointed the pane at an empty local folder and `edit.paste` landed the
+  file `-rw-r--r--` with that date, bytes identical, from one `RETR` in the server's log. A real drag
+  cannot be synthesized, but a drop reads the same payload through the same reader as ⌘V. Oleg's
+  release build was quit first, and the defaults domain was imported back byte-identical afterwards.
+- Core green (3983 tests), both linters clean. App: 1768 tests, one failure in two full runs:
+  `QuickViewScrollSurfaceTests`' text case, whose 10 s wait for the preview to draw (line 225) ran
+  out. It is not this change. It fails the same way in a full run with every change here stashed,
+  and passes when its suite runs alone (twice). No user-visible strings. Changes left uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

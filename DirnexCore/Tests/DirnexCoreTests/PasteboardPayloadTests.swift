@@ -33,6 +33,21 @@ struct PasteboardPayloadTests {
         )
     }
 
+    /// A row as a listing reports it, with the two facts a remote copy carries either present or not.
+    private func listed(_ path: VFSPath, mode: UInt16?, date: Date?) -> FileEntry {
+        FileEntry(
+            path: path,
+            name: path.lastComponent,
+            kind: .file,
+            byteSize: 10,
+            modificationDate: date ?? FileEntry.unknownDate,
+            creationDate: FileEntry.unknownDate,
+            isHidden: false,
+            permissions: mode,
+            inode: 0
+        )
+    }
+
     @Test("a location on every backend survives the round trip, backend included")
     func roundTripsEveryBackend() throws {
         let paths: [VFSPath] = [
@@ -74,24 +89,78 @@ struct PasteboardPayloadTests {
     }
 
     @Test("the rebuilt entry carries what CopyEngine reads, and nothing invented")
-    func rebuildsWhatTheEngineReads() {
+    func rebuildsWhatTheEngineReads() throws {
         let source = entry(
-            VFSPath(backend: VFSBackendID("s3://bucket"), path: "/a/b.bin"),
-            name: "b.bin",
+            VFSPath(backend: VFSBackendID("ftp://user@host"), path: "/a/b.xml"),
+            name: "b.xml",
             kind: .file,
             size: 4096
         )
-        let rebuilt = PasteboardPayload(source).entry
-        // What the engine reads off a source entry.
+        let data = try #require(PasteboardPayload(source).encoded())
+        let rebuilt = try #require(PasteboardPayload.decode(data)).entry
+        // What the engine reads off a source entry. The mode and the date are what a remote copy
+        // carries since PLAN.md §M25 Slice 2.
         #expect(rebuilt.path == source.path)
         #expect(rebuilt.name == source.name)
         #expect(rebuilt.kind == source.kind)
         #expect(rebuilt.byteSize == source.byteSize)
+        #expect(rebuilt.permissions == 0o644)
+        #expect(rebuilt.modificationDate == source.modificationDate)
         // What it does not: neutral, never a plausible invention. A caller wanting these must stat.
-        #expect(rebuilt.modificationDate == FileEntry.unknownDate)
-        #expect(!rebuilt.hasModificationDate)
-        #expect(rebuilt.permissions == 0)
+        #expect(rebuilt.creationDate == FileEntry.unknownDate)
         #expect(rebuilt.inode == 0)
+    }
+
+    @Test("a pasted row hands the copy engine the same hint F5 hands it")
+    func pastedRowHintMatchesTheListing() throws {
+        let path = VFSPath(backend: VFSBackendID("ftp://user@host"), path: "/AGENCE/a.xml")
+        let when = Date(timeIntervalSince1970: 1_700_000_000)
+        let sources = [
+            listed(path, mode: 0o644, date: when),
+            listed(path, mode: nil, date: when),
+            listed(path, mode: 0o600, date: nil),
+            // Fractional seconds, as a local `stat` reports them, so the encoding has to be exact.
+            listed(.local("/tmp/a.xml"), mode: 0o755, date: when.addingTimeInterval(0.123_456_789))
+        ]
+        for source in sources {
+            let data = try #require(PasteboardPayload(source).encoded())
+            let pasted = try #require(PasteboardPayload.decode(data)).entry
+            #expect(CopySourceHint(pasted) == CopySourceHint(source))
+        }
+    }
+
+    @Test("a row with no mode and no date is absent on the far side, never mode 000")
+    func absentStaysAbsent() throws {
+        // S3 and FTP's DOS dialect list no mode. The carry applies any mode it is handed, so a `0`
+        // here was `chmod 000` on the copy: a file dragged off a server landed unreadable.
+        let source = listed(
+            VFSPath(backend: VFSBackendID("s3://bucket"), path: "/a/b.bin"), mode: nil, date: nil
+        )
+        let data = try #require(PasteboardPayload(source).encoded())
+        let rebuilt = try #require(PasteboardPayload.decode(data)).entry
+        #expect(rebuilt.permissions == nil)
+        #expect(!rebuilt.hasModificationDate)
+        #expect(CopySourceHint(rebuilt).metadata == nil)
+    }
+
+    @Test("a payload from a build before the mode and date carries nothing, rather than mode 000")
+    func olderPayloadCarriesNothing() throws {
+        // Minted by hand, because the subject is the reader: this is what a build before 2026-10-19
+        // put on the board, and a paste across an update reads exactly these bytes.
+        let older = #"{"v":1,"b":"ftp://user@host","p":"/a.xml","n":"a.xml","k":"f","s":10}"#
+        let rebuilt = try #require(PasteboardPayload.decode(Data(older.utf8))).entry
+        #expect(rebuilt.permissions == nil)
+        #expect(!rebuilt.hasModificationDate)
+        #expect(CopySourceHint(rebuilt).metadata == nil)
+    }
+
+    @Test("the mode is a plain number and the date is seconds since 2001, under m and t")
+    func readsTheWireSpelling() throws {
+        // Minted by hand for the same reason: a live check that seeds the board writes these keys.
+        let minted = #"{"v":1,"b":"local","p":"/tmp/x","n":"x","k":"f","s":1,"m":420,"t":0}"#
+        let rebuilt = try #require(PasteboardPayload.decode(Data(minted.utf8))).entry
+        #expect(rebuilt.permissions == 0o644)
+        #expect(rebuilt.modificationDate == Date(timeIntervalSinceReferenceDate: 0))
     }
 
     @Test("a dot-file rebuilds as hidden — the one derived field, and it is derivable")
