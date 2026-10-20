@@ -372,6 +372,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   The fix is to arrange what the click would have done (`selectRowIndexes`) and still drive the
   press, which proves everything after the selection. A ⌘ or ⇧ click needs none of this: the pane
   consumes it before `super.mouseDown`, which is why the earlier mouse tests never met it.
+  - **An `NSButton` does fire from the same pattern, but only with its window on screen.** Measured
+    2026-10-20 in `QuickViewHeaderStyleTests`: the release queued, then `mouseDown` sent to whatever
+    `contentView.hitTest` answered for the button's center. Off screen the loop took the release and
+    sent no action. After `orderFront` it sent the action, with the window still not key. So a pointer
+    click on a button is testable end to end, hit test included, which `performClick` and computer
+    use's AXPress both skip. Keep a control that removes the thing letting the hit through.
 
 ### Waits, run loops and timing
 

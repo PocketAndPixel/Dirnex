@@ -15139,6 +15139,41 @@ in a traced run of 1789 tests; the scroll suite had passed alone.
   The working tree was clean at the start; tab-history files were untouched. Changes left
   uncommitted.
 
+**2026-10-20: the Quick View header's styles are clickable.** Asked for by Oleg: "1 Source · 2 Table"
+(or "· 2 Page", "· 2 Tree") picks a style on a click, as its digit does, at all three sizes. The
+header's `onPickStyle` reaches the window's `setQuickViewRenderStyle` for the two full sizes, and the
+covered pane's host for ⌃Q, which is why `PanelHost` gained that method. A click on the style already
+showing does nothing, since the preference already ignores a value it holds.
+
+- **The one label became a strip**: an `NSStackView` of a button per style, the dot between them
+  and the "(no JavaScript)" mark, each hidden for a file with one rendering so the strip takes no
+  room from the name. The buttons refuse first responder, so the arrows stay on the file list.
+- **A plain borderless button pads its title about 2.5 pt a side**, where a label's insets cancel its
+  cell's padding, so a straight swap moved the first style off the 12 pt margin and opened the gaps
+  around the dot. `QuickViewStyleButton` sets 2 pt alignment insets, which `NSButton` takes off its
+  own intrinsic size (probed: 50 → 46), so the text lands within half a point of where the label
+  drew it and the padding stays clickable.
+- **The faded full-screen header now keeps every subview out of reach**, not just the ×: a click on
+  an invisible "1 Source" over a photograph would otherwise have switched the style.
+- **Pinned** by `QuickViewHeaderStyleTests` (nine tests): a click reaching the owner, the ⌃Q host,
+  titles and colors, text placement, an empty strip for a file with one rendering, the mark, the
+  faded hit test, focus, and a pointer press that goes through the window's hit test into the
+  button's tracking loop (docs/NOTES.md ▸ Testing). `QuickViewPaneSurfaceTests` now reads the
+  buttons. Negative controls: a plain `NSButton` fails the placement test (the first version of
+  that test measured frames and passed it, so it now measures the drawn title); the old ×-only
+  fade rule fails the faded test; and with the header off the surface's hit-test exemptions the
+  pointer test fails.
+- **Verified live** on the Debug build launched by path, after quitting a stale Debug copy left
+  running since 00:06, with settings backed up and restored (66 keys, identical by value). In ⌃⇧Q
+  on a CSV, "1 Source" showed its text and wrote only `quickViewTableStyle`, "2 Table" put the table
+  back, and ↑ then flipped to the next file, so the list kept the keyboard. In ⌃Q on an HTML page
+  "1 Source" showed the markup, wrote only `quickViewRenderStyle`, and dropped the "(no JavaScript)"
+  mark. Computer use delivered each click as an accessibility press, which skips the hit test; the
+  pointer test above covers that half. Full screen was not run, since it would take over the screen.
+- App green (1798 tests in 285 suites, only the expected `GestureWaitTests` issue; live-server
+  suites skipped). Core green (4104 tests). Both linters clean. No new strings. Changes left
+  uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

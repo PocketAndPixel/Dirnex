@@ -83,6 +83,10 @@ protocol PanelHost: ClosedTabHost {
     /// the file list rather than stepping down to a smaller preview.
     func closeQuickView()
 
+    /// Show the previewed file in `style`, as its `1` / `2` key does — a click on the header of the
+    /// ⌃Q surface, which sits in the covered pane while the window owns the preference.
+    func setQuickViewRenderStyle(_ style: QuickViewRenderStyle)
+
     /// Move a full-size Quick View on by `steps` files, animated like the two-finger swipe (← / →).
     /// The window owns it because the preview surface being turned is the window's, not the pane's.
     func flipQuickView(steps: Int)
