@@ -131,6 +131,13 @@ final class StubPanelHost: PanelHost {
         quickViewCloses += 1
     }
 
+    /// Every style a pane asked for, since the header's `1 Source · 2 Page` became buttons
+    /// (2026-10-20): in ⌃Q the click lands in the covered pane, which has to pass it to the window.
+    private(set) var quickViewStylePicks: [QuickViewRenderStyle] = []
+    func setQuickViewRenderStyle(_ style: QuickViewRenderStyle) {
+        quickViewStylePicks.append(style)
+    }
+
     /// Every flip a pane asked for, and every scroll. Recorded since the ⇧-arrows learned to scroll
     /// the preview (2026-10-18): at full size the same arrow key flips or scrolls depending on ⇧, and
     /// which of the two calls a key made is the table's whole answer.

@@ -58,7 +58,7 @@ struct QuickViewPaneSurfaceTests {
             "a floating header would be faded out until the pointer moved"
         )
         #expect(header.frame.height == QuickViewHeaderView.height)
-        let texts = header.subviews.compactMap { ($0 as? NSTextField)?.stringValue }
+        let texts = header.styleButtons.filter { !$0.isHiddenOrHasHiddenAncestor }.map(\.title)
         for style in QuickViewRenderStyle.allCases {
             let label = style.headerLabel(for: .table)
             #expect(texts.contains { $0.contains(label) }, "\(label) missing from \(texts)")

@@ -44,10 +44,23 @@ final class QuickViewHeaderView: NSVisualEffectView {
 
     private let nameLabel = NSTextField(labelWithString: "")
     private let positionLabel = NSTextField(labelWithString: "")
-    /// "1 Source · 2 Page" for a file that offers both, blank for every other file. The only place
+    /// "1 Source · 2 Page" for a file that offers both, nothing for every other file. The only place
     /// the two keys announce themselves, so it names *both* and dims the one you are not in rather
     /// than naming only the alternative — which reads as a label for what you are looking at.
-    private let styleLabel = NSTextField(labelWithString: "")
+    /// Each style is a button since 2026-10-20, so a hand on the trackpad picks one as its digit does.
+    private let styleStrip = NSStackView()
+    /// One per style, in `QuickViewRenderStyle.allCases` order. Internal, for the tests.
+    let styleButtons = QuickViewRenderStyle.allCases.map { style in
+        QuickViewHeaderView.makeStyleButton(for: style)
+    }
+
+    /// The "(no JavaScript)" after the two styles; see `noJavaScriptMark`.
+    private let noJavaScriptLabel = NSTextField(
+        labelWithString: "  \(QuickViewHeaderView.noJavaScriptMark)"
+    )
+    /// What a click on a style does. Set by whoever owns the surface, like `onClose`, since the
+    /// preference it writes belongs to the window rather than to the strip.
+    var onPickStyle: ((QuickViewRenderStyle) -> Void)?
     /// Closes Quick View, for a hand on the trackpad: every other way out is a key (Esc, or the
     /// mode's own ⌃Q / ⌃⇧Q / ⌃⌥Q). It sits right after the name, and stays when the cursor lands on
     /// `..` and the name goes blank: there is still a preview to close. Internal, for the tests.
@@ -63,11 +76,7 @@ final class QuickViewHeaderView: NSVisualEffectView {
             guard caption != oldValue else { return }
             nameLabel.stringValue = caption?.name ?? ""
             positionLabel.stringValue = caption?.positionText ?? ""
-            styleLabel.attributedStringValue = Self.styleText(
-                for: caption?.style,
-                kind: caption?.styleKind ?? .page,
-                javaScriptDisabled: caption?.javaScriptDisabled == true
-            )
+            showStyles(of: caption)
         }
     }
 
@@ -79,6 +88,7 @@ final class QuickViewHeaderView: NSVisualEffectView {
         // key while the user is looking at a photo, and a strip that goes flat then reads as a bug.
         state = .active
         translatesAutoresizingMaskIntoConstraints = false
+        buildStyleStrip()
         buildLabels()
         buildCloseButton()
     }
@@ -96,8 +106,7 @@ final class QuickViewHeaderView: NSVisualEffectView {
         nameLabel.alignment = .center
         positionLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         positionLabel.textColor = .secondaryLabelColor
-        styleLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        for label in [nameLabel, positionLabel, styleLabel] {
+        for label in [nameLabel, positionLabel] {
             label.translatesAutoresizingMaskIntoConstraints = false
             addSubview(label)
         }
@@ -108,10 +117,10 @@ final class QuickViewHeaderView: NSVisualEffectView {
             heightAnchor.constraint(equalToConstant: Self.height),
             nameLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
             nameLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
-            styleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
-            styleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            styleStrip.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            styleStrip.centerYAnchor.constraint(equalTo: centerYAnchor),
             nameLabel.leadingAnchor.constraint(
-                greaterThanOrEqualTo: styleLabel.trailingAnchor,
+                greaterThanOrEqualTo: styleStrip.trailingAnchor,
                 constant: 12
             ),
             positionLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
@@ -158,52 +167,14 @@ final class QuickViewHeaderView: NSVisualEffectView {
         onClose?()
     }
 
-    /// Keep the close button out of reach while a floating header is faded out. A view at zero alpha
-    /// is still hit-tested (docs/NOTES.md ▸ Views, layout and hit testing), so without this a click
-    /// on the top of a full-screen photograph, where nothing can be seen, would close the preview.
-    /// The strip itself still takes the click, as it did before it had a button.
+    /// Keep the buttons out of reach while a floating header is faded out. A view at zero alpha is
+    /// still hit-tested (docs/NOTES.md ▸ Views, layout and hit testing), so without this a click on
+    /// the top of a full-screen photograph, where nothing can be seen, would close the preview or
+    /// switch its style. The strip itself takes the click, as it did before it had buttons.
     override func hitTest(_ point: NSPoint) -> NSView? {
         let hit = super.hitTest(point)
-        guard hit === closeButton, alphaValue == 0 else { return hit }
+        guard hit != nil, alphaValue == 0 else { return hit }
         return self
-    }
-
-    /// "1 Source · 2 Page", with the current style in full strength and the other dimmed — one
-    /// glance says both what you are looking at and which key changes it. Empty for a file with a
-    /// single rendering, so the strip says nothing where the keys would do nothing.
-    ///
-    /// A page rendered with scripts refused carries "(no JavaScript)" after the two styles. Written
-    /// as a lowercase parenthetical rather than as a third `· item` on purpose: the two styles are
-    /// a list of things a key selects, and a note that reads like a third one invites the user to
-    /// look for the digit that picks it. It appears only in `.rendered` — in source mode no script
-    /// would have run either way, so the mark would be true and meaningless.
-    private static func styleText(
-        for style: QuickViewRenderStyle?,
-        kind: QuickViewDualStyleKind,
-        javaScriptDisabled: Bool
-    ) -> NSAttributedString {
-        guard let style else { return NSAttributedString() }
-        let text = NSMutableAttributedString()
-        for candidate in QuickViewRenderStyle.allCases {
-            if text.length > 0 {
-                text.append(NSAttributedString(
-                    string: " · ",
-                    attributes: [.foregroundColor: NSColor.tertiaryLabelColor]
-                ))
-            }
-            let color = candidate == style ? NSColor.labelColor : .secondaryLabelColor
-            text.append(NSAttributedString(
-                string: "\(candidate.digit) \(candidate.headerLabel(for: kind))",
-                attributes: [.foregroundColor: color]
-            ))
-        }
-        if style == .rendered, javaScriptDisabled {
-            text.append(NSAttributedString(
-                string: "  \(Self.noJavaScriptMark)",
-                attributes: [.foregroundColor: NSColor.tertiaryLabelColor]
-            ))
-        }
-        return text
     }
 
     /// The mark itself, keyed by its English text like every other app literal.
@@ -211,4 +182,100 @@ final class QuickViewHeaderView: NSVisualEffectView {
         localized: "(no JavaScript)",
         comment: "Quick View header mark: the rendered page was drawn with scripts refused."
     )
+}
+
+// MARK: - The styles
+
+extension QuickViewHeaderView {
+    /// The strip's one font, the system's small size, which every label in the header shares.
+    private static let styleFont = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+
+    /// "1 Source · 2 Page", each style a button and the dot between them plain text, ahead of the
+    /// "(no JavaScript)" mark. Spacing 0, so the pieces sit as the one label they replaced drew them.
+    private func buildStyleStrip() {
+        styleStrip.orientation = .horizontal
+        styleStrip.alignment = .firstBaseline
+        styleStrip.spacing = 0
+        // A file with one rendering hides every piece, and the strip goes to nothing rather than
+        // keeping room the centered name could use.
+        styleStrip.detachesHiddenViews = true
+        for button in styleButtons {
+            if !styleStrip.arrangedSubviews.isEmpty {
+                styleStrip.addArrangedSubview(Self.stripLabel(" · ", color: .tertiaryLabelColor))
+            }
+            button.target = self
+            button.action = #selector(styleClicked(_:))
+            styleStrip.addArrangedSubview(button)
+        }
+        noJavaScriptLabel.font = Self.styleFont
+        noJavaScriptLabel.textColor = .tertiaryLabelColor
+        styleStrip.addArrangedSubview(noJavaScriptLabel)
+        styleStrip.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(styleStrip)
+    }
+
+    /// The button for `style`, named by its raw value so a click can say which one it was.
+    private static func makeStyleButton(for style: QuickViewRenderStyle) -> NSButton {
+        let button = QuickViewStyleButton()
+        button.identifier = NSUserInterfaceItemIdentifier(style.rawValue)
+        button.isBordered = false
+        // A click must not take focus: the arrow keys keep driving the file list under the preview.
+        button.refusesFirstResponder = true
+        return button
+    }
+
+    private static func stripLabel(_ text: String, color: NSColor) -> NSTextField {
+        let label = NSTextField(labelWithString: text)
+        label.font = styleFont
+        label.textColor = color
+        return label
+    }
+
+    /// The current style in full strength and the other dimmed — one glance says both what you are
+    /// looking at and which key or click changes it. Hidden for a file with a single rendering, so
+    /// the strip says nothing where the keys would do nothing.
+    ///
+    /// A page rendered with scripts refused carries "(no JavaScript)" after the two styles. Written
+    /// as a lowercase parenthetical rather than as a third `· item` on purpose: the two styles are
+    /// a list of things a key selects, and a note that reads like a third one invites the user to
+    /// look for the digit that picks it. It appears only in `.rendered` — in source mode no script
+    /// would have run either way, so the mark would be true and meaningless.
+    private func showStyles(of caption: QuickViewCaption?) {
+        let style = caption?.style
+        let kind = caption?.styleKind ?? .page
+        for view in styleStrip.arrangedSubviews {
+            view.isHidden = style == nil
+        }
+        for (candidate, button) in zip(QuickViewRenderStyle.allCases, styleButtons) {
+            button.attributedTitle = NSAttributedString(
+                string: "\(candidate.digit) \(candidate.headerLabel(for: kind))",
+                attributes: [
+                    .font: Self.styleFont,
+                    .foregroundColor: candidate == style ? NSColor.labelColor : .secondaryLabelColor
+                ]
+            )
+        }
+        noJavaScriptLabel.isHidden = style != .rendered || caption?.javaScriptDisabled != true
+    }
+
+    /// Hand the clicked style to the surface's owner, which writes it exactly as its digit would.
+    /// The style already on screen is handed over too: the preference ignores a value it already
+    /// holds, so the click is simply a no-op there rather than a rule of the strip's own.
+    @objc private func styleClicked(_ sender: NSButton) {
+        guard let raw = sender.identifier?.rawValue,
+              let style = QuickViewRenderStyle(rawValue: raw)
+        else { return }
+        onPickStyle?(style)
+    }
+}
+
+/// A borderless text button that lays out on its title like a label. The cell pads the title by
+/// about 2 pt a side where a label's insets cancel its own padding, so a plain button pushed each
+/// style that far right of where the one label drew it, and the dots apart. Measured 2026-10-20:
+/// with these insets the title lands within half a point of the label's, and the padding stays
+/// clickable beside the text — the close button's reasoning, for a trackpad click just off a word.
+private final class QuickViewStyleButton: NSButton {
+    override var alignmentRectInsets: NSEdgeInsets {
+        NSEdgeInsets(top: 0, left: 2, bottom: 0, right: 2)
+    }
 }
