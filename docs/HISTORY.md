@@ -15215,6 +15215,47 @@ wants Total Commander's keys can change them in Settings.
   the expected `GestureWaitTests` issue; live-server suites skipped). Both linters clean. Changes
   left uncommitted.
 
+**2026-10-21: app tests leave the user's defaults alone.** Oleg saw saved tab widths and frecency
+change across an app test run. The test host has the same bundle id as the installed app, so its
+`UserDefaults.standard` is the user's `com.dirnex.Dirnex`.
+
+- **Reproduced before editing**, after quitting every Dirnex and exporting the 68-key domain.
+  The unmodified full suite passed, but two restored folders gained one frecency point each and
+  new access times. A mid-run export already held the changes. Tab content stayed unchanged in
+  this run; their JSON object key order changed, which a byte comparison would wrongly report.
+- **The writer was the normal app launch.** `AppDelegate` builds `BrowserWindowController`, which
+  restores both panes. Navigation reports a visit through the window to `FrecencyStore.shared`
+  and calls `persistState`; column layout also saves tabs. Quit saves tabs once more. Guarding
+  only quit would leave the startup writes in place.
+- **Oleg chose one startup guard.** `main.swift` still installs the shared AppKit behavior, but
+  creates no app delegate under `XCTestConfigurationFilePath`. The persistent sidebar appearance
+  default is in that same branch. Tests build the controllers they need. The stores keep their
+  existing scratch-domain seams: standard defaults still belong to the user.
+- `TestHostLifecycleTests` checks the running host's delegate. With the guard removed, its one
+  test failed on that assertion; restored, it passed in the full suite. CI also exports the real
+  domain before the test process starts and after it exits, including failed runs. The new
+  `check_defaults_unchanged.py` compares every key, decodes JSON data and strings, and keeps array
+  order and value types. It rejects the baseline frecency change and ignores JSON object key order.
+- **Verified against the saved user domain:** before/after exports around the exact
+  `xcodebuild test -project Dirnex.xcodeproj -scheme Dirnex` command had all **68 keys unchanged
+  by content**. A second full run also left them unchanged.
+- **A clean-domain control found a second writer.** Two `FileColorRuleRenderingTests` saved
+  fixtures through the shared store and restored the old rules in `defer`. That left an empty
+  `Dirnex.fileColorRules` value when the key had been absent. The store now requires a defaults
+  domain; the app uses `shared`, and the two tests use separate scratch stores. Notifications are
+  scoped to their store. A fresh store checks the saved rules, replacing the test-only cache reset.
+  After this fix, a full app run left the empty domain empty (**0 keys before and after**).
+  The final full run over the restored user domain also left all **68 keys unchanged**.
+- **The backup check also caught an import trap:** importing an empty plist left all 68 keys in
+  place. A clean-domain test needs an explicit delete after backup; importing a backup alone also
+  cannot remove extra keys from an experiment. Recorded in `docs/LIVE-VERIFICATION.md`.
+- **Normal launch still works:** the fresh Debug build showed both panes at Home with session
+  restore temporarily off, avoiding a saved server reconnect. Closing the browser window quit the
+  process. The original defaults were then restored with `defaults import` after clearing the
+  probe state, and the final export matched all 68 original keys by content.
+- Core green (4100 tests). App green (1799 tests in 286 suites, only the expected
+  `GestureWaitTests` issue; live-server suites skipped). Both linters clean. Changes left uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

@@ -14,9 +14,10 @@ enum FirstRunTourPresenter {
     /// to Full Disk Access onboarding. On every later launch (tour already seen) skip straight to
     /// the FDA check, so its own one-shot first-run behavior is preserved untouched.
     static func presentIfNeeded(over window: NSWindow?) {
-        // Never during `xcodebuild test`: the app test host launches the real delegate, and a
-        // first-run window has no business popping up mid-suite or flipping the shared latch. FDA's
-        // own guard means skipping the hand-off here leaves it dormant too, which is what we want.
+        // Never during `xcodebuild test`. The test host installs no app delegate (`main.swift`), so
+        // this is the second line of defense: a first-run window has no business popping up
+        // mid-suite or flipping the shared latch. FDA's own guard means skipping the hand-off here
+        // leaves it dormant too, which is what we want.
         guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
         guard !AppPreferences.shared.hasSeenFirstRunTour else {
             FullDiskAccessOnboarding.presentIfNeeded(over: window)

@@ -1178,13 +1178,25 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     `StubPanelHost`, which records them) cannot reach the real index. A full run afterwards added
     no entries. Controls, each silencing one reporting site with a no-op rather than restoring the
     shared-store write, failed exactly the test aimed at it.
-    - **The test host is still the app, and in some runs its launch builds the real window.** The
-      same full run bumped one real entry: the developer's restored left tab, at the second the
-      test host process started, with the separately running Debug build logging nothing then. That
-      is `applicationDidFinishLaunching` restoring the session through the real host, which ▸ AppKit
-      records as finishing in only about half of test-host launches. It records paths the
-      developer really has open rather than fixtures, and stopping it means the app behaving
-      differently under tests, so it is left as it is.
+    - **The test host's own launch also wrote to the real domain. Fixed 2026-10-21.** The earlier
+      full run bumped the restored left tab's frecency as the host started. A later run changed
+      tab column widths too. With every other Dirnex quit, the 2026-10-21 reproduction increased
+      two real folders' ranks before the suite had finished. Navigation saves frecency and tabs;
+      column layout and quit save tabs too, so a quit-only guard would miss the launch writes.
+      `main.swift` now keeps the shared AppKit setup but installs no `AppDelegate` under
+      `XCTestConfigurationFilePath`. Its persistent sidebar appearance write is in that same
+      branch. Tests build their own controllers; the host does not restore a user's window.
+      `UserDefaults.standard` still names the real domain, so fixture stores still need the
+      scratch defaults described above.
+    - **Compare defaults outside the entire test process, and decode the JSON inside plist data.**
+      An in-test snapshot misses writes before the first test and after the last one. A byte
+      comparison also reports JSONEncoder's object-key order as a change. CI exports the domain
+      before `xcodebuild test` and again on exit, then runs `scripts/check_defaults_unchanged.py`.
+      It compares every key by content, keeps array order and value types, and prints only changed
+      key names. The checker rejects the unmodified run's frecency drift. `TestHostLifecycleTests`
+      also checks the actual host's delegate; removing the startup guard makes that test fail
+      without relying on launch finishing. For a local check, quit every Dirnex, export a backup,
+      run the suite, export again, compare, then restore the backup with `defaults import`.
   - **Saving a real key and putting it back in a `defer` is not isolation.** `ArchiveUndoReachTests`
     swapped the developer's own `Dirnex.undoJournal` for a fixture and restored it afterwards, so a
     killed run would have lost the journal and a running Dirnex saving in between would have had
@@ -1192,6 +1204,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     and `persistedArchiveSnapshots(in:)`), and the test uses `ScratchDefaults.fresh()`. Measured
     2026-09-14: the real journal was byte-identical after three full runs, and pointing the reader
     back at `.standard` failed exactly that test.
+    - **The same trap was still in two color-rule tests on 2026-10-21.** A before/after comparison
+      with an existing `Dirnex.fileColorRules` key missed their save-and-restore writes. Starting
+      with an empty domain exposed one new key: restoring an empty rule list creates a value where
+      there was none. `FileColorRuleStore` now requires a defaults domain, the app uses `shared`,
+      and those tests build separate stores with `ScratchDefaults.fresh()`. A new store reads the
+      saved value in the round-trip test, so the old test-only cache invalidation method is gone.
   - **A control that fires too *widely* is a finding, not noise.** The vault control for that slice
     failed three tests where it should have failed one, and the two extras were the suite's own: two
     tests swap the shared store, which is one piece of process state, and Swift Testing runs a suite
