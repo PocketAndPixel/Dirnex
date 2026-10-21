@@ -175,9 +175,9 @@ public struct UserScript: Sendable, Hashable, Identifiable, Codable {
     /// script reachable only from the palette and the Scripts ▸ menu. Only a key that no menu
     /// item claims can actually fire — see `FunctionBar.assignableFunctionKeys(bindings:)`, which
     /// is what an editor offers. Stored even when currently unassignable, because the reserved set
-    /// is *user state that moves*: switching to the Total Commander preset rebinds F-keys, and
-    /// stripping the binding here would lose it for good on a switch back. The bar filters at the
-    /// point of building itself instead.
+    /// is *user state that moves*: a command rebound onto the script's F-key takes it, and
+    /// stripping the binding here would lose it for good when the command moves off again. The bar
+    /// filters at the point of building itself instead.
     ///
     /// Optional, so a store written before F-key bindings existed decodes with `nil` rather than
     /// failing (`decodeIfPresent`, via the synthesized `Codable`).

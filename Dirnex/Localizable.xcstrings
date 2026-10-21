@@ -13629,91 +13629,91 @@
         }
       }
     },
-    "All your shortcut customizations will be removed and the macOS defaults restored. All your changes will be lost.": {
+    "All your shortcut customizations will be removed and the default shortcuts restored. All your changes will be lost.": {
       "comment": "Shortcuts: restore-defaults confirmation body.",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alle angepassten Tastaturkurzbefehle werden entfernt und die macOS-Standardwerte wiederhergestellt. Alle Änderungen gehen verloren."
+            "value": "Alle angepassten Tastaturkurzbefehle werden entfernt und die Standard-Tastaturkurzbefehle wiederhergestellt. Alle Änderungen gehen verloren."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "All your shortcut customizations will be removed and the macOS defaults restored. All your changes will be lost."
+            "value": "All your shortcut customizations will be removed and the default shortcuts restored. All your changes will be lost."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Se eliminarán todas tus personalizaciones de funciones rápidas y se restaurarán los valores por omisión de macOS. Se perderán todos tus cambios."
+            "value": "Se eliminarán todas tus personalizaciones de funciones rápidas y se restaurarán las funciones rápidas por omisión. Se perderán todos tus cambios."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Toutes vos personnalisations de raccourcis seront supprimées et les raccourcis macOS par défaut seront restaurés. Toutes vos modifications seront perdues."
+            "value": "Toutes vos personnalisations de raccourcis seront supprimées et les raccourcis par défaut seront restaurés. Toutes vos modifications seront perdues."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tutte le abbreviazioni da tastiera personalizzate verranno rimosse e saranno ripristinate le impostazioni predefinite di macOS. Tutte le modifiche andranno perse."
+            "value": "Tutte le abbreviazioni da tastiera personalizzate verranno rimosse e saranno ripristinate le abbreviazioni da tastiera predefinite. Tutte le modifiche andranno perse."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ショートカットのカスタマイズはすべて削除され、macOSのデフォルトに戻ります。すべての変更が失われます。"
+            "value": "ショートカットのカスタマイズはすべて削除され、デフォルトのショートカットに戻ります。すべての変更が失われます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "사용자화한 모든 단축키가 제거되고 macOS 기본값으로 복원됩니다. 모든 변경 사항이 사라집니다."
+            "value": "사용자화한 모든 단축키가 제거되고 기본 단축키로 복원됩니다. 모든 변경 사항이 사라집니다."
           }
         },
         "nl": {
           "stringUnit": {
-            "value": "Alle aangepaste toetscombinaties worden verwijderd en de macOS-standaardinstellingen worden hersteld. Al je wijzigingen gaan verloren.",
+            "value": "Alle aangepaste toetscombinaties worden verwijderd en de standaardtoetscombinaties worden hersteld. Al je wijzigingen gaan verloren.",
             "state": "translated"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wszystkie własne skróty zostaną usunięte, a domyślne ustawienia macOS przywrócone. Wszystkie zmiany zostaną utracone."
+            "value": "Wszystkie własne skróty zostaną usunięte, a domyślne skróty przywrócone. Wszystkie zmiany zostaną utracone."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Все ваши изменения сочетаний клавиш будут удалены и восстановлены стандартные значения macOS. Все изменения будут потеряны."
+            "value": "Все ваши изменения сочетаний клавиш будут удалены, а стандартные сочетания клавиш — восстановлены. Все изменения будут потеряны."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Усі ваші зміни клавіатурних скорочень буде вилучено, а типові клавіатурні скорочення macOS відновлено. Усі зміни буде втрачено."
+            "value": "Усі ваші зміни клавіатурних скорочень буде вилучено, а типові клавіатурні скорочення відновлено. Усі зміни буде втрачено."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Todas as personalizações de atalhos serão removidas e os padrões do macOS serão restaurados. Todas as suas alterações serão perdidas."
+            "value": "Todas as personalizações de atalhos serão removidas e os atalhos padrão serão restaurados. Todas as suas alterações serão perdidas."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的所有快捷键自定义都会被移除，并恢复 macOS 默认设置。所有更改都会丢失。"
+            "value": "你的所有快捷键自定义都会被移除，并恢复默认快捷键。所有更改都会丢失。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的所有快速鍵自訂都會被移除，並復原 macOS 預設設定。所有變更都會遺失。"
+            "value": "你的所有快速鍵自訂都會被移除，並復原預設快速鍵。所有變更都會遺失。"
           }
         }
       }
@@ -37927,95 +37927,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "游標列"
-          }
-        }
-      }
-    },
-    "Custom": {
-      "comment": "Shortcuts preset picker: hand-edited state.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Eigene"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Custom"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Personalizado"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Personnalisé"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Personalizzato"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "カスタム"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "사용자화"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aangepast"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Własne"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Пользовательский"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Користувацький"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Personalizado"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "自定"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "自定"
           }
         }
       }
@@ -71881,95 +71792,6 @@
         }
       }
     },
-    "Preset": {
-      "comment": "Shortcuts: preset picker label.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voreinstellung"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Preset"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Preajuste"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Préréglage"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Preimpostazione"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "プリセット"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "프리셋"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "value": "Voorinstelling",
-            "state": "translated"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zestaw"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Набор"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Набір"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Predefinição"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "预设"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "預設"
-          }
-        }
-      }
-    },
     "Private Key": {
       "comment": "SFTP auth-mode label: authenticate with a private key file.",
       "localizations": {
@@ -88954,95 +88776,6 @@
         }
       }
     },
-    "Switch": {
-      "comment": "Shortcuts: confirm preset switch.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wechseln"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Switch"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cambiar"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Basculer"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cambia"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "切り替え"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "전환"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "value": "Schakel",
-            "state": "translated"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Przełącz"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Сменить"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Перемкнути"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alternar"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "切换"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "切換"
-          }
-        }
-      }
-    },
     "Switch focus to folders opened from search results": {
       "comment": "Panels toggle.",
       "localizations": {
@@ -89128,95 +88861,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "從搜尋結果打開檔案夾時切換焦點"
-          }
-        }
-      }
-    },
-    "Switch preset?": {
-      "comment": "Shortcuts: preset-switch confirmation title.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voreinstellung wechseln?"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Switch preset?"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "¿Cambiar preajuste?"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Changer de préréglage ?"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cambiare preimpostazione?"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "プリセットを切り替えますか？"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "프리셋을 전환하겠습니까?"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voorinstelling wijzigen?"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Przełączyć zestaw?"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Сменить набор?"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Змінити набір?"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Trocar predefinição?"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "要切换预设吗？"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "要切換預設嗎？"
           }
         }
       }
@@ -112080,95 +111724,6 @@
         }
       }
     },
-    "Your customized shortcuts will be replaced by the %@ preset. All your changes will be lost.": {
-      "comment": "Shortcuts: preset-switch confirmation body. %@ is a preset name.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ihre angepassten Tastaturkurzbefehle werden durch die Voreinstellung „%@“ ersetzt. Alle Änderungen gehen verloren."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your customized shortcuts will be replaced by the %@ preset. All your changes will be lost."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tus funciones rápidas personalizadas se reemplazarán por el preajuste %@. Se perderán todos tus cambios."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vos raccourcis personnalisés seront remplacés par le préréglage %@. Toutes vos modifications seront perdues."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le tue abbreviazioni da tastiera personalizzate verranno sostituite dalla preimpostazione %@. Tutte le modifiche andranno perse."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "カスタマイズしたショートカットは%@プリセットで置き換えられます。すべての変更が失われます。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "사용자화한 단축키가 %@ 프리셋으로 대치됩니다. 모든 변경 사항이 사라집니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "value": "Je aangepaste toetscombinaties worden vervangen door de voorinstelling %@. Al je wijzigingen gaan verloren.",
-            "state": "translated"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Własne skróty zostaną zastąpione zestawem %@. Wszystkie zmiany zostaną utracone."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ваши настроенные сочетания клавиш будут заменены набором «%@». Все изменения будут потеряны."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ваші власні клавіатурні скорочення буде замінено набором %@. Усі зміни буде втрачено."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Seus atalhos personalizados serão substituídos pela predefinição %@. Todas as suas alterações serão perdidas."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "你的自定义快捷键将被 %@ 预设替换。你所有的更改将丢失。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "你的自訂快速鍵將由 %@ 預設取代。你所有的變更將遺失。"
-          }
-        }
-      }
-    },
     "Your files in iCloud Drive are listed above. The folders apps keep there — Pages, Preview, Shortcuts — are private to macOS until you allow Dirnex to read them.\n\nClick Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask Dirnex to relaunch so the new access takes effect.": {
       "comment": "FDA (iCloud) sheet body.",
       "localizations": {
@@ -121834,85 +121389,85 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "verschieben, Baum, Struktur, Unterordner, relative Pfade, übertragen"
+            "value": "shift+f6, verschieben, Baum, Struktur, Unterordner, relative Pfade, übertragen"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "tree, branch, structure, subfolders, relative paths, transfer"
+            "value": "shift+f6, tree, branch, structure, subfolders, relative paths, transfer"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "mover, árbol, estructura, subcarpetas, rutas relativas, transferir"
+            "value": "shift+f6, mover, árbol, estructura, subcarpetas, rutas relativas, transferir"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "déplacer, arborescence, structure, sous-dossiers, chemins relatifs, transfert"
+            "value": "shift+f6, déplacer, arborescence, structure, sous-dossiers, chemins relatifs, transfert"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "spostare, albero, struttura, sottocartelle, percorsi relativi, trasferire"
+            "value": "shift+f6, spostare, albero, struttura, sottocartelle, percorsi relativi, trasferire"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "移動, ツリー, 構造, サブフォルダ, 相対パス, 転送"
+            "value": "shift+f6, 移動, ツリー, 構造, サブフォルダ, 相対パス, 転送"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이동, 트리, 구조, 하위 폴더, 상대 경로, 전송"
+            "value": "shift+f6, 이동, 트리, 구조, 하위 폴더, 상대 경로, 전송"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "verplaatsen, boom, structuur, submappen, relatieve paden, overdracht"
+            "value": "shift+f6, verplaatsen, boom, structuur, submappen, relatieve paden, overdracht"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "przenieś, drzewo, struktura, podfoldery, ścieżki względne, transfer"
+            "value": "shift+f6, przenieś, drzewo, struktura, podfoldery, ścieżki względne, transfer"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "mover, árvore, estrutura, subpastas, caminhos relativos, transferir"
+            "value": "shift+f6, mover, árvore, estrutura, subpastas, caminhos relativos, transferir"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "переместить, дерево, структура, подпапки, относительные пути, перенести"
+            "value": "shift+f6, переместить, дерево, структура, подпапки, относительные пути, перенести"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "перемістити, дерево, структура, підпапки, відносні шляхи, перенести"
+            "value": "shift+f6, перемістити, дерево, структура, підпапки, відносні шляхи, перенести"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "移动, 树状, 结构, 子文件夹, 相对路径, 传输"
+            "value": "shift+f6, 移动, 树状, 结构, 子文件夹, 相对路径, 传输"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "移動, 樹狀, 結構, 子檔案夾, 相對路徑, 傳輸"
+            "value": "shift+f6, 移動, 樹狀, 結構, 子檔案夾, 相對路徑, 傳輸"
           }
         }
       }

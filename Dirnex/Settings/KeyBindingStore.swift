@@ -64,11 +64,6 @@ final class KeyBindingStore: ObservableObject {
         apply(KeyBindings())
     }
 
-    /// Replace the whole scheme with a built-in preset.
-    func apply(preset: KeyBindings.Preset) {
-        apply(KeyBindings.preset(preset))
-    }
-
     private func apply(_ updated: KeyBindings) {
         guard updated != bindings else { return }
         bindings = updated
