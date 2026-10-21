@@ -99,10 +99,41 @@ struct RemoteAttributeEditTests {
             current: current,
             permissions: POSIXPermissions(rawValue: 0o644),
             modificationTime: current.modificationDate,
+            shownModificationTime: current.modificationDate,
             editable: RemoteAttributeEditability(editable: [.permissions, .modificationTime])
         )
         #expect(unchanged.isEmpty)
         #expect(unchanged.steps.isEmpty)
+    }
+
+    /// An `MLSD` stamp can carry a fraction of a second (`modify=20231114221320.789`), and a date
+    /// control that resolves only whole seconds hands back the whole second it showed. Measured
+    /// against the entry, every mode change would send that truncated date as well.
+    @Test("a date control left as it was shown is no edit, however it rounded the entry's stamp")
+    func untouchedDateIsMeasuredAgainstWhatWasShown() {
+        let current = entry(modified: Date(timeIntervalSince1970: 1_700_000_000.789))
+        let shown = Date(timeIntervalSince1970: 1_700_000_000)
+        let editable = RemoteAttributeEditability(editable: [.permissions, .modificationTime])
+
+        let modeOnly = RemoteAttributeChange.between(
+            current: current,
+            permissions: POSIXPermissions(rawValue: 0o664),
+            modificationTime: shown,
+            shownModificationTime: shown,
+            editable: editable
+        )
+        #expect(modeOnly == RemoteAttributeChange(permissions: POSIXPermissions(rawValue: 0o664)))
+
+        // The negative control: a date moved off what was shown is an edit, and is sent as set.
+        let moved = shown.addingTimeInterval(60)
+        let edited = RemoteAttributeChange.between(
+            current: current,
+            permissions: POSIXPermissions(rawValue: 0o644),
+            modificationTime: moved,
+            shownModificationTime: shown,
+            editable: editable
+        )
+        #expect(edited == RemoteAttributeChange(modificationTime: moved))
     }
 
     @Test("a field the connection cannot change can never reach the wire")
@@ -113,6 +144,7 @@ struct RemoteAttributeEditTests {
             current: entry(permissions: 0o644),
             permissions: POSIXPermissions(rawValue: 0o755),
             modificationTime: Date(timeIntervalSince1970: 1),
+            shownModificationTime: Date(timeIntervalSince1970: 1_700_000_000),
             editable: RemoteAttributeEditability(editable: [.permissions])
         )
         #expect(change.permissions?.rawValue == 0o755)

@@ -15294,13 +15294,34 @@ used it as a one-line tool is rewritten against the API underneath.
   shared write-out reader), and named constants such as `ArchiveRewriteFormat.plain`. False
   positives: the `.sdef` script commands, App Intents descriptions, SwiftUI `@State`, and nearly
   every assign-only field, which belongs to an `Equatable` value, an error payload, or a retainer.
-- **Left open:** `RemoteAttributesController.pickerBaseline` is written and never read, and its
-  doc says the date diff should compare against it rather than the entry. That is a likely bug, not
-  dead code. `FTPCurlTransport.authentication` is never read either, but removing it reaches
-  `FTPConnectRequest` and the live-suite configs.
+- **Left open:** `RemoteAttributesController.pickerBaseline` was written and never read, though its
+  doc said the date diff should compare against it. It looked like a bug rather than dead code; the
+  next entry measures it. `FTPCurlTransport.authentication` is never read either, but removing it
+  reaches `FTPConnectRequest` and the live-suite configs.
 - Core green (4077 tests, −23, each a test of removed code). App green (1799 tests in 286 suites,
   only the expected `GestureWaitTests` issue; live-server suites skipped). Both linters clean.
   Changes left uncommitted.
+
+**2026-10-21: the remote date diff measures "untouched" against what the picker showed.** The
+sweep found `pickerBaseline` written and never read: Get Info's remote panel compared its date
+picker against the entry's stamp, where the local panel compares against the value the picker was
+given. FTP is the one connection whose date the panel edits, and an `MLSD` stamp can carry a
+fraction of a second that the facts parser keeps.
+
+- **The bug did not reproduce, so this is a guarantee rather than a fix.** On macOS 26.7.1 an
+  `NSDatePicker` gave back exactly what it was given: `1700000000.789`, a nanosecond `st_mtime` and
+  `Date()`, in a window, focused, after arrow-key steps and after a typed edit. The new hosted
+  `RemoteAttributesDateTests` (a fractional stamp, a mode-only save, and an edited date as the
+  negative control) passed on the unfixed code. NOTES.md ▸ ACLs and file attributes said the picker
+  rounds to whole seconds; the July entry it came from verified the fix, never the bug. It now
+  carries the measurement.
+- **The rule moved into the core.** `RemoteAttributeChange.between` takes
+  `shownModificationTime`, and a date equal to it is no edit, whatever the entry carries. The panel
+  passes `pickerBaseline`. A core test pins the case this Mac cannot produce, a whole-second control
+  over a `.789` stamp. With the comparison reverted to the entry, that test failed on its one
+  expectation; with the fix, it passes.
+- Core green (4078 tests). App green (1802 tests in 287 suites, only the expected
+  `GestureWaitTests` issue; live-server suites skipped). Both linters clean. Changes left uncommitted.
 
 ---
 

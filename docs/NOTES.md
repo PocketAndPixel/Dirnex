@@ -8333,12 +8333,18 @@ written. Several results changed the model, not just confirmed it.
   — so date editing needs the same unlock/relock dance, not a separate design. Dates otherwise have
   no range to defend: a 2096 mtime and a pre-epoch 1938 one both applied cleanly, and a `Date`
   round-trips through `utimes` at microsecond fidelity.
-- **An `NSDatePicker` resolves to whole seconds and a real timestamp does not**, which is a live bug
-  and not a rounding nicety: read `dateValue` back unconditionally and the sub-second remainder every
-  `st_mtime` carries makes all three fields differ from what was read *the moment the sheet opens* —
-  Save lights up with nothing edited, and committing writes three dates nobody touched. Compare
-  against the value the control was **given** (`picker.dateValue` right after assigning it), not
-  against the model, so "untouched" means untouched at the control's own granularity.
+- **Compare a date control against the value it was *given*, not against the model.** Recorded
+  2026-07-31 as "`NSDatePicker` resolves to whole seconds and a real timestamp does not": read
+  `dateValue` back unconditionally and the sub-second remainder every `st_mtime` carries would make
+  all three fields differ the moment the sheet opens, so Save lights up with nothing edited.
+  **Re-measured 2026-10-21 on macOS 26.7.1, the picker does not round.** Handed `1700000000.789`, a
+  nanosecond `st_mtime` or `Date()`, it gave back the exact value in a window, focused, after
+  arrow-key steps (the day moved, the `.789` stayed) and after a typed edit. The remote panel's
+  hosted test on a fractional `MLSD` stamp also passed while it still compared against the entry.
+  The July entry recorded the fix being verified, not the bug, so whether an older macOS rounds is
+  unknown. The rule stands because it holds whatever the control keeps: "untouched" means equal to
+  `picker.dateValue` read right after assigning it. Both Get Info panels follow it
+  (`DateField.initial`; `pickerBaseline`, through `RemoteAttributeChange.between`).
 - **A recursive attribute change must be applied *deepest-first*, and having gathered the paths up
   front does not save it.** Clearing a directory's `x` bit stops every path under it from resolving,
   so a pre-order run gets `EPERM` on every child — measured directly, with the child list already in
