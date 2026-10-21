@@ -15174,6 +15174,47 @@ showing does nothing, since the preference already ignores a value it holds.
   suites skipped). Core green (4104 tests). Both linters clean. No new strings. Changes left
   uncommitted.
 
+**2026-10-21: one shortcut scheme, and ⇧F6 moves keeping folders.** Asked for by Oleg, after asking
+why the move twin of ⇧F5 had no key. It had none because ⇧F6 was Rename on the Total Commander
+preset (2026-10-14). Oleg chose to drop the preset rather than leave the move unbound: a user who
+wants Total Commander's keys can change them in Settings.
+
+- **The preset was two overrides deep**: Quick Look on bare F3 and Rename on ⇧F6. F5–F8 and F4
+  were already the defaults, and F3 already opened View on both schemes through the function bar,
+  so the preset's only real effect was the key that blocked this one.
+- `KeyBindings.Preset`, `preset(_:)` and `matchingPreset` are gone from the core, and
+  `KeyBindingStore.apply(preset:)` and the Shortcuts tab's picker and "Switch preset?" alert from the
+  app. Restore Defaults stays and covers the way back. The picker's five strings left the catalog
+  in all 14 languages. `shift+f6` joined the move's keywords, in every language, as `shift+f5` is
+  in the copy's.
+- **Restore Defaults' confirmation said "the macOS defaults"**, naming a scheme that no longer
+  exists, so it now says "the default shortcuts". Each of the 14 translations takes its term from
+  the same alert's title ("Restore default shortcuts?"), which already had it.
+- **The filter now leads the row**, asked for by Oleg with a screenshot once the picker had gone. It
+  was a 140 pt field pushed to the right. A first pass let it fill the row up to Restore Defaults
+  (434 pt in English), which Oleg found too wide. 260 pt (60%) was still wide, so it is a fixed
+  208 pt (80% of that), with the free space between it and the button. Fixed rather than capped: a
+  field with only a maximum, beside a `Spacer`, is offered an even share of the free space and comes
+  out narrower. The clash warning, when shown, sits right after the field. Italian has the longest
+  Restore Defaults label (by characters; 244 pt measured, launched with `-AppleLanguages (it)`),
+  which fit beside 260 with 66 pt to spare, so it fits beside 208 too.
+- **No migration**, by Oleg's call: nobody has the app yet, so nobody holds the preset's ⇧F6.
+- Comments that reasoned from "both presets" now reason from the one scheme. The tests that looped
+  over both presets check the defaults, and `CommandCatalogTests` pins ⇧F6 on the move with no
+  conflict.
+- **Verified live** on the Debug build launched by path, after quitting a stale Debug copy left
+  running since the evening before, with settings backed up and restored (68 keys, identical by
+  value). Settings ▸ Shortcuts had no picker, only Filter and Restore Defaults. Its rows read ⇧F5
+  for the copy and ⇧F6 for the move, with no clash flagged. The menu reads the same store, but
+  its key equivalent and the key itself were not checked: background computer use can neither
+  open a menu nor send an F-key. A second run, with New Tab seeded unbound so Restore Defaults was
+  enabled, showed the new confirmation text; confirming it put ⌘T back. All 14 compiled
+  `Localizable.strings` carry the new message, and none carries the old one or the picker's
+  strings.
+- Core green (4100 tests: the four preset tests left). App green (1798 tests in 285 suites, only
+  the expected `GestureWaitTests` issue; live-server suites skipped). Both linters clean. Changes
+  left uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
