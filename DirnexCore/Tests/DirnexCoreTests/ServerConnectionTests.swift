@@ -135,11 +135,9 @@ struct ServerConnectionTests {
         #expect(list.connection(named: "Dup")?.address == "sftp://oleg@first:22")
     }
 
-    @Test("contains and lookup by name")
-    func containsAndLookup() {
+    @Test("lookup by name")
+    func lookupByName() {
         let list = ServerConnections(connections: [sftp("A")])
-        #expect(list.contains(name: "A"))
-        #expect(!list.contains(name: "B"))
         #expect(list.connection(named: "A")?.name == "A")
         #expect(list.connection(named: "B") == nil)
     }
@@ -152,30 +150,6 @@ struct ServerConnectionTests {
         let removedAgain = list.remove(name: "A")
         #expect(!removedAgain)
         #expect(list.connections.map(\.name) == ["B"])
-    }
-
-    @Test("remove at index ignores out-of-range")
-    func removeAtIndex() {
-        var list = ServerConnections(connections: [sftp("A"), smb("B")])
-        list.remove(at: 5)
-        #expect(list.connections.count == 2)
-        list.remove(at: 0)
-        #expect(list.connections.map(\.name) == ["B"])
-    }
-
-    @Test("rename rejects an empty name and a collision with a different entry")
-    func renameRules() {
-        var list = ServerConnections(connections: [sftp("A"), smb("B")])
-        let emptyRejected = list.rename(name: "A", to: "")
-        #expect(!emptyRejected)
-        let collisionRejected = list.rename(name: "A", to: "B")
-        #expect(!collisionRejected)
-        #expect(list.connections.map(\.name) == ["A", "B"])
-        let sameName = list.rename(name: "A", to: "A")
-        #expect(sameName)
-        let renamed = list.rename(name: "A", to: "A2")
-        #expect(renamed)
-        #expect(list.connections.map(\.name) == ["A2", "B"])
     }
 
     @Test("move reorders with array semantics")

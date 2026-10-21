@@ -8,7 +8,7 @@ import Foundation
 /// says how much was affected without claiming every file was.
 public struct RemoteMetadataLoss: Sendable, Hashable {
     /// What could not be carried. Never empty — a loss with nothing in it is not a loss, which is
-    /// why ``RemoteMetadataSupport/loss`` answers `nil` instead.
+    /// why ``RemoteMetadataTally/loss`` answers `nil` instead.
     public let aspects: Set<RemoteMetadataAspect>
     /// How many items lost at least one of them.
     public let itemCount: Int
@@ -43,12 +43,10 @@ public final class RemoteMetadataSupport: @unchecked Sendable {
     /// What the transport declared it can do at all — the ceiling this connection starts from.
     private let offered: RemoteMetadataCapabilities
     private var refused: RemoteMetadataCapabilities = []
-    private var lostAspects: Set<RemoteMetadataAspect> = []
     private var affectedItems = 0
-    /// How many items lost each aspect. Kept beside the set rather than derived from it, because a
-    /// **count** is the only shape that subtracts: "what did this job lose" is the difference of two
-    /// readings, and a set cannot tell an aspect lost again from one already lost (▸
-    /// ``RemoteMetadataTally``).
+    /// How many items lost each aspect. A **count** rather than a set, because a count is the only
+    /// shape that subtracts: "what did this job lose" is the difference of two readings, and a set
+    /// cannot tell an aspect lost again from one already lost (▸ ``RemoteMetadataTally``).
     private var aspectCounts: [RemoteMetadataAspect: Int] = [:]
 
     /// - Parameter offering: what this transport can be asked to do before anything has been
@@ -109,7 +107,6 @@ public final class RemoteMetadataSupport: @unchecked Sendable {
     public func record(dropped: Set<RemoteMetadataAspect>) {
         guard !dropped.isEmpty else { return }
         lock.lock()
-        lostAspects.formUnion(dropped)
         affectedItems += 1
         for aspect in dropped { aspectCounts[aspect, default: 0] += 1 }
         lock.unlock()
@@ -126,20 +123,5 @@ public final class RemoteMetadataSupport: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return RemoteMetadataTally(itemCount: affectedItems, perAspect: aspectCounts)
-    }
-
-    /// What this connection has failed to carry **since it opened**, or `nil` when it has carried
-    /// everything it was asked to — which is the good case and the common one.
-    ///
-    /// The connection's whole life, deliberately, and therefore *not* what a copy's report says: a
-    /// user told "the modification times weren't kept" after their second transfer must not be being
-    /// told about their first. A per-run answer is ``tally`` read twice and subtracted. This one is
-    /// the right shape for a question about the **account** — what Get Info's panel would say about
-    /// a server, rather than what a job says about itself.
-    public var loss: RemoteMetadataLoss? {
-        lock.lock()
-        defer { lock.unlock() }
-        guard !lostAspects.isEmpty else { return nil }
-        return RemoteMetadataLoss(aspects: lostAspects, itemCount: affectedItems)
     }
 }

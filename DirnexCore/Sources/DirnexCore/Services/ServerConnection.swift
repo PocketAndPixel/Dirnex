@@ -159,11 +159,6 @@ public struct ServerConnections: Sendable, Equatable, Codable {
         self.connections = connections.filter { seen.insert($0.name).inserted }
     }
 
-    /// Whether a connection named `name` exists — drives the connect prompt's replace confirmation.
-    public func contains(name: String) -> Bool {
-        connections.contains { $0.name == name }
-    }
-
     /// The connection named `name`, or `nil` — the sidebar looks one up by name so a mid-open store
     /// change can't act on the wrong (index-shifted) connection.
     public func connection(named name: String) -> ServerConnection? {
@@ -255,12 +250,6 @@ public struct ServerConnections: Sendable, Equatable, Codable {
         return true
     }
 
-    /// Delete the connection at `index`; out-of-range is ignored.
-    public mutating func remove(at index: Int) {
-        guard connections.indices.contains(index) else { return }
-        connections.remove(at: index)
-    }
-
     /// Write an **edited** connection back over the one named `previousName`, name included.
     ///
     /// The sidebar's Edit… has no update path of its own — it re-opens the Connect sheet and the
@@ -271,9 +260,9 @@ public struct ServerConnections: Sendable, Equatable, Codable {
     /// - **In place.** `save` appends a name it has never seen, so a rename through remove-and-save
     ///   drops the row to the bottom of the sidebar — a reorder nobody asked for, from an edit that
     ///   may only have fixed a typo.
-    /// - **A name already taken by a *different* record is refused**, exactly as ``rename(name:to:)``
-    ///   refuses it. The pair would silently overwrite that record and then delete this one, so a
-    ///   mistyped name costs the user a saved server they never touched.
+    /// - **A name already taken by a *different* record is refused.** The pair would silently
+    ///   overwrite that record and then delete this one, so a mistyped name costs the user a saved
+    ///   server they never touched.
     /// - **An unknown `previousName` appends**, so this is also the honest answer for "save what the
     ///   form holds" when the record has since been removed elsewhere.
     @discardableResult
@@ -291,21 +280,6 @@ public struct ServerConnections: Sendable, Equatable, Codable {
             connections.append(connection)
         }
         return .committed
-    }
-
-    /// Rename the connection named `name` to `newName` — the sidebar's inline rename. Rejected
-    /// (returns `false`, leaving the list unchanged) when `newName` is empty or already names a
-    /// *different* connection, so a rename can never collapse two entries into one. Renaming to the
-    /// same name is a no-op success.
-    @discardableResult
-    public mutating func rename(name: String, to newName: String) -> Bool {
-        guard let index = connections.firstIndex(where: { $0.name == name }) else { return false }
-        guard !newName.isEmpty else { return false }
-        guard !connections.contains(where: { $0.name == newName }) || newName == name else {
-            return false
-        }
-        connections[index].name = newName
-        return true
     }
 
     /// Reorder: pull the connection out of `source` and reinsert it so it lands at `destination` in

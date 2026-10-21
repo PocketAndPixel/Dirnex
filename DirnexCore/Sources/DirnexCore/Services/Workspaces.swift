@@ -130,14 +130,6 @@ public struct Workspaces: Sendable, Equatable, Codable {
         return false
     }
 
-    /// Delete the workspace named `name`, if present. Returns whether one was removed.
-    @discardableResult
-    public mutating func remove(name: String) -> Bool {
-        guard let index = workspaces.firstIndex(where: { $0.name == name }) else { return false }
-        workspaces.remove(at: index)
-        return true
-    }
-
     /// Delete the workspace at `index` (the organizer's − button); out-of-range is ignored.
     public mutating func remove(at index: Int) {
         guard workspaces.indices.contains(index) else { return }

@@ -42,10 +42,6 @@ public struct VaultLocation: Sendable, Hashable, Codable {
         self.volumeName = volumeName
     }
 
-    /// The vault's file name, for a display that wants to say where it is rather than what it is
-    /// called.
-    public var fileName: String { (imagePath as NSString).lastPathComponent }
-
     /// The path in its canonical spelling — what any comparison against `hdiutil`'s output must use
     /// (see ``DiskImageMount/isMounted(imageAtPath:in:)``), and what the Keychain is keyed by.
     public var resolvedImagePath: String { Self.normalizedPath(imagePath) }

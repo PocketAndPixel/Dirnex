@@ -250,7 +250,9 @@ struct GitStatusSnapshotTests {
 
     @Test("a clean tree answers unmodified for everything")
     func cleanTree() {
-        let clean = GitStatusSnapshot(repositoryRoot: root, branch: GitBranch(name: "main"))
+        let clean = GitStatusSnapshot(
+            repositoryRoot: root, branch: GitBranch(name: "main"), entries: []
+        )
         #expect(clean.entries.isEmpty)
         #expect(clean.status(forRelativePath: "anything/at/all.txt") == .unmodified)
         #expect(clean.branch.name == "main")

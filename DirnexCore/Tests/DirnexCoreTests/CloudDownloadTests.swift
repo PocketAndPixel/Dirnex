@@ -11,14 +11,12 @@ struct CloudDownloadTests {
     func materializedStartsReady() {
         let tracker = CloudDownloadTracker(isDataless: false)
         #expect(tracker.phase == .ready)
-        #expect(tracker.phase.isSettled)
     }
 
     @Test("a dataless entry starts evicted and asks for a download")
     func datalessStartsEvicted() {
         let tracker = CloudDownloadTracker(isDataless: true)
         #expect(tracker.phase == .evicted)
-        #expect(!tracker.phase.isSettled)
     }
 
     // MARK: - The happy path
@@ -31,14 +29,10 @@ struct CloudDownloadTests {
         tracker.observe(
             CloudItemReading(isDataless: true, status: .notDownloaded, isDownloading: true)
         )
-        #expect(tracker.phase == .downloading(fraction: nil))
-
-        tracker.observe(percentDownloaded: 40)
-        #expect(tracker.phase == .downloading(fraction: 0.4))
+        #expect(tracker.phase == .downloading)
 
         tracker.observe(CloudItemReading(isDataless: false, status: .current))
         #expect(tracker.phase == .ready)
-        #expect(tracker.phase.isSettled)
     }
 
     @Test("the dataless flag alone settles the wait, even while the status key still lags")
@@ -78,7 +72,6 @@ struct CloudDownloadTests {
             at: start.addingTimeInterval(0.2)
         )
         #expect(phase == .evicted)
-        #expect(!phase.isSettled)
     }
 
     @Test("a download that never starts stalls once the deadline passes")
@@ -91,7 +84,6 @@ struct CloudDownloadTests {
             at: start.addingTimeInterval(31)
         )
         #expect(phase == .failed(reason: .stalled))
-        #expect(phase.isSettled)
     }
 
     @Test("without a request there is no clock, so an evicted item never stalls on its own")
@@ -120,34 +112,6 @@ struct CloudDownloadTests {
         #expect(
             phase == .failed(reason: .provider("The Internet connection appears to be offline."))
         )
-    }
-
-    // MARK: - Progress
-
-    @Test("a percentage is ignored unless a download is actually running")
-    func percentIgnoredOutsideDownloading() {
-        // A late progress report must not resurrect a finished transfer.
-        var tracker = CloudDownloadTracker(isDataless: false)
-        tracker.observe(percentDownloaded: 50)
-        #expect(tracker.phase == .ready)
-
-        var evicted = CloudDownloadTracker(isDataless: true)
-        evicted.observe(percentDownloaded: 50)
-        #expect(evicted.phase == .evicted)
-    }
-
-    @Test("a percentage outside 0…100 is clamped rather than rendered as a broken bar")
-    func percentIsClamped() {
-        var tracker = CloudDownloadTracker(isDataless: true)
-        tracker.requestSent()
-        tracker.observe(
-            CloudItemReading(isDataless: true, status: .notDownloaded, isDownloading: true)
-        )
-
-        tracker.observe(percentDownloaded: 140)
-        #expect(tracker.phase == .downloading(fraction: 1))
-        tracker.observe(percentDownloaded: -5)
-        #expect(tracker.phase == .downloading(fraction: 0))
     }
 
     // MARK: - The status key's spelling

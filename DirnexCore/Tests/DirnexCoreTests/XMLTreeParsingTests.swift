@@ -71,7 +71,7 @@ struct XMLTreeParsingTests {
         #expect(rows(parsed, of: reference) == ["@Include=Serilog", "@Version=3.1.1"])
         #expect(parsed.parent(of: reference) == parsed.child(2, of: project))
         #expect(parsed.parent(of: project) == nil)
-        #expect(parsed.nodeCount == 9)
+        #expect(parsed.nodes.count == 9)
     }
 
     @Test(
@@ -211,7 +211,7 @@ struct XMLTreeParsingTests {
         let depth = 100_000
         let text = String(repeating: "<a>", count: depth) + String(repeating: "</a>", count: depth)
         let parsed = try tree(text)
-        #expect(parsed.nodeCount == depth)
+        #expect(parsed.nodes.count == depth)
     }
 
     // MARK: - Truncation

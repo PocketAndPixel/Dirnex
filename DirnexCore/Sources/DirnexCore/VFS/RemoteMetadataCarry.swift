@@ -114,9 +114,6 @@ public struct RemoteMetadataPlan: Sendable, Hashable {
         steps.filter { $0 != .preserveDuringTransfer }
     }
 
-    /// Whether this transfer carries the source's metadata whole.
-    public var isComplete: Bool { dropped.isEmpty }
-
     /// Decide what carrying `permissions` and `modificationTime` requires of an account with
     /// `capabilities`.
     ///

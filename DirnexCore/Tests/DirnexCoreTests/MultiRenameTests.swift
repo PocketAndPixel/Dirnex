@@ -37,7 +37,7 @@ struct MultiRenameTests {
         let items = [entry("photo.jpg"), entry("notes"), entry(".hidden")]
         let plan = MultiRename.plan(
             for: items,
-            spec: .identity,
+            spec: RenameSpec(),
             existingNames: Set(items.map(\.name))
         )
         #expect(plan.map(\.newName) == ["photo.jpg", "notes", ".hidden"])

@@ -14,12 +14,6 @@ public struct S3Session: Sendable, Hashable {
         self.connectTimeout = connectTimeout
         self.maxTime = maxTime
     }
-
-    /// The same session with a different time budget — how a caller arms a long transfer without
-    /// loosening the metadata calls that share the connection settings.
-    public func with(maxTime: Int) -> S3Session {
-        S3Session(location: location, connectTimeout: connectTimeout, maxTime: maxTime)
-    }
 }
 
 /// Builds the `curl` arguments for each S3 operation. Pure and tested for the same reason

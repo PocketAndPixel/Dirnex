@@ -73,11 +73,6 @@ public struct KeyBindings: Sendable, Equatable, Codable {
         overrides[id] = nil
     }
 
-    /// Clear every override, restoring the whole registry to its catalog defaults.
-    public mutating func resetAll() {
-        overrides.removeAll()
-    }
-
     // MARK: - Conflicts
 
     /// The other command ids whose effective shortcut equals `id`'s — the collisions the

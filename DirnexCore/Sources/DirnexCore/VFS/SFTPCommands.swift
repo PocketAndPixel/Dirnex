@@ -120,31 +120,6 @@ public enum SFTPBatchCommand {
         "chmod \(onSymbolicLink ? "-h " : "")\(String(permissions.rawValue, radix: 8)) \(quote(remotePath))"
     }
 
-    /// The batch line that sets a remote item's owner: `chown 501 "…"`.
-    ///
-    /// Refused for an unprivileged account changing an owner it does not already have — exit 1 and
-    /// `remote setstat "…": Permission denied`, which is the ordinary answer rather than a
-    /// misconfiguration, so a caller must expect it rather than treat it as a broken connection.
-    public static func changeOwner(
-        _ remotePath: String,
-        to ownerID: UInt32,
-        onSymbolicLink: Bool = false
-    ) -> String {
-        "chown \(onSymbolicLink ? "-h " : "")\(ownerID) \(quote(remotePath))"
-    }
-
-    /// The batch line that sets a remote item's group: `chgrp 20 "…"`.
-    ///
-    /// Succeeds where the account belongs to the target group and is refused otherwise, exactly as
-    /// the local `chgrp` is (docs/NOTES.md ▸ ACLs and file attributes).
-    public static func changeGroup(
-        _ remotePath: String,
-        to groupID: UInt32,
-        onSymbolicLink: Bool = false
-    ) -> String {
-        "chgrp \(onSymbolicLink ? "-h " : "")\(groupID) \(quote(remotePath))"
-    }
-
     /// The same line, marked **allowed to fail**: `sftp`'s `-` prefix, which lets a batch carry on
     /// past a command the server refuses.
     ///

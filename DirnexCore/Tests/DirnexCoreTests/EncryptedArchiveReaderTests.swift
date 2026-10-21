@@ -49,7 +49,7 @@ struct EncryptedArchiveReaderTests {
             "link.txt", "notes/", "notes/hello.txt", "notes/nested/", "notes/nested/deep.txt"
         ])
         // 18 + 11; directories and the symlink contribute nothing.
-        #expect(inspection.totalByteSize == 29)
+        #expect(inspection.totalByteSize(matching: .everything) == 29)
     }
 
     @Test("only the data is encrypted — directories and the symlink are not")

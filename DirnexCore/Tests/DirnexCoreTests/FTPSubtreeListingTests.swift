@@ -316,7 +316,6 @@ private final class UnbatchedFTPTransport: FTPTransport, @unchecked Sendable {
     func removeFile(_ remotePath: String) throws {}
     func removeDirectory(_ remotePath: String) throws {}
     func fileSize(_ remotePath: String) throws -> Int64 { 0 }
-    func fetchCertificate() throws -> FTPCertificate { throw FTPTransportError.failure("") }
 
     func download(
         _ remotePath: String,
@@ -353,7 +352,6 @@ private final class MiscountingFTPTransport: FTPTransport, @unchecked Sendable {
     func removeFile(_ remotePath: String) throws {}
     func removeDirectory(_ remotePath: String) throws {}
     func fileSize(_ remotePath: String) throws -> Int64 { 0 }
-    func fetchCertificate() throws -> FTPCertificate { throw FTPTransportError.failure("") }
 
     func download(
         _ remotePath: String,

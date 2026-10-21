@@ -41,23 +41,6 @@ enum QuickViewRenderStyle: String, CaseIterable, Identifiable {
         allCases.first { $0.digit == digit }
     }
 
-    /// What the menu item and the palette show. Keyed by its English text like every other app
-    /// literal (NOTES.md ▸ Localization), so a missing translation falls back to readable English.
-    var title: String {
-        switch self {
-        case .source:
-            String(
-                localized: "View Source",
-                comment: "Quick View render style: the file's own text rather than the page it describes"
-            )
-        case .rendered:
-            String(
-                localized: "View Rendered Page",
-                comment: "Quick View render style: the document the file describes, drawn as a page"
-            )
-        }
-    }
-
     /// The short form the preview's header draws — a hint that the other style exists at all, in a
     /// strip that already carries the file's name and position. "1 Source · 2 Page" whole would
     /// crowd it, so each style names only itself and the digit says which key. What the rendered

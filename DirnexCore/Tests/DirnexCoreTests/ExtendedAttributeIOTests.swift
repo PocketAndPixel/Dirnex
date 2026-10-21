@@ -40,28 +40,6 @@ struct ExtendedAttributeIOTests {
         }
     }
 
-    @Test("removing an attribute the file never had succeeds")
-    func removeIsIdempotent() throws {
-        try withTree { tree in
-            let path = VFSPath.local(try tree.writeFile("f.txt", contents: "hi"))
-            // The `xattr -d` vs `xattr -dr` lesson as a test: over an ordinary multi-selection most
-            // files never carried the attribute, and a throwing remove would surface as a failure
-            // alert for a command that did exactly what was asked.
-            try ExtendedAttributeIO.remove("com.apple.quarantine", at: path)
-            #expect(try ExtendedAttributeIO.value(of: "com.apple.quarantine", at: path) == nil)
-        }
-    }
-
-    @Test("removing an attribute the file does have takes it away")
-    func removes() throws {
-        try withTree { tree in
-            let path = VFSPath.local(try tree.writeFile("f.txt", contents: "hi"))
-            try ExtendedAttributeIO.set("com.dirnex.probe", to: Data("x".utf8), at: path)
-            try ExtendedAttributeIO.remove("com.dirnex.probe", at: path)
-            #expect(try !ExtendedAttributeIO.names(at: path).contains("com.dirnex.probe"))
-        }
-    }
-
     @Test("reading an absent attribute is nil, not a throw")
     func absentValueIsNil() throws {
         try withTree { tree in
@@ -94,25 +72,20 @@ struct ExtendedAttributeIOTests {
         }
     }
 
-    @Test("what Dirnex writes is what the stock xattr tool reads back")
+    @Test("what the stock xattr tool writes is what Dirnex reads back")
     func agreesWithTheStockTool() throws {
         try withTree { tree in
             let file = try tree.writeFile("f.txt", contents: "hi")
-            try ExtendedAttributeIO.set(
-                "com.dirnex.probe", to: Data("hello".utf8), at: .local(file)
-            )
 
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/bin/xattr")
-            process.arguments = ["-p", "com.dirnex.probe", file]
-            let pipe = Pipe()
-            process.standardOutput = pipe
+            process.arguments = ["-w", "com.dirnex.probe", "hello", file]
             try process.run()
-            let output = pipe.fileHandleForReading.readDataToEndOfFile()
             process.waitUntilExit()
+            #expect(process.terminationStatus == 0)
 
-            #expect(String(bytes: output, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines) == "hello")
+            #expect(try ExtendedAttributeIO.value(of: "com.dirnex.probe", at: .local(file))
+                == Data("hello".utf8))
         }
     }
 

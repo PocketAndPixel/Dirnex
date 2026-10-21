@@ -43,12 +43,6 @@ public struct DelimitedTableRows: Sendable, Equatable {
         self.positions = positions
     }
 
-    /// Whether a filter has left rows out.
-    public var isNarrowed: Bool {
-        guard let positions else { return false }
-        return count < positions.count
-    }
-
     /// The file row drawn at `row`. A row past the end is answered as itself, which no caller asks
     /// for on purpose and which keeps a stale index from trapping.
     public func record(atRow row: Int) -> Int {

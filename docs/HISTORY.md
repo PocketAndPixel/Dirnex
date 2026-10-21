@@ -15256,6 +15256,52 @@ change across an app test run. The test host has the same bundle id as the insta
 - Core green (4100 tests). App green (1799 tests in 286 suites, only the expected
   `GestureWaitTests` issue; live-server suites skipped). Both linters clean. Changes left uncommitted.
 
+**2026-10-21: second dead-code sweep.** `periphery` 3.7.4 over the Xcode project (app, app tests
+and the core it builds), every result checked by grep before anything was cut. The July sweep's
+rule held: production-dead code goes, a test that only exercised it goes with it, and a test that
+used it as a one-line tool is rewritten against the API underneath.
+
+- **Two scans, because one cannot see the core tests.** The project scan does not build
+  `DirnexCoreTests`, so it flags anything only they use. A second `periphery` scan of the package
+  was no better, because it misses every reference made inside `#expect(…)` (it reported
+  `UndoJournal.canUndo` unused beside ten test uses). Grep decided, and grep missed three uses at
+  first; the build caught them, and `BugReportProblem.name` and `LicenseStatus.key` went back as
+  real test tools.
+- **App:** `AppUpdater.isEnabled` (its doc claimed the menu item grays out; nothing read it),
+  `canFilterQuickViewTable`, `sendingStatus(for:)` (unused since packing moved to the queue on
+  08-30), `TerminalDrawerViewController.shellDirectory`, `UndoController.canUndo`/`canRedo`,
+  `VaultMounts.contains(String)`, `QuickViewRenderStyle.title` (the menu titles come from the
+  catalog), the `PanelHost.toggleQuickView` requirement, `AttributesSnapshot.groupName` (the panel
+  shows a group picker), two never-read `Rows.labelWidth` fields, four unused imports, and three
+  orphaned catalog entries.
+- **Core, unused or tested only for itself:** the store mutators the July note left open
+  (`ServerConnections` `contains(name:)`/`remove(at:)`/`rename`, `SavedSearches.remove(at:)`,
+  `Favorites.remove(at:)`, `UserScripts` `remove(name:)`/`move`, `Workspaces.remove(name:)`,
+  `KeyBindings.resetAll`, `DirectorySizeCache.removeAll`, `MultiRename.identity`,
+  `OpenWithCandidates.all`), `FileOperationQueue.isPaused`, `UndoJournal.clear()`, the download
+  tracker's percent path (`observe(percentDownloaded:)`, `isSettled`, and `downloading`'s
+  always-`nil` fraction), `S3AccountBackend.region(ofBucketNamed:)` (the 301 correction covers
+  it), `S3Session.with(maxTime:)`, SFTP `chown`/`chgrp` batch lines, `TextSegmentMap`
+  `totalLength`/`segment(at:)` (only `split` is used), `IdentityDirectory` `userID`/`groupID`/
+  `groupName`, `RemoteMetadataSupport.loss` (the tally answers the same question), the
+  `FTPTransport.fetchCertificate` requirement (only the concrete transport is ever asked),
+  `MaterializedPaths.init` from a job's file list (the app builds the map itself), and about twenty
+  small conveniences. `ExtendedAttributeIO.set` moved to the core test support, since only
+  fixtures write attributes; the stock-tool test now has `xattr -w` write and Dirnex read.
+- **Kept as test tools:** `snapshot()`/`waitUntilIdle()`, `UndoEntry.selection`,
+  `Base64URL.encode`, `MultiRename.plan(…existingNames:)`, `SyntaxLanguage.grammar`,
+  `JSONDocument`/`XMLTree` `sourceText`, `S3SegmentWriteOut.consume` (the only chunked test of the
+  shared write-out reader), and named constants such as `ArchiveRewriteFormat.plain`. False
+  positives: the `.sdef` script commands, App Intents descriptions, SwiftUI `@State`, and nearly
+  every assign-only field, which belongs to an `Equatable` value, an error payload, or a retainer.
+- **Left open:** `RemoteAttributesController.pickerBaseline` is written and never read, and its
+  doc says the date diff should compare against it rather than the entry. That is a likely bug, not
+  dead code. `FTPCurlTransport.authentication` is never read either, but removing it reaches
+  `FTPConnectRequest` and the live-suite configs.
+- Core green (4077 tests, −23, each a test of removed code). App green (1799 tests in 286 suites,
+  only the expected `GestureWaitTests` issue; live-server suites skipped). Both linters clean.
+  Changes left uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

@@ -17,7 +17,7 @@ struct SFTPMetadataStderrTests {
     func successIsUntouched() {
         // Measured: a successful `put` plus an allowed-to-fail `chmod` prints **0 bytes** of stderr.
         let split = SFTPMetadataStderr.separate(stderr: "")
-        #expect(split.isEmpty)
+        #expect(split.lines.isEmpty)
         #expect(split.remainder.isEmpty)
     }
 
@@ -70,7 +70,7 @@ struct SFTPMetadataStderrTests {
     func unrelatedLinesAreKept() {
         let stderr = "Warning: Permanently added '[127.0.0.1]:2299' (ED25519) to the list of known hosts."
         let split = SFTPMetadataStderr.separate(stderr: stderr)
-        #expect(split.isEmpty)
+        #expect(split.lines.isEmpty)
         #expect(split.remainder == stderr)
     }
 }

@@ -259,8 +259,6 @@ public actor FileOperationQueue {
         pump()
     }
 
-    public var isPaused: Bool { isPausedFlag }
-
     // MARK: - Cancel
 
     /// Cancel one job. A waiting job is dropped before it starts; a running (or paused) job

@@ -296,16 +296,6 @@ struct DirectorySyncActionTests {
         #expect(action(.identical) == .none)
         #expect(action(.typeMismatch) == .conflict)
     }
-
-    @Test("SyncEntry.defaultAction matches the free function")
-    func entryConvenienceMatches() {
-        let entry = SyncEntry(
-            relativePath: "a.txt", name: "a.txt",
-            left: nil, right: nil, status: .leftOnly
-        )
-        #expect(entry.defaultAction(for: .leftToRight) == .copyToRight)
-        #expect(entry.defaultAction(for: .rightToLeft) == .deleteLeft)
-    }
 }
 
 @Suite("DirectorySync — override actions")
@@ -336,14 +326,5 @@ struct DirectorySyncOverrideTests {
             #expect(!actions.contains(.none))
             #expect(!actions.contains(.conflict))
         }
-    }
-
-    @Test("SyncEntry.availableActions matches the free function")
-    func entryConvenienceMatches() {
-        let entry = SyncEntry(
-            relativePath: "a.txt", name: "a.txt",
-            left: nil, right: nil, status: .rightOnly
-        )
-        #expect(entry.availableActions == [.copyToLeft, .deleteRight])
     }
 }

@@ -300,24 +300,4 @@ struct S3AccountBackendTests {
         #expect(!capabilities.contains(.trash))
         #expect(!capabilities.contains(.watch))
     }
-
-    // MARK: - Region
-
-    @Test("a bucket's region is read when the server names one")
-    func readsTheBucketRegion() throws {
-        let transport = FakeS3AccountTransport()
-        transport.headResponse = S3Response(status: 200, bucketRegion: "eu-west-1")
-
-        #expect(try backend(transport).region(ofBucketNamed: "somewhere") == "eu-west-1")
-    }
-
-    /// `nil` is an ordinary answer, measured: a real S3-compatible endpoint sends the header on no
-    /// response at all. The caller keeps the account's own region.
-    @Test("no region header is an answer, not a failure")
-    func absentRegionHeaderIsAnAnswer() throws {
-        let transport = FakeS3AccountTransport()
-        transport.headResponse = S3Response(status: 200, bucketRegion: nil)
-
-        #expect(try backend(transport).region(ofBucketNamed: "somewhere") == nil)
-    }
 }

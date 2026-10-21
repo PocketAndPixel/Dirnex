@@ -36,11 +36,6 @@ final class UndoController {
         journal = Self.load(from: defaults)
     }
 
-    /// Whether Cmd+Z has anything to reverse right now.
-    var canUndo: Bool { journal.canUndo }
-    /// Whether Cmd+Shift+Z has anything to re-apply right now.
-    var canRedo: Bool { journal.canRedo }
-
     /// The label of the action Cmd+Z would reverse next (`.move`, `.copy`, `.rename`, …), for
     /// the menu title — or `nil` when there's nothing to undo. Data the window joins to a
     /// translation (`LocalizedCatalog`).

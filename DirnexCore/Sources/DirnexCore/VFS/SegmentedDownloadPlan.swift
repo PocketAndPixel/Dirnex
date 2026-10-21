@@ -155,12 +155,6 @@ public struct SegmentedDownloadPlan: Sendable, Equatable {
         return start..<min(start + segmentSize, totalSize)
     }
 
-    /// The length of segment `number`, or 0 when it is outside the plan.
-    public func length(ofSegment number: Int) -> Int64 {
-        guard let range = range(ofSegment: number) else { return 0 }
-        return range.upperBound - range.lowerBound
-    }
-
     /// Every segment of this plan, each pointed at its own file under `directory`.
     ///
     /// The names are the segment numbers, so the directory reads as the plan does and a leftover

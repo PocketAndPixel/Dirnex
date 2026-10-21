@@ -71,8 +71,8 @@ struct SFTPServerSideCopyTests {
         // Measured against a real `sshd`: `cp` stamps the copy with *now*, and this language has no
         // verb that sets a time. Reporting it is what the milestone buys with the speed.
         #expect(carry.dropped == [.modificationTime])
-        #expect(sut.metadata.loss?.aspects == [.modificationTime])
-        #expect(sut.metadata.loss?.itemCount == 1)
+        #expect(sut.metadata.tally.loss?.aspects == [.modificationTime])
+        #expect(sut.metadata.tally.loss?.itemCount == 1)
     }
 
     @Test("a special mode bit rides the same copy, since cp drops it like -p does")
@@ -106,7 +106,7 @@ struct SFTPServerSideCopyTests {
             isCancelled: { false }
         )
         #expect(transport.serverSideCopies.first?.carry == .carryingNothing)
-        #expect(sut.metadata.loss == nil)
+        #expect(sut.metadata.tally.loss == nil)
     }
 
     @Test("the file's size is reported once, so the queue's bar is not left short")
@@ -191,7 +191,7 @@ struct SFTPServerSideCopyTests {
         )
         // The bytes are on the server, so this is a loss rather than a failure — and the aspects the
         // refused step was carrying are what it cost.
-        #expect(sut.metadata.loss?.aspects == [.mode, .specialModeBits])
+        #expect(sut.metadata.tally.loss?.aspects == [.mode, .specialModeBits])
         // A refusal about one item must not latch the *mode* capability for the connection either.
         #expect(sut.metadata.capabilities.contains(.changeMode))
     }

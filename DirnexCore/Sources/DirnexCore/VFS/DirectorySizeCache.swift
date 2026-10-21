@@ -143,10 +143,4 @@ public struct DirectorySizeCache: Sendable {
         for key in doomed { sizes.removeValue(forKey: key) }
         order.removeAll { removed.contains($0) }
     }
-
-    /// Forget everything — the explicit-refresh path (ncdu's `r`).
-    public mutating func removeAll() {
-        sizes.removeAll()
-        order.removeAll()
-    }
 }

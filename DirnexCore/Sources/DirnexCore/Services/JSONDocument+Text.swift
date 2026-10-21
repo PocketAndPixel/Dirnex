@@ -199,11 +199,6 @@ extension JSONDocument {
         written(value, indented: true, byteLimit: byteLimit)
     }
 
-    /// `value` as JSON with no whitespace — what a table cell shows for a nested value.
-    public func compactText(of value: Int, byteLimit: Int = .max) -> String {
-        written(value, indented: false, byteLimit: byteLimit)
-    }
-
     private func written(_ value: Int, indented: Bool, byteLimit: Int) -> String {
         var output: [UInt8] = []
         let isWhole = writeJSON(value, indented: indented, into: &output, byteLimit: byteLimit)

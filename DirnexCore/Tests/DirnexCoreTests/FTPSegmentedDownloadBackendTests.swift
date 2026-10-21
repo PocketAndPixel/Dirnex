@@ -248,8 +248,6 @@ private final class SingleStreamFTPTransport: FTPTransport, @unchecked Sendable 
 
     func fileSize(_ remotePath: String) throws -> Int64 { 0 }
 
-    func fetchCertificate() throws -> FTPCertificate { throw FTPTransportError.notFound }
-
     func makeDirectory(_ remotePath: String) throws {}
 
     func createEmptyFile(_ remotePath: String) throws {}

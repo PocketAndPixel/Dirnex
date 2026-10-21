@@ -125,9 +125,6 @@ public struct XMLTree: Sendable {
 
     // MARK: - Nodes
 
-    /// How many nodes the tree holds, at every depth.
-    public var nodeCount: Int { nodes.count }
-
     public func kind(of node: Int) -> Kind {
         nodes[node].kind
     }
