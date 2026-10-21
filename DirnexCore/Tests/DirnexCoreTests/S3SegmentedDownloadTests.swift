@@ -27,7 +27,7 @@ struct S3SegmentedDownloadTests {
         let plan = try #require(SegmentedDownloadPlan(totalSize: 100 * Self.mebibyte, limits: .s3))
         #expect(plan.segmentCount == 8)
         #expect(plan.segmentSize == 13_107_200) // 100 MiB over 8, rounded up
-        #expect(plan.length(ofSegment: 8) == 100 * Self.mebibyte - 7 * 13_107_200)
+        #expect(plan.range(ofSegment: 8) == 7 * 13_107_200..<100 * Self.mebibyte)
     }
 
     /// The floor is what keeps a barely-worthwhile object from being cut into eight pieces whose

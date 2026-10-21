@@ -25,7 +25,7 @@ struct SegmentedUploadPlanTests {
         #expect(plan.partSize == 16 * mib)
         #expect(plan.partCount == 3)
         #expect(plan.partsInFlight == 3)
-        #expect(plan.length(ofPart: 3) == 16 * mib)
+        #expect(plan.range(ofPart: 3) == 32 * mib..<48 * mib)
     }
 
     @Test("a file large enough for four even parts gets four even parts")
@@ -36,7 +36,7 @@ struct SegmentedUploadPlanTests {
         // The point of dividing evenly rather than by the preferred size: with four connections and
         // parts of 32, 32 and 36 MiB the run takes as long as its largest part.
         #expect(plan.partSize == 25 * mib)
-        #expect(plan.length(ofPart: 4) == 25 * mib)
+        #expect(plan.range(ofPart: 4) == 75 * mib..<100 * mib)
     }
 
     @Test("a large file uses the preferred part size and runs in batches")
@@ -63,7 +63,6 @@ struct SegmentedUploadPlanTests {
         #expect(next == total)
         #expect(plan.range(ofPart: 0) == nil)
         #expect(plan.range(ofPart: plan.partCount + 1) == nil)
-        #expect(plan.length(ofPart: plan.partCount + 1) == 0)
     }
 
     @Test("the scratch a run occupies is one batch, whatever the file's size")

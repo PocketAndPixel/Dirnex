@@ -108,11 +108,18 @@ enum ColumnarListing {
     /// and told the user **"someone else has edited it"** on every save (measured live against a
     /// real server 2026-08-22: 36 bytes both sides, dates 39 s apart). S3 never saw it — it carries
     /// an entity tag, which settles the comparison before the date is consulted.
-    static func formatters(for formats: [String]) -> [DateFormatter] {
+    ///
+    /// `timeZone` is the clock the stamps were written on, for a listing that knows it is not this
+    /// Mac's — an FTP server given a zone of its own. `nil` keeps the formatter's default, this Mac's
+    /// zone, which is what every caller meant before one could say otherwise. The anchor still only
+    /// contributes the year in another zone: every zone in use is offset by whole minutes, so a
+    /// minute boundary here is a minute boundary there.
+    static func formatters(for formats: [String], timeZone: TimeZone? = nil) -> [DateFormatter] {
         let anchor = yearAnchor()
         return formats.map { format in
             let formatter = DateFormatter()
             formatter.locale = Locale(identifier: "en_US_POSIX")
+            if let timeZone { formatter.timeZone = timeZone }
             formatter.dateFormat = format
             if !format.contains("y") { formatter.defaultDate = anchor }
             return formatter
@@ -136,8 +143,25 @@ enum ColumnarListing {
     /// The formatters for the Unix `ls -l` time column, which is a recent entry's `HH:mm` or an
     /// older one's year. All three dialects print the identical column, in English regardless of
     /// locale, and each held its own verbatim copy of this list before it was named here.
-    static func unixDateFormatters() -> [DateFormatter] {
-        formatters(for: ["MMM d HH:mm", "MMM d yyyy", "MMM d HH:mm:ss"])
+    static func unixDateFormatters(timeZone: TimeZone? = nil) -> [DateFormatter] {
+        formatters(for: ["MMM d HH:mm", "MMM d yyyy", "MMM d HH:mm:ss"], timeZone: timeZone)
+    }
+
+    /// The same formatters for a listing printed on a **UTC** clock (`TZ=UTC0`), where a stamp with a
+    /// time of day is read as UTC and a **date-only** one is not.
+    ///
+    /// `ls` prints a date alone for anything older than about six months, and it parses to midnight
+    /// in whatever zone the formatter has. Read as UTC that is 03:00 in Kyiv — a time of day the row
+    /// never had, shown as if it were real, and different from the 00:00 the pane's own `sftp`
+    /// listing gives the same file. On this Mac's clock it matches the pane, except for a file
+    /// changed within the offset of midnight, whose UTC date can be a day out — no worse than the
+    /// server's own date was.
+    static func utcUnixDateFormatters() -> [DateFormatter] {
+        let formatters = unixDateFormatters(timeZone: TimeZone(identifier: "UTC") ?? .gmt)
+        for formatter in formatters where !formatter.dateFormat.contains("H") {
+            formatter.timeZone = .current
+        }
+        return formatters
     }
 
     /// Parse `string` with the first formatter that accepts it, or ``FileEntry/unknownDate`` when

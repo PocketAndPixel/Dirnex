@@ -82,15 +82,19 @@ struct QuickViewScrollSurfaceTests {
             tree.write("long.txt", contents: text)
         )
         let surface = try #require(preview.textSurface)
+        let layout = try #require(surface.textView.textLayoutManager)
         let window = try await QuickViewScrollFixtures.drawn(preview) {
-            surface.textView.frame.height > surface.scrollView.contentView.bounds.height * 3
+            // The surface is visible before its async read finishes. Wait for the whole text, then
+            // lay out the viewport: a resumed read need not have had a display pass yet.
+            guard surface.textView.string == text else { return false }
+            layout.textViewportLayoutController.layoutViewport()
+            return surface.textView.frame.height > surface.scrollView.contentView.bounds.height * 3
         }
         defer { window.orderOut(nil) }
         try walksAFlippedDocument(preview, scrollView: surface.scrollView)
 
         // The end is the last character, not wherever the estimate put the bottom of the view.
         preview.scrollContent(.end)
-        let layout = try #require(surface.textView.textLayoutManager)
         let storage = try #require(surface.textView.textContentStorage)
         layout.textViewportLayoutController.layoutViewport()
         let viewport = try #require(layout.textViewportLayoutController.viewportRange)
@@ -208,21 +212,22 @@ struct QuickViewScrollSurfaceTests {
 enum QuickViewScrollFixtures {
     static let lineStep = CGFloat(QuickViewScroll.lineStep)
 
-    /// Put the preview's window on screen and wait until `ready`. A text view in TextKit 2 sizes itself
-    /// for the whole document only once it has been on screen through a run-loop turn (measured here:
-    /// 394 points for 3000 lines, one screen, until then), and `PDFView` reports no visible pages until
-    /// it has — as it is in the app, where the preview is on screen before anyone can press a key at it.
-    /// Waited for by sleeping, which lets the main run loop turn, rather than by spinning it
-    /// (docs/NOTES.md ▸ Testing).
+    /// Put the preview's window on screen and wait until `ready`. `PDFView` needs this before it
+    /// reports visible pages. The text test also drives its viewport layout in `ready`: sleeping
+    /// allows the read to finish, but does not guarantee a display pass before the next poll.
+    /// Allow 30 seconds, like the other preview waits: a full run can delay the read's main-actor
+    /// task and its delivery past 10 seconds even though the read itself takes milliseconds.
+    /// Check readiness before the deadline, so a late resume can still accept a ready preview
+    /// (docs/NOTES.md ▸ Testing). The caller orders the window out afterwards.
     static func drawn(
         _ preview: QuickViewPreviewView,
         until ready: () -> Bool
     ) async throws -> NSWindow {
         let window = try #require(preview.window)
         window.orderFront(nil)
-        let deadline = Date().addingTimeInterval(10)
+        let deadline = ContinuousClock.now + .seconds(30)
         while !ready() {
-            try #require(Date() < deadline, "the preview never finished drawing")
+            try #require(ContinuousClock.now < deadline, "the preview never finished drawing")
             try await Task.sleep(for: .milliseconds(10))
         }
         preview.layoutSubtreeIfNeeded()

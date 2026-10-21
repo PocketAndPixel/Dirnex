@@ -14833,6 +14833,496 @@ flips files, and ⇧ now separates the two: before, every arrow went to the flip
 - Core green (3977 tests), app green (1768, only the expected `GestureWaitTests` issue), both
   linters clean. No user-visible strings. Changes left uncommitted.
 
+**2026-10-19: a file dragged off a server keeps its mode and date.** Reported by Oleg with three
+screenshots. He dragged `Agences_SYNERGIE_ATS.xml` from an FTP pane into a local one, and Quick View
+showed the copy only as a generic XML icon, while the same file on the server previewed as a table.
+The copy was `----------`, so nothing could read it, and its date was the time of the copy. Its
+ctime equalled that mtime: the `chmod` had run and no `utimes` had followed it.
+
+- **The cause was `PasteboardPayload.entry`.** A drag and ⌘C/⌘V both hand the queue the entry the
+  payload rebuilds, and it rebuilt the mode as `0` and the date as unknown. Its comment said the
+  copy engine "reads none of them". That stopped being true at M25 Slice 2, when a remote copy began
+  carrying the mode and date from the entry it is given. `0` is a real mode to the carry, so an FTP
+  download ran `chmod 000` and had no date to set. F5 was never affected, because it hands the
+  listing's own entry. Read off the code, the same `000` reached an upload to FTP (`SITE CHMOD 000`)
+  and a dragged folder over FTP or SFTP in either direction. An SFTP file upload was spared, since
+  `put -p` reads the mode off the local file.
+- **The payload now carries the mode and the date**, as optional keys `m` and `t` (seconds since
+  2001, `Date`'s own reference, so the value round-trips exactly). A row that listed neither comes
+  back with neither, so the carry has nothing to do. The version stays 1: an older build ignores the
+  two keys, and a payload from one reads as absent rather than as `000`.
+- **Pinned** by four new `PasteboardPayloadTests` and a `PastedRowCarryTests` suite of two. The payload
+  tests check that a pasted row's `CopySourceHint` equals F5's (mode and date present, either
+  missing, fractional seconds), that absent stays absent, that an older payload carries nothing, and
+  the wire spelling. The suite lists real `LIST` rows through a fake FTP server, puts the entry
+  through the payload and downloads it onto a real file: a Unix row lands `0644` with its date, and
+  a DOS row, which has no mode, leaves the file's mode alone and still sets the date. The test that
+  pinned `permissions == 0` now expects the listed mode. Negative control: with the old
+  `PasteboardPayload.swift` stashed, all seven fail, and both downloads land `000`.
+- **Verified live** on the Debug build launched by path, against a throwaway anonymous `pyftpdlib`
+  server, so no Keychain was read. Its `LIST` printed `-rw-r--r-- … Jun 14 2024`. The left pane was
+  seeded on that folder with the cursor on the file. `run operation "edit.copy"` put
+  `"m":420,"t":740005200` on the general pasteboard (2024-06-14 00:00 local, the most `LIST` says of
+  an old file). Then `reveal` pointed the pane at an empty local folder and `edit.paste` landed the
+  file `-rw-r--r--` with that date, bytes identical, from one `RETR` in the server's log. A real drag
+  cannot be synthesized, but a drop reads the same payload through the same reader as ⌘V. Oleg's
+  release build was quit first, and the defaults domain was imported back byte-identical afterwards.
+- Core green (3983 tests), both linters clean. App: 1768 tests, one failure in two full runs:
+  `QuickViewScrollSurfaceTests`' text case, whose 10 s wait for the preview to draw (line 225) ran
+  out. It is not this change. It fails the same way in a full run with every change here stashed,
+  and passes when its suite runs alone (twice). No user-visible strings. Changes left uncommitted.
+
+**2026-10-19: a file written to an FTP folder shows up without reopening the tab.** Reported by Oleg
+with a screenshot of a tree on an FTPES server, SYNERGIE and AGENCE open: a freshly generated
+`Agences_SYNERGIE_ATS.xml` did not appear until the tab was closed and opened again, "but it could
+be a server lag". It was not the server.
+
+- **Measured on the running app, against the real server, before any Swift.** The poll's `curl`
+  children were timed by sampling `pgrep -P` every 50 ms (docs/NOTES.md ▸ Caches and refreshes). A
+  round was three `curl` runs, one per listed folder, of 0.99 s, 0.91 s and 0.99 s. Each is a TCP
+  connect, a TLS handshake, a login and a second handshake on the data channel, with the server
+  41 ms away. The next round came 58.9 s later: `RemoteRefreshPolicy` spaces rounds at twenty times
+  what the last one cost, so ~3 s of logins turned the 15 s floor into a minute. The first sample
+  saw no `curl` at all for 150 s, because the window was covered and the poll had stood down, as
+  designed.
+- **Oleg chose the fix from three**: batch the round and refresh on a return, keeping the 5 % rule.
+  Relaxing the rule, and refreshing on a return alone, were the other two.
+- **One login per round.** `VFSBackend.listDirectories(at:isCancelled:)` is a new opt-in seam. Its
+  default lists each folder in turn, which is the old route. `FTPBackend` answers it with the
+  transport's existing batch, so the subtree shortcut's one-connection-per-level verb now serves
+  the tree refresh too. A single folder still takes the single `LIST`, which carries the TLS-1.2
+  retry. A batch that lands nothing falls back to single listings, and stops after the first one
+  fails, so a server refusing the login is asked twice a round rather than once per folder.
+  `CompositeBackend` forwards it, in its own file (`CompositeBackend+Listings`). The tree refresh
+  reads every listed folder through it, except a bucket row, which keeps `treeChildEntries`.
+- **A return waives the stretch.** Each (re)start of the poll loop waits
+  `RemoteRefreshPolicy.catchUpDelay`: the floor less the time since the rows last arrived. Only a
+  wait after a round the loop ran itself is stretched. The app becoming active and the pane's window
+  becoming key both restart the loop, as uncovering and a tab switch already did. The handler only
+  restarts and never stands the poll down, because at activation occlusion can still read hidden
+  (the trap the file's header records). A navigation, a tab-switch refresh and every passive refresh
+  stamp when the rows arrived, so a pane opened and then left for another app catches up on return.
+  A round still in flight counts as finishing now, so a restart cannot send a second round beside it.
+- **Pinned** by `FTPBatchedListingTests` (12, two of them on the forwarding default) and a catch-up
+  suite of four in `RemoteRefreshPolicyTests`, in the core. In the app, `TreeRefreshBatchTests`
+  checks the composite routing (two tests, including mixed and unconnected connections) and that a
+  tree refresh is one batch in which the new file lands. Negative controls, each restored afterwards:
+  with FTP's override renamed away, the three login-counting tests and the foreign-path guard failed
+  and every answer test passed; without
+  the composite forward, all three app tests failed while the new file still appeared, which is the
+  silent case; and with the tree refresh listing per folder, only the refresh test failed.
+- **Verified live** on the Debug build launched by path. The server was a throwaway anonymous
+  `pyftpdlib` that sleeps 2 s in `PASS`, so a login costs what the real one does and no Keychain was
+  read. The left pane was seeded with the reported tree. Every poll round was **one** `curl` of
+  1.98 s, and the server's log shows one session per round changing into all three folders.
+  Unattended rounds stayed 41.9 s apart, so the stretch still governs a pane nobody touches.
+  Switching to Finder and back 22 s after a round started a refresh **0.01 s** later; unattended it
+  would have waited about 20 s more. Switching back 6 s after a round did not refresh at once: the
+  next round came 15.5 s after the previous, the floor. The new row itself was seen only by the
+  app test, since the window could not be captured headlessly. Oleg's Debug build was quit first
+  and the defaults domain was imported back byte-identical. **Not yet seen on the reporting server**,
+  since relaunching there reads the FTP password from the Keychain.
+- Core green (3999 tests), both linters clean. App: 1771 tests with the live servers up, so the FTP
+  and SFTP live suites ran. One failure, `QuickViewScrollSurfaceTests` line 225 again, which passed
+  when its suite ran alone. No user-visible strings. Over SFTP a tree still costs a session per open
+  folder (docs/LOCATION-SUPPORT.md). Changes left uncommitted.
+
+**2026-10-19: an SFTP tree refreshes through one session too.** The same seam, for the backend the
+entry above left behind: each `sftp` is a fresh connect, key exchange and authentication, so a tree
+with two folders open paid three a round.
+
+- **Probed before any Swift**, against the throwaway `sshd` (docs/NOTES.md ▸ sftp / ssh). `sftp`
+  echoes each batch line as `sftp> <line>`, so the echo frames each folder. Each `ls -la` goes in
+  allowed to fail (`-`), since a plain `-b` batch stops at the first refused folder. The refusal goes
+  to stderr, so the run folds stderr into stdout, where it lands between its own echo and the next.
+  The exit status is 0 wherever the refused folder sits, so only the transcript is read.
+- **Not core-only, as briefed**: the `sftp` process transport lives in the app. The core holds the
+  decisions. `SFTPTransport.listDirectories(_:isCancelled:)` is a new requirement whose default
+  lists each folder, as FTP's does. `SFTPBatchListing` builds the batch and splits the transcript.
+  `SFTPBackend+Listings` is the override, with FTP's fallback rules. The app adds the verb
+  (`SFTPProcessTransport+Listings`) and a merged-stream run (`run(transcript:)`), and classifies
+  nothing.
+- **A folder's answer counts only once `sftp` has moved on to the next line.** A session that ends
+  inside a folder answers `nil` for it, so a dropped connection can never empty a folder. The batch
+  ends on `pwd` to give the last folder a next line. `pwd` is free, since `sftp` answers it from
+  what it resolved at connect. `sftp` prints names raw, newline included, so a name can forge any
+  line without a `/`. The end marker is therefore searched from the end. A path with a newline stays
+  out of the batch and answers `nil`, which is what its single listing does (`Unterminated quoted
+  argument`). An echo that does not read back as sent costs its folder and the one before it, never
+  another folder's rows.
+- **Pinned** by `SFTPBatchListingTests` (10, on transcripts shaped like the probe's) and
+  `SFTPBatchedListingTests` (11, one on the forwarding default). That suite's double prints what `sftp` would and reads it through
+  the shipped splitter. `SFTPBatchedListingLiveTests` runs the real batch with a refused, a missing
+  and an empty folder in the middle, each answer equal to its single listing. Negative controls,
+  each restored afterwards. With the override renamed away, the four session-counting tests failed
+  and every answer test passed. With the end marker searched from the start, the forged-name test
+  failed. With a block trusted without a next echo, the truncated-session test failed.
+- **Verified live** on the Debug build launched by path, against the throwaway `sshd` with key auth,
+  so no Keychain was read. The left pane was seeded with a tree of three listed folders, the root
+  and two open below it. A temporary env-gated probe, removed afterwards, routed the verb back to one
+  listing per folder in the same build. Counting `Accepted publickey` in the server's log, the
+  control cost **3** sessions every 15 s round and the batch **1**, over four rounds each. The
+  defaults domain was imported back byte-identical.
+- Core green (4020 tests), both linters clean. App: 1772 tests with the live servers up, so the FTP
+  and SFTP live suites ran. One failure, `QuickViewScrollSurfaceTests` line 225 again, which passed
+  when its suite ran alone. The password route was not run live, since the throwaway server takes
+  keys only. Its piped-stdin shape was probed with the CLI and frames identically. No user-visible
+  strings. S3 still lists a tree's open folders in turn. Changes left uncommitted.
+
+**2026-10-19: Quick View's text-scroll test drives its first viewport layout.** The full app run
+failed at `QuickViewScrollFixtures.drawn`'s 10 s deadline, while the scroll suite passed alone.
+The cause was the timing of the text read and layout under the full suite's main-actor load.
+
+- **Traced both runs.** Both had an inactive app, a visible, non-key fixture window and no modal
+  window. In the full run, two requested 10 ms sleeps resumed at 5.8 s and 10.4 s. The first poll
+  still had no text. At the second, all 324,392 characters had arrived, but the frame was still
+  394 points tall and TextKit 2's viewport range was `{0, 0}`. One explicit `layoutViewport()`
+  immediately grew the frame to 144,721 points and the range to `{0, 1006}`, matching the isolated
+  run. The wait had let the read finish, but the new text had not had its display pass.
+- **The readiness closure now lays out the viewport before checking the frame.** The deadline
+  stays 10 s, TextKit 2 stays lazy, and all scroll assertions remain, including End reaching the
+  last character. No app code changed. The fixture comment and NOTES.md now explain why sleeping
+  alone is not enough.
+- **Negative control:** restored the exact original test file with no trace code and ran the full
+  app suite. It failed again at line 225 with "the preview never finished drawing"; this was the
+  only unexpected issue. All temporary probes were removed.
+- **Verified:** two consecutive full app runs passed (1772 tests in 281 suites, 31.1 s and 41.0 s),
+  with only the expected `GestureWaitTests` issue; live-server suites were skipped. Core passed
+  (4020 tests), `swiftformat --lint .` and `swiftlint --strict` were clean. Changes left uncommitted.
+
+**2026-10-19: FTP times are exact where the server answers `MLSD`, and a server can have a zone.**
+Asked for with a screenshot of a Paris server listing a file at 16:41 that was written at 17:41 Kyiv
+time. A `LIST` stamp has no zone, so the parser read it as this Mac's.
+
+- **The premise M13 recorded was wrong.** "`curl` cannot send `MLSD`" stood in NOTES.md, PLAN.md,
+  LOCATION-SUPPORT.md and a doc comment. Traced on a throwaway pyftpdlib: `curl -X MLSD` sends it on
+  the data connection and returns `modify=…` in UTC. All four now say so.
+- **`MLSD` supplies times, never rows.** The same probe showed pyftpdlib following symlinks in
+  `MLSD`: `linkdir` came back `type=dir` with `sub`'s own `unique`. A recursive delete over those rows
+  would empty the link's target. So the rows stay `LIST`'s, and `FTPListingParser.applyingFacts`
+  takes a row's time from `MLSD` only where both listings agree what the row is (`FTPFactsParser`).
+- **One login carries both.** A single listing is two sections of one `curl`, `LIST` first, under
+  `--fail-early`, with a `write-out` line per section. That keeps every failure of the folder or the
+  connection on `LIST`'s own exit code, and a refused login to one attempt. `FTPListingRun` reads the
+  outcome; reply 500/502 on the `MLSD` section latches it off for the connection (`FTPFactsSupport`).
+  A batch adds `MLSD` sections only after a single listing has seen them answer, since `curl` signs in
+  again for every section after a refused login (3 sections, 3 failed logins, measured).
+- **A per-server time zone for `LIST`.** `ServerEndpoint.ftp` gained `serverTimeZone` (an IANA
+  identifier, `nil` for this Mac's, and what an older record decodes as). It is kept out of
+  `FTPLocation`, so the backend id, the Keychain item and restored tabs do not move. The Connect sheet
+  has a Time zone row: Same as this Mac, UTC, then every zone with today's offset. A saved identifier
+  this Mac does not list keeps an item of its own, so an edit cannot erase it. Three new strings,
+  translated into all 14 languages.
+- **Pinned** by 5 new core suites (parser, `LIST` zone and the merge rule, the run's outcomes and the
+  invocation, the latch, the backend end to end) and `ConnectServerFTPTimeZoneTests`. A live test
+  uploads a file whose time has 37 seconds, set exactly by `MFMT`, and lists it back to the second;
+  the subtree live test now also compares dates between the batch and the walk. Negative controls,
+  each restored: without the kind check, both symlink tests failed; with the backend never asking for
+  `MLSD`, the live exact-time test failed, which is what shows the live run really used `MLSD`
+  (pyftpdlib does not log listing commands).
+- Core green (4061 tests), both linters clean. App: 1779 tests with the live servers up, one known
+  issue. The Connect sheet's new row was checked in a render, not in a running app. **Confirmed by
+  the reporter on their server**, relaunched on the new build: the file reads 17:41-style local
+  times, and the server answers `MLSD`. The tell is the old rows. Folders last changed in 2024 had
+  read `00:00`, because `LIST` prints only a date for them, and now show their time of day
+  (`14.06.2024, 13:04`). Changes left uncommitted.
+
+**2026-10-19: SFTP search results read the server's walk in UTC.** Asked straight after the entry
+above: do SFTP and S3 have the same problem? S3 does not, since every `LastModified` ends in `Z`.
+SFTP has it in one route.
+
+- **Probed against a throwaway `sshd` started with `TZ=America/New_York`.** For a file written at
+  16:41 Kyiv time, the pane's `sftp` listing said `16:41`, because a recent client formats the
+  protocol's epoch time itself. The exec-channel walk behind search, folder sizes and sync said
+  `09:41`. It runs `ls` on the server, which prints the server's clock, and the parser read that as
+  this Mac's.
+- **The walk now runs under `/usr/bin/env TZ=UTC0`** (POSIX for UTC, needs no zoneinfo, and
+  overrides a `TZ` the user's rc exports, all probed). `SSHFindListingParser` reads stamps with a
+  time of day as UTC. A date-only stamp (older than about six months) stays on this Mac's clock: read
+  as UTC it would show 03:00 in Kyiv, a time the row never had, where the pane shows 00:00
+  (`ColumnarListing.utcUnixDateFormatters()`).
+- **The throwaway `sshd` now runs in another zone** (`scripts/live_test_servers.sh`: UTC+14, or
+  UTC−11 on a Mac at +14), since a server on this Mac's clock agrees with every version of the bug.
+  `SFTPLiveClockTests` asks the server its offset first and records that a run proved nothing when
+  the two match. It uploads a file with a known time and checks that the shortcut's row equals the
+  pane's and the stamp's minute.
+- **Negative controls**, each restored: with the parser back on this Mac's clock, the core UTC test
+  failed; with the shipped walk put back, the live clock test failed both assertions against the
+  +14 server. Every other SFTP live suite passed against that server unchanged.
+- Core green (4063 tests), both linters clean. App: 1780 tests with the live servers up, one known
+  issue. Not handled: an older SFTP server whose `sftp` listing is the server's own line, on the
+  server's clock. That is read from OpenSSH's client behavior, not measured, since no such server
+  was reachable. No user-visible strings. Changes left uncommitted.
+
+**2026-10-19: a tab's history survives a relaunch, and ⇧⌘T reopens a closed tab.** Asked for by
+Oleg: 80 last visited places per tab, kept across a relaunch, and a closed tab reopenable with its
+history for the rest of the run. Each tab's back/forward trail is now written with the tab, forward
+entries included, so ⌘[, ⌘] and the ⌥↓ list carry on after a relaunch. File ▸ Reopen Closed Tab (⇧⌘T)
+puts the last closed tab back in the pane and the place it left.
+
+- **The trail is a field of `PersistedTab`** (`history: StoredNavigationHistory?`), which decodes to
+  an empty trail rather than throwing, since a pane's tabs are one blob. What it leaves out is decided
+  in the core (`NavigationHistory.stored`) by the rule a tab's own restore uses (`TabRestorePolicy`),
+  plus the two facts only the app has: a folder in an unlocked vault (implicit memory, M19) and a
+  nested archive's temp extraction. Neighbours that meet once something between them is gone fold into
+  one. A trail that visits a server keeps one endpoint per server, restored into
+  `PanelTab.trailEndpoints`, and the reconnect decision reads it through `PanelTab.endpoint(for:)`.
+  Without that, ⌘[ back onto a server after a relaunch had nothing to reconnect with, since a tab holds
+  one endpoint for the place it is in. The cap went from 100 to 80, so what you can walk now is what
+  comes back.
+- **A walk is over only when its folder lists.** ⌘[ moved the trail's position at the press, and a
+  failed listing never moved it back, so ⌘[ into a deleted folder raised the alert and left the trail
+  on the dead folder while the pane still showed the old one. That was rare in a session and would
+  have been routine across relaunches. `NavigationHistory` now keeps `landedIndex` (what the pane
+  shows) beside `currentIndex` (where the walk is heading), so three quick ⌘[ still go three back. A
+  failure puts the trail back (`revert`). A folder that is gone (`VFSError.meansPlaceIsGone`: not found,
+  or a file where it was) is dropped and the walk carries on past it (`dropUnreachableTarget`), from the
+  gone entry rather than from the screen. A gone folder picked by name from ⌥↓ is dropped and still
+  reported. A fresh navigation during a walk now branches from the folder on screen, which is where its
+  click happened. A walk to a server that cannot reconnect unattended keeps the listing and says why
+  on the status line, where `standDown` would have blanked it.
+- **No disk check at launch.** Stat-ing 80 entries per tab costs a syscall each, and one on a share
+  that stopped answering can block. A dead entry is dealt with when ⌘[ reaches it.
+- **The cost was measured first**, in a scratch package against the core: the worst case, ten tabs
+  each with a full trail of real 59-character paths, is a 79 KB pane and **0.8 ms** to encode and
+  `set` per save (against 0.01 ms without trails). `persistState` runs once per navigation, so it
+  stayed in the tab blob with no debounce.
+- **A closed tab is kept as itself** (`ClosedTabs<Tab>` in the core, one per window, newest first,
+  20 deep), the way a move to the other pane keeps it, so it comes back with its trail, cursor, marks,
+  shape and a search's hits. The pane hands it to the window through `ClosedTabHost`, a protocol of
+  its own that `PanelHost` inherits, since `PanelViewController.swift` sits at the file-length ceiling.
+  Closing a tab mid-walk settles its trail first. Closing the tab on screen now invalidates a listing
+  still in flight for it, as a move to the other pane already did, so it cannot land on the tab that
+  takes over; closing a background tab leaves the listing on screen alone. Tabs standing on a volume that unmounts (a vault locked, a
+  disk ejected) are forgotten then. ⇧⌘T was free (⌘T is New Tab, ⌃T Tags); the title and keywords are
+  in all 14 catalogs.
+- `NavigationHistoryTests`, `NavigationHistoryWalkTests`, `NavigationHistoryStorageTests` and
+  `ClosedTabsTests` (core). `TabHistoryTests` (app, 9 tests): a real pane writes the trail where
+  restore reads it; a restored server endpoint reaches the reconnect verdict; ⌘[ past a real deleted
+  folder; the other failures revert; a gone ⌥↓ pick is reported; close and reopen hand over the same
+  tab; the last tab is not handed over; a tab closed mid-walk settles; and the File menu item, its
+  ⇧⌘T, and that nothing else claims the key. Negative control: with the skip taken out of `navigate`,
+  the deleted-folder test failed and only it. Core green (4104 tests), both linters clean. App: 1789
+  tests with one known issue and one failure, `QuickViewScrollSurfaceTests`' text test missing its
+  10 s draw deadline. It fails the same way on HEAD with these changes stashed (1780 tests), and
+  passes run alone, so it is not this change's. The first full run of this change passed it.
+- **Verified live** on the Debug build, launched by path after quitting a stale Debug copy left running
+  since 21:13, with settings backed up and restored (66 keys, identical by value). Driven through
+  `reveal` and `run operation`, with the saved tabs read back after each step. Home → a → b → c saved
+  `[Home, a, b, c]`. After a quit, deleting `b` and a relaunch, one ⌘[ landed on `a` with the trail
+  `[Home, a, c]`, and ⌘] went to `c`. A tab walked `c → a`, closed and reopened came back in its slot
+  with `[c, a]`, and ⌘[ from it went to `c`. A tab closed on the right came back on the right with the
+  focus on the left. Through computer use: File ▸ Close Tab, then File ▸ Reopen Closed Tab, and the
+  item was disabled with nothing to reopen. ⇧⌘T after a Close Tab reopened it: the item was disabled
+  afterwards, which a ⌘T taken for New Tab would have left enabled. Not exercised live: any server or
+  archive entry in a trail, and the vault and nested-archive exclusions, which are pinned by tests.
+
+**2026-10-20: Quick View's text-scroll wait allows the read to reach the main actor.** The test
+still failed in full app runs after the 2026-10-19 viewport fix. It was the only unexpected issue
+in a traced run of 1789 tests; the scroll suite had passed alone.
+
+- **The view was still empty at the deadline.** The text load's task first ran at 12.04 s, read
+  the 324,392 characters in 5.6 ms, then delivered the result on the main actor at 21.34 s. The
+  drawing wait woke at 12.07 s with zero characters and a 394-point frame. The load token still
+  matched, so this was delayed work, not a cancelled or replaced preview. A passing baseline had
+  the same delay: empty at 9.96 s, ready at 17.60 s. It passed because readiness is checked before
+  the deadline; the empty poll happened just before 10 s.
+- **The fixture's name hid a missing wait.** `QuickViewTextPreviewTests.loaded` returns when the
+  text surface is visible, and `showText` makes it visible before starting the read. The scroll
+  test now requires the complete expected text before calling `layoutViewport()`. Its shared
+  drawing wait uses the same 30 s allowance as the other preview waits, on a monotonic clock.
+  Lazy TextKit 2 layout and every scroll assertion remain, including End reaching the last
+  character. No app code changed, and all temporary timing probes were removed.
+- **Verified:** four consecutive full app runs passed (1789 tests in 284 suites, 55.1 s, 53.9 s,
+  54.3 s and 53.8 s), with only the expected `GestureWaitTests` issue. Live-server suites were
+  skipped. Core passed (4104 tests), `swiftformat --lint .` and `swiftlint --strict` were clean.
+  The working tree was clean at the start; tab-history files were untouched. Changes left
+  uncommitted.
+
+**2026-10-20: the Quick View header's styles are clickable.** Asked for by Oleg: "1 Source · 2 Table"
+(or "· 2 Page", "· 2 Tree") picks a style on a click, as its digit does, at all three sizes. The
+header's `onPickStyle` reaches the window's `setQuickViewRenderStyle` for the two full sizes, and the
+covered pane's host for ⌃Q, which is why `PanelHost` gained that method. A click on the style already
+showing does nothing, since the preference already ignores a value it holds.
+
+- **The one label became a strip**: an `NSStackView` of a button per style, the dot between them
+  and the "(no JavaScript)" mark, each hidden for a file with one rendering so the strip takes no
+  room from the name. The buttons refuse first responder, so the arrows stay on the file list.
+- **A plain borderless button pads its title about 2.5 pt a side**, where a label's insets cancel its
+  cell's padding, so a straight swap moved the first style off the 12 pt margin and opened the gaps
+  around the dot. `QuickViewStyleButton` sets 2 pt alignment insets, which `NSButton` takes off its
+  own intrinsic size (probed: 50 → 46), so the text lands within half a point of where the label
+  drew it and the padding stays clickable.
+- **The faded full-screen header now keeps every subview out of reach**, not just the ×: a click on
+  an invisible "1 Source" over a photograph would otherwise have switched the style.
+- **Pinned** by `QuickViewHeaderStyleTests` (nine tests): a click reaching the owner, the ⌃Q host,
+  titles and colors, text placement, an empty strip for a file with one rendering, the mark, the
+  faded hit test, focus, and a pointer press that goes through the window's hit test into the
+  button's tracking loop (docs/NOTES.md ▸ Testing). `QuickViewPaneSurfaceTests` now reads the
+  buttons. Negative controls: a plain `NSButton` fails the placement test (the first version of
+  that test measured frames and passed it, so it now measures the drawn title); the old ×-only
+  fade rule fails the faded test; and with the header off the surface's hit-test exemptions the
+  pointer test fails.
+- **Verified live** on the Debug build launched by path, after quitting a stale Debug copy left
+  running since 00:06, with settings backed up and restored (66 keys, identical by value). In ⌃⇧Q
+  on a CSV, "1 Source" showed its text and wrote only `quickViewTableStyle`, "2 Table" put the table
+  back, and ↑ then flipped to the next file, so the list kept the keyboard. In ⌃Q on an HTML page
+  "1 Source" showed the markup, wrote only `quickViewRenderStyle`, and dropped the "(no JavaScript)"
+  mark. Computer use delivered each click as an accessibility press, which skips the hit test; the
+  pointer test above covers that half. Full screen was not run, since it would take over the screen.
+- App green (1798 tests in 285 suites, only the expected `GestureWaitTests` issue; live-server
+  suites skipped). Core green (4104 tests). Both linters clean. No new strings. Changes left
+  uncommitted.
+
+**2026-10-21: one shortcut scheme, and ⇧F6 moves keeping folders.** Asked for by Oleg, after asking
+why the move twin of ⇧F5 had no key. It had none because ⇧F6 was Rename on the Total Commander
+preset (2026-10-14). Oleg chose to drop the preset rather than leave the move unbound: a user who
+wants Total Commander's keys can change them in Settings.
+
+- **The preset was two overrides deep**: Quick Look on bare F3 and Rename on ⇧F6. F5–F8 and F4
+  were already the defaults, and F3 already opened View on both schemes through the function bar,
+  so the preset's only real effect was the key that blocked this one.
+- `KeyBindings.Preset`, `preset(_:)` and `matchingPreset` are gone from the core, and
+  `KeyBindingStore.apply(preset:)` and the Shortcuts tab's picker and "Switch preset?" alert from the
+  app. Restore Defaults stays and covers the way back. The picker's five strings left the catalog
+  in all 14 languages. `shift+f6` joined the move's keywords, in every language, as `shift+f5` is
+  in the copy's.
+- **Restore Defaults' confirmation said "the macOS defaults"**, naming a scheme that no longer
+  exists, so it now says "the default shortcuts". Each of the 14 translations takes its term from
+  the same alert's title ("Restore default shortcuts?"), which already had it.
+- **The filter now leads the row**, asked for by Oleg with a screenshot once the picker had gone. It
+  was a 140 pt field pushed to the right. A first pass let it fill the row up to Restore Defaults
+  (434 pt in English), which Oleg found too wide. 260 pt (60%) was still wide, so it is a fixed
+  208 pt (80% of that), with the free space between it and the button. Fixed rather than capped: a
+  field with only a maximum, beside a `Spacer`, is offered an even share of the free space and comes
+  out narrower. The clash warning, when shown, sits right after the field. Italian has the longest
+  Restore Defaults label (by characters; 244 pt measured, launched with `-AppleLanguages (it)`),
+  which fit beside 260 with 66 pt to spare, so it fits beside 208 too.
+- **No migration**, by Oleg's call: nobody has the app yet, so nobody holds the preset's ⇧F6.
+- Comments that reasoned from "both presets" now reason from the one scheme. The tests that looped
+  over both presets check the defaults, and `CommandCatalogTests` pins ⇧F6 on the move with no
+  conflict.
+- **Verified live** on the Debug build launched by path, after quitting a stale Debug copy left
+  running since the evening before, with settings backed up and restored (68 keys, identical by
+  value). Settings ▸ Shortcuts had no picker, only Filter and Restore Defaults. Its rows read ⇧F5
+  for the copy and ⇧F6 for the move, with no clash flagged. The menu reads the same store, but
+  its key equivalent and the key itself were not checked: background computer use can neither
+  open a menu nor send an F-key. A second run, with New Tab seeded unbound so Restore Defaults was
+  enabled, showed the new confirmation text; confirming it put ⌘T back. All 14 compiled
+  `Localizable.strings` carry the new message, and none carries the old one or the picker's
+  strings.
+- Core green (4100 tests: the four preset tests left). App green (1798 tests in 285 suites, only
+  the expected `GestureWaitTests` issue; live-server suites skipped). Both linters clean. Changes
+  left uncommitted.
+
+**2026-10-21: app tests leave the user's defaults alone.** Oleg saw saved tab widths and frecency
+change across an app test run. The test host has the same bundle id as the installed app, so its
+`UserDefaults.standard` is the user's `com.dirnex.Dirnex`.
+
+- **Reproduced before editing**, after quitting every Dirnex and exporting the 68-key domain.
+  The unmodified full suite passed, but two restored folders gained one frecency point each and
+  new access times. A mid-run export already held the changes. Tab content stayed unchanged in
+  this run; their JSON object key order changed, which a byte comparison would wrongly report.
+- **The writer was the normal app launch.** `AppDelegate` builds `BrowserWindowController`, which
+  restores both panes. Navigation reports a visit through the window to `FrecencyStore.shared`
+  and calls `persistState`; column layout also saves tabs. Quit saves tabs once more. Guarding
+  only quit would leave the startup writes in place.
+- **Oleg chose one startup guard.** `main.swift` still installs the shared AppKit behavior, but
+  creates no app delegate under `XCTestConfigurationFilePath`. The persistent sidebar appearance
+  default is in that same branch. Tests build the controllers they need. The stores keep their
+  existing scratch-domain seams: standard defaults still belong to the user.
+- `TestHostLifecycleTests` checks the running host's delegate. With the guard removed, its one
+  test failed on that assertion; restored, it passed in the full suite. CI also exports the real
+  domain before the test process starts and after it exits, including failed runs. The new
+  `check_defaults_unchanged.py` compares every key, decodes JSON data and strings, and keeps array
+  order and value types. It rejects the baseline frecency change and ignores JSON object key order.
+- **Verified against the saved user domain:** before/after exports around the exact
+  `xcodebuild test -project Dirnex.xcodeproj -scheme Dirnex` command had all **68 keys unchanged
+  by content**. A second full run also left them unchanged.
+- **A clean-domain control found a second writer.** Two `FileColorRuleRenderingTests` saved
+  fixtures through the shared store and restored the old rules in `defer`. That left an empty
+  `Dirnex.fileColorRules` value when the key had been absent. The store now requires a defaults
+  domain; the app uses `shared`, and the two tests use separate scratch stores. Notifications are
+  scoped to their store. A fresh store checks the saved rules, replacing the test-only cache reset.
+  After this fix, a full app run left the empty domain empty (**0 keys before and after**).
+  The final full run over the restored user domain also left all **68 keys unchanged**.
+- **The backup check also caught an import trap:** importing an empty plist left all 68 keys in
+  place. A clean-domain test needs an explicit delete after backup; importing a backup alone also
+  cannot remove extra keys from an experiment. Recorded in `docs/LIVE-VERIFICATION.md`.
+- **Normal launch still works:** the fresh Debug build showed both panes at Home with session
+  restore temporarily off, avoiding a saved server reconnect. Closing the browser window quit the
+  process. The original defaults were then restored with `defaults import` after clearing the
+  probe state, and the final export matched all 68 original keys by content.
+- Core green (4100 tests). App green (1799 tests in 286 suites, only the expected
+  `GestureWaitTests` issue; live-server suites skipped). Both linters clean. Changes left uncommitted.
+
+**2026-10-21: second dead-code sweep.** `periphery` 3.7.4 over the Xcode project (app, app tests
+and the core it builds), every result checked by grep before anything was cut. The July sweep's
+rule held: production-dead code goes, a test that only exercised it goes with it, and a test that
+used it as a one-line tool is rewritten against the API underneath.
+
+- **Two scans, because one cannot see the core tests.** The project scan does not build
+  `DirnexCoreTests`, so it flags anything only they use. A second `periphery` scan of the package
+  was no better, because it misses every reference made inside `#expect(…)` (it reported
+  `UndoJournal.canUndo` unused beside ten test uses). Grep decided, and grep missed three uses at
+  first; the build caught them, and `BugReportProblem.name` and `LicenseStatus.key` went back as
+  real test tools.
+- **App:** `AppUpdater.isEnabled` (its doc claimed the menu item grays out; nothing read it),
+  `canFilterQuickViewTable`, `sendingStatus(for:)` (unused since packing moved to the queue on
+  08-30), `TerminalDrawerViewController.shellDirectory`, `UndoController.canUndo`/`canRedo`,
+  `VaultMounts.contains(String)`, `QuickViewRenderStyle.title` (the menu titles come from the
+  catalog), the `PanelHost.toggleQuickView` requirement, `AttributesSnapshot.groupName` (the panel
+  shows a group picker), two never-read `Rows.labelWidth` fields, four unused imports, and three
+  orphaned catalog entries.
+- **Core, unused or tested only for itself:** the store mutators the July note left open
+  (`ServerConnections` `contains(name:)`/`remove(at:)`/`rename`, `SavedSearches.remove(at:)`,
+  `Favorites.remove(at:)`, `UserScripts` `remove(name:)`/`move`, `Workspaces.remove(name:)`,
+  `KeyBindings.resetAll`, `DirectorySizeCache.removeAll`, `MultiRename.identity`,
+  `OpenWithCandidates.all`), `FileOperationQueue.isPaused`, `UndoJournal.clear()`, the download
+  tracker's percent path (`observe(percentDownloaded:)`, `isSettled`, and `downloading`'s
+  always-`nil` fraction), `S3AccountBackend.region(ofBucketNamed:)` (the 301 correction covers
+  it), `S3Session.with(maxTime:)`, SFTP `chown`/`chgrp` batch lines, `TextSegmentMap`
+  `totalLength`/`segment(at:)` (only `split` is used), `IdentityDirectory` `userID`/`groupID`/
+  `groupName`, `RemoteMetadataSupport.loss` (the tally answers the same question), the
+  `FTPTransport.fetchCertificate` requirement (only the concrete transport is ever asked),
+  `MaterializedPaths.init` from a job's file list (the app builds the map itself), and about twenty
+  small conveniences. `ExtendedAttributeIO.set` moved to the core test support, since only
+  fixtures write attributes; the stock-tool test now has `xattr -w` write and Dirnex read.
+- **Kept as test tools:** `snapshot()`/`waitUntilIdle()`, `UndoEntry.selection`,
+  `Base64URL.encode`, `MultiRename.plan(…existingNames:)`, `SyntaxLanguage.grammar`,
+  `JSONDocument`/`XMLTree` `sourceText`, `S3SegmentWriteOut.consume` (the only chunked test of the
+  shared write-out reader), and named constants such as `ArchiveRewriteFormat.plain`. False
+  positives: the `.sdef` script commands, App Intents descriptions, SwiftUI `@State`, and nearly
+  every assign-only field, which belongs to an `Equatable` value, an error payload, or a retainer.
+- **Left open:** `RemoteAttributesController.pickerBaseline` was written and never read, though its
+  doc said the date diff should compare against it. It looked like a bug rather than dead code; the
+  next entry measures it. `FTPCurlTransport.authentication` is never read either, but removing it
+  reaches `FTPConnectRequest` and the live-suite configs.
+- Core green (4077 tests, −23, each a test of removed code). App green (1799 tests in 286 suites,
+  only the expected `GestureWaitTests` issue; live-server suites skipped). Both linters clean.
+  Changes left uncommitted.
+
+**2026-10-21: the remote date diff measures "untouched" against what the picker showed.** The
+sweep found `pickerBaseline` written and never read: Get Info's remote panel compared its date
+picker against the entry's stamp, where the local panel compares against the value the picker was
+given. FTP is the one connection whose date the panel edits, and an `MLSD` stamp can carry a
+fraction of a second that the facts parser keeps.
+
+- **The bug did not reproduce, so this is a guarantee rather than a fix.** On macOS 26.7.1 an
+  `NSDatePicker` gave back exactly what it was given: `1700000000.789`, a nanosecond `st_mtime` and
+  `Date()`, in a window, focused, after arrow-key steps and after a typed edit. The new hosted
+  `RemoteAttributesDateTests` (a fractional stamp, a mode-only save, and an edited date as the
+  negative control) passed on the unfixed code. NOTES.md ▸ ACLs and file attributes said the picker
+  rounds to whole seconds; the July entry it came from verified the fix, never the bug. It now
+  carries the measurement.
+- **The rule moved into the core.** `RemoteAttributeChange.between` takes
+  `shownModificationTime`, and a date equal to it is no edit, whatever the entry carries. The panel
+  passes `pickerBaseline`. A core test pins the case this Mac cannot produce, a whole-second control
+  over a `.789` stamp. With the comparison reverted to the entry, that test failed on its one
+  expectation; with the fix, it passes.
+- Core green (4078 tests). App green (1802 tests in 287 suites, only the expected
+  `GestureWaitTests` issue; live-server suites skipped). Both linters clean. Changes left uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

@@ -74,6 +74,13 @@ extension PanelViewController {
         destination.focusTable()
     }
 
+    /// Put back `tab`, closed in this pane, into `slot` of its strip, show it and focus this pane
+    /// (⇧⌘T). The same arrival as a tab handed over from the other pane, from nowhere.
+    func reopen(_ tab: PanelTab, atSlot slot: Int) {
+        receive(tab, atSlot: slot)
+        focusTable()
+    }
+
     /// Take the tab at `index` out of this pane, showing whichever tab takes over if it was the one
     /// on screen.
     private func detachTab(at index: Int) -> PanelTab? {

@@ -134,19 +134,4 @@ public enum IdentityDirectory {
     public static func userName(for userID: UInt32) -> String? {
         getpwuid(userID).map { String(cString: $0.pointee.pw_name) }
     }
-
-    /// The group name for a gid, or `nil` if the id resolves to no group.
-    public static func groupName(for groupID: UInt32) -> String? {
-        getgrgid(groupID).map { String(cString: $0.pointee.gr_name) }
-    }
-
-    /// The uid for a user name, or `nil` if unknown.
-    public static func userID(for name: String) -> UInt32? {
-        getpwnam(name).map { $0.pointee.pw_uid }
-    }
-
-    /// The gid for a group name, or `nil` if unknown.
-    public static func groupID(for name: String) -> UInt32? {
-        getgrnam(name).map { $0.pointee.gr_gid }
-    }
 }

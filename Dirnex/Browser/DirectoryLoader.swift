@@ -30,6 +30,19 @@ enum DirectoryLoader {
         }.get()
     }
 
+    /// Several folders at once, off the main thread: one answer per path, in order, `nil` for one
+    /// that could not be listed (`VFSBackend.listDirectories`). One hop rather than one per folder,
+    /// so a backend that can list them together — FTP, over one login — gets the chance to.
+    static func list(_ backend: any VFSBackend, at paths: [VFSPath]) async -> [[FileEntry]?] {
+        await BlockingWork.run {
+            // Nothing cancels a passive refresh and a refusal is already an answer, so a throw here
+            // is a call that could not be made at all — read it as nothing listed, which keeps every
+            // folder's last good rows, as a failed single listing does.
+            (try? backend.listDirectories(at: paths, isCancelled: { false }))
+                ?? Array(repeating: nil, count: paths.count)
+        }
+    }
+
     /// List `path` **and** sort it into a ready-to-render `DirectoryModel`, both off the main
     /// thread — so opening a 100k directory never runs its ~350 ms `localizedStandardCompare` sort
     /// on the `@MainActor` pane (PLAN.md §M7 perf pass). Install the result with `Panel.setModel`.

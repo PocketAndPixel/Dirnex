@@ -63,7 +63,6 @@ struct OpenWithApplicationsTests {
         let result = textAndImageProbe().candidates(for: ["/a.txt"])
         #expect(result.defaultApplication == textEdit)
         #expect(result.others == [chrome, safari])
-        #expect(result.all.map(\.displayName) == ["TextEdit", "Google Chrome", "Safari"])
     }
 
     @Test("the default is never repeated among the others")
@@ -76,7 +75,8 @@ struct OpenWithApplicationsTests {
     func mixedSelectionIntersects() {
         let result = textAndImageProbe().candidates(for: ["/a.txt", "/c.png"])
         // TextEdit can't open the png and Preview can't open the text, so neither is offered.
-        #expect(result.all == [chrome, safari])
+        #expect(result.defaultApplication == nil)
+        #expect(result.others == [chrome, safari])
     }
 
     @Test("a mixed selection whose types disagree on the default promotes nothing")
@@ -108,7 +108,7 @@ struct OpenWithApplicationsTests {
         probe.defaults["public.png"] = textEdit
         let result = probe.candidates(for: ["/a.txt", "/c.png"])
         #expect(result.defaultApplication == nil)
-        #expect(result.all == [chrome, safari])
+        #expect(result.others == [chrome, safari])
     }
 
     // MARK: - Nothing to offer

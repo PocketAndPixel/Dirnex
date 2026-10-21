@@ -148,17 +148,11 @@ extension PanelViewController {
     ) async {
         let token = plan.token
         let root = plan.root
-        let directories = plan.directories
-        var listings: [(VFSPath, [FileEntry])] = []
-        for directory in directories {
-            // Through `treeChildEntries`, the same funnel the expansion used — a bucket row's
-            // children are a *connection*, and listing `s3account:/<bucket>` throws `notFound`
-            // into a `try?`, so a rename inside one left the old row on screen (2026-08-22).
-            if let entries = await treeChildEntries(at: directory) {
-                listings.append((directory, entries))
-            }
-        }
+        let listings = await treeChildEntries(at: plan.directories)
         guard token == loadToken, panel.isTree, panel.path == root else { return }
+        // Only when the server answered, as list mode stamps only a listing that landed: rows that
+        // could not be refreshed are as stale as they were.
+        if !listings.isEmpty { noteRemoteListingArrived(at: root) }
         if deferRefreshIfRenaming() { return }
         // **Which of them actually moved.** The stream is recursive over every listed directory,
         // so on a tree rooted anywhere near a busy subtree the great majority of events describe
@@ -209,5 +203,33 @@ extension PanelViewController {
         updateGitStatus()
         updateTagStatus()
         updateSyncStatus()
+    }
+
+    /// Every listed folder's rows as a refresh reads them, leaving out any that could not be listed
+    /// so they keep the rows they have.
+    ///
+    /// **Asked of the backend all at once**, so one that can list several folders together does:
+    /// over FTP that is one login per refresh instead of one per open folder, which on the tree that
+    /// reported it was three logins of ~1 s and a poll stretched from 15 s to 59 s
+    /// (`VFSBackend.listDirectories`, measured 2026-10-19), and over SFTP one session instead of one
+    /// per folder. Every other backend lists them in turn, as this did before.
+    ///
+    /// A bucket row is the exception and keeps `treeChildEntries`, the funnel its expansion used: its
+    /// children are a *connection*, and listing `s3account:/<bucket>` throws `notFound` into a
+    /// `try?`, so a rename inside one left the old row on screen (2026-08-22).
+    func treeChildEntries(at directories: [VFSPath]) async -> [(VFSPath, [FileEntry])] {
+        let batched = directories.filter { !$0.isS3BucketRow }
+        let answers = await DirectoryLoader.list(backend, at: batched)
+        var listed: [VFSPath: [FileEntry]] = [:]
+        for (directory, entries) in zip(batched, answers) {
+            listed[directory] = entries
+        }
+        var listings: [(VFSPath, [FileEntry])] = []
+        for directory in directories {
+            var entries = listed[directory]
+            if directory.isS3BucketRow { entries = await treeChildEntries(at: directory) }
+            if let entries { listings.append((directory, entries)) }
+        }
+        return listings
     }
 }

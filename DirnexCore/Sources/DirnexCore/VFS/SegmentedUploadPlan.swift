@@ -185,12 +185,6 @@ public struct SegmentedUploadPlan: Sendable, Equatable {
         return start..<min(start + partSize, totalSize)
     }
 
-    /// The length of part `number`, or 0 when it is outside the plan.
-    public func length(ofPart number: Int) -> Int64 {
-        guard let range = range(ofPart: number) else { return 0 }
-        return range.upperBound - range.lowerBound
-    }
-
     /// Every part of this plan, each pointed at the local slice it is cut into and the remote name
     /// it lands under.
     ///

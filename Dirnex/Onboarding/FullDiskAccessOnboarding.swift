@@ -17,10 +17,11 @@ enum FullDiskAccessOnboarding {
     /// on every launch after the first. The check is off-main and cheap; the sheet, if any, attaches
     /// to the browser window once it is on screen.
     static func presentIfNeeded(over window: NSWindow?) {
-        // Never prompt under `xcodebuild test`: the app test host launches this very delegate, and a
-        // first-run modal has no business popping up mid-suite — nor flipping the one-shot latch in
-        // the shared defaults. The env var is set by the test host from process start, so it is
-        // already true here, before the async check would ever run.
+        // Never prompt under `xcodebuild test`. The test host installs no app delegate
+        // (`main.swift`), so this is the second line of defense: a first-run modal has no business
+        // popping up mid-suite — nor flipping the one-shot latch in the shared defaults. The env var
+        // is set by the test host from process start, so it is already true here, before the async
+        // check would ever run.
         guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
         guard !AppPreferences.shared.hasSeenFullDiskAccessOnboarding else { return }
         Task {

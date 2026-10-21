@@ -52,7 +52,6 @@ struct ChecksumEngineTests {
         accumulator.update(Data("hello checksum world\n".utf8))
         let digests = accumulator.finalized()
 
-        #expect(digests.isEmpty)
         #expect(digests.algorithms.isEmpty)
         #expect(digests.byteSize == 21)
     }

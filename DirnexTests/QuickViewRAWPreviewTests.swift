@@ -1,5 +1,4 @@
 import AppKit
-import DirnexCore
 import Testing
 import UniformTypeIdentifiers
 

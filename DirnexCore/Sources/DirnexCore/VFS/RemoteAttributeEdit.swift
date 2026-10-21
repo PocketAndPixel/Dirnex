@@ -93,9 +93,6 @@ public struct RemoteAttributeChange: Sendable, Equatable, Codable {
         self.modificationTime = modificationTime
     }
 
-    /// Nothing to do — what an untouched panel commits, and what must never reach a server.
-    public static let none = RemoteAttributeChange()
-
     public var isEmpty: Bool { permissions == nil && modificationTime == nil }
 
     /// The fields this change sets.
@@ -119,14 +116,23 @@ public struct RemoteAttributeChange: Sendable, Equatable, Codable {
         return steps
     }
 
-    /// The change from `current` to `edited`, with every untouched field dropped.
+    /// The change from `current` to what the controls hold, with every untouched field dropped.
     ///
     /// `editable` is applied here rather than trusted from the caller, so a field the connection
     /// cannot change can never reach the wire even if a control for it were somehow left enabled.
+    ///
+    /// - Parameters:
+    ///   - modificationTime: what the date control holds now, or `nil` when there is none.
+    ///   - shownModificationTime: what the date control was **given**, read back from it right after
+    ///     assigning. Untouched means equal to *this*, not to the entry: an `MLSD` stamp can carry a
+    ///     fraction of a second, and a control that resolves time more coarsely would otherwise send
+    ///     a date nobody edited along with every mode change (docs/NOTES.md ▸ ACLs and file
+    ///     attributes).
     public static func between(
         current: FileEntry,
         permissions: POSIXPermissions?,
         modificationTime: Date?,
+        shownModificationTime: Date?,
         editable: RemoteAttributeEditability
     ) -> RemoteAttributeChange {
         var mode: POSIXPermissions?
@@ -139,7 +145,7 @@ public struct RemoteAttributeChange: Sendable, Equatable, Codable {
         var time: Date?
         if editable.allows(.modificationTime),
            let modificationTime,
-           !current.hasModificationDate || modificationTime != current.modificationDate {
+           modificationTime != shownModificationTime {
             time = modificationTime
         }
         return RemoteAttributeChange(permissions: mode, modificationTime: time)

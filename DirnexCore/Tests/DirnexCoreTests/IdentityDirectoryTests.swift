@@ -167,17 +167,12 @@ struct IdentityDirectoryTests {
     @Test("the accounts every Mac has are found, and an absent one is nil")
     func resolvesNames() {
         #expect(IdentityDirectory.userName(for: 0) == "root")
-        #expect(IdentityDirectory.groupName(for: 0) == "wheel")
-        #expect(IdentityDirectory.userID(for: "root") == 0)
-        #expect(IdentityDirectory.groupID(for: "staff") == 20)
         #expect(IdentityDirectory.userName(for: 31337) == nil)
-        #expect(IdentityDirectory.userID(for: "no.such.account") == nil)
     }
 
-    @Test("the running user resolves both ways")
-    func resolvesTheCurrentUser() throws {
-        let name = try #require(IdentityDirectory.userName(for: getuid()))
-        #expect(IdentityDirectory.userID(for: name) == getuid())
+    @Test("the running user resolves to its own name")
+    func resolvesTheCurrentUser() {
+        #expect(IdentityDirectory.userName(for: getuid()) == NSUserName())
     }
 
     // MARK: - Subject construction

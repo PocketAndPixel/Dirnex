@@ -31,12 +31,6 @@ public struct PhotosLayout: Sendable {
         case month(year: Int, month: Int)
         /// `/Undated`, listing the originals of assets Photos holds no capture date for.
         case undated
-
-        /// Whether the folder lists originals rather than other folders.
-        public var holdsOriginals: Bool {
-            if case .year = self { return false }
-            return true
-        }
     }
 
     /// What a path in the library's view addresses.

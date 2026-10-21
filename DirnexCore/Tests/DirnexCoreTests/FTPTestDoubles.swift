@@ -24,7 +24,6 @@ final class FakeFTPTransport: FTPTransport, @unchecked Sendable {
     var listings: [String: String] = [:]
     var remoteFileSizes: [String: Int64] = [:]
     var error: FTPTransportError?
-    var certificate: FTPCertificate?
 
     /// What a transfer reports as the bytes it moved — for a resumed transfer, the remainder.
     var transferBytes: Int64 = 0
@@ -102,6 +101,41 @@ final class FakeFTPTransport: FTPTransport, @unchecked Sendable {
             listedPaths.append(path)
             return listings[path] ?? ""
         }
+    }
+
+    /// `MLSD` replies by folder — what a server that answers `MLSD` gives beside its `LIST`. A folder
+    /// with none answers ``FTPListing/Facts/unavailable`` when asked, which moves no latch, so a test
+    /// that never sets this sees exactly the rows it always did.
+    var factsListings: [String: String] = [:]
+    /// A server without `MLSD`: asked for facts, it answers 500 (``FTPListing/Facts/unsupported``).
+    var refusesFacts = false
+    /// The `askingFacts` flag of every single listing, in call order.
+    private(set) var singleListingAsks: [Bool] = []
+    /// The `askingFacts` flag of every batch, in call order.
+    private(set) var batchListingAsks: [Bool] = []
+
+    func listing(of remotePath: String, askingFacts: Bool) throws -> FTPListing {
+        singleListingAsks.append(askingFacts)
+        let rows = try listDirectory(remotePath)
+        return FTPListing(rows: rows, facts: factsAnswer(for: remotePath, asked: askingFacts))
+    }
+
+    func listings(
+        of remotePaths: [String],
+        askingFacts: Bool,
+        isCancelled: () -> Bool
+    ) throws -> [FTPListing?] {
+        batchListingAsks.append(askingFacts)
+        let rows = try listDirectories(remotePaths, isCancelled: isCancelled)
+        return zip(remotePaths, rows).map { path, rows in
+            rows.map { FTPListing(rows: $0, facts: factsAnswer(for: path, asked: askingFacts)) }
+        }
+    }
+
+    private func factsAnswer(for remotePath: String, asked: Bool) -> FTPListing.Facts {
+        guard asked else { return .notAsked }
+        if refusesFacts { return .unsupported }
+        return factsListings[remotePath].map(FTPListing.Facts.listed) ?? .unavailable
     }
 
     /// Fails **only** `makeDirectory`, leaving listings answerable — the state a real server is in
@@ -233,10 +267,5 @@ final class FakeFTPTransport: FTPTransport, @unchecked Sendable {
         fileSizeQueries.append(remotePath)
         guard let size = remoteFileSizes[remotePath] else { throw FTPTransportError.notFound }
         return size
-    }
-
-    func fetchCertificate() throws -> FTPCertificate {
-        if let certificate { return certificate }
-        throw FTPTransportError.failure("no certificate")
     }
 }

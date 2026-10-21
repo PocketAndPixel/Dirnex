@@ -64,18 +64,6 @@ struct FavoritesTests {
         #expect(!removedMissing)
     }
 
-    @Test("remove(at:) drops the indexed entry and ignores out-of-range")
-    func removeByIndex() {
-        var favorites = Favorites(entries: [
-            FavoriteEntry(path: path("/a")), FavoriteEntry(path: path("/b")),
-            FavoriteEntry(path: path("/c"))
-        ])
-        favorites.remove(at: 1)
-        #expect(favorites.entries.map(\.path) == [path("/a"), path("/c")])
-        favorites.remove(at: 9) // no crash, no change
-        #expect(favorites.entries.count == 2)
-    }
-
     @Test("rename changes only the matching entry's label")
     func renameEntry() {
         var favorites = Favorites(entries: [

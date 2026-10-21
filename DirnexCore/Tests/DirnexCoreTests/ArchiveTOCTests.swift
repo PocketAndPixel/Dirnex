@@ -145,7 +145,6 @@ struct ArchiveTOCTests {
     @Test("an empty listing yields an empty, rootless-but-walkable TOC")
     func emptyListing() {
         let toc = ArchiveTOC(verboseListing: "")
-        #expect(toc.isEmpty)
         #expect(toc.children(inDirectory: "/").isEmpty)
         #expect(toc.isDirectory(atInnerPath: "/"))
     }

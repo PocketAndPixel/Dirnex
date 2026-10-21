@@ -182,6 +182,7 @@ extension RemoteAttributesController {
             current: entry,
             permissions: modeBoxes.isEmpty ? nil : editedPermissions,
             modificationTime: modificationPicker?.dateValue,
+            shownModificationTime: pickerBaseline,
             editable: editability
         )
     }

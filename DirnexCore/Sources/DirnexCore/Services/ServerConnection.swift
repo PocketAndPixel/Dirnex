@@ -24,10 +24,18 @@ public enum ServerEndpoint: Sendable, Hashable, Codable {
     /// key digest, not a secret, so it belongs in the store rather than the Keychain — and storing
     /// it *here*, per saved server, is what makes trust a decision about one server rather than a
     /// global setting.
+    ///
+    /// `serverTimeZone` is the IANA identifier (`Europe/Paris`) of the clock the server writes its
+    /// `LIST` stamps on, or `nil` for this Mac's own — which is what every saved server meant before
+    /// it could be set, and what a record written before then decodes as. It lives here rather than
+    /// in the `FTPLocation` because it is a setting *about* the server, not part of its identity:
+    /// the location keys the backend id, the Keychain item and every restored tab, none of which may
+    /// move when the user corrects a clock. Only rows `MLSD` could not time are read by it.
     case ftp(
         location: FTPLocation,
         authentication: FTPAuthentication,
-        trustedPublicKey: String? = nil
+        trustedPublicKey: String? = nil,
+        serverTimeZone: String? = nil
     )
     case smb(SMBLocation)
     /// One bucket on one endpoint. There is no authentication *method* to carry beside it the way
@@ -104,7 +112,7 @@ public struct ServerConnection: Sendable, Hashable, Identifiable, Codable {
     public var address: String {
         switch endpoint {
         case let .sftp(location, _): return location.descriptor
-        case let .ftp(location, _, _): return location.descriptor
+        case let .ftp(location, _, _, _): return location.descriptor
         case let .smb(location): return location.url
         case let .s3(location):
             // The same `bucket — host` the path bar's root crumb draws, so a saved row and the pane
@@ -151,11 +159,6 @@ public struct ServerConnections: Sendable, Equatable, Codable {
         self.connections = connections.filter { seen.insert($0.name).inserted }
     }
 
-    /// Whether a connection named `name` exists — drives the connect prompt's replace confirmation.
-    public func contains(name: String) -> Bool {
-        connections.contains { $0.name == name }
-    }
-
     /// The connection named `name`, or `nil` — the sidebar looks one up by name so a mid-open store
     /// change can't act on the wrong (index-shifted) connection.
     public func connection(named name: String) -> ServerConnection? {
@@ -186,12 +189,14 @@ public struct ServerConnections: Sendable, Equatable, Codable {
     @discardableResult
     public mutating func repinFTP(name: String, trustedPublicKey: String?) -> Bool {
         guard let index = connections.firstIndex(where: { $0.name == name }),
-              case let .ftp(location, authentication, storedKey) = connections[index].endpoint,
+              case let .ftp(location, authentication, storedKey, serverTimeZone) = connections[index]
+              .endpoint,
               storedKey != trustedPublicKey else { return false }
         connections[index].endpoint = .ftp(
             location: location,
             authentication: authentication,
-            trustedPublicKey: trustedPublicKey
+            trustedPublicKey: trustedPublicKey,
+            serverTimeZone: serverTimeZone
         )
         return true
     }
@@ -245,12 +250,6 @@ public struct ServerConnections: Sendable, Equatable, Codable {
         return true
     }
 
-    /// Delete the connection at `index`; out-of-range is ignored.
-    public mutating func remove(at index: Int) {
-        guard connections.indices.contains(index) else { return }
-        connections.remove(at: index)
-    }
-
     /// Write an **edited** connection back over the one named `previousName`, name included.
     ///
     /// The sidebar's Edit… has no update path of its own — it re-opens the Connect sheet and the
@@ -261,9 +260,9 @@ public struct ServerConnections: Sendable, Equatable, Codable {
     /// - **In place.** `save` appends a name it has never seen, so a rename through remove-and-save
     ///   drops the row to the bottom of the sidebar — a reorder nobody asked for, from an edit that
     ///   may only have fixed a typo.
-    /// - **A name already taken by a *different* record is refused**, exactly as ``rename(name:to:)``
-    ///   refuses it. The pair would silently overwrite that record and then delete this one, so a
-    ///   mistyped name costs the user a saved server they never touched.
+    /// - **A name already taken by a *different* record is refused.** The pair would silently
+    ///   overwrite that record and then delete this one, so a mistyped name costs the user a saved
+    ///   server they never touched.
     /// - **An unknown `previousName` appends**, so this is also the honest answer for "save what the
     ///   form holds" when the record has since been removed elsewhere.
     @discardableResult
@@ -281,21 +280,6 @@ public struct ServerConnections: Sendable, Equatable, Codable {
             connections.append(connection)
         }
         return .committed
-    }
-
-    /// Rename the connection named `name` to `newName` — the sidebar's inline rename. Rejected
-    /// (returns `false`, leaving the list unchanged) when `newName` is empty or already names a
-    /// *different* connection, so a rename can never collapse two entries into one. Renaming to the
-    /// same name is a no-op success.
-    @discardableResult
-    public mutating func rename(name: String, to newName: String) -> Bool {
-        guard let index = connections.firstIndex(where: { $0.name == name }) else { return false }
-        guard !newName.isEmpty else { return false }
-        guard !connections.contains(where: { $0.name == newName }) || newName == name else {
-            return false
-        }
-        connections[index].name = newName
-        return true
     }
 
     /// Reorder: pull the connection out of `source` and reinsert it so it lands at `destination` in
@@ -336,7 +320,7 @@ public extension ServerEndpoint {
     var backendID: VFSBackendID? {
         switch self {
         case let .sftp(location, _): return location.backendID
-        case let .ftp(location, _, _): return location.backendID
+        case let .ftp(location, _, _, _): return location.backendID
         case let .s3(location): return location.backendID
         case let .s3Account(account): return account.backendID
         case .smb: return nil

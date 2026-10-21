@@ -133,6 +133,9 @@ enum CommandBinding {
         "window.moveTabLeft": #selector(PanelViewController.moveTabLeft(_:)),
         "window.moveTabRight": #selector(PanelViewController.moveTabRight(_:)),
         "window.moveTabToOtherPanel": #selector(PanelViewController.moveTabToOtherPanel(_:)),
+        // The window controller, not a pane: the closed tabs are the window's, and the last one may
+        // go back into the pane that does not have the focus.
+        "file.reopenClosedTab": #selector(BrowserWindowController.reopenClosedTab(_:)),
         "app.settings": #selector(AppDelegate.showSettings(_:)),
         "app.fullDiskAccess": #selector(AppDelegate.showFullDiskAccess(_:)),
         "app.showTour": #selector(AppDelegate.showFirstRunTour(_:)),

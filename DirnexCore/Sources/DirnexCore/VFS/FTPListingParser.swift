@@ -24,20 +24,23 @@ import Foundation
 ///   way `SFTPBackend` does it — `FTPBackend` reads an item's stat out of its *parent's* listing.
 /// - Symlink targets **are** printed (` -> target`), unlike `sftp`'s `ls`.
 ///
-/// `MLSD` would supply an exact, zone-anchored timestamp and remove all of this guessing, but the
-/// transport cannot send it: `curl` speaks only `LIST` and `NLST`. So FTP mtimes are approximate by
-/// construction — see ``Entry/modificationDate``.
+/// A `LIST` stamp is the server's wall clock with no zone, so it is read in the zone the user set for
+/// the server (``parse(_:timeZone:)``) — this Mac's own unless they said otherwise. Where the server
+/// also answers `MLSD`, its exact UTC times replace these (``applyingFacts(_:to:)``); the rows stay
+/// this parser's either way, for the reason ``FTPFactsParser`` gives.
 enum FTPListingParser {
     /// One parsed row: everything the backend needs to build a `FileEntry` for a remote item.
     struct Entry: Equatable {
         let name: String
         let kind: FileEntry.Kind
         let byteSize: Int64
-        /// **Approximate.** A `LIST` stamp carries no year for recent files *and* no time zone, and
-        /// it is the server's wall clock — so this can be off by the offset between the two
-        /// machines, and near a year boundary by a year. It is good enough to display and to sort
-        /// by; it is not good enough to compare two files with, which is why `DirectorySync` must
-        /// not compare an FTP side by `.sizeAndDate`. An exact value needs a per-file `MDTM`.
+        /// **Approximate when it came from `LIST`.** That stamp carries no year for recent files,
+        /// no seconds *and* no time zone, and it is the server's wall clock — so it is only as right
+        /// as the zone it was read in (``parse(_:timeZone:)``), and near a year boundary it can be a
+        /// year out. It is good enough to display and to sort by; it is not good enough to compare
+        /// two files with, which is why `DirectorySync` must not compare an FTP side by
+        /// `.sizeAndDate`. `MLSD`'s `modify` fact is exact, and replaces it where the server sends
+        /// one (``applyingFacts(_:to:)``).
         let modificationDate: Date
         /// The mode, or `nil` from the DOS/IIS dialect, which prints none.
         let permissions: UInt16?
@@ -46,14 +49,31 @@ enum FTPListingParser {
         let ownerName: String?
         let groupName: String?
         let symlinkDestination: String?
+
+        /// The same row, last modified at `date`.
+        func with(modificationDate date: Date) -> Entry {
+            Entry(
+                name: name,
+                kind: kind,
+                byteSize: byteSize,
+                modificationDate: date,
+                permissions: permissions,
+                ownerName: ownerName,
+                groupName: groupName,
+                symlinkDestination: symlinkDestination
+            )
+        }
     }
 
     /// Parse a raw `LIST` block into its rows, in the server's order. Lines that match neither
     /// dialect — a multiline banner, a `total 12` header, a blank line — are skipped rather than
     /// guessed at.
-    static func parse(_ text: String) -> [Entry] {
-        let unix = ColumnarListing.unixDateFormatters()
-        let dos = dosDateFormatters()
+    ///
+    /// `timeZone` is the server's clock, which the stamps are written on. `nil` reads them as this
+    /// Mac's own, which is what every FTP listing did before a server could be given a zone.
+    static func parse(_ text: String, timeZone: TimeZone? = nil) -> [Entry] {
+        let unix = ColumnarListing.unixDateFormatters(timeZone: timeZone)
+        let dos = dosDateFormatters(timeZone: timeZone)
         var entries: [Entry] = []
         for line in text.split(whereSeparator: \.isNewline) {
             let trimmed = line.trimmingCharacters(in: CharacterSet(charactersIn: "\r"))[...]
@@ -65,6 +85,26 @@ enum FTPListingParser {
             entries.append(entry)
         }
         return entries
+    }
+
+    /// `entries` with each row's time replaced by `MLSD`'s exact one, where the two listings agree
+    /// on what the row **is**.
+    ///
+    /// The agreement test is what keeps a followed symlink from lending its target's time to the
+    /// link: a server that follows links reports `linkdir` as a `dir`, and that `modify` is the
+    /// folder's rather than the link's. Where the kinds differ the row keeps its `LIST` stamp, and a
+    /// fact whose kind this parser could not read vetoes nothing. A row `MLSD` did not mention, or
+    /// gave no time for, keeps its `LIST` stamp too.
+    static func applyingFacts(_ facts: [FTPFactsParser.Entry], to entries: [Entry]) -> [Entry] {
+        var byName: [String: FTPFactsParser.Entry] = [:]
+        for fact in facts where byName[fact.name] == nil {
+            byName[fact.name] = fact
+        }
+        return entries.map { entry in
+            guard let fact = byName[entry.name], let date = fact.modificationDate,
+                  fact.kind == nil || fact.kind == entry.kind else { return entry }
+            return entry.with(modificationDate: date)
+        }
     }
 
     // MARK: - Unix dialect
@@ -127,9 +167,10 @@ enum FTPListingParser {
     /// The DOS dialect's own stamps. The Unix ones come from `ColumnarListing.unixDateFormatters`,
     /// which every dialect shares; these are FTP's alone, and the only two-digit-year formats
     /// anywhere — which is why the year test there is `contains("y")` and not `contains("yyyy")`.
-    private static func dosDateFormatters() -> [DateFormatter] {
+    private static func dosDateFormatters(timeZone: TimeZone?) -> [DateFormatter] {
         ColumnarListing.formatters(
-            for: ["MM-dd-yy hh:mma", "MM-dd-yyyy hh:mma", "MM-dd-yy HH:mm", "MM-dd-yyyy HH:mm"]
+            for: ["MM-dd-yy hh:mma", "MM-dd-yyyy hh:mma", "MM-dd-yy HH:mm", "MM-dd-yyyy HH:mm"],
+            timeZone: timeZone
         )
     }
 }

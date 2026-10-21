@@ -145,6 +145,34 @@ extension SFTPProcessTransport {
         return captured.standardOutput
     }
 
+    /// Run a batch whose every line is allowed to fail, and hand back everything it printed —
+    /// standard error folded into standard output, in the order `sftp` printed it.
+    ///
+    /// The batched listing's run, and the one run here that classifies nothing, because a refusal
+    /// in it is one folder's answer and only its place in the transcript says whose
+    /// (`SFTPBatchListing`, which measured that the order holds). The exit status is not read
+    /// either: it was 0 with a refused folder anywhere in the batch.
+    ///
+    /// A run the deadline cuts short is handed back like any other. The core trusts a folder only
+    /// once `sftp` has moved on to the next line, so whatever was cut off answers `nil` and every
+    /// folder that finished before it still lands — which is also what keeps a server that holds
+    /// the channel open after the last line from costing a round whose answers had all arrived.
+    func run(transcript batch: String, isCancelled: () -> Bool) throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/sftp")
+        process.arguments = batchArguments
+        return try capture(
+            process,
+            stdin: Data((batch + "\n").utf8),
+            launchFailure: String(
+                localized: "Couldn’t launch sftp.",
+                comment: "SFTP failure: the sftp binary could not be spawned."
+            ),
+            mergingStandardError: true,
+            isCancelled: isCancelled
+        ).standardOutput
+    }
+
     /// Internal for the reason ``childEnvironment()`` is.
     var isPasswordAuthentication: Bool {
         if case .password = authentication { return true }
@@ -163,12 +191,16 @@ extension SFTPProcessTransport {
     /// Spawn `process`, write `stdin`, drain both pipes and wait — the plumbing `sftp` and `ssh`
     /// share, kept in one place so a fix to the deadlock or the cancellation reaches both. Blocks;
     /// call it off the main thread.
+    ///
+    /// `mergingStandardError` sends both streams down one pipe, for the run whose answer is the
+    /// order between them (``run(transcript:isCancelled:)``); `standardError` is then empty.
     private func capture(
         _ process: Process,
         stdin: Data,
         launchFailure: String,
         watching source: TransferProgressWatch.Source = .none,
         progress: (Int64) -> Void = { _ in },
+        mergingStandardError: Bool = false,
         isCancelled: () -> Bool
     ) throws -> Captured {
         process.environment = try childEnvironment()
@@ -180,7 +212,7 @@ extension SFTPProcessTransport {
 
         let input = Pipe()
         let output = Pipe()
-        let errorPipe = Pipe()
+        let errorPipe = mergingStandardError ? output : Pipe()
         process.standardInput = input
         process.standardOutput = output
         process.standardError = errorPipe
@@ -212,10 +244,13 @@ extension SFTPProcessTransport {
             outputData = output.fileHandleForReading.readDataToEndOfFile()
             group.leave()
         }
-        group.enter()
-        errorQueue.async {
-            errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-            group.leave()
+        // A merged pipe has one reader, or the two would split its bytes between them.
+        if !mergingStandardError {
+            group.enter()
+            errorQueue.async {
+                errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                group.leave()
+            }
         }
 
         // Only the interactive (password) session is time-bounded — see `passwordTimeout`. The

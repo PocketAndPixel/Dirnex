@@ -69,14 +69,6 @@ public struct UserScripts: Sendable, Equatable, Codable {
         return false
     }
 
-    /// Delete the script named `name`, if present. Returns whether one was removed.
-    @discardableResult
-    public mutating func remove(name: String) -> Bool {
-        guard let index = scripts.firstIndex(where: { $0.name == name }) else { return false }
-        scripts.remove(at: index)
-        return true
-    }
-
     /// Delete the script at `index`; out-of-range is ignored.
     public mutating func remove(at index: Int) {
         guard scripts.indices.contains(index) else { return }
@@ -95,14 +87,6 @@ public struct UserScripts: Sendable, Equatable, Codable {
         }
         scripts[index].name = newName
         return true
-    }
-
-    /// Reorder: pull the script out of `source` and reinsert it so it lands at `destination` in the
-    /// *resulting* list (Array semantics, matching the server/saved-search reorder).
-    public mutating func move(from source: Int, to destination: Int) {
-        guard scripts.indices.contains(source) else { return }
-        let script = scripts.remove(at: source)
-        scripts.insert(script, at: min(max(destination, 0), scripts.count))
     }
 
     // MARK: - Codable

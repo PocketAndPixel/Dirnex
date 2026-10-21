@@ -1,10 +1,14 @@
 import Foundation
 
 /// A user's keyboard-shortcut customizations, layered over `CommandCatalog`'s defaults
-/// (PLAN.md §M3 "rebindable shortcuts with conflict detection; TC-compatible preset and
-/// macOS preset"). Headless and `Codable`: the app persists it as JSON and consults
-/// `shortcut(for:)` when building the menu bar and the Cmd+K palette, so a rebind is a data
-/// change the whole UI reflects without any AppKit rewiring.
+/// (PLAN.md §M3 "rebindable shortcuts with conflict detection"). Headless and `Codable`: the
+/// app persists it as JSON and consults `shortcut(for:)` when building the menu bar and the Cmd+K
+/// palette, so a rebind is a data change the whole UI reflects without any AppKit rewiring.
+///
+/// There is one scheme, the catalog's — a macOS-flavored hybrid of ⌘-based editing and navigation
+/// with Total Commander's F-keys for the file operations. It used to have a "Total Commander"
+/// sibling, two overrides deep (F3 for Quick Look, ⇧F6 for Rename), removed on 2026-10-21 to free
+/// ⇧F6 for the move beside ⇧F5's copy; a user who wants TC's own two keys rebinds them by hand.
 ///
 /// Only *overrides* are stored — a command with no entry uses its catalog default — so the
 /// serialized form stays small and a new default automatically reaches users who never touched
@@ -12,22 +16,6 @@ import Foundation
 /// key model (e.g. ⌘⌫ for Trash) are an app concern outside this model, so conflict detection
 /// covers only the registry's primary shortcuts.
 public struct KeyBindings: Sendable, Equatable, Codable {
-    /// A built-in shortcut scheme the user can apply wholesale from Settings.
-    public enum Preset: String, Sendable, Codable, CaseIterable {
-        /// The catalog defaults as shipped — a macOS-flavored hybrid (Cmd-based editing/nav
-        /// plus TC's F-keys for file ops).
-        case macOS
-        /// Total Commander's stricter conventions: F3 previews (View) and ⇧F6 renames in place.
-        case totalCommander
-
-        public var title: String {
-            switch self {
-            case .macOS: return "macOS"
-            case .totalCommander: return "Total Commander"
-            }
-        }
-    }
-
     /// One command's override. `.unbound` explicitly strips the shortcut (so a default can be
     /// removed, not just replaced); `.shortcut` rebinds it. Absent from `overrides` = the
     /// catalog default stands.
@@ -85,11 +73,6 @@ public struct KeyBindings: Sendable, Equatable, Codable {
         overrides[id] = nil
     }
 
-    /// Clear every override, restoring the whole registry to its catalog defaults.
-    public mutating func resetAll() {
-        overrides.removeAll()
-    }
-
     // MARK: - Conflicts
 
     /// The other command ids whose effective shortcut equals `id`'s — the collisions the
@@ -117,33 +100,6 @@ public struct KeyBindings: Sendable, Equatable, Codable {
     public var hasConflicts: Bool {
         !allConflicts().isEmpty
     }
-
-    // MARK: - Presets
-
-    /// The bindings for a built-in `preset` — a fresh scheme the Settings picker applies
-    /// wholesale (replacing any prior customizations).
-    public static func preset(_ preset: Preset) -> KeyBindings {
-        switch preset {
-        case .macOS:
-            return KeyBindings()
-        case .totalCommander:
-            return KeyBindings(overrides: totalCommanderOverrides)
-        }
-    }
-
-    /// The preset these bindings exactly match, or `nil` when the user has diverged into a
-    /// custom scheme. Lets the Settings picker show the active preset (or "Custom").
-    public var matchingPreset: Preset? {
-        Preset.allCases.first { Self.preset($0) == self }
-    }
-
-    /// Total Commander's file-op conventions that differ from the macOS default: previewing
-    /// on F3 (TC "View") and renaming in place on ⇧F6 (TC's in-place rename), leaving the
-    /// shared F5/F6/F7/F8 file keys — already TC-authentic in the catalog — untouched.
-    private static let totalCommanderOverrides: [String: Binding] = [
-        "view.quickLook": .shortcut(CommandShortcut(key: "F3", modifiers: .function)),
-        "file.rename": .shortcut(CommandShortcut(key: "F6", modifiers: [.function, .shift]))
-    ]
 
     /// The catalog default shortcut for `id`, or `nil` when the command has none / is unknown.
     private static func defaultShortcut(for id: String) -> CommandShortcut? {

@@ -1,49 +1,12 @@
 import Testing
 @testable import DirnexCore
 
-/// ``TextSegmentMap`` — the arithmetic that turns an offset into the joined text of a PDF's pages,
-/// or of a page and its frames, back into the piece that holds it.
+/// ``TextSegmentMap`` — the arithmetic that turns a range in the joined text of a PDF's pages, or of a
+/// page and its frames, back into the pieces that hold it.
 @Suite("Text segment map")
 struct TextSegmentMapTests {
     /// The join a PDF is: pages separated by one newline apiece.
     private let pages = TextSegmentMap(lengths: [10, 5, 7])
-
-    @Test("the total counts the separators between the segments and not past the last one")
-    func total() {
-        #expect(pages.totalLength == 24)
-        #expect(TextSegmentMap(lengths: []).totalLength == 0)
-        #expect(TextSegmentMap(lengths: [4]).totalLength == 4)
-        #expect(TextSegmentMap(lengths: [4, 4], separator: 0).totalLength == 8)
-    }
-
-    @Test("an offset lands in the segment holding it, measured from that segment's own start")
-    func locating() throws {
-        let first = try #require(pages.segment(at: 0))
-        #expect(first == (0, 0))
-        let lastOfFirst = try #require(pages.segment(at: 9))
-        #expect(lastOfFirst == (0, 9))
-        let second = try #require(pages.segment(at: 11))
-        #expect(second == (1, 0))
-        let third = try #require(pages.segment(at: 17))
-        #expect(third == (2, 0))
-        let lastOfAll = try #require(pages.segment(at: 23))
-        #expect(lastOfAll == (2, 6))
-    }
-
-    @Test("the separator between two segments belongs to neither")
-    func separatorBelongsToNobody() {
-        // Offset 10 is the newline after the first page, 16 the one after the second.
-        #expect(pages.segment(at: 10) == nil)
-        #expect(pages.segment(at: 16) == nil)
-    }
-
-    @Test("an offset past the end, or before it, lands nowhere")
-    func outOfRange() {
-        #expect(pages.segment(at: 24) == nil)
-        #expect(pages.segment(at: 99) == nil)
-        #expect(pages.segment(at: -1) == nil)
-        #expect(TextSegmentMap(lengths: []).segment(at: 0) == nil)
-    }
 
     @Test("a match inside one segment is one piece, in that segment's own offsets")
     func splitWithinOne() throws {
@@ -94,20 +57,19 @@ struct TextSegmentMapTests {
     }
 
     @Test("with no separator the segments run straight into one another")
-    func noSeparator() throws {
+    func noSeparator() {
         let frames = TextSegmentMap(lengths: [3, 3], separator: 0)
-        let boundary = try #require(frames.segment(at: 3))
-        #expect(boundary == (1, 0))
+        #expect(frames.split(3..<4).map(\.index) == [1])
+        #expect(frames.split(3..<4).first?.range == 0..<1)
         #expect(frames.split(2..<4).map(\.index) == [0, 1])
     }
 
     @Test("an empty segment is skipped rather than swallowing an offset")
-    func emptySegments() throws {
+    func emptySegments() {
         // A blank PDF page, or a frame with no text: it holds nothing, so nothing lands in it.
         let withBlank = TextSegmentMap(lengths: [4, 0, 4])
-        let after = try #require(withBlank.segment(at: 6))
-        #expect(after == (2, 0))
+        #expect(withBlank.split(6..<7).map(\.index) == [2])
+        #expect(withBlank.split(6..<7).first?.range == 0..<1)
         #expect(withBlank.split(0..<4).map(\.index) == [0])
-        #expect(withBlank.totalLength == 10)
     }
 }

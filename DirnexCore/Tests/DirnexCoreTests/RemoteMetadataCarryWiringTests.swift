@@ -37,7 +37,7 @@ struct RemoteMetadataCarryWiringTests {
             isCancelled: { false }
         )
 
-        let loss = try #require(backend.metadata.loss)
+        let loss = try #require(backend.metadata.tally.loss)
         #expect(loss.aspects.contains(.mode))
         #expect(loss.aspects.contains(.modificationTime))
         #expect(loss.itemCount == 1)
@@ -78,7 +78,7 @@ struct RemoteMetadataCarryWiringTests {
         // `-p` carries the nine bits and both timestamps exactly, so a corrective `chmod` would be a
         // round trip for nothing — the narrowness control on the whole design.
         #expect(plan.followUp.isEmpty)
-        #expect(backend.metadata.loss == nil)
+        #expect(backend.metadata.tally.loss == nil)
     }
 
     @Test("a set-uid source adds the corrective chmod the preserve flag cannot express")
@@ -101,7 +101,7 @@ struct RemoteMetadataCarryWiringTests {
         let plan = try #require(transport.carriedPlans.first)
         #expect(plan.usesPreserveFlag)
         #expect(plan.followUp == [.setMode(POSIXPermissions(rawValue: 0o4755))])
-        #expect(backend.metadata.loss == nil)
+        #expect(backend.metadata.tally.loss == nil)
     }
 
     @Test("an upload's source is read from disk when the caller passes no hint")
@@ -148,7 +148,7 @@ struct RemoteMetadataCarryWiringTests {
             isCancelled: { false }
         )
 
-        let loss = try #require(backend.metadata.loss)
+        let loss = try #require(backend.metadata.tally.loss)
         #expect(loss.aspects.contains(.mode))
     }
 
@@ -197,7 +197,7 @@ struct RemoteMetadataCarryWiringTests {
         // into this direction would drop a time the disk was perfectly able to take.
         #expect(destination.mode == 0o754)
         #expect(abs(destination.modificationTime.timeIntervalSince(when)) < 1)
-        #expect(backend.metadata.loss == nil)
+        #expect(backend.metadata.tally.loss == nil)
     }
 
     @Test("an FTP upload asks the server to keep the mode and the time, in its own invocation")
@@ -246,7 +246,7 @@ struct RemoteMetadataCarryWiringTests {
         // Latching both would stop attempting a verb the server honours — the dishonest direction.
         // Not latching costs one wasted round trip per file, which is the cheap one.
         #expect(backend.metadata.capabilities == .ftp)
-        #expect(backend.metadata.loss != nil)
+        #expect(backend.metadata.tally.loss != nil)
     }
 
     @Test("a single-step refusal is unambiguous, so it does latch")
@@ -288,6 +288,67 @@ struct RemoteMetadataCarryWiringTests {
 
         // Every SFTP directory copy used to land with the umask's mode and say nothing.
         #expect(destination.mode == 0o2750)
+    }
+}
+
+/// The same carry, for a row that reached the copy engine through the pasteboard — a drag or
+/// ⌘C/⌘V — rather than straight out of a listing as F5's does.
+///
+/// Reported 2026-10-19: a file dragged off an FTP server landed `----------` with the time of the
+/// copy, because the payload rebuilt the mode as `0` and carried no date, and the carry applied both.
+@Suite("Remote metadata carry ▸ a pasted row")
+struct PastedRowCarryTests {
+    private let ftp = FTPLocation(host: "nas.local", port: 21, username: "sa", security: .explicit)
+
+    private func ftpRemote(_ path: String) -> VFSPath { VFSPath(backend: .ftp(ftp), path: path) }
+    private func local(_ path: String) -> VFSPath { VFSPath(backend: .local, path: path) }
+
+    /// List `row` in `/AGENCE` over a fake server, then put the entry through the pasteboard the way
+    /// a drag or ⌘C/⌘V does, and download what comes out into `destination`.
+    private func downloadPasted(
+        row: String,
+        to destination: TempFile
+    ) throws -> FileEntry {
+        let transport = FakeFTPTransport()
+        transport.metadataCapabilities = .ftp
+        transport.listings["/AGENCE"] = row + "\r\n"
+        let backend = FTPBackend(location: ftp, transport: transport)
+        let listed = try #require(try backend.listDirectory(at: ftpRemote("/AGENCE")).first)
+        let data = try #require(PasteboardPayload(listed).encoded())
+        let pasted = try #require(PasteboardPayload.decode(data)).entry
+
+        try backend.copyFile(
+            at: pasted.path,
+            to: local(destination.path),
+            hint: CopySourceHint(pasted),
+            progress: { _ in },
+            isCancelled: { false }
+        )
+        return listed
+    }
+
+    @Test("a file dragged off an FTP server keeps its listed mode and date, as F5's copy does")
+    func pastedRowCarriesTheListing() throws {
+        let destination = try TempFile(mode: 0o600)
+        let listed = try downloadPasted(
+            row: "-rw-r--r--   1 ftp ftp 1234 Oct 19 2025 Agences_SYNERGIE_ATS.xml",
+            to: destination
+        )
+        #expect(destination.mode == 0o644)
+        #expect(abs(destination.modificationTime.timeIntervalSince(listed.modificationDate)) < 1)
+    }
+
+    @Test("a dragged row whose listing has no mode leaves the copy's mode alone")
+    func pastedRowWithoutAModeTouchesNoMode() throws {
+        let destination = try TempFile(mode: 0o600)
+        let listed = try downloadPasted(
+            row: "10-19-25  02:36PM                 1234 Agences_SYNERGIE_ATS.xml",
+            to: destination
+        )
+        // The DOS dialect prints no mode, so there is nothing to carry. The date still carries.
+        #expect(listed.permissions == nil)
+        #expect(destination.mode == 0o600)
+        #expect(abs(destination.modificationTime.timeIntervalSince(listed.modificationDate)) < 1)
     }
 }
 

@@ -67,18 +67,16 @@ struct CommandCatalogTests {
         #expect(KeyBindings().conflicts(for: "file.multiRename").isEmpty)
     }
 
-    @Test("copy keeping folders is a conflict-free File command on ⇧F5; its move twin has no key")
+    @Test("the keeping-folders twins are conflict-free File commands on ⇧F5 and ⇧F6")
     func keepingFoldersCommands() throws {
         let copy = try #require(CommandCatalog.command(for: "file.copyKeepingFolders"))
         #expect(copy.category == .file)
         #expect(copy.shortcut == CommandShortcut(key: "F5", modifiers: [.function, .shift]))
         let move = try #require(CommandCatalog.command(for: "file.moveKeepingFolders"))
         #expect(move.category == .file)
-        // ⇧F6 is in-place rename on the Total Commander preset, so the move twin ships unbound.
-        #expect(move.shortcut == nil)
-        for preset in KeyBindings.Preset.allCases {
-            #expect(KeyBindings.preset(preset).conflicts(for: "file.copyKeepingFolders").isEmpty)
-        }
+        #expect(move.shortcut == CommandShortcut(key: "F6", modifiers: [.function, .shift]))
+        #expect(KeyBindings().conflicts(for: "file.copyKeepingFolders").isEmpty)
+        #expect(KeyBindings().conflicts(for: "file.moveKeepingFolders").isEmpty)
     }
 
     @Test("the M5 synchronize-directories tool is a shortcut-free File command")
@@ -92,20 +90,14 @@ struct CommandCatalogTests {
     }
 
     /// ⌥F3 reads as the sibling of F3 "View" — F3 looks at the file under the cursor, ⌥F3 looks at
-    /// it against the other pane's — and has to stay clear of *both* presets, since the Total
-    /// Commander one claims bare F3 for Quick Look.
+    /// it against the other pane's.
     @Test("the M5 compare-by-contents tool is a conflict-free File command on ⌥F3")
     func coversCompareByContents() {
         let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })
         let compare = byID["file.compareByContents"]
         #expect(compare?.category == .file)
         #expect(compare?.shortcut == CommandShortcut(key: "F3", modifiers: [.function, .option]))
-        for preset in KeyBindings.Preset.allCases {
-            #expect(
-                KeyBindings.preset(preset).conflicts(for: "file.compareByContents").isEmpty,
-                "⌥F3 collides under the \(preset) preset"
-            )
-        }
+        #expect(KeyBindings().conflicts(for: "file.compareByContents").isEmpty)
     }
 
     @Test("the M14 checksum commands are shortcut-free File commands")

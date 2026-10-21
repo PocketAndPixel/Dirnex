@@ -78,6 +78,17 @@ public enum VFSError: Error, Sendable, Equatable {
     /// invisible to string extraction (PLAN.md §M12 Slice 11).
     case unsupported(VFSUnsupportedReason)
 
+    /// Whether this says the place itself is no longer there — nothing at the path, or a file where
+    /// a folder was — rather than that it could not be reached this time. ⌘[ steps past a folder
+    /// like that and forgets it (``NavigationHistory/dropUnreachableTarget()``); a refusal or a
+    /// server that did not answer is reported and kept, because it may list next time.
+    public var meansPlaceIsGone: Bool {
+        switch self {
+        case .notFound, .notADirectory: true
+        default: false
+        }
+    }
+
     /// Map a POSIX `errno` to the closest semantic case.
     static func fromErrno(_ code: Int32, path: VFSPath) -> VFSError {
         switch code {
@@ -150,6 +161,22 @@ public protocol VFSBackend: Sendable {
     /// implementation that stopped short of the whole subtree says so through
     /// ``VFSSubtreeListing/isComplete`` rather than by returning what it has and staying quiet.
     func subtreeListing(at path: VFSPath, isCancelled: () -> Bool) throws -> VFSSubtreeListing?
+
+    /// The children of **several** directories at once: one answer per path, in order, `nil` for a
+    /// directory that could not be listed — never conflated with the empty array an empty one gives.
+    ///
+    /// What a tree refresh asks, since it re-lists every expanded folder in one go. The default
+    /// lists them one at a time, which is the same answers by the same route this replaced, so a
+    /// backend that does not implement it is exactly as fast as before and never wrong. FTP
+    /// implements it because there a listing is a login: measured 2026-10-19 against a real FTPES
+    /// server 41 ms away, a tree with two folders open cost three logins of ~1 s each per refresh,
+    /// and the refresh poll's duty cycle stretched the 15 s floor to 59 s
+    /// (``RemoteRefreshPolicy``). One connection for the lot is what the subtree shortcut above
+    /// already does a level at a time.
+    ///
+    /// A refusal is an answer rather than a failure, because the caller keeps the folder's last good
+    /// rows and says nothing; `isCancelled` is the one thing that throws (`CancellationError`).
+    func listDirectories(at paths: [VFSPath], isCancelled: () -> Bool) throws -> [[FileEntry]?]
 
     /// Create a single directory at `path`. Throws `.alreadyExists` if something is
     /// already there and `.notFound` if the parent does not exist (no intermediate

@@ -12,9 +12,10 @@ import Sparkle
 ///
 /// - the bundle actually carries a feed URL and public key (`SUFeedURL`/`SUPublicEDKey`), so a
 ///   misconfigured build degrades to a disabled menu item rather than a crash;
-/// - we are not inside an `xcodebuild test` run — the app test host launches the real delegate
-///   (the same reason `FirstRunTourPresenter`/FDA guard on `XCTestConfigurationFilePath`), and a
-///   live updater there would reach the network and pop Sparkle's permission prompt mid-suite.
+/// - we are not inside an `xcodebuild test` run — the test host installs no app delegate
+///   (`main.swift`), but tests still build an `AppUpdater`, directly and through `AppDelegate()`,
+///   and a live updater there would reach the network and pop Sparkle's permission prompt
+///   mid-suite.
 ///
 /// It is also the updater's `SPUUpdaterDelegate` — which is why it is an `NSObject` (Sparkle's
 /// delegate protocol refines `NSObject`). Three things ride on that: `allowedChannels(for:)`, how
@@ -61,9 +62,6 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
         )
         startProbing()
     }
-
-    /// Whether a real updater came up. The menu item grays out when it did not.
-    var isEnabled: Bool { updaterController != nil }
 
     /// Posted whenever `availability` changes, so the titlebar indicator can restyle itself. No
     /// payload — observers read `availability` off the posting `AppUpdater` (the notification's

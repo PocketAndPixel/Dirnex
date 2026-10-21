@@ -12,20 +12,10 @@ public enum CloudDownloadPhase: Sendable, Hashable {
     case ready
     /// A placeholder: real name, real size, no bytes. Opening must download first.
     case evicted
-    /// A download is running. `fraction` is `nil` until the provider reports one — an
-    /// indeterminate spinner is the honest rendering of "started, no numbers yet".
-    case downloading(fraction: Double?)
+    /// A download is running.
+    case downloading
     /// The download was asked for and did not start, or stopped without arriving.
     case failed(reason: CloudDownloadFailure)
-
-    /// Whether this phase is still expected to change on its own, i.e. whether a waiter
-    /// should keep polling. `ready` and `failed` are the two terminal answers.
-    public var isSettled: Bool {
-        switch self {
-        case .ready, .failed: true
-        case .evicted, .downloading: false
-        }
-    }
 }
 
 /// Why a download stopped short. Kept separate from `VFSError` because none of these are a
@@ -125,7 +115,7 @@ public struct CloudDownloadTracker: Sendable, Hashable {
             return phase
         }
         if reading.isDownloading {
-            phase = .downloading(fraction: nil)
+            phase = .downloading
             return phase
         }
         // Dataless, not downloading. Either nobody asked yet, or the ask went nowhere.
@@ -135,14 +125,5 @@ public struct CloudDownloadTracker: Sendable, Hashable {
             phase = .evicted
         }
         return phase
-    }
-
-    /// Fold in a progress fraction reported separately (`NSMetadataQuery`'s percent key,
-    /// which has no `URLResourceKey` equivalent — the URL one is unavailable on macOS).
-    /// Ignored unless a download is actually running, so a stale percentage can't resurrect
-    /// a finished or failed transfer.
-    public mutating func observe(percentDownloaded percent: Double) {
-        guard case .downloading = phase else { return }
-        phase = .downloading(fraction: min(max(percent / 100, 0), 1))
     }
 }

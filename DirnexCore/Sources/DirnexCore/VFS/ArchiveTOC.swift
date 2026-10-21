@@ -142,11 +142,6 @@ public struct ArchiveTOC: Sendable, Equatable {
         return childrenByDirectory[parent]?.first { $0.name == name }
     }
 
-    /// No parseable entries — an empty or unreadable archive.
-    public var isEmpty: Bool {
-        childrenByDirectory.values.allSatisfy(\.isEmpty)
-    }
-
     private func normalize(_ path: String) -> String {
         "/" + path.split(separator: "/", omittingEmptySubsequences: true).joined(separator: "/")
     }

@@ -54,7 +54,7 @@ extension PanelViewController {
     /// Kept short on purpose: the line truncates its **tail** silently, and the tail of an
     /// explanatory sentence is the explanation (docs/NOTES.md ▸ Localization). Measured against the
     /// pane's own width in every shipped catalog before being written this way.
-    private static func sentence(for reason: TabOfflineReason) -> String {
+    static func sentence(for reason: TabOfflineReason) -> String {
         switch reason {
         case .serversNotContactedUnasked:
             return String(

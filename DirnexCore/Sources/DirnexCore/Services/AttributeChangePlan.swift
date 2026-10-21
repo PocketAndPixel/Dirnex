@@ -118,9 +118,6 @@ public struct AttributeChangePlan: Sendable, Equatable {
         self.steps = steps
     }
 
-    /// Nothing to do.
-    public var isEmpty: Bool { steps.isEmpty }
-
     // MARK: - Repairing what a syscall changes behind the user's back
 
     /// The mode to re-write after an ownership change that would otherwise drop a special bit — or

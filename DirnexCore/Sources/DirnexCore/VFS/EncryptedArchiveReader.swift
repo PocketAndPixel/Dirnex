@@ -29,13 +29,11 @@ public enum EncryptedArchiveReader {
         /// Any entry's data is encrypted, so extraction will need a passphrase.
         public var needsPassphrase: Bool { entries.contains { $0.isEncrypted } }
 
-        /// Bytes that will actually be written — regular files only, since a directory and a symlink
-        /// carry none and counting them gives a bar that never fills.
-        public var totalByteSize: Int64 { totalByteSize(matching: .everything) }
-
-        /// The same count over the members an extraction is going to place. A filtered extraction
-        /// measured against the *archive's* total draws a bar that stops a hundredth of the way
-        /// along and reports done, which reads as a transfer that failed.
+        /// Bytes that will actually be written over the members an extraction is going to place —
+        /// regular files only, since a directory and a symlink carry none and counting them gives a
+        /// bar that never fills. A filtered extraction measured against the *archive's* total draws
+        /// a bar that stops a hundredth of the way along and reports done, which reads as a
+        /// transfer that failed.
         public func totalByteSize(matching filter: ArchiveMemberFilter) -> Int64 {
             entries.reduce(into: 0) { total, entry in
                 guard case .regularFile = entry.kind else { return }

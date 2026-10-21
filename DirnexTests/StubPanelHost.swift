@@ -29,6 +29,13 @@ final class StubPanelHost: PanelHost {
     var nextRedoLabel: UndoActionLabel?
 
     func panelDidBecomeActive(_ panel: PanelViewController) {}
+    /// Every tab a pane closed, in order, with where it sat — the hand-over ⇧⌘T depends on.
+    private(set) var closedTabs: [(tab: PanelTab, index: Int)] = []
+
+    func panelDidCloseTab(_ tab: PanelTab, at index: Int, in panel: PanelViewController) {
+        closedTabs.append((tab, index))
+    }
+
     func panelRequestsFocusSwitch(_ panel: PanelViewController) {}
     /// The other pane, when a test needs one.
     ///
@@ -114,7 +121,6 @@ final class StubPanelHost: PanelHost {
     }
 
     func applyWorkspace(_ workspace: Workspace) {}
-    func toggleQuickView(_ mode: QuickViewMode) {}
 
     /// How many times a pane asked to close Quick View. Recorded since the header grew a Close
     /// button (2026-10-18): in ⌃Q the surface belongs to the covered pane, and the button's whole
@@ -122,6 +128,13 @@ final class StubPanelHost: PanelHost {
     private(set) var quickViewCloses = 0
     func closeQuickView() {
         quickViewCloses += 1
+    }
+
+    /// Every style a pane asked for, since the header's `1 Source · 2 Page` became buttons
+    /// (2026-10-20): in ⌃Q the click lands in the covered pane, which has to pass it to the window.
+    private(set) var quickViewStylePicks: [QuickViewRenderStyle] = []
+    func setQuickViewRenderStyle(_ style: QuickViewRenderStyle) {
+        quickViewStylePicks.append(style)
     }
 
     /// Every flip a pane asked for, and every scroll. Recorded since the ⇧-arrows learned to scroll

@@ -66,9 +66,10 @@ final class RemoteAttributesController: NSViewController, ClaimsTabNumberKeys {
     var modeBoxes: [ModeBox] = []
     var specialBoxes: [SpecialBox] = []
     var modificationPicker: NSDatePicker?
-    /// The value the picker was *given*, not the entry's. `NSDatePicker` resolves to whole seconds
-    /// and a real timestamp does not, so comparing against the entry would light Save up with
-    /// nothing edited (docs/NOTES.md ▸ ACLs and file attributes).
+    /// The value the picker was *given*, read back from it, which is what "untouched" is measured
+    /// against rather than the entry's own stamp. An `MLSD` time can carry a fraction of a second,
+    /// and a picker that kept less of it would otherwise light Save up with nothing edited and send
+    /// the date along with every mode change (docs/NOTES.md ▸ ACLs and file attributes).
     var pickerBaseline: Date?
     var modeValueField: NSTextField?
     var saveButton: NSButton?

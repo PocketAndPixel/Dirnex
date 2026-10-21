@@ -51,6 +51,13 @@ public enum CommandCatalog {
             shortcut: CommandShortcut(key: "w", modifiers: .command)
         ),
         Command(
+            id: "file.reopenClosedTab",
+            title: "Reopen Closed Tab",
+            category: .file,
+            keywords: ["tab", "closed", "restore", "undo close", "reopen"],
+            shortcut: CommandShortcut(key: "t", modifiers: [.command, .shift])
+        ),
+        Command(
             id: "file.openWith",
             title: "Open With",
             category: .file,
@@ -75,8 +82,7 @@ public enum CommandCatalog {
                 "owner", "group", "acl", "access control", "flags", "locked", "immutable",
                 "quarantine", "xattr", "extended attributes", "metadata"
             ],
-            // ⌘I, Finder's own. Free on both presets, and the only inspection command with a claim
-            // to it.
+            // ⌘I, Finder's own, and the only inspection command with a claim to it.
             shortcut: CommandShortcut(key: "i", modifiers: .command)
         ),
         Command(
@@ -103,17 +109,20 @@ public enum CommandCatalog {
             title: "Copy to Other Panel, Keeping Folders",
             category: .file,
             keywords: ["shift+f5", "tree", "branch", "structure", "subfolders", "relative paths"],
-            // ⇧F5 beside F5. Free on both presets — Dirnex has no copy-in-place for it to displace.
+            // ⇧F5 beside F5. Free — Dirnex has no copy-in-place for it to displace.
             shortcut: CommandShortcut(key: "F5", modifiers: [.function, .shift])
         ),
         Command(
             id: "file.moveKeepingFolders",
             title: "Move to Other Panel, Keeping Folders",
             category: .file,
-            keywords: ["tree", "branch", "structure", "subfolders", "relative paths", "transfer"]
-            // No shortcut: ⇧F6 is in-place rename on the Total Commander preset, and a key that
-            // means two different things depending on the preset is worse than none. Bindable in
-            // Settings.
+            keywords: [
+                "shift+f6", "tree", "branch", "structure", "subfolders", "relative paths",
+                "transfer"
+            ],
+            // ⇧F6 beside F6, as ⇧F5 sits beside F5. Total Commander renames in place on ⇧F6;
+            // Dirnex renames on F2, so the key is free.
+            shortcut: CommandShortcut(key: "F6", modifiers: [.function, .shift])
         ),
         Command(
             id: "file.pack",
@@ -176,9 +185,8 @@ public enum CommandCatalog {
             category: .file,
             keywords: ["compare", "diff", "contents", "filemerge", "kaleidoscope", "bbedit"],
             // ⌥F3 as the sibling of F3 "View": F3 looks at the file under the cursor, ⌥F3 looks at
-            // it *against* the other pane's. Free on both presets — F4 "Edit" is the *bare* key,
-            // and the Total Commander preset takes bare F3 for Quick Look, not ⌥F3; a bare key and
-            // a modified one are different key-equivalents.
+            // it *against* the other pane's. Free — F3 "View" and F4 "Edit" are *bare* keys, and a
+            // bare key and a modified one are different key-equivalents.
             shortcut: CommandShortcut(key: "F3", modifiers: [.function, .option])
         ),
         Command(

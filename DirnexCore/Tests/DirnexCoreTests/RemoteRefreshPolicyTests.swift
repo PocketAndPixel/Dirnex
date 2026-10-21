@@ -272,3 +272,64 @@ struct RemoteRefreshPolicyDelayTests {
         )
     }
 }
+
+/// The wait when somebody turns to a pane — uncovers it, brings the app back, switches to its tab.
+///
+/// Its own suite because it answers the opposite of the rule just above: there the stretch keeps
+/// governing after a pane has been left alone, here it is waived because the pane has stopped being
+/// left alone. Both are true at once, for different waits of the same loop, and the first test pins
+/// that they really do differ, or the second rule would be a renaming of the first.
+@Suite("Remote refresh — catching up on a return")
+struct RemoteRefreshPolicyCatchUpTests {
+    private let ftp = VFSBackendID.ftp(FTPLocation(host: "h", username: "u"))
+
+    /// The reported case in numbers: a tree over FTPES whose refresh cost three logins of ~1 s
+    /// (measured 2026-10-19, ~3 s in all), left 20 s ago. Unattended it would wait 39 s more; turned
+    /// to, it re-lists now. The unattended half is asserted beside it as the control, so the test
+    /// fails if the stretch it waives ever stops existing.
+    @Test("a return waives the stretch that an expensive last round earned")
+    func returnWaivesTheStretch() throws {
+        let unattended = try #require(
+            RemoteRefreshPolicy.delay(
+                afterRefreshTaking: 2.95, finishedSecondsAgo: 20, floor: 15, backend: ftp
+            )
+        )
+        #expect(unattended == 39)
+        let returning = try #require(
+            RemoteRefreshPolicy.catchUpDelay(finishedSecondsAgo: 20, floor: 15, backend: ftp)
+        )
+        #expect(returning == 0)
+    }
+
+    /// Still bounded by the floor: a pane looked away from and back inside a second has just been
+    /// refreshed, and a return must not spend a login on the gesture.
+    @Test("a return inside the floor waits out the rest of it")
+    func returnInsideTheFloorWaits() throws {
+        let delay = try #require(
+            RemoteRefreshPolicy.catchUpDelay(finishedSecondsAgo: 1, floor: 15, backend: ftp)
+        )
+        #expect(delay == 14)
+    }
+
+    /// Nothing known about this directory's last listing — the floor, as for a pane that has just
+    /// arrived, rather than a guess that it is stale.
+    @Test("a return with nothing recorded waits the floor")
+    func returnWithNoRecordWaitsTheFloor() throws {
+        let delay = try #require(
+            RemoteRefreshPolicy.catchUpDelay(finishedSecondsAgo: nil, floor: 15, backend: ftp)
+        )
+        #expect(delay == 15)
+    }
+
+    /// A floor of zero is "never contact my server unasked", and coming back to a window is not
+    /// asking. Nor does a return reach a pane that does not poll at all.
+    @Test("a return asks nothing of a pane that must not poll")
+    func returnRefusesWhereThePollDoes() {
+        #expect(
+            RemoteRefreshPolicy.catchUpDelay(finishedSecondsAgo: 60, floor: 0, backend: ftp) == nil
+        )
+        #expect(
+            RemoteRefreshPolicy.catchUpDelay(finishedSecondsAgo: 60, floor: 15, backend: .local) == nil
+        )
+    }
+}
