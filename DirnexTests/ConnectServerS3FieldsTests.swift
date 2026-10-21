@@ -34,11 +34,6 @@ struct ConnectServerS3FieldsTests {
         return location
     }
 
-    private func account(of form: ConnectServerPrompt.Form?) -> S3Account? {
-        guard case let .s3Account(account)? = form?.endpoint else { return nil }
-        return account
-    }
-
     // MARK: - Amazon
 
     /// The reason Amazon has no endpoint field at all: the host *is* the region, and a bucket

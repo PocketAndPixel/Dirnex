@@ -369,14 +369,6 @@ extension PanelViewController {
             comment: "Status while an archive bound for a server is written locally; %@ is its name."
         )
     }
-
-    /// The status line while the finished archive is going up.
-    private func sendingStatus(for target: VFSPath) -> String {
-        String(
-            localized: "Sending “\(target.lastComponent)”…",
-            comment: "Status while a finished archive is uploaded to a server; %@ is its name."
-        )
-    }
 }
 
 /// Everything the pack sheet settled, carried as one value.

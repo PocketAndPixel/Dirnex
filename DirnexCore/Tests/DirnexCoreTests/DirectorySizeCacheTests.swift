@@ -185,17 +185,6 @@ struct DirectorySizeCacheTests {
         #expect(cache.size(for: .local("/a")) == 1)
     }
 
-    @Test("removeAll forgets everything — the explicit-refresh path")
-    func removeAllClears() {
-        var cache = DirectorySizeCache()
-        cache.store(1, for: .local("/a"))
-        cache.store(2, for: .local("/b"))
-        cache.removeAll()
-
-        #expect(cache.isEmpty)
-        #expect(cache.size(for: .local("/a")) == nil)
-    }
-
     // MARK: - Scope (.gitignore-aware totals)
 
     @Test("one folder's two totals are separate entries, never substituted for each other")

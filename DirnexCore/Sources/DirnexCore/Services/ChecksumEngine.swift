@@ -26,8 +26,6 @@ public struct ChecksumDigests: Sendable, Equatable {
     public var algorithms: [ChecksumAlgorithm] {
         ChecksumAlgorithm.allCases.filter { hexByAlgorithm[$0] != nil }
     }
-
-    public var isEmpty: Bool { hexByAlgorithm.isEmpty }
 }
 
 // MARK: - Accumulator

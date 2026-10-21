@@ -24,7 +24,6 @@ final class FakeFTPTransport: FTPTransport, @unchecked Sendable {
     var listings: [String: String] = [:]
     var remoteFileSizes: [String: Int64] = [:]
     var error: FTPTransportError?
-    var certificate: FTPCertificate?
 
     /// What a transfer reports as the bytes it moved — for a resumed transfer, the remainder.
     var transferBytes: Int64 = 0
@@ -268,10 +267,5 @@ final class FakeFTPTransport: FTPTransport, @unchecked Sendable {
         fileSizeQueries.append(remotePath)
         guard let size = remoteFileSizes[remotePath] else { throw FTPTransportError.notFound }
         return size
-    }
-
-    func fetchCertificate() throws -> FTPCertificate {
-        if let certificate { return certificate }
-        throw FTPTransportError.failure("no certificate")
     }
 }

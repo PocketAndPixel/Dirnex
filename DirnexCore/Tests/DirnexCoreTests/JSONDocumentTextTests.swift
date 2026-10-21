@@ -69,18 +69,20 @@ struct JSONDocumentTextTests {
         #expect(parsed.formattedText(of: parsed.child(0, of: list)) == "1.10")
     }
 
-    @Test("compact text drops the whitespace and the comments")
+    @Test("a container's cell text drops the whitespace and the comments")
     func compact() throws {
         let parsed = try document(#"{ "a" : [ 1 , 2 ] /* c */ , "b" : { } }"#)
-        #expect(parsed.compactText(of: parsed.roots[0]) == #"{"a":[1,2],"b":{}}"#)
+        var output: [UInt8] = []
+        parsed.appendText(of: parsed.roots[0], to: &output)
+        #expect(String(bytes: output, encoding: .utf8) == #"{"a":[1,2],"b":{}}"#)
     }
 
     @Test("a limit cuts written text at a whole character, with an ellipsis")
     func limited() throws {
         let parsed = try document(#"["абвгд"]"#)
-        #expect(parsed.compactText(of: parsed.roots[0], byteLimit: 6) == #"["аб…"#)
-        #expect(parsed.compactText(of: parsed.roots[0], byteLimit: 5) == #"["а…"#)
-        #expect(parsed.compactText(of: parsed.roots[0], byteLimit: 100) == #"["абвгд"]"#)
+        #expect(parsed.formattedText(of: parsed.roots[0], byteLimit: 7) == "[\n  \"а…")
+        #expect(parsed.formattedText(of: parsed.roots[0], byteLimit: 6) == "[\n  \"…")
+        #expect(parsed.formattedText(of: parsed.roots[0], byteLimit: 100) == "[\n  \"абвгд\"\n]")
     }
 
     @Test("a scalar's text is cut at a whole character, escaped or not")

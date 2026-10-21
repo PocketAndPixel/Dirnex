@@ -1,6 +1,6 @@
 import Foundation
 
-/// Where an offset into several texts joined together lies: which text, and how far into it
+/// Where a range in several texts joined together lies: which texts, and where in each
 /// (2026-09-17).
 ///
 /// Finding in a Quick View preview reads one text and answers UTF-16 offsets into it
@@ -23,32 +23,6 @@ public struct TextSegmentMap: Sendable, Equatable {
     public init(lengths: [Int], separator: Int = 1) {
         self.lengths = lengths
         self.separator = max(0, separator)
-    }
-
-    /// The length of the joined text these segments make.
-    public var totalLength: Int {
-        guard !lengths.isEmpty else { return 0 }
-        return lengths.reduce(0, +) + separator * (lengths.count - 1)
-    }
-
-    /// Where `offset` lands: the segment holding it and how far into that segment it is.
-    ///
-    /// `nil` for an offset past the end, and for one inside a *separator*, which belongs to no
-    /// segment — a caller asking about the `\n` between two pages is asking about a character no
-    /// page contains, and answering with either neighbour would put a highlight where the text is
-    /// not.
-    public func segment(at offset: Int) -> (index: Int, offset: Int)? {
-        guard offset >= 0 else { return nil }
-        var start = 0
-        for (index, length) in lengths.enumerated() {
-            // `offset < start` is the separator before this segment: past the previous segment's
-            // end and short of this one's start. Without it the subtraction below goes negative,
-            // which reaches `PDFPage.selection(for:)` as a range no page has.
-            if offset < start { return nil }
-            if offset < start + length { return (index, offset - start) }
-            start += length + separator
-        }
-        return nil
     }
 
     /// `range` cut into the pieces each segment holds, in order, with each piece's offsets relative

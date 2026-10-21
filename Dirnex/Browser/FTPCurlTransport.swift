@@ -282,7 +282,12 @@ struct FTPCurlTransport: FTPTransport {
 
     /// Fetch the server's certificate without trusting it, so the app can show the user what they
     /// are being asked to accept. Transfers nothing — it connects, prints the chain, and discards
-    /// the body — which is why suppressing verification here is safe.
+    /// the body — which is why suppressing verification here is safe. Only meaningful for an FTPS
+    /// location; a plain-FTP transport throws.
+    ///
+    /// Separate from the error vocabulary on purpose: retrieving the certificate is a second `curl`
+    /// invocation (`-w '%{certs}'` with verification suppressed), and folding a network round trip
+    /// into an error's payload would make every failure path pay for it.
     func fetchCertificate() throws -> FTPCertificate {
         guard location.security.usesTLS else {
             throw FTPTransportError.failure("")

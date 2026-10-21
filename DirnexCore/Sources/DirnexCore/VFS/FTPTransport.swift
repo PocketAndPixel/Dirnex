@@ -160,14 +160,6 @@ public protocol FTPTransport: RemoteWriteTransport {
     /// The exact size of one remote file (`SIZE`, via `curl -I`), used to decide whether a partial
     /// is resumable. Costs a round trip, so it is a stat-one-item path and never a listing path.
     func fileSize(_ remotePath: String) throws -> Int64
-
-    /// Fetch the server's TLS certificate without trusting it, so the app can show the user what it
-    /// is being asked to trust. Only meaningful for an FTPS location; a plain-FTP transport throws.
-    ///
-    /// Separate from the error vocabulary on purpose: retrieving the certificate is a second `curl`
-    /// invocation (`-w '%{certs}'` with verification suppressed), and folding a network round trip
-    /// into an error's payload would make every failure path pay for it.
-    func fetchCertificate() throws -> FTPCertificate
 }
 
 /// The additive halves of ``FTPTransport/listDirectories(_:isCancelled:)``,

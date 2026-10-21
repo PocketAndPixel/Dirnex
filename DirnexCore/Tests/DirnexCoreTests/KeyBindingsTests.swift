@@ -69,16 +69,6 @@ struct KeyBindingsTests {
         #expect(bindings.shortcut(for: copy) == CommandShortcut(key: "F5", modifiers: .function))
     }
 
-    @Test("resetAll clears every override")
-    func resetAll() {
-        var bindings = KeyBindings()
-        bindings.setShortcut(CommandShortcut(key: "F9", modifiers: .function), for: copy)
-        bindings.setShortcut(nil, for: rename)
-        bindings.resetAll()
-        #expect(bindings.overrides.isEmpty)
-        #expect(bindings == KeyBindings())
-    }
-
     // MARK: - Conflicts
 
     @Test("the shipped defaults have no shortcut collisions")

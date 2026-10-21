@@ -192,12 +192,6 @@ final class TerminalDrawerViewController: NSViewController {
         terminalView.send(txt: command)
     }
 
-    /// The shell's current directory, straight from the kernel, or `nil` before it's running.
-    var shellDirectory: String? {
-        guard hasStartedShell, shellPID > 0 else { return nil }
-        return ShellWorkingDirectory.current(ofProcess: shellPID)
-    }
-
     /// Ask the kernel where the shell is, and tell the delegate when that has changed.
     ///
     /// Called on **every chunk of output the shell produces** — no timer, and no polling of an

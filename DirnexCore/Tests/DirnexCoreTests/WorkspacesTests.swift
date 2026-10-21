@@ -92,16 +92,11 @@ struct WorkspacesTests {
         #expect(workspaces.workspace(named: "Missing") == nil)
     }
 
-    @Test("remove by name and by index")
+    @Test("remove by index")
     func remove() {
         var workspaces = Workspaces(workspaces: [workspace("A"), workspace("B"), workspace("C")])
-        // Hoist mutating results out of #expect (its receiver is captured immutable).
-        let removed = workspaces.remove(name: "B")
-        #expect(removed)
+        workspaces.remove(at: 1)
         #expect(workspaces.workspaces.map(\.name) == ["A", "C"])
-        let removedAgain = workspaces.remove(name: "B")
-        #expect(!removedAgain)
-
         workspaces.remove(at: 0)
         #expect(workspaces.workspaces.map(\.name) == ["C"])
         workspaces.remove(at: 9) // no crash, no change

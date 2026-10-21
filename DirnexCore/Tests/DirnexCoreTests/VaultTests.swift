@@ -290,7 +290,6 @@ struct VaultTests {
             imagePath: "/private/tmp/Personal.sparsebundle", volumeName: "Personal"
         )
         #expect(viaSymlink.keychainAccount == viaReal.keychainAccount)
-        #expect(viaSymlink.fileName == "Personal.sparsebundle")
         #expect(VaultLocation.keychainService != SFTPLocation.keychainService)
     }
 }

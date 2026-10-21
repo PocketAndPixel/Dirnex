@@ -167,25 +167,25 @@ struct UndoRedoTests {
     func redoStackTransitions() {
         var journal = UndoJournal()
         journal.record(.newFolder(at: .local("/a")))
-        #expect(journal.canUndo && !journal.canRedo)
+        #expect(journal.top != nil && journal.redoTop == nil)
 
         let undone = journal.takeForUndo()
         #expect(undone?.fileOperation?.steps == [.removeCreatedFolder(.local("/a"))])
-        #expect(!journal.canUndo && journal.canRedo)
+        #expect(journal.top == nil && journal.redoTop != nil)
         // The redo entry is the inverse: it re-creates the folder.
         #expect(journal.redoTop?.fileOperation?.steps == [.createFolder(.local("/a"))])
 
         // Redo brings it back to the undo stack, inverted again to the original.
         let redone = journal.takeForRedo()
         #expect(redone?.fileOperation?.steps == [.createFolder(.local("/a"))])
-        #expect(journal.canUndo && !journal.canRedo)
+        #expect(journal.top != nil && journal.redoTop == nil)
         #expect(journal.top?.fileOperation?.steps == [.removeCreatedFolder(.local("/a"))])
 
         // A brand-new operation wipes any pending redo.
         _ = journal.takeForUndo() // stage a redo
-        #expect(journal.canRedo)
+        #expect(journal.redoTop != nil)
         journal.record(.newFolder(at: .local("/b")))
-        #expect(!journal.canRedo)
+        #expect(journal.redoTop == nil)
     }
 
     @Test("both stacks round-trip through JSON so redo survives relaunch")
@@ -202,6 +202,6 @@ struct UndoRedoTests {
         )
         #expect(restored.records == journal.records)
         #expect(restored.redoRecords == journal.redoRecords)
-        #expect(restored.canRedo)
+        #expect(restored.redoTop != nil)
     }
 }

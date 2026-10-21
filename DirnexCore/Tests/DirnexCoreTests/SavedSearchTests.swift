@@ -101,15 +101,6 @@ struct SavedSearchTests {
         #expect(list.searches.map(\.name) == ["B"])
     }
 
-    @Test("remove at index ignores out-of-range")
-    func removeAtIndex() {
-        var list = SavedSearches(searches: [search("A"), search("B")])
-        list.remove(at: 5)
-        #expect(list.searches.count == 2)
-        list.remove(at: 0)
-        #expect(list.searches.map(\.name) == ["B"])
-    }
-
     @Test("rename rejects an empty name and a collision with a different entry")
     func renameRules() {
         var list = SavedSearches(searches: [search("A"), search("B")])

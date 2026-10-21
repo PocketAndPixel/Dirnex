@@ -35,21 +35,13 @@ public struct MaterializedPaths: Sendable, Equatable {
         localPaths = [:]
     }
 
-    /// An explicit map — for a caller assembling one from somewhere other than a job's report.
+    /// An explicit map, assembled by the caller rather than read off a job's report.
     ///
-    /// The app is that caller and has to be: a row the plan classified as already `cached` is never
-    /// asked for, so it produces no ``MaterializedFile`` and yet is exactly as readable as the ones
-    /// that were. A map built only from the report would report those as not downloaded.
+    /// It has to be: a row the plan classified as already `cached` is never asked for, so it
+    /// produces no ``MaterializedFile`` and yet is exactly as readable as the ones that were. A map
+    /// built only from the report would report those as not downloaded.
     public init(_ localPaths: [VFSPath: String]) {
         self.localPaths = localPaths
-    }
-
-    /// The copies a `.materialize` job brought down.
-    ///
-    /// A repeated source keeps the **last** copy: a second fetch of the same row supersedes the
-    /// first, and the first is the one whose directory may already have been swept away.
-    public init(_ files: [MaterializedFile]) {
-        self.init(Dictionary(files.map { ($0.source, $0.localPath) }) { _, latest in latest })
     }
 
     /// Nothing has been substituted, so every row is expected to stand for itself.

@@ -199,7 +199,7 @@ struct RemoteAttributeEditTests {
         // The other narrowness control: the panel redraws from `landed`, which routinely differs
         // from what was on screen, and none of that is a refusal.
         let verdict = RemoteAttributeVerdict.weigh(
-            .none,
+            RemoteAttributeChange(),
             refusals: [],
             landed: entry(permissions: 0o600)
         )

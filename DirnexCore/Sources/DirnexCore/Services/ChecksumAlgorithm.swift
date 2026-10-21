@@ -51,9 +51,6 @@ public enum ChecksumAlgorithm: String, Sendable, Hashable, CaseIterable {
         }
     }
 
-    /// Digest length in bytes — 4 · 16 · 20 · 32.
-    public var byteCount: Int { hexDigitCount / 2 }
-
     /// The extension a manifest of this algorithm is conventionally saved under: `sfv` for CRC32
     /// (the format's own name), the algorithm's own token for the other three (`file.sha256`).
     public var fileExtension: String {

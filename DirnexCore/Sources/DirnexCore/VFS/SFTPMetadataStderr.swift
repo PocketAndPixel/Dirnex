@@ -26,9 +26,6 @@ public struct SFTPMetadataStderr: Sendable, Equatable {
     /// Everything else, rejoined — what the transfer's classification should be shown.
     public let remainder: String
 
-    /// Nothing was refused: the metadata this run was asked to carry arrived.
-    public var isEmpty: Bool { lines.isEmpty }
-
     public init(lines: [String], remainder: String) {
         self.lines = lines
         self.remainder = remainder

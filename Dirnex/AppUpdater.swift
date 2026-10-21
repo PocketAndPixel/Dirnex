@@ -63,9 +63,6 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
         startProbing()
     }
 
-    /// Whether a real updater came up. The menu item grays out when it did not.
-    var isEnabled: Bool { updaterController != nil }
-
     /// Posted whenever `availability` changes, so the titlebar indicator can restyle itself. No
     /// payload — observers read `availability` off the posting `AppUpdater` (the notification's
     /// object), which is the app delegate's single instance.

@@ -114,9 +114,9 @@ struct SelectionUndoTests {
         var journal = UndoJournal()
         journal.record(.selection(change(prior: [], new: ["a"])))
         _ = journal.takeForUndo() // stage a redo
-        #expect(journal.canRedo)
+        #expect(journal.redoTop != nil)
         journal.record(.selection(change(prior: [], new: ["b"])))
-        #expect(!journal.canRedo)
+        #expect(journal.redoTop == nil)
     }
 
     // MARK: - Withdrawing
@@ -133,7 +133,7 @@ struct SelectionUndoTests {
         #expect(journal.top?.fileOperation?.label == .newFolder)
         #expect(journal.records.count == 1)
         // Not an undo: nothing was reversed, so there is nothing to redo.
-        #expect(!journal.canRedo)
+        #expect(journal.redoTop == nil)
     }
 
     @Test("an entry that is not on top is never withdrawn")

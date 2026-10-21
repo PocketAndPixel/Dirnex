@@ -1,6 +1,6 @@
 import Foundation
 
-/// Lists, reads, writes and removes extended attributes — the thin syscall half behind
+/// Lists and reads extended attributes — the thin syscall half behind
 /// ``ExtendedAttribute`` (PLAN.md §M14 Slice 4, §2: metadata-touching I/O lives in the core and is
 /// tested).
 ///
@@ -54,29 +54,6 @@ public enum ExtendedAttributeIO {
             guard let data = try value(of: name, at: path) else { return nil }
             return ExtendedAttribute(name: name, data: data)
         }
-    }
-
-    /// Set an attribute, creating or replacing it.
-    public static func set(_ name: String, to data: Data, at path: VFSPath) throws {
-        try requireLocal(path)
-        let rc = data.withUnsafeBytes { buffer in
-            setxattr(path.path, name, buffer.baseAddress, buffer.count, 0, XATTR_NOFOLLOW)
-        }
-        guard rc == 0 else { throw VFSError.fromErrno(errno, path: path) }
-    }
-
-    /// Remove an attribute. **Removing one the item does not carry succeeds**, because the caller's
-    /// intent — "this must not be here" — is already satisfied.
-    ///
-    /// This is `xattr -dr`'s behavior rather than `xattr -d`'s, and the difference is the reason
-    /// docs/NOTES.md records it: `xattr -d com.apple.quarantine *` exits 1 over an ordinary
-    /// selection because most of the files never had the attribute, which surfaces as a failure
-    /// alert for a command that did exactly what was asked. Idempotence is what keeps a
-    /// multi-selection "Remove Quarantine" from failing on the files that were already clean.
-    public static func remove(_ name: String, at path: VFSPath) throws {
-        try requireLocal(path)
-        guard removexattr(path.path, name, XATTR_NOFOLLOW) != 0 else { return }
-        guard errno == ENOATTR else { throw VFSError.fromErrno(errno, path: path) }
     }
 
     // MARK: - Helpers

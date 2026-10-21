@@ -23,7 +23,6 @@ struct AttributesSnapshot {
     /// The owning user's name, or `nil` when the uid resolves to no account (a file restored from
     /// another Mac, most often).
     let ownerName: String?
-    let groupName: String?
 
     /// Read one item. Throws only when the item itself cannot be `lstat`ed — a missing ACL is a
     /// normal empty answer, and unreadable extended attributes degrade to none rather than failing
@@ -40,8 +39,7 @@ struct AttributesSnapshot {
             isSymlink: reading.isSymlink,
             accessControlList: list,
             extendedAttributes: attributes.filter(\.isWorthShowing),
-            ownerName: IdentityDirectory.userName(for: reading.attributes.ownerID),
-            groupName: IdentityDirectory.groupName(for: reading.attributes.groupID)
+            ownerName: IdentityDirectory.userName(for: reading.attributes.ownerID)
         )
     }
 

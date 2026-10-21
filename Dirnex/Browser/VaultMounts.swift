@@ -60,10 +60,6 @@ final class VaultMounts: NSObject {
         VaultPrivacy.isInside(path, mountPoints: mountPoints)
     }
 
-    func contains(_ path: String) -> Bool {
-        VaultPrivacy.isInside(path, mountPoints: mountPoints)
-    }
-
     // MARK: - Keeping current
 
     /// A vault just opened at `mountPoint`. Recorded immediately, before the notification arrives.

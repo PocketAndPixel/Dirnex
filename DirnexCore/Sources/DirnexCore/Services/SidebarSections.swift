@@ -69,15 +69,6 @@ public struct SidebarSectionCollapse: Equatable, Sendable, Codable {
         collapsed.contains(section.rawValue)
     }
 
-    /// Flip a section, returning its **new** collapsed state — what a caller needs to update a
-    /// disclosure triangle without re-reading.
-    @discardableResult
-    public mutating func toggle(_ section: SidebarSection) -> Bool {
-        let nowCollapsed = !isCollapsed(section)
-        setCollapsed(nowCollapsed, for: section)
-        return nowCollapsed
-    }
-
     /// Set a section's state, returning whether that **changed** anything — so a caller can skip a
     /// needless write and rebuild. Used by the drop path, where a folder dragged onto a collapsed
     /// Favorites header has to unfold it or the pin lands somewhere the user cannot see.

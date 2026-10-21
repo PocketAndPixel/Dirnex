@@ -386,9 +386,6 @@ public struct UndoJournal: Sendable, Equatable {
     /// The action Cmd+Shift+Z would re-apply next, or `nil` when there's nothing to redo.
     public var redoTop: UndoEntry? { redoRecords.last }
 
-    public var canUndo: Bool { !records.isEmpty }
-    public var canRedo: Bool { !redoRecords.isEmpty }
-
     /// Push a freshly-completed action onto the undo stack. A brand-new action invalidates
     /// the redo stack: you can't redo forward past a point where history diverged.
     public mutating func record(_ entry: UndoEntry) {
@@ -431,11 +428,6 @@ public struct UndoJournal: Sendable, Equatable {
         guard records.last == entry else { return false }
         records.removeLast()
         return true
-    }
-
-    public mutating func clear() {
-        records.removeAll()
-        redoRecords.removeAll()
     }
 
     /// Drop the oldest entries so a stack never exceeds `capacity`.

@@ -93,9 +93,6 @@ public struct RemoteAttributeChange: Sendable, Equatable, Codable {
         self.modificationTime = modificationTime
     }
 
-    /// Nothing to do — what an untouched panel commits, and what must never reach a server.
-    public static let none = RemoteAttributeChange()
-
     public var isEmpty: Bool { permissions == nil && modificationTime == nil }
 
     /// The fields this change sets.

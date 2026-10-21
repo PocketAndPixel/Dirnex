@@ -73,12 +73,6 @@ protocol PanelHost: ClosedTabHost {
     /// left pane. Directories that have since vanished are dropped as the panes rebuild.
     func applyWorkspace(_ workspace: Workspace)
 
-    /// Quick View (⌃Q / ⌃⇧Q / ⌃⌥Q): switch to `mode`, or back to `.off` when it is already the
-    /// current one — each key is a flat toggle that turns its own size off and switches from any
-    /// other. The window owns the state because the mode spans both panes, which a single pane
-    /// can't coordinate.
-    func toggleQuickView(_ mode: QuickViewMode)
-
     /// Close Quick View outright, whatever size it is showing at — Esc's exit, which must land on
     /// the file list rather than stepping down to a smaller preview.
     func closeQuickView()

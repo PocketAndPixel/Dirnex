@@ -37,7 +37,7 @@ struct RemoteMetadataCarryWiringTests {
             isCancelled: { false }
         )
 
-        let loss = try #require(backend.metadata.loss)
+        let loss = try #require(backend.metadata.tally.loss)
         #expect(loss.aspects.contains(.mode))
         #expect(loss.aspects.contains(.modificationTime))
         #expect(loss.itemCount == 1)
@@ -78,7 +78,7 @@ struct RemoteMetadataCarryWiringTests {
         // `-p` carries the nine bits and both timestamps exactly, so a corrective `chmod` would be a
         // round trip for nothing — the narrowness control on the whole design.
         #expect(plan.followUp.isEmpty)
-        #expect(backend.metadata.loss == nil)
+        #expect(backend.metadata.tally.loss == nil)
     }
 
     @Test("a set-uid source adds the corrective chmod the preserve flag cannot express")
@@ -101,7 +101,7 @@ struct RemoteMetadataCarryWiringTests {
         let plan = try #require(transport.carriedPlans.first)
         #expect(plan.usesPreserveFlag)
         #expect(plan.followUp == [.setMode(POSIXPermissions(rawValue: 0o4755))])
-        #expect(backend.metadata.loss == nil)
+        #expect(backend.metadata.tally.loss == nil)
     }
 
     @Test("an upload's source is read from disk when the caller passes no hint")
@@ -148,7 +148,7 @@ struct RemoteMetadataCarryWiringTests {
             isCancelled: { false }
         )
 
-        let loss = try #require(backend.metadata.loss)
+        let loss = try #require(backend.metadata.tally.loss)
         #expect(loss.aspects.contains(.mode))
     }
 
@@ -197,7 +197,7 @@ struct RemoteMetadataCarryWiringTests {
         // into this direction would drop a time the disk was perfectly able to take.
         #expect(destination.mode == 0o754)
         #expect(abs(destination.modificationTime.timeIntervalSince(when)) < 1)
-        #expect(backend.metadata.loss == nil)
+        #expect(backend.metadata.tally.loss == nil)
     }
 
     @Test("an FTP upload asks the server to keep the mode and the time, in its own invocation")
@@ -246,7 +246,7 @@ struct RemoteMetadataCarryWiringTests {
         // Latching both would stop attempting a verb the server honours — the dishonest direction.
         // Not latching costs one wasted round trip per file, which is the cheap one.
         #expect(backend.metadata.capabilities == .ftp)
-        #expect(backend.metadata.loss != nil)
+        #expect(backend.metadata.tally.loss != nil)
     }
 
     @Test("a single-step refusal is unambiguous, so it does latch")
