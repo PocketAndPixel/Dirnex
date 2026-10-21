@@ -70,6 +70,18 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     after the last test run had finished), and `open -n` on the fresh build made two. Then
     `app_menu` and every AppleEvent by bundle id can reach either one. Run the `pgrep` *before*
     launching as well as after.
+  - **In a wait loop, `pgrep -f` also matches the shell running the loop.** Seen 2026-10-21: the
+    agent's shell runs each command as `bash -c '<command>'`, so the pattern is in that shell's own
+    command line. The loop waiting for the app to quit never saw it gone, and a `pkill -f` on the
+    same pattern aims at that shell as well. `pgrep -lx Dirnex` matches the process name only.
+- **`open` from a shell hands the app the shell's environment, so a live check of anything shaped
+  by `PATH` or the locale passes whatever the code does.** open(1) says launched apps inherit the
+  caller's environment. Seen 2026-10-21: a Debug build whose parent was `launchd` still carried a
+  VS Code terminal's `PATH`, with `/usr/local/share/dotnet` in it, so its user scripts found
+  `dotnet` where a Dock launch's do not. For a Dock launch's environment, run
+  `env -i HOME="$HOME" USER="$USER" LOGNAME="$USER" SHELL="$SHELL" TMPDIR="$TMPDIR" PATH=/usr/bin:/bin:/usr/sbin:/sbin open <app>`,
+  then read the environment back with `ps eww -o command= -p <pid>`. TCC still sees a
+  LaunchServices launch either way, so the M26 note above is unchanged.
 - **computer-use's `=` and `-` are the *keypad* keys, so it cannot type ⇧⌘= as a keyboard does.**
   Logged 2026-09-15 with a temporary local key monitor while verifying the zoom keys: `cmd+=` arrived
   as keyCode **81** (keypad `=`) and `cmd+-` as **78** (keypad `-`), both with the numeric-pad flag.

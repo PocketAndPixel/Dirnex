@@ -15323,6 +15323,87 @@ fraction of a second that the facts parser keeps.
 - Core green (4078 tests). App green (1802 tests in 287 suites, only the expected
   `GestureWaitTests` issue; live-server suites skipped). Both linters clean. Changes left uncommitted.
 
+**2026-10-21: a user script finds what `/etc/paths.d` names, so `dotnet` resolves by name.** Asked
+for by Oleg, after asking whether `dotnet build` and `npm run build` work as scripts. A script's
+`PATH` was the app's own plus a fixed list of Homebrew and `/usr/local` prefixes, and an app
+launched from the Dock or Finder inherits launchd's `/usr/bin:/bin:/usr/sbin:/sbin`. The .NET SDK
+registers `/usr/local/share/dotnet` in `/etc/paths.d` and links nothing into `/usr/local/bin`, so
+`dotnet` was *command not found* while `npm`, which is in `/usr/local/bin`, worked.
+
+- **`ToolSearchPath` (core) reads what `path_helper` reads**: `/etc/paths`, then `/etc/paths.d` by
+  file name in byte order (`10-pmk-global` before `100-rvictl`, measured). A core test runs
+  `/usr/libexec/path_helper -s` with an empty `PATH` and compares its list with ours, on whatever
+  Mac runs the test.
+- **Appended, never reordered.** The inherited `PATH` comes first, then the fixed list, then the
+  system list, each directory only if it is missing. `path_helper` puts its list ahead of the
+  inherited one. Doing that here would change which copy of a tool wins for scripts that already
+  worked.
+- **Two deliberate differences from `path_helper`.** It emits `~/.dotnet/tools` literally
+  (measured). With a probe tool in a `~/bin` entry, bash and `/bin/sh` found it and zsh did not, so
+  the tilde is expanded here. A relative line, or one holding a `:`, is skipped, because a relative
+  `PATH` entry resolves against the script's working directory, which can be an unpacked download.
+- **Still not read: `~/.zprofile`, `~/.bash_profile` and the rc files.** A directory that only
+  those add, such as nvm's, stays off a script's `PATH`. A login shell per invocation would read
+  them, at the cost of the user's whole startup per file of a per-file script. Not taken here; the
+  next entry asks the shell once per run instead.
+- **Verified live, against the old wiring in the same session.** Both builds were launched with
+  `env -i … PATH=/usr/bin:/bin:/usr/sbin:/sbin open`, the environment a Dock launch gets, and the
+  app's `PATH` was read back with `ps eww`. A probe script run through
+  `run operation "userScript.PATH Probe"` printed `dotnet: command not found` with the system list
+  cut, and `/usr/local/share/dotnet/dotnet` and `10.0.300` with it in. The defaults domain was backed
+  up first and restored afterwards, and `check_defaults_unchanged.py` reported all 68 keys unchanged.
+  Cutting the call also fails the new app test (a tool reachable only through a fixture `paths.d`),
+  and only that test. Swapping the byte-order sort for `localizedStandardCompare` fails only the
+  core order test.
+- **Why nobody had seen it:** `open` from a shell hands the app the shell's environment (open(1)
+  says so). Oleg's running Debug build was a LaunchServices child of `launchd` and still carried a
+  VS Code terminal's `PATH`, which already held `/usr/local/share/dotnet`. Recorded in
+  LIVE-VERIFICATION.md.
+- Core green (4088 tests, +10). App green (1803 tests in 287 suites, only the expected
+  `GestureWaitTests` issue; live-server suites skipped). Both linters clean. Changes left uncommitted.
+
+**2026-10-21: a user script runs with the `PATH` the user's terminal has.** Asked for by Oleg the
+same evening, after asking whether Python, Rust and the other common toolchains would work. With
+only the entry above, a Dock-launched script found no `cargo`, because rustup adds `~/.cargo/bin` from
+`~/.bash_profile`. `python3` was Apple's 3.9.6 rather than the 3.13.5 in his terminal: python.org's
+`/usr/local/bin/python3` was there, but behind launchd's `/usr/bin`, since appending never reorders.
+`~/.local/bin` was missing as well. Every version manager that edits `PATH` in a startup file has
+the same problem.
+
+- **The shell is asked once per run.** `ShellPathProbe` (core) and `LoginShellPathReader` (app)
+  start `$SHELL -l -i -c '/usr/bin/printenv PATH > "$DIRNEX_SHELL_PATH_FILE"'` in the script's
+  folder. Its `PATH` is then widened by `ToolSearchPath` as before, which is also the fallback.
+  `bash -l -i -c` costs 4.0 ms median here against 1.9 ms for `bash -c`, paid once rather than per
+  file of a per-file script.
+- **The answer goes to a file, and stdout and stderr to `/dev/null`.** A startup file can print
+  anything, and a background job it starts would hold a stdout pipe open after the shell exits.
+- **The probe takes the drawer's terminal identity.** With Terminal.app's `TERM_PROGRAM` and
+  `TERM_SESSION_ID`, an interactive zsh wrote `~/.zsh_sessions/<id>.session` and `.history`
+  (measured), the trap `TerminalShell` already documents.
+- **A timeout of 5 s, then `killpg(pid, SIGKILL)`.** The first version killed the pid with
+  `SIGKILL`, on the strength of a Python probe in which interactive bash and zsh ignored `SIGTERM`.
+  The negative control with `terminate()` then passed, which is how it came out that `Process`
+  makes the child a process-group leader and `terminate()` reaches the whole group. A startup file
+  that runs `trap '' TERM` defeats `terminate()`, and a kill of the pid alone leaves its `sleep`
+  behind (both measured). The test now has a startup file that ignores TERM and starts a subshell,
+  and it fails under both wrong kills. NOTES.md ▸ External CLI tools has the table.
+- **Verified live, with the shell's answer ignored as the control.** Both builds were launched with
+  launchd's bare `PATH` (LIVE-VERIFICATION.md's `env -i … open`) and ran one probe script. Fixed:
+  `cargo 1.95.0`, Python 3.13.5 from the framework, `~/.local/bin/claude` and `dotnet`, with the
+  login shell's `PATH` first and `/opt/homebrew/sbin` and `/usr/local/sbin` appended. Control:
+  `cargo: command not found`, `/usr/bin/python3` at 3.9.6, no `claude`. The defaults domain was
+  restored from a backup, and all 68 keys matched it.
+- **Negative controls in the tests.** Ignoring the shell's answer fails the runner test where the
+  login shell's copy of a tool must beat a `paths.d` decoy. Handing the probe the inherited
+  environment fails the Terminal.app session test. `terminate()` and a pid-only kill each fail the
+  timeout test. The rest of those suites stayed green each time.
+- **Not carried: anything but `PATH`.** `JAVA_HOME`, `GOPATH`, `CARGO_HOME` and the like set in a
+  startup file do not reach the script. Both fallbacks are silent. A shell that cannot take
+  `-l -i -c` (tcsh, measured) falls back at once. A startup file slower than the timeout falls back
+  only after the full 5 s, on every run.
+- Core green (4093 tests, +5). App green (1809 tests in 288 suites, +6, only the expected
+  `GestureWaitTests` issue; live-server suites skipped). Both linters clean. Changes left uncommitted.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
