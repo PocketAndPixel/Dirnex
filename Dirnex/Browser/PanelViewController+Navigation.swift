@@ -267,7 +267,11 @@ extension PanelViewController {
     ) {
         // A refusal here has already rendered the pane and invalidated whatever was in flight, so
         // there is nothing left for this navigation to do.
-        guard canListAfterReconnecting(to: path, unasked: unasked) else { return }
+        guard canListAfterReconnecting(to: path, unasked: unasked) else {
+            // A walk refused before it could list is over; the trail goes back to the screen.
+            settleRefusedWalk()
+            return
+        }
         loadToken += 1
         // Whatever this pane was paying a server to measure, it has stopped looking at. A local
         // walk is untracked and deliberately survives — see `PanelViewController+Sizing`.
@@ -347,6 +351,7 @@ extension PanelViewController {
                 DirectorySizeProvider.shared.cancelScan(for: departed)
                 reloadEverything()
                 refreshTabBar()
+                noteRemoteListingArrived(at: path)
                 startPaneWatcher(path, force: true)
                 updateGitStatus()
                 updateTagStatus()
@@ -356,6 +361,8 @@ extension PanelViewController {
                 host?.panelDidNavigate(self)
             } catch {
                 guard token == loadToken else { return }
+                // A walk along the trail settles first: a folder that is gone is skipped silently.
+                if settleFailedWalk(after: error, inTab: tabIndex) { return }
                 // An unasked load is a restore, and a restore has nobody waiting for its answer —
                 // so it reports on the pane rather than over a window that may still be coming up.
                 if unasked {

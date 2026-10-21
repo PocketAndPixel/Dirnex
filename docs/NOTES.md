@@ -250,13 +250,31 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Windows, sheets and key events in a test
 
-- **A preview in a window that has never been on screen is one screen long.** Measured 2026-10-18
-  in `QuickViewScrollSurfaceTests`: a TextKit 2 text view showing 3000 lines in a deferred,
-  never-ordered window had a frame **394 points** tall, so a scroll had nowhere to go, and a
-  `PDFView` there reported no `visiblePages` at all. `displayIfNeeded()` alone changed neither. Order
-  the window front and wait, sleeping so the run loop turns, until the frame or the page list has
-  caught up (`QuickViewScrollFixtures.drawn`), and order it out afterwards. The app never meets this,
-  since nobody presses a key at a preview they cannot see.
+- **Showing a preview window does not guarantee a text layout before the next test poll.** Measured
+  2026-10-18 in `QuickViewScrollSurfaceTests`: a TextKit 2 view with 3000 lines in a deferred,
+  never-ordered window stayed **394 points** tall, and a `PDFView` reported no `visiblePages`.
+  `displayIfNeeded()` alone changed neither. Ordering the window front and sleeping until ready
+  (`QuickViewScrollFixtures.drawn`) passed alone, but failed in the full suite.
+  - **The full run delays main-actor work past the drawing wait.** Traced 2026-10-19: two 10 ms
+    sleeps resumed at **5.8 s** and **10.4 s**. The first poll still had no text; the second had all
+    **324,392 characters**, but the viewport range was still `{0, 0}` and the frame still 394 points
+    tall. Both the passing isolated run and the failing full run had an inactive app, a visible,
+    non-key fixture window and no modal window. Waiting had allowed the read to finish, but had not
+    given the new text a display pass before the 10 s deadline check.
+  - **Drive the viewport layout before checking the text frame.** Calling TextKit 2's
+    `textViewportLayoutController.layoutViewport()` at that failing poll immediately grew the frame
+    to **144,721 points** and the viewport range to `{0, 1006}`. The text test now does that in its
+    readiness closure. This keeps lazy layout and the assertion that End reaches the last character.
+    Do not force layout for the whole document or read `.layoutManager`, which switches to TextKit 1.
+    PDF tests still wait for visible pages in an ordered window.
+  - **The read itself can still be pending after 10 s.** Traced 2026-10-20 after the viewport fix:
+    the load task first ran at **12.04 s**, read the file in **5.6 ms**, then delivered the result on
+    the main actor at **21.34 s**. The drawing wait woke at **12.07 s** with no text and failed.
+    `QuickViewTextPreviewTests.loaded` only waits for the surface to be visible; `showText` makes it
+    visible before starting the read. The scroll test now requires the full text before laying out
+    the viewport, and `drawn` allows **30 s** on a monotonic clock, like the other preview waits.
+    Checking readiness before the deadline still matters: a passing baseline woke at 9.96 s with
+    no text, then at 17.60 s with all of it. Its pass depended on that first wake staying below 10 s.
 
 - **A synthetic drag uses the process event queue, and a new window can change its coordinates.**
   Measured 2026-10-17 in `PanesDividerDetentTests`: tracing `NSApplication.nextEvent` and the split
@@ -354,6 +372,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   The fix is to arrange what the click would have done (`selectRowIndexes`) and still drive the
   press, which proves everything after the selection. A ⌘ or ⇧ click needs none of this: the pane
   consumes it before `super.mouseDown`, which is why the earlier mouse tests never met it.
+  - **An `NSButton` does fire from the same pattern, but only with its window on screen.** Measured
+    2026-10-20 in `QuickViewHeaderStyleTests`: the release queued, then `mouseDown` sent to whatever
+    `contentView.hitTest` answered for the button's center. Off screen the loop took the release and
+    sent no action. After `orderFront` it sent the action, with the window still not key. So a pointer
+    click on a button is testable end to end, hit test included, which `performClick` and computer
+    use's AXPress both skip. Keep a control that removes the thing letting the hit through.
 
 ### Waits, run loops and timing
 
@@ -1154,13 +1178,25 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     `StubPanelHost`, which records them) cannot reach the real index. A full run afterwards added
     no entries. Controls, each silencing one reporting site with a no-op rather than restoring the
     shared-store write, failed exactly the test aimed at it.
-    - **The test host is still the app, and in some runs its launch builds the real window.** The
-      same full run bumped one real entry: the developer's restored left tab, at the second the
-      test host process started, with the separately running Debug build logging nothing then. That
-      is `applicationDidFinishLaunching` restoring the session through the real host, which ▸ AppKit
-      records as finishing in only about half of test-host launches. It records paths the
-      developer really has open rather than fixtures, and stopping it means the app behaving
-      differently under tests, so it is left as it is.
+    - **The test host's own launch also wrote to the real domain. Fixed 2026-10-21.** The earlier
+      full run bumped the restored left tab's frecency as the host started. A later run changed
+      tab column widths too. With every other Dirnex quit, the 2026-10-21 reproduction increased
+      two real folders' ranks before the suite had finished. Navigation saves frecency and tabs;
+      column layout and quit save tabs too, so a quit-only guard would miss the launch writes.
+      `main.swift` now keeps the shared AppKit setup but installs no `AppDelegate` under
+      `XCTestConfigurationFilePath`. Its persistent sidebar appearance write is in that same
+      branch. Tests build their own controllers; the host does not restore a user's window.
+      `UserDefaults.standard` still names the real domain, so fixture stores still need the
+      scratch defaults described above.
+    - **Compare defaults outside the entire test process, and decode the JSON inside plist data.**
+      An in-test snapshot misses writes before the first test and after the last one. A byte
+      comparison also reports JSONEncoder's object-key order as a change. CI exports the domain
+      before `xcodebuild test` and again on exit, then runs `scripts/check_defaults_unchanged.py`.
+      It compares every key by content, keeps array order and value types, and prints only changed
+      key names. The checker rejects the unmodified run's frecency drift. `TestHostLifecycleTests`
+      also checks the actual host's delegate; removing the startup guard makes that test fail
+      without relying on launch finishing. For a local check, quit every Dirnex, export a backup,
+      run the suite, export again, compare, then restore the backup with `defaults import`.
   - **Saving a real key and putting it back in a `defer` is not isolation.** `ArchiveUndoReachTests`
     swapped the developer's own `Dirnex.undoJournal` for a fixture and restored it afterwards, so a
     killed run would have lost the journal and a running Dirnex saving in between would have had
@@ -1168,6 +1204,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     and `persistedArchiveSnapshots(in:)`), and the test uses `ScratchDefaults.fresh()`. Measured
     2026-09-14: the real journal was byte-identical after three full runs, and pointing the reader
     back at `.standard` failed exactly that test.
+    - **The same trap was still in two color-rule tests on 2026-10-21.** A before/after comparison
+      with an existing `Dirnex.fileColorRules` key missed their save-and-restore writes. Starting
+      with an empty domain exposed one new key: restoring an empty rule list creates a value where
+      there was none. `FileColorRuleStore` now requires a defaults domain, the app uses `shared`,
+      and those tests build separate stores with `ScratchDefaults.fresh()`. A new store reads the
+      saved value in the round-trip test, so the old test-only cache invalidation method is gone.
   - **A control that fires too *widely* is a finding, not noise.** The vault control for that slice
     failed three tests where it should have failed one, and the two extras were the suite's own: two
     tests swap the shared store, which is one piece of process state, and Swift Testing runs a suite
@@ -4894,6 +4936,22 @@ do not share a resolver, and neither half of that is obvious from either call si
   - The corollary for the exit code: an exit whose stderr is **nothing but** metadata refusals is a
     transfer that worked. The transfer's own `-p` cannot be `-`-prefixed (a failed `put` has to stay
     a failed copy), so that rule is what covers a `put -p` whose `setstat` the server refuses.
+- **Several `ls -la` in one batch can be split back per folder, but only with stderr folded into
+  stdout.** Measured 2026-10-19 against a throwaway `sshd` (OpenSSH 10.3) for the tree refresh's
+  batch (`SFTPBatchListing`). `sftp` echoes every line it runs as `sftp> <line>`, under `-b -` and
+  over piped stdin alike (the password route also prints `Connected to …` first), so the echo frames
+  each folder. A refused folder prints its echo and then nothing on stdout; the refusal goes to stderr
+  as `remote readdir("<dir>/"): Permission denied` or `Can't ls: "<dir>" not found`, both ending in
+  `\r\n`. In two pipes nothing says whose refusal it was. In one pipe it lands between its own echo
+  and the next, because `sftp` line-buffers stdout: that held behind a 3000-row listing.
+  - Three more facts the reader depends on. The exit status is 0 whether the refused folder is in
+    the middle or last, so it says nothing per folder. An empty folder on OpenSSH still prints `.` and
+    `..`, so "no rows and no text" only happens on a server that sends neither. And `sftp` prints a
+    name **raw, newline included** (`new\nline.txt` lists as two lines), so a name can forge any line
+    except one holding a `/`. That is why the batch ends on `pwd` (free, client-side), searched from
+    the end, and why a folder's block is trusted only once the next echo has arrived.
+  - **Swift reads `\r\n` as one `Character`**, so `split(separator: "\n")` on the `String` leaves the
+    refusal glued to the next echo and the frame is lost. Split the `unicodeScalars`.
 
 #### Listings and names
 
@@ -5230,6 +5288,24 @@ works, which makes this whole family probeable on any Mac).
     answers `nil`. Run it in both configurations — a live test that only ever meets one kind of
     account has measured one branch.
 
+- **`ls` over the exec channel prints the *server's* clock, and the `sftp` pane does not — so
+  since 2026-10-19 the walk runs under `TZ=UTC0`.** Measured against a throwaway `sshd` started with
+  `TZ=America/New_York` (`sshd` hands its `TZ` to every session): a file written at 16:41 in Kyiv
+  listed in the pane as `16:41` and came back from the walk as `09:41`, which the parser read as this
+  Mac's time — a search hit seven hours away from the row it came from. The pane is right because a
+  recent `sftp` client formats the protocol's epoch time itself; the tell in its output is the link
+  column printed as `?`, since the protocol carries no link count to fill it with. `/usr/bin/env TZ=UTC0` gives `13:41`, matches
+  `TZ=UTC0 ls` of the file, and overrides a `TZ` the user's rc exported (probed).
+  - **A date-only stamp stays on this Mac's clock.** Anything older than about six months prints a
+    date alone, which parses to midnight in the formatter's zone; read as UTC that is 03:00 in Kyiv,
+    a time of day the row never had and not the 00:00 the pane shows
+    (`ColumnarListing.utcUnixDateFormatters()`).
+  - **An older server can still be wrong in the pane.** Without the extension that lets the client
+    resolve owner names itself, OpenSSH's `sftp` prints the line the *server* formatted, on the
+    server's clock. Read from the client's behavior, not measured: no such server was reachable.
+  - **The throwaway `sshd` now runs in another zone for every live run** (UTC+14, or UTC−11 on a Mac
+    at +14), because a server on this Mac's clock agrees with every version of this bug.
+    `SFTPLiveClockTests` asks the server its offset first and says so when the run proved nothing.
 - **The saving is the *connection*, not the walk, and it is enormous even at zero latency.** Over
   501 directories on loopback: **98 ms** for one exec against **34.3 s** as separate `sftp`
   connections (68.5 ms each). A per-directory transport pays a full TCP connect, SSH handshake and
@@ -5389,11 +5465,44 @@ off a man page.
 - **`LIST` is not standardized and its stamps are unusable for comparison.** Real bytes are Unix
   `ls -l` (bare names, *no* `.`/`..` rows, symlink targets shown — all three differ from `sftp`'s
   dialect); IIS emits a DOS form instead. The timestamp is year-less for recent files **and**
-  zone-less, on the *server's* clock, so an FTP mtime is approximate by construction: fine to display
-  and sort by, not fine to compare two files with (`DirectorySync` must not use `.sizeAndDate` on an
-  FTP side). `MLSD` would fix it and **`curl` cannot send it** — only `LIST` and `NLST`. A per-file
-  `-I` does give an exact, zone-anchored `Last-Modified`, so it is a stat-one-item path, never a
-  listing path.
+  zone-less, on the *server's* clock, so a `LIST` mtime is approximate by construction: fine to
+  display and sort by, not fine to compare two files with (`DirectorySync` must not use
+  `.sizeAndDate` on an FTP side). Since 2026-10-19 a saved server can be given its own zone, which
+  `LIST` stamps are read in (`ServerEndpoint.ftp`'s `serverTimeZone`); that fixes the hour and
+  nothing else.
+- **`curl` *can* send `MLSD`, which gives exact UTC times — this file said otherwise for three
+  months.** M13's probe recorded "only `LIST` and `NLST`", and the claim stood in four documents
+  until a user asked for local times on a Paris server. Traced 2026-10-19: `curl -X MLSD
+  ftp://host/dir/` sends `MLSD` on the data connection (`> MLSD`, `< 125`, `< 226`) and answers
+  `modify=20261019164100;perm=radfwMT;size=3;type=file;…; a.txt`. `-X` replaces the listing
+  command, the same mechanism `-X "LIST -R"` used below; in a config section it is
+  `request = "MLSD"`. The general lesson is the one this file keeps relearning: a "the tool cannot"
+  recorded once is worth re-probing before it is quoted again.
+  - **`MLSD` follows symlinks on pyftpdlib, so it supplies times and never rows.** A link to a
+    folder came back `type=dir` with the folder's own `unique` fact, where `LIST` printed
+    `linkdir -> sub`. RFC 3659 leaves it to the server (ProFTPD reports `OS.unix=symlink`), so no
+    client knows in advance, and a recursive delete over those rows would walk through the link and
+    empty its target. `FTPListingParser.applyingFacts` takes a row's time from `MLSD` only where both
+    listings agree what the row is.
+  - **One login carries both, and two flags make the run readable.** `LIST` then `MLSD` as two
+    sections of one `curl` is one sign-in and two data connections. The run's exit code is the last
+    transfer's, so on its own it cannot say which half failed; `--fail-early` stops at a failed
+    `LIST` with `LIST`'s own code, and a `write-out` line per section (`%{exitcode}
+    %{response_code}`) says the rest. Measured outcomes: both answered `L 0 226` / `M 0 226`; a
+    server without the verb `L 0 226` / `M 19 500`, exit **19** (`RETR response: 500`, not the `-Q`
+    family's 21); a missing folder `L 9 550` alone; a wrong password `L 67 530` alone, one attempt.
+    Both listings go to files, so stdout holds nothing but those lines.
+  - **A batch signs in again for every section after a refused login** — 3 sections, 3 failed logins
+    in pyftpdlib's log. So a batch adds `MLSD` sections only once a single listing on the connection
+    has seen the verb answer (`FTPFactsSupport`), or a stale password would cost twice the failed
+    logins a server with lockout counts.
+  - **A server can get `MLSD` wrong too, and nothing on the wire says so.** pyftpdlib started with
+    `use_gmt_times = False` sends `modify` in its *local* time, against the RFC. With its default
+    (`True`) both `LIST` and `MLSD` are UTC, which is why the live FTP suites met this Mac's +0300 in
+    `LIST` stamps. The per-server zone is deliberately not applied to `MLSD` times: on a correct server
+    it would shift exact times by the offset.
+- A per-file `-I` gives an exact, zone-anchored `Last-Modified` (`MDTM`) too, at a round trip per
+  file, so it stays a stat-one-item path, never a listing path.
   - **The coarse stamp belongs to `LIST`, not to FTP** — which matters because the obvious reading
     is that an FTP timestamp is approximate *by protocol* and therefore unfixable in both
     directions. Probed 2026-08-28 against a real server: `MDTM` reads back `20180607080910` and
@@ -8224,12 +8333,18 @@ written. Several results changed the model, not just confirmed it.
   — so date editing needs the same unlock/relock dance, not a separate design. Dates otherwise have
   no range to defend: a 2096 mtime and a pre-epoch 1938 one both applied cleanly, and a `Date`
   round-trips through `utimes` at microsecond fidelity.
-- **An `NSDatePicker` resolves to whole seconds and a real timestamp does not**, which is a live bug
-  and not a rounding nicety: read `dateValue` back unconditionally and the sub-second remainder every
-  `st_mtime` carries makes all three fields differ from what was read *the moment the sheet opens* —
-  Save lights up with nothing edited, and committing writes three dates nobody touched. Compare
-  against the value the control was **given** (`picker.dateValue` right after assigning it), not
-  against the model, so "untouched" means untouched at the control's own granularity.
+- **Compare a date control against the value it was *given*, not against the model.** Recorded
+  2026-07-31 as "`NSDatePicker` resolves to whole seconds and a real timestamp does not": read
+  `dateValue` back unconditionally and the sub-second remainder every `st_mtime` carries would make
+  all three fields differ the moment the sheet opens, so Save lights up with nothing edited.
+  **Re-measured 2026-10-21 on macOS 26.7.1, the picker does not round.** Handed `1700000000.789`, a
+  nanosecond `st_mtime` or `Date()`, it gave back the exact value in a window, focused, after
+  arrow-key steps (the day moved, the `.789` stayed) and after a typed edit. The remote panel's
+  hosted test on a fractional `MLSD` stamp also passed while it still compared against the entry.
+  The July entry recorded the fix being verified, not the bug, so whether an older macOS rounds is
+  unknown. The rule stands because it holds whatever the control keeps: "untouched" means equal to
+  `picker.dateValue` read right after assigning it. Both Get Info panels follow it
+  (`DateField.initial`; `pickerBaseline`, through `RemoteAttributeChange.between`).
 - **A recursive attribute change must be applied *deepest-first*, and having gathered the paths up
   front does not save it.** Clearing a directory's `x` bit stops every path under it from resolving,
   so a pre-order run gets `EPERM` on every child — measured directly, with the child list already in
@@ -9805,6 +9920,24 @@ overturned the obvious implementation.
     quietly becoming "re-read every time" — proved by withdrawing *read* permission after the first
     mount, since `stat` still answers while `bsdtar` could not open the file, so a second listing
     that succeeds could only have come from the cache.
+- **A poll spaced by its own wall-clock cost counts latency as expense, and over a real link latency
+  is most of it.** `RemoteRefreshPolicy` holds an unattended pane to 5 % of its wall time, which was
+  argued from S3's billed requests and a 50 000-object prefix. Measured 2026-10-19 on an FTPES server
+  41 ms away, every listing is its own `curl`: TCP, TLS on the control channel, a login, and TLS
+  again on the data channel, at 0.91–0.99 s for a few hundred bytes. A tree with two folders open is
+  three of them, so the 15 s floor became a 59 s gap. The report was a file written from another app
+  that stayed out of the pane until the tab was closed and reopened, and the reporter suspected the
+  server. Nothing was wrong except the arithmetic, and the ratio was not what changed. The round
+  became one login (`VFSBackend.listDirectories`), and somebody returning to the pane waives the
+  stretch (`RemoteRefreshPolicy.catchUpDelay`), because the stretch exists for a pane nobody is
+  touching.
+  - **The instrument cost nothing**: sample `pgrep -P <app pid>` every 50 ms and log each `curl`
+    child's start and end. That times every round of the *running* app against the *real* server,
+    with no code change, no rebuild and no Keychain prompt.
+  - **Check the window is on screen first.** A covered window polls nothing by design, and 150 s of
+    no children at all read at first like a poll that never ran. `CGWindowListCopyWindowInfo` with
+    `.optionOnScreenOnly` answers it; `open <exact .app path>` then brings the *running* copy
+    forward without starting a second one.
 
 ### Layout and labels
 

@@ -88,9 +88,15 @@ public struct SFTPBackend: RemoteTransportBackend {
     public func listDirectory(at path: VFSPath) throws -> [FileEntry] {
         try requireOwnBackend(path)
         let raw = try mapErrors(path) { try transport.listDirectory(path.path) }
-        return SFTPListingParser.parse(raw)
+        return entries(fromListing: raw, in: path)
+    }
+
+    /// One `ls -la`'s rows as the children of `directory` — shared with the batched listing, whose
+    /// blocks are what a single `ls -la` prints, so the two cannot drift apart.
+    func entries(fromListing raw: String, in directory: VFSPath) -> [FileEntry] {
+        SFTPListingParser.parse(raw)
             .filter { $0.name != "." && $0.name != ".." }
-            .map { entry(from: $0, in: path) }
+            .map { entry(from: $0, in: directory) }
     }
 
     /// Stat a single remote item. `sftp` has no `ls -d`, so this reads one `ls -la <path>`: when the

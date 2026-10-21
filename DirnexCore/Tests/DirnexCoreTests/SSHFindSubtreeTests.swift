@@ -72,7 +72,7 @@ struct SSHFindCommandTests {
     func bypassesShellFunctions() {
         let command = SSHFindCommand.subtree(root: "/srv/data")
 
-        #expect(command.contains("/usr/bin/env LC_ALL=C find "))
+        #expect(command.contains("/usr/bin/env TZ=UTC0 LC_ALL=C find "))
         #expect(command.contains("| /usr/bin/env head -n "))
         // `find` spawns this one itself, so no function can reach it — and wrapping it would put an
         // extra process between find and every batch of paths.
@@ -83,12 +83,45 @@ struct SSHFindCommandTests {
     @Test("the command asks for the quoted root and caps its own output")
     func buildsTheCommand() {
         #expect(SSHFindCommand.subtree(root: "/a b/", rowLimit: 25) ==
-            "/usr/bin/env LC_ALL=C find '/a b' -exec ls -ldn {} + | /usr/bin/env head -n 25")
+            "/usr/bin/env TZ=UTC0 LC_ALL=C find '/a b' -exec ls -ldn {} + | /usr/bin/env head -n 25")
     }
 }
 
 @Suite("SSHFindListingParser")
 struct SSHFindListingParserTests {
+    /// The walk's `ls` runs under `TZ=UTC0`, so `13:41` **is** 13:41 UTC — 16:41 in Kyiv — whatever
+    /// this Mac's zone. Compared on a UTC calendar, so the assertion holds on any Mac.
+    @Test("a stamp with a time of day is read as UTC")
+    func timeOfDayIsUTC() throws {
+        let output = """
+        drwxr-xr-x  2 501  20   64 Oct 19 18:21 /srv
+        -rw-r--r--  1 501  20    3 Oct 19 13:41 /srv/report.txt
+        """
+        let row = try #require(SSHFindListingParser.parse(output, under: "/srv")?.rows.first)
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = try #require(TimeZone(identifier: "UTC"))
+        let parts = utc.dateComponents([.hour, .minute, .second], from: row.modificationDate)
+        #expect(parts.hour == 13)
+        #expect(parts.minute == 41)
+        #expect(parts.second == 0)
+    }
+
+    /// A date-only stamp has no time of day to put on any clock. Read as UTC it would show 03:00 in
+    /// Kyiv, a time the row never had; on this Mac's clock it is the same midnight the pane's own
+    /// `sftp` listing gives the same file.
+    @Test("a date-only stamp stays on this Mac's clock, as the pane reads it")
+    func dateOnlyMatchesThePane() throws {
+        let output = """
+        drwxr-xr-x  2 501  20   64 Oct 19 18:21 /srv
+        -rw-r--r--  1 501  20    3 Jun 14  2024 /srv/old.txt
+        """
+        let row = try #require(SSHFindListingParser.parse(output, under: "/srv")?.rows.first)
+        let pane = try #require(SFTPListingParser.parse(
+            "-rw-r--r--    ? oleg     wheel           3 Jun 14  2024 /srv/old.txt"
+        ).first)
+        #expect(row.modificationDate == pane.modificationDate)
+    }
+
     @Test("a real server's rows become entries under the root")
     func parsesRealOutput() throws {
         let listing = try #require(

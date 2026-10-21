@@ -72,9 +72,14 @@ extension FTPCurlTransport {
 
     /// A nonzero `curl` exit, carried untranslated so the retry decision can be made on the code
     /// before it is classified into the shared vocabulary.
+    ///
+    /// `standardOutput` rides along for the one caller that reads stdout *after* a failure: the
+    /// listing with facts, whose per-section `write-out` lines say which of its two transfers the
+    /// exit code belongs to (``FTPListingRun``).
     struct CurlExit: Error {
         let code: Int32
         let standardError: String
+        var standardOutput = ""
     }
 
     /// Spawn `curl` with the credential on stdin, drain both pipes concurrently, and bound the wait.
@@ -201,7 +206,11 @@ extension FTPCurlTransport {
             in: SubprocessText.lossyUTF8(drained.standardError)
         )
         guard process.terminationStatus == 0 else {
-            throw CurlExit(code: process.terminationStatus, standardError: standardError)
+            throw CurlExit(
+                code: process.terminationStatus,
+                standardError: standardError,
+                standardOutput: SubprocessText.lossyUTF8(drained.standardOutput)
+            )
         }
         return RunResult(
             standardOutput: SubprocessText.lossyUTF8(drained.standardOutput),

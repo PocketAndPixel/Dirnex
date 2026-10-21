@@ -84,9 +84,8 @@ public enum FunctionBar {
     /// 1. A command whose effective shortcut *is* that bare F-key. This is the load-bearing one —
     ///    a menu key-equivalent is dispatched by AppKit **before** `keyDown` reaches the pane, so
     ///    a script on such a key would fire from its button and never from the key itself. The set
-    ///    moves with the user: the Total Commander preset rebinds `view.quickLook` to bare F3 and
-    ///    `file.rename` off bare F2, which is exactly why this reads `bindings` rather than the
-    ///    catalog's defaults.
+    ///    moves with the user: a rebind can put a command on a bare F-key, which is exactly why
+    ///    this reads `bindings` rather than the catalog's defaults.
     /// 2. A key the built-in bar already prints, so a script can't quietly displace Copy or View.
     ///
     /// A modified shortcut (`⇧F2`, `⌥F5`) does *not* reserve the bare key — it isn't the same

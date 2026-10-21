@@ -127,28 +127,6 @@ public struct S3AccountBackend: ConnectionScopedBackend {
         return bucketEntry(named: name, at: path)
     }
 
-    /// Which region a bucket answers for, or `nil` when the service did not say.
-    ///
-    /// The one piece of account knowledge that is not a `VFSBackend` verb, and it is here because
-    /// it is what makes *entering* a bucket correct: a bucket list spans regions while a connection
-    /// is signed for one, so the row the user pressed Enter on may not live where the account does.
-    ///
-    /// `nil` is an ordinary answer and not a failure — measured 2026-08-13, a real S3-compatible
-    /// endpoint sends `x-amz-bucket-region` on no response at all. The caller then keeps the
-    /// account's own region, which is right for exactly that kind of server (it does not validate
-    /// regions), and the existing 301 correction covers the rest.
-    public func region(ofBucketNamed name: String) throws -> String? {
-        let path = VFSPath(backend: id, path: "/\(name)")
-        let response = try mapping(path, action: .listBucket) {
-            try transport.headBucket(name: name)
-        }
-        guard response.isSuccess else {
-            throw S3Backend.serviceError(from: response)?.vfsError(for: path, action: .listBucket)
-                ?? VFSError.notFound(path)
-        }
-        return response.bucketRegion
-    }
-
     // MARK: - Writing
 
     /// Create a bucket.

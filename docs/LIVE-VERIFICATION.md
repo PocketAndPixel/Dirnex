@@ -4,6 +4,14 @@ Traps met while checking a change in the running app. CLAUDE.md loads this file 
 so a trap goes here only if it can bite any live run; one tied to an area goes under that area in
 [NOTES.md](NOTES.md), which is read by area. Moved out of NOTES.md on 2026-10-01.
 
+- **`defaults import` does not remove keys absent from the imported plist.** Measured 2026-10-21:
+  importing an empty plist into `com.dirnex.Dirnex` left all 68 keys in place. A backup import alone
+  therefore cannot remove keys an experiment added. With every Dirnex quit and a verified backup
+  saved, clear the domain with `defaults delete com.dirnex.Dirnex`, then restore it with
+  `defaults import com.dirnex.Dirnex <backup.plist>`. Export again to check the restoration.
+  `scripts/check_defaults_unchanged.py <before.plist> <after.plist>` compares every key by content,
+  including JSON inside data values; a byte comparison can mistake JSON object key order for drift.
+
 - **A tab seeded with `defaults write -string` is silently not restored, because `TabPersistence`
   reads `data(forKey:)`.** The pane falls back to Home, the app looks perfectly healthy, and nothing
   logs — so the gesture under test runs against a *local* row and reports whatever a local row does.
@@ -300,6 +308,17 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   second capture a moment later drew it. The next Find came back with image *and* summary both
   stale — there the async search had simply not landed yet. Either way the first capture said the
   action did nothing; take another before believing it.
+- **computer-use's `app_menu` can refuse a menu item as disabled from a stale validation.** Seen
+  2026-10-19 checking Reopen Closed Tab: right after File ▸ Close Tab had filled the closed-tab list,
+  pressing the new item by path came back "disabled — it was NOT pressed". A `list` of the same menu
+  re-validates it (its dynamic titles changed in the same answer), and the same press then went
+  through. List the menu before pressing an item whose state the previous step changed, and before
+  believing a refusal.
+  - **A disabled state is also a cheap witness for a key test.** ⇧⌘T sent with `app_key` gives a
+    screenshot that looks the same whether it reopened the tab or did nothing, and a background capture
+    can be stale anyway. Reopen Closed Tab being *disabled* afterwards says the closed tab was used, and
+    a ⌘T that landed instead would have left it enabled. Ask what state only the gesture under test
+    could leave behind.
 - **computer-use reports `AXError: failure` for a button that opens a sheet, and the sheet is up.**
   Seen twice on 2026-10-01 pressing Report a Bug…'s *Show What Will Be Sent…*: the AXPress came back
   as a failure each time, and a screenshot showed the preview sheet open. The press waits for an

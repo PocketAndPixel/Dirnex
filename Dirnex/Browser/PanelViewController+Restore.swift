@@ -41,7 +41,8 @@ extension PanelViewController {
                 markedPaths: tab.panel.selection.isEmpty
                     ? nil
                     : tab.panel.selection.map { restoreAnchor(for: $0, in: tab) }.sorted(),
-                endpoint: reconnectEndpoint(for: tab)
+                endpoint: reconnectEndpoint(for: tab),
+                history: persistedHistory(for: tab)
             )
         }
         TabPersistence.save(
@@ -67,9 +68,30 @@ extension PanelViewController {
     /// out. Refused here rather than at the restore, where the only evidence left is a path under
     /// `NSTemporaryDirectory()` — which is a guess, not a fact.
     private func isWorthPersisting(_ tab: PanelTab) -> Bool {
-        guard !VaultMounts.shared.contains(tab.panel.path) else { return false }
-        guard let archivePath = tab.panel.path.backend.archivePath else { return true }
+        isWorthPersisting(tab.panel.path)
+    }
+
+    /// The same two exclusions for one place, which is what a tab's trail asks of each entry: a
+    /// folder in a vault is as much a list of what is in it when it sits in ⌘['s list as when a tab
+    /// is standing in it, and a nested archive's temp extraction is as gone by the next launch.
+    private func isWorthPersisting(_ path: VFSPath) -> Bool {
+        guard !VaultMounts.shared.contains(path) else { return false }
+        guard let archivePath = path.backend.archivePath else { return true }
         return !(host?.nestedArchiveRegistry.isNestedMount(archivePath) ?? false)
+    }
+
+    /// The tab's back/forward trail as it is written down, or `nil` when there is nothing worth
+    /// writing. The core decides what is left out (`NavigationHistory.stored`); this supplies the two
+    /// facts only the app has: which places it must not keep, and how to reconnect each server the
+    /// trail visits — the live connection first, as for the tab itself, then whatever the tab's
+    /// restored trail carried, so a trail that came back and was never walked is written back whole.
+    private func persistedHistory(for tab: PanelTab) -> StoredNavigationHistory? {
+        let composite = backend as? CompositeBackend
+        return tab.history.stored(
+            at: tab.panel.path,
+            endpoint: { composite?.endpoint(for: $0) ?? tab.endpoint(for: $0) },
+            isExcluded: { !isWorthPersisting($0) }
+        )
     }
 
     /// Where this tab would have to reconnect to list again, for a tab on a connected account.
@@ -82,7 +104,7 @@ extension PanelViewController {
     func reconnectEndpoint(for tab: PanelTab) -> ServerEndpoint? {
         guard tab.panel.path.backend.isRemoteConnection else { return nil }
         let live = (backend as? CompositeBackend)?.endpoint(for: tab.panel.path.backend)
-        return live ?? tab.pendingConnection
+        return live ?? tab.endpoint(for: tab.panel.path.backend)
     }
 
     /// How one entry is named on disk: its path relative to the tab's root — a bare leaf name for a
@@ -234,6 +256,13 @@ extension PanelViewController {
             // Recorded, never opened: the first navigation into this tab registers it, and only if
             // somebody is asking (`RemoteRefreshPolicy.contactsServersUnasked`).
             if case let .connection(endpoint) = requirement { tab.pendingConnection = endpoint }
+            // Where it had been, and how to reconnect to each server on the way. Nothing is checked
+            // on disk: a folder deleted since quit is skipped when ⌘[ reaches it.
+            tab.history = NavigationHistory(restoring: persisted.history, at: path)
+            for server in persisted.history?.serverEndpoints ?? [] {
+                guard let id = server.backendID else { continue }
+                tab.trailEndpoints[id] = server
+            }
             // The shape the tab was last left in (PLAN.md §M15) — restored, unlike the session-
             // scoped per-tab modes, because coming back to a tree as a flat list reads as loss.
             tab.viewMode = persisted.panelViewMode

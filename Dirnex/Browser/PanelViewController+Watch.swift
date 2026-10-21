@@ -185,6 +185,7 @@ extension PanelViewController {
             backend, at: watchedPath, sort: sort, showHidden: showHidden, directorySizes: sizes
         ) else { return }
         guard token == loadToken, panel.path == watchedPath else { return }
+        noteRemoteListingArrived(at: watchedPath)
         if deferRefreshIfRenaming() { return }
         clearOfflineReasonAnsweredByListing()
         // **Only when the listing actually moved.** The stream is recursive, so the great

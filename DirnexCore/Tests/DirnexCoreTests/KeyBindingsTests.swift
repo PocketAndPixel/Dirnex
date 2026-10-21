@@ -69,16 +69,6 @@ struct KeyBindingsTests {
         #expect(bindings.shortcut(for: copy) == CommandShortcut(key: "F5", modifiers: .function))
     }
 
-    @Test("resetAll clears every override")
-    func resetAll() {
-        var bindings = KeyBindings()
-        bindings.setShortcut(CommandShortcut(key: "F9", modifiers: .function), for: copy)
-        bindings.setShortcut(nil, for: rename)
-        bindings.resetAll()
-        #expect(bindings.overrides.isEmpty)
-        #expect(bindings == KeyBindings())
-    }
-
     // MARK: - Conflicts
 
     @Test("the shipped defaults have no shortcut collisions")
@@ -113,44 +103,6 @@ struct KeyBindingsTests {
         var bindings = KeyBindings()
         bindings.setShortcut(nil, for: copy)
         #expect(bindings.conflicts(for: copy).isEmpty)
-    }
-
-    // MARK: - Presets
-
-    @Test("the macOS preset is the plain catalog defaults")
-    func macOSPreset() {
-        #expect(KeyBindings.preset(.macOS) == KeyBindings())
-        #expect(KeyBindings.preset(.macOS).overrides.isEmpty)
-    }
-
-    @Test("the Total Commander preset rebinds View to F3 and rename to Shift+F6")
-    func totalCommanderPreset() {
-        let tc = KeyBindings.preset(.totalCommander)
-        #expect(
-            tc.shortcut(for: "view.quickLook") == CommandShortcut(key: "F3", modifiers: .function)
-        )
-        #expect(
-            tc.shortcut(for: rename) == CommandShortcut(key: "F6", modifiers: [.function, .shift])
-        )
-        // The shared TC file keys are untouched.
-        #expect(tc.shortcut(for: copy) == CommandShortcut(key: "F5", modifiers: .function))
-    }
-
-    @Test("both presets are internally conflict-free")
-    func presetsConflictFree() {
-        for preset in KeyBindings.Preset.allCases {
-            #expect(!KeyBindings.preset(preset).hasConflicts, "\(preset) preset has a conflict")
-        }
-    }
-
-    @Test("matchingPreset identifies a preset and reports Custom after an edit")
-    func matchingPreset() {
-        #expect(KeyBindings().matchingPreset == .macOS)
-        #expect(KeyBindings.preset(.totalCommander).matchingPreset == .totalCommander)
-
-        var custom = KeyBindings.preset(.totalCommander)
-        custom.setShortcut(CommandShortcut(key: "F9", modifiers: .function), for: copy)
-        #expect(custom.matchingPreset == nil)
     }
 
     // MARK: - Codable

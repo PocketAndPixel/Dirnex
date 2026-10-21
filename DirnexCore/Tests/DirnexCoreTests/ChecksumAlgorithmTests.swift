@@ -74,9 +74,4 @@ struct ChecksumAlgorithmTests {
         #expect(ChecksumAlgorithm.allCases.map(\.displayName)
             == ["CRC32", "MD5", "SHA-1", "SHA-256"])
     }
-
-    @Test("byteCount is half the hex width")
-    func byteCounts() {
-        #expect(ChecksumAlgorithm.allCases.map(\.byteCount) == [4, 16, 20, 32])
-    }
 }

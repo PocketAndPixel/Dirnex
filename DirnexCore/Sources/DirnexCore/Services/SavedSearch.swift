@@ -75,12 +75,6 @@ public struct SavedSearches: Sendable, Equatable, Codable {
         return true
     }
 
-    /// Delete the search at `index`; out-of-range is ignored.
-    public mutating func remove(at index: Int) {
-        guard searches.indices.contains(index) else { return }
-        searches.remove(at: index)
-    }
-
     /// Rename the search named `name` to `newName` — the sidebar's inline rename. Rejected
     /// (returns `false`, leaving the list unchanged) when `newName` is empty or already names a
     /// *different* search, so a rename can never collapse two entries into one. Renaming to the

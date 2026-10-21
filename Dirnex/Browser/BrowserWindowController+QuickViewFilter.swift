@@ -20,12 +20,6 @@ extension BrowserWindowController {
         surface.beginFiltering()
     }
 
-    /// Whether there is a table, a tree or a text on screen to filter — the menu item's enabled state, asked
-    /// through the same property the action reaches the surface by.
-    var canFilterQuickViewTable: Bool {
-        visibleQuickViewSurface?.filterableSurface != nil
-    }
-
     /// Enable the item, and name it for what ⌥⌘F would actually do to what is on screen: **Find…**
     /// over a text, a rendered page or a PDF, where the bar steps through matches in place, and the
     /// catalog's own **Filter** over a table or a tree, where it narrows the rows.

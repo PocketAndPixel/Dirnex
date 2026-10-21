@@ -195,6 +195,34 @@ enum ConnectText {
         )
     }
 
+    static var timeZone: String {
+        String(
+            localized: "Time zone:",
+            comment: "Connect field label: the clock an FTP server writes its file times on."
+        )
+    }
+
+    /// The time-zone picker's first item and default: read the server's times as this Mac's own,
+    /// which is what every FTP connection did before it could be set.
+    static var sameTimeZoneAsThisMac: String {
+        String(
+            localized: "Same as this Mac",
+            comment: "FTP time zone choice: the server keeps this Mac’s clock. The default."
+        )
+    }
+
+    /// The picker's tooltip. It says when the setting matters, because most servers never need it:
+    /// one that answers `MLSD` reports exact times, and this is ignored.
+    static var timeZoneHelp: String {
+        String(
+            localized: """
+            The clock this server writes file times on. Used only when the server can’t \
+            report exact times itself.
+            """,
+            comment: "Tooltip on the FTP time zone picker in the Connect dialog."
+        )
+    }
+
     static var address: String {
         String(localized: "Address:", comment: "Connect field label: the SMB URL.")
     }

@@ -360,8 +360,6 @@ struct DirectorySizeDisplayTests {
 /// with string contents. Kept here rather than widened onto the type, since nothing else asks a
 /// scratch directory for a subfolder or for a file of a given byte count.
 private extension TempDirectory {
-    var path: String { root.path }
-
     func makeDirectory(_ relative: String) throws {
         try FileManager.default.createDirectory(
             at: root.appendingPathComponent(relative), withIntermediateDirectories: true

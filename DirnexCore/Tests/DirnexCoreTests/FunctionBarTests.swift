@@ -119,11 +119,13 @@ struct FunctionBarTests {
         bindings.setShortcut(CommandShortcut(key: "F9", modifiers: .function), for: "file.copy")
         #expect(FunctionBar.reservedFunctionKeys(bindings: bindings).contains(9))
         #expect(!FunctionBar.assignableFunctionKeys(bindings: bindings).contains(9))
-        // The Total Commander preset moves rename off bare F2 onto ⇧F6 — but F2 stays reserved,
-        // because the built-in bar still prints it.
-        let tc = KeyBindings.preset(.totalCommander)
-        #expect(FunctionBar.reservedFunctionKeys(bindings: tc).contains(2))
-        #expect(FunctionBar.reservedFunctionKeys(bindings: tc).contains(3))
+        // Moving rename off bare F2 leaves F2 reserved, because the built-in bar still prints it.
+        var moved = KeyBindings()
+        moved.setShortcut(
+            CommandShortcut(key: "F2", modifiers: [.function, .shift]),
+            for: "file.rename"
+        )
+        #expect(FunctionBar.reservedFunctionKeys(bindings: moved).contains(2))
     }
 
     @Test("a bound script joins the bar in key order and dispatches its own command id")
@@ -145,7 +147,7 @@ struct FunctionBarTests {
     @Test("a script holding a reserved key is skipped, not honored")
     func scriptOnReservedKeyIsSkipped() {
         // F5 is Copy's menu equivalent; F11 belongs to macOS. Neither may be taken, however the
-        // store came to hold it (a preset switch, or a hand edit).
+        // store came to hold it (a hand edit, or a key a command has since taken).
         let scripts = [
             UserScript(name: "Hijack", command: "x", functionKey: 5),
             UserScript(name: "Desktop", command: "y", functionKey: 11)
@@ -155,10 +157,10 @@ struct FunctionBarTests {
         #expect(FunctionBar.slot(forFunctionKey: 5, in: slots)?.commandID == "file.copy")
     }
 
-    @Test("a script's key survives a preset that reserves it, and comes back when it frees it")
+    @Test("a script's key survives a rebind that reserves it, and comes back when it frees it")
     func skippedScriptKeepsItsKey() {
         // The point of skipping at merge rather than validating at save: the reserved set is user
-        // state that moves, so a binding must not be destroyed by a preset switch.
+        // state that moves, so a binding must not be destroyed by a rebind.
         let script = UserScript(name: "Preview", command: "qlmanage", functionKey: 10)
         var bindings = KeyBindings()
         bindings.setShortcut(CommandShortcut(key: "F10", modifiers: .function), for: "file.copy")

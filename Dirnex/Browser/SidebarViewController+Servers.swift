@@ -135,7 +135,7 @@ extension SidebarViewController {
         switch server.endpoint {
         case let .sftp(location, authentication):
             if case .password = authentication { SecretKeychain.removePassword(for: location) }
-        case let .ftp(location, authentication, _):
+        case let .ftp(location, authentication, _, _):
             if case .password = authentication { SecretKeychain.removePassword(for: location) }
         case let .smb(location):
             if location.username != nil { SecretKeychain.removePassword(for: location) }

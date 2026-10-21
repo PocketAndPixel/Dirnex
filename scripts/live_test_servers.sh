@@ -79,7 +79,14 @@ EOF
     # A stale pin from a *previous* throwaway on this port fails preauth, and the app's own error
     # then reads as a broken feature rather than as a stale `known_hosts` line.
     ssh-keygen -R "$KNOWN_HOSTS_KEY" >/dev/null 2>&1 || true
-    /usr/sbin/sshd -f "$STATE/sshd_config" -E "$STATE/sshd.log"
+    # **On another clock than this Mac's, on purpose.** Anything the server formats itself — `ls`
+    # over the exec channel — prints in the server's zone, and a server in this Mac's own zone hides
+    # every bug where that time is read as ours: measured 2026-10-19, the search walk put a file
+    # written at 16:41 at 09:41 against a server in New York, and agreed perfectly with one here.
+    # `sshd` hands its `TZ` to every session. Kiritimati is UTC+14, which no other zone shares, so the
+    # one Mac it would not move is the one at +14, and that one gets Pago Pago (UTC−11).
+    if [ "$(date +%z)" = "+1400" ]; then sshd_tz=Pacific/Pago_Pago; else sshd_tz=Pacific/Kiritimati; fi
+    TZ="$sshd_tz" /usr/sbin/sshd -f "$STATE/sshd_config" -E "$STATE/sshd.log"
 
     cat > "$SFTP_CONFIG" <<EOF
 {
@@ -90,7 +97,7 @@ EOF
   "remotePath": "$STATE/remote"
 }
 EOF
-    echo "sftp  127.0.0.1:$SFTP_PORT  -> $STATE/remote"
+    echo "sftp  127.0.0.1:$SFTP_PORT  -> $STATE/remote  (server clock: $sshd_tz)"
 }
 
 start_ftp() {

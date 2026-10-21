@@ -52,7 +52,6 @@ extension PackAccessory {
     /// Computed as one value rather than a dozen locals so the arithmetic reads as the diagram it
     /// is: bottom-up from the footer, with each caption raised onto its own control.
     private struct Rows {
-        let labelWidth: CGFloat
         let fieldX: CGFloat
         let width: CGFloat
         let height: CGFloat
@@ -65,7 +64,6 @@ extension PackAccessory {
         let name: CGFloat
 
         init(labelWidth: CGFloat, footerHeight: CGFloat) {
-            self.labelWidth = labelWidth
             fieldX = labelWidth + Metrics.labelGap
             width = fieldX + Metrics.fieldWidth
             hideNames = footerHeight + 12

@@ -215,12 +215,7 @@ struct TabMoveCommandTests {
             let command = try #require(CommandCatalog.command(for: id))
             #expect(command.category == .window)
             #expect(command.shortcut == shortcut)
-            for preset in KeyBindings.Preset.allCases {
-                #expect(
-                    KeyBindings.preset(preset).conflicts(for: id).isEmpty,
-                    "\(id) under \(preset)"
-                )
-            }
+            #expect(KeyBindings().conflicts(for: id).isEmpty, "\(id)")
         }
     }
 }

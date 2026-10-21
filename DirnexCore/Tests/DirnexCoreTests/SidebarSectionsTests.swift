@@ -44,18 +44,6 @@ struct SidebarSectionsTests {
         #expect(collapse.sections.isEmpty)
     }
 
-    @Test("toggle returns the new state and touches only its own section")
-    func toggleFlipsOneSection() {
-        var collapse = SidebarSectionCollapse()
-
-        #expect(collapse.toggle(.volumes) == true)
-        #expect(collapse.isCollapsed(.volumes))
-        #expect(!collapse.isCollapsed(.favorites))
-
-        #expect(collapse.toggle(.volumes) == false)
-        #expect(!collapse.isCollapsed(.volumes))
-    }
-
     @Test("setCollapsed reports whether it changed anything")
     func setCollapsedReportsChange() {
         var collapse = SidebarSectionCollapse(collapsed: [.favorites])

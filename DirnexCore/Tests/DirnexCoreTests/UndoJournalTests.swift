@@ -273,7 +273,7 @@ struct UndoJournalTests {
     @Test("the stack is newest-on-top and bounded by capacity")
     func stackCapacity() {
         var journal = UndoJournal(capacity: 2)
-        #expect(!journal.canUndo)
+        #expect(journal.top == nil)
         journal.record(.newFolder(at: .local("/a")))
         journal.record(.newFolder(at: .local("/b")))
         journal.record(.newFolder(at: .local("/c"))) // evicts /a

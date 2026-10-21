@@ -87,12 +87,6 @@ public struct Favorites: Sendable, Equatable, Codable {
         return true
     }
 
-    /// Remove the entry at `index` (the organizer's − button); out-of-range is ignored.
-    public mutating func remove(at index: Int) {
-        guard entries.indices.contains(index) else { return }
-        entries.remove(at: index)
-    }
-
     /// Rename the entry at `path`, if present — the organizer's inline edit.
     public mutating func rename(path: VFSPath, to name: String) {
         guard let index = entries.firstIndex(where: { $0.path == path }) else { return }

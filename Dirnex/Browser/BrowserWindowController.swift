@@ -41,6 +41,8 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
     /// Internal (not private) so `BrowserWindowController+QuickView` can tell which pane shows
     /// the list and which the preview.
     weak var activePanel: PanelViewController?
+    /// The tabs closed in this window, for ⇧⌘T (`BrowserWindowController+ClosedTabs`).
+    var closedTabs = ClosedTabs<PanelTab>()
     /// The pane commands and the titlebar Back/Forward buttons act on: the focused one, falling
     /// back to the left pane before either has taken focus.
     var focusedPanel: PanelViewController { activePanel ?? leftPanel }

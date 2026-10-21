@@ -1,14 +1,21 @@
 import AppKit
 
-/// The header's two behaviours that are more than drawing a caption: its Close button, and the
-/// floating header's fade in full screen. Split out of `QuickViewPreviewView` when the button
-/// arrived (2026-10-18), because the button is what made the fade need a rule about the pointer.
+/// The header's behaviours that are more than drawing a caption: its buttons, and the floating
+/// header's fade in full screen. Split out of `QuickViewPreviewView` when the Close button arrived
+/// (2026-10-18), because the button is what made the fade need a rule about the pointer.
 extension QuickViewPreviewView {
     /// What the header's Close button does. Set by whoever owns the surface: the window for the two
     /// full sizes, the covered pane for ⌃Q. Ignored when this surface has no header.
     var onClose: (() -> Void)? {
         get { headerView?.onClose }
         set { headerView?.onClose = newValue }
+    }
+
+    /// What a click on one of the header's styles does — `1` or `2` by hand. Set by the same owners
+    /// as `onClose`, for the same reason.
+    var onPickStyle: ((QuickViewRenderStyle) -> Void)? {
+        get { headerView?.onPickStyle }
+        set { headerView?.onPickStyle = newValue }
     }
 
     // MARK: - The floating header's fade

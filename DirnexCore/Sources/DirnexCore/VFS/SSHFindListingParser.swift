@@ -29,6 +29,13 @@ import Foundation
 /// but there is no Linux host to confirm it on. If it ever quotes, the path stops matching the
 /// anchor and the search falls back to the walk, which is slower and right, instead of rendering a
 /// row whose name has acquired quotes.
+///
+/// ## The dates are UTC
+///
+/// The command runs `ls` under `TZ=UTC0` (``SSHFindCommand``), so a stamp with a time of day is read
+/// as UTC rather than as this Mac's clock — the server's own clock is unknown, and was seven hours
+/// out on the probe that found it. A date-only stamp stays on this Mac's clock, for the reason
+/// ``ColumnarListing/utcUnixDateFormatters()`` gives.
 enum SSHFindListingParser {
     /// One entry as the server described it — the same fields ``SFTPListingParser/Entry`` carries,
     /// but named by **full remote path** rather than by leaf, because that is what a search result
@@ -64,7 +71,7 @@ enum SSHFindListingParser {
     /// `root` must already be ``SSHFindCommand/normalizedRoot(_:)``, since it is compared against
     /// what the server echoed back.
     static func parse(_ text: String, under root: String) -> Listing? {
-        let formatters = ColumnarListing.unixDateFormatters()
+        let formatters = ColumnarListing.utcUnixDateFormatters()
         // A root of "/" would otherwise demand paths beginning "//".
         let childPrefix = root == "/" ? "/" : root + "/"
         var rows: [Row] = []

@@ -18,7 +18,7 @@ extension PanelViewController {
             self,
             selector: #selector(fileColorRulesChanged),
             name: FileColorRuleStore.didChangeNotification,
-            object: nil
+            object: FileColorRuleStore.shared
         )
     }
 
@@ -47,7 +47,7 @@ extension PanelViewController {
     /// newer-build value returns `nil`), and the row simply falls through to `.labelColor` — the
     /// same degradation the three palette colors already make.
     func typeColor(for entry: FileEntry) -> NSColor? {
-        guard let rule = FileColorRuleStore.rules.firstMatch(for: entry) else { return nil }
+        guard let rule = FileColorRuleStore.shared.rules.firstMatch(for: entry) else { return nil }
         return PanelPalette.color(fromHex: rule.colorHex)
     }
 }

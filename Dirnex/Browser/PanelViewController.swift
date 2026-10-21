@@ -4,7 +4,7 @@ import DirnexCore
 /// The pane's owner (the window controller) — receives focus changes so it can track
 /// which of the two panes is active and route Tab between them.
 @MainActor
-protocol PanelHost: AnyObject {
+protocol PanelHost: ClosedTabHost {
     func panelDidBecomeActive(_ panel: PanelViewController)
     func panelRequestsFocusSwitch(_ panel: PanelViewController)
     /// The opposite pane — the default destination for a copy/move (F5/F6), whose
@@ -73,15 +73,13 @@ protocol PanelHost: AnyObject {
     /// left pane. Directories that have since vanished are dropped as the panes rebuild.
     func applyWorkspace(_ workspace: Workspace)
 
-    /// Quick View (⌃Q / ⌃⇧Q / ⌃⌥Q): switch to `mode`, or back to `.off` when it is already the
-    /// current one — each key is a flat toggle that turns its own size off and switches from any
-    /// other. The window owns the state because the mode spans both panes, which a single pane
-    /// can't coordinate.
-    func toggleQuickView(_ mode: QuickViewMode)
-
     /// Close Quick View outright, whatever size it is showing at — Esc's exit, which must land on
     /// the file list rather than stepping down to a smaller preview.
     func closeQuickView()
+
+    /// Show the previewed file in `style`, as its `1` / `2` key does — a click on the header of the
+    /// ⌃Q surface, which sits in the covered pane while the window owns the preference.
+    func setQuickViewRenderStyle(_ style: QuickViewRenderStyle)
 
     /// Move a full-size Quick View on by `steps` files, animated like the two-finger swipe (← / →).
     /// The window owns it because the preview surface being turned is the window's, not the pane's.
@@ -305,6 +303,9 @@ final class PanelViewController: NSViewController {
     /// watching the running app rather than by any test, which cannot arm a timer. Keyed by path
     /// there is nothing to clear: a measurement of another directory is simply not used.
     var remoteRefreshLastPoll: RemoteRefreshMeasurement?
+    /// Unasked refreshes still listing. A loop re-armed while one runs counts from *now*, or it
+    /// would fire a second round beside the first (`PanelViewController+RemoteRefresh`).
+    var remoteRefreshRoundsInFlight = 0
     /// The window whose occlusion this pane is observing, so the registration can be re-pointed
     /// rather than duplicated. `weak` because the observation is the only thing that would keep a
     /// closed window alive, and a pane must not be that thing.

@@ -119,7 +119,7 @@ extension PanelViewController {
                 activityName: server.name,
                 inNewTab: inNewTab
             ))
-        case let .ftp(location, authentication, trustedPublicKey):
+        case let .ftp(location, authentication, trustedPublicKey, serverTimeZone):
             // A named account whose password was never saved (or has been cleared) falls back to the
             // prefilled sheet rather than failing silently. Anonymous needs no secret at all.
             if case .password = authentication, secret == nil { return nil }
@@ -131,7 +131,8 @@ extension PanelViewController {
                 saveName: nil,
                 activityName: server.name,
                 savedServerName: server.name,
-                inNewTab: inNewTab
+                inNewTab: inNewTab,
+                serverTimeZone: serverTimeZone
             ))
         case let .s3(location):
             // The secret access key is the only way in — there is no anonymous or key-file variant
@@ -188,7 +189,7 @@ extension PanelViewController {
                 activityName: nil,
                 inNewTab: inNewTab
             ))
-        case let .ftp(location, authentication, trustedPublicKey):
+        case let .ftp(location, authentication, trustedPublicKey, serverTimeZone):
             .ftp(FTPConnectRequest(
                 location: location,
                 authentication: authentication,
@@ -199,7 +200,8 @@ extension PanelViewController {
                 // The sheet's own `saveName` is the record to write, when there is one — a re-trust
                 // reaches the store through the success branch's `saveFTPServer`.
                 savedServerName: nil,
-                inNewTab: inNewTab
+                inNewTab: inNewTab,
+                serverTimeZone: serverTimeZone
             ))
         case let .s3(location):
             .s3(S3ConnectRequest(
@@ -238,7 +240,7 @@ extension PanelViewController {
     private static func storedSecret(for endpoint: ServerEndpoint) -> String? {
         switch endpoint {
         case let .sftp(location, _): SecretKeychain.password(for: location)
-        case let .ftp(location, _, _): SecretKeychain.password(for: location)
+        case let .ftp(location, _, _, _): SecretKeychain.password(for: location)
         case let .s3(location): SecretKeychain.password(for: location)
         case let .s3Account(account): SecretKeychain.password(for: account)
         case let .smb(location):

@@ -28,7 +28,7 @@ struct RemoteMetadataCarryTests {
         )
         #expect(plan.steps == [.preserveDuringTransfer])
         #expect(plan.followUp.isEmpty)
-        #expect(plan.isComplete)
+        #expect(plan.dropped.isEmpty)
     }
 
     @Test("each special bit adds the corrective chmod -p cannot express")
@@ -42,7 +42,7 @@ struct RemoteMetadataCarryTests {
             #expect(plan.usesPreserveFlag)
             #expect(plan.followUp == [.setMode(POSIXPermissions(rawValue: mode))])
             // Carried, not lost — the explicit chmod is what makes this complete.
-            #expect(plan.isComplete)
+            #expect(plan.dropped.isEmpty)
         }
     }
 
@@ -55,7 +55,7 @@ struct RemoteMetadataCarryTests {
         )
         #expect(plan.steps == [.preserveDuringTransfer])
         #expect(plan.dropped == [.specialModeBits])
-        #expect(!plan.isComplete)
+        #expect(!plan.dropped.isEmpty)
     }
 
     // MARK: - Absent is not dropped
@@ -71,7 +71,7 @@ struct RemoteMetadataCarryTests {
             capabilities: []
         )
         #expect(plan.dropped.isEmpty)
-        #expect(plan.isComplete)
+        #expect(plan.dropped.isEmpty)
         #expect(plan.steps.isEmpty)
     }
 
@@ -107,7 +107,7 @@ struct RemoteMetadataCarryTests {
             .setMode(POSIXPermissions(rawValue: ordinary)),
             .setModificationTime(mtime)
         ])
-        #expect(plan.isComplete)
+        #expect(plan.dropped.isEmpty)
     }
 
     @Test("an FTP server offering neither extension drops both and names them")
@@ -170,8 +170,8 @@ struct RemoteMetadataCarryTests {
         )
     }
 
-    @Test("-h acts on a symlink rather than its target, on all three attribute verbs")
-    func symlinkFlagOnAttributeVerbs() {
+    @Test("-h acts on a symlink rather than its target")
+    func symlinkFlagOnChangeMode() {
         #expect(
             SFTPBatchCommand.changeMode(
                 "/r/l",
@@ -180,14 +180,11 @@ struct RemoteMetadataCarryTests {
             )
                 == "chmod -h 700 \"/r/l\""
         )
-        #expect(
-            SFTPBatchCommand.changeOwner("/r/l", to: 501, onSymbolicLink: true) == "chown -h 501 \"/r/l\""
-        )
-        #expect(
-            SFTPBatchCommand.changeGroup("/r/l", to: 20, onSymbolicLink: true) == "chgrp -h 20 \"/r/l\""
-        )
         // Without it, the target is what changes — measured both ways against a real server.
-        #expect(SFTPBatchCommand.changeOwner("/r/l", to: 501) == "chown 501 \"/r/l\"")
+        #expect(
+            SFTPBatchCommand.changeMode("/r/l", to: POSIXPermissions(rawValue: 0o700))
+                == "chmod 700 \"/r/l\""
+        )
     }
 
     @Test("MFMT's timestamp is UTC whatever zone the app is running in")

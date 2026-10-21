@@ -104,17 +104,6 @@ public struct SyncEntry: Sendable, Equatable, Identifiable {
     public var isDirectory: Bool {
         (left?.isDirectory ?? false) || (right?.isDirectory ?? false)
     }
-
-    /// The default action for this row under `direction` — the pre-checked choice the user
-    /// can override before applying.
-    public func defaultAction(for direction: SyncDirection) -> SyncAction {
-        DirectorySync.defaultAction(for: status, direction: direction)
-    }
-
-    /// The override actions the user may pick for this row (see `DirectorySync.availableActions`).
-    public var availableActions: [SyncAction] {
-        DirectorySync.availableActions(for: status)
-    }
 }
 
 // MARK: - Engine

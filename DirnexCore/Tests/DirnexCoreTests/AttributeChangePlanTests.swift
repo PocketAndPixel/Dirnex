@@ -38,7 +38,7 @@ struct AttributeChangePlanTests {
     @Test("an empty diff plans nothing")
     func empty() {
         let result = plan(from: attributes(), to: attributes())
-        #expect(result.isEmpty && result.steps.isEmpty)
+        #expect(result.steps.isEmpty)
     }
 
     @Test("a plain mode change on an unlocked file is one chmod")

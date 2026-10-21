@@ -48,6 +48,16 @@ jobs:
           TEST_RUNNER_DIRNEX_CI: "1"
         run: |
           set -o pipefail
+          # The host shares the installed app's defaults domain. Compare outside the host so
+          # writes before the first test or during shutdown cannot escape the check.
+          defaults export com.dirnex.Dirnex TestDefaults-before.plist
+          check_defaults() {
+            test_status=$?
+            defaults export com.dirnex.Dirnex TestDefaults-after.plist || exit 1
+            python3 scripts/check_defaults_unchanged.py TestDefaults-before.plist TestDefaults-after.plist || exit 1
+            exit "$test_status"
+          }
+          trap check_defaults EXIT
           # One test at a time. The runner has three cooperative threads, and a synchronous test
           # holds one for as long as it blocks, so three at once leave none: then work on a global
           # queue — `BlockingWork`, a pipe drain — never starts, and tests that wait for it time out

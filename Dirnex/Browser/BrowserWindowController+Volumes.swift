@@ -22,6 +22,7 @@ extension BrowserWindowController {
         let mountPoint = VFSPath.local(mountPath)
         leftPanel.recoverIfBrowsing(unmountedVolumeAt: mountPoint)
         rightPanel.recoverIfBrowsing(unmountedVolumeAt: mountPoint)
+        forgetClosedTabs(onUnmountedVolumeAt: mountPoint)
     }
 
     /// The mount-point path of the just-unmounted volume. `volumeURLUserInfoKey` carries it on

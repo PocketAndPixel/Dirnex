@@ -101,6 +101,8 @@ capabilities and has not been exercised against it.
 | Git status column, `.gitignore`-aware sizes | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
 | Appears in Recents | yes | yes | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a | n/a |
 | Reopens at launch / in a saved workspace | yes | yes | yes | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes | n/a | n/a |
+| Back / forward history survives a relaunch<sup>aag</sup> | yes | yes | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes | n/a | n/a |
+| Reopen a closed tab (`⇧⌘T`)<sup>aah</sup> | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 
 <sup>a</sup> Entering a bucket row is a **connect**, not a listing: `S3AccountBackend` is depth 0
 by design (everything below a bucket is the bucket backend). It carries the region-301 correction
@@ -137,9 +139,17 @@ list is asked less often still — the interval is derived from what the *previo
 cost, holding a pane to ~5 % of its wall time, so a 50 000-object prefix (fifty billed
 `ListObjectsV2` requests, ~32 s) settles to about one refresh every eleven minutes with no
 per-backend number to keep. Nothing is repainted when the listing has not moved, so the ordinary
-answer — "the same rows" — costs one request and no work. A pane stood down catches up the
-moment it is visible again rather than waiting out a fresh interval. FSEvents stays exact and free,
-which is why the local and cloud-mount columns are a plain yes.
+answer — "the same rows" — costs one request and no work. **Coming back to a pane waives that
+stretch**: uncovering its window, returning to Dirnex from another app, clicking into its window from
+another Dirnex window or switching to its tab asks again at once if its rows are older than the
+floor, and otherwise waits out the rest of the floor. The stretch only governs a pane nobody is
+touching. A tree re-lists every open folder in one refresh, and **over FTP they all go over one
+login, over SFTP through one session**, rather than one each. Measured 2026-10-19 on an FTPES server
+41 ms away, a tree with two folders open cost three ~1 s logins a refresh and the poll waited 59 s
+between refreshes, so a file written there from elsewhere could take a minute to appear. Over SFTP
+the same tree in the running app went from three `Accepted publickey` a refresh to one, against a
+throwaway `sshd`. S3 still lists the open folders in turn. FSEvents stays exact and free, which is
+why the local and cloud-mount columns are a plain yes.
 
 <sup>nn</sup> A bar is a row's share of **its own directory**, so it needs every sibling's total
 rather than the cursor's, where the `Space` total above needs one. That is what used to gate the mode
@@ -209,6 +219,23 @@ local paths, told apart by territory and then by the volume the kernel's mount t
 the classification never waits on a share that has stopped answering. Exercised live on local
 folders, a disk image, Dropbox, iCloud Drive, Recents and a zip (2026-10-15); the other columns are
 pinned by tests and not exercised live.
+
+<sup>aag</sup> Each tab keeps its last 80 places, forward ones included, and writes them down with the
+tab. What is left out on the way down is what could not come back: a folder inside an unlocked vault
+(implicit memory never keeps one), a nested archive's temp extraction, a search or Trash listing, and
+a server with no way to reconnect. A trail that visits a server keeps one endpoint per server, so ⌘[
+back onto it after a relaunch reconnects by the rules in <sup>ww</sup>. If that cannot happen unattended
+(no secret in the Keychain), the folder on screen stays and the status line says why. Nothing is
+checked on disk at launch: a folder deleted since is skipped, and dropped from the trail, when ⌘[ or
+⌘] reaches it, while one picked by name from the `⌥↓` list is still reported. Exercised live on local
+folders (2026-10-19); the other columns are pinned by tests and not exercised live.
+
+<sup>aah</sup> The closed tab is kept as itself, as a move to the other pane keeps it (<sup>aae</sup>), so
+it comes back with its history, cursor, marks and shape, a search's hits included, into the pane and
+the place it left. One list per window, newest first, 20 deep, for this run only. A tab standing on a
+volume that goes away (a vault locked, a disk ejected) is forgotten then. Exercised live on local
+folders (2026-10-19), from the File menu, `⇧⌘T` and the scripting verb; the other columns follow from
+the shared backend and are not exercised live.
 
 ## 2. File operations
 
@@ -375,6 +402,13 @@ A **download** is bounded by neither, because it lands on this machine: `chmod` 
 work, so it carries whatever the source's listing reported even on a connection whose server has
 refused to keep anything.
 
+**`⌘C` `⌘V` and a drag inside Dirnex carry the same as `F5`**, because the pasteboard payload holds
+the mode and the date the listing reported. Before 2026-10-19 it held neither and rebuilt the mode
+as `0`. So a pasted or dragged row was carried as mode `000` with no date: a file dragged off an FTP
+server landed `----------` with the time of the copy. Read off the code rather than run: an upload to
+FTP, and a folder over FTP or SFTP in either direction, were set to `000` at the destination the same
+way. An SFTP file upload was spared, because `put -p` reads the mode off the local file.
+
 S3 remains `n/a`: it has no settable mtime, no permissions and no symlinks at all (PLAN.md §M21), and
 a row that reports no mode is *absent* rather than dropped — the distinction the whole carry turns
 on, since folding the two together would make every S3 copy claim damage it did not do.
@@ -530,9 +564,11 @@ question is asked first, so a Mac with none pays for no download).
 comparison by **size**, which is honest anywhere. Comparing by **timestamp** is withdrawn the moment
 either side is remote, and for three different reasons: `sftp`'s `ls -la` drops the seconds and, past
 about six months, the whole time of day (measured 41 617 s from the truth); FTP's `LIST` stamp is
-year-less, zone-less and on the server's clock; and S3's `LastModified` is exact and is the *upload*
-time, which nothing can set. Two sides of one coarse dialect are no better — two files thirty seconds
-apart list as the same minute, so a mirror would skip the one that changed.
+year-less, zone-less and on the server's clock (a server that answers `MLSD` is exact since
+2026-10-19, but the comparison is decided per protocol rather than per server, so FTP stays out); and
+S3's `LastModified` is exact and is the *upload* time, which nothing can set. Two sides of one coarse
+dialect are no better — two files thirty seconds apart list as the same minute, so a mirror would skip
+the one that changed.
 
 Comparing by **contents** works anywhere since §M25 Slice 5d, and it is the one comparison a coarse
 listing cannot make dishonest — bytes are bytes. The scan is two phases over **one** walk: the walk
@@ -933,8 +969,10 @@ rows, and the app is already as close as the technology permits:
   measurement is under <sup>ww</sup>; SFTP's own split, which *is* possible because `cat` over the
   exec channel can join what `sftp` cannot write in place, landed on 2026-09-01.
 - Content search and Finder-tag search on a server: both need every file's bytes or its xattrs.
-- Exact FTP timestamps: `LIST` stamps are year-less, zone-less and on the server's clock, and
-  `curl` cannot send `MLSD`.
+- Exact FTP timestamps on a server without `MLSD`: its `LIST` stamps have no seconds and, for a
+  recent file, no year. The hour is fixable and was fixed on 2026-10-19 — a saved server can be
+  given its own time zone — and a server that answers `MLSD` has given exact UTC times since the
+  same day.
 - Atomicity of an S3 prefix rename or delete: it is N copies and N deletes, whoever writes it.
 - Upload progress over SFTP: `sftp` prints no meter to a spawned process, in any configuration.
 - Per-item download percentages from macOS's cloud providers, and sync status in Google Drive's

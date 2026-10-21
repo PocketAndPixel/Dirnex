@@ -22,6 +22,7 @@ extension BrowserWindowController {
             findOptions: .standard
         )
         preview.onClose = { [weak self] in self?.closeQuickView() }
+        preview.onPickStyle = { [weak self] in self?.setQuickViewRenderStyle($0) }
         let panes = panesSplitViewController.view
         install(preview, pinnedTo: panes)
         fullWindowPreview = preview
@@ -41,6 +42,7 @@ extension BrowserWindowController {
             findOptions: .standard
         )
         preview.onClose = { [weak self] in self?.closeQuickView() }
+        preview.onPickStyle = { [weak self] in self?.setQuickViewRenderStyle($0) }
         guard let content = window?.contentView else { return preview }
         // Without this the fading header never appears: a window does not post mouse-moved events
         // by default, so the tracking area that reveals the strip is never told the pointer moved.
@@ -349,6 +351,8 @@ extension BrowserWindowController: NSMenuItemValidation {
             return vaultImageUnderCursor != nil
         case #selector(lockVault(_:)):
             return vaultContainingFocusedPane != nil
+        case #selector(reopenClosedTab(_:)):
+            return canReopenClosedTab
         // The placeholder card's Download button, from the keyboard — enabled exactly when the card
         // is offering the button, by the one predicate the action itself checks.
         case #selector(downloadQuickViewPreview(_:)):

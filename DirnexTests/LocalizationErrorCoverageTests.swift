@@ -2,8 +2,6 @@ import DirnexCore
 import Foundation
 import Testing
 
-@testable import Dirnex
-
 /// Coverage for the two *error vocabularies* the core hands over as data — `VFSUnsupportedReason`
 /// and `ChecksumError` (PLAN.md §M12 Slice 11, §M14 Slice 2).
 ///

@@ -38,11 +38,6 @@ public struct OpenWithCandidates: Sendable, Hashable {
     /// says the list above it is empty.
     public var isEmpty: Bool { defaultApplication == nil && others.isEmpty }
 
-    /// Default first, then the rest — the menu's order.
-    public var all: [ApplicationRef] {
-        (defaultApplication.map { [$0] } ?? []) + others
-    }
-
     /// Nothing can open this selection (or there is no selection).
     public static let none = OpenWithCandidates(defaultApplication: nil, others: [])
 

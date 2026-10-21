@@ -27,6 +27,24 @@ public protocol SFTPTransport: RemoteWriteTransport {
     /// file it is that single file's row. Throws `SFTPTransportError` on a remote failure.
     func listDirectory(_ remotePath: String) throws -> String
 
+    /// The raw `ls -la` output for **each** of `remotePaths`, listed in one `sftp` session — `nil`
+    /// for a folder that could not be listed, `""` for one listed empty.
+    ///
+    /// What a tree refresh asks for every round, and the reason it is a verb: each
+    /// ``listDirectory(_:)`` is a fresh TCP connect, key exchange and authentication, so a tree
+    /// with three folders open paid three of them a round, and the remote poll stretches its
+    /// interval by what a round cost (``RemoteRefreshPolicy``). ``SFTPBatchListing`` holds the
+    /// batch and the reading of its transcript; a transport only runs the one and hands back the
+    /// other.
+    ///
+    /// A refusal is an answer rather than a failure, exactly as in the FTP verb this mirrors
+    /// (``FTPTransport/listDirectories(_:isCancelled:)``), and `isCancelled` is the one thing that
+    /// throws on its own account.
+    ///
+    /// Additive, with a default that **forwards** to one ``listDirectory(_:)`` per path: the answers
+    /// are the same answers, so a transport that has not implemented this is slow and never wrong.
+    func listDirectories(_ remotePaths: [String], isCancelled: () -> Bool) throws -> [String?]
+
     /// Create a remote symbolic link at `remotePath` pointing at the raw (unresolved) `target`
     /// (`ln -s`) — used when a copied/mirrored tree contains a symlink.
     func createSymbolicLink(_ remotePath: String, target: String) throws
@@ -253,6 +271,23 @@ public protocol SFTPTransport: RemoteWriteTransport {
 
 public extension SFTPTransport {
     func runCommand(_ command: String, isCancelled: () -> Bool) throws -> String? { nil }
+
+    /// The additive half of ``listDirectories(_:isCancelled:)``: one session per folder, which is
+    /// what every caller paid before the verb existed.
+    func listDirectories(_ remotePaths: [String], isCancelled: () -> Bool) throws -> [String?] {
+        try remotePaths.map { remotePath in
+            guard !isCancelled() else { throw CancellationError() }
+            // A refusal is the server's answer about that folder, so it costs the folder its answer
+            // and nothing more; cancellation is the caller's own instruction and has to travel.
+            do {
+                return try listDirectory(remotePath)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                return nil
+            }
+        }
+    }
 
     func copyRemoteFile(
         _: String,

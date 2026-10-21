@@ -69,6 +69,14 @@ extension PanelViewController {
             register(endpoint, on: composite)
             return true
         case let .standDown(reason):
+            // A walk along the trail sets out from a folder that is listed and on screen, and that
+            // is where it stays: blanking it to explain a server it never reached would lose the
+            // listing for nothing. The status line says why, and the trail goes back to it.
+            if tabs[activeTabIndex].history.walk != nil {
+                loadToken += 1
+                showTransientStatus(Self.sentence(for: reason))
+                return false
+            }
             standDown(tabs[activeTabIndex], reason: reason)
             return false
         }
@@ -99,7 +107,7 @@ extension PanelViewController {
         guard path.backend.isRemoteConnection,
               let composite = backend as? CompositeBackend,
               !composite.isConnected(path.backend),
-              let endpoint = tabs[activeTabIndex].pendingConnection,
+              let endpoint = tabs[activeTabIndex].endpoint(for: path.backend),
               case .connection = TabRestorePolicy.requirement(for: path, endpoint: endpoint)
         else { return .listNow }
 
@@ -173,7 +181,7 @@ extension PanelViewController {
         case let .sftp(location, authentication):
             guard case .password = authentication else { return true }
             return SecretKeychain.password(for: location) != nil
-        case let .ftp(location, authentication, _):
+        case let .ftp(location, authentication, _, _):
             guard case .password = authentication else { return true }
             return SecretKeychain.password(for: location) != nil
         case let .s3(location):
@@ -198,12 +206,13 @@ extension PanelViewController {
                 authentication: authentication,
                 password: SecretKeychain.password(for: location)
             )
-        case let .ftp(location, authentication, trustedPublicKey):
+        case let .ftp(location, authentication, trustedPublicKey, serverTimeZone):
             composite.connectFTP(
                 location: location,
                 authentication: authentication,
                 password: SecretKeychain.password(for: location) ?? "",
-                trustedPublicKey: trustedPublicKey
+                trustedPublicKey: trustedPublicKey,
+                serverTimeZone: serverTimeZone
             )
         case let .s3(location):
             guard let secret = SecretKeychain.password(for: location) else { return }

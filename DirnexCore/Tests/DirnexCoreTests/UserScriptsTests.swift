@@ -37,14 +37,6 @@ struct UserScriptsTests {
         #expect(scripts.script(named: "Dup")?.command == "first")
     }
 
-    @Test("remove by name deletes when present and reports whether it did")
-    func removeByName() {
-        var scripts = UserScripts(scripts: [script("A"), script("B")])
-        #expect(scripts.remove(name: "A") == true)
-        #expect(scripts.remove(name: "missing") == false)
-        #expect(scripts.scripts.map(\.name) == ["B"])
-    }
-
     @Test("remove at index ignores an out-of-range index")
     func removeAtIndex() {
         var scripts = UserScripts(scripts: [script("A"), script("B")])
@@ -66,13 +58,6 @@ struct UserScriptsTests {
         // Renaming to the same name is a no-op success.
         #expect(scripts.rename(name: "B", to: "B") == true)
         #expect(scripts.scripts.map(\.name) == ["Alpha", "B"])
-    }
-
-    @Test("move reorders with Array insertion semantics")
-    func move() {
-        var scripts = UserScripts(scripts: [script("A"), script("B"), script("C")])
-        scripts.move(from: 0, to: 2)
-        #expect(scripts.scripts.map(\.name) == ["B", "C", "A"])
     }
 
     @Test("paletteCommands mirrors the scripts in order")

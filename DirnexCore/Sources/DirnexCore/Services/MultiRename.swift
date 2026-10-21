@@ -98,9 +98,6 @@ public struct RenameSpec: Sendable, Equatable {
         self.counter = counter
     }
 
-    /// The identity spec — reproduces every input name unchanged.
-    public static let identity = RenameSpec()
-
     /// Whether the regex `find` pattern compiles. Always `true` when not using a regex or the
     /// pattern is empty, so the tool can surface a red "invalid pattern" hint without special-
     /// casing the common literal path.

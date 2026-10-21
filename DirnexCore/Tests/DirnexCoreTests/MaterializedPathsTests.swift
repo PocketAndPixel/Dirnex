@@ -5,24 +5,15 @@ import Testing
 
 /// The map an engine reads a materialized set back through (PLAN.md §M24 Slice 4).
 ///
-/// Four claims, and every one of them is a rule some gesture would otherwise have to keep by hand:
+/// Three claims, and every one of them is a rule some gesture would otherwise have to keep by hand:
 /// a local row stands for itself so an ordinary run needs no branch, a placeholder is a local row
-/// for exactly that reason, an absent row answers `nil` rather than throwing, and the last copy of
-/// a repeated source wins because the earlier one's directory may already be gone.
+/// for exactly that reason, and an absent row answers `nil` rather than throwing.
 @Suite("Materialized paths")
 struct MaterializedPathsTests {
     private static let remote = VFSBackendID("test-remote://host")
 
     private func remotePath(_ path: String) -> VFSPath {
         VFSPath(backend: Self.remote, path: path)
-    }
-
-    private func file(_ source: VFSPath, at localPath: String) -> MaterializedFile {
-        MaterializedFile(
-            source: source,
-            localPath: localPath,
-            revision: RemoteFileRevision(byteSize: 1, modified: nil)
-        )
     }
 
     // MARK: - Standing for itself
@@ -52,7 +43,7 @@ struct MaterializedPathsTests {
     @Test("a materialized row answers with the copy")
     func substitutesAMaterializedRow() {
         let source = remotePath("/prefix/report.pdf")
-        let paths = MaterializedPaths([file(source, at: "/tmp/d0/report.pdf")])
+        let paths = MaterializedPaths([source: "/tmp/d0/report.pdf"])
         #expect(paths.localPath(for: source) == .local("/tmp/d0/report.pdf"))
         #expect(!paths.isEmpty)
     }
@@ -62,7 +53,7 @@ struct MaterializedPathsTests {
     /// manifest that then verifies clean while covering less than it claims.
     @Test("a row nothing fetched answers nil rather than throwing")
     func unmaterializedRowIsNil() {
-        let paths = MaterializedPaths([file(remotePath("/a.bin"), at: "/tmp/d0/a.bin")])
+        let paths = MaterializedPaths([remotePath("/a.bin"): "/tmp/d0/a.bin"])
         #expect(paths.localPath(for: remotePath("/b.bin")) == nil)
     }
 
@@ -73,22 +64,11 @@ struct MaterializedPathsTests {
         let left = remotePath("/a/report.pdf")
         let right = remotePath("/b/report.pdf")
         let paths = MaterializedPaths([
-            file(left, at: "/tmp/d0/report.pdf"),
-            file(right, at: "/tmp/d1/report.pdf")
+            left: "/tmp/d0/report.pdf",
+            right: "/tmp/d1/report.pdf"
         ])
         #expect(paths.localPath(for: left) == .local("/tmp/d0/report.pdf"))
         #expect(paths.localPath(for: right) == .local("/tmp/d1/report.pdf"))
-    }
-
-    /// The first copy is the one whose directory may already have been swept away.
-    @Test("a repeated source keeps the last copy")
-    func repeatedSourceTakesTheLatest() {
-        let source = remotePath("/o.bin")
-        let paths = MaterializedPaths([
-            file(source, at: "/tmp/d0/o.bin"),
-            file(source, at: "/tmp/d1/o.bin")
-        ])
-        #expect(paths.localPath(for: source) == .local("/tmp/d1/o.bin"))
     }
 
     // MARK: - Two phases
@@ -99,10 +79,10 @@ struct MaterializedPathsTests {
     func mergingCombinesPhases() {
         let manifest = remotePath("/data/files.sha256")
         let claimed = remotePath("/data/a.bin")
-        let first = MaterializedPaths([file(manifest, at: "/tmp/m/files.sha256")])
+        let first = MaterializedPaths([manifest: "/tmp/m/files.sha256"])
         let second = MaterializedPaths([
-            file(claimed, at: "/tmp/d0/a.bin"),
-            file(manifest, at: "/tmp/m2/files.sha256")
+            claimed: "/tmp/d0/a.bin",
+            manifest: "/tmp/m2/files.sha256"
         ])
 
         let merged = first.merging(second)

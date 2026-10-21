@@ -146,7 +146,6 @@ extension VaultCreateAccessory {
 
     /// Where each row sits, bottom-up from the footer.
     private struct Rows {
-        let labelWidth: CGFloat
         let fieldX: CGFloat
         let width: CGFloat
         let height: CGFloat
@@ -157,7 +156,6 @@ extension VaultCreateAccessory {
         let name: CGFloat
 
         init(labelWidth: CGFloat, footerHeight: CGFloat, sizeHintHeight: CGFloat) {
-            self.labelWidth = labelWidth
             fieldX = labelWidth + Metrics.labelGap
             width = fieldX + Metrics.fieldWidth
             confirm = footerHeight + 12

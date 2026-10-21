@@ -56,11 +56,6 @@ public struct GitStatusSnapshot: Sendable, Equatable {
         directoryStatus = rollup
     }
 
-    /// An empty snapshot for `repositoryRoot` — a clean working tree, where every row is unmodified.
-    public init(repositoryRoot: VFSPath, branch: GitBranch) {
-        self.init(repositoryRoot: repositoryRoot, branch: branch, entries: [])
-    }
-
     /// The status of one panel row. Anything outside this repository (another volume, an archive, an
     /// SFTP pane) is `.unmodified` — the column simply stays blank rather than guessing.
     public func status(for path: VFSPath) -> GitFileStatus {

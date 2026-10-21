@@ -14,7 +14,7 @@ import SwiftUI
 /// so the open panes recolor while the sheet is still up — the same commit-as-you-go the favorites,
 /// saved-search and scripts organizers use.
 struct FileColorRulesSection: View {
-    @State private var rules = FileColorRuleStore.rules
+    @State private var rules = FileColorRuleStore.shared.rules
     @State private var selection: FileColorRule.ID?
 
     var body: some View {
@@ -173,7 +173,7 @@ struct FileColorRulesSection: View {
     }
 
     private func persist() {
-        FileColorRuleStore.save(rules)
+        FileColorRuleStore.shared.save(rules)
     }
 }
 

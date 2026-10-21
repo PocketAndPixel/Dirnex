@@ -38,9 +38,13 @@ public extension FTPBackend {
             // means only that this route is unavailable, and the walk standing right behind it will
             // surface a real failure with a real error if there is one. Cancellation is the one
             // thing that must travel, since it is the caller's own instruction.
-            let listings: [String?]
+            let listings: [FTPListing?]
             do {
-                listings = try transport.listDirectories(level.map(\.path), isCancelled: isCancelled)
+                listings = try transport.listings(
+                    of: level.map(\.path),
+                    askingFacts: facts.asksWithBatch,
+                    isCancelled: isCancelled
+                )
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
@@ -66,7 +70,7 @@ public extension FTPBackend {
                     // branches the walk reports.
                     continue
                 }
-                for parsed in FTPListingParser.parse(listing) {
+                for parsed in parsedRows(of: listing) {
                     entries.append(entry(from: parsed, in: directory))
                     // `kind == .directory`, never `isDirectoryLike` — the walk recurses on exactly
                     // this, so a symlink is a row and not a branch. That keeps the two routes
