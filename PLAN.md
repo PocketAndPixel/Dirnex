@@ -199,6 +199,7 @@ plan keeps the strategy, which is a rule that outlives any one pass.
 | Undo journal | Property tests: op + undo == original tree (compare via content hash) |
 | Panels/keyboard | XCUITest smoke for the keyboard core; snapshot tests for panel rendering states |
 | Performance | XCTest metrics gated in CI: 100k-dir list < 150 ms, filter keystroke < 16 ms, memory ceiling on huge dirs |
+| App test host | The host is the app, so its `UserDefaults.standard` is the user's own `com.dirnex.Dirnex`: it installs no app delegate, and a store a test writes takes a scratch domain. CI exports the domain before and after the run and fails on any change by content (`scripts/check_defaults_unchanged.py`) |
 
 ## 6. Risks
 

@@ -4,6 +4,14 @@ Traps met while checking a change in the running app. CLAUDE.md loads this file 
 so a trap goes here only if it can bite any live run; one tied to an area goes under that area in
 [NOTES.md](NOTES.md), which is read by area. Moved out of NOTES.md on 2026-10-01.
 
+- **`defaults import` does not remove keys absent from the imported plist.** Measured 2026-10-21:
+  importing an empty plist into `com.dirnex.Dirnex` left all 68 keys in place. A backup import alone
+  therefore cannot remove keys an experiment added. With every Dirnex quit and a verified backup
+  saved, clear the domain with `defaults delete com.dirnex.Dirnex`, then restore it with
+  `defaults import com.dirnex.Dirnex <backup.plist>`. Export again to check the restoration.
+  `scripts/check_defaults_unchanged.py <before.plist> <after.plist>` compares every key by content,
+  including JSON inside data values; a byte comparison can mistake JSON object key order for drift.
+
 - **A tab seeded with `defaults write -string` is silently not restored, because `TabPersistence`
   reads `data(forKey:)`.** The pane falls back to Home, the app looks perfectly healthy, and nothing
   logs — so the gesture under test runs against a *local* row and reports whatever a local row does.

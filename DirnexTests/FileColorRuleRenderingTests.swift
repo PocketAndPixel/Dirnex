@@ -110,32 +110,25 @@ struct FileColorRuleRenderingTests {
     /// editor would write rules the panes never see.
     @Test("saving publishes the new rules to the next read")
     func saveUpdatesTheCachedRules() {
-        let original = FileColorRuleStore.rules
-        defer {
-            FileColorRuleStore.save(original)
-            FileColorRuleStore.invalidateCache()
-        }
+        let store = FileColorRuleStore(defaults: ScratchDefaults.fresh())
 
         let rule = FileColorRule(name: "Images", patterns: ["*.jpg"], colorHex: "#008080")
-        FileColorRuleStore.save(FileColorRules(rules: [rule]))
-        #expect(FileColorRuleStore.rules.rules.map(\.name) == ["Images"])
-        #expect(FileColorRuleStore.rules.firstMatch(name: "a.jpg", isDirectory: false) != nil)
+        store.save(FileColorRules(rules: [rule]))
+        #expect(store.rules.rules.map(\.name) == ["Images"])
+        #expect(store.rules.firstMatch(name: "a.jpg", isDirectory: false) != nil)
 
-        FileColorRuleStore.save(FileColorRules())
-        #expect(FileColorRuleStore.rules.isEmpty)
+        store.save(FileColorRules())
+        #expect(store.rules.isEmpty)
     }
 
-    /// A store that survives a relaunch, which is the slice's own exit criterion. Dropping the cache
+    /// A store that survives a relaunch, which is the slice's own exit criterion. A fresh store
     /// is what makes this a test of the *defaults domain* rather than of the in-memory copy.
     @Test("rules survive being re-read from the defaults domain")
     func rulesRoundTripThroughDefaults() {
-        let original = FileColorRuleStore.rules
-        defer {
-            FileColorRuleStore.save(original)
-            FileColorRuleStore.invalidateCache()
-        }
+        let defaults = ScratchDefaults.fresh()
+        let store = FileColorRuleStore(defaults: defaults)
 
-        FileColorRuleStore.save(FileColorRules(rules: [
+        store.save(FileColorRules(rules: [
             FileColorRule(name: "Images", patterns: ["*.jpg", "*.png"], colorHex: "#008080"),
             FileColorRule(
                 name: "Folders",
@@ -144,9 +137,7 @@ struct FileColorRuleRenderingTests {
                 target: .foldersOnly
             )
         ]))
-        FileColorRuleStore.invalidateCache()
-
-        let reloaded = FileColorRuleStore.rules
+        let reloaded = FileColorRuleStore(defaults: defaults).rules
         #expect(reloaded.rules.map(\.name) == ["Images", "Folders"])
         #expect(reloaded.rules[1].target == .foldersOnly)
         #expect(reloaded.firstMatch(name: "photo.PNG", isDirectory: false)?.colorHex == "#008080")
