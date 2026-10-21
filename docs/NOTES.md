@@ -4353,6 +4353,33 @@ The project deliberately shells out to system tools instead of taking library de
 in the **app**; pure parsing lives in the **core**, behind an injected transport so it tests
 against a fake.
 
+- **A child of a Dock-launched app gets launchd's `PATH`, and `/etc/paths.d` reaches only a login
+  shell.** `launchctl getenv PATH` is empty, so the app has `/usr/bin:/bin:/usr/sbin:/sbin`, and
+  `path_helper`, which reads `/etc/paths` and `/etc/paths.d`, runs only from `/etc/profile` and
+  `/etc/zprofile`. An installer that registers there and links nothing into `/usr/local/bin` is
+  invisible to a child until something reads those files; on this Mac that was the .NET SDK and Mono
+  (measured 2026-10-21). `ToolSearchPath` is the one reader. Two measured details: `path_helper`
+  leaves a `~` in a line literal (`~/.dotnet/tools`), and at lookup bash and `/bin/sh` expand a `~`
+  in a `PATH` entry while zsh does not.
+  - **What the user's startup files add is only learned by running them.** rustup, the python.org
+    installer, nvm, pyenv and `brew shellenv` all edit `PATH` there. A user script asks the user's
+    shell once per run, as `$SHELL -l -i -c` with `printenv PATH` sent to a file
+    (`ShellPathProbe`, `LoginShellPathReader`). Measured 2026-10-21: 4.0 ms median for
+    `bash -l -i -c` on this Mac, against 1.9 ms for `bash -c`; neither bash nor zsh rewrote its
+    history file; tcsh refuses `-l` beside other flags.
+  - **A Terminal.app identity makes an interactive zsh write Terminal.app's session files.** Given
+    `TERM_PROGRAM=Apple_Terminal` and a `TERM_SESSION_ID`, `zsh -l -i -c true` created
+    `~/.zsh_sessions/<id>.session` and `.history`, so any interactive shell Dirnex starts takes the
+    drawer's identity (`TerminalShell.environment`).
+  - **`Process` makes the child the leader of a process group of its own, and `terminate()` is not
+    enough for an interactive shell.** Measured with a startup file sleeping 30 s: after
+    `terminate()` nothing was left in the shell's group, but after `trap '' TERM` the shell was
+    still running 3 s later. `kill(pid, SIGKILL)` ended the shell and left its `sleep` behind.
+    `killpg(pid, SIGKILL)` left nothing. Even a `terminate()` that works only cuts the startup file
+    short, and the shell then runs its command with a partial environment. From Python's
+    `subprocess`, which leaves the child in the parent's group, the same `SIGTERM` was ignored
+    until the `sleep` ended, so a probe from Python does not predict what `Process` does.
+
 - **`Process.waitUntilExit()` is a poll, not a wait, and it taxes every one of them a flat ≈71 ms.**
   Measured 2026-08-16 while verifying M22's FTP walk: `/usr/bin/true` costs the same as a full FTP
   listing, and a child that has been **dead for 300 ms** still costs **71.3 ms** (8 runs,

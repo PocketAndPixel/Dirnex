@@ -14,12 +14,15 @@ import Testing
 @Suite("UserScriptRunner")
 struct UserScriptRunnerTests {
     /// Run `script` in `directory` against `selection`, awaiting the outcome. `/bin/sh` is the
-    /// shell so the tests don't depend on the host's login shell.
+    /// shell so the tests don't depend on the host's login shell, and `directory` is `HOME`, so the
+    /// login shell the runner asks for its `PATH` reads no startup file of the developer's.
     private func run(
         _ script: UserScript,
         in directory: URL,
         selection: [URL],
-        otherDirectory: String? = nil
+        otherDirectory: String? = nil,
+        shell: String = "/bin/sh",
+        systemPaths: URL = ToolSearchPath.systemRoot
     ) async -> UserScriptRunner.RunOutcome {
         let context = UserScriptContext(
             selection: selection.map(\.path),
@@ -27,7 +30,13 @@ struct UserScriptRunnerTests {
             otherDirectory: otherDirectory
         )
         return await withCheckedContinuation { continuation in
-            UserScriptRunner.run(script, context: context, shell: "/bin/sh") { outcome in
+            UserScriptRunner.run(
+                script,
+                context: context,
+                shell: shell,
+                inherited: ["HOME": directory.path, "PATH": "/usr/bin:/bin:/usr/sbin:/sbin"],
+                systemPaths: systemPaths
+            ) { outcome in
                 continuation.resume(returning: outcome)
             }
         }
@@ -150,5 +159,66 @@ struct UserScriptRunnerTests {
             encoding: .utf8
         )
         #expect(captured == hostile.path)
+    }
+
+    @Test("a tool in a folder that paths.d names runs by name")
+    func toolNamedByPathsDirectoryResolves() async throws {
+        let dir = try makeFixture(files: [])
+        defer { try? FileManager.default.removeItem(at: dir) }
+        // A stand-in `/etc` whose `paths.d` names one folder, holding the only copy of the tool.
+        // This is how the .NET SDK registers `dotnet`.
+        let tools = dir.appendingPathComponent("tools", isDirectory: true)
+        let etc = dir.appendingPathComponent("etc", isDirectory: true)
+        let pathsDirectory = etc.appendingPathComponent("paths.d", isDirectory: true)
+        try FileManager.default.createDirectory(at: tools, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(
+            at: pathsDirectory,
+            withIntermediateDirectories: true
+        )
+        let tool = tools.appendingPathComponent("dirnex-probe-tool")
+        try Data("#!/bin/sh\necho resolved > \"$1\"\n".utf8).write(to: tool)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tool.path)
+        try Data("\(tools.path)\n".utf8).write(to: pathsDirectory.appendingPathComponent("probe"))
+
+        let script = UserScript(name: "Probe", command: "dirnex-probe-tool out.txt")
+        let outcome = await run(script, in: dir, selection: [], systemPaths: etc)
+
+        #expect(outcome.failures.isEmpty)
+        let output = try String(contentsOf: dir.appendingPathComponent("out.txt"), encoding: .utf8)
+        #expect(output == "resolved\n")
+    }
+
+    @Test("the login shell's PATH comes first, so its copy of a tool wins")
+    func toolOnTheLoginShellPathResolvesFirst() async throws {
+        let dir = try makeFixture(files: [])
+        defer { try? FileManager.default.removeItem(at: dir) }
+        // Two tools of one name: one where `~/.bash_profile` puts it, as rustup's line does, and a
+        // decoy in a folder `paths.d` names, which the runner also adds.
+        let shellTools = dir.appendingPathComponent("shell-tools", isDirectory: true)
+        let systemTools = dir.appendingPathComponent("system-tools", isDirectory: true)
+        let etc = dir.appendingPathComponent("etc", isDirectory: true)
+        let pathsDirectory = etc.appendingPathComponent("paths.d", isDirectory: true)
+        for folder in [shellTools, systemTools, pathsDirectory] {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        }
+        for (folder, answer) in [(shellTools, "shell"), (systemTools, "system")] {
+            let tool = folder.appendingPathComponent("dirnex-probe-tool")
+            try Data("#!/bin/sh\necho \(answer) > \"$1\"\n".utf8).write(to: tool)
+            try FileManager.default.setAttributes(
+                [.posixPermissions: 0o755],
+                ofItemAtPath: tool.path
+            )
+        }
+        try Data("\(systemTools.path)\n".utf8)
+            .write(to: pathsDirectory.appendingPathComponent("probe"))
+        try Data("PATH=\"$HOME/shell-tools:$PATH\"\n".utf8)
+            .write(to: dir.appendingPathComponent(".bash_profile"))
+
+        let script = UserScript(name: "Probe", command: "dirnex-probe-tool out.txt")
+        let outcome = await run(script, in: dir, selection: [], shell: "/bin/bash", systemPaths: etc)
+
+        #expect(outcome.failures.isEmpty)
+        let output = try String(contentsOf: dir.appendingPathComponent("out.txt"), encoding: .utf8)
+        #expect(output == "shell\n")
     }
 }
