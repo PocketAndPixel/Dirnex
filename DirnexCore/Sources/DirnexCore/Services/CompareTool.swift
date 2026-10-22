@@ -3,10 +3,8 @@ import Foundation
 /// What Compare By Contents opens two files in: Dirnex's own compare window, or an external diff
 /// tool (PLAN.md §M31 Slice 4).
 ///
-/// Dirnex's window is always there, so there is always an answer: a Mac with none of the external
-/// tools compares in Dirnex rather than reporting that nothing is installed. It is the automatic
-/// choice only when no external tool is installed, so a user who already has Kaleidoscope, BBEdit
-/// or Xcode keeps the tool ⌥F3 opened before; anyone can pick Dirnex in Settings.
+/// Dirnex's window is always there, so it is the default and the fallback: an external tool is used
+/// only while it is the user's choice in Settings and still installed.
 public enum CompareTool: Sendable, Hashable, Identifiable {
     /// Dirnex's own read-only, side-by-side compare window.
     case dirnex
@@ -26,38 +24,29 @@ public enum CompareTool: Sendable, Hashable, Identifiable {
         }
     }
 
-    /// The name Settings shows. Every one is a product name, the same in every language.
-    public var displayName: String {
-        switch self {
-        case .dirnex: "Dirnex"
-        case let .external(tool): tool.displayName
-        }
-    }
-
-    /// The choices Settings offers besides Automatic: Dirnex first, then every installed tool in
-    /// the automatic order.
+    /// The choices Settings offers: Dirnex first, then every installed tool in
+    /// `ExternalDiffTool.known`'s order.
     public static func choices(installed: [ExternalDiffTool]) -> [CompareTool] {
         [.dirnex] + installed.map { .external($0) }
     }
 
-    /// The tool to compare with.
+    /// The tool to compare with: the user's Settings choice while it is installed, else Dirnex.
     ///
-    /// - Parameters:
-    ///   - preferredIdentifier: the user's Settings choice, or `nil`/empty for **automatic**.
-    ///   - installed: the installed external tools, in the automatic order.
+    /// A chosen tool that has since been uninstalled falls back to Dirnex rather than failing, and
+    /// the stale choice is left alone, so reinstalling the tool restores it without a visit to
+    /// Settings.
+    public static func preferred(identifier: String, installed: [ExternalDiffTool]) -> CompareTool {
+        installed.first { $0.identifier == identifier }.map { .external($0) } ?? .dirnex
+    }
+
+    /// The choice Settings shows, from what it saved: the saved tool, or Dirnex when nothing was
+    /// saved.
     ///
-    /// A chosen tool that has since been uninstalled falls through to automatic rather than
-    /// failing, and the stale preference is left alone, so reinstalling the tool restores the
-    /// choice without a visit to Settings. Automatic is the first installed tool, else Dirnex.
-    public static func preferred(
-        identifier preferredIdentifier: String?,
-        installed: [ExternalDiffTool]
-    ) -> CompareTool {
-        if preferredIdentifier == dirnexIdentifier { return .dirnex }
-        if let preferredIdentifier,
-           let match = installed.first(where: { $0.identifier == preferredIdentifier }) {
-            return .external(match)
-        }
-        return installed.first.map { .external($0) } ?? .dirnex
+    /// Settings offered **Automatic** until 2026-10-22, saved as the empty string, which opened the
+    /// first installed tool. It was the default, and Dirnex is the default now, so a saved Automatic
+    /// is Dirnex too: an external tool is used only when it was picked by name.
+    public static func identifier(saved: String?) -> String {
+        guard let saved, !saved.isEmpty else { return dirnexIdentifier }
+        return saved
     }
 }

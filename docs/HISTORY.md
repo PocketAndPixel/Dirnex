@@ -15792,6 +15792,94 @@ up first.
   imported, and all 68 keys then compared unchanged. The servers were stopped and their host key
   unpinned, and the app removed its `DirnexRemote` copies on quit.
 
+**2026-10-22: Dirnex is the default compare tool, and its window opens over the app.** Asked for
+with two screenshots: Settings reading "Automatic (FileMerge)", and a compare window off to one side
+of the browser window. Automatic opened the first installed external tool, so any Mac with Xcode got
+FileMerge. A key that was never written now reads as `dirnex`. Automatic stays in the picker, and
+choosing it saves the empty string, so a user who picked it keeps it.
+
+The window now opens the way the dialogs do (`DialogWindowPlacement`): where it was last left,
+otherwise centered on the browser window rather than the screen. A remembered frame on a display
+the browser window is not on is ignored, and the window centers instead. The window is resizable, so
+its size comes back too. The autosave name moved from `Dirnex.CompareWindow` to
+`Dialog.CompareWindow`, so a frame saved before is forgotten once. Placement moved from `init` to
+`present`, so a window a test builds registers no autosave name.
+
+- `CompareWiringTests` (app): a fresh install's tool is Dirnex, and a saved empty string stays
+  Automatic. Full runs green (4163 core, 1830 app).
+- **Verified live** on the Debug build, launched by path with no other copy running. The compare
+  tool's key was deleted, and FileMerge is installed.
+  - ⌥F3's command on two marked files opened Dirnex's window, not FileMerge. Settings read "Compare
+    files with: Dirnex".
+  - The window's center matched the browser window's, (702, 568) in screen points. The screen's
+    center is at x = 864.
+  - A real drag by the title bar (full-screen control) saved the new frame. Closed and opened again,
+    the window came back at the same top. The drag had left it 12 pt past the screen's left edge,
+    and AppKit pulled it back to x = 0 on restore.
+  - A frame seeded at 900×600 came back at that size and place after a relaunch.
+  - Background computer-use could not move the window at all (docs/LIVE-VERIFICATION.md).
+  - The run changed five keys of the shared defaults domain: frecency, the compare tool, the left
+    tabs, the compare window's frame and `SULastCheckTime`. The domain was cleared and the backup
+    imported, and all 70 keys then compared unchanged.
+
+**2026-10-22: Automatic is gone from the compare picker.** Asked for straight after the entry above,
+with a screenshot of the picker reading "Automatic (FileMerge)" over Dirnex and FileMerge. With
+Dirnex the default, the row only repeated the rows under it, and all it added was switching tools by
+itself when another was installed. The picker now lists Dirnex, then each installed tool.
+
+- **A saved Automatic is Dirnex too** (`CompareTool.identifier(saved:)`), like nothing saved. It
+  was the default until the entry above, so an external tool is now used only when it was picked by
+  name. The first version turned a saved Automatic into the tool it opened (FileMerge on a Mac with
+  Xcode), which kept that user off Dirnex; Oleg asked for Dirnex by default, so it was dropped
+  before landing. Nothing is written back: the empty string reads as Dirnex every time.
+- **A chosen tool that is uninstalled now compares in Dirnex**, where it used to fall to the first
+  installed tool. The choice is kept, so reinstalling the tool brings it back. Settings shows the
+  Dirnex row meanwhile, which is what ⌥F3 opens, and showing it saves nothing.
+- The footer drops its sentence about Automatic and says the external tools appear once installed,
+  in all 14 languages. "Automatic" and "Automatic (%@)" stay in the catalog for the editor picker.
+- **Tests:** `CompareToolTests` (core) pin the fallback to Dirnex and the saved-value rule: nothing
+  saved and a saved Automatic are Dirnex, and a saved tool is kept even while uninstalled.
+  `CompareWiringTests` (app) pins that a fresh install and a saved Automatic both resolve to Dirnex
+  with FileMerge installed. Full runs green (4163 core, 1830 app), and `check_localization_keys.py`
+  found all 1146 extracted keys in the catalogs.
+- **Verified live** on the Debug build, launched by path with no other copy running:
+  - With a saved empty string and FileMerge installed, ⌥F3's command opened Dirnex's window and
+    FileMerge did not start. Settings showed Dirnex, and the empty string was still saved after
+    quitting.
+  - With `kaleidoscope` saved and Kaleidoscope not installed, ⌥F3's command opened Dirnex's window
+    and FileMerge did not start. Settings showed Dirnex, and `kaleidoscope` was still saved after
+    Settings had been opened and after quitting.
+  - The first version's picker, opened with full-screen control, listed Dirnex and FileMerge and no
+    Automatic. The rows are unchanged since.
+  - A Debug copy launched outside the session was running on the binary from before this change.
+    It was quit before the backup, so the restore kept the session it saved. Each run changed the
+    same five keys as above, and after each restore all 70 compared unchanged.
+
+**2026-10-22: the picker calls Dirnex's window "Built-in".** Asked for with a screenshot of
+"Compare files with: Dirnex": the other rows are apps, and Dirnex is the app the picker is in, not a
+compare tool. "Embedded" was the other name on the table. "Built-in" won because it is the word
+macOS already uses for a Mac's own parts ("Built-in Display") and reads as a choice beside app
+names; "(Dirnex)" after it says nothing inside Dirnex's own Settings.
+
+- **Only the label changed.** The saved identifier is still `dirnex`, so no setting moves. The name
+  left the core, where `CompareTool.displayName` returned "Dirnex" as a product name for every
+  language, because the core ships no translations; the app's `CompareTool.settingsTitle` names the
+  row now, next to `compareItemTitle`. Nothing else showed that name: "Opening in …" and "Compare
+  with …" only ever name an external tool.
+- **Translated in all 14 languages.** Russian, Ukrainian and Polish name a noun ("Встроенное
+  средство", "Вбудований засіб", "Wbudowane narzędzie"), since a bare adjective has no gender to take
+  after "Compare files with" there. The footer's middle sentence says "Built-in shows them side by
+  side in a Dirnex window", with the same word in each language.
+- **Tests:** `CompareWiringTests.settingsTitles` (app) pins that an external tool's row keeps its
+  name, that Dirnex's row is the catalog's "Built-in" in the running language, and, read through
+  each compiled `.lproj`, that all 13 other languages translate it. Full runs green (4163 core,
+  1831 app), and `check_localization_keys.py` found all 1147 extracted keys in the catalogs.
+- **Verified live** on the Debug build, launched by path after quitting a Debug copy started outside
+  the session on the previous binary. With `dirnex` saved, Settings read "Compare files with:
+  Built-in" under the new footer. Launched with `-AppleLanguages (de)`, it read "Dateien vergleichen
+  mit: Integriert", and the footer's three lines fit above "Dateien bearbeiten mit". The two launches
+  changed frecency and `SULastCheckTime`; after the restore all 70 keys compared unchanged.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

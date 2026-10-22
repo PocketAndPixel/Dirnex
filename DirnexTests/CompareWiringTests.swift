@@ -9,7 +9,7 @@ import Testing
 /// is `CompareTool`'s and tested in the core; these pin what the app does around it: that the
 /// window names a file where it lives rather than the copy that was read, that a file it cannot
 /// read is named in the alert, that the Synchronize sheet's row action now fetches a server's file
-/// first, and where the conflict dialog offers a comparison at all.
+/// first, where the conflict dialog offers a comparison at all, and what Settings starts on.
 ///
 /// Assertions on alert wording look for the file's *name* rather than a sentence, because the app
 /// test target inherits the developer's own `AppleLanguages` pin (docs/NOTES.md ▸ Localization).
@@ -211,5 +211,48 @@ struct CompareWiringTests {
         #expect(controller.window?.delegate === controller)
         #expect(controller.responds(to: #selector(NSWindowDelegate.windowDidBecomeKey(_:))))
         #expect(controller.responds(to: #selector(NSWindowDelegate.windowDidResignKey(_:))))
+    }
+
+    /// Settings offered Automatic until 2026-10-22, saved as the empty string, and it opened the
+    /// first installed tool. Dirnex is the default now, for a fresh install and a saved Automatic
+    /// alike, whatever is installed.
+    @Test("a fresh install and a saved Automatic both compare in Dirnex, with a tool installed")
+    func dirnexIsTheDefault() {
+        let automatic = ScratchDefaults.fresh("automatic")
+        automatic.set("", forKey: AppPreferences.Keys.diffToolIdentifier)
+        let fileMerge = ExternalDiffTool(
+            identifier: "filemerge",
+            displayName: "FileMerge",
+            candidateExecutablePaths: ["/usr/bin/opendiff"]
+        )
+        for defaults in [ScratchDefaults.fresh("fresh"), automatic] {
+            let chosen = AppPreferences(defaults: defaults).diffToolIdentifier
+            #expect(chosen == CompareTool.dirnexIdentifier)
+            #expect(CompareTool.preferred(identifier: chosen, installed: [fileMerge]) == .dirnex)
+        }
+    }
+
+    /// The other rows are apps and Dirnex's window is not one, so its row says "Built-in". Read
+    /// through each compiled `.lproj`, because the test target inherits the developer's language.
+    @Test("Dirnex's row says Built-in in every language; a tool's row keeps its name")
+    func settingsTitles() throws {
+        let fileMerge = ExternalDiffTool(
+            identifier: "filemerge",
+            displayName: "FileMerge",
+            candidateExecutablePaths: ["/usr/bin/opendiff"]
+        )
+        #expect(CompareTool.external(fileMerge).settingsTitle == "FileMerge")
+        #expect(
+            CompareTool.dirnex.settingsTitle
+                == Bundle.main.localizedString(forKey: "Built-in", value: nil, table: nil)
+        )
+        let languages = Bundle.main.localizations.filter { $0 != "Base" }
+        #expect(languages.count == 14)
+        for language in languages {
+            let path = try #require(Bundle.main.path(forResource: language, ofType: "lproj"))
+            let title = try #require(Bundle(path: path))
+                .localizedString(forKey: "Built-in", value: nil, table: nil)
+            #expect((title == "Built-in") == (language == "en"), "\(language): \(title)")
+        }
     }
 }
