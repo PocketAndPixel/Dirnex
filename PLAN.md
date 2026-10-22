@@ -304,6 +304,60 @@ Expected to be left undone, each for its own reason: **Depth infinity**; **locks
 measurable as a per-server capability; **Apache's offset PUT** as a segmented upload; **quota**;
 **CalDAV, CardDAV, versioning and WebDAV ACLs**; and **a Trash**, which the protocol does not have.
 
+#### Progress
+
+**2026-10-23: Slice 1 landed** (core only; the app is untouched).
+
+- **Core:**
+  - `WebDAVLocation`: the descriptor `davs://` or `dav://` + `<user>@<host>:<port><root>`, the
+    root stored decoded in one normal form, the mapping between the pane's paths and the server's
+    (the root compared as bytes), request URLs, and the Keychain item `<scheme>:<user>@<host>:<port>`.
+  - `WebDAVHref`: an href decoded segment by segment into a server path, byte comparison of paths,
+    and the strict encoding for requests.
+  - `WebDAVMultistatusParser`: elements by namespace URI, values only from a 2xx `propstat`, an
+    href only directly under `<response>`, an outcome row reported once per href it lists, and
+    RFC 9110's three HTTP date forms beside RFC 3339.
+  - `WebDAVListing`: the folder found by decoded bytes, the rows directly inside it, and each row
+    as a `FileEntry`.
+  - `WebDAVResponseError`: `WebDAVMethod`, `curl`'s exit codes below HTTP, and a refusal
+    classified by status, method and the members a 207 or 424 body names.
+- **Tests:** 68 in five new suites. The fixtures are 13 real bodies under `Fixtures/WebDAV`: the
+  same folder made on the NAS and on macOS's Apache and listed both ways, the account root, a
+  listing that holds a locked file, and the refusals.
+- **Measured while capturing them:**
+  - **A tag read in the same second its file was written is weak, and `If-Match` with it answers
+    412** for a file nobody else touched. Two seconds later the unchanged file reads back
+    `"6-65e74002dd28e"` where it read `W/"6-65e74002dd28e"`, and `If-Match` with the `W/` dropped
+    answered 204. So Slice 4's write-back cannot send the tag as it was read, and two readings of
+    one file have to be compared without the `W/`. Which of the two fixes it takes, re-reading or
+    dropping the marker, is Slice 4's decision; the second leans on Apache's way of making tags.
+  - **A lock stops only writes.** With a LOCK held on a file, GET answered 200, PROPFIND 207, and a
+    COPY *from* it 201. A 423 therefore first arrives with the write half.
+  - The two servers return the same hrefs in different orders, and macOS's Apache sends no
+    `getcontenttype` for a collection where the NAS sends `httpd/unix-directory`. A MOVE of a folder
+    holding a locked file answers the same 424 body as a DELETE.
+- **Decided in the slice:**
+  - **The user name is split at the authority's last `@`, after the root is cut off at the first
+    `/`.** Hosted services log in with an e-mail address, and Nextcloud's root contains it again.
+  - **Four kinds of href are refused rather than repaired, and counted:** a segment that decodes
+    to contain `/`, a `.` or `..` segment (F5 would write into the parent folder), bytes that are not
+    UTF-8, and a relative href, which no server measured sends.
+  - **When no row is the folder that was asked for, the folder is the row every other row sits
+    in.** That is what a reverse proxy at a prefix the server does not know produces, and the
+    entries are rebuilt from the folder the pane asked for. Rows with no such folder are refused.
+  - **A lock maps to `EBUSY` until Slice 4.** Its own sentence needs a `VFSUnsupportedReason` and
+    14 translations, and only writes can meet it.
+  - An empty user name is a location without credentials, for a public share.
+- **Found on the way:** the test meant to pin the href rule passed with the rule removed. A row of
+  properties takes its first href, and the lock token comes after the file's own, so the fixture
+  could not tell. The rule decides only for an outcome row whose `<error>` carries an href (RFC 4918
+  §16), and a test of that shape now fails without it.
+- **Negative controls:** each of four deliberate breaks fails tests: accepting every `propstat`,
+  taking an href anywhere, comparing paths as `String`s, and decoding `+` as a space. In the tests
+  themselves, Swift's `==` and `hasPrefix` are first shown to call the two spellings of é equal,
+  S3's form decoder is shown to rename `d+e`, the fixture's text is checked to spell its properties
+  `lp1:`, and a 424 without its body is shown not to be a lock.
+
 ### Still open
 
 Everything through M31 is shipped, and the record of it — the milestone checklists, the sixty
