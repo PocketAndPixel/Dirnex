@@ -8650,6 +8650,11 @@ ships a third-party binary. All measured 2026-09-20 against two HERO7 files befo
     a missing final newline.
   - `--minimal` can be slow: 12.7 s against 0.19 s on two 100 000-line files over a ten-line
     alphabet.
+- **In a `-U0` hunk header, a count of 0 moves the start back one line.** `@@ -4,0 +5,4 @@` inserts
+  after old line 4, so the empty range is at 0-based index 4. `@@ -3,4 +2,0 @@` removes old lines
+  3–6 (indices 2..<6), and the new side's empty range is at index 2. With a count above zero, the
+  start is the 1-based first line, and a missing `,count` means 1. M31 read git's block placement
+  out of `git log -p -U0` this way.
 - **When a diff disagrees with its oracle, compare inserted minus removed first.** That number is
   the difference in line count, so if it differs, the two sides are reading different lines rather
   than aligning the same lines differently. M31's corpus test met it on its first run: the test's
