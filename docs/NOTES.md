@@ -1547,6 +1547,16 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   housing the menu bar drops into the band and only the title bar covers content. The title bar's
   height is the close button's superview: 28 pt for a bare window, 32 pt for Dirnex, whose titlebar
   accessories grow it. An accessory with a hand-set 40 pt frame did not grow it.
+- **A window opened from an app-modal window draws but takes no click or key until that window
+  closes, unless it overrides `worksWhenModal`.** The Synchronize window is app-modal and opens the
+  M31 compare window. Probed 2026-10-22 with a throwaway app: a mouse-down posted to a plain window
+  inside `beginModalSession` was dropped, and one posted to an `NSWindow` subclass returning `true`
+  from `worksWhenModal` arrived. Apple's documentation says only `NSPanel` subclasses should override
+  it; on a plain `NSWindow` subclass it works (`CompareWindow`).
+  - **The harness's own first two runs measured nothing**: with no modal session at all, neither
+    window got the click either. A synthetic click on a window that is not key only makes it key, and
+    the view never sees it unless it answers `acceptsFirstMouse`. Run the no-session control first;
+    the comparison means something only once that one passes.
 
 ### Alerts, sheets and dialogs
 
@@ -8667,8 +8677,15 @@ ships a third-party binary. All measured 2026-09-20 against two HERO7 files befo
   eleven more, and `git` has 78 links. So `isExecutableFile` on one says nothing about whether the
   tool is installed. Measured 2026-10-22 with `DEVELOPER_DIR=/Library/Developer/CommandLineTools`:
   `opendiff` exits 1 with *"tool 'opendiff' requires Xcode"*, because FileMerge ships only inside
-  Xcode. `ExternalDiffTool.fileMerge` still probes the shim, so it counts as installed everywhere;
-  M31 Slice 4 fixes the detection (PLAN.md §M31).
+  Xcode. Until M31 Slice 4, `ExternalDiffTool.fileMerge` probed the shim, so it counted as installed
+  everywhere.
+- **Xcode's own `opendiff`, run directly, opens FileMerge whichever developer directory is selected.**
+  Measured 2026-10-22: `Xcode.app/Contents/Developer/usr/bin/opendiff a b`, run with
+  `DEVELOPER_DIR=/Library/Developer/CommandLineTools` and an otherwise empty environment, exited 0
+  and FileMerge opened with `-left a -right b`; the shim under the same setting exits 1. So
+  `ExternalDiffTool.fileMerge` asks LaunchServices for `com.apple.FileMerge`, which lives in
+  `Xcode.app/Contents/Applications`, and runs the `opendiff` two levels up in the same Xcode. It finds
+  an Xcode under any name or location and never runs a shim.
 
 ### git
 

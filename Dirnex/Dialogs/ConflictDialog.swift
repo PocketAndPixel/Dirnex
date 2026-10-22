@@ -9,8 +9,8 @@ import QuickLookThumbnailing
 /// choice to every remaining conflict.
 ///
 /// Presented as a sheet on the pane's window; the engine's resolver (`ConflictPrompter`)
-/// awaits the answer while its copy thread is parked. Full text diffing is still deferred —
-/// the thumbnails already give images real previews and text files a content peek.
+/// awaits the answer while its copy thread is parked. Two local files can also be compared from
+/// it, in Dirnex's compare window or the diff tool Settings names (PLAN.md §M31 Slice 4).
 @MainActor
 enum ConflictDialog {
     /// Present the dialog for one conflict and return the chosen resolution plus whether the
@@ -23,11 +23,14 @@ enum ConflictDialog {
         // Fetch both thumbnails before showing the sheet so it appears fully rendered.
         async let sourceThumbnail = thumbnail(for: context.source, scale: scale)
         async let existingThumbnail = thumbnail(for: context.existing, scale: scale)
+        let tool = ExternalDiffLauncher.preferredTool()
         let accessory = ConflictComparisonView(
             context: context,
             sourceThumbnail: await sourceThumbnail,
-            existingThumbnail: await existingThumbnail
+            existingThumbnail: await existingThumbnail,
+            compareTitle: tool.compareItemTitle
         )
+        accessory.onCompare = { compare(context, with: tool, over: window) }
 
         let alert = NSAlert()
         alert.alertStyle = .warning
@@ -53,6 +56,49 @@ enum ConflictDialog {
         let response = await runAlert(alert, in: window)
         let applyToAll = alert.suppressionButton?.state == .on
         return (resolution(for: response), applyToAll)
+    }
+
+    /// Compare the item already there (left) with the one coming in (right), so the window reads as
+    /// what Replace would change: red is what would be lost, green what would arrive. The dialog
+    /// stays up; a failure is an alert on top of it.
+    private static func compare(
+        _ context: ConflictContext,
+        with tool: CompareTool,
+        over window: NSWindow?
+    ) {
+        let existing = context.existing.path
+        let incoming = context.source.path
+        let failed: @MainActor (String) -> Void = { detail in
+            let alert = NSAlert()
+            alert.alertStyle = .warning
+            alert.messageText = CompareOpener.failureTitle
+            alert.informativeText = detail
+            alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
+            alert.enableEscapeToCancel()
+            if let host = NSAlert.sheetHost(over: window) {
+                alert.beginSheetModal(for: host)
+            } else {
+                alert.runModal()
+            }
+        }
+        switch tool {
+        case .dirnex:
+            CompareOpener.openWindow(
+                CompareFile(path: existing, origin: existing),
+                detail: existing.path,
+                CompareFile(path: incoming, origin: incoming),
+                detail: incoming.path,
+                failed: failed
+            )
+        case let .external(external):
+            ExternalDiffLauncher.compare(with: external, existing.path, incoming.path) { result in
+                guard case .failure = result else { return }
+                failed(String(
+                    localized: "\(external.displayName) is installed but couldn’t be launched.",
+                    comment: "Compare failure detail; %@ is the diff tool name."
+                ))
+            }
+        }
     }
 
     /// Show the alert as a sheet on the window, or app-modal if there is none (window closed

@@ -12,6 +12,16 @@ struct CompareSource: Sendable {
     let language: SyntaxLanguage?
 }
 
+/// The compare window, which takes clicks and keys while another window is modal.
+///
+/// The Synchronize window is app-modal and opens comparisons, and a plain window opened from it
+/// draws but takes no click or key until the Synchronize window closes. Probed 2026-10-22 with a
+/// modal session: a plain window's click was dropped, this one's arrived, and with no session both
+/// did (PLAN.md §M31 Slice 4).
+final class CompareWindow: NSWindow {
+    override var worksWhenModal: Bool { true }
+}
+
 /// Dirnex's own compare window (PLAN.md §M31 Slice 3): two files side by side, level row for row,
 /// the changes marked, and the keyboard going from one change to the next.
 ///
@@ -37,6 +47,8 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
     let overview = CompareOverviewView()
     private(set) var sync: CompareScrollSync?
     var keyMonitor: Any?
+    /// Watches for the end of the modal window this one was raised over (`+Modal`).
+    var modalLevelObserver: (any NSObjectProtocol)?
     /// Bumped by every computation, so a slow earlier one cannot land over a newer one.
     private var generation = 0
 
@@ -45,6 +57,7 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
     static func present(left: CompareSource, right: CompareSource) -> CompareWindowController {
         let controller = CompareWindowController(left: left, right: right)
         open.append(controller)
+        controller.raiseAboveModalWindow()
         controller.showWindow(nil)
         controller.compute(options: LineDiffOptions())
         return controller
@@ -53,7 +66,7 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
     init(left: CompareSource, right: CompareSource) {
         self.left = left
         self.right = right
-        let window = NSWindow(
+        let window = CompareWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1100, height: 720),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
@@ -228,15 +241,8 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
 
     // MARK: - Window
 
-    func windowDidBecomeKey(_ notification: Notification) {
-        installKeyMonitor()
-    }
-
-    func windowDidResignKey(_ notification: Notification) {
-        removeKeyMonitor()
-    }
-
     func windowWillClose(_ notification: Notification) {
+        stopWatchingModalWindow()
         removeKeyMonitor()
         sync?.stop()
         Self.open.removeAll { $0 === self }

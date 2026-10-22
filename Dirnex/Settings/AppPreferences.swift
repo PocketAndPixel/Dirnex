@@ -356,11 +356,12 @@ final class AppPreferences: ObservableObject {
         didSet { defaults.set(focusOpenedSearchDirectory, forKey: Keys.focusOpenedSearchDirectory) }
     }
 
-    /// Operations ▸ which external tool "Compare By Contents" hands its two files to, as an
-    /// `ExternalDiffTool.identifier`. The empty string means **automatic** — the default — and
-    /// leaves the choice to `ExternalDiffTool.preferred`'s install order (Kaleidoscope, BBEdit,
-    /// FileMerge). A named tool wins whenever it is still installed; uninstall it and the
-    /// automatic order quietly takes over again rather than the command breaking.
+    /// Operations ▸ what "Compare By Contents" shows its two files in, as a
+    /// `CompareTool.identifier`: `dirnex` for Dirnex's own window, or an external tool's. The
+    /// empty string means **automatic** — the default — and leaves the choice to
+    /// `CompareTool.preferred`'s install order (Kaleidoscope, BBEdit, FileMerge, then Dirnex). A
+    /// named tool wins whenever it is still installed; uninstall it and the automatic order quietly
+    /// takes over again rather than the command breaking.
     @Published var diffToolIdentifier: String {
         didSet { defaults.set(diffToolIdentifier, forKey: Keys.diffToolIdentifier) }
     }

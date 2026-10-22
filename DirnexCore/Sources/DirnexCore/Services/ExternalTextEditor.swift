@@ -135,7 +135,7 @@ public extension ExternalTextEditor {
     /// already does.
     ///
     /// A chosen editor that has since been uninstalled falls through to automatic rather than
-    /// failing, matching `ExternalDiffTool.preferred`; the stale preference is left alone, so
+    /// failing, matching `CompareTool.preferred`; the stale preference is left alone, so
     /// reinstalling the editor restores the choice without a visit to Settings.
     static func resolve(
         identifier preferredIdentifier: String?,

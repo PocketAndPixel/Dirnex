@@ -29,7 +29,7 @@ struct ExternalDiffToolTests {
 
     @Test("invocation is nil when no candidate launcher is installed")
     func invocationNilWhenMissing() {
-        let invocation = ExternalDiffTool.fileMerge.invocation(
+        let invocation = ExternalDiffTool.kaleidoscope.invocation(
             comparing: "/a",
             with: "/b",
             executableExists: probe(installed: [])
@@ -52,50 +52,116 @@ struct ExternalDiffToolTests {
         #expect(intel == "/usr/local/bin/ksdiff")
     }
 
+    /// Where LaunchServices finds FileMerge when Xcode is installed in the usual place.
+    private static let xcodeFileMerge = "/Applications/Xcode.app/Contents/Applications/FileMerge.app"
+    /// The `opendiff` that ships in that same Xcode.
+    private static let xcodeOpendiff = "/Applications/Xcode.app/Contents/Developer/usr/bin/opendiff"
+
+    /// A LaunchServices stand-in that knows FileMerge at `path`, or nothing.
+    private func bundles(fileMergeAt path: String?) -> (String) -> String? {
+        { $0 == ExternalDiffTool.fileMergeBundleIdentifier ? path : nil }
+    }
+
     @Test("installed returns only tools with an installed launcher, in preference order")
     func installedFiltersAndOrders() {
         // FileMerge + BBEdit present, Kaleidoscope absent.
         let installed = ExternalDiffTool.installed(
-            where: probe(installed: ["/usr/bin/opendiff", "/usr/local/bin/bbdiff"])
+            locateBundle: bundles(fileMergeAt: Self.xcodeFileMerge),
+            where: probe(installed: [Self.xcodeOpendiff, "/usr/local/bin/bbdiff"])
         )
         #expect(installed.map(\.identifier) == ["bbedit", "filemerge"])
     }
 
-    @Test("preferred honors an installed preference, else falls back to the first installed")
-    func preferredHonorsChoice() {
-        let all = probe(installed: [
-            "/usr/bin/opendiff", "/usr/local/bin/bbdiff", "/opt/homebrew/bin/ksdiff"
+    @Test("FileMerge launches the opendiff in the Xcode that holds it")
+    func fileMergeUsesXcodesOwnOpendiff() {
+        let tool = ExternalDiffTool.fileMerge(locateBundle: bundles(
+            fileMergeAt: "/Users/me/Applications/Xcode-beta.app/Contents/Applications/FileMerge.app"
+        ))
+        #expect(tool.candidateExecutablePaths == [
+            "/Users/me/Applications/Xcode-beta.app/Contents/Developer/usr/bin/opendiff"
         ])
-        // Explicit, installed preference wins even though Kaleidoscope ranks higher.
-        #expect(ExternalDiffTool.preferred(identifier: "bbedit", where: all)?.identifier == "bbedit")
-        // No preference → the highest-ranked installed tool (Kaleidoscope).
-        #expect(ExternalDiffTool.preferred(where: all)?.identifier == "kaleidoscope")
     }
 
-    @Test("preferred falls back when the chosen tool is not installed")
-    func preferredFallsBackWhenChosenMissing() {
-        let onlyFileMerge = probe(installed: ["/usr/bin/opendiff"])
-        // Kaleidoscope requested but not installed → fall back to the only installed tool.
-        #expect(
-            ExternalDiffTool.preferred(identifier: "kaleidoscope", where: onlyFileMerge)?.identifier
-                == "filemerge"
+    /// The case M31 Slice 4 fixed: `/usr/bin/opendiff` is a shim on every Mac, and with only the
+    /// Command Line Tools it exits 1 with "tool 'opendiff' requires Xcode".
+    @Test("FileMerge is not installed on a Mac with the opendiff shim and no Xcode")
+    func shimAloneIsNotFileMerge() {
+        let shimOnly = probe(installed: ["/usr/bin/opendiff"])
+        let installed = ExternalDiffTool.installed(
+            locateBundle: bundles(fileMergeAt: nil),
+            where: shimOnly
         )
+        #expect(installed.isEmpty)
+        #expect(CompareTool.preferred(identifier: "filemerge", installed: installed) == .dirnex)
     }
 
-    @Test("preferred is nil when nothing is installed")
-    func preferredNilWhenNoneInstalled() {
-        #expect(ExternalDiffTool.preferred(where: probe(installed: [])) == nil)
-        #expect(ExternalDiffTool.installed(where: probe(installed: [])).isEmpty)
+    @Test("FileMerge found outside an Xcode, with no opendiff beside it, is not installed")
+    func fileMergeWithoutItsXcodeIsNotInstalled() {
+        let installed = ExternalDiffTool.installed(
+            locateBundle: bundles(fileMergeAt: "/Applications/FileMerge.app"),
+            where: probe(installed: ["/usr/bin/opendiff", Self.xcodeOpendiff])
+        )
+        #expect(installed.isEmpty)
     }
 
-    @Test("the known registry has unique identifiers and non-empty candidate paths")
+    @Test("the known registry has unique identifiers, Dirnex's among them, and absolute paths")
     func registryIsWellFormed() {
-        let identifiers = ExternalDiffTool.known.map(\.identifier)
+        let known = ExternalDiffTool.known(locateBundle: bundles(fileMergeAt: Self.xcodeFileMerge))
+        let identifiers = known.map(\.identifier) + [CompareTool.dirnexIdentifier]
         #expect(Set(identifiers).count == identifiers.count)
-        for tool in ExternalDiffTool.known {
+        for tool in known {
             #expect(!tool.candidateExecutablePaths.isEmpty)
             #expect(!tool.displayName.isEmpty)
             #expect(tool.candidateExecutablePaths.allSatisfy { $0.hasPrefix("/") })
         }
+    }
+}
+
+@Suite("CompareTool")
+struct CompareToolTests {
+    @Test("an installed preference wins, else the first installed tool")
+    func preferredHonorsChoice() {
+        let installed: [ExternalDiffTool] = [.kaleidoscope, .bbEdit]
+        // Explicit, installed preference wins even though Kaleidoscope ranks higher.
+        #expect(
+            CompareTool.preferred(identifier: "bbedit", installed: installed) == .external(.bbEdit)
+        )
+        // No preference → the highest-ranked installed tool.
+        #expect(
+            CompareTool.preferred(identifier: nil, installed: installed) == .external(.kaleidoscope)
+        )
+        #expect(
+            CompareTool.preferred(identifier: "", installed: installed) == .external(.kaleidoscope)
+        )
+    }
+
+    @Test("a chosen tool that is no longer installed falls back to automatic")
+    func preferredFallsBackWhenChosenMissing() {
+        #expect(
+            CompareTool.preferred(identifier: "kaleidoscope", installed: [.bbEdit]) == .external(
+                .bbEdit
+            )
+        )
+    }
+
+    @Test("Dirnex is automatic only when nothing is installed")
+    func dirnexIsTheLastResort() {
+        #expect(CompareTool.preferred(identifier: nil, installed: []) == .dirnex)
+        #expect(CompareTool.preferred(identifier: "bbedit", installed: []) == .dirnex)
+        #expect(CompareTool.preferred(identifier: nil, installed: [.bbEdit]) != .dirnex)
+    }
+
+    @Test("Dirnex chosen in Settings wins over every installed tool")
+    func dirnexChosenWins() {
+        let installed: [ExternalDiffTool] = [.kaleidoscope, .bbEdit]
+        #expect(CompareTool.preferred(identifier: "dirnex", installed: installed) == .dirnex)
+    }
+
+    @Test("Settings offers Dirnex first, then the installed tools in order")
+    func choicesPutDirnexFirst() {
+        #expect(CompareTool.choices(installed: [.kaleidoscope, .bbEdit]).map(\.identifier)
+            == ["dirnex", "kaleidoscope", "bbedit"])
+        #expect(CompareTool.choices(installed: []) == [.dirnex])
+        #expect(CompareTool.dirnex.displayName == "Dirnex")
     }
 }

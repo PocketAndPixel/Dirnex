@@ -555,10 +555,13 @@ extract, and the names on disk are untouched until something *rewrites* the arch
 paste), which repacks them as UTF-8 and flagged — readable everywhere afterwards.
 
 <sup>w</sup> Both sides are brought down first, as one queued job with a determinate bar and a Stop
-(PLAN.md §M24 Slice 4) — `ByteComparator` still only ever sees real local paths, and the diff tool is
-handed the copies, which keep their real names. Two limits, both about what the pair *is*: a folder
-has no contents to compare, and a diff tool has to be installed before anything is fetched (the tool
-question is asked first, so a Mac with none pays for no download).
+(PLAN.md §M24 Slice 4) — `ByteComparator` still only ever sees real local paths. Dirnex's own compare
+window (PLAN.md §M31) names each side where it lives, the server's or the archive's own path, and an
+external diff tool is handed the copies, which keep their real names. The limits are about what the
+pair *is*: a folder has no contents to compare, and Dirnex's window compares text files of up to
+64 MiB, refusing a binary or larger file by name (an external tool takes anything, and asks first past
+64 MiB). The Synchronize sheet's Compare Contents… brings its pair down the same way since M31
+Slice 4; it used to hand a server pair's own paths to the diff tool.
 
 <sup>x</sup> A side stopped having to be on this disk at PLAN.md §M25 Slice 5c, and what it gains is
 comparison by **size**, which is honest anywhere. Comparing by **timestamp** is withdrawn the moment

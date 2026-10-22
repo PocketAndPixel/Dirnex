@@ -1870,6 +1870,275 @@
         }
       }
     },
+    "%lld changes": {
+      "comment": "Compare window: how many changes; %lld is the count.",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Änderung"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Änderungen"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld change"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld changes"
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld cambio"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld cambios"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld modification"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld modifications"
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld modifica"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld modifiche"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 件の変更"
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "변경 %lld개"
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld wijziging"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld wijzigingen"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld zmiana"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld zmiany"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld zmian"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld zmiany"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld alteração"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld alterações"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld изменение"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld изменения"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld изменений"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld изменения"
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld зміна"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld зміни"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld змін"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld зміни"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 处更改"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 處變更"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld commits to pull": {
       "comment": "Git branch tooltip; %lld commits are behind upstream. Plural.",
       "localizations": {
@@ -16388,7 +16657,7 @@
       }
     },
     "Automatic (%@)": {
-      "comment": "Editor picker option naming the automatic choice. %@ is an app name.",
+      "comment": "Picker option naming the automatic choice. %@ is an app name.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -20635,6 +20904,95 @@
         }
       }
     },
+    "Change %lld of %lld": {
+      "comment": "Compare window: the change on screen; the first %lld is its position, the second the count.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Änderung %1$lld von %2$lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change %lld of %lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambio %1$lld de %2$lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modification %1$lld sur %2$lld"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifica %1$lld di %2$lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更 %1$lld / %2$lld"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변경 %1$lld/%2$lld"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wijziging %1$lld van %2$lld"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zmiana %1$lld z %2$lld"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alteração %1$lld de %2$lld"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменение %1$lld из %2$lld"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зміна %1$lld з %2$lld"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第 %1$lld 处更改，共 %2$lld 处"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第 %1$lld 處變更，共 %2$lld 處"
+          }
+        }
+      }
+    },
     "Change Permissions": {
       "comment": "ACL right writesecurity: change the ACL.",
       "localizations": {
@@ -23994,97 +24352,8 @@
         }
       }
     },
-    "Compare By Contents (⌥F3) needs a diff tool. Install FileMerge (part of Xcode), Kaleidoscope, or BBEdit, then reopen Settings.": {
-      "comment": "Operations footer: no diff tool installed.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "„Nach Inhalt vergleichen“ (⌥F3) benötigt ein Diff-Tool. Installieren Sie FileMerge (Teil von Xcode), Kaleidoscope oder BBEdit und öffnen Sie die Einstellungen erneut."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Compare By Contents (⌥F3) needs a diff tool. Install FileMerge (part of Xcode), Kaleidoscope, or BBEdit, then reopen Settings."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Comparar por contenido (⌥F3) necesita una herramienta de comparación. Instala FileMerge (parte de Xcode), Kaleidoscope o BBEdit y vuelve a abrir Ajustes."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Comparer par contenu (⌥F3) nécessite un outil de comparaison. Installez FileMerge (fourni avec Xcode), Kaleidoscope ou BBEdit, puis rouvrez Réglages."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Confronta contenuti (⌥F3) richiede uno strumento diff. Installa FileMerge (parte di Xcode), Kaleidoscope o BBEdit, poi riapri Impostazioni."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“内容で比較”（⌥F3）にはdiffツールが必要です。FileMerge（Xcodeの一部）、Kaleidoscope、またはBBEditをインストールしてから“設定”を開き直してください。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "내용별로 비교하기(⌥F3)는 차이 도구가 필요합니다. FileMerge(Xcode의 일부), Kaleidoscope 또는 BBEdit를 설치한 다음 설정을 다시 엽니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vergelijk op inhoud (⌥F3) heeft een diff-tool nodig. Installeer FileMerge (een onderdeel van Xcode), Kaleidoscope of BBEdit, en open vervolgens de Instellingen opnieuw."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Porównaj zawartość (⌥F3) wymaga narzędzia różnic. Zainstaluj FileMerge (część Xcode), Kaleidoscope albo BBEdit, a potem otwórz ponownie Ustawienia."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Для «Сравнить по содержимому» (⌥F3) нужен инструмент сравнения. Установите FileMerge (входит в Xcode), Kaleidoscope или BBEdit, затем откройте настройки заново."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Для «Порівняти за вмістом» (⌥F3) потрібен інструмент diff. Установіть FileMerge (частина Xcode), Kaleidoscope або BBEdit, а потім знову відкрийте Параметри."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Comparar por Conteúdo (⌥F3) precisa de uma ferramenta de diff. Instale FileMerge (parte do Xcode), Kaleidoscope ou BBEdit, depois reabra os Ajustes."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“按内容比较”（⌥F3）需要差异比较工具。请安装 FileMerge（Xcode 的一部分）、Kaleidoscope 或 BBEdit，然后重新打开“设置”。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "「按內容比較」（⌥F3）需要差異比較工具。請安裝 FileMerge（Xcode 的一部分）、Kaleidoscope 或 BBEdit，然後重新打開「設定」。"
-          }
-        }
-      }
-    },
     "Compare Contents…": {
-      "comment": "Sync override menu: open the two files in an external diff tool (none configured).",
+      "comment": "Menu item or button: show how two files differ, in Dirnex's own compare window.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -24168,6 +24437,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "比較內容…"
+          }
+        }
+      }
+    },
+    "Compare Whitespace": {
+      "comment": "Compare window whitespace option.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leerraum vergleichen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compare Whitespace"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comparar espacios en blanco"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comparer les espaces"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confronta gli spazi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "空白を比較"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "공백 비교"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Witruimte vergelijken"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Porównuj białe znaki"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comparar Espaços em Branco"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Учитывать пробелы"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Враховувати пробіли"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "比较空白"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "比較空白"
           }
         }
       }
@@ -24351,7 +24709,7 @@
       }
     },
     "Compare with %@…": {
-      "comment": "Sync override menu: open the two files in an external diff tool; %@ is the tool name.",
+      "comment": "Menu item or button: open two files in an external diff tool; %@ is the tool name.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -28710,7 +29068,7 @@
       }
     },
     "Couldn’t compare these files": {
-      "comment": "Alert title when the two files to compare can't be downloaded or extracted.",
+      "comment": "Alert title when the two files to compare can't be downloaded, extracted or read as text.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -40765,6 +41123,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dirnex 無法還原此操作。共用資料夾有自己的回收筒（#recycle），伺服器可能會在其中保留副本。"
+          }
+        }
+      }
+    },
+    "Dirnex compares files of up to %@.": {
+      "comment": "Compare failure detail; %@ is a formatted byte size.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex vergleicht Dateien bis %@."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex compares files of up to %@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex compara archivos de hasta %@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex compare des fichiers jusqu’à %@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex confronta file fino a %@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex で比較できるのは %@ までのファイルです。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex는 최대 %@ 크기의 파일까지 비교합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex vergelijkt bestanden tot %@."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex porównuje pliki o rozmiarze do %@."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex compara arquivos de até %@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex сравнивает файлы размером до %@."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex порівнює файли розміром до %@."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 可比较的文件最大为 %@。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 可比較的檔案最大為 %@。"
           }
         }
       }
@@ -53576,6 +54023,451 @@
         }
       }
     },
+    "Ignore All Whitespace": {
+      "comment": "Compare window whitespace option.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leerraum ganz ignorieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignore All Whitespace"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorar todos los espacios en blanco"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorer tous les espaces"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignora tutti gli spazi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべての空白を無視"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모든 공백 무시"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle witruimte negeren"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignoruj wszystkie białe znaki"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorar Todos os Espaços em Branco"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Игнорировать все пробелы"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ігнорувати всі пробіли"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "忽略所有空白"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "忽略所有空白"
+          }
+        }
+      }
+    },
+    "Ignore Case": {
+      "comment": "Compare window option.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groß-/Kleinschreibung ignorieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignore Case"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorar mayúsculas y minúsculas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorer la casse"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignora maiuscole/minuscole"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大文字/小文字を無視"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대소문자 무시"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoofdletters negeren"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignoruj wielkość liter"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorar Maiúsculas"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Игнорировать регистр"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ігнорувати регістр"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "忽略大小写"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "忽略大小寫"
+          }
+        }
+      }
+    },
+    "Ignore Changes in Whitespace": {
+      "comment": "Compare window whitespace option.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Änderungen im Leerraum ignorieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignore Changes in Whitespace"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorar cambios en los espacios en blanco"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorer les changements d’espacement"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignora le modifiche agli spazi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "空白の量の違いを無視"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "공백 변경 무시"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wijzigingen in witruimte negeren"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignoruj zmiany w białych znakach"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorar Alterações em Espaços em Branco"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Игнорировать изменения в пробелах"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ігнорувати зміни в пробілах"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "忽略空白数量变化"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "忽略空白數量變化"
+          }
+        }
+      }
+    },
+    "Ignore Line Endings": {
+      "comment": "Compare window option.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeilenenden ignorieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignore Line Endings"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorar finales de línea"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorer les fins de ligne"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignora i fine riga"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "改行コードを無視"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "줄 끝 문자 무시"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regeleinden negeren"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignoruj znaki końca wiersza"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorar Finais de Linha"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Игнорировать концы строк"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ігнорувати кінці рядків"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "忽略行尾符"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "忽略行尾符號"
+          }
+        }
+      }
+    },
+    "Ignore Whitespace at Line End": {
+      "comment": "Compare window whitespace option.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leerraum am Zeilenende ignorieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignore Whitespace at Line End"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorar espacios al final de línea"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorer les espaces en fin de ligne"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignora gli spazi a fine riga"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "行末の空白を無視"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "줄 끝 공백 무시"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Witruimte aan regeleinde negeren"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignoruj białe znaki na końcu wiersza"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorar Espaços no Fim da Linha"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Игнорировать пробелы в конце строк"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ігнорувати пробіли в кінці рядків"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "忽略行尾空白"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "忽略行尾空白"
+          }
+        }
+      }
+    },
     "Ignored": {
       "comment": "Git status badge tooltip: excluded by a .gitignore rule.",
       "localizations": {
@@ -53750,95 +54642,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "繼承："
-          }
-        }
-      }
-    },
-    "Install FileMerge (part of Xcode), Kaleidoscope, or BBEdit to compare files side by side.": {
-      "comment": "Compare failure detail suggesting diff tools to install.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Installieren Sie FileMerge (Teil von Xcode), Kaleidoscope oder BBEdit, um Dateien nebeneinander zu vergleichen."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Install FileMerge (part of Xcode), Kaleidoscope, or BBEdit to compare files side by side."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Instala FileMerge (parte de Xcode), Kaleidoscope o BBEdit para comparar archivos en paralelo."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Installez FileMerge (partie de Xcode), Kaleidoscope ou BBEdit pour comparer les fichiers côte à côte."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Installa FileMerge (parte di Xcode), Kaleidoscope o BBEdit per confrontare i file uno accanto all’altro."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ファイルを並べて比較するには、FileMerge（Xcodeの一部）、Kaleidoscope、またはBBEditをインストールしてください。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FileMerge(Xcode의 일부), Kaleidoscope 또는 BBEdit를 설치하여 파일을 나란히 비교하십시오."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Installeer FileMerge (een deel van Xcode), Kaleidoscope of BBEdit om bestanden naast elkaar te vergelijken."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zainstaluj FileMerge (część Xcode), Kaleidoscope albo BBEdit, aby porównywać pliki obok siebie."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Установите FileMerge (входит в Xcode), Kaleidoscope или BBEdit, чтобы сравнивать файлы бок о бок."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Установіть FileMerge (частина Xcode), Kaleidoscope або BBEdit, щоб порівнювати файли поруч."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Instale FileMerge (parte do Xcode), Kaleidoscope ou BBEdit para comparar arquivos lado a lado."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "安装 FileMerge（Xcode 的一部分）、Kaleidoscope 或 BBEdit，即可并排比较文件。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "安裝 FileMerge（Xcode 的一部分）、Kaleidoscope 或 BBEdit，即可並排比較檔案。"
           }
         }
       }
@@ -57326,6 +58129,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "已授權 · 更新截至 %@"
+          }
+        }
+      }
+    },
+    "Lines marked ↵ end differently.": {
+      "comment": "Compare window: some changed lines also differ in their line ending, marked ↵ in the gutter.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mit ↵ markierte Zeilen enden unterschiedlich."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lines marked ↵ end differently."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las líneas marcadas con ↵ terminan de forma distinta."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les lignes marquées ↵ se terminent différemment."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le righe segnate con ↵ terminano in modo diverso."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "↵ の付いた行は改行コードが異なります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "↵로 표시된 줄은 줄 끝 문자가 다릅니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Met ↵ gemarkeerde regels eindigen anders."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiersze oznaczone ↵ kończą się inaczej."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As linhas marcadas com ↵ terminam de forma diferente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Строки, отмеченные ↵, заканчиваются по-разному."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рядки, позначені ↵, закінчуються по-різному."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标有 ↵ 的行结尾不同。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "標有 ↵ 的行結尾不同。"
           }
         }
       }
@@ -62063,6 +62955,95 @@
         }
       }
     },
+    "Next Change": {
+      "comment": "Compare window button and tooltip.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nächste Änderung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next Change"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambio siguiente"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modification suivante"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifica successiva"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次の変更"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 변경"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volgende wijziging"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Następna zmiana"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próxima Alteração"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Следующее изменение"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Наступна зміна"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一处更改"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一處變更"
+          }
+        }
+      }
+    },
     "No Applications": {
       "comment": "Open With menu, disabled item: nothing is registered to open this file.",
       "localizations": {
@@ -63129,91 +64110,91 @@
         }
       }
     },
-    "No comparison tool found": {
-      "comment": "Compare failure when no diff tool is installed.",
+    "No differences": {
+      "comment": "Compare window: the two texts have no changed line.",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kein Vergleichstool gefunden"
+            "value": "Keine Unterschiede"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No comparison tool found"
+            "value": "No differences"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se encontró ninguna herramienta de comparación"
+            "value": "Sin diferencias"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucun outil de comparaison trouvé"
+            "value": "Aucune différence"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessun strumento di confronto trovato"
+            "value": "Nessuna differenza"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "比較ツールが見つかりません"
+            "value": "相違なし"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "비교 도구를 찾을 수 없음"
+            "value": "차이 없음"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Geen vergelijkingstool gevonden"
+            "value": "Geen verschillen"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nie znaleziono narzędzia porównywania"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Средство сравнения не найдено"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Інструмент порівняння не знайдено"
+            "value": "Brak różnic"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nenhuma ferramenta de comparação encontrada"
+            "value": "Nenhuma diferença"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Различий нет"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відмінностей немає"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "未找到比较工具"
+            "value": "无差异"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "找不到比較工具"
+            "value": "無差異"
           }
         }
       }
@@ -63303,6 +64284,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "沒有延伸屬性。"
+          }
+        }
+      }
+    },
+    "No line differs.": {
+      "comment": "Compare window: the first sentence when every line matches.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Zeile unterscheidet sich."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No line differs."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguna línea es distinta."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune ligne ne diffère."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna riga è diversa."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "異なる行はありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 줄이 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen enkele regel verschilt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Żaden wiersz się nie różni."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhuma linha é diferente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ни одна строка не отличается."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Жоден рядок не відрізняється."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有不同的行。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沒有不同的行。"
           }
         }
       }
@@ -65799,6 +66869,95 @@
         }
       }
     },
+    "Only the left file starts with a byte-order mark.": {
+      "comment": "Compare window: a difference in the files' first bytes that no line shows.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur die linke Datei beginnt mit einer Bytereihenfolge-Markierung (BOM)."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only the left file starts with a byte-order mark."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo el archivo de la izquierda empieza con una marca de orden de bytes (BOM)."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seul le fichier de gauche commence par une marque d’ordre des octets (BOM)."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo il file a sinistra inizia con un byte order mark (BOM)."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左のファイルだけがバイトオーダーマーク（BOM）で始まります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "왼쪽 파일만 바이트 순서 표시(BOM)로 시작합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alleen het linkerbestand begint met een byte-order mark (BOM)."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tylko lewy plik zaczyna się od znacznika kolejności bajtów (BOM)."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Somente o arquivo da esquerda começa com uma marca de ordem de bytes (BOM)."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Только левый файл начинается с метки порядка байтов (BOM)."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лише лівий файл починається з мітки порядку байтів (BOM)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有左侧文件以字节顺序标记（BOM）开头。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有左側檔案以位元組順序標記（BOM）開頭。"
+          }
+        }
+      }
+    },
     "Only the owner of “%@” or an administrator can change it, and Dirnex can’t ask for those privileges yet.": {
       "comment": "Root-only save alert body: the item belongs to somebody else; %@ is its name.",
       "localizations": {
@@ -65884,6 +67043,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "只有「%@」的擁有者或管理者才能更改它，Dirnex 暫時無法請求這些權限。"
+          }
+        }
+      }
+    },
+    "Only the right file starts with a byte-order mark.": {
+      "comment": "Compare window: a difference in the files' first bytes that no line shows.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur die rechte Datei beginnt mit einer Bytereihenfolge-Markierung (BOM)."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only the right file starts with a byte-order mark."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo el archivo de la derecha empieza con una marca de orden de bytes (BOM)."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seul le fichier de droite commence par une marque d’ordre des octets (BOM)."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo il file a destra inizia con un byte order mark (BOM)."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右のファイルだけがバイトオーダーマーク（BOM）で始まります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오른쪽 파일만 바이트 순서 표시(BOM)로 시작합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alleen het rechterbestand begint met een byte-order mark (BOM)."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tylko prawy plik zaczyna się od znacznika kolejności bajtów (BOM)."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Somente o arquivo da direita começa com uma marca de ordem de bytes (BOM)."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Только правый файл начинается с метки порядка байтов (BOM)."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лише правий файл починається з мітки порядку байтів (BOM)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有右侧文件以字节顺序标记（BOM）开头。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有右側檔案以位元組順序標記（BOM）開頭。"
           }
         }
       }
@@ -71788,6 +73036,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在準備…"
+          }
+        }
+      }
+    },
+    "Previous Change": {
+      "comment": "Compare window button and tooltip.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorherige Änderung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previous Change"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambio anterior"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modification précédente"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifica precedente"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前の変更"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이전 변경"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorige wijziging"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poprzednia zmiana"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alteração Anterior"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Предыдущее изменение"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Попередня зміна"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上一处更改"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上一處變更"
           }
         }
       }
@@ -86815,6 +88152,273 @@
         }
       }
     },
+    "Some lines shown as the same differ in case.": {
+      "comment": "Compare window: case is ignored, and some matching lines differ in it.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einige als gleich gezeigte Zeilen unterscheiden sich in der Groß-/Kleinschreibung."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some lines shown as the same differ in case."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algunas líneas mostradas como iguales difieren en mayúsculas y minúsculas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Certaines lignes affichées comme identiques diffèrent par la casse."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alcune righe mostrate come uguali differiscono per maiuscole/minuscole."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同じとして表示されている行の一部は、大文字/小文字が異なります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "같게 표시된 일부 줄은 대소문자가 다릅니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sommige als gelijk getoonde regels verschillen in hoofdletters."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niektóre wiersze pokazane jako jednakowe różnią się wielkością liter."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algumas linhas mostradas como iguais diferem em maiúsculas e minúsculas."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Некоторые строки, показанные как одинаковые, отличаются регистром."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Деякі рядки, показані як однакові, відрізняються регістром."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分显示为相同的行在大小写上不同。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分顯示為相同的行在大小寫上不同。"
+          }
+        }
+      }
+    },
+    "Some lines shown as the same differ in whitespace.": {
+      "comment": "Compare window: whitespace is ignored, and some matching lines differ in it.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einige als gleich gezeigte Zeilen unterscheiden sich im Leerraum."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some lines shown as the same differ in whitespace."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algunas líneas mostradas como iguales difieren en los espacios en blanco."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Certaines lignes affichées comme identiques diffèrent par les espaces."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alcune righe mostrate come uguali differiscono negli spazi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同じとして表示されている行の一部は、空白が異なります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "같게 표시된 일부 줄은 공백이 다릅니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sommige als gelijk getoonde regels verschillen in witruimte."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niektóre wiersze pokazane jako jednakowe różnią się białymi znakami."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algumas linhas mostradas como iguais diferem nos espaços em branco."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Некоторые строки, показанные как одинаковые, отличаются пробелами."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Деякі рядки, показані як однакові, відрізняються пробілами."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分显示为相同的行在空白上不同。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分顯示為相同的行在空白上不同。"
+          }
+        }
+      }
+    },
+    "Some lines shown as the same end differently.": {
+      "comment": "Compare window: line endings are ignored, and some matching lines differ in them.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einige als gleich gezeigte Zeilen enden unterschiedlich."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some lines shown as the same end differently."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algunas líneas mostradas como iguales terminan de forma distinta."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Certaines lignes affichées comme identiques se terminent différemment."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alcune righe mostrate come uguali terminano in modo diverso."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同じとして表示されている行の一部は、改行コードが異なります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "같게 표시된 일부 줄은 줄 끝 문자가 다릅니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sommige als gelijk getoonde regels eindigen anders."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niektóre wiersze pokazane jako jednakowe kończą się inaczej."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algumas linhas mostradas como iguais terminam de forma diferente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Некоторые строки, показанные как одинаковые, заканчиваются по-разному."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Деякі рядки, показані як однакові, закінчуються по-різному."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分显示为相同的行结尾不同。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分顯示為相同的行結尾不同。"
+          }
+        }
+      }
+    },
     "Some of iCloud Drive needs Full Disk Access": {
       "comment": "FDA (iCloud) sheet title.",
       "localizations": {
@@ -94694,6 +96298,95 @@
         }
       }
     },
+    "The left file is %@ and the right file is %@.": {
+      "comment": "Compare window: the two files' text encodings, such as “Unicode (UTF-8)”.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die linke Datei ist in %1$@ kodiert, die rechte in %2$@."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The left file is %@ and the right file is %@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El archivo de la izquierda está en %1$@ y el de la derecha en %2$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le fichier de gauche est en %1$@ et celui de droite en %2$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il file a sinistra è in %1$@ e quello a destra in %2$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左のファイルは %1$@、右のファイルは %2$@ です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "왼쪽 파일은 %1$@, 오른쪽 파일은 %2$@입니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het linkerbestand is gecodeerd in %1$@ en het rechterbestand in %2$@."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lewy plik ma kodowanie %1$@, a prawy %2$@."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O arquivo da esquerda está em %1$@ e o da direita em %2$@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Левый файл в кодировке %1$@, правый — в %2$@."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лівий файл у кодуванні %1$@, правий — у %2$@."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左侧文件为 %1$@，右侧文件为 %2$@。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左側檔案為 %1$@，右側檔案為 %2$@。"
+          }
+        }
+      }
+    },
     "The modification time was not stored. This server refused the command that sets one.": {
       "comment": "Remote Get Info: the modification time was refused.",
       "localizations": {
@@ -98428,95 +100121,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "系統回報錯誤（錯誤碼 %d）。"
-          }
-        }
-      }
-    },
-    "The tool Compare By Contents (⌥F3) opens the two files in. Installed: %@. Automatic picks the first of those still installed.": {
-      "comment": "Operations footer: diff tools installed. %@ is a comma-separated list.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Das Werkzeug „Nach Inhalt vergleichen“ (⌥F3) öffnet die beiden Dateien in einem Diff-Tool. Installiert: %@. „Automatisch“ wählt das erste noch installierte Tool aus."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The tool Compare By Contents (⌥F3) opens the two files in. Installed: %@. Automatic picks the first of those still installed."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La herramienta Comparar por contenido (⌥F3) abre los dos archivos en la app seleccionada. Instaladas: %@. Automático elige la primera que siga instalada."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "L’outil Comparer le contenu (⌥F3) ouvre les deux fichiers dans l’application choisie. Applications installées : %@. Le réglage Automatique choisit la première encore installée."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lo strumento usato da Confronta contenuti (⌥F3) apre i due file. Installati: %@. Automatico sceglie il primo ancora installato."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“内容で比較”（⌥F3）は2つのファイルを比較ツールで開きます。インストール済み: %@。“自動”では、その中でまだインストールされている最初のものを選びます。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "내용으로 비교(⌥F3)는 두 파일을 비교 도구에서 엽니다. 설치됨: %@. 자동은 설치된 도구 중 첫 번째 도구를 선택합니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "De tool Vergelijk op inhoud (⌥F3) opent de twee bestanden hierin. Geïnstalleerd: %@. Automatisch kiest de eerste die nog is geïnstalleerd."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Narzędzie Porównaj zawartość (⌥F3) otwiera dwa pliki w wybranej aplikacji. Zainstalowane: %@. Automatycznie wybiera pierwszą nadal zainstalowaną."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Инструмент, в котором «Сравнить по содержимому» (⌥F3) открывает два файла. Установлены: %@. «Автоматически» выбирает первый из ещё установленных."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Інструмент «Порівняти за вмістом» (⌥F3) відкриває два файли у вибраній програмі. Установлено: %@. «Автоматично» вибирає першу з тих, що ще встановлені."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A ferramenta em que Comparar por Conteúdo (⌥F3) abre os dois arquivos. Instalados: %@. Automático escolhe a primeira delas que ainda estiver instalada."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "“按内容比较”工具（⌥F3）会打开两个文件。已安装：%@。自动选择其中仍安装的第一个。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "「按內容比較」工具（⌥F3）會打開兩個檔案。已安裝：%@。自動選取其中仍安裝的第一個。"
           }
         }
       }
@@ -108894,6 +110498,94 @@
           "stringUnit": {
             "state": "translated",
             "value": "執行時"
+          }
+        }
+      }
+    },
+    "Where Compare By Contents (⌥F3) shows how two files differ. Dirnex compares them in a window of its own. Automatic uses Kaleidoscope, BBEdit or FileMerge (part of Xcode) when one is installed, and Dirnex otherwise.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wo „Nach Inhalt vergleichen“ (⌥F3) zeigt, wie sich zwei Dateien unterscheiden. Dirnex vergleicht sie in einem eigenen Fenster. „Automatisch“ verwendet Kaleidoscope, BBEdit oder FileMerge (Teil von Xcode), wenn eines davon installiert ist, und sonst Dirnex."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where Compare By Contents (⌥F3) shows how two files differ. Dirnex compares them in a window of its own. Automatic uses Kaleidoscope, BBEdit or FileMerge (part of Xcode) when one is installed, and Dirnex otherwise."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dónde muestra Comparar por contenido (⌥F3) en qué se diferencian dos archivos. Dirnex los compara en una ventana propia. Automático usa Kaleidoscope, BBEdit o FileMerge (parte de Xcode) si alguno está instalado, y Dirnex en caso contrario."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Où Comparer le contenu (⌥F3) montre ce qui distingue deux fichiers. Dirnex les compare dans une fenêtre qui lui est propre. Automatique utilise Kaleidoscope, BBEdit ou FileMerge (fourni avec Xcode) si l’un d’eux est installé, et Dirnex sinon."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dove Confronta per contenuti (⌥F3) mostra in cosa differiscono due file. Dirnex li confronta in una finestra propria. Automatico usa Kaleidoscope, BBEdit o FileMerge (parte di Xcode) se uno è installato, altrimenti Dirnex."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“内容で比較”（⌥F3）で2つのファイルの違いを表示する場所です。Dirnex は専用のウインドウで比較します。“自動”では、Kaleidoscope、BBEdit、FileMerge（Xcode の一部）のいずれかがインストールされていればそれを使い、なければ Dirnex を使います。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내용으로 비교(⌥F3)가 두 파일의 차이를 보여 주는 곳입니다. Dirnex는 자체 윈도우에서 비교합니다. 자동은 Kaleidoscope, BBEdit 또는 FileMerge(Xcode에 포함) 중 하나가 설치되어 있으면 그것을, 아니면 Dirnex를 사용합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waar Vergelijk op inhoud (⌥F3) laat zien hoe twee bestanden verschillen. Dirnex vergelijkt ze in een eigen venster. Automatisch gebruikt Kaleidoscope, BBEdit of FileMerge (onderdeel van Xcode) als er een geïnstalleerd is, en anders Dirnex."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gdzie Porównaj zawartość (⌥F3) pokazuje, czym różnią się dwa pliki. Dirnex porównuje je we własnym oknie. Automatycznie używa Kaleidoscope, BBEdit albo FileMerge (część Xcode), jeśli któreś jest zainstalowane, a w przeciwnym razie Dirnex."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onde Comparar por Conteúdo (⌥F3) mostra como dois arquivos diferem. O Dirnex os compara em uma janela própria. Automático usa o Kaleidoscope, o BBEdit ou o FileMerge (parte do Xcode) quando um deles está instalado, e o Dirnex caso contrário."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Где «Сравнить по содержимому» (⌥F3) показывает, чем различаются два файла. Dirnex сравнивает их в собственном окне. «Автоматически» использует Kaleidoscope, BBEdit или FileMerge (входит в Xcode), если что-то из них установлено, а иначе — Dirnex."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Де «Порівняти за вмістом» (⌥F3) показує, чим відрізняються два файли. Dirnex порівнює їх у власному вікні. «Автоматично» використовує Kaleidoscope, BBEdit або FileMerge (входить до Xcode), якщо щось із них установлено, а інакше — Dirnex."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“按内容比较”（⌥F3）在哪里显示两个文件的差异。Dirnex 会在自己的窗口中比较它们。“自动”会在安装了 Kaleidoscope、BBEdit 或 FileMerge（Xcode 的一部分）时使用其中之一，否则使用 Dirnex。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「按內容比較」（⌥F3）在哪裡顯示兩個檔案的差異。Dirnex 會在自己的視窗中比較它們。「自動」會在安裝了 Kaleidoscope、BBEdit 或 FileMerge（Xcode 的一部分）時使用其中之一，否則使用 Dirnex。"
           }
         }
       }
@@ -149157,6 +150849,95 @@
         }
       }
     },
+    "“%@” couldn’t be read.": {
+      "comment": "Compare failure detail; %@ is a file name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ konnte nicht gelesen werden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” couldn’t be read."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha podido leer «%@»."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de lire «%@»."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile leggere “%@”."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”を読み込めませんでした。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”을(를) 읽을 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” kon niet worden gelezen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się odczytać „%@”."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível ler “%@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось прочитать «%@»."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося прочитати «%@»."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取“%@”。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法讀取「%@」。"
+          }
+        }
+      }
+    },
     "“%@” doesn’t allow guest access. Enter a username and password.": {
       "comment": "SMB mount failure: the server refused a guest mount; %@ is the host name.",
       "localizations": {
@@ -149869,6 +151650,95 @@
         }
       }
     },
+    "“%@” isn’t a text file. Dirnex compares text files only.": {
+      "comment": "Compare failure detail; %@ is a file name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ ist keine Textdatei. Dirnex vergleicht nur Textdateien."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” isn’t a text file. Dirnex compares text files only."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no es un archivo de texto. Dirnex solo compara archivos de texto."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» n’est pas un fichier texte. Dirnex ne compare que des fichiers texte."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” non è un file di testo. Dirnex confronta solo file di testo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”はテキストファイルではありません。Dirnex で比較できるのはテキストファイルだけです。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”은(는) 텍스트 파일이 아닙니다. Dirnex는 텍스트 파일만 비교합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is geen tekstbestand. Dirnex vergelijkt alleen tekstbestanden."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@” nie jest plikiem tekstowym. Dirnex porównuje tylko pliki tekstowe."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” não é um arquivo de texto. O Dirnex compara apenas arquivos de texto."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» — не текстовый файл. Dirnex сравнивает только текстовые файлы."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» — не текстовий файл. Dirnex порівнює лише текстові файли."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”不是文本文件。Dirnex 只比较文本文件。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」不是文字檔案。Dirnex 只比較文字檔案。"
+          }
+        }
+      }
+    },
     "“%@” isn’t available": {
       "comment": "Missing-favorite alert title; %@ is the folder name.",
       "localizations": {
@@ -149954,6 +151824,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "「%@」不可用"
+          }
+        }
+      }
+    },
+    "“%@” isn’t text in any encoding Dirnex can read.": {
+      "comment": "Compare failure detail; %@ is a file name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ ist in keiner Kodierung lesbar, die Dirnex kennt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” isn’t text in any encoding Dirnex can read."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no es texto en ninguna codificación que Dirnex pueda leer."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» n’est du texte dans aucun encodage que Dirnex sait lire."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” non è testo in nessuna codifica che Dirnex sappia leggere."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”は、Dirnex が読み込めるどのエンコーディングのテキストでもありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”은(는) Dirnex가 읽을 수 있는 어떤 인코딩의 텍스트도 아닙니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is geen tekst in een codering die Dirnex kan lezen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@” nie jest tekstem w żadnym kodowaniu, które Dirnex potrafi odczytać."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” não é texto em nenhuma codificação que o Dirnex consiga ler."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» не читается как текст ни в одной кодировке, известной Dirnex."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» не читається як текст у жодному кодуванні, відомому Dirnex."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”不是 Dirnex 能读取的任何编码的文本。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」不是 Dirnex 能讀取的任何編碼的文字。"
           }
         }
       }
