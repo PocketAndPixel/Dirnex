@@ -62,7 +62,8 @@ extension PanelViewController {
     /// The two files to compare, or `nil` when there is no usable pair.
     ///
     /// Two gestures, and the marked one wins: **exactly two files marked in the focused pane**
-    /// compares those two, and anything else falls back to the cursor file in each pane. Marks over
+    /// compares those two, older first (`olderFirst`), and anything else falls back to the cursor
+    /// file in each pane. Marks over
     /// the cursor is the rule every other file operation here follows (`selectionTargets`), and two
     /// marks name two specific files where the other pane's cursor is usually wherever it was last
     /// left — so preferring the cursor pair would make the marked gesture unreachable, since the
@@ -81,9 +82,21 @@ extension PanelViewController {
     func comparablePair() -> (FileEntry, FileEntry)? {
         let marked = selectionTargets()
         guard marked.count == 2 else { return comparableCursorPair() }
-        // Display order, so the upper row is the left column — the in-pane reading of the
-        // physical-left-pane rule below.
-        return Self.comparableEntries(marked[0], marked[1])
+        let (older, newer) = Self.olderFirst(marked[0], marked[1])
+        return Self.comparableEntries(older, newer)
+    }
+
+    /// A marked pair as the compare window reads it: **the older file on the left, the newer on the
+    /// right**, and display order when both were modified at the same moment.
+    ///
+    /// Two files in one pane have no side of their own, and display order was an accident of the
+    /// sort column. Seen 2026-10-22: a copy of `test.txt` with one line added sorted above it by
+    /// name, opened on the left, and the window drew the added line red, as removed, since its
+    /// colors read left as before and right as after (`CompareColors`). The modification date is the
+    /// one thing the pair says about which came first. Where it guesses wrong, Swap Sides puts it
+    /// right in the window.
+    static func olderFirst(_ first: FileEntry, _ second: FileEntry) -> (FileEntry, FileEntry) {
+        second.modificationDate < first.modificationDate ? (second, first) : (first, second)
     }
 
     /// The cursor file in the left pane against the cursor file in the right.
@@ -92,7 +105,8 @@ extension PanelViewController {
     /// the same rule `beginSync` follows, and for a stronger reason here: the diff tool labels its
     /// two columns by filename, and comparing `report.log` against `report.log` leaves the pane
     /// each column came from readable only in the path subtitle. Deriving the order from focus
-    /// would silently transpose those columns depending on where the user last clicked.
+    /// would silently transpose those columns depending on where the user last clicked. Nor do the
+    /// dates reorder this pair, as they do a marked one: the user put the two panes where they are.
     private func comparableCursorPair() -> (FileEntry, FileEntry)? {
         guard let window = host as? BrowserWindowController,
               let left = Self.cursorFile(of: window.leftPanel),

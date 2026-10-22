@@ -19,13 +19,17 @@ import Testing
 struct CompareSelectionTests {
     // MARK: - Fixtures
 
-    private static func entry(_ name: String, kind: FileEntry.Kind = .file) -> FileEntry {
+    private static func entry(
+        _ name: String,
+        kind: FileEntry.Kind = .file,
+        modified: TimeInterval = 0
+    ) -> FileEntry {
         FileEntry(
             path: .local("/dir/\(name)"),
             name: name,
             kind: kind,
             byteSize: 0,
-            modificationDate: Date(timeIntervalSince1970: 0),
+            modificationDate: Date(timeIntervalSince1970: modified),
             creationDate: Date(timeIntervalSince1970: 0),
             isHidden: false,
             permissions: 0o644,
@@ -49,8 +53,41 @@ struct CompareSelectionTests {
 
     // MARK: - Two marks in one pane
 
-    @Test("Two marked files are the pair, in display order")
-    func markedPairInDisplayOrder() throws {
+    /// The case seen live: a copy sorts above its original by name, and the copy is the one edited.
+    @Test("Two marked files are the pair, the older one on the left wherever it sorts")
+    func markedPairOlderFirst() throws {
+        let vc = Self.pane(
+            listing: [
+                Self.entry("test copy.txt", modified: 2000),
+                Self.entry("test.txt", modified: 1000)
+            ],
+            marked: ["test copy.txt", "test.txt"]
+        )
+        // The copy is the upper row, so an older-first answer had to reorder the pair.
+        #expect(vc.selectionTargets().map(\.name) == ["test copy.txt", "test.txt"])
+        let pair = try #require(vc.comparablePair())
+        #expect(pair.0.path == VFSPath.local("/dir/test.txt"))
+        #expect(pair.1.path == VFSPath.local("/dir/test copy.txt"))
+    }
+
+    /// The control for the one above: with the dates the other way round the pair keeps display
+    /// order, so that result came from the dates and not from a rule that always reverses.
+    @Test("A marked pair already older-first keeps display order")
+    func markedPairAlreadyOlderFirst() throws {
+        let vc = Self.pane(
+            listing: [
+                Self.entry("test copy.txt", modified: 1000),
+                Self.entry("test.txt", modified: 2000)
+            ],
+            marked: ["test copy.txt", "test.txt"]
+        )
+        let pair = try #require(vc.comparablePair())
+        #expect(pair.0.path == VFSPath.local("/dir/test copy.txt"))
+        #expect(pair.1.path == VFSPath.local("/dir/test.txt"))
+    }
+
+    @Test("Two marked files of the same age are the pair in display order")
+    func markedPairOfOneAgeInDisplayOrder() throws {
         // Marked bottom-up, so a result in display order can't be an accident of insertion order.
         let vc = Self.pane(
             listing: [Self.entry("a.txt"), Self.entry("b.txt"), Self.entry("c.txt")],

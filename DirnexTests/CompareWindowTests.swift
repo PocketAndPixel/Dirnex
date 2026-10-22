@@ -149,6 +149,31 @@ struct CompareWindowTests {
         #expect(!controller.handleKey(key(.downArrow, keyCode: 125, modifiers: [.command])))
     }
 
+    /// A line only the right file has is an insertion, drawn green. Swapped, the same line is only
+    /// the left file's, a removal drawn red, which is the point of swapping.
+    @Test("⌘U swaps the files, their names and the direction of each change, and swaps them back")
+    func swapSides() async throws {
+        let controller = try await window("a\nc\n", "a\nb\nc\n")
+        #expect(controller.changeKinds == [.insertion])
+        #expect(!controller.handleKey(letter("u", modifiers: [])))
+        #expect(!controller.handleKey(letter("u", modifiers: [.command, .shift])))
+
+        #expect(controller.handleKey(letter("u", modifiers: [.command])))
+        // The title is set when the new comparison is shown, so this waits on the swap's result
+        // rather than on the sources it exchanged first.
+        try await settleUntil { controller.window?.title == "right.swift ↔ left.swift" }
+        #expect(controller.leftPane.textView.string == "a\nb\nc\n")
+        #expect(controller.rightPane.textView.string == "a\n\nc\n")
+        #expect(controller.leftPane.textView.accessibilityLabel() == "right.swift")
+        #expect(controller.rightPane.textView.accessibilityLabel() == "left.swift")
+        #expect(controller.changeKinds == [.removal])
+
+        controller.toolbar.swap.performClick(nil)
+        try await settleUntil { controller.window?.title == "left.swift ↔ right.swift" }
+        #expect(controller.leftPane.textView.string == "a\n\nc\n")
+        #expect(controller.changeKinds == [.insertion])
+    }
+
     @Test("the counter and the banner say what the rows cannot")
     func counterAndBanner() async throws {
         #expect(CompareToolbar.counterText(current: nil, count: 0) == "No differences")
@@ -200,6 +225,21 @@ struct CompareWindowTests {
         #expect(buckets[0] == .change)
         #expect(buckets[9] == .insertion)
         #expect(buckets[5] == nil)
+    }
+
+    private func letter(_ character: String, modifiers: NSEvent.ModifierFlags) -> NSEvent {
+        NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: modifiers,
+            timestamp: 0,
+            windowNumber: 0,
+            context: nil,
+            characters: character,
+            charactersIgnoringModifiers: character,
+            isARepeat: false,
+            keyCode: 0
+        ) ?? NSEvent()
     }
 
     private func key(

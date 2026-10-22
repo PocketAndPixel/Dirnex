@@ -9,6 +9,8 @@ import DirnexCore
 /// runs only while this window is key.
 ///
 /// - ⌥⌘↓ / ⌥⌘↑: the next and the previous change. No command in any preset is bound to either.
+/// - ⌘U: swap sides, after Total Commander's Ctrl+U, which swaps its two panels. No command is
+///   bound to it by default.
 /// - ⌘F, ⌘G, ⇧⌘G: find in the pane holding the keyboard, with the system's find bar.
 /// - ⎋: close the find bar if it is open, else the window. A field editor's own ⎋ (the find bar's
 ///   field) is left to it.
@@ -63,6 +65,9 @@ extension CompareWindowController {
             return true
         case ("g", [.command, .shift]):
             find(.previousMatch)
+            return true
+        case ("u", [.command]):
+            swapSides()
             return true
         default:
             break

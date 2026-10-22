@@ -31,6 +31,10 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   - Order matters as much as the encoding: **Dirnex rewrites its session on quit**, so a seed written
     while the app is still running, or before a quit that has not finished, is overwritten by the
     state being torn down. Quit, wait for the process to be gone, *then* seed, then launch.
+  - **The container needs its `activeIndex` too.** `Dirnex.tabs.<pane>` is `{"tabs": […],
+    "activeIndex": n}`, and `activeIndex` is a required `Int`. Seen 2026-10-22: a `-data` seed holding
+    only `tabs` failed to decode, the pane opened at Home in silence, and the app had overwritten the
+    key by the time it was read back. Copy the saved container and change the tab inside it.
 
 - **A measurement about a *TCC-shaped* behaviour needs its fixture chosen as carefully as its
   launch, and this Mac happens to carry the control already.** M26's whole subject is that
@@ -363,6 +367,9 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   as a failure each time, and a screenshot showed the preview sheet open. The press waits for an
   answer that a sheet presentation does not give in time. Take a screenshot before pressing again,
   or the second press lands on the sheet.
+  - **A segment of a momentary `NSSegmentedControl` answers the same way with no sheet at all.** Seen
+    2026-10-22 pressing the compare window's Swap Sides by element index: `AXError: failure`, and the
+    window had swapped exactly once. A second press would have swapped it back.
 - **A transparent overlay from another app can gate every mouse click.** LanguageTool for
   Desktop did this for four passes; keyboard input still reached Dirnex, which masked it.
   Quitting the overlay app restored mouse verification.
