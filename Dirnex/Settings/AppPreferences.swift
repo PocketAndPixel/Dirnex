@@ -357,11 +357,9 @@ final class AppPreferences: ObservableObject {
     }
 
     /// Operations ▸ what "Compare By Contents" shows its two files in, as a
-    /// `CompareTool.identifier`: `dirnex` for Dirnex's own window, or an external tool's. The
-    /// empty string means **automatic** — the default — and leaves the choice to
-    /// `CompareTool.preferred`'s install order (Kaleidoscope, BBEdit, FileMerge, then Dirnex). A
-    /// named tool wins whenever it is still installed; uninstall it and the automatic order quietly
-    /// takes over again rather than the command breaking.
+    /// `CompareTool.identifier`: `dirnex` for Dirnex's own window, the default, or an external
+    /// tool's. A tool that has since been uninstalled compares in Dirnex, and stays chosen for when
+    /// it comes back (`CompareTool.preferred`).
     @Published var diffToolIdentifier: String {
         didSet { defaults.set(diffToolIdentifier, forKey: Keys.diffToolIdentifier) }
     }
@@ -476,8 +474,10 @@ final class AppPreferences: ObservableObject {
         cursorColorHex = defaults.string(forKey: Keys.cursorColorHex) ?? ""
         markColorHex = defaults.string(forKey: Keys.markColorHex) ?? ""
         confirmTrash = defaults.bool(forKey: Keys.confirmTrash)
-        // Empty (never written) = automatic, so a fresh install keeps the install-order default.
-        diffToolIdentifier = defaults.string(forKey: Keys.diffToolIdentifier) ?? ""
+        // Nothing saved, or a saved Automatic, is Dirnex (`CompareTool.identifier(saved:)`).
+        diffToolIdentifier = CompareTool.identifier(
+            saved: defaults.string(forKey: Keys.diffToolIdentifier)
+        )
         // Empty (never written) = automatic, i.e. the system's own plain-text handler.
         textEditorIdentifier = defaults.string(forKey: Keys.textEditorIdentifier) ?? ""
         focusOpenedSearchDirectory = defaults.bool(forKey: Keys.focusOpenedSearchDirectory)

@@ -119,36 +119,28 @@ struct ExternalDiffToolTests {
 
 @Suite("CompareTool")
 struct CompareToolTests {
-    @Test("an installed preference wins, else the first installed tool")
+    @Test("an installed choice wins, even over a tool listed before it")
     func preferredHonorsChoice() {
         let installed: [ExternalDiffTool] = [.kaleidoscope, .bbEdit]
-        // Explicit, installed preference wins even though Kaleidoscope ranks higher.
         #expect(
             CompareTool.preferred(identifier: "bbedit", installed: installed) == .external(.bbEdit)
         )
-        // No preference → the highest-ranked installed tool.
-        #expect(
-            CompareTool.preferred(identifier: nil, installed: installed) == .external(.kaleidoscope)
-        )
-        #expect(
-            CompareTool.preferred(identifier: "", installed: installed) == .external(.kaleidoscope)
-        )
     }
 
-    @Test("a chosen tool that is no longer installed falls back to automatic")
-    func preferredFallsBackWhenChosenMissing() {
-        #expect(
-            CompareTool.preferred(identifier: "kaleidoscope", installed: [.bbEdit]) == .external(
-                .bbEdit
-            )
-        )
-    }
-
-    @Test("Dirnex is automatic only when nothing is installed")
-    func dirnexIsTheLastResort() {
-        #expect(CompareTool.preferred(identifier: nil, installed: []) == .dirnex)
+    @Test("a chosen tool that is no longer installed compares in Dirnex, not in another tool")
+    func preferredFallsBackToDirnex() {
+        #expect(CompareTool.preferred(identifier: "kaleidoscope", installed: [.bbEdit]) == .dirnex)
         #expect(CompareTool.preferred(identifier: "bbedit", installed: []) == .dirnex)
-        #expect(CompareTool.preferred(identifier: nil, installed: [.bbEdit]) != .dirnex)
+        // An empty identifier was Automatic, which opened the first installed tool.
+        #expect(CompareTool.preferred(identifier: "", installed: [.kaleidoscope]) == .dirnex)
+    }
+
+    @Test("nothing saved, or a saved Automatic, is Dirnex; a saved tool is kept even uninstalled")
+    func savedChoice() {
+        #expect(CompareTool.identifier(saved: nil) == "dirnex")
+        #expect(CompareTool.identifier(saved: "") == "dirnex")
+        #expect(CompareTool.identifier(saved: "dirnex") == "dirnex")
+        #expect(CompareTool.identifier(saved: "bbedit") == "bbedit")
     }
 
     @Test("Dirnex chosen in Settings wins over every installed tool")
@@ -162,6 +154,5 @@ struct CompareToolTests {
         #expect(CompareTool.choices(installed: [.kaleidoscope, .bbEdit]).map(\.identifier)
             == ["dirnex", "kaleidoscope", "bbedit"])
         #expect(CompareTool.choices(installed: []) == [.dirnex])
-        #expect(CompareTool.dirnex.displayName == "Dirnex")
     }
 }

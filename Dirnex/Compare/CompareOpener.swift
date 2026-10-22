@@ -127,6 +127,21 @@ enum CompareOpener {
 }
 
 extension CompareTool {
+    /// The tool's row in Settings ▸ Operations: an external tool's own name, or "Built-in" for
+    /// Dirnex's window. The other rows are apps and Dirnex's window is not one, so it is named the
+    /// way macOS names a Mac's own parts ("Built-in Display"), and translated.
+    var settingsTitle: String {
+        switch self {
+        case let .external(tool):
+            tool.displayName
+        case .dirnex:
+            String(
+                localized: "Built-in",
+                comment: "Settings compare-tool choice: Dirnex's own compare window, not another app."
+            )
+        }
+    }
+
     /// What a menu item or button that compares two files says: the external tool it opens, or
     /// "Compare Contents…" for Dirnex's own window. The main menu's item says "Compare By
     /// Contents…" for the window instead, the command's own catalog title.

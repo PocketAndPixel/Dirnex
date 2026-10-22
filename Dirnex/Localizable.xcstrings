@@ -17724,6 +17724,95 @@
         }
       }
     },
+    "Built-in": {
+      "comment": "Settings compare-tool choice: Dirnex's own compare window, not another app.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Integriert"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Built-in"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Integrado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intégré"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Integrato"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内蔵"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내장"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ingebouwd"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wbudowane narzędzie"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Integrado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встроенный"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вбудований"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内建"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "內建"
+          }
+        }
+      }
+    },
     "Buy a License": {
       "comment": "About panel: link to the store, after “Not licensed”.",
       "localizations": {
@@ -110502,90 +110591,90 @@
         }
       }
     },
-    "Where Compare By Contents (⌥F3) shows how two files differ. Dirnex compares them in a window of its own. Automatic uses Kaleidoscope, BBEdit or FileMerge (part of Xcode) when one is installed, and Dirnex otherwise.": {
+    "Where Compare By Contents (⌥F3) shows how two files differ. Built-in shows them side by side in a Dirnex window. Kaleidoscope, BBEdit and FileMerge (part of Xcode) appear here once installed.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wo „Nach Inhalt vergleichen“ (⌥F3) zeigt, wie sich zwei Dateien unterscheiden. Dirnex vergleicht sie in einem eigenen Fenster. „Automatisch“ verwendet Kaleidoscope, BBEdit oder FileMerge (Teil von Xcode), wenn eines davon installiert ist, und sonst Dirnex."
+            "value": "Wo „Nach Inhalt vergleichen“ (⌥F3) zeigt, wie sich zwei Dateien unterscheiden. „Integriert“ zeigt sie nebeneinander in einem Dirnex-Fenster. Kaleidoscope, BBEdit und FileMerge (Teil von Xcode) erscheinen hier, sobald sie installiert sind."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Where Compare By Contents (⌥F3) shows how two files differ. Dirnex compares them in a window of its own. Automatic uses Kaleidoscope, BBEdit or FileMerge (part of Xcode) when one is installed, and Dirnex otherwise."
+            "value": "Where Compare By Contents (⌥F3) shows how two files differ. Built-in shows them side by side in a Dirnex window. Kaleidoscope, BBEdit and FileMerge (part of Xcode) appear here once installed."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dónde muestra Comparar por contenido (⌥F3) en qué se diferencian dos archivos. Dirnex los compara en una ventana propia. Automático usa Kaleidoscope, BBEdit o FileMerge (parte de Xcode) si alguno está instalado, y Dirnex en caso contrario."
+            "value": "Dónde muestra Comparar por contenido (⌥F3) en qué se diferencian dos archivos. Integrado los muestra uno junto a otro en una ventana de Dirnex. Kaleidoscope, BBEdit y FileMerge (parte de Xcode) aparecen aquí una vez instalados."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Où Comparer le contenu (⌥F3) montre ce qui distingue deux fichiers. Dirnex les compare dans une fenêtre qui lui est propre. Automatique utilise Kaleidoscope, BBEdit ou FileMerge (fourni avec Xcode) si l’un d’eux est installé, et Dirnex sinon."
+            "value": "Où Comparer le contenu (⌥F3) montre ce qui distingue deux fichiers. Intégré les affiche côte à côte dans une fenêtre de Dirnex. Kaleidoscope, BBEdit et FileMerge (fourni avec Xcode) apparaissent ici une fois installés."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dove Confronta per contenuti (⌥F3) mostra in cosa differiscono due file. Dirnex li confronta in una finestra propria. Automatico usa Kaleidoscope, BBEdit o FileMerge (parte di Xcode) se uno è installato, altrimenti Dirnex."
+            "value": "Dove Confronta per contenuti (⌥F3) mostra in cosa differiscono due file. Integrato li mostra affiancati in una finestra di Dirnex. Kaleidoscope, BBEdit e FileMerge (parte di Xcode) compaiono qui una volta installati."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "“内容で比較”（⌥F3）で2つのファイルの違いを表示する場所です。Dirnex は専用のウインドウで比較します。“自動”では、Kaleidoscope、BBEdit、FileMerge（Xcode の一部）のいずれかがインストールされていればそれを使い、なければ Dirnex を使います。"
+            "value": "“内容で比較”（⌥F3）で2つのファイルの違いを表示する場所です。“内蔵”では、Dirnex のウインドウに2つを並べて表示します。Kaleidoscope、BBEdit、FileMerge（Xcode の一部）は、インストールするとここに表示されます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "내용으로 비교(⌥F3)가 두 파일의 차이를 보여 주는 곳입니다. Dirnex는 자체 윈도우에서 비교합니다. 자동은 Kaleidoscope, BBEdit 또는 FileMerge(Xcode에 포함) 중 하나가 설치되어 있으면 그것을, 아니면 Dirnex를 사용합니다."
+            "value": "내용으로 비교(⌥F3)가 두 파일의 차이를 보여 주는 곳입니다. 내장은 Dirnex 윈도우에 두 파일을 나란히 보여 줍니다. Kaleidoscope, BBEdit, FileMerge(Xcode에 포함)는 설치하면 여기에 나타납니다."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Waar Vergelijk op inhoud (⌥F3) laat zien hoe twee bestanden verschillen. Dirnex vergelijkt ze in een eigen venster. Automatisch gebruikt Kaleidoscope, BBEdit of FileMerge (onderdeel van Xcode) als er een geïnstalleerd is, en anders Dirnex."
+            "value": "Waar Vergelijk op inhoud (⌥F3) laat zien hoe twee bestanden verschillen. Ingebouwd toont ze naast elkaar in een Dirnex-venster. Kaleidoscope, BBEdit en FileMerge (onderdeel van Xcode) verschijnen hier zodra ze geïnstalleerd zijn."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gdzie Porównaj zawartość (⌥F3) pokazuje, czym różnią się dwa pliki. Dirnex porównuje je we własnym oknie. Automatycznie używa Kaleidoscope, BBEdit albo FileMerge (część Xcode), jeśli któreś jest zainstalowane, a w przeciwnym razie Dirnex."
+            "value": "Gdzie Porównaj zawartość (⌥F3) pokazuje, czym różnią się dwa pliki. Wbudowane narzędzie pokazuje je obok siebie w oknie Dirnex. Kaleidoscope, BBEdit i FileMerge (część Xcode) pojawiają się tutaj po zainstalowaniu."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Onde Comparar por Conteúdo (⌥F3) mostra como dois arquivos diferem. O Dirnex os compara em uma janela própria. Automático usa o Kaleidoscope, o BBEdit ou o FileMerge (parte do Xcode) quando um deles está instalado, e o Dirnex caso contrário."
+            "value": "Onde Comparar por Conteúdo (⌥F3) mostra como dois arquivos diferem. Integrado mostra os dois lado a lado em uma janela do Dirnex. O Kaleidoscope, o BBEdit e o FileMerge (parte do Xcode) aparecem aqui depois de instalados."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Где «Сравнить по содержимому» (⌥F3) показывает, чем различаются два файла. Dirnex сравнивает их в собственном окне. «Автоматически» использует Kaleidoscope, BBEdit или FileMerge (входит в Xcode), если что-то из них установлено, а иначе — Dirnex."
+            "value": "Где «Сравнить по содержимому» (⌥F3) показывает, чем различаются два файла. «Встроенное средство» показывает их рядом в окне Dirnex. Kaleidoscope, BBEdit и FileMerge (входит в Xcode) появляются здесь, когда установлены."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Де «Порівняти за вмістом» (⌥F3) показує, чим відрізняються два файли. Dirnex порівнює їх у власному вікні. «Автоматично» використовує Kaleidoscope, BBEdit або FileMerge (входить до Xcode), якщо щось із них установлено, а інакше — Dirnex."
+            "value": "Де «Порівняти за вмістом» (⌥F3) показує, чим відрізняються два файли. «Вбудований засіб» показує їх поруч у вікні Dirnex. Kaleidoscope, BBEdit і FileMerge (входить до Xcode) з’являються тут, коли їх установлено."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "“按内容比较”（⌥F3）在哪里显示两个文件的差异。Dirnex 会在自己的窗口中比较它们。“自动”会在安装了 Kaleidoscope、BBEdit 或 FileMerge（Xcode 的一部分）时使用其中之一，否则使用 Dirnex。"
+            "value": "“按内容比较”（⌥F3）在哪里显示两个文件的差异。“内建”会在 Dirnex 窗口中并排显示它们。Kaleidoscope、BBEdit 和 FileMerge（Xcode 的一部分）安装后会显示在这里。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "「按內容比較」（⌥F3）在哪裡顯示兩個檔案的差異。Dirnex 會在自己的視窗中比較它們。「自動」會在安裝了 Kaleidoscope、BBEdit 或 FileMerge（Xcode 的一部分）時使用其中之一，否則使用 Dirnex。"
+            "value": "「按內容比較」（⌥F3）在哪裡顯示兩個檔案的差異。「內建」會在 Dirnex 視窗中並排顯示它們。Kaleidoscope、BBEdit 和 FileMerge（Xcode 的一部分）安裝後會顯示在這裡。"
           }
         }
       }

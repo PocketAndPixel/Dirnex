@@ -57,6 +57,7 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
     static func present(left: CompareSource, right: CompareSource) -> CompareWindowController {
         let controller = CompareWindowController(left: left, right: right)
         open.append(controller)
+        controller.place()
         controller.raiseAboveModalWindow()
         controller.showWindow(nil)
         controller.compute(options: LineDiffOptions())
@@ -78,10 +79,6 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
         super.init(window: window)
         window.delegate = self
         buildContent(in: window)
-        if !window.setFrameUsingName(Self.frameName) {
-            window.centerOnScreen()
-        }
-        window.setFrameAutosaveName(Self.frameName)
     }
 
     @available(*, unavailable)
@@ -89,7 +86,14 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
         fatalError("init(coder:) has not been implemented")
     }
 
-    private static let frameName = "Dirnex.CompareWindow"
+    /// Where the user last left the window, else centered on the browser window: the dialogs'
+    /// placement (`DialogWindowPlacement`). The window is resizable, so its size comes back too.
+    /// Done in `present` rather than `init`, so a window a test builds saves no frame.
+    private func place() {
+        guard let window else { return }
+        let browser = (NSApp.delegate as? AppDelegate)?.activeBrowserWindowController?.window
+        DialogWindowPlacement.place(window, key: "CompareWindow", centeredOver: browser)
+    }
 
     // MARK: - Computing
 

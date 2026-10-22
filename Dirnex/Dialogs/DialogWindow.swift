@@ -60,12 +60,12 @@ extension NSViewController {
 /// because a modal-window presentation **posts no `willCloseNotification`** (probed), so the obvious
 /// save-on-close design would silently never save.
 ///
-/// The one ordering rule: `.resizable` must already be off. Probed on a non-resizable window,
-/// `setFrameUsingName` restores the saved *position* alone — it keeps the window's current size and
-/// preserves the **top-left** while doing it (a frame saved at 400×332 restored a 640×512 window
-/// with both tops at y=587). So a size saved by an older build can never come back, and none of that
-/// arithmetic has to be written by hand. On a resizable window the same call would restore the stale
-/// size too.
+/// The one ordering rule for a dialog: `.resizable` must already be off. Probed on a non-resizable
+/// window, `setFrameUsingName` restores the saved *position* alone — it keeps the window's current
+/// size and preserves the **top-left** while doing it (a frame saved at 400×332 restored a 640×512
+/// window with both tops at y=587). So a size saved by an older build can never come back, and none
+/// of that arithmetic has to be written by hand. On a resizable window the same call restores the
+/// size too, which is what the one resizable window placed here, the compare window, wants.
 @MainActor
 enum DialogWindowPlacement {
     /// Restore `window` to its remembered position under `key`, or center it over `parent` when

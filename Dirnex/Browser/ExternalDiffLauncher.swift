@@ -29,25 +29,17 @@ enum ExternalDiffLauncher {
         NSWorkspace.shared.urlForApplication(withBundleIdentifier: identifier)?.path
     }
 
-    /// What a Compare-with action would open: the user's Settings choice when it is Dirnex or a
-    /// tool still installed, else the automatic order, which ends in Dirnex. Cheap (a few
-    /// file-existence checks and one LaunchServices lookup), so callers use it to title the menu
-    /// item.
+    /// What a Compare-with action would open: the user's Settings choice while it is installed,
+    /// else Dirnex. Cheap (a few file-existence checks and one LaunchServices lookup), so callers
+    /// use it to title the menu item.
     static func preferredTool() -> CompareTool {
-        let chosen = AppPreferences.shared.diffToolIdentifier
-        return CompareTool.preferred(
-            identifier: chosen.isEmpty ? nil : chosen,
+        CompareTool.preferred(
+            identifier: AppPreferences.shared.diffToolIdentifier,
             installed: installedTools()
         )
     }
 
-    /// What **Automatic** resolves to right now, ignoring the user's choice — so the picker's
-    /// "Automatic (Kaleidoscope)" row says what it means while another row is selected.
-    static func automaticTool() -> CompareTool {
-        CompareTool.preferred(identifier: nil, installed: installedTools())
-    }
-
-    /// Every known tool actually installed, in the automatic preference order — the list the
+    /// Every known tool actually installed, in `ExternalDiffTool.known`'s order — the list the
     /// Settings picker offers after Dirnex. Empty when the user has none of them.
     static func installedTools() -> [ExternalDiffTool] {
         ExternalDiffTool.installed(locateBundle: bundlePath(forIdentifier:), where: executableExists)

@@ -311,6 +311,12 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   headers are keyboard stops, so count them or zoom on the sidebar after each key. And a vault row
   passed on the way opens if ⌘Return lands on it, which reads its passphrase from the Keychain. A
   plain Return proves nothing about ⌘, so run a case whose result only ⌘ can produce first.
+- **Background computer-use cannot move a window.** Seen 2026-10-22 checking that the compare window
+  remembers where it was dragged: an `app_drag` on the title bar reported success, and
+  `CGWindowListCopyWindowInfo` read back the same frame. Dirnex's dictionary has no window `bounds`,
+  and System Events needs assistive access the shell lacks. A display-scope `left_click_drag` moved
+  it, which needs full-screen control and Oleg's approval. To check only that a saved frame comes
+  back, quit the app and seed `NSWindow Frame <name>` with `defaults write` instead.
 - **Background computer-use will not touch a password field at all.** Met 2026-10-17 on New Vault:
   typing by `element_index` and clicking the `NSSecureTextField` were both refused ("this is a
   password field"), while the plain name field beside it took text. Only full-screen control is
