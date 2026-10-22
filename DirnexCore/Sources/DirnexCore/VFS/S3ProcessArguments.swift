@@ -30,8 +30,14 @@ public enum S3ProcessArguments {
     /// Two different answers is what proves the credential arrived, so the control is the probe.
     static let configFromStandardInput = ["-K", "-"]
 
-    /// Flags every invocation carries: silence, the signature specifier, the time budget, and the
-    /// labelled write-out that carries the response's status back on stderr.
+    /// Keep `~/.curlrc` out of every invocation, as the first argument or not at all — FTP's
+    /// ``FTPProcessArguments/ignoreCurlrc`` records what a `.curlrc` holding `--head` did to a GET,
+    /// and that only `-q` first on the command line stops it.
+    static let ignoreCurlrc = "-q"
+
+    /// Flags every invocation carries: no `~/.curlrc` (``ignoreCurlrc``, and first), silence, the
+    /// signature specifier, the time budget, and the labelled write-out that carries the response's
+    /// status back on stderr.
     ///
     /// Two flags are **deliberately absent**, and both would be natural to add:
     ///
@@ -73,6 +79,7 @@ public enum S3ProcessArguments {
         showingProgress: Bool = false
     ) -> [String] {
         [
+            ignoreCurlrc,
             // `-sS`: no progress meter, but keep curl's own error text on stderr. `-S` alone is the
             // same minus the silencing, for the transfers that need the meter to report at all.
             showingProgress ? "-S" : "-sS",

@@ -75,7 +75,7 @@ struct S3ParallelUploadTests {
     func invocationFlags() {
         let invocation = Self.invocation(parts: 3)
         #expect(invocation.arguments == [
-            "-Z", "--parallel-immediate", "--parallel-max", "3", "-sS", "-K", "-"
+            "-q", "-Z", "--parallel-immediate", "--parallel-max", "3", "-sS", "-K", "-"
         ])
     }
 

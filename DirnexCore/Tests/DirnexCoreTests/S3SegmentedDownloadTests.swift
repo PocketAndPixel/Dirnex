@@ -99,7 +99,7 @@ struct S3SegmentedDownloadTests {
     @Test("the invocation runs the sections in parallel, immediately, with the meter off")
     func invocationFlags() {
         #expect(Self.invocation(segments: 3).arguments == [
-            "-Z", "--parallel-immediate", "--parallel-max", "3", "-sS", "-K", "-"
+            "-q", "-Z", "--parallel-immediate", "--parallel-max", "3", "-sS", "-K", "-"
         ])
     }
 

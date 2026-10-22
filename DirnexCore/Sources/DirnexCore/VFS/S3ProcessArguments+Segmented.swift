@@ -62,6 +62,7 @@ public extension S3ProcessArguments {
         }
         return S3ParallelInvocation(
             arguments: [
+                ignoreCurlrc,
                 "-Z",
                 "--parallel-immediate",
                 "--parallel-max", String(max(1, segments.count)),

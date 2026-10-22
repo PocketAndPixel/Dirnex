@@ -48,7 +48,7 @@ struct FTPSegmentedDownloadTests {
     @Test("the invocation runs the sections in parallel, immediately, with the meter off")
     func invocationFlags() {
         #expect(Self.invocation(segments: 4).arguments == [
-            "-Z", "--parallel-immediate", "--parallel-max", "4", "-sS", "-K", "-"
+            "-q", "-Z", "--parallel-immediate", "--parallel-max", "4", "-sS", "-K", "-"
         ])
     }
 

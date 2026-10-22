@@ -6782,8 +6782,14 @@ whoever drives `curl` over HTTP next. Three of the four apply to the S3 backend 
   failure whatever the status says (`WebDAVWriteOut.response`).
 - **`curl` reads `~/.curlrc` before its own arguments unless `-q` is the very first one.** A
   `.curlrc` holding `--head` turned a GET into a HEAD that downloaded nothing and still exited 0;
-  `-q` first stopped it, and anywhere else on the line it comes too late. The FTP and S3 builders do
-  not pass it.
+  `-q` first stopped it, and anywhere else on the line it comes too late. Every FTP and S3 builder
+  passes it too (`ignoreCurlrc`, pinned by `CurlrcIsolationTests`). It is command-line only:
+  `disable` inside a `-K -` config did nothing, so a `-Z` run's sections cannot carry it and `argv`
+  must. Without it a two-section `-Z` run took the `.curlrc` into the **first section only**, a HEAD
+  beside a GET, which in a segmented download is one bad segment among good ones. Run through the
+  shipped FTP and S3 download builders (pyftpdlib and `Tooling/fake-s3-endpoint.py`, 2026-10-23),
+  the same argv minus `-q` **saved the HEAD's headers under the file's name** with exit 0: 90 bytes
+  of `Last-Modified:` over FTP, 111 of `HTTP/1.1 200 OK` over S3. With `-q` all four were byte-exact.
 - **A stdin config is read once.** `-K -` in two `--next` sections of one run gave the second section
   no credentials (`207` then `401`, the server logging no user): the first `-K -` read stdin to its
   end. A batch carries every section in one config file with `next` in it, as FTP's batched listing
