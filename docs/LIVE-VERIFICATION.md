@@ -12,6 +12,14 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   `scripts/check_defaults_unchanged.py <before.plist> <after.plist>` compares every key by content,
   including JSON inside data values; a byte comparison can mistake JSON object key order for drift.
 
+- **A plain launch of the Debug build writes to the shared defaults domain, even when it is killed.**
+  Measured 2026-10-22 over five launches by path, each stopped with `kill`. The domain gained a window
+  frame. Frecency rose by one per launch for each folder the restored tabs opened, with new access
+  times. Sparkle's `SULastCheckTime` moved, and a restored tab lost its cursor. Export the domain
+  before, compare after with `scripts/check_defaults_unchanged.py`, then `defaults import` the
+  backup and `defaults delete` the keys it added. Importing alone leaves an added key in place. That
+  works with the release copy still running, as long as only the run's own keys moved.
+
 - **A tab seeded with `defaults write -string` is silently not restored, because `TabPersistence`
   reads `data(forKey:)`.** The pane falls back to Home, the app looks perfectly healthy, and nothing
   logs — so the gesture under test runs against a *local* row and reports whatever a local row does.

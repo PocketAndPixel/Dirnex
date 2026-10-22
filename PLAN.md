@@ -188,9 +188,9 @@ Decided before Slice 1:
 - **When nothing visible differs, the window says what does.** An encoding, a byte-order mark, or
   line endings under an ignore option can make two files differ with no changed line to show. A
   blank comparison of files ⌥F3 called different would read as a bug.
-- **Open, asked before Slice 3:** two text views with blank filler lines (recommended: selection,
-  find and a later editor come with them, and copying has to strip the fillers), or a table of
-  aligned line pairs.
+- **Two text views with blank filler lines**, not a table of aligned line pairs. Asked before
+  Slice 3 and answered by Oleg (2026-10-22): selection, find and a later editor come with text
+  views, and copying has to leave the fillers out.
 
 #### Slices
 
@@ -315,8 +315,78 @@ Decided before Slice 1:
   reduced to "lowest position", 1 fails: the repeated paragraph, where git chooses a higher
   position.
 
-Next: Slice 3, the window. It waits on the question above: text views with filler lines, or a
-table of aligned rows.
+**2026-10-22: Slice 3 landed** (the window; nothing opens it yet, which is Slice 4).
+
+- **Core:** `ComparisonPaneText`, one pane as the text its view holds. It has a line per row and an
+  empty line per gap, each ending in `\n`. It also gives the row offsets, the widest row in columns
+  (a tab to the next stop of four, a wide character two), and copying back to the file's own text.
+- **App (`Dirnex/Compare/`):**
+  - `CompareWindowController`, with `+Keys` and `+Banner`.
+  - `ComparePaneView`: the header, the gutter, and the scroll view.
+  - `CompareTextView`, which copies the file's text and finds rows by layout fragment.
+  - `CompareRowFragment` and `CompareRowColoring`, which paint each row's color across the pane.
+  - `CompareLineNumbers`, `CompareScrollSync`, `CompareBandView`, `CompareOverviewView`,
+    `CompareToolbar`, `CompareTextStyle` and `CompareColors`.
+  - **Not yet in the string catalog:** `xcodebuild` does not add new strings to it, so the
+    catalog and the 14 languages are Slice 4's.
+- **Tests:** 7 in the core (`ComparisonPaneTextTests`) and 9 in the app (`CompareWindowTests`):
+  - TextKit 2 stays on, and each row's fragment carries its row's fill.
+  - No row wraps: every row is exactly one line tall.
+  - Copying leaves out the gaps.
+  - The two panes show the same row at the top at rows 3 000, 12 000 and 19 000 of a
+    20 000-row pair, and back at 500.
+  - The keys, the counter, the banner, and the overview's buckets.
+  - The delegate answers TextKit's fragment selector.
+- **Measured, and what it decided:**
+  - **Keeping the panes level by scroll offset does not work under TextKit 2.** With every row the
+    same fixed height and nothing wrapping, row 1 000 of 100 000 sat at 14 716 in one document and
+    15 609 in another, against 16 000 by arithmetic, and far rows moved after every scroll. So the
+    panes are kept level by row: the row at the top of one pane is found, and the other pane is
+    scrolled to its own copy of that row. That takes 0.2 ms and held for six turns. As a negative
+    control, the same test with the scroll offset copied put row 2 356 opposite row 3 000, and
+    row 401 opposite row 500.
+  - **A pane must not wrap, and must not size itself to its widest line.** A text view that resizes
+    itself to fit its text was still typesetting 100 000 rows after ten minutes. A fixed width, set
+    once the view is in its scroll view, shows them at once. Each row is one line of fixed height
+    that clips rather than wraps. The pane is 15 % wider than its widest row needs, so a wide
+    character that runs over is clipped, never wrapped.
+  - **A full layout is not an option:** 2.2 s for 5 000 rows and 34 s for 20 000.
+  - **Row colors are drawn by the rows' own layout fragments.** A row's position is known only
+    there, and a computed position drifts from the text. Under TextKit 2 an empty last line has no
+    fragment of its own, so every row ends in `\n`.
+  - **The gutter is a view beside the scroll view, not an `NSRulerView`.** Seen live: with the
+    ruler installed, the clip view still started under it, so the first five columns of every line
+    were hidden.
+  - **A scroll to a far row is checked and repeated, up to three times.** A jump back up from row
+    19 000 to row 500 otherwise landed on row 499.
+- **Decided in the slice:**
+  - **Keys:** a local monitor, as in `TabShortcuts`, because disabled main-menu items would
+    swallow ⌘F (Favorites) and ⌘G (Places) in this window.
+    - ⌥⌘↓ and ⌥⌘↑ go to the next and previous change; neither is bound in any preset.
+    - ⌘F, ⌘G and ⇧⌘G find with the system find bar, in the pane holding the keyboard.
+    - ⎋ closes the find bar, else the window.
+  - **Find is the system's `NSTextFinder` bar, not Quick View's.** Quick View's find is built into
+    `QuickViewTextView` and its filter bar; the system bar works on any text view.
+  - **The window opens on its first change.** Changing an option computes the comparison again
+    and keeps the same line of the left file at the top.
+  - **The band is a straight bar beside each change, not FileMerge's slanted band.** The gaps
+    already line the two sides up.
+  - **Colors are GitHub's split-diff tints:** red for what the left side had, green for what the
+    right side has, and gray for a gap. Both halves are authored.
+- **Seen live**, through a temporary probe that opened the window on a real pair from this repo's
+  history and captured it (since removed). Checked in both appearances:
+  - row colors, gaps and the marks inside a changed line;
+  - the gutter's ↵ and the banner;
+  - the band and the overview strip;
+  - the find bar, and both panes level at every step.
+
+  Running the Debug build changed four keys of the shared defaults domain: frecency, a tab's
+  cursor, Sparkle's last check, and the window's frame. They were put back, and the domain then
+  compared unchanged.
+
+Next: Slice 4, wiring. ⌥F3 opens this window, Settings lists **Dirnex** first, FileMerge counts as
+installed only when Xcode is, the new strings go into all 14 languages, and Slice 5's live run
+follows.
 
 ### Still open
 
