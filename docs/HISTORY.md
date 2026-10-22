@@ -15880,6 +15880,36 @@ names; "(Dirnex)" after it says nothing inside Dirnex's own Settings.
   mit: Integriert", and the footer's three lines fit above "Dateien bearbeiten mit". The two launches
   changed frecency and `SULastCheckTime`; after the restore all 70 keys compared unchanged.
 
+**2026-10-22: a marked pair opens older-first, and the window can swap its sides.** Asked about with
+two screenshots: `test copy.txt`, a copy of `test.txt` with one line added, sorted above it by name.
+⌥F3 on the two marked files opened the copy on the left, and the window drew the added line red, as
+removed. A marked pair went in display order, and the window's colors read left as before and right
+as after (`CompareColors`), so which side a file landed on depended on the sort column.
+
+- **A marked pair in one pane opens with the older file on the left** (`olderFirst`), by
+  modification date. Equal dates keep display order. The two panes' cursor files keep the physical
+  rule, left pane on the left: the user placed those panes, and Synchronize reads them the same way.
+- **Swap Sides** puts each file on the other side: ⌘U, or a ⇄ button at the head of the option
+  controls, drawn as a one-segment control like the change arrows. ⌘U follows Total Commander's
+  Ctrl+U, which swaps its panels, and no command is bound to it by default. The pair is compared
+  again rather than mirrored, so the window shows what opening it the other way round would; the
+  titles change when the new comparison is shown, together with the text, and the line at the top
+  stays at the top. "Swap Sides" is translated in all 14 languages.
+- Moving between changes went to `CompareWindowController+Changes`, since the swap took the
+  controller past `type_body_length`. `currentChange`'s setter widened to internal for it.
+- **Tests:** `CompareSelectionTests` pin the older-first order (an older file sorting below), its
+  control (dates already older-first keep display order) and the tie. `CompareWindowTests` pin ⌘U
+  and the button: names, text and each change's direction flip, and flip back. With the reorder or
+  the swap removed, those tests failed (2 and 6 issues). The swap test first waited two seconds and
+  timed out in the full run, where the comparison is queued behind other suites; it waits through
+  `settleUntil` now. Full runs green (4163 core, 1834 app), `check_localization_keys.py` clean.
+- **Verified live** on the Debug build, launched by path after quitting a Debug copy started before
+  the session. The left tab was seeded on a fixture shaped like the report, both files marked. Run
+  Compare By Contents opened `test.txt ↔ test copy.txt` with the added line green on the right. ⌘U
+  made it `test copy.txt ↔ test.txt` with the line red on the left, and the ⇄ button put it back.
+  The run changed frecency, the left tabs and `SULastCheckTime`; after the restore all 71 keys
+  compared unchanged. **Not run live:** the cursor pair, which this pass does not change.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

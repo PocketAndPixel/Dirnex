@@ -2,15 +2,18 @@ import AppKit
 import DirnexCore
 
 /// The row along the top of the compare window (PLAN.md §M31 Slice 3): the previous and next
-/// change, which one is shown, and what the comparison overlooks.
+/// change, which one is shown, which file is on which side, and what the comparison overlooks.
 @MainActor
 final class CompareToolbar: NSView {
     var onPrevious: (() -> Void)?
     var onNext: (() -> Void)?
+    var onSwap: (() -> Void)?
     var onOptionsChange: ((LineDiffOptions) -> Void)?
 
     let navigation = NSSegmentedControl()
     let counter = NSTextField(labelWithString: "")
+    /// Swap Sides: one momentary segment, so it draws like the change buttons beside it.
+    let swap = NSSegmentedControl()
     let whitespace = NSPopUpButton()
     let ignoresCase = NSButton(checkboxWithTitle: "", target: nil, action: nil)
     let ignoresLineEndings = NSButton(checkboxWithTitle: "", target: nil, action: nil)
@@ -111,6 +114,21 @@ final class CompareToolbar: NSView {
         navigation.target = self
         navigation.action = #selector(navigate(_:))
 
+        let swapSides = String(
+            localized: "Swap Sides",
+            comment: "Compare window button and tooltip."
+        )
+        swap.segmentCount = 1
+        swap.trackingMode = .momentary
+        swap.segmentStyle = .separated
+        swap.setImage(
+            NSImage(systemSymbolName: "arrow.left.arrow.right", accessibilityDescription: swapSides),
+            forSegment: 0
+        )
+        swap.setToolTip("\(swapSides) (⌘U)", forSegment: 0)
+        swap.target = self
+        swap.action = #selector(swapSides(_:))
+
         counter.textColor = .secondaryLabelColor
         counter.lineBreakMode = .byTruncatingTail
         // Just under the option controls' 750, and above the 500 a window holds its size at, so the
@@ -138,7 +156,7 @@ final class CompareToolbar: NSView {
         let spacer = NSView()
         spacer.setContentHuggingPriority(.init(1), for: .horizontal)
         let stack = NSStackView(
-            views: [navigation, counter, spacer, whitespace, ignoresCase, ignoresLineEndings]
+            views: [navigation, counter, spacer, swap, whitespace, ignoresCase, ignoresLineEndings]
         )
         stack.orientation = .horizontal
         stack.spacing = 10
@@ -178,6 +196,10 @@ final class CompareToolbar: NSView {
         } else {
             onNext?()
         }
+    }
+
+    @objc private func swapSides(_ sender: Any?) {
+        onSwap?()
     }
 
     @objc private func optionsChanged(_ sender: Any?) {

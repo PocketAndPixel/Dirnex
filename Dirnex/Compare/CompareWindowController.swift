@@ -33,11 +33,13 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
     /// Windows on screen. A controller holds itself here until its window closes.
     private static var open: [CompareWindowController] = []
 
-    let left: CompareSource
-    let right: CompareSource
+    /// The file on the left, and the one on the right. Swap Sides exchanges them.
+    private(set) var left: CompareSource
+    private(set) var right: CompareSource
     private(set) var comparison: TextComparison?
     private(set) var changeKinds: [CompareChangeKind] = []
-    private(set) var currentChange: Int?
+    /// The change the band marks and the counter names, or `nil` for none (`+Changes`).
+    var currentChange: Int?
 
     let toolbar = CompareToolbar()
     let banner = NSTextField(wrappingLabelWithString: "")
@@ -73,7 +75,6 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
             backing: .buffered,
             defer: true
         )
-        window.title = "\(left.name) ↔ \(right.name)"
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 640, height: 320)
         super.init(window: window)
@@ -130,9 +131,13 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
 
     /// Compare again under `options`, keeping the left file's line at the top where it was.
     func compute(options: LineDiffOptions) {
+        compute(options: options, keepingLeftLine: topLine(on: .left))
+    }
+
+    /// Compare again under `options`, then put the left file's `keptLine` at the top.
+    private func compute(options: LineDiffOptions, keepingLeftLine keptLine: Int?) {
         generation += 1
         let generation = generation
-        let keptLine = topLeftLine()
         let left = left
         let right = right
         let limit = CompareTextStyle.syntaxColoringLimit
@@ -150,6 +155,9 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
         let comparison = prepared.comparison
         let isFirst = self.comparison == nil
         self.comparison = comparison
+        // Only the newest computation is shown, and it read the sides as they stand now, so a swap
+        // renames the panes together with their text rather than ahead of it.
+        showTitles()
         changeKinds = CompareTextStyle.changeKinds(comparison)
         currentChange = nil
         leftPane.show(
@@ -192,46 +200,36 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
         refreshScrolledViews()
     }
 
-    /// The left file's line at the top of its pane, or the nearest one above it.
-    private func topLeftLine() -> Int? {
+    /// One file's line at the top of the panes, or the nearest one above it.
+    private func topLine(on side: ComparisonPaneText.Side) -> Int? {
         guard let comparison, let top = leftPane.textView.rowAtTop()?.row else { return nil }
-        return comparison.rows[...top].last(where: { $0.left != nil })?.left
-    }
-
-    // MARK: - Moving between changes
-
-    func goToChange(_ index: Int) {
-        guard let comparison, comparison.changeRows.indices.contains(index) else { return }
-        currentChange = index
-        band.current = index
-        toolbar.showCounter(current: index, count: comparison.changeRows.count)
-        sync?.reveal(row: comparison.changeRows[index].lowerBound)
-    }
-
-    func goToNextChange() {
-        guard let comparison else { return }
-        let next: Int? = if let currentChange {
-            currentChange + 1 < comparison.changeRows.count ? currentChange + 1 : nil
-        } else {
-            comparison.changeRows.firstIndex { $0.lowerBound >= (
-                leftPane.textView.rowAtTop()?.row ?? 0
-            ) }
+        let rows = comparison.rows[...top]
+        return switch side {
+        case .left: rows.last(where: { $0.left != nil })?.left
+        case .right: rows.last(where: { $0.right != nil })?.right
         }
-        guard let next else { return NSSound.beep() }
-        goToChange(next)
     }
 
-    func goToPreviousChange() {
-        guard let comparison else { return }
-        let previous: Int? = if let currentChange {
-            currentChange > 0 ? currentChange - 1 : nil
-        } else {
-            comparison.changeRows.lastIndex { $0.lowerBound < (
-                leftPane.textView.rowAtTop()?.row ?? 0
-            ) }
-        }
-        guard let previous else { return NSSound.beep() }
-        goToChange(previous)
+    /// The window's title and each pane's header, for the sides as they stand.
+    private func showTitles() {
+        window?.title = "\(left.name) ↔ \(right.name)"
+        leftPane.setTitle(left.name, detail: left.detail)
+        rightPane.setTitle(right.name, detail: right.detail)
+    }
+
+    // MARK: - Swapping sides
+
+    /// Put the right file on the left and the left file on the right (⌘U).
+    ///
+    /// The colors read the left side as before and the right as after (`CompareColors`), and the
+    /// order a pair opens in is a guess: a marked pair goes older-first, a cursor pair as the panes
+    /// stand. This puts a wrong guess right without going back to the panes. The pair is compared
+    /// again rather than mirrored, so the window shows what opening it the other way round would,
+    /// and the line at the top stays at the top, now in the left pane.
+    func swapSides() {
+        let keptLine = topLine(on: .right)
+        (left, right) = (right, left)
+        compute(options: toolbar.options, keepingLeftLine: keptLine)
     }
 
     /// Redraw what depends on what is on screen.
@@ -293,8 +291,7 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
         }
         window.contentView = content
 
-        leftPane.setTitle(left.name, detail: left.detail)
-        rightPane.setTitle(right.name, detail: right.detail)
+        showTitles()
         leftPane.textView.nextKeyView = rightPane.textView
         rightPane.textView.nextKeyView = leftPane.textView
         window.initialFirstResponder = leftPane.textView
@@ -306,14 +303,7 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
         toolbar.onPrevious = { [weak self] in self?.goToPreviousChange() }
         toolbar.onNext = { [weak self] in self?.goToNextChange() }
         toolbar.onOptionsChange = { [weak self] options in self?.compute(options: options) }
+        toolbar.onSwap = { [weak self] in self?.swapSides() }
         overview.onJump = { [weak self] row in self?.jump(toRow: row) }
-    }
-
-    /// Show `row`, from the overview strip: no change is the current one after that.
-    private func jump(toRow row: Int) {
-        currentChange = nil
-        band.current = nil
-        toolbar.showCounter(current: nil, count: comparison?.changeRows.count ?? 0)
-        sync?.reveal(row: row)
     }
 }
