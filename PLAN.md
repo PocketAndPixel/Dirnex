@@ -140,10 +140,7 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 | M30 | Report a Bug, and a Help menu to hold it | 10-07 | **Anything the user didn't type or tick** in a report: no logs, no screenshots, no file names or paths, one crash report at most; **the website** naming Help ▸ Report a Bug…, until a stable release has it (the private repo's C8). **Seen only in tests**: Email Instead's draft, the rate-limit and refusal messages, and Escape. **Open**: a click in the email field once left the focus in Steps, in a computer-use run |
 | M31 | A compare window of our own | 10-22 | **Editing, copying a block across and saving**, a later milestone's decision; **a three-way merge**; **a file over 64 MiB** in the window, refused by name and left to the external tools; **a binary comparison**. **Seen only through a probe**: a Mac with no external diff tool. **Not run live**: an external tool from the conflict dialog, FTP and S3 pairs, and Escape |
 
-### Next
-
-No milestone is planned. M31 (a compare window of our own) closed 2026-10-22 and is archived in
-[docs/HISTORY.md](docs/HISTORY.md).
+### Next: M32 (planned 2026-10-22)
 
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both
@@ -152,6 +149,160 @@ stays open source, fully usable without paying, and it never asks a server wheth
 real. Before the store opens (the private repo's C12), the licensing switch goes on for stable, and
 two small changes are proposed: Help ▸ Release Notes opening the website's changelog, and a "Lost
 your key?" link in Settings ▸ License.
+
+### M32 — WebDAV (M)
+
+**Planned 2026-10-22.** WebDAV is the remote protocol that Nextcloud, ownCloud, Synology and QNAP
+NASes, and a long list of hosted storage services offer, and Dirnex speaks none of it. SFTP, FTP and
+S3 each got a backend of their own. This milestone adds the fifth protocol the same way: a
+`WebDAVBackend` in the core, reached through stock `curl`, behind the connect sheet, the saved
+servers and every gesture the other remotes already have. Oleg turned on the NAS's WebDAV Server for
+it, on HTTP 5005 and HTTPS 5006, with anonymous access and `DavDepthInfinity` off, for the
+`dirnex-test` account.
+
+Probed 2026-10-22 against that server before any Swift, with `curl` 8.7.1 and the credential on
+stdin:
+
+- **The NAS is Apache `mod_dav`** (`Server: Apache`, `DAV: 1,2` plus Apache's own
+  `propset/fs/1`, Basic realm `SYNO_WebDAV Storage`). **macOS ships the same server**:
+  `/usr/sbin/httpd` 2.4.67 with `mod_dav`, `mod_dav_fs`, `mod_auth_digest` and `mod_ssl` ran
+  unprivileged on `127.0.0.1:8088` from a twenty-line config and answered MKCOL 201, PROPFIND 207, a
+  wrong password 401 and Depth infinity 403. So the live suite gets a throwaway server with nothing
+  to install, and a wrong password can be tried there, never on the NAS (its Account Protection
+  locks the account after a few failures).
+- **That is one implementation family, not two.** A suite green against both proves agreement with
+  Apache, not with WebDAV (§6 has the row). Docker is on this Mac, so a Nextcloud container (sabre/dav,
+  a different codebase) can supply the second family, with Oleg's OK for the image download.
+- **`nas.local` costs 5.37 s a request without `-4` and 0.016 s with it.** That is the mDNS stall
+  NOTES.md ▸ Resolving a host name records, and `HostDialer` applies unchanged. The NAS's address
+  moved from .3 to .7 since September, so the bare name is the handle worth saving.
+- **The live properties arrive under the prefix `lp1`, bound to `DAV:` on each `response`**
+  (`<lp1:getlastmodified>`), while `href`, `prop` and `status` use `D:`. A parser that matches the
+  prefix `D:` reads every row and finds no size, date or type on any of them. Match by namespace URI.
+- **A collection is known by `<resourcetype><collection/>`, never by a trailing slash.** The account
+  root lists the shared folders as `/home`, `/share` and `/media` without one, while every href a
+  level down has it. GET on a collection answers 403, not an index.
+- **Hrefs come back percent-encoded in lowercase hex**, with `;`, `+`, `=` and `&` (as `&amp;`)
+  left literal, `[` and `]` encoded, and a decomposed é kept byte for byte (`cafe%cc%81`). So paths
+  are compared decoded, never as the string that was sent: the uppercase hex `curl` sent would miss
+  the self row. A `+` is a plus, and decoding it as a form would rename the file to one with a space.
+- **A PROPFIND with no `Depth` header is Depth infinity** (RFC 4918), so it gets the same 403 as an
+  explicit one. Every listing sends `Depth: 1`, and a subtree is a walk.
+- **The write verbs are richer than SFTP's and FTP's.** MKCOL answers 201, 405 when it exists and
+  409 when the parent is missing. PUT answers 201 new and 204 replaced. **DELETE of a whole tree is
+  one request**, the recursive delete `RemoteTransportBackend` walks for the other two. COPY and MOVE
+  run on the server, across shared folders too (home → share); `Overwrite: F` answers 412 and a MOVE
+  into itself 403.
+- **There is a create-if-absent.** PUT with `If-None-Match: *` answers 201 when new and 412 when
+  the file exists, bytes untouched. That is the guard `RemoteTransportBackend`'s doc comments say
+  neither other protocol has. `If-Match` with a stale ETag answers 412 too, so a write-back can check
+  the server's copy by its ETag, which `RemoteFileRevision` already carries for S3.
+- **`Destination` must be an absolute URL.** A path-absolute one, which RFC 4918 allows, gets a bare
+  400 "Bad Request" and nothing else. The server's IP spelling of itself was accepted.
+- **The modification time cannot be set, and one way of trying reports success.** PROPPATCH of
+  `getlastmodified` answers 409 "Property is read-only". `Win32LastModifiedTime`, which Windows'
+  client sends, answers **200 OK** and changes nothing; it is stored as a dead property. Nextcloud's
+  `X-OC-Mtime` header is ignored. A 200 from PROPPATCH is therefore never read as "time carried".
+- **A lock held elsewhere is its own outcome.** With a LOCK on a file, PUT answers 423. A DELETE of
+  the folder holding it answers **424 Failed Dependency**, deletes nothing, and names the locked
+  member in a multistatus body. As with S3's batch delete, the body is the outcome, and the status is
+  neither 204 nor 207.
+- **Resume works**: a Range GET answered 206 and left a byte-identical file (60 000 of 100 000
+  bytes moved), and onto a complete file 416, so the size is checked first, as for S3.
+- **Apache writes at an offset**: PUT with `Content-Range: bytes 2-3/6` answered 204 and changed
+  those two bytes. RFC 9110 says a server must refuse that, so it carries no feature until a second
+  server family proves it.
+- **No quota.** RFC 4331's `quota-available-bytes` comes back 404 in the propstat.
+- **HTTPS presents the same self-signed Synology certificate as FTPS on port 21**, with an identical
+  key pin. `curl` exits 60 without trust, 207 with `--pinnedpubkey`, and 90 on a wrong pin before any
+  data moves. `FTPCertificate` and the trust sheet carry over unchanged.
+- **A delete on this NAS lands in the share's `#recycle`**, which is an ordinary row in the listing
+  (the probe folder is sitting there now). The protocol itself has no Trash.
+- 32 MiB went up at 85 MB/s and came down at 95 MB/s, byte-identical, so one `curl` per transfer is
+  not the limit on a LAN.
+
+Decided before Slice 1:
+
+- **A backend of our own over stock `curl`**, as FTP and S3 have. The credential rides on stdin
+  (`-K -`), trust is `--pinnedpubkey` paired with `--insecure` through the existing enum, `-4` comes
+  from `HostDialer` per config section, and the status is read from a labelled write-out with the
+  exit code demoted, S3's inverted classifier, since this is HTTP. `URLSession` would rebuild the
+  pin, the progress meter, the dialer and the classifier this codebase already has for `curl`, and
+  would be the only in-process network stack among the remote backends. Its one real advantage,
+  keeping the connection between requests, is what FTP's batched invocations already buy: many
+  PROPFINDs in one `curl` run reuse one connection. Riding the OS mounter, as SMB does, is not this
+  milestone: a mount trusts a certificate system-wide, where Dirnex pins it per saved server.
+- **Basic authentication, and Digest when the server's challenge asks for it.** Basic goes out
+  preemptively, with no 401 round trip. The scheme is read once from the connect probe's 401 and kept
+  for the connection, instead of `--anyauth`, which pays the extra round trip on every request.
+  NTLM, Negotiate and OAuth tokens are out; Nextcloud's app passwords are Basic.
+- **HTTPS by default. Plain HTTP is a deliberate switch with a cleartext note**, as plain FTP is,
+  because Basic sends the password in every request. It cannot be refused: the NAS's default port is
+  plain HTTP.
+- **A location is a base URL plus a root path**: scheme, host as typed, port, the path the account
+  starts at (`/remote.php/dav/files/<user>/` on Nextcloud, `/` on the NAS) and the user name. The
+  root is part of the backend id. The Keychain item follows FTP's shape without it,
+  `<scheme>:<user>@<host>:<port>`, since two roots on one server share one password.
+- **The parser reads the RFC, not Apache's spelling**: `XMLParser` with namespaces on, elements
+  matched by URI, only `propstat`s whose status is 200, hrefs that may be absolute URLs (the RFC
+  allows them, other servers send them), decoded to bytes before any comparison.
+- **One request per verb, in its safe spelling.** Create uploads with `If-None-Match: *`, rename and
+  move are MOVE with `Overwrite: F`, copy within a server is COPY (`ServerSideCopySupport`), delete is
+  one DELETE whose body is read, and F4's write-back sends `If-Match` with the ETag it read.
+- **No time is carried and none is compared.** `copyMetadata` reports the time as not carried
+  through `RemoteMetadataPlan`, as for S3, and `DirectorySync` refuses comparing by timestamp: an
+  uploaded copy is stamped when it was written.
+- **No locks of our own.** Finder locks around a write; Dirnex relies on the ETag instead, and a 423
+  or 424 says that the file is locked by someone else, by name, rather than "permission denied".
+- **Never Depth infinity**, even on a server that allows it: the answer is one unbounded document,
+  parsed whole. Folder sizes and Find Files walk with `Depth: 1`, batched per level.
+
+#### Slices
+
+1. **Location, hrefs, the listing parser and errors** (core, additive). `WebDAVLocation`,
+   `WebDAVHref` (decoding, the strict encode set NOTES.md ▸ curl gives for FTP, decoded comparison),
+   `WebDAVMultistatusParser` and `WebDAVResponseError` (401, 403, 404, 405, 409, 412, 423, 424 and
+   507, and member errors inside a multistatus). The fixtures are bytes captured from the NAS and the
+   local Apache, not written from the RFC, with negative controls for each finding above: the `lp1`
+   prefix, lowercase hex, `+`, a decomposed name, a collection with no slash, a 404 propstat, a 424
+   body.
+2. **The read half** (core). `WebDAVProcessArguments` with its stdin config, `WebDAVTransport`,
+   `WebDAVBackend` (list, stat by `Depth: 0`, read with resume, `capabilities` `.read`) and the
+   connect probe (OPTIONS for the `DAV` header, the 401 for the scheme), against an injected fake fed
+   the captured bytes.
+3. **Connect and browse** (app). `WebDAVCurlTransport`, the connect sheet's fifth protocol
+   (`ConnectServerWebDAVFields`: host or URL, port, HTTPS or HTTP with the note, root path, user,
+   password), `PanelViewController+ConnectWebDAV`, routing and capabilities on `CompositeBackend`,
+   `ServerKind.webdav` and `ServerEndpoint.webdav` with the trusted pin, the sidebar glyph, the path
+   bar, Edit Server, reconnect and session restore, and the FTPS trust sheet for a self-signed
+   certificate. Live against the NAS: browse, trust the certificate, F5 a file out byte-exact.
+4. **The write half** (core, then app). MKCOL, upload by `-T` (never to a URL ending in `/`, which
+   appends the local name, NOTES.md ▸ curl for S3), the create-if-absent guard, MOVE, COPY, DELETE
+   with its body, the ETag-guarded write-back, `acceptsUploads`, and the metadata report.
+   `capabilities` becomes `[.read, .write]`.
+5. **Every gesture the other remotes have.** The batched subtree walk for folder sizes, ⌥F7 Find
+   Files (M22's fields), copy, paste and drag (M23), M24's hand-offs, Quick View and F4.
+6. **Live, and the record.** `WebDAVLiveIntegrationTests` against the throwaway Apache, over HTTP
+   and over HTTPS with a self-signed certificate, gated on the config `scripts/live_test_servers.sh`
+   writes; the NAS over both ports; the second server family if a container is approved; all 14
+   languages; and a WebDAV column in [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md).
+
+**Done when:**
+- the NAS's `dirnex-test` account connects over HTTPS after trusting its certificate once, and over
+  HTTP with the cleartext note, and the bare name `nas` reaches it in well under a second;
+- browsing, F5 both ways, F6 rename and move (on the server), F7, F8 (one request), F4 with its
+  write-back, Quick View and folder sizes all work there, byte-exact;
+- a name with Cyrillic, a decomposed é, and `# % ; + ? & = [ ]` survives create, list, rename and
+  delete;
+- a write-back over a file changed on the server since it was read is refused by its ETag, not
+  overwritten, and a locked file says it is locked;
+- the live suite is green against the throwaway Apache, and its executed-test count shows it ran;
+- LOCATION-SUPPORT.md has a WebDAV column, every cell argued.
+
+Expected to be left undone, each for its own reason: **Depth infinity**; **locks of our own**;
+**NTLM, Negotiate and OAuth**; **setting the time**, unless a Nextcloud server makes `X-OC-Mtime`
+measurable as a per-server capability; **Apache's offset PUT** as a segmented upload; **quota**;
+**CalDAV, CardDAV, versioning and WebDAV ACLs**; and **a Trash**, which the protocol does not have.
 
 ### Still open
 
@@ -227,6 +378,7 @@ plan keeps the strategy, which is a rule that outlives any one pass.
 | M29's reminder turns goodwill into irritation. A sheet Escape cannot close, at every launch, is the most hostile thing Dirnex will ever do, in an app whose reviews are written by keyboard users | The mitigations: 30 quiet days; a sentence that asks rather than scolds; one sheet per launch or per day, never stacked over onboarding; and every rule a named constant in `LicenseReminderPolicy`, so changing the cadence is a one-line, tested change rather than a redesign. The tell is feedback about the sheet outnumbering feedback about the app |
 | M29: a paying customer meets the reminder after an update they didn't choose | The notice before any uncovered install, and no silent background install of one. Slice 5's probe chose the hook, an app test pins that a background check cannot get past it, and Slice 6 watched it hold on a beta all night |
 | M31's compare window grows into an editor one small step at a time: selectable text, then editable text, then something has to save it. And a diff can be wrong in the quiet direction, showing two different files as the same | Editing is a later milestone's decision, stated in M31's first bullet. The tell is a text view becoming editable, or a Save command appearing, before that decision is taken. Against the quiet error there are three defenses: lines compare as bytes, every corpus pair has to match git's minimal counts, and a pair with no visible change says what differs. **Held (closed 2026-10-22).** Both panes are `isEditable = false`, and nothing in the window saves. All three defenses shipped and were seen working: the history run found no disagreement with git, and live, an encoding-only, a byte-order-mark-only and a line-ending-only pair each said what differed |
+| M32's WebDAV backend is fitted to one server. The NAS and the throwaway `httpd` are both Apache `mod_dav`, so every fixture, every live run and every probe agree with Apache, and a parser can pass all of them while reading Apache's spelling rather than the protocol | The parser matches elements by namespace URI and reads only what RFC 4918 promises, so `lp1:` and `D:` are one case rather than two. The fixtures are captured bytes, and the corpus gets a second implementation family (Nextcloud's sabre/dav, in a container) before the milestone closes. The tell is a branch keyed on a prefix, on the `Server` header or on a slash at the end of an href. A capability only Apache has, such as the offset PUT, stays unused until a second server answers it the same way |
 
 ## 7. Open questions
 
