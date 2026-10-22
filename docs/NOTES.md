@@ -8619,6 +8619,17 @@ ships a third-party binary. All measured 2026-09-20 against two HERO7 files befo
   - The build needs `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` on CMake 4, which removed compatibility
     with the `cmake_minimum_required(VERSION 3.5)` upstream declares.
 
+### Xcode's tool shims in `/usr/bin`
+
+- **`/usr/bin/opendiff`, `/usr/bin/git`, `/usr/bin/xcodebuild` and their kin exist on every Mac,
+  as shims.** Each is a hard link to a small launcher that runs the real tool from the active
+  developer directory: `opendiff` shares an inode with `xcodebuild`, `ibtool`, `actool`, `xed` and
+  eleven more, and `git` has 78 links. So `isExecutableFile` on one says nothing about whether the
+  tool is installed. Measured 2026-10-22 with `DEVELOPER_DIR=/Library/Developer/CommandLineTools`:
+  `opendiff` exits 1 with *"tool 'opendiff' requires Xcode"*, because FileMerge ships only inside
+  Xcode. `ExternalDiffTool.fileMerge` still probes the shim, so it counts as installed everywhere;
+  M31 Slice 4 fixes the detection (PLAN.md §M31).
+
 ### git
 
 - **`git status --ignored=traditional` already collapses every ignored directory to one row**,
@@ -8628,6 +8639,22 @@ ships a third-party binary. All measured 2026-09-20 against two HERO7 files befo
   and a nested repository is a single `?? nested/` whose own rules are invisible to the outer
   snapshot.
 - `.ignored` does **not** roll up to ancestors but **is** inherited by descendants.
+- **As a diff oracle, call `git diff --no-index --diff-algorithm=minimal --numstat` with
+  `GIT_CONFIG_NOSYSTEM=1` and `GIT_CONFIG_GLOBAL=/dev/null`.** A user's `diff.algorithm` changes
+  the counts. git's line model, probed 2026-10-22 on git 2.54 for M31:
+  - It splits at `\n` only, so a classic Mac file (lone `\r`) is one line.
+  - It compares bytes, so a precomposed and a decomposed *é* differ.
+  - Its whitespace for `-w`, `-b` and `--ignore-space-at-eol` is a space or a tab. `\v`, `\f` and
+    a no-break space are content.
+  - Every one of those three flags, and `--ignore-cr-at-eol`, also ignores CRLF against LF **and**
+    a missing final newline.
+  - `--minimal` can be slow: 12.7 s against 0.19 s on two 100 000-line files over a ten-line
+    alphabet.
+- **When a diff disagrees with its oracle, compare inserted minus removed first.** That number is
+  the difference in line count, so if it differs, the two sides are reading different lines rather
+  than aligning the same lines differently. M31's corpus test met it on its first run: the test's
+  own edits had put text after a CRLF line's `\r`, making a lone CR that `TextLines` splits and git
+  does not. The engine was right.
 
 ## Release pipeline
 
