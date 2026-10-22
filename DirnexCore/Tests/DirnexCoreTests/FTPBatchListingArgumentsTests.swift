@@ -63,7 +63,7 @@ struct FTPBatchListingArgumentsTests {
     @Test("the meter is off, the error text is kept, and there is no --fail")
     func invocationFlags() {
         let arguments = Self.invocation(["/a"]).arguments
-        #expect(arguments == ["-sS", "-K", "-"])
+        #expect(arguments == ["-q", "-sS", "-K", "-"])
     }
 
     // MARK: - The sections

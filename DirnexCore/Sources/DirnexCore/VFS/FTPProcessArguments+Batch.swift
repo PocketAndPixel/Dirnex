@@ -135,7 +135,7 @@ public extension FTPProcessArguments {
             // refusal says anything at all, and while nothing keys on it, it is what a diagnosis
             // reads. No `--fail`: a refused `LIST` writes nothing either way (measured), so the flag
             // would be cargo, the same reason the segmented download omits it.
-            arguments: ["-sS", "-K", "-"],
+            arguments: [ignoreCurlrc, "-sS", "-K", "-"],
             configuration: sections.joined(separator: "next\n")
         )
     }
@@ -181,7 +181,7 @@ public extension FTPProcessArguments {
             )
         ]
         return FTPParallelInvocation(
-            arguments: ["-sS", "--fail-early", "-K", "-"],
+            arguments: [ignoreCurlrc, "-sS", "--fail-early", "-K", "-"],
             configuration: sections.joined(separator: "next\n")
         )
     }

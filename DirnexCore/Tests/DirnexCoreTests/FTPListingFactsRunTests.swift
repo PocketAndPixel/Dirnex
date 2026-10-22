@@ -136,7 +136,7 @@ struct FTPListingFactsRunTests {
     @Test("the run fails early and keeps the credential off argv")
     func invocationFlags() {
         let arguments = Self.invocation().arguments
-        #expect(arguments == ["-sS", "--fail-early", "-K", "-"])
+        #expect(arguments == ["-q", "-sS", "--fail-early", "-K", "-"])
         #expect(!arguments.joined().contains("secret"))
     }
 
@@ -189,7 +189,7 @@ struct FTPListingFactsRunTests {
         #expect(sections[1].contains("url = \"ftp://ftp.example:21/a/\""))
         #expect(sections[2].contains("output = \"/tmp/3\"") && !sections[2].contains("request"))
         // Still the batch: no early exit, no write-out — one refused folder must not end the run.
-        #expect(invocation.arguments == ["-sS", "-K", "-"])
+        #expect(invocation.arguments == ["-q", "-sS", "-K", "-"])
         #expect(!invocation.configuration.contains("write-out"))
     }
 }

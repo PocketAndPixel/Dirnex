@@ -114,6 +114,17 @@ public enum FTPProcessArguments {
     /// Read the credential (and the URL-independent auth settings) from stdin.
     static let configFromStandardInput = ["-K", "-"]
 
+    /// Keep `~/.curlrc` out of every invocation. **It has to be the first argument**: `curl` reads
+    /// that file before anything else on the line, and `-q` anywhere later arrives after it has.
+    ///
+    /// Measured 2026-10-23 with the system `curl` 8.7.1 and `HOME` pointed at a `.curlrc` holding
+    /// `--head`: a plain GET became a HEAD that downloaded nothing and still exited 0, `-q` first
+    /// stopped it, `-q` second did not, and `disable` inside a `-K -` config did nothing either, so
+    /// it cannot ride in a batch's sections and belongs in `argv`. A parallel run without it took
+    /// the file into its **first section only** — section 1 a HEAD, section 2 a GET — so a segmented
+    /// download would have had one bad segment beside good ones.
+    static let ignoreCurlrc = "-q"
+
     /// Ask the server to speak **UTF-8** for file names, allowed to fail (RFC 2640).
     ///
     /// Without it a server is free to use whatever code page it defaults to, and a Synology NAS
@@ -149,8 +160,8 @@ public enum FTPProcessArguments {
     /// is settled, not before.
     static let utf8Negotiation = "*OPTS UTF8 ON"
 
-    /// Flags every invocation carries: silence, fail-on-error, the security mode, the trust
-    /// decision, the TLS policy and the time budget.
+    /// Flags every invocation carries: no `~/.curlrc` (``ignoreCurlrc``, and first), silence,
+    /// fail-on-error, the security mode, the trust decision, the TLS policy and the time budget.
     ///
     /// `showingProgress` is the one an **upload** has to turn on, and only an upload. `-s` suppresses
     /// the progress meter, which for a `--upload-file` is the only observable there is: nothing
@@ -164,6 +175,7 @@ public enum FTPProcessArguments {
     /// percentage.
     public static func common(session: FTPSession, showingProgress: Bool = false) -> [String] {
         var arguments = [
+            ignoreCurlrc,
             // `-sS`: no progress meter, but keep error text on stderr for classification. `-S` alone
             // is the same minus the silencing, for the one verb that needs the meter to report at
             // all.
@@ -314,7 +326,7 @@ public enum FTPProcessArguments {
     /// and discards the body.
     public static func certificateProbe(session: FTPSession) -> [String] {
         var arguments = [
-            "-sS",
+            ignoreCurlrc, "-sS",
             "--connect-timeout", String(session.connectTimeout),
             "--max-time", String(session.maxTime),
             "--insecure",
