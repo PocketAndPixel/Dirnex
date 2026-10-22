@@ -72,16 +72,25 @@ public struct LineDiff: Sendable, Equatable {
             rightKept.map { rightIDs[$0] },
             costLimit: costLimit
         )
-        var leftChanged = Array(repeating: true, count: left.count)
+        var leftSide = ChangeSliding.Side(
+            ids: leftIDs,
+            changed: Array(repeating: true, count: left.count),
+            shapes: left.map { ChangeSliding.LineShape($0.content) }
+        )
         for (position, index) in leftKept.enumerated() {
-            leftChanged[index] = kept.left[position]
+            leftSide.changed[index] = kept.left[position]
         }
-        var rightChanged = Array(repeating: true, count: right.count)
+        var rightSide = ChangeSliding.Side(
+            ids: rightIDs,
+            changed: Array(repeating: true, count: right.count),
+            shapes: right.map { ChangeSliding.LineShape($0.content) }
+        )
         for (position, index) in rightKept.enumerated() {
-            rightChanged[index] = kept.right[position]
+            rightSide.changed[index] = kept.right[position]
         }
+        ChangeSliding.slide(&leftSide, &rightSide)
         return LineDiff(
-            changes: blocks(leftChanged, rightChanged),
+            changes: blocks(leftSide.changed, rightSide.changed),
             leftLineCount: left.count,
             rightLineCount: right.count
         )

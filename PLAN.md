@@ -256,7 +256,67 @@ Decided before Slice 1:
 - `SeededGenerator` moved from `PerformanceBudgetTests` to `Tests/…/Support`, now that three suites
   use it.
 
-Next: Slice 2, what the window shows.
+**2026-10-22: Slice 2 landed** (core only; the app is untouched).
+
+- **Core:**
+  - `ChangeSliding` moves each changed block to its most readable position.
+  - `AlignedRow` and `RowAlignment` lay out the rows, with gaps.
+  - `LineFingerprint` decides which lines of a block share a row.
+  - `InlineDiff` and `InlineDifference` mark the words that differ inside a row.
+  - `ComparedText` reads a whole file, keeping its encoding and byte-order mark.
+  - `TextComparison` holds the rows, the change list, navigation, and what the rows cannot show.
+  - `TextPreview`'s decoder now also reports the encoding it settled on, so Quick View and the
+    window decode the same way.
+- **Tests:** 34 in five new suites. Fourteen placement cases are git's own answers, probed first.
+  Random texts check that sliding keeps every count minimal and every pairing valid, and that
+  every line lands in exactly one row, in order.
+- **Measured:**
+  - **Block placement against git's `-U0` hunks over this repository's history**
+    (`--diff-algorithm=minimal --indent-heuristic`, a throwaway harness):
+
+    | | Files matching git exactly | Blocks matching |
+    |---|---|---|
+    | No sliding | 82.3 % | 78.3 % |
+    | First scoring | 93.7 % | 83.1 % |
+    | **Shipped** | **98.3 %** (5 136 of 5 226) | 83.7 % |
+    | Shipped, without `.xcstrings` | 98.4 % | **98.9 %** (15 576 of 15 756) |
+
+    Three rewrites of `Localizable.xcstrings` hold 7 422 of the 7 606 unmatched blocks. Most of
+    the rest are the two searches pairing different copies of a repeated line, with the same
+    counts. In some of them Dirnex reads better than git: removing a method from `VaultMounts.swift`,
+    git's block starts at the previous method's `}` and stops inside the body.
+  - **A whole comparison, in release:** 0.43 s for the dense 100 000-line pair, 0.52 s for two
+    unrelated 200 000-line files (one block, paired line for line), 0.17 s for two unrelated
+    documents, and 0.03 s for a 20 000-line document with 200 edits.
+- **Decided in the slice:**
+  - **Placement follows git's order:** first, a block that can sit opposite a block on the other
+    side goes there. Otherwise the cheapest boundaries win, and ties go to the lowest position.
+    The scoring is Dirnex's own, not a port of git's indent heuristic. A boundary costs 2 if the
+    line after it is blank, 2 if the line before it is not, and 2 for every four columns of the
+    deeper of the two lines around it. The first version looked only at the line after the
+    boundary. It cut into method bodies when a method was added at the end of a type, and that
+    case is the gap between the second and third rows of the table.
+  - **Pairing:** lines go on one row when their Dice coefficient over adjacent character pairs is
+    at least 0.5. The pairs are chosen for the best total, in order. Unpaired lines between two
+    pairs go side by side from the top, so a block costs as many rows as its longer side. Above
+    10 000 candidate pairs, lines pair from the top.
+  - **Inside a row, words are compared, not characters:** words, runs of whitespace, and single
+    other characters, with the same search. Two marked words with only whitespace between them
+    are one stretch. Offsets are UTF-16. A line over 10 000 units is left whole.
+  - **A file is read whole or refused, never truncated.** The limit is `ByteComparator`'s 64 MiB
+    pre-scan limit, past which ⌥F3 already asks first. Binary and undecodable files are refused
+    by name.
+  - **What the rows cannot show is named, even when other lines differ:** encoding, a byte-order
+    mark on one side only, and line endings, whitespace or case that the options overlooked.
+  - **Under the default options, a line whose only change is its ending is a changed row with
+    nothing marked inside.** Its `lineEndingsDiffer` is set, and Slice 3 has to draw something
+    for it.
+- **Negative controls:** with sliding off, 2 of the 14 placement cases fail. With the scoring
+  reduced to "lowest position", 1 fails: the repeated paragraph, where git chooses a higher
+  position.
+
+Next: Slice 3, the window. It waits on the question above: text views with filler lines, or a
+table of aligned rows.
 
 ### Still open
 
