@@ -119,6 +119,22 @@ struct CompareWiringTests {
         #expect(host.materializedEntries.flatMap(\.self).map(\.path) == [remote.path])
     }
 
+    /// Seen live in Slice 5: Copy Path's bare server path put a server file and a local one side by
+    /// side as if both were local.
+    @Test("a server file's header names the server, a local or archive file's is Copy Path's text")
+    func headerNamesTheServer() {
+        let (pane, host) = hostedPane()
+        let server = VFSBackendID.sftp(SFTPLocation(host: "nas", port: 2222, username: "oleg"))
+        let member = VFSPath(backend: .archive(forArchiveAt: "/tmp/pair.zip"), path: "/docs/a.md")
+        withExtendedLifetime(host) {
+            #expect(
+                pane.compareDetail(for: VFSPath(backend: server, path: "/srv/a.txt")) == "oleg@nas:/srv/a.txt"
+            )
+            #expect(pane.compareDetail(for: .local("/tmp/a.txt")) == "/tmp/a.txt")
+            #expect(pane.compareDetail(for: member) == "/tmp/pair.zip/docs/a.md")
+        }
+    }
+
     @Test("the conflict dialog compares two local files with their bytes here, and nothing else")
     func conflictComparesOnlyLocalFiles() {
         func context(_ source: FileEntry, _ existing: FileEntry) -> ConflictContext {

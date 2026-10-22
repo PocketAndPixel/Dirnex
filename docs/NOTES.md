@@ -4198,6 +4198,19 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   `System Events` needs assistive access that `osascript` does not have (`-1719`), Dirnex's `.sdef`
   exposes no windows (`-1728`), and a synthetic corner drag misses the resize edge. The frame
   autosave key is deterministic and gives exact point widths.
+- **A label below the window-size priority is the first thing a longer translation erases.** The
+  compare window's change counter had compression resistance 250 (`.defaultLow`) beside a pop-up
+  and two checkboxes at 750. In English at the 640 pt minimum it truncated to "Cha…"; in German the
+  controls alone needed 770 pt, the window opened at that width, and the counter was squeezed to
+  **zero**, so the toolbar went straight from the arrows to the pop-up with nothing to say it was
+  missing (seen live 2026-10-22, M31 Slice 5). Anything that must stay readable needs a priority
+  above 500, the priority a window holds its size at, so the window refuses to shrink past it.
+  - For text that changes as the user works ("Change 9 of 12" → "Change 10 of 12"), reserve the
+    widest text it can show for the data on screen (`CompareToolbar.reserveCounterWidth`), not the
+    current one. Otherwise a window at its minimum grows by a few points as the user steps.
+  - The cost is a wider minimum: 949 pt in German. A test can pin it without a translation: set the
+    window to its `minSize`, lay it out, and require the label's frame to be at least its intrinsic
+    width (`CompareWindowTests`). With the old priority it fails in English too.
 
 ### Finding untranslated strings
 

@@ -168,6 +168,25 @@ struct CompareWindowTests {
         #expect(CompareWindowController.bannerText(for: plain) == nil)
     }
 
+    /// Seen live in German in Slice 5: at the window's minimum width the counter gave way to the
+    /// option controls and vanished, and in English it truncated.
+    @Test("at the window's narrowest the counter still shows its longest text in full")
+    func counterKeepsItsRoom() async throws {
+        let left = (0..<40).map { "line \($0)" }.joined(separator: "\n") + "\n"
+        let right = (0..<40).map { $0 % 2 == 0 ? "line \($0)" : "edited \($0)" }
+            .joined(separator: "\n") + "\n"
+        let controller = try await window(left, right)
+        let window = try #require(controller.window)
+        let count = try #require(controller.comparison?.changeRows.count)
+        #expect(count >= 10, "a two-digit count, so the last change is the widest text")
+        controller.goToChange(count - 1)
+        window.setFrame(NSRect(origin: window.frame.origin, size: window.minSize), display: false)
+        window.contentView?.layoutSubtreeIfNeeded()
+        let counter = controller.toolbar.counter
+        #expect(counter.frame.width > 0)
+        #expect(counter.frame.width >= counter.intrinsicContentSize.width)
+    }
+
     @Test(
         "the overview folds changes into one color per point, a removal beside an insertion a change"
     )
