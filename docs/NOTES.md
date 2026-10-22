@@ -6736,6 +6736,39 @@ what made the milestone affordable and the rest inverted rules borrowed from the
         The price is one failed handshake per bucket entered in that session, which happens below HTTP
         and is quick; the saved row is corrected, so the next connect from it costs nothing.
 
+### curl (WebDAV)
+
+M32's backend, over the same `curl` as FTP and S3. What the server itself does is in PLAN.md §M32
+(the NAS's Apache `mod_dav`, and macOS's own as the throwaway server); this section keeps what bites
+whoever drives `curl` over HTTP next. Three of the four apply to the S3 backend as much as here.
+
+- **`%header{name}` prints only the *first* of several headers with that name; `%{header_json}`
+  prints all of them.** Measured 2026-10-23: the NAS sends two `DAV` headers (`1,2` and Apache's
+  `propset` URI), and an Apache location configured the way IIS commonly is sends `WWW-Authenticate:
+  Negotiate`, `NTLM` and `Basic realm=…` as three headers. `%header{www-authenticate}` gave
+  `Negotiate` alone, which reads a server Dirnex can log in to as one it cannot. `%{header_json}` is
+  an object of arrays, one array per lowercased name, and it runs over several lines, so it goes last
+  in the write-out and is read to the end of the stream (`WebDAVWriteOut`). With no response it is
+  `{` and `}` on two lines.
+- **A transfer cut short keeps the status it had already seen.** A GET that ran out of `--max-time`
+  part-way reported `http_code` 200 and exit **28**, and left 584 179 bytes of a 3 129 010-byte file
+  under the file's name. A reader that takes "any status" to mean "the server answered", as
+  `S3CurlRunner` does, calls that a finished copy. Decide by the exit code first: 0 is a response, 22
+  with a 4xx or 5xx is `--fail`'s refusal and a response too, and anything else is a transport
+  failure whatever the status says (`WebDAVWriteOut.response`).
+- **`curl` reads `~/.curlrc` before its own arguments unless `-q` is the very first one.** A
+  `.curlrc` holding `--head` turned a GET into a HEAD that downloaded nothing and still exited 0;
+  `-q` first stopped it, and anywhere else on the line it comes too late. The FTP and S3 builders do
+  not pass it.
+- **A stdin config is read once.** `-K -` in two `--next` sections of one run gave the second section
+  no credentials (`207` then `401`, the server logging no user): the first `-K -` read stdin to its
+  end. A batch carries every section in one config file with `next` in it, as FTP's batched listing
+  does.
+- **Digest costs a round trip per `curl`, and a Basic header sent where Digest is wanted is not a
+  failed login.** `--digest` never goes first, since a new process has no nonce, so every invocation
+  is a 401 and then the request (two lines in Apache's log for each). A Basic `Authorization` sent to
+  a Digest location was logged with no user at all, the header ignored rather than weighed.
+
 ### The Trash
 
 #### `trashItem` and File Provider domains

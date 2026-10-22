@@ -1,0 +1,12 @@
+curl: (28) Operation timed out after 1005 milliseconds with 584179 out of 3129010 bytes received
+dav-status=200
+dav-size=584179
+dav-up=0
+dav-headers={"date":["Thu, 22 Oct 2026 21:22:13 GMT"],
+"server":["Apache"],
+"last-modified":["Tue, 15 Sep 2015 16:41:18 GMT"],
+"etag":["\"2fbeb2-51fcbd9e612d5\""],
+"accept-ranges":["bytes"],
+"content-length":["3129010"],
+"content-type":["image/jpeg"]
+}
