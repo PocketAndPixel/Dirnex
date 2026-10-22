@@ -53,9 +53,9 @@ The sections, and when each one matters:
   read only the ones you touch.
 - **Localization**: adding or changing a user-visible string, one `###` per topic.
 - **Lint ceilings and file splitting**: adding to a large controller.
-- **External CLI tools**: a backend or a tool, one `###` each: `bsdtar`, sftp/ssh, curl for FTP
-  and for S3, SMB, the Trash, iCloud Drive, Google Drive, iCloud Photos, encryption, ACLs and
-  extended attributes, checksums, regex, `qlmanage`, `gpr_tools`, `git`. The big ones (sftp/ssh,
+- **External CLI tools**: a backend or a tool, one `###` each: `bsdtar`, sftp/ssh, curl for FTP,
+  for S3 and for WebDAV, SMB, the Trash, iCloud Drive, Google Drive, iCloud Photos, encryption, ACLs
+  and extended attributes, checksums, regex, `qlmanage`, `gpr_tools`, `git`. The big ones (sftp/ssh,
   S3, FTP, the Trash, Google Drive, encryption) split again into `####` topics.
 - **Release pipeline**: a release, the workflows, Sparkle.
 - **Distribution and licensing**: the license, `NOTICE`, license keys, bug reports.

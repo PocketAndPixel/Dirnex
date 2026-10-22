@@ -1,0 +1,11 @@
+dav-status=200
+dav-size=0
+dav-up=0
+dav-headers={"date":["Thu, 22 Oct 2026 21:19:52 GMT"],
+"server":["Apache"],
+"dav":["1,2","<http://apache.org/dav/propset/fs/1>"],
+"ms-author-via":["DAV"],
+"allow":["OPTIONS,GET,HEAD,POST,DELETE,TRACE,PROPFIND,PROPPATCH,COPY,MOVE,PUT,LOCK,UNLOCK"],
+"content-length":["0"],
+"content-type":["httpd/unix-directory"]
+}

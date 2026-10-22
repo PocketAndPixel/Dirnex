@@ -358,6 +358,71 @@ measurable as a per-server capability; **Apache's offset PUT** as a segmented up
   S3's form decoder is shown to rename `d+e`, the fixture's text is checked to spell its properties
   `lp1:`, and a 424 without its body is shown not to be a lock.
 
+**2026-10-23: Slice 2 landed** (core only; the app is untouched).
+
+- **Core:**
+  - `WebDAVProcessArguments`, with `WebDAVSession`, `WebDAVAuthScheme`, `WebDAVDepth` and
+    `WebDAVConfigFile`: `-q` first, the scheme spelled `--basic` or `--digest`, `-K -` only when
+    credentials go out, the pin through `FTPTrust`, PROPFIND with six named properties inline, a
+    download with `--fail` and `-C -`, and the certificate probe.
+  - `WebDAVWriteOut`: labelled lines plus `%{header_json}` on stderr, and the rule that turns one
+    `curl` run into a `WebDAVHTTPResponse` or a transport failure.
+  - `WebDAVTransport`: two verbs, `propfind` and `download`.
+  - `WebDAVBackend`: list by `Depth: 1`, stat by `Depth: 0`, download with resume, and
+    `capabilities` `.read`.
+  - `WebDAVConnectProbe` with `WebDAVChallenge` and `WebDAVConnectError`.
+- **Tests:** 68 in six new suites, 136 across WebDAV. 18 new fixtures, 14 of them `curl`'s own
+  stderr from real runs against the NAS and macOS's Apache. The exit code is in each name, and the
+  fake replays them through the shipped reader.
+- **Measured while building it:**
+  - **A download cut short by `--max-time` reported status 200 with exit 28**, and left 584 179 of
+    3 129 010 bytes under the file's name. So the exit code decides before the status. S3's runner
+    lets any status through, so a download that outruns its 3600 s budget would count as copied there
+    (NOTES.md ▸ curl (WebDAV)).
+  - **`%header{}` gives the first of several headers only.** The challenge `Negotiate`, `NTLM`,
+    `Basic` came back as `Negotiate`, so the headers ride `%{header_json}`.
+  - **`~/.curlrc` is read unless `-q` comes first.** A `--head` in it turned a GET into a HEAD that
+    exited 0. FTP and S3 do not pass `-q`.
+  - **Apache answers a PROPFIND for a file named as a collection (`photo.jpg/`) with a bare 400.**
+    A listing that gets 400, 404 or 409 therefore asks once more without the slash, and a file there
+    is `notADirectory`.
+  - Digest is two requests per `curl` (no nonce in a new process), and a Basic header sent to a
+    Digest location was logged with no user rather than as a failed login.
+- **Decided in the slice:**
+  - **The probe is two `Depth: 0` PROPFINDs of the root, not OPTIONS.** The NAS sends no `DAV` header
+    without credentials, and with them answers OPTIONS on a missing path with 200 and `DAV: 1,2`.
+    Nextcloud exempts OPTIONS from authentication. So OPTIONS proves neither the root nor the
+    password. The first PROPFIND goes without credentials and the 401 names the scheme. The second
+    goes with them, and its 207 proves the password, the root and WebDAV at once. A server without
+    WebDAV answers 405.
+  - **Both schemes offered: Basic over HTTPS, Digest over plain HTTP.** An account still logs in
+    where reads are public (Basic, then Digest once if that is all the 401 offers), because such a
+    server may want the account for writes.
+  - **Redirects are reported with their target, not followed**, so credentials never go to a place
+    nobody chose. The root is answered without a request, as FTP's and S3's are. Any transport
+    failure in the backend is `EIO`, as theirs is.
+- **Live, through the shipped argument builders and reader** (a throwaway package over the core,
+  which checked every run's argv for the password):
+  - **The NAS over HTTP 5005**, by the bare name `nas` dialed as `nas.local -4`: connected in 0.39 s
+    and listed `/` and `/home`. A file listed as a folder was `notADirectory`; a missing file was
+    `notFound` and left no file behind. A download from 100 000 bytes resumed with 3 029 010 reported,
+    and came out byte-identical (SHA-256) to a direct `curl`.
+  - **The NAS over HTTPS 5006:** exit 60 with no trust and 90 on a wrong pin; with the NAS's pin, the
+    same run passed in full.
+  - **macOS's Apache:** Digest picked and listed; Basic found behind Negotiate and NTLM; a wrong
+    password `credentialsRefused`; a public folder with no account; `credentialsRequired`,
+    `notWebDAV(405)`, `redirected` and `rootNotFound`. In the access log the first request of every
+    connect went with no user.
+- **Found on the way:** the first live run reported a root that is a file as a 400 refusal. The
+  probe asks for the root as a collection, which gets Apache's 400, and its unit test had been fed a
+  207 that Apache never sends for that request. The probe now applies the listing's rule, and a test
+  feeds it the real 400.
+- **Negative controls:** each of seven deliberate breaks fails tests: status deciding alone, the
+  first header value only, no file fallback in a listing, credentials sent before the challenge,
+  commas inside quotes splitting a challenge, backslash escapes ignored, and no `-q`. The probe's
+  file-root rule fails its test when removed. The quoted-comma control first passed: no test string
+  put `, Scheme ` inside quotes. A test now does.
+
 ### Still open
 
 Everything through M31 is shipped, and the record of it — the milestone checklists, the sixty
