@@ -22,6 +22,8 @@ public struct S3SegmentWriteOut: Sendable, Equatable {
         public let status: Int
         /// Bytes this section received.
         public let bytesDownloaded: Int64
+        /// This section's own `curl` exit code, or `nil` when it printed none.
+        public let exitCode: Int32?
     }
 
     /// The `write-out` value for segment `number`.
@@ -29,7 +31,11 @@ public struct S3SegmentWriteOut: Sendable, Equatable {
         S3IndexedWriteOut.format(
             label: Self.label,
             index: number,
-            fields: [("status", "%{http_code}"), ("down", "%{size_download}")]
+            fields: [
+                ("status", "%{http_code}"),
+                ("exit", "%{exitcode}"),
+                ("down", "%{size_download}")
+            ]
         )
     }
 
@@ -59,6 +65,33 @@ public struct S3SegmentWriteOut: Sendable, Equatable {
         guard let raw = reader.values[number], let status = raw["status"].flatMap(Int.init) else {
             return nil
         }
-        return Fields(status: status, bytesDownloaded: raw["down"].flatMap(Int64.init) ?? 0)
+        return Fields(
+            status: status,
+            bytesDownloaded: raw["down"].flatMap(Int64.init) ?? 0,
+            exitCode: raw["exit"].flatMap(Int32.init)
+        )
+    }
+
+    /// Segment `number`'s answer, or the transport failure it was.
+    ///
+    /// The single-transfer rule (``S3WriteOut/isAnswer(status:exitCode:)``), read per section. One
+    /// process runs every segment, so its exit code belongs to none of them, and each section
+    /// reports its own through `%{exitcode}`. Measured 2026-10-23 on two segments, the second held
+    /// to a rate it could not finish within `max-time`: the run exited 28, and the sections reported
+    /// `exit=0` and `exit=28`, **both with status 206**. Assembly's length check would still refuse
+    /// the short piece, but only after every other segment had been read as a success.
+    ///
+    /// A segment that printed nothing is classified by the process's exit, as it always was. One that
+    /// printed a status and no exit code falls back to the process's exit too. That fallback can
+    /// fail a finished segment beside a cut one, and it never passes a cut one.
+    public func response(forSegment number: Int, processExitCode: Int32) throws -> S3Response {
+        guard let fields = fields(forSegment: number) else {
+            throw S3ResponseError.transport(.classify(curlExit: processExitCode))
+        }
+        let exitCode = fields.exitCode ?? processExitCode
+        guard S3WriteOut.isAnswer(status: fields.status, exitCode: exitCode) else {
+            throw S3ResponseError.transport(.classify(curlExit: exitCode))
+        }
+        return S3Response(status: fields.status, bytesTransferred: fields.bytesDownloaded)
     }
 }

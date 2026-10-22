@@ -24,6 +24,12 @@ requests in one `curl`, and each is logged with its own start and end. `IGNORE_R
 with the whole object under a 200 instead — a success that is not what was asked for, which is the
 branch the backend has to notice and route around, and which no well-behaved server will produce on
 demand.
+
+`CUT_AFTER=<bytes>` promises the whole object on a plain `GET` and closes the connection after that
+many bytes of it: a connection dropped mid-body, which `curl` reports as exit 18 with the 200
+already printed. That is the shape a status-only reader takes for a finished download, and the
+fixtures under `DirnexCore/Tests/DirnexCoreTests/Fixtures/S3` were captured against it
+(docs/NOTES.md ▸ curl for S3 ▸ Downloads).
 """
 import json
 import os
@@ -39,6 +45,8 @@ REFUSE_COPY = os.environ.get("REFUSE_COPY") == "1"
 # not honour ranges, which is the one branch a segmented download has to notice and route around.
 IGNORE_RANGE = os.environ.get("IGNORE_RANGE") == "1"
 DELAY = float(os.environ.get("DELAY", "0"))
+# Promise the whole object and close after this many bytes of it — a connection dropped mid-body.
+CUT_AFTER = int(os.environ["CUT_AFTER"]) if os.environ.get("CUT_AFTER") else None
 # Hold each part open for DELAY x its number, so parts in one batch finish at different times —
 # which is what makes per-part progress reporting visible rather than merely believed.
 STAGGER = os.environ.get("STAGGER") == "1"
@@ -85,6 +93,9 @@ class Handler(BaseHTTPRequestHandler):
             note({"method": "GET", "target": target, "bytes": len(body)})
             if DELAY:
                 time.sleep(DELAY)
+            if CUT_AFTER is not None:
+                self._send_cut(body)
+                return
             self._send(200, body)
             return
         first, last = span
@@ -103,6 +114,14 @@ class Handler(BaseHTTPRequestHandler):
         self._send(206, piece, {
             "Content-Range": "bytes %d-%d/%d" % (first, last, len(body)),
         })
+
+    def _send_cut(self, body):
+        """A 200 for the whole object, then only `CUT_AFTER` bytes of it and a closed connection."""
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body[:CUT_AFTER])
+        self.close_connection = True
 
     def _range(self, total):
         """`bytes=<first>-<last>` as a pair, or None when the request asked for the whole thing."""

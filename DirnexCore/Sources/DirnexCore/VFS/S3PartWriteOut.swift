@@ -17,6 +17,8 @@ public struct S3PartWriteOut: Sendable, Equatable {
         public let etag: String?
         /// Bytes this section sent.
         public let bytesUploaded: Int64
+        /// This section's own `curl` exit code, or `nil` when it printed none.
+        public let exitCode: Int32?
     }
 
     /// The `write-out` value for part `number`.
@@ -26,6 +28,7 @@ public struct S3PartWriteOut: Sendable, Equatable {
             index: number,
             fields: [
                 ("status", "%{http_code}"),
+                ("exit", "%{exitcode}"),
                 ("etag", "%header{etag}"),
                 ("up", "%{size_upload}")
             ]
@@ -71,7 +74,39 @@ public struct S3PartWriteOut: Sendable, Equatable {
         return Fields(
             status: status,
             etag: (etag?.isEmpty ?? true) ? nil : etag,
-            bytesUploaded: raw["up"].flatMap(Int64.init) ?? 0
+            bytesUploaded: raw["up"].flatMap(Int64.init) ?? 0,
+            exitCode: raw["exit"].flatMap(Int32.init)
+        )
+    }
+
+    /// Part `number`'s answer, or the transport failure it was — the segments' rule
+    /// (``S3SegmentWriteOut/response(forSegment:processExitCode:)``), read for a part.
+    ///
+    /// What a cut part looks like differs, and it is why this is a classification fix rather than
+    /// a rescue. Measured 2026-10-23 on two parts, the second held to a rate it could not finish:
+    /// it reported **`status=100`**, the `Expect: 100-continue` go-ahead that arrived before the
+    /// body, with `exit=28`. Read by status, that is a refusal with a status no refusal has; read
+    /// by exit code, it is the timeout it was.
+    ///
+    /// `body` is the whole run's stdout, handed to every part for the reason
+    /// `S3CurlRunner.performParts` gives.
+    public func response(
+        forPart number: Int,
+        processExitCode: Int32,
+        body: Data
+    ) throws -> S3Response {
+        guard let fields = fields(forPart: number) else {
+            throw S3ResponseError.transport(.classify(curlExit: processExitCode))
+        }
+        let exitCode = fields.exitCode ?? processExitCode
+        guard S3WriteOut.isAnswer(status: fields.status, exitCode: exitCode) else {
+            throw S3ResponseError.transport(.classify(curlExit: exitCode))
+        }
+        return S3Response(
+            status: fields.status,
+            body: body,
+            bytesTransferred: fields.bytesUploaded,
+            etag: fields.etag
         )
     }
 }

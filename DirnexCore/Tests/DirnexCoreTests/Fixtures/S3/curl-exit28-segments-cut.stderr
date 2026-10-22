@@ -1,0 +1,9 @@
+
+s3-seg1-status=206
+s3-seg1-exit=0
+s3-seg1-down=1564505
+curl: (28) Operation timed out after 1002 milliseconds with 544664 out of 1564505 bytes received
+
+s3-seg2-status=206
+s3-seg2-exit=28
+s3-seg2-down=544664
