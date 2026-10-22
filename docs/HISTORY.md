@@ -15405,6 +15405,42 @@ the same problem.
 - Core green (4093 tests, +5). App green (1809 tests in 288 suites, +6, only the expected
   `GestureWaitTests` issue; live-server suites skipped). Both linters clean. Changes left uncommitted.
 
+**2026-10-23: an S3 transfer cut short is a failure, not a finished copy.** Found by the M32 session
+while it built WebDAV's `curl` reader: on the NAS, a download that ran out of time reported 200 and
+exit 28 with a sixth of the file on disk, and S3's runner reads a run the same way. It did.
+
+- **The hole.** `S3CurlRunner.perform` threw only on status 0, so any run that had a status was a
+  response, whatever `curl` exited. Measured through the shipped builders against
+  `Tooling/fake-s3-endpoint.py`: a `GET` cut by `--max-time` gave 200 and exit 28 with 528 332 of
+  3 129 010 bytes. A connection closed mid-body (the endpoint's new `CUT_AFTER`) gave 200 and exit
+  18. An unwritable destination gave 200 and exit 23, and no file. A scratch package compiled the
+  app's real `S3CurlRunner`, `S3CurlTransport` and their helpers over the core, and drove
+  `S3Backend.copyFile`. Against the cutting endpoint, the unfixed runner reported a **successful
+  copy** of a 100 000-byte file, and the fixed one threw `io(EIO)`. Against the plain endpoint, both
+  copied the object byte-identical.
+- **The rule moved into the core**, in the form WebDAV's reader uses: exit 0 is a response; 22 with
+  a 4xx or 5xx is `--fail`'s refusal and a response; anything else is a transport failure
+  (`S3WriteOut.isAnswer(status:exitCode:)`, `S3WriteOut.response(…)`). The runner hands it the exit
+  code. `S3WriteOut.Direction` replaces the runner's own enum, which is now a typealias, so no call
+  site changed.
+- **Parallel runs are read per section.** One process has one exit code for every transfer in it,
+  so both indexed write-outs gained `exit=%{exitcode}`, and `response(forSegment:…)` and
+  `response(forPart:…)` apply the rule to each. Measured: a cut segment reports 206 with exit 28
+  beside a finished one at exit 0, and a cut part reports **100** (the `Expect` go-ahead) with exit
+  28. Neither was a silent success before: assembly's length check refused the short segment, and
+  100 is not 2xx. So for these two this is a reclassification, and all three paths now share one
+  rule. A section that prints no exit code falls back to the process's.
+- **The same line closes an unmeasured case**: the verbs whose 200 carries the verdict in its body
+  (`CompleteMultipartUpload`, `DeleteObjects`, a listing page). Cut after the status line, a
+  truncated body held no `<Error>` and read as done.
+- **Tests:** `S3CutTransferTests`, 14, over eight real stderr captures in `Fixtures/S3`. Negative
+  control: with `isAnswer` reverted to `status != 0`, 8 of the 14 fail. The six that still pass
+  are the cases that must pass either way: a finished copy, the refusals, no answer, a section
+  that never ran, and the formats.
+- Core green (4313 tests, +14). App green (1834 tests in 290 suites, only the expected
+  `GestureWaitTests` issue; live-server suites skipped, so the S3 live suites did not run). Both
+  linters clean. Changes left uncommitted.
+
 ### M31 — A compare window of our own (M)
 
 **Closed 2026-10-22**, the day it was planned. ⌥F3 opens Dirnex's own read-only, two-way,

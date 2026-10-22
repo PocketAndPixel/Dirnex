@@ -5887,6 +5887,9 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   element; demote the exit code to the narrower question of whether anything was reached at all
   (6/7 unreachable, 28 timeout, 60 certificate). Borrowing FTP's rule here classifies every failure
   as success.
+  - **Narrower, not ignorable.** A nonzero exit *with* a status in hand is a transfer that stopped
+    after the server answered, and reading the status alone took a sixth of a file for a finished
+    download (▸ Downloads, 2026-10-23).
   - **403 covers two things that send the user to different places**, and only the `<Code>`
     separates them: `InvalidAccessKeyId`/`SignatureDoesNotMatch` is a credential they retype, while
     `AccessDenied` on a key that authenticated fine is a bucket policy they have to go and change.
@@ -6175,6 +6178,27 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     classifier that only answers the first leaves plausible garbage on disk. It cannot be caught by
     any test over the argument builder, and the file is the *right size for a document*, so nothing
     downstream complains either.
+- **A status is not a finished transfer. `curl` prints the 200 it saw before the body stopped, so the
+  exit code has to decide first.** Measured 2026-10-23 (`curl` 8.7.1, the shipped arguments,
+  `Tooling/fake-s3-endpoint.py`). A `GET` that ran out of `--max-time` printed `s3-status=200`,
+  exited **28**, and left 528 332 of 3 129 010 bytes under the destination's name. A connection
+  closed mid-body (the endpoint's `CUT_AFTER`) is 200 with exit **18**, and an unwritable destination
+  is 200 with exit **23** and no file at all. The runner read the status alone, so each one was a
+  finished copy: driven through the real `S3CurlTransport` and `S3Backend.copyFile`, the cut run
+  reported success over a 100 000-byte file. The rule is now the one WebDAV's reader was built on
+  (found there first, on the NAS): exit 0 is a response; 22 with a 4xx or 5xx is `--fail`'s
+  refusal and a response too; anything else is a transport failure, whatever status was seen
+  (`S3WriteOut.isAnswer(status:exitCode:)`, fixtures in `Fixtures/S3`).
+  - **A cut upload shows 100, not 200.** The only status it has seen is the `Expect: 100-continue`
+    go-ahead, so the status-only rule read a timeout as a refusal carrying a status no refusal has.
+  - **A parallel run's exit code belongs to no single section, and `%{exitcode}` gives each one its
+    own.** Two segments, one rate-limited: the run exited 28, and the sections reported `exit=0` and
+    `exit=28`, both at 206. Assembly's length check refused that short piece anyway. Parts had no
+    such net, and their cut one reported 100.
+  - **The verbs whose 200 carries the verdict had the same hole, unmeasured.** A
+    `CompleteMultipartUpload` or a `DeleteObjects` cut after its status line hands back a body
+    with no `<Error>` in it, which reads as done. No endpoint here holds a completion open long
+    enough to cut it, but the same rule closes it.
 - **An archived object is a normal-looking row that refuses only when its bytes are wanted, and the
   generic 403 mapping tells the user the worst possible thing.** Measured 2026-08-18 against real
   AWS: `PUT` with `x-amz-storage-class: GLACIER` answers 200, `HEAD` answers **200** carrying

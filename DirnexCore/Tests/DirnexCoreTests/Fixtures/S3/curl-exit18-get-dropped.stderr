@@ -1,0 +1,7 @@
+curl: (18) transfer closed with 3029010 bytes remaining to read
+s3-status=200
+s3-region=
+s3-length=3129010
+s3-size=100000
+s3-up=0
+s3-etag=
