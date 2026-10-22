@@ -148,6 +148,9 @@ struct OperationsSettingsView: View {
     /// Probed once per appearance of the tab, not per redraw: it stats a handful of paths, and the
     /// set of installed apps does not change while a settings pane is open.
     @State private var installedDiffTools: [ExternalDiffTool] = []
+    /// What "Automatic" compares with right now, so its row can name it — the first installed
+    /// tool, or Dirnex's own window when there is none.
+    @State private var automaticDiffToolName: String?
     /// Probed with the diff tools, and for the same reason — a handful of LaunchServices lookups.
     @State private var installedEditors: [ExternalTextEditor] = []
     /// What "Automatic" resolves to right now, so the footer can name it rather than leaving the
@@ -166,15 +169,12 @@ struct OperationsSettingsView: View {
 
             Section {
                 Picker("Compare files with", selection: $preferences.diffToolIdentifier) {
-                    Text("Automatic").tag("")
-                    if !installedDiffTools.isEmpty {
-                        Divider()
-                        ForEach(installedDiffTools) { tool in
-                            Text(tool.displayName).tag(tool.identifier)
-                        }
+                    Text(automaticDiffToolLabel).tag("")
+                    Divider()
+                    ForEach(CompareTool.choices(installed: installedDiffTools)) { tool in
+                        Text(tool.displayName).tag(tool.identifier)
                     }
                 }
-                .disabled(installedDiffTools.isEmpty)
             } footer: {
                 Text(diffToolFooter)
                     .font(.caption)
@@ -205,6 +205,7 @@ struct OperationsSettingsView: View {
         .formStyle(.grouped)
         .task {
             installedDiffTools = ExternalDiffLauncher.installedTools()
+            automaticDiffToolName = ExternalDiffLauncher.automaticTool().displayName
             installedEditors = ExternalTextEditorLauncher.installedEditors()
             automaticEditorName = ExternalTextEditorLauncher.automaticEditor()?.displayName
         }
@@ -217,19 +218,19 @@ struct OperationsSettingsView: View {
         return String(localized: "Automatic (\(name))")
     }
 
-    /// Says which tool Compare By Contents will actually open — including the case that needs it
-    /// most, where the user has installed none and the command is grayed out with no explanation.
+    /// "Automatic (Kaleidoscope)", the editor picker's form, so the default row says what it opens.
+    private var automaticDiffToolLabel: String {
+        guard let name = automaticDiffToolName else { return String(localized: "Automatic") }
+        return String(localized: "Automatic (\(name))")
+    }
+
+    /// Says what Compare By Contents opens, and what Automatic means — Dirnex's own window is
+    /// always one of the choices, so this no longer has a "nothing installed" case to explain.
     private var diffToolFooter: String {
-        guard !installedDiffTools.isEmpty else {
-            return String(localized: """
-            Compare By Contents (⌥F3) needs a diff tool. Install FileMerge (part of Xcode), \
-            Kaleidoscope, or BBEdit, then reopen Settings.
-            """)
-        }
-        let names = installedDiffTools.map(\.displayName).joined(separator: ", ")
-        return String(localized: """
-        The tool Compare By Contents (⌥F3) opens the two files in. Installed: \(names). \
-        Automatic picks the first of those still installed.
+        String(localized: """
+        Where Compare By Contents (⌥F3) shows how two files differ. Dirnex compares them in a window of \
+        its own. Automatic uses Kaleidoscope, BBEdit or FileMerge (part of Xcode) when one is installed, \
+        and Dirnex otherwise.
         """)
     }
 }

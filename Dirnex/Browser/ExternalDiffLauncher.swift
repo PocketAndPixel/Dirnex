@@ -1,62 +1,73 @@
+import AppKit
 import DirnexCore
-import Foundation
 
 /// Launches an external visual diff tool on two on-disk files — the app-side, non-hermetic half of
 /// Compare-by-content (PLAN.md §M5). `ByteComparator` says *whether* two files differ; this opens
 /// them side-by-side in FileMerge, Kaleidoscope, or BBEdit so the user can see *how*.
 ///
-/// The which-tool / how-to-invoke logic is the pure, tested `DirnexCore.ExternalDiffTool`; this
-/// only supplies the filesystem probe (does the launcher exist?) and spawns the resolved command,
-/// mirroring `ArchiveExtractor`'s pattern of running a child process off the main thread.
+/// The which-tool / how-to-invoke logic is the pure, tested `DirnexCore.ExternalDiffTool` and
+/// `CompareTool`; this only supplies the probes (does the launcher exist, where is FileMerge) and
+/// spawns the resolved command, mirroring `ArchiveExtractor`'s pattern of running a child process
+/// off the main thread. Dirnex's own window is one of the answers since PLAN.md §M31 Slice 4, and
+/// the pane opens that one itself.
+@MainActor
 enum ExternalDiffLauncher {
     /// Why a compare-contents request couldn't be fulfilled.
     enum Failure: Error {
-        /// No known diff tool (FileMerge, Kaleidoscope, BBEdit) is installed.
-        case noToolInstalled
-        /// The tool's launcher was found but couldn't be spawned.
+        /// The tool's launcher was found but couldn't be spawned, or is gone since it was found.
         case launchFailed(tool: ExternalDiffTool)
     }
 
     /// The probe injected into the pure model: whether `path` is an existing, executable file.
-    static func executableExists(_ path: String) -> Bool {
+    nonisolated static func executableExists(_ path: String) -> Bool {
         FileManager.default.isExecutableFile(atPath: path)
     }
 
-    /// The tool a Compare-with action would use, or `nil` when none is installed — the user's
-    /// Settings choice when that tool is still installed, else the automatic install order. Cheap
-    /// (a few file-existence checks), so callers use it to title and enable the menu item.
-    @MainActor
-    static func preferredTool() -> ExternalDiffTool? {
+    /// Where LaunchServices has an application, by bundle identifier: how FileMerge, and so the
+    /// Xcode that holds its `opendiff`, is found.
+    static func bundlePath(forIdentifier identifier: String) -> String? {
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: identifier)?.path
+    }
+
+    /// What a Compare-with action would open: the user's Settings choice when it is Dirnex or a
+    /// tool still installed, else the automatic order, which ends in Dirnex. Cheap (a few
+    /// file-existence checks and one LaunchServices lookup), so callers use it to title the menu
+    /// item.
+    static func preferredTool() -> CompareTool {
         let chosen = AppPreferences.shared.diffToolIdentifier
-        return ExternalDiffTool.preferred(
+        return CompareTool.preferred(
             identifier: chosen.isEmpty ? nil : chosen,
-            where: executableExists
+            installed: installedTools()
         )
     }
 
-    /// Every known tool actually installed, in the automatic preference order — the list the
-    /// Settings picker offers. Empty when the user has none of them.
-    static func installedTools() -> [ExternalDiffTool] {
-        ExternalDiffTool.installed(where: executableExists)
+    /// What **Automatic** resolves to right now, ignoring the user's choice — so the picker's
+    /// "Automatic (Kaleidoscope)" row says what it means while another row is selected.
+    static func automaticTool() -> CompareTool {
+        CompareTool.preferred(identifier: nil, installed: installedTools())
     }
 
-    /// Spawn the preferred installed diff tool on the two local files, off the main thread.
-    /// `completion` reports the outcome back on the main actor; on success it carries the tool that
-    /// was launched (for a status message). The child process is launched and left to run on its
-    /// own — we never block on the GUI tool's lifetime.
-    @MainActor
+    /// Every known tool actually installed, in the automatic preference order — the list the
+    /// Settings picker offers after Dirnex. Empty when the user has none of them.
+    static func installedTools() -> [ExternalDiffTool] {
+        ExternalDiffTool.installed(locateBundle: bundlePath(forIdentifier:), where: executableExists)
+    }
+
+    /// Spawn `tool` on the two local files, off the main thread. `completion` reports the outcome
+    /// back on the main actor. The child process is launched and left to run on its own — we never
+    /// block on the GUI tool's lifetime.
     static func compare(
+        with tool: ExternalDiffTool,
         _ leftPath: String,
         _ rightPath: String,
         completion: @escaping (Result<ExternalDiffTool, Failure>) -> Void
     ) {
-        guard let tool = preferredTool(),
-              let invocation = tool.invocation(
-                  comparing: leftPath,
-                  with: rightPath,
-                  executableExists: executableExists
-              ) else {
-            completion(.failure(.noToolInstalled))
+        guard let invocation = tool.invocation(
+            comparing: leftPath,
+            with: rightPath,
+            executableExists: executableExists
+        ) else {
+            completion(.failure(.launchFailed(tool: tool)))
             return
         }
         Task {

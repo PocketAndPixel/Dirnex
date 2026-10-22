@@ -13,6 +13,14 @@ import DirnexCore
 /// - ⎋: close the find bar if it is open, else the window. A field editor's own ⎋ (the find bar's
 ///   field) is left to it.
 extension CompareWindowController {
+    func windowDidBecomeKey(_ notification: Notification) {
+        installKeyMonitor()
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        removeKeyMonitor()
+    }
+
     func installKeyMonitor() {
         guard keyMonitor == nil else { return }
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in

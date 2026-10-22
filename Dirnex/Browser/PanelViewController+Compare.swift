@@ -1,10 +1,11 @@
 import AppKit
 import DirnexCore
 
-/// Compare By Contents (PLAN.md §M5) — hand a pair of files to an external visual diff tool.
-/// `ByteComparator` answers *whether* they differ; FileMerge / Kaleidoscope / BBEdit answer
-/// *how*. Split out of `PanelViewController+Sync`, which owns the folder-level Synchronize sheet:
-/// the two share a launcher but nothing else, and the sync file was near its length budget.
+/// Compare By Contents (PLAN.md §M5) — show how a pair of files differ, in Dirnex's own compare
+/// window (PLAN.md §M31) or an external visual diff tool. `ByteComparator` answers *whether* they
+/// differ; the window, FileMerge, Kaleidoscope or BBEdit answer *how*. Split out of
+/// `PanelViewController+Sync`, which owns the folder-level Synchronize sheet: the two share a
+/// launcher but nothing else, and the sync file was near its length budget.
 ///
 /// The pane holds only the AppKit shell — which two files, whether it's worth launching at all, and
 /// what to tell the user. Every byte the decision rests on is read by the tested `ByteComparator`.
@@ -12,17 +13,6 @@ extension PanelViewController {
     // MARK: - Menu / palette action (dispatched to the focused pane via the responder chain)
 
     /// Compare a pair of files: the two marked in this pane, else the two panes' cursor files.
-    ///
-    /// **Either side may be a row that is not on this disk** since M24 Slice 4 — a server object, an
-    /// archive member, an evicted cloud file — so the bytes come down first and the launcher below
-    /// goes on being handed two ordinary local paths. That is the milestone's structural rule from
-    /// the gesture's side: `ByteComparator` never learned to materialize anything, and the pair it
-    /// prescans is as local as it ever was.
-    ///
-    /// Placeholders are included because the comparator refuses to read through one — it is exactly
-    /// the row that would otherwise beachball the diff tool instead of us — and they are the one
-    /// source `materialize` fetches without weighing, since `CloudDownloadPrompt` is already their
-    /// progress surface.
     @objc func compareByContents(_ sender: Any?) {
         guard let (left, right) = comparablePair() else {
             presentOperationFailure(
@@ -40,24 +30,32 @@ extension PanelViewController {
             )
             return
         }
-        // Asked **before** anything is fetched, which is the whole reason it is asked twice: with
-        // no diff tool installed there is nothing to hand the bytes to, and a user who has none
-        // should not pay for a download to be told so. `launchExternalDiff` keeps its own guard for
-        // the Synchronize sheet, which reaches it without passing through here.
-        guard ExternalDiffLauncher.preferredTool() != nil else {
-            presentDiffFailure(.noToolInstalled)
-            return
-        }
+        compare(left, right)
+    }
+
+    /// Bring a pair down to real files on this disk and compare them: ⌥F3's tail, and the
+    /// Synchronize sheet's "Compare Contents…" row action.
+    ///
+    /// **Either side may be a row that is not on this disk** since M24 Slice 4 — a server object, an
+    /// archive member, an evicted cloud file — so the bytes come down first and the comparison below
+    /// goes on being handed two ordinary local paths. That is the milestone's structural rule from
+    /// the gesture's side: `ByteComparator` never learned to materialize anything, and the pair it
+    /// prescans is as local as it ever was. The Synchronize sheet comes this way too since M31
+    /// Slice 4; it used to hand a server pair's own paths to the diff tool.
+    ///
+    /// Placeholders are included because the comparator refuses to read through one — it is exactly
+    /// the row that would otherwise beachball the diff tool instead of us — and they are the one
+    /// source `materialize` fetches without weighing, since `CloudDownloadPrompt` is already their
+    /// progress surface.
+    func compare(_ left: FileEntry, _ right: FileEntry) {
         materialize([left, right], for: .compare, includingPlaceholders: true) {
-            String(
-                localized: "Couldn’t compare these files",
-                comment: """
-                Alert title when the two files to compare can't be downloaded or extracted.
-                """
-            )
+            CompareOpener.failureTitle
         } then: { [weak self] urls in
             guard urls.count == 2 else { return }
-            self?.launchExternalDiff(comparing: .local(urls[0].path), with: .local(urls[1].path))
+            self?.launchCompare(
+                CompareFile(path: .local(urls[0].path), origin: left.path),
+                with: CompareFile(path: .local(urls[1].path), origin: right.path)
+            )
         }
     }
 
@@ -132,14 +130,14 @@ extension PanelViewController {
 
     // MARK: - Launch
 
-    /// Compare two files, pre-flighting the launch off the main thread. Also the entry point the
-    /// Synchronize sheet's "Compare with …" row action uses.
+    /// Compare two local files, pre-flighting the launch off the main thread.
     ///
     /// Three outcomes, and only one of them opens anything: identical files say so and stop (a
     /// multi-second GUI launch to be told "0 differences" is the worst payoff the feature has),
-    /// files too large to scan ask first, and everything else launches. A pre-flight *failure*
-    /// (permission, vanished mid-read) launches anyway — this is an optimization, not a gate, and
-    /// the diff tool reports an unreadable file better than a second alert here would.
+    /// files too large to scan ask first (or, for Dirnex's window, are refused), and everything
+    /// else opens. A pre-flight *failure* (permission, vanished mid-read) opens anyway — this is an
+    /// optimization, not a gate, and the tool reports an unreadable file better than a second alert
+    /// here would.
     ///
     /// **One failure is not "launch anyway": the comparator refusing to download a cloud
     /// placeholder.** Falling through there would hand the placeholder to the diff tool, which
@@ -147,26 +145,23 @@ extension PanelViewController {
     /// beachball, one process over and with nothing on screen saying why. So that one is caught,
     /// the bytes are fetched where the user can see it happening and stop it, and the compare is
     /// re-run. `downloadingPlaceholders` marks that second run, so it can never loop.
-    func launchExternalDiff(
-        comparing left: VFSPath,
-        with right: VFSPath,
+    func launchCompare(
+        _ left: CompareFile,
+        with right: CompareFile,
         downloadingPlaceholders: Bool = false
     ) {
-        guard let tool = ExternalDiffLauncher.preferredTool() else {
-            presentDiffFailure(.noToolInstalled)
-            return
-        }
+        let tool = ExternalDiffLauncher.preferredTool()
         showComparisonProgress(
             String(
-                localized: "Comparing \(left.lastComponent)…",
+                localized: "Comparing \(left.origin.lastComponent)…",
                 comment: "In-progress status while comparing; %@ is a file name."
             )
         )
         Task { [weak self] in
             let outcome = await BlockingWork.run {
                 Result { try ByteComparator.prescan(
-                    left,
-                    right,
+                    left.path,
+                    right.path,
                     allowDataless: downloadingPlaceholders
                 ) }
             }
@@ -206,24 +201,30 @@ extension PanelViewController {
     /// the time the refusal fires the sizes have matched, so there is no free answer left to give.
     /// What they get is what those two give: a silent start, a sheet if it takes longer than a
     /// moment, and a Stop button that abandons the compare.
-    private func downloadThenCompare(_ left: VFSPath, with right: VFSPath) {
+    private func downloadThenCompare(_ left: CompareFile, with right: CompareFile) {
         CloudDownloadPrompt.materialize(
-            [left, right],
+            [left.path, right.path],
             using: backend,
             over: alertHostWindow
         ) { [weak self] in
-            self?.launchExternalDiff(comparing: left, with: right, downloadingPlaceholders: true)
+            self?.launchCompare(left, with: right, downloadingPlaceholders: true)
         }
     }
 
     /// Ask before handing a very large pair to a visual diff tool: past `prescanByteLimit` the tool
     /// is the slow part, and the user is better placed than we are to say whether it's worth it.
+    /// Dirnex's own window reads a file whole or not at all, and that limit is the same one, so
+    /// there it is a refusal that states the limit rather than a question.
     private func confirmOversizedCompare(
-        _ left: VFSPath,
-        _ right: VFSPath,
-        tool: ExternalDiffTool,
+        _ left: CompareFile,
+        _ right: CompareFile,
+        tool compareTool: CompareTool,
         byteSize: Int64
     ) {
+        guard case let .external(tool) = compareTool else {
+            refuseOversizedCompare(byteSize: byteSize)
+            return
+        }
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = String(
@@ -244,7 +245,7 @@ extension PanelViewController {
         alert.enableEscapeToCancel()
         let proceed: (NSApplication.ModalResponse) -> Void = { [weak self] response in
             guard response == .alertFirstButtonReturn else { return }
-            self?.spawn(tool, comparing: left, with: right)
+            self?.spawn(compareTool, comparing: left, with: right)
         }
         if let window = alertHostWindow {
             alert.beginSheetModal(for: window, completionHandler: proceed)
@@ -258,15 +259,19 @@ extension PanelViewController {
     /// This is the choke point that guarantees the *tool* never gets a placeholder, and it has to be
     /// here rather than only on the refusal path: the two outcomes that reach a launch without the
     /// comparator ever having read a byte — `tooLargeToScan`, and a pre-flight that threw for some
-    /// other reason — would otherwise walk a dataless file straight into FileMerge. Both sides are
-    /// already local on every ordinary compare, so the common case is one `stat` each and no sheet.
-    private func spawn(_ tool: ExternalDiffTool, comparing left: VFSPath, with right: VFSPath) {
+    /// other reason — would otherwise walk a dataless file straight into FileMerge, or into the
+    /// window's whole-file read. Both sides are already local on every ordinary compare, so the
+    /// common case is one `stat` each and no sheet.
+    private func spawn(_ tool: CompareTool, comparing left: CompareFile, with right: CompareFile) {
         CloudDownloadPrompt.materialize(
-            [left, right],
+            [left.path, right.path],
             using: backend,
             over: alertHostWindow
         ) { [weak self] in
-            self?.launch(tool, comparing: left, with: right)
+            switch tool {
+            case .dirnex: self?.openCompareWindow(left, with: right)
+            case let .external(tool): self?.launch(tool, comparing: left.path, with: right.path)
+            }
         }
     }
 
@@ -279,7 +284,7 @@ extension PanelViewController {
                 comment: "In-progress status while launching the diff tool; %@ is the tool name."
             )
         )
-        ExternalDiffLauncher.compare(left.path, right.path) { [weak self] result in
+        ExternalDiffLauncher.compare(with: tool, left.path, right.path) { [weak self] result in
             guard case let .failure(failure) = result else { return }
             self?.clearTransientStatus()
             self?.presentDiffFailure(failure)
@@ -307,7 +312,7 @@ extension PanelViewController {
     /// An in-flight note ("Comparing…", "Opening in FileMerge…"): status line only. Never an alert
     /// — a modal the user must dismiss before the real answer arrives is worse than silence, and
     /// a superseding message replaces it a moment later anyway.
-    private func showComparisonProgress(_ message: String) {
+    func showComparisonProgress(_ message: String) {
         showTransientStatus(message)
     }
 
@@ -328,21 +333,8 @@ extension PanelViewController {
 
     func presentDiffFailure(_ failure: ExternalDiffLauncher.Failure) {
         switch failure {
-        case .noToolInstalled:
-            presentOperationFailure(
-                message: String(
-                    localized: "No comparison tool found",
-                    comment: "Compare failure when no diff tool is installed."
-                ),
-                detail: String(
-                    localized: """
-                    Install FileMerge (part of Xcode), Kaleidoscope, or BBEdit to compare files side by side.
-                    """,
-                    comment: "Compare failure detail suggesting diff tools to install."
-                )
-            )
         case let .launchFailed(tool):
-            presentOperationFailure(
+            presentCompareFailure(
                 message: String(
                     localized: "Couldn’t open \(tool.displayName)",
                     comment: "Compare failure when the diff tool won't launch; %@ is the tool name."

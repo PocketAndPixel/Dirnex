@@ -384,9 +384,79 @@ Decided before Slice 1:
   cursor, Sparkle's last check, and the window's frame. They were put back, and the domain then
   compared unchanged.
 
-Next: Slice 4, wiring. ⌥F3 opens this window, Settings lists **Dirnex** first, FileMerge counts as
-installed only when Xcode is, the new strings go into all 14 languages, and Slice 5's live run
-follows.
+**2026-10-22: Slice 4 landed** (wiring).
+
+- **Core:**
+  - `CompareTool` is what ⌥F3 opens: Dirnex's window, or an installed external tool. Settings lists
+    Dirnex first. Automatic is the first installed external tool, else Dirnex, so a user who has
+    Kaleidoscope, BBEdit or Xcode keeps the tool ⌥F3 opened before, and a Mac with none compares in
+    Dirnex instead of being told to install something. `ExternalDiffTool.preferred` became
+    `CompareTool.preferred`.
+  - `ExternalDiffTool.fileMerge(locateBundle:)` runs the `opendiff` inside the Xcode that holds
+    FileMerge.app, which LaunchServices finds, rather than the `/usr/bin` shim. So FileMerge counts as
+    installed exactly when an Xcode is, under any name or location.
+- **App:**
+  - `CompareOpener` reads both files whole off the main thread and opens the window, or names the file
+    it could not read and why: not text, no encoding reads it, unreadable, or over the limit.
+  - ⌥F3, the Synchronize sheet's Compare Contents… and the conflict dialog all open the window through
+    it. ⌥F3 and Synchronize share one path: the download, the pre-scan, then the window or the tool. A
+    pair over 64 MiB is refused for the window before anything is read, and the alert states the limit.
+  - Each pane's header names the file where it lives, as Copy Path writes it: a server's or an
+    archive's own path, never the temporary copy.
+  - `CompareWindow` overrides `worksWhenModal`, and opens at the modal window's level when one is up,
+    dropping back to normal once none is (`+Modal`). Both are for the Synchronize window, which is
+    app-modal at level 8.
+  - The conflict dialog has a Compare Contents… button when both items are local files with their
+    bytes here. It compares the file already there (left) with the incoming one (right), so red is
+    what Replace would lose. The dialog stays up.
+  - The main menu says "Compare By Contents…" for the window and "Compare with FileMerge…" for a tool.
+    The Synchronize row and the conflict button say "Compare Contents…" for the window.
+  - Settings' picker: "Automatic (FileMerge)", then Dirnex, then the installed tools, and a footer that
+    says what Automatic picks.
+  - **Strings:** the 19 that Slice 3 left out of the catalog and 5 new ones, in all 14 languages, with
+    the change count as a plural. The 4 sentences telling the user to install a diff tool are gone.
+- **Tests:** 8 in the core (`CompareTool`, and FileMerge found only through its Xcode) and 9 in the
+  app (`CompareWiringTests`): sides named by origin and colored by that name, each refusal naming its
+  file, the Synchronize row fetching a server's file first, where the conflict button appears, and the
+  window working while another is modal.
+- **Measured before writing it:**
+  - Xcode's own `opendiff`, run directly with `DEVELOPER_DIR` at the Command Line Tools, opened
+    FileMerge and exited 0. The shim exits 1 under the same setting (docs/NOTES.md ▸ Xcode's tool
+    shims).
+  - In a modal session a plain window's click was dropped and a `worksWhenModal` window's arrived.
+    With no session both arrived. That control failed twice first, because a synthetic click on a
+    window that is not key only makes it key (docs/NOTES.md ▸ Windows).
+- **Found on the way:**
+  - The Synchronize row handed a server pair's own paths to the diff tool. It now goes through the
+    download funnel.
+  - A compare alert raised from the Synchronize window hung on the browser window behind it. Compare
+    alerts now go to `alertHostWindow`.
+- **Negative controls:** FileMerge pointed back at the shim fails five core expectations, one of them
+  the shim-only Mac. With the Synchronize row wired to nothing, the fetch test fails.
+- **Seen live**, in the Debug build with the release copy quit, all saved tabs cleared and Dirnex
+  chosen in Settings:
+  - ⌥F3 on two marked local files opened the window on change 1 of 25.
+  - ⌥F3 on two members of a zip named them inside `texts.zip`, not the extraction.
+  - From the Synchronize row, the window opened behind the Synchronize window and took clicks there
+    (change 1 → 2 of 14). Measured with `CGWindowListCopyWindowInfo`: Synchronize at layer 8, the
+    compare window at 0. After the level fix the window opened at 8, in front, and was back at 0 as
+    soon as Synchronize closed.
+  - The conflict dialog's button opened the comparison and the dialog stayed up. Cancel left the
+    target untouched.
+  - The picker listed Automatic (FileMerge), Dirnex, FileMerge. The File menu, opened with Dirnex in
+    front, read "Compare with FileMerge…" under Automatic and "Compare By Contents…" under Dirnex.
+    With Settings in front instead, the item kept its old title both times, which proves nothing.
+  - Two binary files were refused with an alert naming `a.bin`.
+
+  The run changed six keys of the shared defaults domain: frecency, both saved tabs, the compare
+  tool, the compare window's frame and Sparkle's last check. The domain was cleared and the backup
+  imported, and all 68 keys then compared unchanged.
+- **Not seen live:** a server pair, the developer directory at the Command Line Tools, and a file over
+  the limit. All three are Slice 5's.
+
+Next: Slice 5, live. ⌥F3 on a server pair against the throwaway servers, and ⌥F3 with the developer
+directory pointed at the Command Line Tools. With Xcode still installed, FileMerge should now open
+there, where the shim used to fail without a word.
 
 ### Still open
 
