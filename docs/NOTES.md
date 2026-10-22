@@ -2623,6 +2623,46 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - **A probe disagreed with the app by three orders of magnitude.** A scratch app measured
     `scrollRangeToVisible` at 3.7–4.6 s for the same file, against 1 ms in Dirnex, and its screenshot
     drew no text at all, so what it measured was its own text view. Time TextKit in the app's own view.
+- **Two TextKit 2 views cannot be kept level by scroll offset, even with every line the same height.**
+  Measured 2026-10-22 for M31's compare panes. Every line had a fixed height (minimum and maximum
+  line height equal), nothing wrapped, and the documents had 100 000 lines each of different
+  lengths. Row 1 000 sat at 14 716 in one document and 15 609 in the other, against 16 000 by
+  arithmetic. Row 99 999 moved by 280 000 points after one scroll. Where TextKit has not laid out,
+  a line's position is an estimate, and the estimate depends on the text.
+  - **What works is keeping them level by row.** Find the fragment at the top of the scrolled view
+    (`textLayoutFragment(for: point)`), turn its location into a row, then ask the other view for
+    *its* fragment of that row with `.ensuresLayout` and scroll there. It took 0.2 ms, and the two
+    agreed within a point for six turns afterwards. As a negative control, copying the offset
+    instead put row 2 356 opposite row 3 000 (`CompareScrollSync`).
+  - **Check a scroll to a far row, and scroll again if it missed.** A jump back up from row 19 000
+    to row 500 landed on row 499: laying out the target moved it. Three tries is enough.
+  - **Draw anything per line from the line's own layout fragment.** A custom `NSTextLayoutFragment`
+    from the layout manager delegate can paint a full-width background in `draw(at:in:)`, once its
+    `renderingSurfaceBounds` are widened to cover it. A position computed as `row × height` drifts
+    from the text it belongs to.
+- **A TextKit 2 view that sizes itself to its widest line lays out the whole document.** With
+  `isHorizontallyResizable` on and an unbounded container, `layoutSubtreeIfNeeded` sat in
+  `textContainerOrigin` → `ensureLayoutForRange` typesetting 100 000 lines, and was still at it
+  after ten minutes. A fixed width does not do this: turn horizontal resizing off, keep
+  `widthTracksTextView`, and set the frame width. A full layout is no way out either: 2.2 s for
+  5 000 lines and 34 s for 20 000, faster than linear, on lines mixing Latin, emoji and Hebrew.
+  - **Set the width after the view is the scroll view's document view.** A width set before that
+    was reset to the clip view's, and long lines wrapped. To keep lines from wrapping when the width
+    estimate falls short, use a paragraph style with `.byClipping`.
+- **In TextKit 2, text ending in a line break gets no fragment for the empty line after it.** For
+  `same\nold\n`, enumerating layout fragments gave two, not three. A view that needs every line to be
+  a fragment has to end every line with `\n`, the last one included. That leaves an extra empty line
+  at the end, carried by the last paragraph's fragment as a second line fragment, so a full-width
+  background should use the first line's height (`textLineFragments.first`).
+- **`NSTextLayoutManagerDelegate` is not main-actor isolated, so a `@MainActor` class cannot adopt it
+  in Swift 6.** It fails to compile with "crosses into main actor-isolated code". Make the delegate a
+  plain class. Whatever it reads, such as a color table, has to be nonisolated too. TextKit calls it
+  on the main thread anyway.
+- **An `NSRulerView` installed as the vertical ruler of a scroll view under Auto Layout overlapped
+  the text.** Seen live 2026-10-22: the ruler's frame was `(0, 0, 45, 641)` and the clip view's
+  `(0, 0, 625, 641)`, so the first five columns of every line were hidden under the line numbers.
+  A gutter as an ordinary view beside the scroll view, redrawn when the text scrolls, has no such
+  problem (`CompareLineNumbers`).
 - **On macOS 26 a text field's look can't be drawn by hand; borrow a real field.** Probed 2026-10-08
   for Report a Bug…'s text boxes, which sat as `.bezelBorder` scroll views under a modern email field.
   The bezel, fill and focus ring come from a private `_NSCoreHostingView<AppKitTextField>` subview,
