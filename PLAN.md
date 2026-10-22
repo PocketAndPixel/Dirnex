@@ -139,15 +139,124 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 | M29 | A license, and the reminder it removes | 10-01 | **Revoking a refunded key inside the app** (the server marks it; an in-app list waits until refunds are actually abused); **trials that stop working, and activation limits**; **any copy protection beyond the signature**, since the source is open and the reminder is a request, not a lock; and **the Keychain** for the key, which is signed rather than secret. **Seen only in tests or a Debug build**: the Renew reminder on a release build, the prominent Renew… in Settings ▸ License, a pasted production key, and the 13:00 rule |
 | M30 | Report a Bug, and a Help menu to hold it | 10-07 | **Anything the user didn't type or tick** in a report: no logs, no screenshots, no file names or paths, one crash report at most; **the website** naming Help ▸ Report a Bug…, until a stable release has it (the private repo's C8). **Seen only in tests**: Email Instead's draft, the rate-limit and refusal messages, and Escape. **Open**: a click in the email field once left the focus in Steps, in a computer-use run |
 
-### Next
+### Next: M31 (planned 2026-10-22)
 
-Nothing is planned yet. The app's share of selling Dirnex (the private companion repo
-`dirnex-home`, milestones C1–C15) was two milestones, **M29** (a license, and the reminder it
-removes) and **M30** (Report a Bug), both shipped and archived in [docs/HISTORY.md](docs/HISTORY.md).
-Neither changed what Dirnex *is*: it stays open source, fully usable without paying, and it never
-asks a server whether a license is real. Before the store opens (the private repo's C12), the
-licensing switch goes on for stable, and two small changes are proposed: Help ▸ Release Notes
-opening the website's changelog, and a "Lost your key?" link in Settings ▸ License.
+The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
+two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both
+shipped and archived in [docs/HISTORY.md](docs/HISTORY.md). Neither changed what Dirnex *is*: it
+stays open source, fully usable without paying, and it never asks a server whether a license is
+real. Before the store opens (the private repo's C12), the licensing switch goes on for stable, and
+two small changes are proposed: Help ▸ Release Notes opening the website's changelog, and a "Lost
+your key?" link in Settings ▸ License.
+
+### M31 — A compare window of our own (M)
+
+**Planned 2026-10-22.** ⌥F3 Compare By Contents hands two files to FileMerge, Kaleidoscope or
+BBEdit, and most people who buy Dirnex have none of them. FileMerge ships only inside Xcode, and it
+is worse than absent without it: `/usr/bin/opendiff` is a shim on every Mac (it shares an inode
+with `xcodebuild` and `ibtool`), so `ExternalDiffTool` always finds it. Measured 2026-10-22 with the
+Command Line Tools as the developer directory, it exits 1 with *"tool 'opendiff' requires Xcode"*,
+and the launcher discards its stderr, so ⌥F3 most likely says "Opening in FileMerge…" and nothing
+opens. This milestone gives Dirnex its own read-only, two-way, side-by-side compare window, offered
+as **Dirnex** in the diff-tool picker. The external tools stay.
+
+Decided before Slice 1:
+
+- **Read-only and two-way.** Editing, copying a block across and saving (Total Commander's compare
+  tool) are a later milestone, decided after this one has been used. A three-way merge is not
+  planned.
+- **Lines are compared as bytes of the decoded text, the way git compares them.** Swift `String`s
+  compare by canonical equivalence, so *é* written precomposed and decomposed are equal strings and
+  different bytes. `ByteComparator` has already said these files differ, and a window that then
+  shows them as equal is wrong in the quiet direction.
+- **A line ends at `\n`, `\r\n` or a lone `\r`.** git splits at `\n` only, so a classic Mac file is
+  one line to it. Quick View shows such a file as lines, and so does this.
+- **Myers' algorithm in linear space, with a cost cap.** Measured on git 2.54 (2026-10-22): two
+  100 000-line files drawn from a ten-line alphabet take **12.7 s** with `--minimal` and **0.19 s**
+  with git's cap, for 1.1 % more changed lines. Below the cap the result is the minimum. Lines found
+  on only one side are set aside before the search, since they can never match; that is why two
+  unrelated documents of 20 000 and 10 000 lines take 0.01 s either way.
+- **The options are git's, so git can be the oracle.** Ignore whitespace at line end
+  (`--ignore-space-at-eol`), changes in its amount (`-b`) or all of it (`-w`); ignore line endings
+  (`--ignore-cr-at-eol`); and ignore case, which git lacks. Probed: git's whitespace is a space or a
+  tab, never `\v`, `\f` or a no-break space, and every one of those options also ignores CRLF
+  against LF and a missing final newline.
+- **The oracle is `git diff --no-index --minimal --numstat`.** CI checks out one commit, so the
+  checked-in corpus is this repo's own files with seeded edits, compared by git at test time. Small
+  cases are checked against a quadratic LCS table. A one-time run over the repo's whole history is
+  recorded in the slice note.
+- **When nothing visible differs, the window says what does.** An encoding, a byte-order mark, or
+  line endings under an ignore option can make two files differ with no changed line to show. A
+  blank comparison of files ⌥F3 called different would read as a bug.
+- **Open, asked before Slice 3:** two text views with blank filler lines (recommended: selection,
+  find and a later editor come with them, and copying has to strip the fillers), or a table of
+  aligned line pairs.
+
+#### Slices
+
+1. **The diff engine** (core, additive). `TextLines` (splitting, terminators), `LineDiffOptions`,
+   `LineDiff` (the changed blocks), and Myers with the cap. Tests against the LCS table and the git
+   corpus, negative controls, and a timing on the pathological pair.
+2. **What the window shows** (core). Sliding each changed block to its most readable position (the
+   count stays the same), aligned rows with fillers and the original line numbers, differences
+   inside a changed line, next and previous change, the summary when nothing visible differs, and
+   reading both files without `TextPreview`'s 4 MiB limit, or with a limit the window states.
+3. **The window** (app). Two panes that scroll together, line-number gutters, the band between
+   them, an overview strip, keyboard navigation, the options, M17's syntax colors and Quick View's
+   find.
+4. **Wiring** (app). **Dirnex** first in Settings' diff-tool picker, and the default when no other
+   tool is installed; ⌥F3 and the Synchronize sheet's "Compare with"; FileMerge counted as
+   installed only when Xcode is; M2's leftover side-by-side text in the conflict dialog if it fits.
+   All 14 languages.
+5. **Live.** On this Mac, and with the developer directory pointed at the Command Line Tools.
+
+**Done when:**
+- ⌥F3 on a Mac with no external diff tool opens the window, for local, remote and archive files;
+- every corpus pair agrees with git's `--minimal` counts;
+- the pathological 100 000-line pair opens without a beachball;
+- two files that differ only in encoding or line endings say so rather than showing nothing.
+
+#### Progress
+
+**2026-10-22: Slice 1 landed** (core only; the app is untouched).
+
+- **Core:** `TextLines` (lines and how each ended), `LineDiffOptions` (git's options, and the
+  bytes a line is compared by), `LineDiff` (the changed blocks, and the two counts `--numstat`
+  reports) and `MyersDiff` (the search, on interned line identities, with its work list on the
+  heap rather than the call stack). Lines found on one side only are set aside before the search.
+- **Tests:** 23 in four new suites, and one release budget. `TextLinesTests` and `LineDiffTests` pin the line model and every
+  option, each whitespace row probed against git first. `LineDiffPropertyTests` checks 3 000
+  random pairs against a quadratic LCS table, and checks that a search cut short is still valid.
+  `LineDiffGitCorpusTests` edits 35 of this repo's files and compares each under all five option
+  sets with `git diff --no-index --diff-algorithm=minimal`. A release budget in
+  `PerformanceBudgetTests` covers the dense pair.
+- **Measured:**
+  - **This repository's whole history** (a throwaway harness, not checked in): 5 223 pairs of
+    file versions, 36.9 million lines, **no disagreement with git's minimal counts** under any of
+    the five option sets, and 221 under a deliberately wrong one.
+  - **The dense 100 000-line pair:** 0.40–0.48 s in release with the limit, for 53 825 changed
+    lines on each side against a minimum of 52 591 (2.3 % more; git's own limit gives 1.2 %).
+    Without the limit it takes 28 s, where git takes 12.7 s. Two unrelated documents of 20 000 and
+    10 000 lines take 0.04 s.
+- **Decided in the slice:**
+  - **The cost limit is the square root of the line count, never under 256.** It counts the steps
+    each of the two searches takes, so a pair with up to about 512 changed lines is always solved
+    exactly.
+  - **When the limit is hit, the box splits where either search got furthest.** That is a point on
+    a valid path, so the answer is still correct, only no longer the shortest. Below the limit the
+    answer is minimal, which is what the history run checked.
+- **Found on the way:** the corpus test's first run disagreed with git on 4 of 35 files, and the
+  engine was right. The test's own edits appended text after a CRLF line's CR, leaving a lone CR
+  in mid-line, which `TextLines` splits and git does not. The tell was in the counts: inserted
+  minus removed differed, so the two were reading different lines, not aligning the same lines
+  differently (docs/NOTES.md ▸ git).
+- **Negative controls:** with git's `-w` mapped to the default options, 34 of 35 corpus files
+  disagree. The property test asserts that the limit really cut more than 100 searches short. The
+  precomposed/decomposed test first asserts that Swift calls the two strings equal.
+- `SeededGenerator` moved from `PerformanceBudgetTests` to `Tests/…/Support`, now that three suites
+  use it.
+
+Next: Slice 2, what the window shows.
 
 ### Still open
 
@@ -222,6 +331,7 @@ plan keeps the strategy, which is a rule that outlives any one pass.
 | M25 writes attributes to a server through verbs that vary per account, and reports success it did not have. `sftp`'s `-p`, `chmod`, `copy` and the `readlink` behind a symlink target are each present on some accounts and absent on others — `ForceCommand internal-sftp` alone removes the exec channel | Degrade **per connection at run time**, the shape M22's search walk already proved: the account is asked once, the answer is remembered for that connection, and what cannot be carried is *not* carried rather than approximated. The failure to design against is the quiet one — writing an empty symlink because no target could be read, or reporting a preserved mode that was silently dropped — so the milestone opens with probes against a real `sshd` rather than with a man page, and a capability that cannot be established leaves the old behaviour standing. The corollary is that this milestone owes docs/NOTES.md a **correction** rather than only an entry: "neither remote protocol has a copy verb" is written down twice, and `sftp copy` exists. **Held (closed 2026-08-29).** Every capability is latched per connection and none is asked in advance; a refusal is *reported* rather than approximated (`RemoteMetadataPlan` names what a transfer will lose, and the status line says it), and the quiet failure the row names was found to be worse than described — `CopyEngine.swift:283` now refuses a symlink whose target could not be read, because `ln -s ""` is a dangling link over SFTP and an **`NSInvalidArgumentException` that terminates the process** on a download. The correction was made: NOTES.md records `copy-data revision 1`, measured at 64 MiB in 0.08 s |
 | M29's reminder turns goodwill into irritation. A sheet Escape cannot close, at every launch, is the most hostile thing Dirnex will ever do, in an app whose reviews are written by keyboard users | The mitigations: 30 quiet days; a sentence that asks rather than scolds; one sheet per launch or per day, never stacked over onboarding; and every rule a named constant in `LicenseReminderPolicy`, so changing the cadence is a one-line, tested change rather than a redesign. The tell is feedback about the sheet outnumbering feedback about the app |
 | M29: a paying customer meets the reminder after an update they didn't choose | The notice before any uncovered install, and no silent background install of one. Slice 5's probe chose the hook, an app test pins that a background check cannot get past it, and Slice 6 watched it hold on a beta all night |
+| M31's compare window grows into an editor one small step at a time: selectable text, then editable text, then something has to save it. And a diff can be wrong in the quiet direction, showing two different files as the same | Editing is a later milestone's decision, stated in M31's first bullet. The tell is a text view becoming editable, or a Save command appearing, before that decision is taken. Against the quiet error there are three defenses: lines compare as bytes, every corpus pair has to match git's minimal counts, and a pair with no visible change says what differs |
 
 ## 7. Open questions
 
