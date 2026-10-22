@@ -5,18 +5,30 @@ import DirnexCore
 /// Everything before this point — the download, the pre-scan, identical files — is shared with the
 /// external tools in `PanelViewController+Compare`; the reading is `CompareOpener`'s.
 extension PanelViewController {
-    /// Open the window on the pair, naming each file where the user knows it: a server's or an
-    /// archive's own location, as Copy Path writes it, rather than the copy that was read.
+    /// Open the window on the pair, naming each file where the user knows it rather than the copy
+    /// that was read.
     func openCompareWindow(_ left: CompareFile, with right: CompareFile) {
         CompareOpener.openWindow(
             left,
-            detail: copyPathText(for: left.origin),
+            detail: compareDetail(for: left.origin),
             right,
-            detail: copyPathText(for: right.origin)
+            detail: compareDetail(for: right.origin)
         ) { [weak self] detail in
             self?.clearTransientStatus()
             self?.presentCompareFailure(message: CompareOpener.failureTitle, detail: detail)
         }
+    }
+
+    /// Where a file lives, as a pane's header says it: Copy Path's text, with the server's name in
+    /// front for a file on a server (`oleg@nas:/srv/notes.txt`, the way `scp` writes it).
+    ///
+    /// Copy Path writes a server file's bare path, which is right for pasting into a shell on that
+    /// server and wrong here: seen live in PLAN.md §M31 Slice 5, a server file and a local one read
+    /// as two local paths side by side. The name is the path bar's own root crumb.
+    func compareDetail(for origin: VFSPath) -> String {
+        let path = copyPathText(for: origin)
+        guard origin.backend.isRemoteConnection, let server = origin.backendRootTitle else { return path }
+        return "\(server):\(path)"
     }
 
     /// A pair too large for the window, refused before anything is read. The window reads a file

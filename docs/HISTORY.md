@@ -1,4 +1,4 @@
-# Dirnex — build history (M0 → M30)
+# Dirnex — build history (M0 → M31)
 
 The shipped record of Dirnex's milestones: the milestone checklists as they were completed,
 plus the per-pass progress log — what was probed, what was decided, what was rejected and why.
@@ -22,7 +22,8 @@ whose own measurement rewrote its last slice. **M29** (a license, and the remind
 was planned 09-29 and closed 10-01, the app's share of selling Dirnex. It closed on a real beta,
 which found two bugs every test had passed over. **M30** (Report a Bug, and a Help menu to hold it)
 was planned 09-29 and closed 10-07, once the store's server took reports, on a report from a real
-beta. **After M19** carries the thirty-one dated
+beta. **M31** (a compare window of our own) was planned and closed 10-22, in five slices on one day.
+**After M19** carries the thirty-one dated
 passes from 2026-08-07 → 08-25 that landed outside a milestone of their own — it sits at the end
 rather than in date order, because it is the file's catch-all rather than a numeric slot. Two
 sections frame them, both handed over by the plan on 2026-09-01 once it had nothing left to say
@@ -15403,6 +15404,393 @@ the same problem.
   only after the full 5 s, on every run.
 - Core green (4093 tests, +5). App green (1809 tests in 288 suites, +6, only the expected
   `GestureWaitTests` issue; live-server suites skipped). Both linters clean. Changes left uncommitted.
+
+### M31 — A compare window of our own (M)
+
+**Closed 2026-10-22**, the day it was planned. ⌥F3 opens Dirnex's own read-only, two-way,
+side-by-side window, offered as **Dirnex** first in Settings and chosen by Automatic when no external
+tool is installed. The engine is Myers in linear space with a cost limit, and over this repository's
+whole history (5 223 pairs of file versions) it never disagreed with `git diff --minimal`. The
+window keeps the panes level by row, colors each row with its own layout fragment, and names
+whatever no row can show: an encoding, a byte-order mark, line endings or whitespace the options
+overlooked. The Synchronize sheet and the conflict dialog open it too. FileMerge counts as installed
+only when an Xcode holds it, and runs through that Xcode's own `opendiff`, so it opens even with the
+Command Line Tools selected, where the `/usr/bin` shim failed without a word. Three findings are
+worth not re-deriving. Under TextKit 2 two panes can only be kept level by row, never by scroll
+offset (docs/NOTES.md ▸ Text fields and text views). A window opened from an app-modal one needs
+`worksWhenModal` and the modal window's level, or it opens behind it and takes no click
+(docs/NOTES.md ▸ Windows). And a label under the window-size priority is the first thing a longer
+translation erases (docs/NOTES.md ▸ Layout under a longer translation).
+
+Some paths were not exercised by the close, and are recorded rather than argued. **A Mac with no
+external diff tool** was a probe that hid FileMerge from LaunchServices, not a Mac without Xcode.
+**An external tool from the conflict dialog** (Kaleidoscope, BBEdit) was never launched live, only
+Dirnex's window. **Escape** can't be tried live (LIVE-VERIFICATION.md), and the keys are pinned by
+tests. **FTP and S3 pairs** were not run; they reach the same download funnel as SFTP.
+
+Left deliberately undone: **editing, copying a block across and saving** (Total Commander's compare
+tool), a later milestone's decision once this one has been used; **a three-way merge**, not planned;
+**a file over 64 MiB** in the window, which is refused by name and stays the external tools' job; and
+**a binary comparison**, which `ByteComparator` answers as "differ" and the window refuses by name.
+
+The section as the plan carried it through the milestone:
+
+**Planned 2026-10-22.** ⌥F3 Compare By Contents hands two files to FileMerge, Kaleidoscope or
+BBEdit, and most people who buy Dirnex have none of them. FileMerge ships only inside Xcode, and it
+is worse than absent without it: `/usr/bin/opendiff` is a shim on every Mac (it shares an inode
+with `xcodebuild` and `ibtool`), so `ExternalDiffTool` always finds it. Measured 2026-10-22 with the
+Command Line Tools as the developer directory, it exits 1 with *"tool 'opendiff' requires Xcode"*,
+and the launcher discards its stderr, so ⌥F3 most likely says "Opening in FileMerge…" and nothing
+opens. This milestone gives Dirnex its own read-only, two-way, side-by-side compare window, offered
+as **Dirnex** in the diff-tool picker. The external tools stay.
+
+Decided before Slice 1:
+
+- **Read-only and two-way.** Editing, copying a block across and saving (Total Commander's compare
+  tool) are a later milestone, decided after this one has been used. A three-way merge is not
+  planned.
+- **Lines are compared as bytes of the decoded text, the way git compares them.** Swift `String`s
+  compare by canonical equivalence, so *é* written precomposed and decomposed are equal strings and
+  different bytes. `ByteComparator` has already said these files differ, and a window that then
+  shows them as equal is wrong in the quiet direction.
+- **A line ends at `\n`, `\r\n` or a lone `\r`.** git splits at `\n` only, so a classic Mac file is
+  one line to it. Quick View shows such a file as lines, and so does this.
+- **Myers' algorithm in linear space, with a cost cap.** Measured on git 2.54 (2026-10-22): two
+  100 000-line files drawn from a ten-line alphabet take **12.7 s** with `--minimal` and **0.19 s**
+  with git's cap, for 1.1 % more changed lines. Below the cap the result is the minimum. Lines found
+  on only one side are set aside before the search, since they can never match; that is why two
+  unrelated documents of 20 000 and 10 000 lines take 0.01 s either way.
+- **The options are git's, so git can be the oracle.** Ignore whitespace at line end
+  (`--ignore-space-at-eol`), changes in its amount (`-b`) or all of it (`-w`); ignore line endings
+  (`--ignore-cr-at-eol`); and ignore case, which git lacks. Probed: git's whitespace is a space or a
+  tab, never `\v`, `\f` or a no-break space, and every one of those options also ignores CRLF
+  against LF and a missing final newline.
+- **The oracle is `git diff --no-index --minimal --numstat`.** CI checks out one commit, so the
+  checked-in corpus is this repo's own files with seeded edits, compared by git at test time. Small
+  cases are checked against a quadratic LCS table. A one-time run over the repo's whole history is
+  recorded in the slice note.
+- **When nothing visible differs, the window says what does.** An encoding, a byte-order mark, or
+  line endings under an ignore option can make two files differ with no changed line to show. A
+  blank comparison of files ⌥F3 called different would read as a bug.
+- **Two text views with blank filler lines**, not a table of aligned line pairs. Asked before
+  Slice 3 and answered by Oleg (2026-10-22): selection, find and a later editor come with text
+  views, and copying has to leave the fillers out.
+
+#### Slices
+
+1. **The diff engine** (core, additive). `TextLines` (splitting, terminators), `LineDiffOptions`,
+   `LineDiff` (the changed blocks), and Myers with the cap. Tests against the LCS table and the git
+   corpus, negative controls, and a timing on the pathological pair.
+2. **What the window shows** (core). Sliding each changed block to its most readable position (the
+   count stays the same), aligned rows with fillers and the original line numbers, differences
+   inside a changed line, next and previous change, the summary when nothing visible differs, and
+   reading both files without `TextPreview`'s 4 MiB limit, or with a limit the window states.
+3. **The window** (app). Two panes that scroll together, line-number gutters, the band between
+   them, an overview strip, keyboard navigation, the options, M17's syntax colors and Quick View's
+   find.
+4. **Wiring** (app). **Dirnex** first in Settings' diff-tool picker, and the default when no other
+   tool is installed; ⌥F3 and the Synchronize sheet's "Compare with"; FileMerge counted as
+   installed only when Xcode is; M2's leftover side-by-side text in the conflict dialog if it fits.
+   All 14 languages.
+5. **Live.** On this Mac, and with the developer directory pointed at the Command Line Tools.
+
+**Done when:**
+- ⌥F3 on a Mac with no external diff tool opens the window, for local, remote and archive files;
+- every corpus pair agrees with git's `--minimal` counts;
+- the pathological 100 000-line pair opens without a beachball;
+- two files that differ only in encoding or line endings say so rather than showing nothing.
+
+#### Progress
+
+**2026-10-22: Slice 1 landed** (core only; the app is untouched).
+
+- **Core:** `TextLines` (lines and how each ended), `LineDiffOptions` (git's options, and the
+  bytes a line is compared by), `LineDiff` (the changed blocks, and the two counts `--numstat`
+  reports) and `MyersDiff` (the search, on interned line identities, with its work list on the
+  heap rather than the call stack). Lines found on one side only are set aside before the search.
+- **Tests:** 23 in four new suites, and one release budget. `TextLinesTests` and `LineDiffTests` pin the line model and every
+  option, each whitespace row probed against git first. `LineDiffPropertyTests` checks 3 000
+  random pairs against a quadratic LCS table, and checks that a search cut short is still valid.
+  `LineDiffGitCorpusTests` edits 35 of this repo's files and compares each under all five option
+  sets with `git diff --no-index --diff-algorithm=minimal`. A release budget in
+  `PerformanceBudgetTests` covers the dense pair.
+- **Measured:**
+  - **This repository's whole history** (a throwaway harness, not checked in): 5 223 pairs of
+    file versions, 36.9 million lines, **no disagreement with git's minimal counts** under any of
+    the five option sets, and 221 under a deliberately wrong one.
+  - **The dense 100 000-line pair:** 0.40–0.48 s in release with the limit, for 53 825 changed
+    lines on each side against a minimum of 52 591 (2.3 % more; git's own limit gives 1.2 %).
+    Without the limit it takes 28 s, where git takes 12.7 s. Two unrelated documents of 20 000 and
+    10 000 lines take 0.04 s.
+- **Decided in the slice:**
+  - **The cost limit is the square root of the line count, never under 256.** It counts the steps
+    each of the two searches takes, so a pair with up to about 512 changed lines is always solved
+    exactly.
+  - **When the limit is hit, the box splits where either search got furthest.** That is a point on
+    a valid path, so the answer is still correct, only no longer the shortest. Below the limit the
+    answer is minimal, which is what the history run checked.
+- **Found on the way:** the corpus test's first run disagreed with git on 4 of 35 files, and the
+  engine was right. The test's own edits appended text after a CRLF line's CR, leaving a lone CR
+  in mid-line, which `TextLines` splits and git does not. The tell was in the counts: inserted
+  minus removed differed, so the two were reading different lines, not aligning the same lines
+  differently (docs/NOTES.md ▸ git).
+- **Negative controls:** with git's `-w` mapped to the default options, 34 of 35 corpus files
+  disagree. The property test asserts that the limit really cut more than 100 searches short. The
+  precomposed/decomposed test first asserts that Swift calls the two strings equal.
+- `SeededGenerator` moved from `PerformanceBudgetTests` to `Tests/…/Support`, now that three suites
+  use it.
+
+**2026-10-22: Slice 2 landed** (core only; the app is untouched).
+
+- **Core:**
+  - `ChangeSliding` moves each changed block to its most readable position.
+  - `AlignedRow` and `RowAlignment` lay out the rows, with gaps.
+  - `LineFingerprint` decides which lines of a block share a row.
+  - `InlineDiff` and `InlineDifference` mark the words that differ inside a row.
+  - `ComparedText` reads a whole file, keeping its encoding and byte-order mark.
+  - `TextComparison` holds the rows, the change list, navigation, and what the rows cannot show.
+  - `TextPreview`'s decoder now also reports the encoding it settled on, so Quick View and the
+    window decode the same way.
+- **Tests:** 34 in five new suites. Fourteen placement cases are git's own answers, probed first.
+  Random texts check that sliding keeps every count minimal and every pairing valid, and that
+  every line lands in exactly one row, in order.
+- **Measured:**
+  - **Block placement against git's `-U0` hunks over this repository's history**
+    (`--diff-algorithm=minimal --indent-heuristic`, a throwaway harness):
+
+    | | Files matching git exactly | Blocks matching |
+    |---|---|---|
+    | No sliding | 82.3 % | 78.3 % |
+    | First scoring | 93.7 % | 83.1 % |
+    | **Shipped** | **98.3 %** (5 136 of 5 226) | 83.7 % |
+    | Shipped, without `.xcstrings` | 98.4 % | **98.9 %** (15 576 of 15 756) |
+
+    Three rewrites of `Localizable.xcstrings` hold 7 422 of the 7 606 unmatched blocks. Most of
+    the rest are the two searches pairing different copies of a repeated line, with the same
+    counts. In some of them Dirnex reads better than git: removing a method from `VaultMounts.swift`,
+    git's block starts at the previous method's `}` and stops inside the body.
+  - **A whole comparison, in release:** 0.43 s for the dense 100 000-line pair, 0.52 s for two
+    unrelated 200 000-line files (one block, paired line for line), 0.17 s for two unrelated
+    documents, and 0.03 s for a 20 000-line document with 200 edits.
+- **Decided in the slice:**
+  - **Placement follows git's order:** first, a block that can sit opposite a block on the other
+    side goes there. Otherwise the cheapest boundaries win, and ties go to the lowest position.
+    The scoring is Dirnex's own, not a port of git's indent heuristic. A boundary costs 2 if the
+    line after it is blank, 2 if the line before it is not, and 2 for every four columns of the
+    deeper of the two lines around it. The first version looked only at the line after the
+    boundary. It cut into method bodies when a method was added at the end of a type, and that
+    case is the gap between the second and third rows of the table.
+  - **Pairing:** lines go on one row when their Dice coefficient over adjacent character pairs is
+    at least 0.5. The pairs are chosen for the best total, in order. Unpaired lines between two
+    pairs go side by side from the top, so a block costs as many rows as its longer side. Above
+    10 000 candidate pairs, lines pair from the top.
+  - **Inside a row, words are compared, not characters:** words, runs of whitespace, and single
+    other characters, with the same search. Two marked words with only whitespace between them
+    are one stretch. Offsets are UTF-16. A line over 10 000 units is left whole.
+  - **A file is read whole or refused, never truncated.** The limit is `ByteComparator`'s 64 MiB
+    pre-scan limit, past which ⌥F3 already asks first. Binary and undecodable files are refused
+    by name.
+  - **What the rows cannot show is named, even when other lines differ:** encoding, a byte-order
+    mark on one side only, and line endings, whitespace or case that the options overlooked.
+  - **Under the default options, a line whose only change is its ending is a changed row with
+    nothing marked inside.** Its `lineEndingsDiffer` is set, and Slice 3 has to draw something
+    for it.
+- **Negative controls:** with sliding off, 2 of the 14 placement cases fail. With the scoring
+  reduced to "lowest position", 1 fails: the repeated paragraph, where git chooses a higher
+  position.
+
+**2026-10-22: Slice 3 landed** (the window; nothing opens it yet, which is Slice 4).
+
+- **Core:** `ComparisonPaneText`, one pane as the text its view holds. It has a line per row and an
+  empty line per gap, each ending in `\n`. It also gives the row offsets, the widest row in columns
+  (a tab to the next stop of four, a wide character two), and copying back to the file's own text.
+- **App (`Dirnex/Compare/`):**
+  - `CompareWindowController`, with `+Keys` and `+Banner`.
+  - `ComparePaneView`: the header, the gutter, and the scroll view.
+  - `CompareTextView`, which copies the file's text and finds rows by layout fragment.
+  - `CompareRowFragment` and `CompareRowColoring`, which paint each row's color across the pane.
+  - `CompareLineNumbers`, `CompareScrollSync`, `CompareBandView`, `CompareOverviewView`,
+    `CompareToolbar`, `CompareTextStyle` and `CompareColors`.
+  - **Not yet in the string catalog:** `xcodebuild` does not add new strings to it, so the
+    catalog and the 14 languages are Slice 4's.
+- **Tests:** 7 in the core (`ComparisonPaneTextTests`) and 9 in the app (`CompareWindowTests`):
+  - TextKit 2 stays on, and each row's fragment carries its row's fill.
+  - No row wraps: every row is exactly one line tall.
+  - Copying leaves out the gaps.
+  - The two panes show the same row at the top at rows 3 000, 12 000 and 19 000 of a
+    20 000-row pair, and back at 500.
+  - The keys, the counter, the banner, and the overview's buckets.
+  - The delegate answers TextKit's fragment selector.
+- **Measured, and what it decided:**
+  - **Keeping the panes level by scroll offset does not work under TextKit 2.** With every row the
+    same fixed height and nothing wrapping, row 1 000 of 100 000 sat at 14 716 in one document and
+    15 609 in another, against 16 000 by arithmetic, and far rows moved after every scroll. So the
+    panes are kept level by row: the row at the top of one pane is found, and the other pane is
+    scrolled to its own copy of that row. That takes 0.2 ms and held for six turns. As a negative
+    control, the same test with the scroll offset copied put row 2 356 opposite row 3 000, and
+    row 401 opposite row 500.
+  - **A pane must not wrap, and must not size itself to its widest line.** A text view that resizes
+    itself to fit its text was still typesetting 100 000 rows after ten minutes. A fixed width, set
+    once the view is in its scroll view, shows them at once. Each row is one line of fixed height
+    that clips rather than wraps. The pane is 15 % wider than its widest row needs, so a wide
+    character that runs over is clipped, never wrapped.
+  - **A full layout is not an option:** 2.2 s for 5 000 rows and 34 s for 20 000.
+  - **Row colors are drawn by the rows' own layout fragments.** A row's position is known only
+    there, and a computed position drifts from the text. Under TextKit 2 an empty last line has no
+    fragment of its own, so every row ends in `\n`.
+  - **The gutter is a view beside the scroll view, not an `NSRulerView`.** Seen live: with the
+    ruler installed, the clip view still started under it, so the first five columns of every line
+    were hidden.
+  - **A scroll to a far row is checked and repeated, up to three times.** A jump back up from row
+    19 000 to row 500 otherwise landed on row 499.
+- **Decided in the slice:**
+  - **Keys:** a local monitor, as in `TabShortcuts`, because disabled main-menu items would
+    swallow ⌘F (Favorites) and ⌘G (Places) in this window.
+    - ⌥⌘↓ and ⌥⌘↑ go to the next and previous change; neither is bound in any preset.
+    - ⌘F, ⌘G and ⇧⌘G find with the system find bar, in the pane holding the keyboard.
+    - ⎋ closes the find bar, else the window.
+  - **Find is the system's `NSTextFinder` bar, not Quick View's.** Quick View's find is built into
+    `QuickViewTextView` and its filter bar; the system bar works on any text view.
+  - **The window opens on its first change.** Changing an option computes the comparison again
+    and keeps the same line of the left file at the top.
+  - **The band is a straight bar beside each change, not FileMerge's slanted band.** The gaps
+    already line the two sides up.
+  - **Colors are GitHub's split-diff tints:** red for what the left side had, green for what the
+    right side has, and gray for a gap. Both halves are authored.
+- **Seen live**, through a temporary probe that opened the window on a real pair from this repo's
+  history and captured it (since removed). Checked in both appearances:
+  - row colors, gaps and the marks inside a changed line;
+  - the gutter's ↵ and the banner;
+  - the band and the overview strip;
+  - the find bar, and both panes level at every step.
+
+  Running the Debug build changed four keys of the shared defaults domain: frecency, a tab's
+  cursor, Sparkle's last check, and the window's frame. They were put back, and the domain then
+  compared unchanged.
+
+**2026-10-22: Slice 4 landed** (wiring).
+
+- **Core:**
+  - `CompareTool` is what ⌥F3 opens: Dirnex's window, or an installed external tool. Settings lists
+    Dirnex first. Automatic is the first installed external tool, else Dirnex, so a user who has
+    Kaleidoscope, BBEdit or Xcode keeps the tool ⌥F3 opened before, and a Mac with none compares in
+    Dirnex instead of being told to install something. `ExternalDiffTool.preferred` became
+    `CompareTool.preferred`.
+  - `ExternalDiffTool.fileMerge(locateBundle:)` runs the `opendiff` inside the Xcode that holds
+    FileMerge.app, which LaunchServices finds, rather than the `/usr/bin` shim. So FileMerge counts as
+    installed exactly when an Xcode is, under any name or location.
+- **App:**
+  - `CompareOpener` reads both files whole off the main thread and opens the window, or names the file
+    it could not read and why: not text, no encoding reads it, unreadable, or over the limit.
+  - ⌥F3, the Synchronize sheet's Compare Contents… and the conflict dialog all open the window through
+    it. ⌥F3 and Synchronize share one path: the download, the pre-scan, then the window or the tool. A
+    pair over 64 MiB is refused for the window before anything is read, and the alert states the limit.
+  - Each pane's header names the file where it lives, as Copy Path writes it: a server's or an
+    archive's own path, never the temporary copy.
+  - `CompareWindow` overrides `worksWhenModal`, and opens at the modal window's level when one is up,
+    dropping back to normal once none is (`+Modal`). Both are for the Synchronize window, which is
+    app-modal at level 8.
+  - The conflict dialog has a Compare Contents… button when both items are local files with their
+    bytes here. It compares the file already there (left) with the incoming one (right), so red is
+    what Replace would lose. The dialog stays up.
+  - The main menu says "Compare By Contents…" for the window and "Compare with FileMerge…" for a tool.
+    The Synchronize row and the conflict button say "Compare Contents…" for the window.
+  - Settings' picker: "Automatic (FileMerge)", then Dirnex, then the installed tools, and a footer that
+    says what Automatic picks.
+  - **Strings:** the 19 that Slice 3 left out of the catalog and 5 new ones, in all 14 languages, with
+    the change count as a plural. The 4 sentences telling the user to install a diff tool are gone.
+- **Tests:** 8 in the core (`CompareTool`, and FileMerge found only through its Xcode) and 9 in the
+  app (`CompareWiringTests`): sides named by origin and colored by that name, each refusal naming its
+  file, the Synchronize row fetching a server's file first, where the conflict button appears, and the
+  window working while another is modal.
+- **Measured before writing it:**
+  - Xcode's own `opendiff`, run directly with `DEVELOPER_DIR` at the Command Line Tools, opened
+    FileMerge and exited 0. The shim exits 1 under the same setting (docs/NOTES.md ▸ Xcode's tool
+    shims).
+  - In a modal session a plain window's click was dropped and a `worksWhenModal` window's arrived.
+    With no session both arrived. That control failed twice first, because a synthetic click on a
+    window that is not key only makes it key (docs/NOTES.md ▸ Windows).
+- **Found on the way:**
+  - The Synchronize row handed a server pair's own paths to the diff tool. It now goes through the
+    download funnel.
+  - A compare alert raised from the Synchronize window hung on the browser window behind it. Compare
+    alerts now go to `alertHostWindow`.
+- **Negative controls:** FileMerge pointed back at the shim fails five core expectations, one of them
+  the shim-only Mac. With the Synchronize row wired to nothing, the fetch test fails.
+- **Seen live**, in the Debug build with the release copy quit, all saved tabs cleared and Dirnex
+  chosen in Settings:
+  - ⌥F3 on two marked local files opened the window on change 1 of 25.
+  - ⌥F3 on two members of a zip named them inside `texts.zip`, not the extraction.
+  - From the Synchronize row, the window opened behind the Synchronize window and took clicks there
+    (change 1 → 2 of 14). Measured with `CGWindowListCopyWindowInfo`: Synchronize at layer 8, the
+    compare window at 0. After the level fix the window opened at 8, in front, and was back at 0 as
+    soon as Synchronize closed.
+  - The conflict dialog's button opened the comparison and the dialog stayed up. Cancel left the
+    target untouched.
+  - The picker listed Automatic (FileMerge), Dirnex, FileMerge. The File menu, opened with Dirnex in
+    front, read "Compare with FileMerge…" under Automatic and "Compare By Contents…" under Dirnex.
+    With Settings in front instead, the item kept its old title both times, which proves nothing.
+  - Two binary files were refused with an alert naming `a.bin`.
+
+  The run changed six keys of the shared defaults domain: frecency, both saved tabs, the compare
+  tool, the compare window's frame and Sparkle's last check. The domain was cleared and the backup
+  imported, and all 68 keys then compared unchanged.
+- **Not seen live:** a server pair, the developer directory at the Command Line Tools, and a file over
+  the limit. All three are Slice 5's.
+
+**2026-10-22: Slice 5 landed** (live). Run in the Debug build with all saved tabs replaced by the
+run's own, the throwaway servers up (`scripts/live_test_servers.sh`) and the defaults domain backed
+up first.
+
+- **A Mac with no external diff tool**, made by a temporary probe that hid FileMerge from
+  LaunchServices (removed afterwards; the shipped file matches the Slice 4 commit). The compare tool
+  was Automatic, and Settings named it "Automatic (Dirnex)". ⌥F3 opened Dirnex's window on:
+  - two marked files on the SFTP throwaway, after 3 logins, with the copies in `DirnexRemote`;
+  - a server file against a local one by the two cursors, at 0 logins because the copy was cached;
+  - two members of a zip, named inside the zip.
+- **What no row shows, said:**
+  - Same text in UTF-8 and UTF-16: "No line differs. The left file is Unicode (UTF-8) and the right
+    file is Unicode (UTF-16LE). Only the right file starts with a byte-order mark." The accents and
+    the Cyrillic decoded the same on both sides.
+  - CRLF against LF: three changed rows marked ↵, "Lines marked ↵ end differently." With Ignore Line
+    Endings on: "No differences" and "Some lines shown as the same end differently."
+  - A byte-order mark on one side only: "No line differs. Only the right file starts with a
+    byte-order mark."
+- **The dense 100 000-line pair** (two files drawn from a ten-line alphabet) opened without a
+  beachball: 35 281 changes. A sampler timed an AppleEvent round trip every 50 ms, and the worst
+  over the whole open was **130 ms**, against the 2 s a beachball takes. A scroll from the top to row
+  100 000 cost at most 34 ms, and the two panes stayed level to the last line. The Debug build took
+  about 7 s to show the comparison.
+  - The sampler's first version measured nothing: AppleScript answers `name` of an application
+    itself, without asking the app. Its control was to freeze the app for a second with `SIGSTOP`,
+    which the first version did not notice and the second (on `run operation` with an unknown id)
+    reported as 1 027 ms (docs/LIVE-VERIFICATION.md).
+- **Over the limit:** two 68 MB files were refused before a byte was read: "These files are large
+  (68,2 MB). Dirnex compares files of up to 67,1 MB." That is 64 MiB in this Mac's decimal format.
+- **With the developer directory at the Command Line Tools** (`DEVELOPER_DIR` in the app's own
+  environment, Xcode still installed): Automatic was FileMerge, and ⌥F3 opened it with `-left` and
+  `-right` on the pair. The `/usr/bin` shim under the same setting still exits 1.
+- **In German**, the compare window and the Settings footer read correctly.
+- **Two bugs found and fixed:**
+  - **A server file's header named no server.** Copy Path writes a server file's bare path, so a
+    server file and a local one read as two local paths. The header now puts the path bar's name for
+    the server in front, `oleg@127.0.0.1:/private/tmp/…/Compare-new.swift` (`compareDetail(for:)`).
+  - **The change counter vanished at the window's minimum width in German**, and truncated in
+    English. It gave way first (compression resistance 250 against the option controls' 750). The
+    toolbar now reserves the width of the comparison's longest counter text at priority 740, which
+    the window has to respect, so the narrowest window is 949 pt in German and the counter is always
+    whole.
+- **Tests:** 2 in the app, one for each bug (the header names the server; at the window's minimum
+  width the counter shows "Change 30 of 30" in full). With the counter's old priority the second
+  fails on the width.
+- **Found on the way:** a Debug copy launched with arguments was still running through two test
+  runs, because `pgrep -f '…/Dirnex$'` does not match a command line that ends in its arguments. The
+  first German screenshot was of the old binary (docs/LIVE-VERIFICATION.md).
+
+  The run changed eight keys of the shared defaults domain, among them both saved tabs, the active
+  pane, the compare tool and the compare window's frame. The domain was cleared and the backup
+  imported, and all 68 keys then compared unchanged. The servers were stopped and their host key
+  unpinned, and the app removed its `DirnexRemote` copies on quit.
 
 ---
 

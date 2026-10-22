@@ -78,10 +78,23 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     after the last test run had finished), and `open -n` on the fresh build made two. Then
     `app_menu` and every AppleEvent by bundle id can reach either one. Run the `pgrep` *before*
     launching as well as after.
+  - **A copy launched with `--args` is invisible to `pgrep -f '…/Dirnex$'`.** Seen 2026-10-22: a
+    Debug build launched with `-AppleLanguages (de)` kept running through two `xcodebuild test` runs
+    that rebuilt the binary under it, and a later `open` only refocused it. The next screenshot was
+    of the old code. The `$` anchors on the executable, and that command line ends in its
+    arguments. `pgrep -lx Dirnex` matches the process name whatever follows it.
   - **In a wait loop, `pgrep -f` also matches the shell running the loop.** Seen 2026-10-21: the
     agent's shell runs each command as `bash -c '<command>'`, so the pattern is in that shell's own
     command line. The loop waiting for the app to quit never saw it gone, and a `pkill -f` on the
     same pattern aims at that shell as well. `pgrep -lx Dirnex` matches the process name only.
+- **To show a gesture causes no beachball, time an AppleEvent the app itself has to answer.** Cocoa
+  handles AppleEvents on the main thread, so a round trip every 50 ms during the gesture measures
+  how long the main thread was busy. Measured 2026-10-22 for M31's 100 000-line comparison. The
+  first sampler sent `get name`, and a one-second `kill -STOP` during sampling did not register,
+  because AppleScript answers an application's `name` itself without sending anything. `run
+  operation "probe.none"` reaches Dirnex, which refuses it at once, and the same freeze then read as
+  1 027 ms. Run the `SIGSTOP` control before trusting a quiet result; the sampler is a few lines of
+  `NSAppleScript` timed with `DispatchTime`.
 - **`open` from a shell hands the app the shell's environment, so a live check of anything shaped
   by `PATH` or the locale passes whatever the code does.** open(1) says launched apps inherit the
   caller's environment. Seen 2026-10-21: a Debug build whose parent was `launchd` still carried a

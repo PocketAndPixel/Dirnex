@@ -14,6 +14,10 @@ final class CompareToolbar: NSView {
     let whitespace = NSPopUpButton()
     let ignoresCase = NSButton(checkboxWithTitle: "", target: nil, action: nil)
     let ignoresLineEndings = NSButton(checkboxWithTitle: "", target: nil, action: nil)
+    /// Room for the counter's longest text in this comparison (`reserveCounterWidth`).
+    let counterWidth: NSLayoutConstraint
+    /// The change count `counterWidth` was last sized for.
+    private var reservedCount: Int?
 
     /// The whitespace choices, in the popup's order.
     static let whitespaceChoices: [LineDiffOptions.Whitespace] = [
@@ -21,6 +25,7 @@ final class CompareToolbar: NSView {
     ]
 
     init() {
+        counterWidth = counter.widthAnchor.constraint(greaterThanOrEqualToConstant: 0)
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
         build()
@@ -61,9 +66,25 @@ final class CompareToolbar: NSView {
     }
 
     func showCounter(current: Int?, count: Int) {
+        if count != reservedCount { reserveCounterWidth(for: count) }
         counter.stringValue = Self.counterText(current: current, count: count)
         navigation.setEnabled(count > 0, forSegment: 0)
         navigation.setEnabled(count > 0, forSegment: 1)
+    }
+
+    /// Size the counter for the longest text it can show in a comparison with `count` changes, so
+    /// stepping from "Change 9 of 12" to "Change 10 of 12" never makes it wider than the window has
+    /// already made room for.
+    func reserveCounterWidth(for count: Int) {
+        reservedCount = count
+        let texts = [
+            Self.counterText(current: nil, count: count),
+            Self.counterText(current: max(0, count - 1), count: count)
+        ]
+        let font = counter.font ?? .systemFont(ofSize: NSFont.systemFontSize)
+        let widest = texts.map { ($0 as NSString).size(withAttributes: [.font: font]).width }.max() ?? 0
+        // The label's cell draws its text inset by two points on each side.
+        counterWidth.constant = ceil(widest) + 4
     }
 
     // MARK: - Building
@@ -92,7 +113,13 @@ final class CompareToolbar: NSView {
 
         counter.textColor = .secondaryLabelColor
         counter.lineBreakMode = .byTruncatingTail
-        counter.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        // Just under the option controls' 750, and above the 500 a window holds its size at, so the
+        // window cannot be made narrower than the counter needs (PLAN.md §M31 Slice 5). At the old
+        // `.defaultLow` the counter gave way first and vanished entirely in German at the window's
+        // minimum width, and truncated to "Cha…" in English.
+        counter.setContentCompressionResistancePriority(.init(740), for: .horizontal)
+        counterWidth.priority = .init(740)
+        counterWidth.isActive = true
 
         whitespace.removeAllItems()
         whitespace.addItems(withTitles: Self.whitespaceChoices.map(Self.title(for:)))
