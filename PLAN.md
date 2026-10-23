@@ -684,6 +684,38 @@ live rather than written.
   after a 401, no resend after a folder's own refusal, a level not wholly answered taken as a
   shortcut, the first line for a section winning, and the status read without the exit code.
 
+**2026-10-23: FTP's tree refresh stops at one failed login** (core and app). Slice 5's measurement
+that a wrong password costs one failed login per section held for FTP too, and NOTES.md already
+said so for 3 sections. What it cost had not been counted: a tree refresh runs on a timer, so a
+password changed on the server spent it every round.
+
+- **Measured first**, through the shipped builder against pyftpdlib: 4 sections, 4 failed logins
+  and 4 sessions, and the fallback then tried once more. In the running app, a tree with four
+  folders listed after the password changed spent **9 a round**, two rounds running, since the
+  batch carried `MLSD` beside each `LIST` by then.
+- **The fix, taken by Oleg over listing the first folder alone first:** the refresh's batch runs with
+  `--fail-early`. FTP refuses a folder with a transfer error, unlike HTTP's 404, so the run also
+  stops at the first refused folder, and `FTPBatchRun.reading` finds the stop by the first file that
+  did not land and its cause by the run's exit code. A folder's refusal (9, or 19 for a folder that
+  can be entered and not read) sends the rest again; a refused login ends the round; no answer
+  falls back to one listing per folder as before. A refresh is still one login.
+  - **Core:** `FTPBatchRun` and `FTPBatchStop`, `FTPTransport.listingsUntilFirstFailure` with a
+    default that lists one folder at a time and stops at the first failure, the builder's
+    `stopsAtFirstFailure`, and `FTPBackend.listDirectories`. The subtree walk keeps the run that
+    does not stop.
+  - **App:** `FTPCurlTransport+Batch` reads the run's exit for the stopping run only.
+- **Tests:** 14 new and 5 rewritten, across the batched-listing suite, its request suite and two new
+  ones for the reader and the protocol default. The batched-listing fake now counts sign-ins the way
+  the server's log did; the old one counted a batch as one attempt, which is why the cost never
+  showed. Core 4427 and app 1860 green; the live server suites skipped for want of their config.
+- **Live,** the same tree in the running app with the password changed under it: 1 failed login a
+  round, three rounds running, against the committed backend's 9. A temporary probe gave the build
+  the password from its environment; it was removed and the build rebuilt, and the defaults domain
+  was restored and compared unchanged (71 keys).
+- **Negative controls:** each of six breaks fails tests: the committed backend, a refused login sent
+  again, no `--fail-early`, a stop on `MLSD` ignored, 19 not read as a folder's refusal, and no
+  answer not retried.
+
 ### Still open
 
 Everything through M31 is shipped, and the record of it — the milestone checklists, the sixty
