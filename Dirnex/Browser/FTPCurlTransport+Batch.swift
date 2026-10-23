@@ -125,7 +125,8 @@ extension FTPCurlTransport {
 }
 
 /// A directory a listing run writes its per-section answers into, and the counter that keeps their
-/// names unique across every chunk of one call — the batch's, and the single listing with facts'.
+/// names unique across every chunk of one call — FTP's batch and its single listing with facts, and
+/// WebDAV's batch (`WebDAVCurlTransport+Batch`), each naming its own with `label`.
 ///
 /// One directory per call rather than one shared with the process: two subtree walks can be in
 /// flight at once (a search in one pane and a folder size in the other), and a name reused across
@@ -134,8 +135,8 @@ final class BatchScratch {
     private let directory: String
     private var issued = 0
 
-    init() throws {
-        directory = NSTemporaryDirectory() + "dirnex-ftp-list-\(UUID().uuidString)"
+    init(label: String = "ftp") throws {
+        directory = NSTemporaryDirectory() + "dirnex-\(label)-list-\(UUID().uuidString)"
         try FileManager.default.createDirectory(
             atPath: directory, withIntermediateDirectories: true
         )

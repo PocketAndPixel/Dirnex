@@ -17,6 +17,10 @@ public struct WebDAVBackend: ConnectionScopedBackend {
     /// Whether this server has answered COPY as a method it does not have, so the next duplicate is
     /// staged through this disk without asking again.
     let serverSideCopy = ServerSideCopySupport()
+    /// The most entries the subtree shortcut may gather before it stops and reports itself
+    /// incomplete. FTP's 50 000 and its reason: a whole tree is held in memory, and settable so a
+    /// test can reach the rule (``FTPBackend/subtreeRowLimit``).
+    public var subtreeRowLimit = SSHFindCommand.defaultRowLimit
 
     public init(location: WebDAVLocation, transport: any WebDAVTransport) {
         self.location = location
@@ -85,7 +89,7 @@ public struct WebDAVBackend: ConnectionScopedBackend {
     /// A 2xx that is not a multistatus — a web page, an empty body — is an I/O failure rather than
     /// an empty folder: a server answering PROPFIND with something else is not answering the
     /// question, and an empty listing would show a folder that is not empty as empty.
-    private func listing(of path: VFSPath, from response: WebDAVHTTPResponse) throws -> WebDAVListing {
+    func listing(of path: VFSPath, from response: WebDAVHTTPResponse) throws -> WebDAVListing {
         guard response.isSuccess else {
             throw Self.serviceError(response, method: .propfind).vfsError(for: path)
         }

@@ -610,6 +610,80 @@ and `acceptsUploads` leaves WebDAV out until Slice 4.
   latched, gone read as changed, a lock mapped to `EBUSY`, the mode counted as lost, and the form
   content type left on.
 
+**2026-10-23: Slice 5 landed** (core and app). Only the walk needed new code. Every other gesture on
+the list already keys on `isRemoteConnection`, `acceptsUploads` or `RemoteFetchPolicy`, and was run
+live rather than written.
+
+- **Core:**
+  - `WebDAVProcessArguments+Batch`: `listings(session:requests:credentials:)` puts one `Depth: 1`
+    PROPFIND per folder in a single `-K -` config, each section whole and its body in its own file.
+    The first section alone carries `fail`, and the run `--fail-early`. `WebDAVBatchWriteOut` reads
+    each section by its own `%{exitcode}`. `WebDAVTransport` gains `propfindBatch`.
+  - `WebDAVBackend+Listings`: `subtreeListing` a level at a time, which the sizer, ⌥F7 and directory
+    sync all ask before walking, and `listDirectories` for a tree refresh. `subtreeRowLimit` is FTP's
+    50 000.
+- **App:** `WebDAVCurlTransport+Batch`, with FTP's `BatchScratch` given a label. Get Info's
+  permissions note named an object store and an IIS-style FTP listing as the reasons, which on a
+  WebDAV row reads as a mislabelled server. It now names them, WebDAV among them, as examples of
+  servers and protocols that send none, in all 14 languages.
+- **Tests:** 32 core tests in two new suites, 223 across WebDAV, and 16 new fixture files: real
+  batched runs through the shipped builder against macOS's Apache (a level with a missing folder, a
+  refused login, a missing first folder, Digest, a refused connection, a wrong pin), and every
+  folder of one tree. One new app test pins that the composite reaches both seams. Core 4413 and
+  app 1860 green; the live server suites skipped for want of their config.
+- **Measured while building it** (macOS's Apache, 2026-10-23; NOTES.md ▸ curl (WebDAV)):
+  - **A wrong password cost one failed login per section**: four sections gave four 401s. With
+    `fail` on the first section and `--fail-early`, one. `fail` does not survive `next`, and
+    `--fail-early` acts only on a transfer that failed, which a 401 is not without `fail`.
+  - **One run kept one connection, and reconnected by itself at Apache's keep-alive limit of 100**:
+    250 sections made three connections and took 0.04 s, against 1.48 s as 250 runs. Digest stayed
+    on the connection and paid its 401 per section.
+  - `--fail-early` stopped a refused connection after one attempt, where four sections without it
+    tried four times.
+- **Decided in the slice:**
+  - **A first folder refused on its own sends the rest of the level again; a 401 or a section with
+    no answer ends the level.** A 404 there is a folder deleted since it was listed, while a refused
+    login would be refused for every folder after it.
+  - **A level not wholly answered is no shortcut**, stricter than FTP: skipping a folder nobody
+    answered for would return a subtree short of a branch that still claimed to be complete, and
+    the sizer would show its total as the folder's. A folder the server *refused* is skipped, as the
+    walk skips it.
+  - Never Depth infinity, as decided before Slice 1. One open folder goes the ordinary way.
+- **Live, against the throwaway Apache**, over HTTP with Basic, then over HTTPS with a pinned
+  self-signed certificate. A temporary probe gave the build the password from its environment, so
+  nothing touched the Keychain; it was removed and the build rebuilt (the binary checked for it).
+  The defaults domain was restored and compared unchanged (71 keys). A Debug copy nobody in the
+  session had launched was running first, and was quit with Oleg's OK.
+  - **Space on a folder of 250 folders** (folder *i* holding *i* bytes): 251 PROPFINDs over 4
+    connections in 0.242 s, and the row read 31 KB for 31 375 bytes. Over HTTPS the same over 4 TLS
+    connections, 0.237 s. **The same build with `WebDAVBackend+Listings.swift` moved aside walked:
+    251 connections, 4.225 s.**
+  - ⌃B sized the other folder in one connection per level (1, 4, 3, 1) and took the first from the
+    total Space had just measured.
+  - **A tree refresh**, 15.2 s after a tab switch, re-listed the root and three open folders as four
+    requests on one connection. The first show of the tab lists each open folder separately, as it
+    did before; that is the tree's restore path.
+  - **⌥F7** offered name, kind, size and date. `r.b` found only `c d+é/r.bin`, 261 requests in six
+    runs, 0.27 s.
+  - ⌘C on that hit and ⌘V into a local pane: one GET, byte-identical, with the server's date. Quick
+    View from the results tab: one GET. In the tree the cursor passed `f100` without fetching it, and
+    `top.txt` drew its text.
+  - The compare window drew the WebDAV `top.txt` against a changed local copy, "Change 1 of 1",
+    from the copy Quick View had fetched. Synchronize Directories gathered its WebDAV side in the
+    same six runs and offered Size and Content, with no Date. Create Checksum stat'ed the free name
+    (404), fetched nothing, and wrote the manifest in one PUT; its digest matched `shasum`. Get Info
+    showed the size, the date and the entity tag.
+- **Found on the way:** the search's count was four over the walk's own, and the four were the tree
+  pane's refresh landing mid-search on a connection of its own. Read the requests, not the count
+  (LIVE-VERIFICATION ▸ a session count is not evidence while a background poll is running).
+- **Not run live yet:** the NAS, which is Slice 6's; dragging out to Finder, since a drag session
+  cannot be synthesized; Open With, Share, ⌥F5 and user scripts, which reach the same fetch the
+  compare and checksum runs did; Digest in the app; and a refused login or a first-folder 404 in the
+  middle of a walk, which the unit tests drive.
+- **Negative controls:** each of six deliberate breaks fails tests: `fail` on every section, a resend
+  after a 401, no resend after a folder's own refusal, a level not wholly answered taken as a
+  shortcut, the first line for a section winning, and the status read without the exit code.
+
 ### Still open
 
 Everything through M31 is shipped, and the record of it — the milestone checklists, the sixty

@@ -6821,6 +6821,23 @@ whoever drives `curl` over HTTP next. Most of them apply to the S3 backend as mu
   keeps the type under a form's type; Apache's log showed `-` for the header with the second. `-T
   /dev/null` is not the way round it: `/dev/null` has no length, so the body goes chunked (5 bytes of
   framing for an empty file).
+- **In a `next`-separated batch, a wrong password costs one failed login per section, and the guard
+  is `fail` on the first section only.** Measured 2026-10-23 on macOS's Apache with four `Depth: 1`
+  PROPFINDs in one `-K -` config: a wrong password gave four 401s in the log, which is what locks
+  the NAS account. `--fail-early` is global but only acts on a transfer that failed, and a 401 is not
+  a failure without `fail`; `fail` (or `--fail` before `-K -`, which lands in the first section) does
+  not survive `next`. So `fail` in section one plus `--fail-early` stops a refused login after one
+  request (exit 22), while a 404 further down is that section's own answer and the run goes on. A
+  404 *first* stops the run too, so the caller sends the rest again (`WebDAVBackend.listLevel`).
+  `--fail-early` also stops on a section that got no answer: a refused connection was one attempt
+  with it and four without. Read each section by its own `%{exitcode}` in a per-section
+  `write-out`, since the run's exit code is the last section's.
+- **One `curl` keeps the connection across sections, and reconnects by itself at the server's
+  keep-alive limit.** 250 PROPFINDs in one run made three connections, at sections 1, 102 and 203
+  (Apache's `MaxKeepAliveRequests 100`), all 207, in 0.04 s against 1.48 s as 250 runs on loopback.
+  In the app over pinned HTTPS, sizing a 250-folder tree took 4 TLS connections and 0.24 s, and the
+  walk it replaced 251 and 4.2 s. Digest stays on the one connection but still pays its 401 per
+  section, since `curl` keeps no nonce between transfers.
 
 ### The Trash
 
