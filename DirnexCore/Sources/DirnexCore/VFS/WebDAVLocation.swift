@@ -119,6 +119,19 @@ public extension WebDAVLocation {
         return isDefaultPort ? "\(scheme)://\(authority)" : "\(scheme)://\(authority):\(port)"
     }
 
+    /// The account as a person writes it — the URL of its root, with the user name in front when
+    /// there is one: `https://dirnex-test@nas:5006/`, `https://cloud.example.com/remote.php/dav/files/me`.
+    ///
+    /// For reading, not for dialing: the root is shown decoded, as it was typed, and an e-mail login
+    /// keeps its own `@`. The descriptor stays the identity.
+    var displayAddress: String {
+        let scheme = usesTLS ? "https://" : "http://"
+        let user = username.isEmpty ? "" : "\(username)@"
+        let isDefaultPort = (usesTLS && port == 443) || (!usesTLS && port == 80)
+        let authority = isDefaultPort ? host : "\(host):\(port)"
+        return scheme + user + authority + (rootPath.isEmpty ? "/" : rootPath)
+    }
+
     /// The server path a path inside the backend stands for — ``rootPath`` prefixed, decoded.
     func serverPath(forBackendPath backendPath: String) -> String {
         let path = VFSPath.normalize(backendPath)

@@ -1,13 +1,14 @@
 import AppKit
 import DirnexCore
 
-/// The editable body of the Connect-to-Server dialog: a protocol picker (SMB | SFTP | FTP | S3) over
-/// four per-protocol field sets. This owns the picker, the SFTP rows and their auth toggle, the
-/// shared "Save as" row, and the layout; `ConnectServerFTPFields`, `ConnectServerSMBFields` and
-/// `ConnectServerS3Fields` own theirs, in their own files — four protocols' worth of stored controls
-/// does not fit in one type under SwiftLint's `type_body_length`.
+/// The editable body of the Connect-to-Server dialog: a protocol picker (SMB | SFTP | FTP | WebDAV |
+/// S3) over five per-protocol field sets. This owns the picker, the SFTP rows and their auth toggle,
+/// the shared "Save as" row, and the layout; `ConnectServerFTPFields`, `ConnectServerSMBFields`,
+/// `ConnectServerWebDAVFields` and `ConnectServerS3Fields` own theirs, in their own files — five
+/// protocols' worth of stored controls does not fit in one type under SwiftLint's
+/// `type_body_length`.
 ///
-/// The four protocols keep independent field sets (rather than sharing host/user) so switching
+/// The protocols keep independent field sets (rather than sharing host/user) so switching
 /// protocols never carries one's values — or one's defaults, like SFTP's `NSUserName()` — into
 /// another. Only the rows for the selected protocol are shown, and the sheet re-fits its height to
 /// whichever protocol is selected — the width is reserved once (the widest layout) so switching only
@@ -50,10 +51,11 @@ final class ConnectServerForm: NSObject {
     private var sftpKeyRow: NSGridRow!
     private var sftpPasswordRow: NSGridRow!
 
-    /// The FTP, SMB and S3 field sets, each in its own object and its own file (see the type
-    /// comment).
+    /// The FTP, SMB, WebDAV and S3 field sets, each in its own object and its own file (see the
+    /// type comment).
     private let ftp = ConnectServerFTPFields()
     private let smb = ConnectServerSMBFields()
+    private let webdav = ConnectServerWebDAVFields()
     private let s3 = ConnectServerS3Fields()
 
     init(prefill: ServerConnection?) {
@@ -89,6 +91,8 @@ final class ConnectServerForm: NSObject {
         )
         let ftpControls = ftp.buildRows(in: grid)
         ftp.onLayoutChanged = { [weak self] in self?.onLayoutChanged?() }
+        let webdavControls = webdav.buildRows(in: grid)
+        webdav.onLayoutChanged = { [weak self] in self?.onLayoutChanged?() }
         let s3Controls = s3.buildRows(in: grid)
         s3.onLayoutChanged = { [weak self] in self?.onLayoutChanged?() }
         grid.addRow(with: [ConnectFormFactory.label(ConnectText.saveAs), saveName])
@@ -97,17 +101,17 @@ final class ConnectServerForm: NSObject {
         grid.rowAlignment = .firstBaseline
         let controls: [NSView] = [
             protocolControl, sftpHost, sftpPort, sftpUser, keyFile, sftpSecret, saveName
-        ] + ftpControls + smbControls + s3Controls
+        ] + ftpControls + smbControls + webdavControls + s3Controls
         for control in controls {
             control.widthAnchor.constraint(equalToConstant: 364).isActive = true
         }
     }
 
     private func wireControls() {
-        // SMB, SFTP, FTP, S3 — the dropdown's order, and SMB is the initial selection: connecting
-        // to a share on the local network is the most common reason to open this dialog. S3 is
-        // last because it is the one entry that is not a machine on a network.
-        protocolControl.addItems(withTitles: ["SMB", "SFTP", "FTP", "S3"])
+        // SMB, SFTP, FTP, WebDAV, S3 — the dropdown's order, and SMB is the initial selection:
+        // connecting to a share on the local network is the most common reason to open this
+        // dialog. S3 is last because it is the one entry that is not a machine on a network.
+        protocolControl.addItems(withTitles: ["SMB", "SFTP", "FTP", "WebDAV", "S3"])
         protocolControl.selectItem(at: Protocols.smb.rawValue)
         protocolControl.target = self
         protocolControl.action = #selector(protocolChanged)
@@ -164,24 +168,30 @@ final class ConnectServerForm: NSObject {
         let ftpWidth = grid.fittingSize.width
         setRows(ftp.allRows, hidden: true)
 
+        setRows(webdav.allRows, hidden: false)
+        grid.layoutSubtreeIfNeeded()
+        let webdavWidth = grid.fittingSize.width
+        setRows(webdav.allRows, hidden: true)
+
         setRows(s3.allRows, hidden: false)
         grid.layoutSubtreeIfNeeded()
         let s3Width = grid.fittingSize.width
         setRows(s3.allRows, hidden: true)
 
-        return max(max(sftpWidth, smbWidth), max(ftpWidth, s3Width))
+        return [sftpWidth, smbWidth, ftpWidth, webdavWidth, s3Width].max() ?? sftpWidth
     }
 
     // MARK: - Toggles & sync
 
     /// Which protocol the picker has selected. Named rather than compared by index, so re-ordering
     /// the dropdown can't silently re-point one predicate at another protocol. The raw values are the
-    /// dropdown's item order: SMB, SFTP, FTP.
+    /// dropdown's item order.
     private enum Protocols: Int {
         case smb = 0
         case sftp = 1
         case ftp = 2
-        case s3 = 3
+        case webdav = 3
+        case s3 = 4
     }
 
     private var selectedProtocol: Protocols {
@@ -211,11 +221,13 @@ final class ConnectServerForm: NSObject {
         sftpKeyRow.isHidden = selected != .sftp || !usingKey
         sftpPasswordRow.isHidden = selected != .sftp || usingKey
         ftp.setHidden(selected != .ftp)
+        webdav.setHidden(selected != .webdav)
         s3.setHidden(selected != .s3)
         updateAuthEmphasis()
         switch selected {
         case .smb: initialFirstResponder = smb.firstResponder
         case .ftp: initialFirstResponder = ftp.firstResponder
+        case .webdav: initialFirstResponder = webdav.firstResponder
         case .s3: initialFirstResponder = s3.firstResponder
         case .sftp: initialFirstResponder = sftpHost
         }
@@ -275,6 +287,13 @@ final class ConnectServerForm: NSObject {
         case let .s3Account(account):
             protocolControl.selectItem(at: Protocols.s3.rawValue)
             s3.apply(account: account)
+        case let .webdav(location, authentication, trustedPublicKey):
+            protocolControl.selectItem(at: Protocols.webdav.rawValue)
+            webdav.apply(
+                location: location,
+                authentication: authentication,
+                trustedPublicKey: trustedPublicKey
+            )
         }
     }
 
@@ -288,6 +307,7 @@ final class ConnectServerForm: NSObject {
         switch selectedProtocol {
         case .smb: return smb.readForm(saveName: name)
         case .ftp: return ftp.readForm(saveName: name)
+        case .webdav: return webdav.readForm(saveName: name)
         case .s3: return s3.readForm(saveName: name)
         case .sftp: return readSFTPForm(saveName: name)
         }

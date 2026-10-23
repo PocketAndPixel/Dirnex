@@ -93,7 +93,7 @@ struct SafeButtonFocusTests {
         let window = bareWindow()
         let answer = Task {
             await PanelViewController.confirmCertificateTrust(
-                location: FTPLocation(host: "nas.local", username: "oleg"),
+                host: "nas.local",
                 certificate: Self.certificate,
                 over: window
             )
@@ -110,7 +110,7 @@ struct SafeButtonFocusTests {
         let window = bareWindow()
         let answer = Task {
             await PanelViewController.confirmCertificateChange(
-                location: FTPLocation(host: "nas.local", username: "oleg"),
+                host: "nas.local",
                 certificate: Self.certificate,
                 over: window
             )

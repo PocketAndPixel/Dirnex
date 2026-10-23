@@ -20,6 +20,7 @@ struct TabSourceGlyphTests {
     private static let sftp = SFTPLocation(host: "mac", username: "u")
     private static let ftp = FTPLocation(host: "nas", username: "u")
     private static let bucket = S3Location(host: "h", bucket: "b", region: "r", accessKeyID: "k")
+    private static let dav = WebDAVLocation(host: "nas", port: 5006, username: "u")
 
     private static func server(_ endpoint: ServerEndpoint) -> SidebarPlace {
         .server(ServerConnection(name: "server", endpoint: endpoint))
@@ -55,6 +56,7 @@ struct TabSourceGlyphTests {
         (.sftp, server(.sftp(location: sftp, authentication: .password))),
         (.ftp, server(.ftp(location: ftp, authentication: .password))),
         (.s3, server(.s3(bucket))),
+        (.webdav, server(.webdav(location: dav))),
         (.trash, .trash),
         (.recents, .recents),
         (

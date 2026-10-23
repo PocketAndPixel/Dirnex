@@ -17457,91 +17457,91 @@
         }
       }
     },
-    "Browse a remote SFTP, FTP or S3 account, or an SMB share on your network.": {
+    "Browse a remote SFTP, FTP, WebDAV or S3 account, or an SMB share on your network.": {
       "comment": "Subtitle of the Connect to Server dialog.",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Durchsuchen Sie ein entferntes SFTP-, FTP- oder S3-Konto oder eine SMB-Freigabe in Ihrem Netzwerk."
+            "value": "Durchsuchen Sie ein entferntes SFTP-, FTP-, WebDAV- oder S3-Konto oder eine SMB-Freigabe in Ihrem Netzwerk."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Browse a remote SFTP, FTP or S3 account, or an SMB share on your network."
+            "value": "Browse a remote SFTP, FTP, WebDAV or S3 account, or an SMB share on your network."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Explora una cuenta remota SFTP, FTP o S3, o un recurso compartido SMB de tu red."
+            "value": "Explora una cuenta remota SFTP, FTP, WebDAV o S3, o un recurso compartido SMB de tu red."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Parcourez un compte SFTP, FTP ou S3 distant, ou un partage SMB sur votre réseau."
+            "value": "Parcourez un compte SFTP, FTP, WebDAV ou S3 distant, ou un partage SMB sur votre réseau."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sfoglia un account SFTP, FTP o S3 remoto o una condivisione SMB sulla tua rete."
+            "value": "Sfoglia un account SFTP, FTP, WebDAV o S3 remoto o una condivisione SMB sulla tua rete."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "リモートのSFTP、FTPまたはS3アカウント、あるいはネットワーク上のSMB共有を閲覧します。"
+            "value": "リモートのSFTP、FTP、WebDAVまたはS3アカウント、あるいはネットワーク上のSMB共有を閲覧します。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "원격 SFTP, FTP 또는 S3 계정이나 네트워크의 SMB 공유를 탐색합니다."
+            "value": "원격 SFTP, FTP, WebDAV 또는 S3 계정이나 네트워크의 SMB 공유를 탐색합니다."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Blader door een extern SFTP-, FTP- of S3-account of een SMB-share op je netwerk."
+            "value": "Blader door een extern SFTP-, FTP-, WebDAV- of S3-account of een SMB-share op je netwerk."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Przeglądaj zdalne konto SFTP, FTP lub S3 albo udział SMB w swojej sieci."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Navegue por uma conta SFTP, FTP ou S3 remota, ou por um compartilhamento SMB na sua rede."
+            "value": "Przeglądaj zdalne konto SFTP, FTP, WebDAV lub S3 albo udział SMB w swojej sieci."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Просматривайте удалённую учётную запись SFTP, FTP или S3 либо сетевой ресурс SMB в вашей сети."
+            "value": "Просматривайте удалённую учётную запись SFTP, FTP, WebDAV или S3 либо сетевой ресурс SMB в вашей сети."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Перегляд віддаленого облікового запису SFTP, FTP чи S3 або спільної папки SMB у вашій мережі."
+            "value": "Перегляд віддаленого облікового запису SFTP, FTP, WebDAV чи S3 або спільної папки SMB у вашій мережі."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Navegue por uma conta SFTP, FTP, WebDAV ou S3 remota, ou por um compartilhamento SMB na sua rede."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "浏览远程 SFTP、FTP 或 S3 账户，或网络中的 SMB 共享。"
+            "value": "浏览远程 SFTP、FTP、WebDAV 或 S3 账户，或网络中的 SMB 共享。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "瀏覽遠端 SFTP、FTP 或 S3 帳號，或網路上的 SMB 共享檔案夾。"
+            "value": "瀏覽遠端 SFTP、FTP、WebDAV 或 S3 帳號，或網路上的 SMB 共享檔案夾。"
           }
         }
       }
@@ -58668,7 +58668,7 @@
       }
     },
     "Login failed. Check the user name and password.": {
-      "comment": "FTP connect failure detail: authentication was rejected.",
+      "comment": "FTP or WebDAV connect failure detail: authentication was rejected.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -71513,6 +71513,95 @@
         }
       }
     },
+    "Path:": {
+      "comment": "Connect field label: the folder on a WebDAV server the account starts at.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pfad:"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Path:"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruta:"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chemin :"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Percorso:"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "パス:"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로:"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pad:"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ścieżka:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Путь:"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Шлях:"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminho:"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路径："
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路徑："
+          }
+        }
+      }
+    },
     "Pause": {
       "comment": "Queue-bar button that pauses all running file operations.",
       "localizations": {
@@ -72862,6 +72951,95 @@
         }
       }
     },
+    "Plain HTTP sends your files unencrypted, and with most servers your password too.": {
+      "comment": "Note under the WebDAV security picker, shown only when plain HTTP is selected.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einfaches HTTP überträgt Ihre Dateien unverschlüsselt – bei den meisten Servern auch Ihr Passwort."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plain HTTP sends your files unencrypted, and with most servers your password too."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HTTP sin cifrar envía tus archivos sin protección y, con la mayoría de los servidores, también tu contraseña."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HTTP simple envoie vos fichiers non chiffrés, et avec la plupart des serveurs votre mot de passe aussi."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HTTP non protetto invia i file senza crittografia e, con la maggior parte dei server, anche la password."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通常のHTTPでは、ファイルが暗号化されずに送信されます。多くのサーバではパスワードも同様です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일반 HTTP는 파일을 암호화하지 않고 전송하며, 대부분의 서버에서는 암호도 그대로 전송합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HTTP zonder versleuteling verstuurt je bestanden leesbaar, en bij de meeste servers ook je wachtwoord."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zwykłe HTTP wysyła pliki bez szyfrowania, a w przypadku większości serwerów także hasło."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обычный HTTP передаёт файлы без шифрования, а с большинством серверов — и пароль."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Звичайний HTTP надсилає файли без шифрування, а з більшістю серверів — і пароль."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HTTP simples envia seus arquivos sem criptografia e, na maioria dos servidores, também sua senha."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "普通 HTTP 会以未加密方式发送你的文件，在大多数服务器上密码也是如此。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一般 HTTP 會以未加密方式傳送你的檔案，在大多數伺服器上密碼也是如此。"
+          }
+        }
+      }
+    },
     "Points to:": {
       "comment": "Info panel field label: what a symbolic link resolves to.",
       "localizations": {
@@ -73486,7 +73664,7 @@
       }
     },
     "Protocol:": {
-      "comment": "Connect field label: SFTP or SMB.",
+      "comment": "Connect field label: SMB, SFTP, FTP, WebDAV or S3.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -93093,6 +93271,95 @@
         }
       }
     },
+    "That path on the server is a file, not a folder.": {
+      "comment": "WebDAV connect failure detail: the root path names a file.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Pfad auf dem Server ist eine Datei, kein Ordner."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That path on the server is a file, not a folder."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esa ruta del servidor es un archivo, no una carpeta."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce chemin sur le serveur est un fichier, pas un dossier."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quel percorso sul server è un file, non una cartella."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバ上のそのパスはフォルダではなくファイルです。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버의 해당 경로는 폴더가 아니라 파일입니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dat pad op de server is een bestand, geen map."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta ścieżka na serwerze jest plikiem, a nie folderem."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот путь на сервере ведёт к файлу, а не к папке."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей шлях на сервері веде до файлу, а не до папки."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esse caminho no servidor é um arquivo, não uma pasta."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器上的该路径是文件，而不是文件夹。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器上的該路徑是檔案，而不是檔案夾。"
+          }
+        }
+      }
+    },
     "That was too many to undo, so ⌘Z will reverse whatever you did before this instead.": {
       "comment": "Recursive apply note when the run exceeded the undo journal's limit.",
       "localizations": {
@@ -93801,6 +94068,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "垃圾桶是空的"
+          }
+        }
+      }
+    },
+    "The WebDAV server answered with an error (HTTP %lld).": {
+      "comment": "WebDAV connect failure detail; %lld is the HTTP status code.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der WebDAV-Server hat mit einem Fehler geantwortet (HTTP %lld)."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The WebDAV server answered with an error (HTTP %lld)."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servidor WebDAV respondió con un error (HTTP %lld)."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le serveur WebDAV a répondu par une erreur (HTTP %lld)."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server WebDAV ha risposto con un errore (HTTP %lld)."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebDAVサーバがエラーを返しました（HTTP %lld）。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebDAV 서버가 오류를 반환했습니다(HTTP %lld)."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De WebDAV-server antwoordde met een fout (HTTP %lld)."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serwer WebDAV odpowiedział błędem (HTTP %lld)."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер WebDAV вернул ошибку (HTTP %lld)."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер WebDAV повернув помилку (HTTP %lld)."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O servidor WebDAV respondeu com um erro (HTTP %lld)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebDAV 服务器返回了错误（HTTP %lld）。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebDAV 伺服器傳回了錯誤（HTTP %lld）。"
           }
         }
       }
@@ -94780,6 +95136,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "無法設定連線。"
+          }
+        }
+      }
+    },
+    "The connection to the server failed.": {
+      "comment": "WebDAV connect failure detail: the request failed below HTTP for another reason.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Verbindung zum Server ist fehlgeschlagen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The connection to the server failed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La conexión con el servidor falló."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La connexion au serveur a échoué."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La connessione al server non è riuscita."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバへの接続に失敗しました。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 연결에 실패했습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De verbinding met de server is mislukt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Połączenie z serwerem nie powiodło się."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось подключиться к серверу."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося підключитися до сервера."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A conexão com o servidor falhou."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "与服务器的连接失败。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "與伺服器的連線失敗。"
           }
         }
       }
@@ -95938,6 +96383,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "要顯示的檔案或檔案夾。"
+          }
+        }
+      }
+    },
+    "The folder on the server this account starts at. Leave it as / for a NAS. On Nextcloud and ownCloud it is /remote.php/dav/files/ followed by your user name.": {
+      "comment": "Tooltip on the WebDAV Path field in the Connect dialog. The path example is literal and must not be translated.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Ordner auf dem Server, in dem dieses Konto beginnt. Lassen Sie für ein NAS / stehen. Bei Nextcloud und ownCloud ist es /remote.php/dav/files/, gefolgt von Ihrem Benutzernamen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The folder on the server this account starts at. Leave it as / for a NAS. On Nextcloud and ownCloud it is /remote.php/dav/files/ followed by your user name."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La carpeta del servidor en la que empieza esta cuenta. Déjala en / para un NAS. En Nextcloud y ownCloud es /remote.php/dav/files/ seguido de tu nombre de usuario."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le dossier du serveur où commence ce compte. Laissez / pour un NAS. Sur Nextcloud et ownCloud, c’est /remote.php/dav/files/ suivi de votre nom d’utilisateur."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La cartella sul server da cui parte questo account. Lascia / per un NAS. Su Nextcloud e ownCloud è /remote.php/dav/files/ seguito dal tuo nome utente."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このアカウントの起点となるサーバ上のフォルダです。NASの場合は / のままにします。NextcloudとownCloudでは /remote.php/dav/files/ の後にユーザ名を続けます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 계정이 시작하는 서버의 폴더입니다. NAS에서는 /로 두십시오. Nextcloud와 ownCloud에서는 /remote.php/dav/files/ 뒤에 사용자 이름을 붙입니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De map op de server waar dit account begint. Laat / staan voor een NAS. Bij Nextcloud en ownCloud is het /remote.php/dav/files/ gevolgd door je gebruikersnaam."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder na serwerze, od którego zaczyna się to konto. Dla serwera NAS pozostaw /. W Nextcloud i ownCloud jest to /remote.php/dav/files/, a po nim nazwa użytkownika."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Папка на сервере, с которой начинается эта учётная запись. Для NAS оставьте /. В Nextcloud и ownCloud это /remote.php/dav/files/, за которым следует имя пользователя."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Папка на сервері, з якої починається цей обліковий запис. Для NAS залиште /. У Nextcloud та ownCloud це /remote.php/dav/files/, після якого йде ім’я користувача."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A pasta no servidor onde esta conta começa. Deixe / para um NAS. No Nextcloud e no ownCloud é /remote.php/dav/files/ seguido do seu nome de usuário."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此账户在服务器上的起始文件夹。NAS 保留 / 即可。在 Nextcloud 和 ownCloud 上，它是 /remote.php/dav/files/ 后接你的用户名。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此帳號在伺服器上的起始檔案夾。NAS 保留 / 即可。在 Nextcloud 和 ownCloud 上，它是 /remote.php/dav/files/ 後接你的使用者名稱。"
           }
         }
       }
@@ -97990,7 +98524,7 @@
       }
     },
     "The server couldn’t be reached. Check the host name and port.": {
-      "comment": "FTP connect failure detail: the host could not be resolved or connected.",
+      "comment": "FTP or WebDAV connect failure detail: the host could not be resolved or connected.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -98524,7 +99058,7 @@
       }
     },
     "The server is presenting a different certificate than the one you trusted, and the new one couldn’t be read to show you.": {
-      "comment": "FTP connect failure detail: the pin no longer matches and the new certificate could not be fetched to weigh.",
+      "comment": "FTPS or WebDAV connect failure detail: the pin no longer matches and the new certificate could not be fetched to weigh.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -98613,7 +99147,7 @@
       }
     },
     "The server is still presenting a certificate that doesn’t match the one you just trusted. It may be answering from more than one machine.": {
-      "comment": "FTP connect failure detail: the pin accepted moments ago already doesn’t match.",
+      "comment": "FTPS or WebDAV connect failure detail: the pin accepted moments ago already doesn’t match.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -98790,8 +99324,186 @@
         }
       }
     },
+    "The server redirects to another address without saying which.": {
+      "comment": "WebDAV connect failure detail: an HTTP redirect with no Location header.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server leitet an eine andere Adresse weiter, ohne zu sagen, an welche."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server redirects to another address without saying which."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servidor redirige a otra dirección sin indicar cuál."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le serveur redirige vers une autre adresse sans préciser laquelle."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server reindirizza a un altro indirizzo senza indicare quale."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバは別のアドレスへリダイレクトしていますが、その宛先を示していません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버가 다른 주소로 리디렉션하지만 어느 주소인지 알려 주지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De server stuurt door naar een ander adres zonder te zeggen welk."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serwer przekierowuje na inny adres, nie podając, na jaki."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер перенаправляет на другой адрес, не сообщая, на какой."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер переспрямовує на іншу адресу, не повідомляючи, на яку."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O servidor redireciona para outro endereço sem dizer qual."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器重定向到另一个地址，但没有说明是哪个。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器重新導向到另一個位址，但沒有說明是哪個。"
+          }
+        }
+      }
+    },
+    "The server redirects to “%@”. Connect to that address instead.": {
+      "comment": "WebDAV connect failure detail: the server answered with an HTTP redirect, usually from http to https. %@ is the address it names.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server leitet zu „%@“ weiter. Verbinden Sie sich stattdessen mit dieser Adresse."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server redirects to “%@”. Connect to that address instead."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servidor redirige a «%@». Conéctate a esa dirección en su lugar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le serveur redirige vers «%@». Connectez-vous plutôt à cette adresse."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server reindirizza a “%@”. Connettiti invece a quell’indirizzo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバは“%@”へリダイレクトしています。代わりにそのアドレスに接続してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버가 “%@”(으)로 리디렉션합니다. 대신 해당 주소로 연결하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De server stuurt door naar “%@”. Maak in plaats daarvan verbinding met dat adres."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serwer przekierowuje na „%@”. Połącz się zamiast tego z tym adresem."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер перенаправляет на «%@». Подключитесь к этому адресу."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сервер переспрямовує на «%@». Підключіться до цієї адреси."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O servidor redireciona para “%@”. Conecte-se a esse endereço em vez disso."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器重定向到“%@”。请改为连接到该地址。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器重新導向到「%@」。請改為連線到該位址。"
+          }
+        }
+      }
+    },
     "The server refused access to that path.": {
-      "comment": "FTP connect failure detail: the account may not use the path.",
+      "comment": "FTP or WebDAV connect failure detail: the account may not use the path.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -99236,7 +99948,7 @@
       }
     },
     "The server stopped responding.": {
-      "comment": "FTP connect failure detail: the operation exceeded its time budget.",
+      "comment": "FTP or WebDAV connect failure detail: the operation exceeded its time budget.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -99325,7 +100037,7 @@
       }
     },
     "The server’s certificate couldn’t be read, so it can’t be trusted safely.": {
-      "comment": "FTP connect failure detail: the certificate's public key could not be parsed.",
+      "comment": "FTPS or WebDAV connect failure detail: the certificate's public key could not be parsed.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -99414,7 +100126,7 @@
       }
     },
     "The server’s certificate couldn’t be verified.": {
-      "comment": "FTP connect failure detail: TLS certificate verification failed.",
+      "comment": "FTPS or WebDAV connect failure detail: TLS certificate verification failed.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -99503,7 +100215,7 @@
       }
     },
     "The server’s certificate has changed and wasn’t trusted, so the connection was canceled. The certificate you trusted before is still the one Dirnex expects.": {
-      "comment": "FTP connect failure detail: the user declined to re-trust a changed certificate.",
+      "comment": "FTPS or WebDAV connect failure detail: the user declined to re-trust a changed certificate.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -99592,7 +100304,7 @@
       }
     },
     "The server’s certificate wasn’t trusted, so the connection was canceled.": {
-      "comment": "FTP connect failure detail: the user declined to trust the certificate.",
+      "comment": "FTPS or WebDAV connect failure detail: the user declined to trust the certificate.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -100388,6 +101100,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "保險庫檔案會留在原處，其中的內容不會被刪除。已儲存的通行密語會從鑰匙圈中移除，因此下次會再次詢問。"
+          }
+        }
+      }
+    },
+    "There is nothing at that path on the server.": {
+      "comment": "WebDAV connect failure detail: the root path does not exist.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unter diesem Pfad gibt es auf dem Server nichts."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is nothing at that path on the server."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay nada en esa ruta del servidor."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il n’y a rien à ce chemin sur le serveur."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non c’è nulla in quel percorso sul server."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバ上のそのパスには何もありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버의 해당 경로에 아무것도 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Er staat niets op dat pad op de server."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pod tą ścieżką na serwerze nic nie ma."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "По этому пути на сервере ничего нет."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "За цим шляхом на сервері нічого немає."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não há nada nesse caminho no servidor."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器上的该路径下没有任何内容。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器上的該路徑下沒有任何內容。"
           }
         }
       }
@@ -101456,6 +102257,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "此檔案夾（「%@」）"
+          }
+        }
+      }
+    },
+    "This address doesn’t answer as a WebDAV folder (HTTP %lld). Check the path: on Nextcloud it is /remote.php/dav/files/ followed by your user name.": {
+      "comment": "WebDAV connect failure detail: the server answered, but not with a WebDAV listing. %lld is the HTTP status. The path example is literal and must not be translated.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Adresse antwortet nicht als WebDAV-Ordner (HTTP %lld). Prüfen Sie den Pfad: Bei Nextcloud ist es /remote.php/dav/files/, gefolgt von Ihrem Benutzernamen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This address doesn’t answer as a WebDAV folder (HTTP %lld). Check the path: on Nextcloud it is /remote.php/dav/files/ followed by your user name."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta dirección no responde como una carpeta WebDAV (HTTP %lld). Revisa la ruta: en Nextcloud es /remote.php/dav/files/ seguido de tu nombre de usuario."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette adresse ne répond pas comme un dossier WebDAV (HTTP %lld). Vérifiez le chemin : sur Nextcloud, c’est /remote.php/dav/files/ suivi de votre nom d’utilisateur."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo indirizzo non risponde come una cartella WebDAV (HTTP %lld). Controlla il percorso: su Nextcloud è /remote.php/dav/files/ seguito dal tuo nome utente."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このアドレスはWebDAVフォルダとして応答しません（HTTP %lld）。パスを確認してください。Nextcloudでは /remote.php/dav/files/ の後にユーザ名を続けます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 주소는 WebDAV 폴더로 응답하지 않습니다(HTTP %lld). 경로를 확인하십시오. Nextcloud에서는 /remote.php/dav/files/ 뒤에 사용자 이름을 붙입니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dit adres antwoordt niet als een WebDAV-map (HTTP %lld). Controleer het pad: bij Nextcloud is het /remote.php/dav/files/ gevolgd door je gebruikersnaam."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten adres nie odpowiada jak folder WebDAV (HTTP %lld). Sprawdź ścieżkę: w Nextcloud jest to /remote.php/dav/files/, a po nim nazwa użytkownika."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот адрес не отвечает как папка WebDAV (HTTP %lld). Проверьте путь: в Nextcloud это /remote.php/dav/files/, за которым следует имя пользователя."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ця адреса не відповідає як папка WebDAV (HTTP %lld). Перевірте шлях: у Nextcloud це /remote.php/dav/files/, після якого йде ім’я користувача."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este endereço não responde como uma pasta WebDAV (HTTP %lld). Verifique o caminho: no Nextcloud é /remote.php/dav/files/ seguido do seu nome de usuário."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此地址没有以 WebDAV 文件夹的形式响应（HTTP %lld）。请检查路径：在 Nextcloud 上，它是 /remote.php/dav/files/ 后接你的用户名。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此位址沒有以 WebDAV 檔案夾的形式回應（HTTP %lld）。請檢查路徑：在 Nextcloud 上，它是 /remote.php/dav/files/ 後接你的使用者名稱。"
           }
         }
       }
@@ -104486,6 +105376,95 @@
         }
       }
     },
+    "This server asks for a user name and password.": {
+      "comment": "WebDAV connect failure detail: the server requires an account and none was given.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Server verlangt einen Benutzernamen und ein Passwort."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This server asks for a user name and password."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este servidor pide un nombre de usuario y una contraseña."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce serveur demande un nom d’utilisateur et un mot de passe."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo server richiede un nome utente e una password."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このサーバではユーザ名とパスワードが必要です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 서버는 사용자 이름과 암호를 요구합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze server vraagt om een gebruikersnaam en wachtwoord."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten serwer wymaga nazwy użytkownika i hasła."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот сервер требует имя пользователя и пароль."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей сервер вимагає ім’я користувача й пароль."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este servidor pede um nome de usuário e uma senha."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此服务器要求提供用户名和密码。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此伺服器要求提供使用者名稱和密碼。"
+          }
+        }
+      }
+    },
     "This server doesn’t offer encryption on this port. Choose plain FTP, or connect on the port that provides FTPS.": {
       "comment": "FTP connect failure detail: explicit FTPS asked for but no TLS on this port.",
       "localizations": {
@@ -104749,6 +105728,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "此伺服器提供的主機 %@ 與你之前信任的不同。如果你重新安裝了伺服器，或將新的 SFTP App 指向此位址，這是正常情況；但也可能表示有人正在攔截連線（中間人攻擊）。\n\n新指紋：\n%@\n\n只有在你認得此指紋時才繼續。信任它會取代舊金鑰，以後即可連線到此伺服器。"
+          }
+        }
+      }
+    },
+    "This server only accepts sign-in methods Dirnex doesn’t support: %@.": {
+      "comment": "WebDAV connect failure detail. %@ lists the HTTP authentication schemes the server offered, such as “NTLM and Negotiate”; Dirnex speaks only Basic and Digest.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Server akzeptiert nur Anmeldeverfahren, die Dirnex nicht unterstützt: %@."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This server only accepts sign-in methods Dirnex doesn’t support: %@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este servidor solo acepta métodos de inicio de sesión que Dirnex no admite: %@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce serveur n’accepte que des méthodes de connexion que Dirnex ne prend pas en charge : %@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo server accetta solo metodi di accesso che Dirnex non supporta: %@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このサーバは、Dirnexが対応していないサインイン方式（%@）しか受け付けません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 서버는 Dirnex가 지원하지 않는 로그인 방식만 허용합니다: %@."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze server accepteert alleen inlogmethoden die Dirnex niet ondersteunt: %@."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten serwer akceptuje tylko metody logowania, których Dirnex nie obsługuje: %@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот сервер принимает только способы входа, которые Dirnex не поддерживает: %@."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей сервер приймає лише способи входу, які Dirnex не підтримує: %@."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este servidor só aceita métodos de login que o Dirnex não suporta: %@."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此服务器只接受 Dirnex 不支持的登录方式：%@。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此伺服器只接受 Dirnex 不支援的登入方式：%@。"
           }
         }
       }
@@ -145313,6 +146381,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "使用者名稱"
+          }
+        }
+      }
+    },
+    "username (blank for a public share)": {
+      "comment": "Placeholder in the WebDAV user field: a blank user connects without an account.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Benutzername (leer für eine öffentliche Freigabe)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "username (blank for a public share)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nombre de usuario (en blanco para un recurso público)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nom d’utilisateur (vide pour un partage public)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nome utente (vuoto per una condivisione pubblica)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ユーザ名（公開共有は空欄）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용자 이름 (공개 공유는 비워 두기)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "gebruikersnaam (leeg voor een openbare share)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nazwa użytkownika (puste dla udziału publicznego)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "имя пользователя (пусто для общедоступного ресурса)"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ім’я користувача (порожньо для загальнодоступної папки)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nome de usuário (em branco para um compartilhamento público)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用户名（公共共享请留空）"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用者名稱（公開共享請留空）"
           }
         }
       }

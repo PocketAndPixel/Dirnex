@@ -119,8 +119,9 @@ extension SidebarViewController {
         let commit = { [weak self] (response: NSApplication.ModalResponse) in
             guard response == .alertFirstButtonReturn else { return }
             var store = ServerConnectionStore.load()
-            if let server = store.connection(named: name) { Self.forgetSecret(for: server) }
+            let server = store.connection(named: name)
             if store.remove(name: name) { ServerConnectionStore.save(store) }
+            if let server { Self.forgetSecret(for: server, keptBy: store.connections) }
             _ = self
         }
         if let window = view.window {
@@ -131,7 +132,12 @@ extension SidebarViewController {
     }
 
     /// Delete the Keychain password (if any) a removed server had filed, so we don't orphan secrets.
-    private static func forgetSecret(for server: ServerConnection) {
+    /// `remaining` is the saved servers left after the removal, which a WebDAV password can still
+    /// belong to.
+    private static func forgetSecret(
+        for server: ServerConnection,
+        keptBy remaining: [ServerConnection]
+    ) {
         switch server.endpoint {
         case let .sftp(location, authentication):
             if case .password = authentication { SecretKeychain.removePassword(for: location) }
@@ -148,6 +154,15 @@ extension SidebarViewController {
             // so removing a saved account leaves the buckets reached from it able to reconnect,
             // which is right: each of those was a connection the user made on its own.
             SecretKeychain.removePassword(for: account)
+        case let .webdav(location, _, _):
+            // Filed without the root (`WebDAVLocation.keychainAccount`), so another saved root on
+            // the same account reads the same item, and removing one row must not leave the other
+            // asking for a password it was saved with.
+            let shared = remaining.contains { other in
+                guard case let .webdav(otherLocation, _, _) = other.endpoint else { return false }
+                return otherLocation.keychainAccount == location.keychainAccount
+            }
+            if location.hasCredentials, !shared { SecretKeychain.removePassword(for: location) }
         }
     }
 }
