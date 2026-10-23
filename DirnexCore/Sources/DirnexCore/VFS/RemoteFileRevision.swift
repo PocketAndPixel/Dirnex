@@ -41,11 +41,15 @@ public struct RemoteFileRevision: Sendable, Equatable {
     /// only an absence of evidence — which is why it could not have been collapsed into the
     /// disjunction after the fact.
     ///
-    /// Supplied by S3 alone, out of the `<ETag>` of the very `ListObjectsV2` response the row was
-    /// built from, so it costs no request of its own (``FileEntry/entityTag``). SFTP and FTP have
-    /// no such thing and go on comparing size and time — and FTP's stamp is year-less, zone-less
-    /// and on the server's clock on top of that (docs/NOTES.md ▸ curl), so over that one protocol
-    /// an "unchanged" answer is the weakest this type can give.
+    /// Supplied by S3, out of the `<ETag>` of the very `ListObjectsV2` response the row was built
+    /// from, and by WebDAV, out of the PROPFIND's `getetag` — so it costs no request of its own
+    /// (``FileEntry/entityTag``). SFTP and FTP have no such thing and go on comparing size and
+    /// time — and FTP's stamp is year-less, zone-less and on the server's clock on top of that
+    /// (docs/NOTES.md ▸ curl), so over that one protocol an "unchanged" answer is the weakest this
+    /// type can give.
+    ///
+    /// Kept exactly as the server spelled it, `W/` included: Get Info shows it, and which tags may
+    /// guard a write is ``preconditionTag``'s question.
     public let entityTag: String?
 
     public init(byteSize: Int64, modified: Date?, entityTag: String? = nil) {
@@ -78,8 +82,24 @@ public struct RemoteFileRevision: Sendable, Equatable {
     /// proof of sameness, a size and a date are an absence of evidence, and over FTP that date is
     /// year-less, zone-less and on the server's clock. So the two verdicts are not symmetric, and
     /// a caller must not read "not superseded" as "provably untouched".
+    ///
+    /// The tags are compared **weakly** (``HTTPEntityTag/weaklyEqual(_:_:)``), since one unchanged
+    /// WebDAV file reads `W/"x"` in the second after a write and `"x"` after it. S3's tags are never
+    /// weak, so for them this is the plain comparison it always was.
     public func isSuperseded(by other: Self) -> Bool {
-        if let mine = entityTag, let theirs = other.entityTag { return mine != theirs }
+        if let mine = entityTag, let theirs = other.entityTag {
+            return !HTTPEntityTag.weaklyEqual(mine, theirs)
+        }
         return byteSize != other.byteSize || modified != other.modified
+    }
+
+    /// The tag a save-back may send as `If-Match`, or `nil` when there is none worth sending.
+    ///
+    /// `nil` for a **weak** tag as well as for no tag: `If-Match` compares strongly, so a weak tag
+    /// matches nothing and the write would be refused as a conflict that never happened
+    /// (``HTTPEntityTag``). Such a save rests on the re-`stat` alone, as an SFTP or FTP save does.
+    public var preconditionTag: String? {
+        guard let entityTag, !HTTPEntityTag.isWeak(entityTag) else { return nil }
+        return entityTag
     }
 }

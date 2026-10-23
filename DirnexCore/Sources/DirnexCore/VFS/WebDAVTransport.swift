@@ -78,4 +78,35 @@ public protocol WebDAVTransport: Sendable {
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> WebDAVHTTPResponse
+
+    // MARK: - The write half (PLAN.md §M32 Slice 4)
+
+    /// One MKCOL.
+    func mkcol(_ backendPath: String) throws -> WebDAVHTTPResponse
+
+    /// Upload one local file with `-T`, carrying `condition` as a header.
+    ///
+    /// `progress` reports **deltas** from `curl`'s meter, which is the only measure an upload has;
+    /// the exact count is ``WebDAVHTTPResponse/bytesUploaded``, which the backend settles the bar
+    /// on. A cancelled run throws `CancellationError` and changes nothing on the server (Apache
+    /// writes a PUT into a temporary file, measured — ``WebDAVProcessArguments``).
+    func upload(
+        localPath: String,
+        to backendPath: String,
+        condition: S3WriteCondition,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> WebDAVHTTPResponse
+
+    /// One PUT with an empty body, carrying `condition` as a header.
+    func putEmpty(_ backendPath: String, condition: S3WriteCondition) throws -> WebDAVHTTPResponse
+
+    /// One MOVE with `Overwrite: F`.
+    func move(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse
+
+    /// One COPY of a file with `Overwrite: F`.
+    func copy(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse
+
+    /// One DELETE.
+    func delete(_ backendPath: String) throws -> WebDAVHTTPResponse
 }

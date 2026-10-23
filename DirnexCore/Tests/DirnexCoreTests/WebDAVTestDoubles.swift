@@ -48,6 +48,16 @@ final class FakeWebDAVTransport: WebDAVTransport, @unchecked Sendable {
         let resume: Bool
     }
 
+    /// One request of the write half, as the backend asked for it.
+    enum Write: Equatable {
+        case mkcol(String)
+        case upload(localPath: String, path: String, condition: S3WriteCondition)
+        case putEmpty(String, condition: S3WriteCondition)
+        case move(String, to: String)
+        case copy(String, to: String)
+        case delete(String)
+    }
+
     var respond: (Propfind) throws -> WebDAVHTTPResponse
     /// The file a download serves.
     var fileBytes = Data()
@@ -56,9 +66,14 @@ final class FakeWebDAVTransport: WebDAVTransport, @unchecked Sendable {
     /// Deltas streamed before the download answers, as a real transport reports the destination
     /// growing. Empty means one report at the end.
     var streamedProgress: [Int64] = []
+    /// What every write answers. A 201 unless a test says otherwise.
+    var answerWrite: (Write) throws -> WebDAVHTTPResponse = { _ in WebDAVHTTPResponse(status: 201) }
+    /// Deltas an upload streams before it answers, as `curl`'s meter would.
+    var streamedUploadProgress: [Int64] = []
 
     private(set) var propfinds: [Propfind] = []
     private(set) var downloads: [Download] = []
+    private(set) var writes: [Write] = []
 
     init(respond: @escaping (Propfind) throws -> WebDAVHTTPResponse = { _ in
         WebDAVHTTPResponse(status: 404)
@@ -96,6 +111,42 @@ final class FakeWebDAVTransport: WebDAVTransport, @unchecked Sendable {
             status: resume ? 206 : 200,
             bytesDownloaded: Int64(served.count)
         )
+    }
+
+    func mkcol(_ backendPath: String) throws -> WebDAVHTTPResponse {
+        try record(.mkcol(backendPath))
+    }
+
+    func upload(
+        localPath: String,
+        to backendPath: String,
+        condition: S3WriteCondition,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> WebDAVHTTPResponse {
+        for delta in streamedUploadProgress { progress(delta) }
+        return try record(.upload(localPath: localPath, path: backendPath, condition: condition))
+    }
+
+    func putEmpty(_ backendPath: String, condition: S3WriteCondition) throws -> WebDAVHTTPResponse {
+        try record(.putEmpty(backendPath, condition: condition))
+    }
+
+    func move(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse {
+        try record(.move(backendPath, to: destinationPath))
+    }
+
+    func copy(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse {
+        try record(.copy(backendPath, to: destinationPath))
+    }
+
+    func delete(_ backendPath: String) throws -> WebDAVHTTPResponse {
+        try record(.delete(backendPath))
+    }
+
+    private func record(_ write: Write) throws -> WebDAVHTTPResponse {
+        writes.append(write)
+        return try answerWrite(write)
     }
 }
 

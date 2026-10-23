@@ -135,13 +135,14 @@ struct ServerConnectionWebDAVTests {
         #expect(WebDAVLocation(host: "nas", username: "").hasNoStoredSecret)
     }
 
-    /// Read-only until Slice 4: browsable like every remote, and not somewhere a copy can land.
-    @Test("a WebDAV backend is a remote connection that does not accept uploads yet")
+    /// Read-only through Slice 3; since Slice 4's write half, somewhere a copy can land.
+    @Test("a WebDAV backend is a remote connection that accepts uploads")
     func predicates() {
         let id = Self.nas.backendID
         #expect(id.isRemoteConnection)
-        #expect(!id.acceptsUploads)
-        #expect(!id.receivesFiles)
+        #expect(id.acceptsUploads)
+        #expect(id.receivesFiles)
+        #expect(!id.hasComparableModificationTimes)
     }
 
     @Test("a restored WebDAV tab needs its connection, and only its own")

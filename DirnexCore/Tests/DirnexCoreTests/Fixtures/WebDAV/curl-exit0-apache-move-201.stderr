@@ -1,0 +1,9 @@
+dav-status=201
+dav-size=229
+dav-up=0
+dav-headers={"date":["Fri, 23 Oct 2026 18:27:18 GMT"],
+"server":["Apache/2.4.67 (Unix)"],
+"location":["http://127.0.0.1:8088/fx/moved.bin"],
+"content-length":["229"],
+"content-type":["text/html; charset=ISO-8859-1"]
+}

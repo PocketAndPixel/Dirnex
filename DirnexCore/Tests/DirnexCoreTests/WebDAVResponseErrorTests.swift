@@ -29,7 +29,10 @@ struct WebDAVResponseErrorTests {
         #expect(refusal.isLocked)
         let locked = try #require(refusal.lockedMemberPaths.first)
         #expect(WebDAVHref.samePath(locked, "/home/dirnex-webdav-fixture/Папка/inside.txt"))
-        #expect(refusal.vfsError(for: Self.folder) == .io(path: Self.folder, code: EBUSY))
+        // The member's name, not the folder's: that is the file somebody has open.
+        #expect(
+            refusal.vfsError(for: Self.folder) == .unsupported(.lockedOnServer(name: "inside.txt"))
+        )
 
         // The negative control: the same status without the body is not a lock.
         let bare = error(424, .delete)
@@ -46,6 +49,20 @@ struct WebDAVResponseErrorTests {
         )
         #expect(refusal.members.isEmpty)
         #expect(refusal.isLocked)
+        #expect(refusal.vfsError(for: Self.file) == .unsupported(.lockedOnServer(name: "a.txt")))
+    }
+
+    /// The same 412 means "something is there" against `If-None-Match: *` and "it changed" against
+    /// `If-Match`; anything that is not a 412 is not the precondition's to explain.
+    @Test("a 412 is the precondition's, read against what was sent")
+    func preconditionRefusal() {
+        let tag = S3WriteCondition.ifMatches(entityTag: #""bb8-65e8621628fc0""#)
+        #expect(error(412, .put).refusal(for: .ifAbsent) == .alreadyThere)
+        #expect(error(412, .put).refusal(for: tag) == .changedSince)
+        #expect(error(412, .put).refusal(for: .unconditional) == nil)
+        #expect(error(403, .put).refusal(for: tag) == nil)
+        // Apache's answer to `If-None-Match: *` onto a folder, which the caller reads itself.
+        #expect(error(409, .put).refusal(for: .ifAbsent) == nil)
     }
 
     @Test("a 207 defers to its first failing member, and 2xx members are not failures")

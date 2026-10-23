@@ -195,14 +195,15 @@ struct WebDAVBackendTests {
 
     // MARK: - Capabilities
 
-    @Test("read only until the write half, so the write verbs refuse by name")
-    func readOnly() {
+    /// No `.trash`, so F8 is a confirmed permanent delete; no `.internalCopy`, since COPY is
+    /// attempted rather than promised; nothing editable in Get Info, since no request sets a time.
+    @Test("writable and renamed in place, with no Trash and nothing promised about COPY")
+    func capabilities() {
         let backend = backend(FakeWebDAVTransport())
-        #expect(backend.capabilities == [.read])
-        #expect(backend.capabilities.deleteStrategy == .unsupported)
-        #expect(throws: VFSError.unsupported(.createDirectory)) {
-            try backend.createDirectory(at: path("/home/new"))
-        }
+        #expect(backend.capabilities == [.read, .write, .rename])
+        #expect(backend.capabilities.deleteStrategy == .permanent)
+        #expect(backend.editableMetadata(at: path("/home/a.txt")).isEmpty)
+        #expect(backend.mayAttemptInternalCopy(from: path("/home/a.txt"), to: path("/home/b.txt")))
     }
 
     @Test("two roots on one server are one volume, another port is another")

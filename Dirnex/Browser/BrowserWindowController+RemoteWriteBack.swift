@@ -123,8 +123,13 @@ extension BrowserWindowController {
     /// and an S3 row whose listing carried no `<ETag>` is the same case — each goes on resting on
     /// the re-`stat` this whole flow is decided from, which is where they were before this
     /// slice. Never worse, and never claiming more.
+    ///
+    /// **A weak WebDAV tag is the same case** (PLAN.md §M32 Slice 4). `If-Match` compares strongly,
+    /// so `W/"…"` matches nothing and the save would be refused as somebody else's edit. Apache
+    /// hands one out for about a second after any write, which is exactly when a quick second ⌘S
+    /// checks (``RemoteFileRevision/preconditionTag``).
     static func writeCondition(checked current: RemoteFileRevision?) -> S3WriteCondition {
-        guard let entityTag = current?.entityTag else { return .unconditional }
+        guard let entityTag = current?.preconditionTag else { return .unconditional }
         // Verbatim, quotes included: an unquoted digest is a different byte string to S3 and
         // matches nothing, so tidying them away would turn every conditional save into a 412
         // reading "somebody else changed this file" (docs/NOTES.md ▸ curl for S3).

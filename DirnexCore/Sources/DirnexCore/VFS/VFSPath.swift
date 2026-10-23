@@ -106,10 +106,10 @@ public struct VFSBackendID: RawRepresentable, Sendable, Hashable, CustomStringCo
     /// the queue*, after the job started, instead of saying up front that the other panel cannot
     /// receive files. Collapsing them at any point since would have had to be undone here.
     ///
-    /// **WebDAV is the second backend to arrive read-only**, and for the same reason: it browses
-    /// with M32's Slice 3 and writes with Slice 4, and until then a copy into it has no `PUT` to
-    /// land on.
-    public var acceptsUploads: Bool { isSFTP || isFTP || isS3 }
+    /// **WebDAV was the second backend to arrive read-only**, and for the same reason: it browsed
+    /// with M32's Slice 3, where a copy into it had no `PUT` to land on, and joined here with
+    /// Slice 4's write half.
+    public var acceptsUploads: Bool { isSFTP || isFTP || isS3 || isWebDAV }
 
     /// Whether a transfer can *land* here — this disk, or a remote account with an upload primitive
     /// behind it.
@@ -153,6 +153,9 @@ public struct VFSBackendID: RawRepresentable, Sendable, Hashable, CustomStringCo
     ///   timestamp to the second — and it is when the object was **written**, not when its contents
     ///   were last changed, and there is no verb that sets it. A file uploaded today from a 2018
     ///   source reads as today, forever.
+    /// - **WebDAV** is S3's case. `getlastmodified` is exact, and read-only: PROPPATCH refuses it
+    ///   with 409, and the `Win32LastModifiedTime` Windows sends answers 200 and changes nothing
+    ///   (PLAN.md §M32). So an upload, and a COPY on the server, read as the moment they were made.
     /// - **An archive** is read through `bsdtar -tvf`, which shares the year-less columnar stamp all
     ///   four of this project's listing parsers read (``ColumnarListing``).
     ///
