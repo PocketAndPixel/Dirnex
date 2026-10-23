@@ -34,6 +34,30 @@ private struct OneFolderTransport: WebDAVTransport {
     ) throws -> WebDAVHTTPResponse {
         WebDAVHTTPResponse(status: 404)
     }
+
+    // The write half is not what these tests are about, so every write is a server that will not.
+
+    func mkcol(_: String) throws -> WebDAVHTTPResponse { WebDAVHTTPResponse(status: 405) }
+
+    func upload(
+        localPath _: String,
+        to _: String,
+        condition _: S3WriteCondition,
+        progress _: (Int64) -> Void,
+        isCancelled _: () -> Bool
+    ) throws -> WebDAVHTTPResponse {
+        WebDAVHTTPResponse(status: 403)
+    }
+
+    func putEmpty(_: String, condition _: S3WriteCondition) throws -> WebDAVHTTPResponse {
+        WebDAVHTTPResponse(status: 403)
+    }
+
+    func move(_: String, to _: String) throws -> WebDAVHTTPResponse { WebDAVHTTPResponse(status: 403) }
+
+    func copy(_: String, to _: String) throws -> WebDAVHTTPResponse { WebDAVHTTPResponse(status: 403) }
+
+    func delete(_: String) throws -> WebDAVHTTPResponse { WebDAVHTTPResponse(status: 403) }
 }
 
 /// A WebDAV account in the pane's routing backend (PLAN.md §M32 Slice 3): what it can do, where
@@ -43,12 +67,51 @@ struct WebDAVCompositeTests {
     private static let location = WebDAVLocation(host: "nas", port: 5006, username: "dirnex-test")
     private static let path = VFSPath(backend: .webDAV(location), path: "/")
 
-    @Test("a WebDAV path is read-only connected or not, until the write half lands")
-    func readOnly() {
+    /// Writable since the write half (PLAN.md §M32 Slice 4), and only while connected: a path whose
+    /// connection is gone grays its writes, since there is no credential to perform them with.
+    @Test("a connected WebDAV path is writable and renames in place, an unconnected one reads")
+    func capabilities() {
         let backend = CompositeBackend(local: LocalBackend())
         #expect(backend.capabilities(for: Self.path) == .read)
         backend.connectWebDAV(location: Self.location, password: "pw", authentication: .basic)
-        #expect(backend.capabilities(for: Self.path) == .read)
+        #expect(backend.capabilities(for: Self.path) == [.read, .write, .rename])
+        #expect(backend.capabilities(for: Self.path).deleteStrategy == .permanent)
+    }
+
+    /// The decision is what breaks silently (`transferRoute`'s own doc): a duplicate inside one
+    /// account is a COPY with staging behind it, an upload is the account's own PUT, and a copy to
+    /// another root on the same server is two accounts, staged through this disk.
+    @Test("a copy routes as a COPY inside one account, a PUT from here, and staged between two")
+    func copyRoutes() throws {
+        let backend = CompositeBackend(local: LocalBackend())
+        let share = WebDAVLocation(
+            host: "nas",
+            port: 5006,
+            username: "dirnex-test",
+            rootPath: "/share"
+        )
+        for location in [Self.location, share] {
+            backend.register(
+                webDAV: WebDAVBackend(location: location, transport: OneFolderTransport()),
+                authentication: .basic
+            )
+        }
+        let file = VFSPath(backend: .webDAV(Self.location), path: "/notes.txt")
+        let copy = VFSPath(backend: .webDAV(Self.location), path: "/copy.txt")
+        let elsewhere = VFSPath(backend: .webDAV(share), path: "/notes.txt")
+
+        guard case .serverSide = try backend.transferRoute(from: file, to: copy) else {
+            Issue.record("a duplicate inside one account should be tried on the server")
+            return
+        }
+        guard case .direct = try backend.transferRoute(from: .local("/tmp/notes.txt"), to: file) else {
+            Issue.record("an upload should be the account's own")
+            return
+        }
+        guard case .staged = try backend.transferRoute(from: file, to: elsewhere) else {
+            Issue.record("two accounts should be staged through this disk")
+            return
+        }
     }
 
     @Test("listing an unconnected WebDAV path says it is not connected")

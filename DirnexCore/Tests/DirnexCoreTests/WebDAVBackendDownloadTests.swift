@@ -121,25 +121,27 @@ struct WebDAVBackendDownloadTests {
         }
     }
 
-    @Test("only the download direction is served until the write half")
-    func otherDirectionsRefused() {
-        let backend = WebDAVBackend(location: Self.location, transport: FakeWebDAVTransport())
-        #expect(throws: VFSError.unsupported(.copyFile)) {
+    /// Every direction with this account at one end is served since the write half (Slice 4). Two
+    /// accounts are the app's router's to stage, as for every other remote backend.
+    @Test("a copy between two accounts is refused, and nothing is sent")
+    func twoAccountsRefused() {
+        let transport = FakeWebDAVTransport()
+        let backend = WebDAVBackend(location: Self.location, transport: transport)
+        let share = WebDAVLocation(
+            host: "nas",
+            port: 5006,
+            username: "dirnex-test",
+            rootPath: "/share"
+        )
+        #expect(throws: VFSError.unsupported(.remoteToRemoteCopy)) {
             try backend.copyFile(
-                at: .local("/tmp/a.jpg"),
+                at: VFSPath(backend: share.backendID, path: "/a.jpg"),
                 to: Self.remote,
                 progress: { _ in },
                 isCancelled: { false }
             )
         }
-        #expect(throws: VFSError.unsupported(.copyFile)) {
-            try backend.copyFile(
-                at: Self.remote,
-                to: VFSPath(backend: Self.location.backendID, path: "/home/b.jpg"),
-                progress: { _ in },
-                isCancelled: { false }
-            )
-        }
+        #expect(transport.writes.isEmpty && transport.downloads.isEmpty)
     }
 
     @Test("a Stop before the transfer starts sends nothing")

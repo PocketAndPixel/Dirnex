@@ -492,6 +492,124 @@ and `acceptsUploads` leaves WebDAV out until Slice 4.
   `isRemoteConnection`, a schemeless path decoded, reconnect ignoring the stored scheme, and the edit
   carry ignoring the port.
 
+**2026-10-23: Slice 4 landed** (core and app). `capabilities` is `[.read, .write, .rename]`, and
+`acceptsUploads` takes WebDAV in.
+
+- **Core:**
+  - `WebDAVProcessArguments+Write`: MKCOL with the slash, an upload by `-T` with the meter, an empty
+    PUT, MOVE and COPY with an absolute `Destination` and `Overwrite: F`, and DELETE. `WebDAVTransport`
+    gains the six verbs.
+  - `WebDAVBackend+Write`: `createDirectory`; `createFile` as one PUT with `If-None-Match: *`; `moveItem`
+    as one MOVE, a folder included; `removeItem` as one DELETE whose body is read; uploads; a COPY
+    tried for a duplicate inside the account (`mayAttemptInternalCopy`), latched on 501 or 405; the
+    ETag-guarded `writeBack`; and the date carried onto a download, as FTP and SFTP carry theirs.
+  - `HTTPEntityTag` and `RemoteFileRevision.preconditionTag`: two readings compare weakly, and only a
+    strong tag guards a write.
+  - `VFSUnsupportedReason.lockedOnServer(name:)`, which replaces Slice 1's `EBUSY`. The reasons'
+    sentences moved to `VFSUnsupportedReason+Sentence.swift`, since the file had reached 500 lines.
+- **App:** `WebDAVCurlTransport` gains the six verbs, with a 600 s budget for a request the server
+  carries out on its own disk. The save-back reads `preconditionTag`. The lock sentence is in all 14
+  languages. Routing needed nothing new: the composite already forwards every verb by path.
+- **Tests:** 40 core tests in five new suites, 197 across WebDAV, and 40 new fixture files: each
+  verb's answers captured from macOS's Apache through the shipped argument builders, including a
+  lock held from outside and one file's tag read weak and then strong. Core 4381 and app 1859 green.
+  The live server suites skipped for want of their config.
+- **Measured while building it** (macOS's Apache, 2026-10-23):
+  - **Apache's tag is the size and the modification time truncated to the whole second, and it is
+    weak while the request is within a second of that.** In that second, `If-Match` answered 412 with
+    the tag as read and with its `W/` dropped alike; 2.2 s later the strong tag answered 204. So
+    dropping the marker, one of Slice 1's two candidate fixes, cannot make the guard pass. Comparing
+    two readings is RFC 9110's weak comparison either way.
+  - **`curl` 8.7.1 adds `Expect: 100-continue` only above 1 MiB, not ~1 KiB** as NOTES.md and three
+    S3 doc comments said: 1 048 576 bytes were sent whole before a 412, 1 048 577 not at all. All six
+    places are corrected.
+  - **A cancelled PUT changes nothing.** Apache writes into a temporary file: a 64 MiB upload killed
+    part-way left no file, and one killed over an existing file left its bytes as they were.
+  - `If-None-Match: *` onto a folder answers **409**, which RFC 4918 also spends on a missing parent.
+    `If-Match` onto a deleted file answers **412**, the same as a changed one. MOVE into a missing
+    folder answers 500 and COPY 409.
+  - **COPY keeps the mode and not the date**: a 2020 file copied as today.
+  - A case-only MOVE on a case-insensitive disk is refused, 412 with `Overwrite: F` and 403 "Source
+    and Destination URIs are the same" with `T`, and the file stays as it was.
+  - Apache took a `Destination` naming another host, and answered 502 for another scheme.
+- **Decided in the slice:**
+  - **A weak tag sends no condition** (taken by Oleg 2026-10-23, over re-reading until the tag is
+    strong). Apache hands one out for about a second after any write, exactly when a quick second ⌘S
+    checks, and a guard refused every time is worse than none. Such a save rests on the re-`stat`, as
+    SFTP's and FTP's always do. A weak tag is still kept verbatim for Get Info.
+  - **An F5 upload is unconditional; only `createFile` carries `If-None-Match: *`.** The checksum
+    manifest and the pack delivery rely on an upload replacing (`ChecksumCreateRun`), and `CopyEngine`
+    makes the destination free before it copies.
+  - **A 409 from the create-if-absent PUT is followed by one stat**, since only the server can say
+    whether a folder is in the way or the parent is missing. A 412 against `If-Match` is followed by
+    one stat as well, to say changed or gone.
+  - **A 207 from a write is a refusal when a member refused, success when none did, and a failure
+    when its body cannot be read.**
+  - **COPY is attempted, not promised.** A 501 or 405 latches for the connection, and any refusal
+    sends the copy through this disk.
+  - **Only the date is counted as not kept**, on uploads, COPY and recreated folders. WebDAV has no
+    permissions anywhere, so a mode has nothing to be missing from: S3's reading.
+  - A lock names the member a 424 body names, since for a folder that is the file somebody has open.
+- **Live, against the throwaway Apache over HTTP with Basic.** A temporary probe gave the build the
+  password from its environment, so nothing touched the Keychain. The probe was removed and the build
+  rebuilt (the binary checked for it), and the defaults domain was restored and compared unchanged
+  (71 keys).
+  - The seeded tab reconnected with one PROPFIND. F5 sent three files as one PUT each, with no
+    condition, byte-identical, and the name `cafe\u{301} #%;+?&=[].txt` arrived byte for byte.
+  - F5 down was one GET per file, byte-identical, and both copies carried the server's 2020 date.
+  - F5 between two folders of the account was one COPY with the Cyrillic `Destination` encoded, and
+    the status line read "Copied — the modification time wasn't kept on 1 item". F6 of the odd name
+    was one MOVE.
+  - F7 through the sheet made `Новая [папка] #1 + é` with one MKCOL. ⇧F4 made `new = 1 & ;.txt` with
+    one PUT carrying `If-None-Match: *` and no content type.
+  - F8 of a folder whose file was locked from outside was one DELETE answered 424; nothing was
+    deleted, and the alert read "“held.txt” is locked on the server, usually because someone has it
+    open. Try again once they have closed it." After UNLOCK, one DELETE removed the folder.
+  - **F4's save-back, saves written into the edited copy from the shell:** the first save sent the
+    strong tag as `If-Match` (204). A second inside the weak second sent no condition (204), with no
+    question, where before this slice it would have sent `W/"…"` and been refused as somebody else's
+    edit. A third, two seconds later, read the strong tag against the weak one recorded after the
+    second save, asked nothing, and sent the strong tag (204). After another client wrote the file, the
+    next save raised "The file on the server has changed since you downloaded it", and Keep Editing
+    sent nothing.
+- **Live against the NAS the same evening**, `dirnex-test` over HTTPS 5006 and HTTP 5005 by the bare
+  name `nas`, dialed as `nas.local`. One temporary probe had the app read the account's SFTP Keychain
+  item (Oleg answered the prompt) and hold the password in memory; afterwards no `com.dirnex.webdav`
+  item existed. A second probe appended each `curl`'s method, URL, conditions and status to a
+  scratch file, since the NAS's own log is out of reach, and `NSLog` arrives in the unified log as
+  `<private>`. Both probes were removed and the build rebuilt (the binary checked for them), and the
+  defaults domain was restored and compared unchanged (71 keys). The HTTPS endpoint carried the pin
+  `gkHDtx…`, which `openssl` computed again for the served certificate.
+  - **HTTPS:** F7 made `dirnex-slice4 [live] #1 + é` with one MKCOL. F5 up of four files and the
+    folder `Папка` was one MKCOL and five unconditional PUTs, all 201. F5 down was five GETs, every
+    file byte-identical to its original, the decomposed é's bytes kept, and each copy carrying the
+    server's date. A copy inside the account was one COPY (201) with "Copied — the modification time
+    wasn't kept on 1 item". F6 of the odd name was one MOVE (201).
+  - **F4 over HTTPS:** the first save sent the strong tag (204), the second inside the weak second
+    sent none (204) and asked nothing, and the third sent the new strong tag (204). Dirnex's own F5
+    Replace then rewrote the file, as PUT to a hidden sibling, DELETE and MOVE with `Overwrite: F`.
+    The next save asked "The file on the server has changed…"; Keep Editing sent nothing, and
+    Upload All sent `If-Match` with the tag the check had found (204).
+  - **HTTP:** F7 made `dirnex-slice4-http Кириллица` with one MKCOL. F5 from the HTTPS account was
+    staged, a GET over HTTPS and a PUT over HTTP, and the relay's folder was empty afterwards. ⇧F4
+    was one PUT with `If-None-Match: *` (201). F4's three saves went as over HTTPS. F5 down brought
+    both files back byte-identical, the relayed 3 MiB file included.
+  - F8 removed each test folder with one DELETE (204), over HTTPS and over HTTP. Both landed in the
+    share's `#recycle` and were deleted there too (`%23recycle`, 204). The probe folders earlier
+    slices left in `#recycle` were left alone.
+  - **The NAS's tag carries the modification time to the microsecond** (`"1b-65e8692f53fde"`),
+    where macOS's Apache truncates it to the second, so a rewrite there always changes the tag. It
+    is still weak for the second after a write: the second save's check got no usable tag.
+- **Not run live yet:** a lock on the NAS (an outside client would need the password in a shell;
+  Slice 1's captured 423 and 424 bodies are in the unit tests, and the alert was seen on Apache),
+  Digest, F2's inline rename (background computer-use cannot commit a text field), a refused
+  `If-Match` read as changed or gone (the check catches the change first, so only the unit tests
+  reach it), and a server without COPY.
+- **Negative controls:** each of nine deliberate breaks fails tests: tags compared as strings, a weak
+  tag sent as a guard, a 207 read as success, no stat after a create's 409, every COPY refusal
+  latched, gone read as changed, a lock mapped to `EBUSY`, the mode counted as lost, and the form
+  content type left on.
+
 ### Still open
 
 Everything through M31 is shipped, and the record of it — the milestone checklists, the sixty

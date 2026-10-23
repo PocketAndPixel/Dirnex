@@ -1,8 +1,7 @@
 import Foundation
 
-/// A `VFSBackend` that browses one WebDAV account (PLAN.md §M32). This is the read half: list,
-/// stat by `Depth: 0`, and download with resume. The write verbs arrive with Slice 4, so
-/// ``capabilities`` says `.read` and the defaults refuse everything else by name.
+/// A `VFSBackend` for one WebDAV account (PLAN.md §M32). Here: list, stat by `Depth: 0`, and the
+/// byte copies in all three directions. The other write verbs are in `WebDAVBackend+Write.swift`.
 ///
 /// Everything that decides whether an answer is *correct* lives here or below it in the core: the
 /// URL a path becomes, which row of a multistatus is the folder, what each row is, the resume
@@ -11,6 +10,13 @@ public struct WebDAVBackend: ConnectionScopedBackend {
     /// The account this backend is rooted at — its identity.
     public let location: WebDAVLocation
     let transport: any WebDAVTransport
+    /// What this connection has failed to carry. It offers nothing: the one time property is
+    /// read-only (PLAN.md §M32), so every upload, COPY and recreated folder counts its date as not
+    /// kept, and the app says so in the status line (``recordDateNotKept(_:)``).
+    let metadata = RemoteMetadataSupport(offering: [])
+    /// Whether this server has answered COPY as a method it does not have, so the next duplicate is
+    /// staged through this disk without asking again.
+    let serverSideCopy = ServerSideCopySupport()
 
     public init(location: WebDAVLocation, transport: any WebDAVTransport) {
         self.location = location
@@ -20,9 +26,11 @@ public struct WebDAVBackend: ConnectionScopedBackend {
     public var id: VFSBackendID { location.backendID }
     public var connectionDescriptor: String { location.descriptor }
 
-    /// Read only, until the write half lands. No `.watch`, permanently — WebDAV has no change
-    /// notification, so a pane re-lists on focus and on demand as the other remotes do.
-    public var capabilities: VFSCapabilities { [.read] }
+    /// Readable, writable, and renamed in place by MOVE. Not `.internalCopy`: COPY is attempted
+    /// rather than promised (``mayAttemptInternalCopy(from:to:)``). No `.trash`, since the protocol
+    /// has none, so F8 is a confirmed permanent delete. No `.watch`, permanently — WebDAV has no
+    /// change notification, so a pane re-lists on focus and on demand as the other remotes do.
+    public var capabilities: VFSCapabilities { [.read, .write, .rename] }
 
     // MARK: - Listing
 
@@ -105,11 +113,58 @@ public struct WebDAVBackend: ConnectionScopedBackend {
         )
     }
 
-    // MARK: - Reading bytes
+    // MARK: - Moving bytes
 
-    /// Download one file to the local disk — the only direction the read half serves. Uploads and
-    /// a copy within the server (COPY) arrive with the write half; until then any other pair is
-    /// refused, as it is for a backend that cannot write.
+    public func copyFile(
+        at source: VFSPath,
+        to destination: VFSPath,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws {
+        try copyFile(
+            at: source,
+            to: destination,
+            hint: .none,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    /// Copy one file: a download, an upload, or a COPY on the server, decided by which ends are
+    /// here. Any other pair is two accounts, which the app's router stages through this disk.
+    ///
+    /// The hint's metadata is what a download carries onto the local copy (the server's date, as
+    /// FTP and SFTP carry theirs), and what an upload or a COPY counts as not kept. Its size is what
+    /// a COPY reports, since no bytes move through here.
+    public func copyFile(
+        at source: VFSPath,
+        to destination: VFSPath,
+        hint: CopySourceHint,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws {
+        if isCancelled() { throw CancellationError() }
+        if source.backend == id, destination.backend == .local {
+            try download(source, to: destination, progress: progress, isCancelled: isCancelled)
+            carryOntoLocal(hint.metadata, at: destination.path)
+        } else if source.backend == .local, destination.backend == id {
+            try upload(
+                source,
+                to: destination,
+                hint: hint,
+                progress: progress,
+                isCancelled: isCancelled
+            )
+        } else if source.backend == id, destination.backend == id {
+            let size = try duplicate(source, to: destination, hint: hint)
+            if isCancelled() { throw CancellationError() }
+            progress(size)
+        } else {
+            throw VFSError.unsupported(.remoteToRemoteCopy)
+        }
+    }
+
+    /// Download one file to the local disk.
     ///
     /// A partial file already at the destination is resumed only when the server's copy is larger,
     /// which costs a `Depth: 0` stat and is asked only when there is a partial: resuming onto a
@@ -119,16 +174,12 @@ public struct WebDAVBackend: ConnectionScopedBackend {
     ///
     /// What streams while the bytes move is the destination growing; what the run reports at the
     /// end is exact. The tail reports the difference, so the bar settles on `curl`'s own count.
-    public func copyFile(
-        at source: VFSPath,
+    private func download(
+        _ source: VFSPath,
         to destination: VFSPath,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws {
-        if isCancelled() { throw CancellationError() }
-        guard source.backend == id, destination.backend == .local else {
-            throw VFSError.unsupported(.copyFile)
-        }
         let existing = localFileSize(destination.path)
         let resume = existing > 0 && remoteSize(of: source) > existing
 
@@ -154,7 +205,7 @@ public struct WebDAVBackend: ConnectionScopedBackend {
 
     /// The server's size for `path`, or 0 when it cannot be read — which reads as "nothing to
     /// resume onto", so the download starts over and reports any real failure itself.
-    private func remoteSize(of path: VFSPath) -> Int64 {
+    func remoteSize(of path: VFSPath) -> Int64 {
         guard let entry = try? stat(at: path), entry.kind == .file else { return 0 }
         return entry.byteSize
     }

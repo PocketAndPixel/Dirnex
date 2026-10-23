@@ -184,8 +184,10 @@ public enum S3ProcessArguments {
     /// - **A destination URL must never end in `/`.** `curl` appends the *local* file's basename to
     ///   a `-T` URL that does — `-T /tmp/tiny.txt <bucket>/trailing/` arrived as the key
     ///   `trailing/tiny.txt`. Silent, and it writes a real object under a name nobody chose.
-    /// - **`Expect: 100-continue` is left to `curl`'s own threshold** (it adds the header above
-    ///   ~1 KiB — the 39-byte upload carried none, the 3 MiB one did). Against a server that ignores
+    /// - **`Expect: 100-continue` is left to `curl`'s own threshold**: it adds the header above
+    ///   **1 MiB** (measured on `curl` 8.7.1 2026-10-23: 1 048 576 bytes carried none, 1 048 577 did;
+    ///   it was once written here as ~1 KiB, from a 39-byte and a 3 MiB upload, which cannot tell
+    ///   the two apart). Against a server that ignores
     ///   it, the header costs a flat **1.02 s** per upload; against one that answers, nothing. It is
     ///   kept because the alternative is worse in the direction that matters: without it, an upload
     ///   to a bucket the key cannot write to sends the whole file before learning about the 403 —

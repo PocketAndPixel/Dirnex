@@ -25,8 +25,9 @@ import Foundation
 ///   is what makes the pass evidence rather than a permissive server agreeing. Same finding as
 ///   `x-amz-copy-source` and `Content-MD5` (docs/NOTES.md ▸ curl for S3): the header is ours to
 ///   spell, the signing is not ours to write.
-/// - **A doomed conditional PUT costs nothing.** `curl` sends `Expect: 100-continue` above ~1 KiB,
-///   and a server answering the precondition there ends it before the body moves: measured, a
+/// - **A doomed conditional PUT costs nothing above 1 MiB.** `curl` sends `Expect: 100-continue`
+///   only above 1 MiB (measured on 8.7.1, 2026-10-23; a smaller file is sent whole and then
+///   refused), and a server answering the precondition there ends it before the body moves: a
 ///   64 MiB upload against a stale tag reported `size_upload=0` in **0.0009 s**. That is a second
 ///   reason for a header ``S3ProcessArguments/upload(session:key:localPath:condition:)`` already
 ///   keeps for the 403 case, and it is what makes conditioning a *large* save-back free.

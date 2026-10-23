@@ -67,6 +67,23 @@ struct RemoteWriteBackConditionTests {
         #expect(BrowserWindowController.writeCondition(checked: Self.revision()) == .unconditional)
     }
 
+    /// `If-Match` compares strongly, so a weak tag matches nothing: macOS's Apache refused
+    /// `W/"bb8-65e8621628fc0"` as a guard and took `"bb8-65e8621628fc0"` 2.2 s later, on a file
+    /// nobody touched (PLAN.md §M32 Slice 4). Sent anyway, a quick second ⌘S would be refused as
+    /// somebody else's edit; the strong reading of the same file still guards.
+    @Test("a weak WebDAV tag sends no condition, and the strong one of the same file does")
+    func weakTagWritesUnconditionally() {
+        let weak = Self.revision(entityTag: #"W/"bb8-65e8621628fc0""#)
+        let strong = Self.revision(entityTag: #""bb8-65e8621628fc0""#)
+        #expect(BrowserWindowController.writeCondition(checked: weak) == .unconditional)
+        #expect(
+            BrowserWindowController.writeCondition(checked: strong)
+                == .ifMatches(entityTag: #""bb8-65e8621628fc0""#)
+        )
+        // And the two readings are one file, so the check before the save raises no question.
+        #expect(BrowserWindowController.writeBackConcern(recorded: weak, current: strong) == nil)
+    }
+
     /// A check that could not reach the server has nothing to pin. Inventing a condition here would
     /// refuse a save for a reason that was never measured.
     @Test("a check that failed sends no condition")

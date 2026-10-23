@@ -139,8 +139,9 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         }
         if path.backend.isSFTP { return sftpBackend(for: path.backend)?.capabilities ?? .read }
         if path.backend.isFTP { return ftpBackend(for: path.backend)?.capabilities ?? .read }
-        // `.read` either way until the write half lands (PLAN.md §M32 Slice 4), and the fallback is
-        // already the answer that will stay right then: no credential, no writes.
+        // A connected account is `[.read, .write, .rename]` since the write half (PLAN.md §M32
+        // Slice 4): Trash-less, with COPY attempted rather than promised. A path whose connection is
+        // gone falls back to `.read`, for SFTP's reason: no credential, no writes.
         if path.backend.isWebDAV { return webDAVBackend(for: path.backend)?.capabilities ?? .read }
         // A connected bucket is `[.read, .write, .rename]` — Trash-less and clone-less, the same M5
         // degradation shape as SFTP. A path whose connection is gone falls back to `.read` for the

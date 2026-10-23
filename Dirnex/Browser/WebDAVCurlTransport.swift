@@ -35,8 +35,12 @@ struct WebDAVCurlTransport: WebDAVTransport {
     /// Wall-clock bound for a PROPFIND: generous for a large folder over a slow link, tight enough
     /// that a server that stopped answering doesn't hang the pane.
     var metadataTimeout = 30
-    /// Wall-clock bound for a download, which may legitimately run for a long time.
+    /// Wall-clock bound for a download or an upload, which may legitimately run for a long time.
     var transferTimeout = 3600
+    /// Wall-clock bound for a request the server carries out on its own disk — a COPY of a large
+    /// file, a MOVE or DELETE of a large folder. One request, but its time grows with what it
+    /// acts on, so it gets more than a listing and less than an hour.
+    var serverOperationTimeout = 600
 
     init(
         location: WebDAVLocation,
@@ -116,6 +120,84 @@ struct WebDAVCurlTransport: WebDAVTransport {
             watching: .destinationFile(path: localPath),
             progress: progress,
             isCancelled: isCancelled
+        )
+    }
+
+    // MARK: - The write half (PLAN.md §M32 Slice 4)
+
+    func mkcol(_ backendPath: String) throws -> WebDAVHTTPResponse {
+        let session = session(maxTime: metadataTimeout)
+        return try perform(
+            WebDAVProcessArguments.mkcol(session: session, backendPath: backendPath),
+            session: session
+        )
+    }
+
+    /// Progress comes from `curl`'s meter, as S3's upload's does: nothing local grows, and the
+    /// local file's size is the meter's exact total. The exact count is the write-out's.
+    func upload(
+        localPath: String,
+        to backendPath: String,
+        condition: S3WriteCondition,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> WebDAVHTTPResponse {
+        let session = session(maxTime: transferTimeout)
+        return try perform(
+            WebDAVProcessArguments.upload(
+                session: session,
+                localPath: localPath,
+                backendPath: backendPath,
+                condition: condition
+            ),
+            session: session,
+            watching: .uploadMeter(totalBytes: S3CurlTransport.fileSize(localPath)),
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    func putEmpty(_ backendPath: String, condition: S3WriteCondition) throws -> WebDAVHTTPResponse {
+        let session = session(maxTime: metadataTimeout)
+        return try perform(
+            WebDAVProcessArguments.putEmpty(
+                session: session,
+                backendPath: backendPath,
+                condition: condition
+            ),
+            session: session
+        )
+    }
+
+    func move(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse {
+        let session = session(maxTime: serverOperationTimeout)
+        return try perform(
+            WebDAVProcessArguments.move(
+                session: session,
+                backendPath: backendPath,
+                to: destinationPath
+            ),
+            session: session
+        )
+    }
+
+    func copy(_ backendPath: String, to destinationPath: String) throws -> WebDAVHTTPResponse {
+        let session = session(maxTime: serverOperationTimeout)
+        return try perform(
+            WebDAVProcessArguments.copy(
+                session: session,
+                backendPath: backendPath,
+                to: destinationPath
+            ),
+            session: session
+        )
+    }
+
+    func delete(_ backendPath: String) throws -> WebDAVHTTPResponse {
+        let session = session(maxTime: serverOperationTimeout)
+        return try perform(
+            WebDAVProcessArguments.delete(session: session, backendPath: backendPath),
+            session: session
         )
     }
 

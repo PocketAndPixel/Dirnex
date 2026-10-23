@@ -116,6 +116,31 @@ public extension WebDAVServiceError {
         members.filter { $0.status == 423 }.map(\.path)
     }
 
+    /// The name a lock refusal reports: the locked member a 424 or 207 body named, since that is
+    /// the file somebody has open, or else the resource the request named.
+    func lockedItemName(at path: VFSPath) -> String {
+        lockedMemberPaths.first.flatMap(WebDAVHref.name(of:)) ?? path.lastComponent
+    }
+
+    /// What a refused write means against the precondition it carried, or `nil` when the
+    /// precondition is not what refused it — a 403 on a guarded upload is still a permissions
+    /// problem, for the reason ``S3WriteCondition/refusal(for:)`` gives.
+    ///
+    /// Only a 412 is the precondition's. `If-Match` onto a file that has been **deleted** answers
+    /// 412 too, not 404 (measured on macOS's Apache 2026-10-23, with and without the folder): the
+    /// condition compares against a representation that is not there, and fails. So `.changedSince`
+    /// here can still mean gone, and the backend asks the server which it was before it says so.
+    /// `If-None-Match: *` onto a **folder** is not a 412 either but 409, Apache's "Cannot PUT to a
+    /// collection", and the caller that sends it reads that itself.
+    func refusal(for condition: S3WriteCondition) -> S3WriteConditionRefusal? {
+        guard isPreconditionFailed else { return nil }
+        switch condition {
+        case .unconditional: return nil
+        case .ifAbsent: return .alreadyThere
+        case .ifMatches: return .changedSince
+        }
+    }
+
     /// Whether a condition the request carried did not hold: `Overwrite: F` or
     /// `If-None-Match: *` against something already there, or `If-Match` against a tag that is no
     /// longer the resource's. The request knows which it sent, so a write-back sending `If-Match`
@@ -128,10 +153,10 @@ public extension WebDAVServiceError {
     /// MOVE. A 409 or 412 is about the place being created, so for those two methods it reports
     /// the destination — a missing *source* is a 404 and reports `path`.
     ///
-    /// A lock maps to `EBUSY` for now. Its own sentence, naming the file as locked by someone else
-    /// rather than as unreadable, needs a `VFSUnsupportedReason` and a translation in every
-    /// language, and arrives with the write half (PLAN.md §M32 Slice 4), which is where a 423 can
-    /// first happen: a lock is a write lock, and reading and listing pass it.
+    /// A lock is ``VFSUnsupportedReason/lockedOnServer(name:)``, naming the locked member when the
+    /// body named one, since for a folder that is the file somebody has open. It was `EBUSY` until
+    /// the write half (PLAN.md §M32 Slice 4), which is where a 423 can first happen: a lock is a
+    /// write lock, and reading and listing pass it.
     func vfsError(for path: VFSPath, destination: VFSPath? = nil) -> VFSError {
         let created = (method == .copy || method == .move) ? destination ?? path : path
         switch effectiveStatus {
@@ -152,7 +177,7 @@ public extension WebDAVServiceError {
         case 413:
             return .io(path: created, code: EFBIG)
         case 423:
-            return .io(path: path, code: EBUSY)
+            return .unsupported(.lockedOnServer(name: lockedItemName(at: path)))
         case 507:
             return .io(path: created, code: ENOSPC)
         default:

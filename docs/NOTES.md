@@ -6374,7 +6374,9 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   asked for; make it say so.
 - **A server that ignores `Expect: 100-continue` costs a flat 1.02 s per upload** (measured against
   one that answers: ~0.01 s). Do not reach for `-H 'Expect:'` to remove it — `curl` only adds the
-  header above ~1 KiB, which already restricts the cost to files big enough that the alternative is
+  header above **1 MiB** (measured on 8.7.1, 2026-10-23: 1 048 576 bytes carried none, 1 048 577
+  did; this entry said ~1 KiB until then, from a 39-byte and a 3 MiB upload that could not tell the
+  two apart), which already restricts the cost to files big enough that the alternative is
   worse: without it, an upload to a bucket the key cannot write to sends the **whole file** before
   learning about the 403. The default already encodes the trade.
 
@@ -6554,7 +6556,7 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     derived from it needs the qualifier until a real service has been asked.
   - **A doomed conditional PUT costs a round trip rather than the file**, which is what makes
     conditioning a *large* save-back free — and it is the second reason for a header this backend
-    already keeps for the 403 case. `curl` sends `Expect: 100-continue` above ~1 KiB, and a server
+    already keeps for the 403 case. `curl` sends `Expect: 100-continue` above 1 MiB, and a server
     answering the precondition there ends it before the body moves: measured, a **64 MiB** upload
     against a stale `If-Match` reported `size_upload=0` and returned in **0.0009 s**.
   - **A live test for a refused precondition needs no race, and the word "race" is what kept one
@@ -6764,7 +6766,7 @@ what made the milestone affordable and the rest inverted rules borrowed from the
 
 M32's backend, over the same `curl` as FTP and S3. What the server itself does is in PLAN.md §M32
 (the NAS's Apache `mod_dav`, and macOS's own as the throwaway server); this section keeps what bites
-whoever drives `curl` over HTTP next. Three of the four apply to the S3 backend as much as here.
+whoever drives `curl` over HTTP next. Most of them apply to the S3 backend as much as here.
 
 - **`%header{name}` prints only the *first* of several headers with that name; `%{header_json}`
   prints all of them.** Measured 2026-10-23: the NAS sends two `DAV` headers (`1,2` and Apache's
@@ -6798,6 +6800,27 @@ whoever drives `curl` over HTTP next. Three of the four apply to the S3 backend 
   failed login.** `--digest` never goes first, since a new process has no nonce, so every invocation
   is a 401 and then the request (two lines in Apache's log for each). A Basic `Authorization` sent to
   a Digest location was logged with no user at all, the header ignored rather than weighed.
+- **An entity tag read twice has to be compared weakly, and only a strong one may guard a write.**
+  Measured on macOS's Apache 2026-10-23 (M32 Slice 4): the tag is the size and the modification time
+  **truncated to the whole second** (six files written in one second carried one mtime, and the next
+  second's carried exactly 1 000 000 µs more), and it reads `W/"…"` while the request is within a
+  second of that truncated time. One untouched file therefore reads `W/"x"` and then `"x"`, so a
+  string comparison reports an edit nobody made (RFC 9110's weak comparison: the opaque parts match).
+  And in that second **no** `If-Match` passes, the tag as read or with its `W/` dropped: both 412,
+  while the strong tag 2.2 s later answered 204. So a save-back holding a weak tag sends no condition
+  (`RemoteFileRevision.preconditionTag`). Whether a read straight after a write is weak depends on
+  where in the second the write landed: a fixture capture got a strong tag at once in one run and
+  weak in the next, so a test that needs the weak one has to write until it sees it.
+- **`curl` 8.7.1 sends `Expect: 100-continue` only for a body above 1 MiB**, not ~1 KiB as this file
+  said for S3 until 2026-10-23. A guarded PUT of 1 048 576 bytes against an existing file sent every
+  byte before its 412; at 1 048 577 it sent none (▸ curl for S3, corrected the same day). A refused
+  small write costs its whole body, which is why a 3000-byte fixture reports `size_upload=3000` on a
+  412.
+- **`--data-binary ""` labels the request `Content-Type: application/x-www-form-urlencoded`, and
+  `-H 'Content-Type:'` removes it.** An empty file created with the first is stored by a server that
+  keeps the type under a form's type; Apache's log showed `-` for the header with the second. `-T
+  /dev/null` is not the way round it: `/dev/null` has no length, so the body goes chunked (5 bytes of
+  framing for an empty file).
 
 ### The Trash
 

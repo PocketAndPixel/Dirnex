@@ -149957,6 +149957,95 @@
         }
       }
     },
+    "vfs.unsupported.lockedOnServer": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the locked item's name — for a folder, the locked file inside it. Raised when a WebDAV server refuses a write because someone else holds a lock on the item (HTTP 423 or 424).",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ ist auf dem Server gesperrt, meist weil jemand die Datei geöffnet hat. Versuchen Sie es erneut, sobald sie geschlossen wurde."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is locked on the server, usually because someone has it open. Try again once they have closed it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» está bloqueado en el servidor, normalmente porque alguien lo tiene abierto. Vuelve a intentarlo cuando lo hayan cerrado."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« %@ » est verrouillé sur le serveur, généralement parce que quelqu’un l’a ouvert. Réessayez une fois qu’il aura été fermé."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” è bloccato sul server, di solito perché qualcuno lo ha aperto. Riprova quando sarà stato chiuso."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」はサーバー上でロックされています。通常は、だれかが開いているためです。閉じられてからもう一度お試しください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%@’이(가) 서버에서 잠겨 있습니다. 보통 누군가 열어 두었기 때문입니다. 닫힌 뒤에 다시 시도하세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is vergrendeld op de server, meestal omdat iemand het geopend heeft. Probeer het opnieuw zodra het is gesloten."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plik „%@” jest zablokowany na serwerze, zwykle dlatego, że ktoś go otworzył. Spróbuj ponownie, gdy zostanie zamknięty."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” está bloqueado no servidor, geralmente porque alguém o abriu. Tente novamente depois que ele for fechado."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл «%@» заблокирован на сервере — обычно потому, что его кто-то открыл. Повторите попытку, когда его закроют."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл «%@» заблоковано на сервері — зазвичай тому, що його хтось відкрив. Спробуйте ще раз, коли його закриють."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”在服务器上已被锁定，通常是因为有人正在打开它。请在对方关闭后再试。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」在伺服器上已被鎖定，通常是因為有人正在開啟它。請在對方關閉後再試一次。"
+          }
+        }
+      }
+    },
     "vfs.unsupported.moveItem": {
       "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure.",
       "localizations": {

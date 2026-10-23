@@ -1,0 +1,9 @@
+dav-status=405
+dav-size=261
+dav-up=0
+dav-headers={"date":["Fri, 23 Oct 2026 18:27:18 GMT"],
+"server":["Apache/2.4.67 (Unix)"],
+"allow":["TRACE"],
+"content-length":["261"],
+"content-type":["text/html; charset=iso-8859-1"]
+}
