@@ -65,6 +65,16 @@ public protocol WebDAVTransport: Sendable {
     func propfind(_ backendPath: String, depth: WebDAVDepth, isCollection: Bool) throws
         -> WebDAVHTTPResponse
 
+    /// Several `Depth: 1` PROPFINDs of folders in **one** `curl`, so over one connection
+    /// (``WebDAVProcessArguments/listings(session:requests:credentials:)``, PLAN.md §M32 Slice 5).
+    ///
+    /// One answer per path, in order. A refusal is a section's answer; the first section's ends the
+    /// run, and the sections after it come back ``WebDAVBatchAnswer/notSent``, as do those after a
+    /// section that got no answer. Throws only when there was no run to read, and
+    /// `CancellationError` when `isCancelled` answered `true`.
+    func propfindBatch(_ backendPaths: [String], isCancelled: () -> Bool) throws
+        -> [WebDAVBatchAnswer]
+
     /// Download one file to a local path, resuming from the local file's length when `resume`.
     ///
     /// `progress` reports **deltas** as the destination grows, and `isCancelled` is polled while

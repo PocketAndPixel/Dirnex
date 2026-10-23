@@ -21,8 +21,23 @@ private struct OneFolderTransport: WebDAVTransport {
     </D:multistatus>
     """
 
+    /// The batched runs this transport was asked for, each as its paths.
+    final class Batches: @unchecked Sendable {
+        var runs: [[String]] = []
+    }
+
+    let batches = Batches()
+
     func propfind(_: String, depth _: WebDAVDepth, isCollection _: Bool) throws -> WebDAVHTTPResponse {
         WebDAVHTTPResponse(status: 207, body: Data(Self.body.utf8))
+    }
+
+    /// Every folder of a batch answers as a single PROPFIND does.
+    func propfindBatch(_ paths: [String], isCancelled _: () -> Bool) throws -> [WebDAVBatchAnswer] {
+        batches.runs.append(paths)
+        return paths.map { _ in .response(
+            WebDAVHTTPResponse(status: 207, body: Data(Self.body.utf8))
+        ) }
     }
 
     func download(
@@ -130,6 +145,26 @@ struct WebDAVCompositeTests {
         let entries = try backend.listDirectory(at: Self.path)
         #expect(entries.map(\.name) == ["notes.txt"])
         #expect(entries.first?.path == VFSPath(backend: .webDAV(Self.location), path: "/notes.txt"))
+    }
+
+    /// The composite answers both seams itself, so a forward that went missing would fall back to
+    /// the protocol's defaults: no shortcut, and one request per folder, with the same rows.
+    @Test("the subtree shortcut and a tree refresh's batch reach the account's own backend")
+    func listingSeamsAreRouted() throws {
+        let backend = CompositeBackend(local: LocalBackend())
+        let transport = OneFolderTransport()
+        backend.register(
+            webDAV: WebDAVBackend(location: Self.location, transport: transport),
+            authentication: .basic
+        )
+        let subtree = try #require(try backend.subtreeListing(at: Self.path) { false })
+        #expect(subtree.isComplete)
+        #expect(subtree.entries.map(\.name) == ["notes.txt"])
+
+        let folder = VFSPath(backend: .webDAV(Self.location), path: "/folder")
+        let answers = try backend.listDirectories(at: [Self.path, folder]) { false }
+        #expect(answers.map { $0?.map(\.name) } == [["notes.txt"], ["notes.txt"]])
+        #expect(transport.batches.runs == [["/"], ["/", "/folder"]])
     }
 
     /// What a quit writes into the tab, and what a relaunch registers from: the scheme the probe

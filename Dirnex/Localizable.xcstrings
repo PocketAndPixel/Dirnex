@@ -104219,91 +104219,91 @@
         }
       }
     },
-    "This listing reports no permissions, owner or group. An object store has none to report, and an IIS-style FTP listing prints no such columns — so nothing is missing from the item itself.": {
+    "This listing reports no permissions, owner or group. Some servers and protocols send none at all — an object store, a WebDAV server, an IIS-style FTP listing — so nothing is missing from the item itself.": {
       "comment": "Info panel note when a listing carries no mode, owner or group at all.",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diese Auflistung meldet weder Zugriffsrechte noch Eigentümer oder Gruppe. Ein Objektspeicher hat davon nichts zu melden, und eine FTP-Auflistung im IIS-Stil gibt solche Spalten gar nicht aus — dem Objekt selbst fehlt also nichts."
+            "value": "Diese Auflistung meldet weder Zugriffsrechte noch Eigentümer oder Gruppe. Manche Server und Protokolle übermitteln so etwas gar nicht — ein Objektspeicher, ein WebDAV-Server, eine FTP-Auflistung im IIS-Stil —, dem Objekt selbst fehlt also nichts."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This listing reports no permissions, owner or group. An object store has none to report, and an IIS-style FTP listing prints no such columns — so nothing is missing from the item itself."
+            "value": "This listing reports no permissions, owner or group. Some servers and protocols send none at all — an object store, a WebDAV server, an IIS-style FTP listing — so nothing is missing from the item itself."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Este listado no informa de permisos, propietario ni grupo. Un almacén de objetos no tiene ninguno que informar, y un listado FTP al estilo de IIS no imprime esas columnas, así que al ítem en sí no le falta nada."
+            "value": "Este listado no informa de permisos, propietario ni grupo. Algunos servidores y protocolos no envían nada de eso —un almacén de objetos, un servidor WebDAV, un listado FTP al estilo de IIS—, así que al ítem en sí no le falta nada."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ce listing n’indique ni autorisations, ni propriétaire, ni groupe. Un stockage objet n’en a aucun à indiquer, et un listing FTP de type IIS n’affiche pas ces colonnes — il ne manque donc rien à l’élément lui-même."
+            "value": "Ce listing n’indique ni autorisations, ni propriétaire, ni groupe. Certains serveurs et protocoles n’en transmettent aucun — un stockage objet, un serveur WebDAV, un listing FTP de type IIS —, il ne manque donc rien à l’élément lui-même."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Questo elenco non riporta autorizzazioni, proprietario né gruppo. Un archivio a oggetti non ne ha da riportare e un elenco FTP in stile IIS non stampa quelle colonne — quindi all’elemento stesso non manca nulla."
+            "value": "Questo elenco non riporta autorizzazioni, proprietario né gruppo. Alcuni server e protocolli non ne inviano affatto — un archivio a oggetti, un server WebDAV, un elenco FTP in stile IIS — quindi all’elemento stesso non manca nulla."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "この一覧にはアクセス権も所有者もグループも含まれていません。オブジェクトストレージにはそれらが存在せず、IIS 形式の FTP 一覧はそうした列を出力しません。項目そのものに欠けているものはありません。"
+            "value": "この一覧にはアクセス権も所有者もグループも含まれていません。オブジェクトストレージ、WebDAVサーバ、IIS 形式の FTP 一覧のように、それらをまったく送らないサーバやプロトコルがあります。項目そのものに欠けているものはありません。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 목록은 권한, 소유자, 그룹을 알려주지 않습니다. 오브젝트 스토리지에는 알려줄 것이 없고, IIS 방식의 FTP 목록은 그런 열을 출력하지 않습니다. 항목 자체에 빠진 것은 없습니다."
+            "value": "이 목록은 권한, 소유자, 그룹을 알려주지 않습니다. 오브젝트 스토리지, WebDAV 서버, IIS 방식의 FTP 목록처럼 이런 정보를 아예 보내지 않는 서버와 프로토콜이 있습니다. 항목 자체에 빠진 것은 없습니다."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dit overzicht meldt geen rechten, eigenaar of groep. Een objectopslag heeft die niet te melden en een FTP-overzicht in IIS-stijl drukt zulke kolommen niet af — er ontbreekt dus niets aan het object zelf."
+            "value": "Dit overzicht meldt geen rechten, eigenaar of groep. Sommige servers en protocollen sturen die helemaal niet mee — een objectopslag, een WebDAV-server, een FTP-overzicht in IIS-stijl — er ontbreekt dus niets aan het object zelf."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ta lista nie podaje uprawnień, właściciela ani grupy. Magazyn obiektów nie ma czego podać, a lista FTP w stylu IIS nie wypisuje takich kolumn — samemu elementowi niczego więc nie brakuje."
+            "value": "Ta lista nie podaje uprawnień, właściciela ani grupy. Niektóre serwery i protokoły w ogóle ich nie przesyłają — magazyn obiektów, serwer WebDAV, lista FTP w stylu IIS — samemu elementowi niczego więc nie brakuje."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta listagem não informa permissões, proprietário nem grupo. Um armazenamento de objetos não tem nenhum a informar, e uma listagem FTP no estilo IIS não imprime essas colunas — então não falta nada ao item em si."
+            "value": "Esta listagem não informa permissões, proprietário nem grupo. Alguns servidores e protocolos não enviam nada disso — um armazenamento de objetos, um servidor WebDAV, uma listagem FTP no estilo IIS —, então não falta nada ao item em si."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "В этом списке нет ни прав доступа, ни владельца, ни группы. Объектному хранилищу нечего сообщать, а FTP-список в стиле IIS таких столбцов не выводит — так что с самим объектом всё в порядке."
+            "value": "В этом списке нет ни прав доступа, ни владельца, ни группы. Некоторые серверы и протоколы их вообще не передают — объектное хранилище, сервер WebDAV, FTP-список в стиле IIS, — так что с самим объектом всё в порядке."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "У цьому списку немає ні прав доступу, ні власника, ні групи. Об’єктному сховищу нічого повідомляти, а FTP-список у стилі IIS таких стовпців не виводить — тож із самим об’єктом усе гаразд."
+            "value": "У цьому списку немає ні прав доступу, ні власника, ні групи. Деякі сервери й протоколи їх узагалі не передають — об’єктне сховище, сервер WebDAV, FTP-список у стилі IIS, — тож із самим об’єктом усе гаразд."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "此列表未报告权限、所有者或群组。对象存储本就没有这些内容，IIS 风格的 FTP 列表也不会打印这些列——因此项目本身并没有缺少什么。"
+            "value": "此列表未报告权限、所有者或群组。有些服务器和协议根本不发送这些内容——例如对象存储、WebDAV 服务器、IIS 风格的 FTP 列表——因此项目本身并没有缺少什么。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "此列表未回報權限、擁有者或群組。物件儲存本就沒有這些內容，IIS 風格的 FTP 列表也不會列出這些欄——因此項目本身並沒有缺少什麼。"
+            "value": "此列表未回報權限、擁有者或群組。有些伺服器和協定根本不傳送這些內容——例如物件儲存、WebDAV 伺服器、IIS 風格的 FTP 列表——因此項目本身並沒有缺少什麼。"
           }
         }
       }

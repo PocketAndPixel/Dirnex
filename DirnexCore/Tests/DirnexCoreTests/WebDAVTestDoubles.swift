@@ -74,6 +74,13 @@ final class FakeWebDAVTransport: WebDAVTransport, @unchecked Sendable {
     private(set) var propfinds: [Propfind] = []
     private(set) var downloads: [Download] = []
     private(set) var writes: [Write] = []
+    /// Each batched run, as the paths it carried.
+    private(set) var batches: [[String]] = []
+    /// Every section a batched run actually sent, in order, across all runs.
+    private(set) var batchedRequests: [String] = []
+    /// Replaces a batched run's own answers when set — a transport that answered the wrong number,
+    /// or one that could not run at all.
+    var batchAnswer: (([String]) throws -> [WebDAVBatchAnswer])?
 
     init(respond: @escaping (Propfind) throws -> WebDAVHTTPResponse = { _ in
         WebDAVHTTPResponse(status: 404)
@@ -86,6 +93,37 @@ final class FakeWebDAVTransport: WebDAVTransport, @unchecked Sendable {
         let request = Propfind(path: backendPath, depth: depth, isCollection: isCollection)
         propfinds.append(request)
         return try respond(request)
+    }
+
+    /// A batched run as `curl` was measured to run one (``WebDAVProcessArguments/listings(session:requests:credentials:)``):
+    /// each section answered by ``respond`` as a `Depth: 1` PROPFIND of a collection, the run
+    /// stopping after a first section answered 400 or above (`fail`), or after any section whose
+    /// answer is a thrown transport failure (`--fail-early`).
+    func propfindBatch(_ backendPaths: [String], isCancelled: () -> Bool) throws
+        -> [WebDAVBatchAnswer] {
+        batches.append(backendPaths)
+        if let batchAnswer { return try batchAnswer(backendPaths) }
+        var answers: [WebDAVBatchAnswer] = []
+        for (index, path) in backendPaths.enumerated() {
+            if isCancelled() { throw CancellationError() }
+            batchedRequests.append(path)
+            let answer: WebDAVBatchAnswer
+            do {
+                answer = try .response(
+                    respond(Propfind(path: path, depth: .one, isCollection: true))
+                )
+            } catch let WebDAVResponseError.transport(failure) {
+                answer = .noAnswer(failure)
+            }
+            answers.append(answer)
+            let stops: Bool
+            switch answer {
+            case let .response(response): stops = index == 0 && response.status >= 400
+            case .noAnswer, .notSent: stops = true
+            }
+            if stops { break }
+        }
+        return answers + Array(repeating: .notSent, count: backendPaths.count - answers.count)
     }
 
     func download(

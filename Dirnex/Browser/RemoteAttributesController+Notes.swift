@@ -53,9 +53,9 @@ extension RemoteAttributesController {
         case (true, true):
             return String(
                 localized: """
-                This listing reports no permissions, owner or group. An object store has none to \
-                report, and an IIS-style FTP listing prints no such columns — so nothing is missing \
-                from the item itself.
+                This listing reports no permissions, owner or group. Some servers and protocols send \
+                none at all — an object store, a WebDAV server, an IIS-style FTP listing — so nothing \
+                is missing from the item itself.
                 """,
                 comment: "Info panel note when a listing carries no mode, owner or group at all."
             )
