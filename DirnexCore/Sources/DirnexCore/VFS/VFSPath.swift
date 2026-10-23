@@ -92,7 +92,9 @@ public struct VFSBackendID: RawRepresentable, Sendable, Hashable, CustomStringCo
     /// are listed through PhotoKit and fetched to a temp copy before anything can open them, which is
     /// every property this name promises — re-listable, not on this disk, no local URL. It is
     /// read-only, so ``acceptsUploads`` leaves it out.
-    public var isRemoteConnection: Bool { isSFTP || isFTP || isS3 || isS3Account || isPhotos }
+    public var isRemoteConnection: Bool {
+        isSFTP || isFTP || isS3 || isS3Account || isWebDAV || isPhotos
+    }
 
     /// Whether a copy *into* this backend has an upload primitive behind it.
     ///
@@ -103,6 +105,10 @@ public struct VFSBackendID: RawRepresentable, Sendable, Hashable, CustomStringCo
     /// same: S3 spent a milestone read-only, where a pane accepting F5 would have failed *inside
     /// the queue*, after the job started, instead of saying up front that the other panel cannot
     /// receive files. Collapsing them at any point since would have had to be undone here.
+    ///
+    /// **WebDAV is the second backend to arrive read-only**, and for the same reason: it browses
+    /// with M32's Slice 3 and writes with Slice 4, and until then a copy into it has no `PUT` to
+    /// land on.
     public var acceptsUploads: Bool { isSFTP || isFTP || isS3 }
 
     /// Whether a transfer can *land* here — this disk, or a remote account with an upload primitive

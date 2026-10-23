@@ -370,6 +370,14 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   - **A segment of a momentary `NSSegmentedControl` answers the same way with no sheet at all.** Seen
     2026-10-22 pressing the compare window's Swap Sides by element index: `AXError: failure`, and the
     window had swapped exactly once. A second press would have swapped it back.
+  - **An alert's button can be refused as "Nothing was done" after it was pressed.** Seen 2026-10-23
+    on the WebDAV trust alert: `app_click` by element index on Trust & Connect answered that the
+    element "no longer names what is at its position", and the pane was already connected. The
+    server's log held the pinned requests only that button sends. The alert had closed before the
+    tool's check ran. Read the server or the screen before pressing again.
+- **F-keys cannot be sent to a background app, and the function bar can be clicked instead.** `app_key
+  f5` was refused outright (2026-10-23), while the bar's "F5 Copy" button took an `AXPress` and ran
+  the shipped copy with no sheet. Put the cursor on the row with a click first.
 - **A transparent overlay from another app can gate every mouse click.** LanguageTool for
   Desktop did this for four passes; keyboard input still reached Dirnex, which masked it.
   Quitting the overlay app restored mouse verification.

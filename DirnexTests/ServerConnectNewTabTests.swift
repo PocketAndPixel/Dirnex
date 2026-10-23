@@ -41,12 +41,17 @@ struct ServerConnectNewTabTests {
         ServerConnection(name: "Photos", endpoint: .s3(bucket)),
         ServerConnection(name: "AWS", endpoint: .s3Account(bucket.account)),
         ServerConnection(
+            name: "DAV",
+            endpoint: .webdav(location: WebDAVLocation(host: "dav.example", username: "u"))
+        ),
+        ServerConnection(
             name: "Share",
             endpoint: .smb(SMBLocation(host: "share.example", share: "media", username: "u"))
         )
     ]
 
-    /// The three that need no secret: a key file, the anonymous login and a guest share.
+    /// The four that need no secret: a key file, the anonymous login, a public WebDAV share and a
+    /// guest share.
     private static let needingNone = [
         ServerConnection(
             name: "Keyed",
@@ -65,6 +70,10 @@ struct ServerConnectNewTabTests {
                 ),
                 authentication: .anonymous
             )
+        ),
+        ServerConnection(
+            name: "Public",
+            endpoint: .webdav(location: WebDAVLocation(host: "dav.example", username: ""))
         ),
         ServerConnection(name: "Guest", endpoint: .smb(SMBLocation(host: "share.example")))
     ]
@@ -213,6 +222,7 @@ private extension PanelViewController.ServerConnectRequest {
         case let .ftp(request): request.inNewTab
         case let .s3(request): request.inNewTab
         case let .s3Account(request): request.inNewTab
+        case let .webdav(request): request.inNewTab
         case let .smb(request): request.inNewTab
         }
     }
@@ -222,6 +232,7 @@ private extension PanelViewController.ServerConnectRequest {
         case .sftp: .sftp
         case .ftp: .ftp
         case .s3, .s3Account: .s3
+        case .webdav: .webdav
         case .smb: .smb
         }
     }

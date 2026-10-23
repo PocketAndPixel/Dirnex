@@ -91,6 +91,7 @@ enum SidebarPlacePresentation {
         case .sftp: serverSymbolName(for: .sftp)
         case .ftp: serverSymbolName(for: .ftp)
         case .s3: serverSymbolName(for: .s3)
+        case .webdav: serverSymbolName(for: .webdav)
         case .trash: "trash"
         case .recents: "clock"
         case .search: "magnifyingglass"
@@ -149,6 +150,9 @@ enum SidebarPlacePresentation {
         // a *machine*, which is the distinction worth drawing: the other three name a computer you
         // reach, this names a store you address.
         case .s3: "shippingbox"
+        // A globe for the protocol that is HTTP underneath: what is reached is a web server, and the
+        // other four glyphs are already taken by things that are not.
+        case .webdav: "globe"
         }
     }
 }

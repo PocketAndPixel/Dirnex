@@ -93,6 +93,7 @@ extension PanelViewController {
         case let .smb(location): _ = SecretKeychain.store(password: password, for: location)
         case let .s3(location): _ = SecretKeychain.store(password: password, for: location)
         case let .s3Account(account): _ = SecretKeychain.store(password: password, for: account)
+        case let .webdav(location, _, _): _ = SecretKeychain.store(password: password, for: location)
         }
     }
 }

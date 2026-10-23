@@ -27,6 +27,9 @@ public enum LocationSource: Sendable, Hashable, CaseIterable {
     case ftp
     /// An S3 bucket, or the account pane that lists the buckets.
     case s3
+    /// A WebDAV account browsed through Dirnex's own backend — not a WebDAV share mounted by the
+    /// OS, which is a ``networkVolume``.
+    case webdav
     /// The merged Trash, or a folder inside one of the trash directories.
     case trash
     case recents
@@ -72,6 +75,7 @@ public extension LocationSource {
         if backend.isSFTP { return .sftp }
         if backend.isFTP { return .ftp }
         if backend.isS3 || backend.isS3Account { return .s3 }
+        if backend.isWebDAV { return .webdav }
         return .folder
     }
 

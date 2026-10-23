@@ -423,6 +423,75 @@ measurable as a per-server capability; **Apache's offset PUT** as a segmented up
   file-root rule fails its test when removed. The quoted-comma control first passed: no test string
   put `, Scheme ` inside quotes. A test now does.
 
+**2026-10-23: Slice 3 landed** (core and app). Read-only, as planned: `capabilities` stays `.read`
+and `acceptsUploads` leaves WebDAV out until Slice 4.
+
+- **Core:** `ServerKind.webdav`, and `ServerEndpoint.webdav(location:authentication:trustedPublicKey:)`
+  with `ServerConnections.settleWebDAV`. `WebDAVLocation.displayAddress` is the sidebar tooltip, the
+  root's URL rather than `davs://`. The location files its password like any other, and a public
+  share files none. `WebDAVAddress` splits what the Host field holds. `isRemoteConnection` and
+  `LocationSource` name WebDAV.
+- **App:**
+  - `WebDAVCurlTransport`, over `CurlProcess`, a runner with no protocol in it. FTP and S3 keep their
+    own copies for now.
+  - `CompositeBackend` registers, routes and reports capabilities.
+  - The connect sheet's fifth protocol (`ConnectServerWebDAVFields`): HTTPS by default, the HTTP note,
+    a Path row, and a blank user for a public share.
+  - `PanelViewController+ConnectWebDAV`: the core's probe, FTPS's trust alerts (which now take a host),
+    and a sentence for each `WebDAVConnectError`.
+  - Reconnect and session restore, Edit Server, the globe glyph, the path bar's root title, and 14 new
+    strings in all 14 languages.
+- **Tests:** 20 core tests in two new suites and 23 app tests in four. The new-tab, glyph and
+  trust-alert suites now include WebDAV. Core 4340 and app 1857 green; the live server suites skipped
+  for want of their config, and nothing under them changed.
+- **Decided in the slice:**
+  - **The scheme the probe settles is stored in the endpoint, as FTPS's pin is.** A restored tab
+    registers without asking the server anything, and guessing costs a refused login rather than a
+    round trip: the NAS offers Basic alone over HTTP and macOS's Apache Digest alone. A sidebar
+    connect probes again, and a changed scheme or pin is written back into the saved record.
+  - **The Host field takes a whole URL.** Leaving the field, or pressing Connect, spreads it over the
+    security, port, path and user fields, so the sheet shows what will be dialed. With a scheme the
+    path is percent-decoded under the href rules; without one it is literal, as the Path field is.
+  - **An edit carries the scheme and the pin while scheme, host and port are unchanged**, and drops
+    both otherwise. The user and the root may change without dropping them.
+  - **Removing a saved server keeps the password if another saved root on the same account uses
+    it**, since the Keychain item leaves out the root.
+  - Five FTP failure sentences became named accessors, so each sentence WebDAV shares keeps one key.
+- **Live, against a throwaway macOS Apache** (Basic over HTTPS with a self-signed certificate at
+  `/basic`, Digest over HTTP at `/digest`). A temporary probe gave the build the password from its
+  environment, so nothing touched the Keychain. It was removed afterwards and the build rebuilt.
+  - The sidebar connect raised the trust alert. Its fingerprint, and the pin it saved, matched
+    `openssl`'s for the served certificate. In the server log: a PROPFIND with no user drew the 401,
+    then the Depth 0 probe and the Depth 1 listing went with credentials. The saved record was
+    settled to `basic` and the pin.
+  - F5 brought `random.bin` (3 MB) out byte-identical in one GET. `café #%;+?&=[].txt`, with a
+    decomposed é, kept its name bytes exactly, and `Кириллица` listed.
+  - After a quit and relaunch, the restored tab reconnected with one PROPFIND: no probe, no prompt,
+    and the cursor back on its file.
+  - Digest connected with its 401/207 pairs and settled to `digest`.
+  - The sheet drew the WebDAV rows with the HTTP note. A Nextcloud URL pasted into Host spread to
+    HTTPS, 443, the decoded path and the e-mail login on Connect.
+  - The defaults domain was restored afterwards and compared unchanged.
+- **Live against the NAS**, the same day, with two saved servers for `dirnex-test` by the bare name
+  `nas`: HTTPS 5006 with no pin, and HTTP 5005. A second temporary probe had the app read the
+  existing SFTP Keychain item itself (one prompt, answered by Oleg) and keep the password in memory.
+  Nothing was written to the Keychain, the probe was removed, and the defaults domain was restored
+  and compared unchanged.
+  - HTTPS connected to the account root (`home`, `media`, `share`). The record settled to `basic`
+    and the pin `gkHDtx…`, which is `openssl`'s for the NAS certificate and the saved FTPS server's
+    pin. The trust alert was answered at the screen rather than by the run, so its contents were not
+    read this time; the Apache run above read them.
+  - F5 of `media/temp/_voices/female.wav` (1.7 MB) came out byte-identical to the same file read
+    through the SMB mount of that share (SHA-256 `7c74bb7a…`): two protocols, one file on disk.
+  - HTTP connected and settled to `basic` with no pin, since the NAS offers Basic alone there.
+  - After a relaunch, both panes came back on their NAS tabs, HTTPS in `_voices` and HTTP at the
+    root, with no trust prompt.
+- **Not run live yet:** the changed-certificate branch, a public share, an edit saved through the
+  sheet, and a timing of the bare name inside the app (Slice 2 measured 0.39 s through the core).
+- **Negative controls:** each of four deliberate breaks fails tests: WebDAV dropped from
+  `isRemoteConnection`, a schemeless path decoded, reconnect ignoring the stored scheme, and the edit
+  carry ignoring the port.
+
 ### Still open
 
 Everything through M31 is shipped, and the record of it — the milestone checklists, the sixty

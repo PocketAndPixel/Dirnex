@@ -4,8 +4,9 @@ import Foundation
 /// The pane's backend: routes each `VFSPath` to the concrete backend that owns it — the
 /// real `LocalBackend` for on-disk paths, a lazily-mounted read-only `ArchiveBackend` for
 /// `archive:…` paths (PLAN.md §M4 "cash in the VFS abstraction — browse zip/tar as folders"), and a
-/// connected `SFTPBackend` / `FTPBackend` / `S3Backend` for each live remote account — plus, for
-/// S3, an `S3AccountBackend` listing an endpoint's buckets (§M5, §M13, §M21).
+/// connected `SFTPBackend` / `FTPBackend` / `S3Backend` / `WebDAVBackend` for each live remote
+/// account — plus, for S3, an `S3AccountBackend` listing an endpoint's buckets (§M5, §M13, §M21,
+/// §M32).
 ///
 /// Composing, rather than swapping, the pane's backend keeps every existing `self.backend`
 /// call site — listing, stat, sizing, copy/move, the shared queue — working unchanged; only
@@ -63,6 +64,10 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
     /// which is what makes walking out of a bucket into its account — and back down into another —
     /// two independent connections rather than one being replaced.
     var s3AccountConnections: [String: S3AccountBackend] = [:]
+    /// Live WebDAV connections keyed by the account descriptor (`davs://user@host:port/root`) — the
+    /// same shape as the others (PLAN.md §M32). The root is part of the key, so two roots on one
+    /// server are two connections, as they are two backend ids.
+    var webDAVConnections: [String: WebDAVBackend] = [:]
     /// What each live connection was established *with*, keyed by the same descriptor its backend
     /// is — the coordinates and the auth method, never the secret.
     ///
@@ -134,6 +139,9 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         }
         if path.backend.isSFTP { return sftpBackend(for: path.backend)?.capabilities ?? .read }
         if path.backend.isFTP { return ftpBackend(for: path.backend)?.capabilities ?? .read }
+        // `.read` either way until the write half lands (PLAN.md §M32 Slice 4), and the fallback is
+        // already the answer that will stay right then: no credential, no writes.
+        if path.backend.isWebDAV { return webDAVBackend(for: path.backend)?.capabilities ?? .read }
         // A connected bucket is `[.read, .write, .rename]` — Trash-less and clone-less, the same M5
         // degradation shape as SFTP. A path whose connection is gone falls back to `.read` for the
         // reason SFTP does: gray the writes rather than offer ones there is no credential to
@@ -350,6 +358,7 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         if let archivePath = path.backend.archivePath { return try mountedArchive(at: archivePath) }
         if path.backend.isSFTP { return try connectedSFTP(for: path.backend) }
         if path.backend.isFTP { return try connectedFTP(for: path.backend) }
+        if path.backend.isWebDAV { return try connectedWebDAV(for: path.backend) }
         if path.backend.isS3 { return try connectedS3(for: path.backend) }
         if path.backend.isS3Account { return try connectedS3Account(for: path.backend) }
         if path.backend.isPhotos { return photos }

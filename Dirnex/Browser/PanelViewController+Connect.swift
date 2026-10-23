@@ -14,6 +14,8 @@ import DirnexCore
 ///   and its changed-host-key prompt live in `PanelViewController+ConnectSFTP`.
 /// - **FTP / FTPS** browses through a `VFSBackend` too, over the system `curl`; its connect and its
 ///   certificate-trust prompt live in `PanelViewController+ConnectFTP`.
+/// - **WebDAV** is the same over HTTP (§M32); its connect lives in
+///   `PanelViewController+ConnectWebDAV` and borrows FTPS's trust prompt.
 /// - **SMB** rides the OS mounter: `SMBMounter` mounts the share into `/Volumes/…` and the pane
 ///   navigates onto the resulting local path, so every M2 op works unchanged.
 ///
@@ -74,6 +76,7 @@ extension PanelViewController {
         case ftp(FTPConnectRequest)
         case s3(S3ConnectRequest)
         case s3Account(S3AccountConnectRequest)
+        case webdav(WebDAVConnectRequest)
         case smb(SMBConnectRequest)
 
         /// The host a failure alert names.
@@ -83,6 +86,7 @@ extension PanelViewController {
             case let .ftp(request): request.location.host
             case let .s3(request): request.location.host
             case let .s3Account(request): request.account.host
+            case let .webdav(request): request.location.host
             case let .smb(request): request.location.host
             }
         }
@@ -94,6 +98,7 @@ extension PanelViewController {
         case let .ftp(request): await connectFTP(request)
         case let .s3(request): await connectS3(request)
         case let .s3Account(request): await connectS3Account(request)
+        case let .webdav(request): await connectWebDAV(request)
         case let .smb(request): await mountSMB(request)
         }
     }
@@ -160,6 +165,20 @@ extension PanelViewController {
                 activityName: server.name,
                 inNewTab: inNewTab
             ))
+        case let .webdav(location, _, trustedPublicKey):
+            // An account whose password is not in the Keychain opens the prefilled sheet, as FTP's
+            // does; a public share needs none. The stored scheme is not handed on: the probe asks
+            // again, and a scheme that changed is written back (`recordWebDAVServer`).
+            if location.hasCredentials, secret == nil { return nil }
+            return .webdav(WebDAVConnectRequest(
+                location: location,
+                password: secret ?? "",
+                trustedPublicKey: trustedPublicKey,
+                saveName: nil,
+                activityName: server.name,
+                savedServerName: server.name,
+                inNewTab: inNewTab
+            ))
         case let .smb(location):
             // A guest share needs no secret, and is handed none.
             if location.username != nil, secret == nil { return nil }
@@ -224,6 +243,17 @@ extension PanelViewController {
                 activityName: nil,
                 inNewTab: inNewTab
             ))
+        case let .webdav(location, _, trustedPublicKey):
+            .webdav(WebDAVConnectRequest(
+                location: location,
+                password: form.password ?? "",
+                trustedPublicKey: trustedPublicKey,
+                saveName: form.saveName,
+                activityName: nil,
+                // As FTP's: the sheet's own `saveName` is the record a new pin or scheme lands in.
+                savedServerName: nil,
+                inNewTab: inNewTab
+            ))
         case let .smb(location):
             .smb(SMBConnectRequest(
                 location: location,
@@ -243,6 +273,8 @@ extension PanelViewController {
         case let .ftp(location, _, _, _): SecretKeychain.password(for: location)
         case let .s3(location): SecretKeychain.password(for: location)
         case let .s3Account(account): SecretKeychain.password(for: account)
+        // A public share keeps no secret, and `SecretKeychain` answers `nil` for it unasked.
+        case let .webdav(location, _, _): SecretKeychain.password(for: location)
         case let .smb(location):
             location.username == nil ? nil : SecretKeychain.password(for: location)
         }

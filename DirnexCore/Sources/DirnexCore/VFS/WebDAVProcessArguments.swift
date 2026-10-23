@@ -3,7 +3,7 @@ import Foundation
 /// How a WebDAV connection proves who it is. Read once from the server's challenge by
 /// ``WebDAVConnectProbe`` and kept for the connection, rather than left to `curl --anyauth`, which
 /// pays a 401 round trip on every request to rediscover the same answer (PLAN.md §M32).
-public enum WebDAVAuthScheme: String, Sendable, Hashable, CaseIterable {
+public enum WebDAVAuthScheme: String, Sendable, Hashable, Codable, CaseIterable {
     /// RFC 7617. Sent **preemptively**, so a request costs one round trip.
     case basic
     /// RFC 7616. Never preemptive: every `curl` is a new process with no nonce, so each invocation

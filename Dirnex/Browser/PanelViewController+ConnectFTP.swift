@@ -147,10 +147,10 @@ extension PanelViewController {
         }
         let accepted = changed
             ? await Self.confirmCertificateChange(
-                location: request.location, certificate: certificate, over: view.window
+                host: request.location.host, certificate: certificate, over: view.window
             )
             : await Self.confirmCertificateTrust(
-                location: request.location, certificate: certificate, over: view.window
+                host: request.location.host, certificate: certificate, over: view.window
             )
         guard accepted else {
             return .failed(changed ? Self.certificateChangeNotTrusted : Self.certificateNotTrusted)
@@ -186,16 +186,18 @@ extension PanelViewController {
     ///
     /// Cancel gets the keyboard focus too, once the alert is up (``NSAlert/focusFirstButton()``).
     /// Static and internal so a test can present it, like `confirmCertificateChange` and for the
-    /// reason `confirmHostKeyChange` gives.
+    /// reason `confirmHostKeyChange` gives — and so WebDAV asks with it too: the NAS presents one
+    /// certificate on its FTPS and its WebDAV ports, so the question and the pin are the same
+    /// (PLAN.md §M32). `host` is the one thing either protocol's location contributes to it.
     static func confirmCertificateTrust(
-        location: FTPLocation,
+        host: String,
         certificate: FTPCertificate,
         over window: NSWindow?
     ) async -> Bool {
         let alert = NSAlert()
         alert.alertStyle = .critical
         alert.messageText = String(
-            localized: "Can’t verify the identity of “\(location.host)”",
+            localized: "Can’t verify the identity of “\(host)”",
             comment: "FTPS certificate-trust alert title; %@ is the host name."
         )
         alert.informativeText = Self.certificateDetail(
@@ -229,14 +231,14 @@ extension PanelViewController {
     /// a pin is always a deliberate click. Returns `true` when the user chose to trust the new
     /// certificate.
     static func confirmCertificateChange(
-        location: FTPLocation,
+        host: String,
         certificate: FTPCertificate,
         over window: NSWindow?
     ) async -> Bool {
         let alert = NSAlert()
         alert.alertStyle = .critical
         alert.messageText = String(
-            localized: "The identity of “\(location.host)” has changed",
+            localized: "The identity of “\(host)” has changed",
             // Verbatim the SFTP host-key alert's comment, and deliberately the same string: the two
             // ask the same question about the same server, so they read the same and share one
             // translation (docs/NOTES.md — a shared comment cannot be hoisted into a constant).
@@ -295,6 +297,10 @@ extension PanelViewController {
     }
 
     // MARK: - Errors
+    //
+    // The certificate sentences and the ones `ftpConnectFailureDetail` shares are internal rather
+    // than private because the WebDAV connect, one file over, says the same things about the same
+    // kind of failure — one call site per sentence, so one comment reaches the translator.
 
     private static var genericFTPConnectError: String {
         String(
@@ -303,39 +309,39 @@ extension PanelViewController {
         )
     }
 
-    private static var certificateNotTrusted: String {
+    static var certificateNotTrusted: String {
         String(
             localized: "The server’s certificate wasn’t trusted, so the connection was canceled.",
-            comment: "FTP connect failure detail: the user declined to trust the certificate."
+            comment: "FTPS or WebDAV connect failure detail: the user declined to trust the certificate."
         )
     }
 
-    private static var certificateChangeNotTrusted: String {
+    static var certificateChangeNotTrusted: String {
         String(
             localized: """
             The server’s certificate has changed and wasn’t trusted, so the connection was \
             canceled. The certificate you trusted before is still the one Dirnex expects.
             """,
-            comment: "FTP connect failure detail: the user declined to re-trust a changed certificate."
+            comment: "FTPS or WebDAV connect failure detail: the user declined to re-trust a changed certificate."
         )
     }
 
     /// Reached only when a certificate the user has *just* accepted still doesn't satisfy the pin —
     /// the one state in which asking again would be a loop rather than a question.
-    private static var certificateStillMismatched: String {
+    static var certificateStillMismatched: String {
         String(
             localized: """
             The server is still presenting a certificate that doesn’t match the one you just \
             trusted. It may be answering from more than one machine.
             """,
-            comment: "FTP connect failure detail: the pin accepted moments ago already doesn’t match."
+            comment: "FTPS or WebDAV connect failure detail: the pin accepted moments ago already doesn’t match."
         )
     }
 
-    private static var unreadableCertificate: String {
+    static var unreadableCertificate: String {
         String(
             localized: "The server’s certificate couldn’t be read, so it can’t be trusted safely.",
-            comment: "FTP connect failure detail: the certificate's public key could not be parsed."
+            comment: "FTPS or WebDAV connect failure detail: the certificate's public key could not be parsed."
         )
     }
 
@@ -359,15 +365,9 @@ extension PanelViewController {
                 """
             )
         case .permissionDenied:
-            return String(
-                localized: "The server refused access to that path.",
-                comment: "FTP connect failure detail: the account may not use the path."
-            )
+            return pathRefused
         case .loginDenied:
-            return String(
-                localized: "Login failed. Check the user name and password.",
-                comment: "FTP connect failure detail: authentication was rejected."
-            )
+            return loginFailed
         case .tlsRequired:
             return String(
                 localized: """
@@ -385,31 +385,13 @@ extension PanelViewController {
                 comment: "FTP connect failure detail: explicit FTPS asked for but no TLS on this port."
             )
         case .certificateUntrusted:
-            return String(
-                localized: "The server’s certificate couldn’t be verified.",
-                comment: "FTP connect failure detail: TLS certificate verification failed."
-            )
+            return certificateUnverified
         case .certificateChanged:
-            return String(
-                localized: """
-                The server is presenting a different certificate than the one you trusted, and the \
-                new one couldn’t be read to show you.
-                """,
-                comment: """
-                FTP connect failure detail: the pin no longer matches and the new certificate \
-                could not be fetched to weigh.
-                """
-            )
+            return changedCertificateUnreadable
         case .unreachable:
-            return String(
-                localized: "The server couldn’t be reached. Check the host name and port.",
-                comment: "FTP connect failure detail: the host could not be resolved or connected."
-            )
+            return serverUnreachable
         case .timedOut:
-            return String(
-                localized: "The server stopped responding.",
-                comment: "FTP connect failure detail: the operation exceeded its time budget."
-            )
+            return serverStoppedResponding
         case let .failure(message):
             // `curl`'s own words when it said anything; ours when it said nothing, since `classify`
             // leaves the payload empty rather than authoring an untranslatable sentence in the core
@@ -421,6 +403,54 @@ extension PanelViewController {
                 )
                 : message
         }
+    }
+
+    static var pathRefused: String {
+        String(
+            localized: "The server refused access to that path.",
+            comment: "FTP or WebDAV connect failure detail: the account may not use the path."
+        )
+    }
+
+    static var loginFailed: String {
+        String(
+            localized: "Login failed. Check the user name and password.",
+            comment: "FTP or WebDAV connect failure detail: authentication was rejected."
+        )
+    }
+
+    static var certificateUnverified: String {
+        String(
+            localized: "The server’s certificate couldn’t be verified.",
+            comment: "FTPS or WebDAV connect failure detail: TLS certificate verification failed."
+        )
+    }
+
+    static var changedCertificateUnreadable: String {
+        String(
+            localized: """
+            The server is presenting a different certificate than the one you trusted, and the \
+            new one couldn’t be read to show you.
+            """,
+            comment: """
+            FTPS or WebDAV connect failure detail: the pin no longer matches and the new \
+            certificate could not be fetched to weigh.
+            """
+        )
+    }
+
+    static var serverUnreachable: String {
+        String(
+            localized: "The server couldn’t be reached. Check the host name and port.",
+            comment: "FTP or WebDAV connect failure detail: the host could not be resolved or connected."
+        )
+    }
+
+    static var serverStoppedResponding: String {
+        String(
+            localized: "The server stopped responding.",
+            comment: "FTP or WebDAV connect failure detail: the operation exceeded its time budget."
+        )
     }
 
     /// Write a re-trusted certificate's pin back into the saved server it came from, so the next

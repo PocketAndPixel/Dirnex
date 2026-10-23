@@ -188,6 +188,8 @@ extension PanelViewController {
             return SecretKeychain.password(for: location) != nil
         case let .s3Account(account):
             return SecretKeychain.password(for: account) != nil
+        case let .webdav(location, _, _):
+            return !location.hasCredentials || SecretKeychain.password(for: location) != nil
         // An SMB share is a `/Volumes/…` tree, so a pane on one is `.local` and never reaches here;
         // `TabRestorePolicy` refuses an SMB endpoint against a remote path before this can be asked.
         case .smb:
@@ -220,6 +222,16 @@ extension PanelViewController {
         case let .s3Account(account):
             guard let secret = SecretKeychain.password(for: account) else { return }
             composite.connectS3Account(account: account, secretAccessKey: secret)
+        case let .webdav(location, authentication, trustedPublicKey):
+            // The scheme the last connect settled, which is why the endpoint carries it: nothing
+            // here asks the server. A record that has never connected has none, and Basic is the
+            // one that costs no extra round trip to be wrong.
+            composite.connectWebDAV(
+                location: location,
+                password: SecretKeychain.password(for: location) ?? "",
+                authentication: authentication ?? (location.hasCredentials ? .basic : nil),
+                trustedPublicKey: trustedPublicKey
+            )
         case .smb:
             return
         }
