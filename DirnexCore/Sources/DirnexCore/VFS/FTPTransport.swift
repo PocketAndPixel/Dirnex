@@ -157,15 +157,31 @@ public protocol FTPTransport: RemoteWriteTransport {
         isCancelled: () -> Bool
     ) throws -> [FTPListing?]
 
+    /// ``listings(of:askingFacts:isCancelled:)`` for a tree refresh: the run **stops at its first
+    /// failure**, and says where and why (``FTPBatchRun``), so a wrong password costs one failed login
+    /// rather than one per folder.
+    ///
+    /// Additive, with a default that lists one folder at a time through
+    /// ``listing(of:askingFacts:)`` and stops at the first that throws. It keeps the guard and loses
+    /// only the shared login, which is the test this project applies before letting a default stand
+    /// in: a transport that has not implemented this is slower, and never spends the logins this
+    /// exists to save.
+    func listingsUntilFirstFailure(
+        of remotePaths: [String],
+        askingFacts: Bool,
+        isCancelled: () -> Bool
+    ) throws -> FTPBatchRun
+
     /// The exact size of one remote file (`SIZE`, via `curl -I`), used to decide whether a partial
     /// is resumable. Costs a round trip, so it is a stat-one-item path and never a listing path.
     func fileSize(_ remotePath: String) throws -> Int64
 }
 
 /// The additive halves of ``FTPTransport/listDirectories(_:isCancelled:)``,
-/// ``FTPTransport/listing(of:askingFacts:)``, ``FTPTransport/listings(of:askingFacts:isCancelled:)``
-/// and ``FTPTransport/downloadSegments(_:of:to:progress:isCancelled:)``: a transport that predates
-/// any of them keeps compiling and keeps working.
+/// ``FTPTransport/listing(of:askingFacts:)``, ``FTPTransport/listings(of:askingFacts:isCancelled:)``,
+/// ``FTPTransport/listingsUntilFirstFailure(of:askingFacts:isCancelled:)`` and
+/// ``FTPTransport/downloadSegments(_:of:to:progress:isCancelled:)``: a transport that predates any of
+/// them keeps compiling and keeps working.
 ///
 /// It forwards rather than throwing — the test this project applies before letting a default stand
 /// in is whether the caller can tell it was not honoured, and here the two paths produce the
@@ -201,6 +217,33 @@ public extension FTPTransport {
         try listDirectories(remotePaths, isCancelled: isCancelled).map { rows in
             rows.map { FTPListing(rows: $0) }
         }
+    }
+
+    func listingsUntilFirstFailure(
+        of remotePaths: [String],
+        askingFacts: Bool,
+        isCancelled: () -> Bool
+    ) throws -> FTPBatchRun {
+        var listings: [FTPListing?] = []
+        for remotePath in remotePaths {
+            guard !isCancelled() else { throw CancellationError() }
+            do {
+                listings.append(try listing(of: remotePath, askingFacts: askingFacts))
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                let cause = (error as? FTPTransportError).map(FTPBatchStop.Cause.init) ?? .connection
+                let stop = FTPBatchStop(index: listings.count, cause: cause)
+                return FTPBatchRun(
+                    listings: listings + Array(
+                        repeating: nil,
+                        count: remotePaths.count - listings.count
+                    ),
+                    stop: stop
+                )
+            }
+        }
+        return FTPBatchRun(listings: listings, stop: nil)
     }
 
     @discardableResult

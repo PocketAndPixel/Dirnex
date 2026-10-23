@@ -26,8 +26,12 @@ extension FTPCurlTransport {
     /// separates the two exactly. A nonzero exit is therefore read and thrown away here.
     ///
     /// A run in which *nothing* landed is the shape of a real failure — a connection refused, a
-    /// login denied, TLS declined — and it needs no special case: every answer is `nil`, which the
-    /// backend already reads as "no shortcut" at the root and "skip it" below.
+    /// login denied, TLS declined — and the answers need no special case: every one is `nil`, which
+    /// the backend already reads as "no shortcut" at the root and "skip it" below. **The cost does.**
+    /// A denied login is tried again for every section (measured 2026-10-23: four sections, four
+    /// failed logins), so the tree refresh, which runs on a timer, uses the stopping run below
+    /// instead. The subtree walk keeps this one: its first level is a single section, and further
+    /// down a refused folder must not end the level.
     ///
     /// ## Why there is no TLS-1.2 retry
     ///
@@ -64,17 +68,61 @@ extension FTPCurlTransport {
                 askingFacts: askingFacts,
                 into: scratch,
                 isCancelled: isCancelled
-            )
+            ).listings
         }
         return answers
     }
 
+    /// The tree refresh's batch: the same sections with `--fail-early`, so a wrong password stops at
+    /// one failed login (`FTPBatchRun`). Here, and only here, the exit code is read: with the run
+    /// stopping at its first failure, the code is that section's, and `FTPBatchRun.reading` finds the
+    /// section by the first answer that did not land. A chunk that stopped ends the call, so nothing
+    /// after the stop is sent.
+    func listingsUntilFirstFailure(
+        of remotePaths: [String],
+        askingFacts: Bool,
+        isCancelled: () -> Bool
+    ) throws -> FTPBatchRun {
+        guard !remotePaths.isEmpty else { return FTPBatchRun(listings: [], stop: nil) }
+        let scratch = try BatchScratch()
+        defer { scratch.remove() }
+
+        var answers: [FTPListing?] = []
+        for chunk in remotePaths.chunked(by: FTPProcessArguments.listingBatchLimit) {
+            guard !isCancelled() else { throw CancellationError() }
+            let landed = try listChunk(
+                chunk,
+                askingFacts: askingFacts,
+                into: scratch,
+                stopsAtFirstFailure: true,
+                isCancelled: isCancelled
+            )
+            let run = FTPBatchRun.reading(
+                landed.listings,
+                askingFacts: askingFacts,
+                exitCode: landed.exit?.code ?? 0,
+                stderr: landed.exit?.standardError ?? ""
+            )
+            if let stop = run.stop {
+                let unsent = remotePaths.count - answers.count - chunk.count
+                return FTPBatchRun(
+                    listings: answers + run.listings + Array(repeating: nil, count: unsent),
+                    stop: FTPBatchStop(index: answers.count + stop.index, cause: stop.cause)
+                )
+            }
+            answers += run.listings
+        }
+        return FTPBatchRun(listings: answers, stop: nil)
+    }
+
+    /// One chunk's run: what landed, and the exit it ended with, which only the stopping batch reads.
     private func listChunk(
         _ remotePaths: [String],
         askingFacts: Bool,
         into scratch: BatchScratch,
+        stopsAtFirstFailure: Bool = false,
         isCancelled: () -> Bool
-    ) throws -> [FTPListing?] {
+    ) throws -> (listings: [FTPListing?], exit: CurlExit?) {
         let requests = remotePaths.map {
             FTPListingRequest(
                 remotePath: $0,
@@ -85,8 +133,10 @@ extension FTPCurlTransport {
         let invocation = FTPProcessArguments.listDirectories(
             session: session,
             requests: requests,
-            credentials: FTPConfigFile.credentials(for: location, password: password)
+            credentials: FTPConfigFile.credentials(for: location, password: password),
+            stopsAtFirstFailure: stopsAtFirstFailure
         )
+        var exit: CurlExit?
         do {
             _ = try run(
                 invocation.arguments,
@@ -99,10 +149,12 @@ extension FTPCurlTransport {
             )
         } catch is CancellationError {
             throw CancellationError()
-        } catch is CurlExit {
-            // Deliberately swallowed — see the note above. The files are the answers.
+        } catch let failed as CurlExit {
+            // Not thrown on — see the note above. The files are the answers; the exit only says where
+            // a stopping run stopped.
+            exit = failed
         }
-        return requests.map { request in
+        let listings = requests.map { request -> FTPListing? in
             guard let rows = Self.readListing(at: request.outputPath) else { return nil }
             guard let factsPath = request.factsOutputPath else { return FTPListing(rows: rows) }
             return FTPListing(
@@ -110,6 +162,7 @@ extension FTPCurlTransport {
                 facts: Self.readListing(at: factsPath).map(FTPListing.Facts.listed) ?? .unavailable
             )
         }
+        return (listings, exit)
     }
 
     /// One listing `curl` wrote to a file, or `nil` when it wrote none.

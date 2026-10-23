@@ -5586,6 +5586,22 @@ off a man page.
     in pyftpdlib's log. So a batch adds `MLSD` sections only once a single listing on the connection
     has seen the verb answer (`FTPFactsSupport`), or a stale password would cost twice the failed
     logins a server with lockout counts.
+    - **Once it has seen the verb, it does cost twice, and a tree refresh paid it every round.**
+      Measured 2026-10-23 in the running app: a tree with the root and three folders open, the
+      server's password changed under it. The committed refresh spent **9 failed logins a round**,
+      two rounds running: 8 sections (`LIST` and `MLSD` for 4 folders) and one more from the
+      per-folder fallback. So 2n + 1 for n open folders on a server with `MLSD`, against an Account
+      Protection that locks after a few. The refresh now runs with `--fail-early`
+      (`FTPBatchRun`), and the same sequence spent **1 a round**, three rounds running.
+    - **`--fail-early` cannot be scoped to a login, because FTP has no refusal that is not a transfer
+      error.** WebDAV's guard (▸ curl (WebDAV): `fail` on the first section only) does not carry
+      over. Here `--fail-early` ends the run at the first refused *folder* too: a missing one exits
+      **9**, one that can be entered and not read **19** (`RETR response: 550`, which
+      `FTPTransportError.classify` leaves generic), and a refused login **67**. The run's exit code is
+      the stopping section's, and every section before it landed its file, so the first missing file
+      is where it stopped. A folder's refusal sends the folders after it again in a new run; a login
+      or a silence ends the round. The subtree walk keeps the run that does not stop, since there a
+      refused folder must be skipped with the rest still listed, and its first level is one section.
   - **A server can get `MLSD` wrong too, and nothing on the wire says so.** pyftpdlib started with
     `use_gmt_times = False` sends `modify` in its *local* time, against the RFC. With its default
     (`True`) both `LIST` and `MLSD` are UTC, which is why the live FTP suites met this Mac's +0300 in
