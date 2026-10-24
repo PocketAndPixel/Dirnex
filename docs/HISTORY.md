@@ -16976,6 +16976,33 @@ operation's refresh, a tab switch, and the tree refresh.
   restored to the pre-session backup and compared unchanged (71 keys), after the suite had moved
   three keys of it (LIVE-VERIFICATION.md).
 
+**2026-10-25: The fetch confirmation counts a marked folder as a folder** (app, catalog, tests and
+docs). Asked for by Oleg, closing the second item the 2026-10-24 run left for him. One file and one
+folder marked on a server asked *"Download 2 files from the server?"*, because the title counted
+every pending row as a file. The archive title did the same, since every archive row is pending,
+folders included.
+
+- **What the title counts is decided apart from how it is said** (`titleCount(for:)`): one row by
+  its name, a set of files as files, of folders as folders, and a mixed set as both,
+  *"Download 1 file and 1 folder from the server?"*. A row already fetched counts for nothing, as
+  before. Files alone keep the titles they had.
+- **Four new titles in all 14 languages**: folders alone and files-and-folders, for the server and
+  for an archive. Each language's sentence is the one its files title already used, around the new
+  nouns. Russian and Ukrainian take the accusative ("1 папку"); Polish, Russian and Ukrainian keep
+  the four plural categories their files titles use. The two-count titles are the catalog's first
+  with two substitutions (NOTES.md ▸ Keys, literals and String Catalogs).
+  `scripts/check_localization_keys.py`: 1165 extracted keys, all in the catalogs.
+- **Tests:** `MaterializeTitleCountTests` (6). The counting is tested with no string at all, and
+  the four titles are read from the compiled stringsdict in every language and formatted with real
+  counts, so neither depends on the test host's language. Controls: counting every row as a file
+  failed the three counting tests, the set seen live among them; Russian removed from one title
+  failed that title's 14-language case and the two Russian plural checks.
+- **Live**, on a throwaway Apache's anonymous folder: a file and a folder marked, ⌥F5, Pack, and
+  the confirmation read *"Download 1 file and 1 folder from the server?"*. Cancel fetched nothing
+  and wrote nothing.
+- **Checks:** core 4483 tests, app 1902 in 303 suites, both linters clean. The defaults domain was
+  restored and compared unchanged (71 keys) after the live run and again after the suite.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
