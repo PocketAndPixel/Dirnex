@@ -716,6 +716,63 @@ password changed on the server spent it every round.
   again, no `--fail-early`, a stop on `MLSD` ignored, 19 not read as a folder's refusal, and no
   answer not retried.
 
+**2026-10-24: Slice 6, first half: the live suite and the record** (tests, a script and docs; no
+product code changed). The NAS run of the suite, the second server family and a live look at the
+sheet in other languages are still to come.
+
+- **`scripts/live_test_servers.sh` stands up macOS's own `httpd`** beside `sshd` and pyftpdlib, on
+  8088 and 8443, with nothing to install. It writes `/tmp/dirnex_webdav_live_test.json` naming four
+  endpoints: Basic, Digest and a public folder over HTTP, and Basic over HTTPS with a self-signed
+  certificate minted per `up`, whose pin goes into the config. `DavDepthInfinity Off`, as on the NAS.
+  The access log carries the user and the status of every request. `up | tail` no longer hangs:
+  pyftpdlib held the pipe open.
+- **`WebDAVLiveIntegrationTests`, ten tests run once per endpoint** (39 cases), through the real
+  `WebDAVCurlTransport`. A counting wrapper says what each verb cost in requests, which is the
+  client's claim and holds on any server. A raw `curl` is the other client, spelled by hand, for a
+  lock held elsewhere and a colleague's save. Covered: the connect settling each endpoint's scheme;
+  no user, a wrong password, a wrong pin and no pin refused by name; the done-when list's awkward name
+  through MKCOL, PUT, list, MOVE of the file, COPY and MOVE of the folder (one request each), download
+  and one DELETE, compared as bytes and also read off the served folder on disk; a taken name refused
+  with no `stat` before the PUT, the bytes there kept; the subtree shortcut against the walk; a
+  missing folder in a batch, in the middle and first; a save-back over a colleague's save refused by
+  its tag, then passing with the current tag, then refused as gone with nothing created; a lock
+  naming `held.txt` on a write and on a folder's DELETE, deleting nothing, reads passing; resume of a
+  partial copy and a restart onto a complete one; and a wrong password in a four-folder batch costing
+  **one** failed login in the server's own log.
+- Each endpoint's facts are written in the config, not inferred: the scheme it must settle on,
+  whether its certificate is self-signed, whether a wrong password may be sent (never on the NAS),
+  where its access log and its served folder are. A `keychain` entry stands in for `password`, so the
+  NAS can join a run without its password in `/tmp`. A `recycleFolder` lets the suite empty its own
+  folders out of the NAS's `#recycle`.
+- Assertions run outside `offCooperativePool`, so a failure is filed under its own test and
+  endpoint.
+- **Measured:** 1811 tests executed with the servers up against 1755 with them down, and 18 suites
+  ran that skip without them, under the same summary line both ways: `1870 tests in 295 suites
+  passed`. CLAUDE.md and the script's
+  hint carry the new numbers. Core 4427 and the app suite green; both linters clean.
+- **Negative controls, six breaks in one build:** the save-back's `If-Match` dropped, the create's
+  `If-None-Match` dropped, a 423 mapped to `EBUSY`, `fail` removed from the batch's first section,
+  `#`, `?` and `+` left unencoded, and resume switched off. Each failed its own test on every endpoint
+  it applies to. The literal `#` ended the URL, so the folder came back `notFound`. Without the
+  batch guard a wrong password cost **4** failed logins for 4 folders. The connect, refusal and
+  subtree tests stayed green, so no break leaked past its own test. Reverted with `git checkout`.
+- **[docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md) has a WebDAV column**, 92 cells, after FTP.
+  New notes: <sup>5</sup> (what was verified live, and that both servers are Apache), <sup>aai</sup>
+  (no server-side walk, by decision: Depth infinity), <sup>aaj</sup> (downloads resume, uploads
+  restart) and <sup>aak</sup> (no split download; no milestone owns it). Ten existing notes name
+  WebDAV where it differs: the date carried one way, COPY latched and costing the date, `If-Match`
+  only with a strong tag, and the tree refresh's one failed login.
+- **Found on the way:**
+  - **No split download for WebDAV.** SFTP, FTP and S3 each have one (`SegmentedDownloadPlan`), and
+    Range requests answer 206 on the NAS, so nothing prevents it. M32 never planned it. One stream
+    moved 95 MB/s on the LAN.
+  - **Over WebDAV the delete confirmation promises a permanent delete on a NAS that keeps a copy.**
+    The *may keep a copy in `#recycle`* wording is gated on `path.backend == .local`
+    (`PanelViewController+DeleteFallback`), and a WebDAV delete on the NAS lands in `#recycle`. Whether
+    the NAS's bin catches an SFTP or FTP delete has not been measured.
+  - A Debug build from 2026-10-23 23:34 is still running (pid 52041), launched by nobody in this
+    session; the test runs rebuilt the binary under it.
+
 ### Still open
 
 Everything through M31 is shipped, and the record of it — the milestone checklists, the sixty

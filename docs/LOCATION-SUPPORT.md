@@ -1,7 +1,8 @@
 # What works where
 
 Every user-facing capability against every kind of location Dirnex can open, as of
-**2026-09-13** (M0–M28 shipped). The purpose is the parity question:
+**2026-09-13** (M0–M28 shipped), with the WebDAV column added on **2026-10-24** (PLAN.md §M32). The
+purpose is the parity question:
 *where does working on a server still feel unlike working on the disk, and which of those gaps are
 ours to close?*
 
@@ -31,6 +32,7 @@ closed simply reads differently — it is not explained here.
 | **Archive** | A zip/tar/7z/… browsed as a folder tree (`archive:`), including nested archives.<sup>2</sup> |
 | **SFTP** | A connected SSH account. |
 | **FTP** | FTP and FTPS. |
+| **WebDAV** | A connected WebDAV account over HTTPS or plain HTTP — Nextcloud, ownCloud, a Synology or QNAP NAS, a hosted service — starting at the path the account's root is.<sup>5</sup> |
 | **S3** | A connected **bucket** (`s3:`) — Amazon S3 and every S3-compatible service. |
 | **S3 acct** | An **account** pane (`s3account:`) whose rows are buckets, not files. |
 | **Photos** | The system Photos library (`photos:`), browsed through PhotoKit as years, months and each asset's **original** files — a Live Photo is two rows — and as `Albums`, the albums and folders a person made. Read-only.<sup>4</sup> |
@@ -77,32 +79,44 @@ recorded for it, and needed a fix before its progress and Stop cells were true (
 rest of the Photos column follows from the library answering `isRemoteConnection` with read-only
 capabilities and has not been exercised against it.
 
+<sup>5</sup> Verified live in PLAN.md §M32 Slices 3–5 against the NAS over HTTPS and HTTP and against
+macOS's own Apache: browsing, the trust alert, restore after a relaunch, F5 both ways, F6, F7, ⇧F4,
+F8 with a lock held elsewhere, F4's save-back, a copy inside the account, folder sizes and bars, a
+tree refresh, ⌥F7, ⌘C ⌘V, Quick View, the compare window, Synchronize, Create Checksum and Get Info.
+`WebDAVLiveIntegrationTests` (Slice 6) runs the verbs under these cells against four Apache endpoints
+on every live run: Basic, Digest and a public folder over HTTP, and Basic over HTTPS with a pinned
+self-signed certificate. Every cell follows from the backend answering `isRemoteConnection`,
+`acceptsUploads` and `[.read, .write, .rename]`, and these were not exercised live: dragging (a drag
+session cannot be synthesized), Open With, Share, Pack, user scripts, ⇧F2 and Put Back in a
+`#recycle`. **Both servers measured are Apache `mod_dav`**, so a cell here is a statement about
+Apache until a second server family is (PLAN.md §6).
+
 ---
 
 ## 1. Browsing and navigation
 
-| Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Photos | Results | Trash |
-|---|---|---|---|---|---|---|---|---|---|---|
-| List a folder | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Enter a folder (`⏎`, double-click) | yes | yes | yes | yes | yes | yes | yes, limited<sup>a</sup> | yes | yes | yes |
-| Open in a new tab of the other pane (`⌘⏎`, ⌘-double-click)<sup>aad</sup> | yes | yes | yes | yes | yes | yes | yes, limited<sup>a</sup> | yes | yes | yes |
-| `..` row and Go Up (`⌫`) | yes | yes | yes | yes | yes | yes | n/a | yes | n/a | n/a |
-| Path bar, breadcrumbs, `⌘L` | yes | yes | yes | yes | yes | yes | yes | yes, partially<sup>fff</sup> | yes, limited<sup>b</sup> | yes, limited<sup>b</sup> |
-| Back / forward, history (`⌥↓`) | yes | yes | yes | yes | yes | yes | yes | yes | yes, limited<sup>c</sup> | yes, limited<sup>c</sup> |
-| Tabs, split panes, `Tab` focus | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Move a tab along its strip or to the other pane (`⌥⌘[` `⌥⌘]` `⇧⌘M`, dragging a chip)<sup>aae</sup> | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| A tab chip names its source with the sidebar's glyph<sup>aaf</sup> | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Sort, column layout, hidden files | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Type-to-filter, marks, `⌘A`, invert | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Tree view (`→` to expand) | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Live auto-refresh when it changes elsewhere | yes | yes | yes<sup>d</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes<sup>ggg</sup> | n/a | yes |
-| Folder size on `Space` / `⌥⇧⏎` | yes | yes | yes | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | n/a | yes<sup>hhh</sup> | yes | yes |
-| Size visualization bars (`⌃B`) | yes | yes | yes | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>hhh</sup> | n/a<sup>nn</sup> | n/a<sup>nn</sup> |
-| Git status column, `.gitignore`-aware sizes | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
-| Appears in Recents | yes | yes | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a | n/a |
-| Reopens at launch / in a saved workspace | yes | yes | yes | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes | n/a | n/a |
-| Back / forward history survives a relaunch<sup>aag</sup> | yes | yes | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes | n/a | n/a |
-| Reopen a closed tab (`⇧⌘T`)<sup>aah</sup> | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Functionality | Local | Cloud mount | Archive | SFTP | FTP | WebDAV | S3 | S3 acct | Photos | Results | Trash |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| List a folder | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Enter a folder (`⏎`, double-click) | yes | yes | yes | yes | yes | yes | yes | yes, limited<sup>a</sup> | yes | yes | yes |
+| Open in a new tab of the other pane (`⌘⏎`, ⌘-double-click)<sup>aad</sup> | yes | yes | yes | yes | yes | yes | yes | yes, limited<sup>a</sup> | yes | yes | yes |
+| `..` row and Go Up (`⌫`) | yes | yes | yes | yes | yes | yes | yes | n/a | yes | n/a | n/a |
+| Path bar, breadcrumbs, `⌘L` | yes | yes | yes | yes | yes | yes | yes | yes | yes, partially<sup>fff</sup> | yes, limited<sup>b</sup> | yes, limited<sup>b</sup> |
+| Back / forward, history (`⌥↓`) | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes, limited<sup>c</sup> | yes, limited<sup>c</sup> |
+| Tabs, split panes, `Tab` focus | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Move a tab along its strip or to the other pane (`⌥⌘[` `⌥⌘]` `⇧⌘M`, dragging a chip)<sup>aae</sup> | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| A tab chip names its source with the sidebar's glyph<sup>aaf</sup> | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Sort, column layout, hidden files | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Type-to-filter, marks, `⌘A`, invert | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Tree view (`→` to expand) | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Live auto-refresh when it changes elsewhere | yes | yes | yes<sup>d</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes, limited<sup>f</sup> | yes<sup>ggg</sup> | n/a | yes |
+| Folder size on `Space` / `⌥⇧⏎` | yes | yes | yes | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | yes, limited<sup>e</sup> | n/a | yes<sup>hhh</sup> | yes | yes |
+| Size visualization bars (`⌃B`) | yes | yes | yes | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>hhh</sup> | n/a<sup>nn</sup> | n/a<sup>nn</sup> |
+| Git status column, `.gitignore`-aware sizes | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
+| Appears in Recents | yes | yes | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a | n/a |
+| Reopens at launch / in a saved workspace | yes | yes | yes | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes | n/a | n/a |
+| Back / forward history survives a relaunch<sup>aag</sup> | yes | yes | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes | n/a | n/a |
+| Reopen a closed tab (`⇧⌘T`)<sup>aah</sup> | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 
 <sup>a</sup> Entering a bucket row is a **connect**, not a listing: `S3AccountBackend` is depth 0
 by design (everything below a bucket is the bucket backend). It carries the region-301 correction
@@ -128,8 +142,8 @@ is a billed request and a round trip each — measured 0.601–0.699 s per `List
 1000 directories is ~10 minutes. Cancellable, and abandoned when the pane stops looking. Over
 budget the pane says it gave up rather than showing a partial total as if it were the answer.
 
-<sup>f</sup> No remote protocol here reports a change — SFTP has no `inotify`, FTP has no verb,
-and S3 has no session to hold a notification open on — so a pane on a server **asks again on a timer**
+<sup>f</sup> No remote protocol here reports a change — SFTP has no `inotify`, FTP and WebDAV have no
+verb, and S3 has no session to hold a notification open on — so a pane on a server **asks again on a timer**
 instead (`RemoteRefreshPolicy`). Limited in three ways, each deliberate. It runs only while the pane
 is genuinely on screen: `NSWindow.occlusionState` was probed to go false for a window that is
 miniaturized, hidden, ordered out **or covered by another window**, and any of those stands the poll
@@ -144,7 +158,10 @@ stretch**: uncovering its window, returning to Dirnex from another app, clicking
 another Dirnex window or switching to its tab asks again at once if its rows are older than the
 floor, and otherwise waits out the rest of the floor. The stretch only governs a pane nobody is
 touching. A tree re-lists every open folder in one refresh, and **over FTP they all go over one
-login, over SFTP through one session**, rather than one each. Measured 2026-10-19 on an FTPES server
+login, over SFTP through one session, over WebDAV through one `curl` on one connection**, rather than
+one each. Over FTP and WebDAV a password changed on the server then costs one failed login a round
+rather than one per open folder, which is what keeps a NAS that locks an account after a few
+failures from locking it on a timer (PLAN.md §M32). Measured 2026-10-19 on an FTPES server
 41 ms away, a tree with two folders open cost three ~1 s logins a refresh and the poll waited 59 s
 between refreshes, so a file written there from elsewhere could take a minute to appear. Over SFTP
 the same tree in the running app went from three `Accepted publickey` a refresh to one, against a
@@ -163,7 +180,10 @@ for the whole column, against 149** with the exec channel withdrawn. A row the a
 reached carries the same marker and tooltip a `Space` walk that gave up does, rather than a dash that
 would read as "still measuring". FTP's shortcut is the weakest of the three and still helps: it
 cannot move the work to the server, so it makes the same one `LIST` per directory, but it makes a
-whole level of them over one login instead of one connection apiece.<sup>ss</sup> On a virtual
+whole level of them over one login instead of one connection apiece.<sup>ss</sup> WebDAV's is the same
+shape, one `Depth: 1` PROPFIND per folder with a whole level in one `curl`: measured in the app over
+pinned HTTPS, a column over 250 folders took 251 PROPFINDs on 4 connections in 0.24 s, against 251
+connections and 4.2 s for the walk (PLAN.md §M32 Slice 5).<sup>aai</sup> On a virtual
 listing whose rows live in a dozen different folders "share of this directory" has no referent
 whatever it would cost, which is why those two still read n/a.
 
@@ -239,30 +259,30 @@ the shared backend and are not exercised live.
 
 ## 2. File operations
 
-| Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Photos | Results | Trash |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Copy `F5` (source) | yes | yes | yes, limited<sup>g</sup> | yes | yes | yes | no<sup>h</sup> | yes | yes | yes |
-| Copy `F5` (destination) | yes | yes | yes, limited<sup>g</sup> | yes | yes | yes | no<sup>h</sup> | no<sup>jjj</sup> | n/a | n/a |
-| Move `F6` | yes | yes | no<sup>g</sup> | yes | yes | yes, limited<sup>i</sup> | no<sup>h</sup> | no<sup>jjj</sup> | yes<sup>aac</sup> | yes |
-| Copy between two different accounts | yes | yes | — | yes | yes | yes | — | yes | — | — |
-| Copy **inside one account**, without the bytes crossing this Mac | n/a | n/a | n/a | yes, limited<sup>bbb</sup> | **no**<sup>bbb</sup> | yes | — | n/a | — | — |
-| Copy / paste `⌘C` `⌘V` | yes | yes | yes<sup>j</sup> | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>jjj</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
-| Drag and drop, inside Dirnex | yes | yes | yes, partially<sup>j</sup> | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>jjj</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
-| Drag **out** to Finder and other apps | yes | yes | **no**<sup>j</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | no<sup>h</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes |
-| Drag **in** from Finder and other apps | yes | yes | **no**<sup>j</sup> | yes | yes | yes | no<sup>h</sup> | no<sup>jjj</sup> | no<sup>k</sup> | no<sup>k</sup> |
-| New Folder `F7` | yes | yes | no | yes | yes | yes | yes, limited<sup>l</sup> | no<sup>jjj</sup> | no | no |
-| New / Edit File `⇧F4` | yes | yes | no | yes | yes | yes | n/a | no<sup>jjj</sup> | no | no |
-| Rename `F2` | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
-| Multi-rename `⇧F2` | yes | yes | no<sup>ccc</sup> | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
-| Delete `F8` → Trash | yes | yes, limited<sup>o</sup> | n/a | n/a | n/a | n/a | n/a | no<sup>jjj</sup> | yes<sup>aac</sup> | n/a |
-| Delete `F8` → permanent (confirmed) | yes | yes | yes, limited<sup>n</sup> | yes | yes | yes | yes, limited<sup>l</sup> | n/a | yes<sup>aac</sup> | yes |
-| Put Back (restore from Trash, or a share's `#recycle`) | yes, limited<sup>iii</sup> | n/a | n/a | yes, limited<sup>iii</sup> | yes, limited<sup>iii</sup> | n/a | n/a | n/a | n/a | yes, limited<sup>o</sup> |
-| Undo `⌘Z` | yes | yes | yes, limited<sup>qq</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially | n/a | yes | no |
-| Background queue, progress bar, Stop | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Per-file conflict dialog | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
-| Preserve permissions / dates / xattrs on copy | yes | yes | yes, limited | yes, limited<sup>q</sup> | yes, limited<sup>q</sup> | n/a<sup>q</sup> | n/a | yes, limited<sup>lll</sup> | yes | yes |
-| Copy a symlink as a symlink | yes | yes | yes | yes, limited<sup>pp</sup> | n/a<sup>pp</sup> | n/a | n/a | n/a | yes | yes |
-| APFS clone fast path | yes | yes | n/a | n/a | n/a | n/a | n/a | yes | yes | yes |
+| Functionality | Local | Cloud mount | Archive | SFTP | FTP | WebDAV | S3 | S3 acct | Photos | Results | Trash |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Copy `F5` (source) | yes | yes | yes, limited<sup>g</sup> | yes | yes | yes | yes | no<sup>h</sup> | yes | yes | yes |
+| Copy `F5` (destination) | yes | yes | yes, limited<sup>g</sup> | yes | yes | yes | yes | no<sup>h</sup> | no<sup>jjj</sup> | n/a | n/a |
+| Move `F6` | yes | yes | no<sup>g</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no<sup>h</sup> | no<sup>jjj</sup> | yes<sup>aac</sup> | yes |
+| Copy between two different accounts | yes | yes | — | yes | yes | yes | yes | — | yes | — | — |
+| Copy **inside one account**, without the bytes crossing this Mac | n/a | n/a | n/a | yes, limited<sup>bbb</sup> | **no**<sup>bbb</sup> | yes, limited<sup>bbb</sup> | yes | — | n/a | — | — |
+| Copy / paste `⌘C` `⌘V` | yes | yes | yes<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>jjj</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
+| Drag and drop, inside Dirnex | yes | yes | yes, partially<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>jjj</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
+| Drag **out** to Finder and other apps | yes | yes | **no**<sup>j</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | no<sup>h</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes |
+| Drag **in** from Finder and other apps | yes | yes | **no**<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | no<sup>jjj</sup> | no<sup>k</sup> | no<sup>k</sup> |
+| New Folder `F7` | yes | yes | no | yes | yes | yes | yes | yes, limited<sup>l</sup> | no<sup>jjj</sup> | no | no |
+| New / Edit File `⇧F4` | yes | yes | no | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | no | no |
+| Rename `F2` | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
+| Multi-rename `⇧F2` | yes | yes | no<sup>ccc</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
+| Delete `F8` → Trash | yes | yes, limited<sup>o</sup> | n/a | n/a | n/a | n/a | n/a | n/a | no<sup>jjj</sup> | yes<sup>aac</sup> | n/a |
+| Delete `F8` → permanent (confirmed) | yes | yes | yes, limited<sup>n</sup> | yes | yes | yes | yes | yes, limited<sup>l</sup> | n/a | yes<sup>aac</sup> | yes |
+| Put Back (restore from Trash, or a share's `#recycle`) | yes, limited<sup>iii</sup> | n/a | n/a | yes, limited<sup>iii</sup> | yes, limited<sup>iii</sup> | yes, limited<sup>iii</sup> | n/a | n/a | n/a | n/a | yes, limited<sup>o</sup> |
+| Undo `⌘Z` | yes | yes | yes, limited<sup>qq</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially<sup>p</sup> | yes, partially | n/a | yes | no |
+| Background queue, progress bar, Stop | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Per-file conflict dialog | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| Preserve permissions / dates / xattrs on copy | yes | yes | yes, limited | yes, limited<sup>q</sup> | yes, limited<sup>q</sup> | yes, limited<sup>q</sup> | n/a<sup>q</sup> | n/a | yes, limited<sup>lll</sup> | yes | yes |
+| Copy a symlink as a symlink | yes | yes | yes | yes, limited<sup>pp</sup> | n/a<sup>pp</sup> | n/a<sup>pp</sup> | n/a | n/a | n/a | yes | yes |
+| APFS clone fast path | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes | yes |
 
 <sup>g</sup> `F5` **out of** an archive extracts the marked members into the other pane (which
 must be a real folder); `F5`/`F6` **into** a top-level archive adds files to it by repacking.
@@ -355,9 +375,12 @@ which answers nothing for an item Finder wrote no record for. The restore rebuil
 that has since been deleted, never overwrites a name that has come back, and sweeps the empty mirror
 folders it leaves in the bin. **Limited** in three ways. It is `#recycle` only — **not** QNAP's
 `@Recycle`, whose mirroring is unmeasured, and guessing restores a file to a folder nobody named.
-Only **SMB was verified live**; SFTP and FTP follow structurally, since the origin carries the path's
-backend (pinned by a unit test) and every verb the restore uses exists on both, but neither has been
-exercised against a real server. And the bin is deliberately not treated as a Trash — `.rename` and
+Only **SMB was verified live**; SFTP, FTP and WebDAV follow structurally, since the origin carries the
+path's backend (pinned by a unit test) and every verb the restore uses exists on all three, but none
+has been exercised against a real server. Over WebDAV the NAS's bin is an ordinary row of the share,
+and a WebDAV delete lands in it (measured, PLAN.md §M32). The delete confirmation's *may keep a copy*
+wording below is gated on a local share, so over WebDAV it still promises a permanent delete on a NAS
+that keeps a copy. Whether the bin catches an SFTP or FTP delete has not been measured. And the bin is deliberately not treated as a Trash — `.rename` and
 `.trash` are not withdrawn there and it does not join the merged `trash:` listing — because it
 belongs to the *server*: it exists only while the share is mounted, and the NAS alone decides what
 lands in it. The neighbouring wart was fixed the same day: `trashItem` is refused on an SMB share
@@ -413,6 +436,15 @@ S3 remains `n/a`: it has no settable mtime, no permissions and no symlinks at al
 a row that reports no mode is *absent* rather than dropped — the distinction the whole carry turns
 on, since folding the two together would make every S3 copy claim damage it did not do.
 
+**WebDAV carries the date one way.** A download lands here, so it takes the server's modification
+time with `utimes`, as SFTP's and FTP's do. An upload cannot carry one, and that is the protocol:
+`getlastmodified` is read-only (PROPPATCH answers 409 "Property is read-only"), and the Windows
+client's `Win32LastModifiedTime` answers **200 and changes nothing**, stored as a dead property, so
+a 200 from PROPPATCH is never read as a time carried. Every upload, COPY and recreated folder
+therefore reports its date as not kept. A mode is not reported, for S3's reason: WebDAV has no
+permissions at all, so no row shows one (PLAN.md §M32 Slice 4). Nextcloud's `X-OC-Mtime` header
+could set a time on that one server family; Apache ignores it, and it is unmeasured on Nextcloud.
+
 **What a copy could not keep is said on the status line under the pane** (PLAN.md §M25 Slice 5b),
 never in a dialog, and it is a per-*job* answer rather than a per-connection one — the connection's
 accumulator spans its whole life, so reporting that would name the previous transfer every time. The
@@ -459,6 +491,14 @@ FTP has no copy verb of any kind — `curl` offers a download and an upload — 
 account is staged, whatever the two paths are. S3 duplicates inside a bucket, and between two buckets
 the same key and service can name unambiguously, with `x-amz-copy-source`.
 
+WebDAV duplicates inside one account with **COPY**, which the server carries out, across shared
+folders too (home → share on the NAS). It is "limited" for SFTP's two reasons. A server need not
+implement the method, so it is attempted rather than promised: a 501 or 405 is latched for the
+connection, and any refusal stages that copy through this disk. And it costs the **modification
+time**: Apache's COPY keeps the mode and stamps the copy with the moment it was made, which the
+status line reports (PLAN.md §M32 Slice 4). A rename or move inside the account is one MOVE, a
+folder included.
+
 <sup>pp</sup> Over SFTP the target is read from the SSH **exec** channel, so it works on an account
 that has one and is refused by name on an account that does not (PLAN.md §M25 Slice 4). `sftp`'s own
 `ls -la` prints the kind (`l`) with no ` -> target` and the batch language has no `readlink`, so
@@ -466,7 +506,8 @@ there is nothing in the protocol to fall back on — an account confined by `For
 internal-sftp` therefore keeps saying it cannot copy that link rather than writing a broken one.
 It degrades per connection, like §M22's search walk: one exec answers a whole directory of links
 (77 ms on loopback, the same for one link or twelve), and a refusal is remembered for that
-connection. FTP has no symlink verb at all.
+connection. FTP has no symlink verb at all, and WebDAV has no symlinks: a server that follows one
+lists what it points at as an ordinary file or folder.
 
 <sup>qq</sup> Every gesture that rewrites a browsed archive — F8 delete, ⌘V/F5/F6 add, an edited
 member saved back — is one undo step. There is no diff to journal (the container is repacked whole),
@@ -498,23 +539,23 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 
 ## 3. Preview, open and edit
 
-| Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Photos | Results | Trash |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Quick View pane / full size (`⌃Q`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes, limited<sup>s</sup> | yes | yes |
-| Quick Look (`⌘Y`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes, limited<sup>s</sup> | yes | yes |
-| Syntax highlighting, Markdown, diagrams in preview | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
-| Office, iWork and rich-text documents in preview, zoomable and selectable<sup>rrr</sup> | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
-| CSV and TSV as a sortable, zoomable, filterable table in preview, with the selected row in full in a resizable strip<sup>sss</sup> | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
-| JSON as a zoomable, filterable tree in preview, a list of records (JSON Lines, an array of objects) as the table above, with the selected value's path and text in a resizable strip<sup>ttt</sup> | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
-| XML and property lists as the same tree, attributes as `@` rows and a plist as its keys and values, a root of like elements as the table above<sup>uuu</sup> | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
-| Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t, ddd</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes, limited<sup>mmm</sup> | yes | yes |
-| Edit `F4`, with save written back | yes | yes | yes, limited<sup>v, ddd</sup> | yes | yes | yes | n/a | no<sup>jjj</sup> | yes | yes |
-| Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes, limited<sup>yy</sup> | yes | yes |
-| Show in Finder | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes |
-| Send to a **Service** | yes | yes | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | n/a | **no**<sup>zz</sup> | yes | yes |
-| Compare By Contents (`⌥F3`) | yes | yes | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | n/a | yes, limited<sup>w</sup> | yes | yes |
-| Synchronize Directories | yes | yes | **no**<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | n/a | yes, limited<sup>x</sup> | n/a<sup>x</sup> | n/a<sup>x</sup> |
-| Browse *into* an archive file | yes | yes | yes | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | n/a | n/a | yes | yes |
+| Functionality | Local | Cloud mount | Archive | SFTP | FTP | WebDAV | S3 | S3 acct | Photos | Results | Trash |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Quick View pane / full size (`⌃Q`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes, limited<sup>s</sup> | yes | yes |
+| Quick Look (`⌘Y`) | yes | yes | yes, limited<sup>r, ddd</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | yes, limited<sup>s</sup> | n/a | yes, limited<sup>s</sup> | yes | yes |
+| Syntax highlighting, Markdown, diagrams in preview | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| Office, iWork and rich-text documents in preview, zoomable and selectable<sup>rrr</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| CSV and TSV as a sortable, zoomable, filterable table in preview, with the selected row in full in a resizable strip<sup>sss</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| JSON as a zoomable, filterable tree in preview, a list of records (JSON Lines, an array of objects) as the table above, with the selected value's path and text in a resizable strip<sup>ttt</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| XML and property lists as the same tree, attributes as `@` rows and a plist as its keys and values, a root of like elements as the table above<sup>uuu</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | n/a | yes | yes |
+| Open in the default app (`⏎`) | yes | yes | yes, limited<sup>t, ddd</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | yes, limited<sup>u</sup> | n/a | yes, limited<sup>mmm</sup> | yes | yes |
+| Edit `F4`, with save written back | yes | yes | yes, limited<sup>v, ddd</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | yes | yes |
+| Open With… / Share sheet | yes | yes | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | yes, limited<sup>yy</sup> | n/a | yes, limited<sup>yy</sup> | yes | yes |
+| Show in Finder | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes |
+| Send to a **Service** | yes | yes | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | n/a | **no**<sup>zz</sup> | yes | yes |
+| Compare By Contents (`⌥F3`) | yes | yes | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | n/a | yes, limited<sup>w</sup> | yes | yes |
+| Synchronize Directories | yes | yes | **no**<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | n/a | yes, limited<sup>x</sup> | n/a<sup>x</sup> | n/a<sup>x</sup> |
+| Browse *into* an archive file | yes | yes | yes | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | n/a | n/a | yes | yes |
 
 <sup>r</sup> The member is extracted to a temp file first; only the **cursor's** member is ever
 extracted, never a marked set (a subprocess per row). With M19's member filter this is
@@ -569,7 +610,8 @@ either side is remote, and for three different reasons: `sftp`'s `ls -la` drops 
 about six months, the whole time of day (measured 41 617 s from the truth); FTP's `LIST` stamp is
 year-less, zone-less and on the server's clock (a server that answers `MLSD` is exact since
 2026-10-19, but the comparison is decided per protocol rather than per server, so FTP stays out); and
-S3's `LastModified` is exact and is the *upload* time, which nothing can set. Two sides of one coarse
+S3's `LastModified` and WebDAV's `getlastmodified` are exact and are the *upload* time, which nothing
+can set. Two sides of one coarse
 dialect are no better — two files thirty seconds apart list as the same minute, so a mirror would skip
 the one that changed.
 
@@ -665,18 +707,18 @@ values, with the JSON tree's rules.
 
 ## 4. Find Files (`⌥F7`)
 
-| Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Photos | Results | Trash |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Search at all | yes | yes | yes | yes | yes | yes | **no**<sup>z</sup> | yes | yes, limited<sup>aa</sup> | yes, limited<sup>aa</sup> |
-| by **name** | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
-| by **kind / size / modified** | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
-| by **file contents** | yes | yes | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | n/a | **n/a**<sup>bb</sup> | yes | yes |
-| by **Finder tag** | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes |
-| Runs off an index (instant) | yes | yes | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | n/a | no<sup>cc</sup> | yes | yes |
-| Server-side walk (one request, not one per folder) | n/a | n/a | n/a | yes, limited<sup>dd</sup> | n/a<sup>ss</sup> | yes | n/a | no<sup>nnn</sup> | — | — |
-| Live progress + Stop | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
-| Save the search to the sidebar, re-run later | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
-| Edit the search's conditions and run it again in the same tab<sup>aab</sup> | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| Functionality | Local | Cloud mount | Archive | SFTP | FTP | WebDAV | S3 | S3 acct | Photos | Results | Trash |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Search at all | yes | yes | yes | yes | yes | yes | yes | **no**<sup>z</sup> | yes | yes, limited<sup>aa</sup> | yes, limited<sup>aa</sup> |
+| by **name** | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| by **kind / size / modified** | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| by **file contents** | yes | yes | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | **n/a**<sup>bb</sup> | n/a | **n/a**<sup>bb</sup> | yes | yes |
+| by **Finder tag** | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes |
+| Runs off an index (instant) | yes | yes | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | no<sup>cc</sup> | n/a | no<sup>cc</sup> | yes | yes |
+| Server-side walk (one request, not one per folder) | n/a | n/a | n/a | yes, limited<sup>dd</sup> | n/a<sup>ss</sup> | **no**<sup>aai</sup> | yes | n/a | no<sup>nnn</sup> | — | — |
+| Live progress + Stop | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| Save the search to the sidebar, re-run later | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
+| Edit the search's conditions and run it again in the same tab<sup>aab</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
 
 <sup>z</sup> Deliberate: the rows are buckets, and "search every bucket" is a different and far
 more expensive question than the one ⌥F7 asks (PLAN.md §M22).
@@ -714,28 +756,36 @@ entries and identical results either way: **160 invocations and 159 logins again
 probe — `curl` sends it, but the servers that honour it are the minority and none reachable from
 this Mac does, so the fast path would have shipped unverified.
 
+<sup>aai</sup> **No by decision, not for want of a verb.** WebDAV has one, `Depth: infinity`, and Dirnex
+never sends it (PLAN.md §M32): the NAS refuses it with 403, as Apache does by default
+(`DavDepthInfinity Off`), and where a server allows it the answer is one unbounded document parsed
+whole. So a tree costs one `Depth: 1` PROPFIND per folder, as FTP's costs one `LIST`, and what was
+closeable — the connection around each of them — is closed the same way: a whole level goes in one
+`curl` over one connection (<sup>nn</sup>). An ⌥F7 that needed 261 listings went in six runs, one a
+level, in 0.27 s (PLAN.md §M32 Slice 5).
+
 <sup>nnn</sup> Not yet. One PhotoKit fetch could answer every capture date in the library at once,
 but names still cost ~1.1 ms an asset, so a search walks month by month like any backend without a
 shortcut (<sup>cc</sup>).
 
 ## 5. Metadata and macOS integration
 
-| Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Photos | Results | Trash |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Get Info: permissions, flags, dates | yes | yes | read-only<sup>tt</sup> | mode editable<sup>tt</sup> | mode + date editable<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | yes<sup>ee</sup> | yes<sup>ee</sup> |
-| Get Info: ACLs, extended attributes | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
-| Privilege escalation for a root-only change | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes |
-| Finder tags (`⌃T`, tag dots) | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
-| Cloud sync badges | yes | yes | n/a | n/a | n/a | n/a | n/a | no<sup>ooo</sup> | yes | yes |
-| Download Now / Remove Download | n/a | yes, limited<sup>eee</sup> | n/a | n/a | n/a | n/a | n/a | no<sup>ooo</sup> | yes<sup>eee</sup> | yes<sup>eee</sup> |
-| Create / verify checksum files | yes | yes | verify only<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | n/a | n/a<sup>ppp</sup> | no<sup>xx</sup> | no<sup>xx</sup> |
-| Open in Terminal | yes | yes | n/a | **no**<sup>gg</sup> | n/a | n/a | n/a | n/a | no | no |
-| Run a user script | yes | yes | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | no<sup>aaa</sup> | yes, limited<sup>mmm</sup> | yes, limited<sup>aaa</sup> | yes, limited<sup>aaa</sup> |
-| Pack `⌥F5` (create an archive) | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes<sup>hh</sup> | yes |
-| Encrypted archives / hidden member names | yes | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes<sup>hh</sup> | yes |
-| Create / unlock an encrypted vault | yes | yes | n/a | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a | n/a<sup>uu</sup> | no | n/a |
-| Saved connection in the sidebar | n/a | n/a | n/a | yes | yes | yes | yes | yes | n/a | n/a |
-| Pin to Favorites / Places menu | yes | yes | no | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially | yes | no | n/a |
+| Functionality | Local | Cloud mount | Archive | SFTP | FTP | WebDAV | S3 | S3 acct | Photos | Results | Trash |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Get Info: permissions, flags, dates | yes | yes | read-only<sup>tt</sup> | mode editable<sup>tt</sup> | mode + date editable<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | yes<sup>ee</sup> | yes<sup>ee</sup> |
+| Get Info: ACLs, extended attributes | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
+| Privilege escalation for a root-only change | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes |
+| Finder tags (`⌃T`, tag dots) | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
+| Cloud sync badges | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | no<sup>ooo</sup> | yes | yes |
+| Download Now / Remove Download | n/a | yes, limited<sup>eee</sup> | n/a | n/a | n/a | n/a | n/a | n/a | no<sup>ooo</sup> | yes<sup>eee</sup> | yes<sup>eee</sup> |
+| Create / verify checksum files | yes | yes | verify only<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | yes, limited<sup>ff</sup> | n/a | n/a<sup>ppp</sup> | no<sup>xx</sup> | no<sup>xx</sup> |
+| Open in Terminal | yes | yes | n/a | **no**<sup>gg</sup> | n/a | n/a | n/a | n/a | n/a | no | no |
+| Run a user script | yes | yes | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | yes<sup>aaa</sup> | no<sup>aaa</sup> | yes, limited<sup>mmm</sup> | yes, limited<sup>aaa</sup> | yes, limited<sup>aaa</sup> |
+| Pack `⌥F5` (create an archive) | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes<sup>hh</sup> | yes |
+| Encrypted archives / hidden member names | yes | yes | yes | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | yes<sup>hh</sup> | n/a | yes<sup>hh</sup> | yes<sup>hh</sup> | yes |
+| Create / unlock an encrypted vault | yes | yes | n/a | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a<sup>uu</sup> | n/a | n/a<sup>uu</sup> | no | n/a |
+| Saved connection in the sidebar | n/a | n/a | n/a | yes | yes | yes | yes | yes | yes | n/a | n/a |
+| Pin to Favorites / Places menu | yes | yes | no | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially<sup>ii</sup> | yes, partially | yes | no | n/a |
 
 <sup>ee</sup> Gated per **row**, not per pane. A trashed file is an ordinary local file, so it
 carries a mode, an ACL and tags like any other; a search hit is whatever it happens to be, and since
@@ -809,8 +859,9 @@ What each backend reports differs, and the panel says so rather than filling a g
 `ls -la` and FTP's Unix `LIST` carry a real mode plus an owner and group **as the server spelled
 them** (text, never resolved against this Mac's `getpwuid`); an archive carries whatever `bsdtar`
 prints, which is names for a tar and bare numbers for a zip, and nothing at all for a directory the
-archive omitted; and S3 and FTP's DOS/IIS dialect report **no mode, owner or group whatsoever**, so
-those rows are absent and a note explains why. `FileEntry.permissions` is optional for exactly this
+archive omitted; and S3, WebDAV and FTP's DOS/IIS dialect report **no mode, owner or group
+whatsoever**, so those rows are absent and a note explains why. S3 and WebDAV show the entity tag
+instead, verbatim, a weak `W/` one included. `FileEntry.permissions` is optional for exactly this
 reason — the two backends with no mode used to synthesize `0o755`/`0o644`, which was invisible only
 because nothing drew it. No remote listing carries an ACL, an extended attribute, an access time or
 a birth time, so those are limits rather than gaps. A marked set that is not all local is refused,
@@ -819,7 +870,8 @@ because the bulk panel is an editor.
 **Writing** (PLAN.md §M25 Slice 5a) is narrower than reading and is decided per connection: SFTP
 offers the **mode** and no date, because `sftp`'s batch language has no verb that sets a time at all;
 FTP offers **both**, because `SITE CHMOD` carries a mode and `MFMT` writes an exact UTC-anchored
-modification time — the one place FTP is the richer protocol. An account that answers "no such
+modification time — the one place FTP is the richer protocol. WebDAV offers neither, since it has no
+mode and its one time property is read-only (<sup>q</sup>). An account that answers "no such
 command" has the control withdrawn for the rest of that connection. Owner and group are offered
 **nowhere**: `chown`/`chgrp` need a numeric id and `sftp`'s `ls -la` prints names, and a remote
 `chgrp` clears set-uid and set-gid as a side effect. A saved change is **read back**, and the panel
@@ -879,19 +931,19 @@ checksum the copies.
 Where the local disk has no equivalent, the row is about how close a remote transfer feels to a
 local one.
 
-| Functionality | Local | Cloud mount | Archive | SFTP | FTP | S3 | S3 acct | Photos |
-|---|---|---|---|---|---|---|---|---|
-| Determinate byte progress, downloading | yes | yes | n/a | yes | yes | yes | n/a | yes<sup>qqq</sup> |
-| Determinate byte progress, uploading | yes | yes | n/a | **yes, limited**<sup>jj</sup> | yes | yes | n/a | n/a |
-| Resume an interrupted transfer | n/a | n/a | n/a | yes | yes | yes | n/a | no |
-| Split one file over several connections | n/a | n/a | n/a | yes | yes | yes | n/a | n/a |
-| Multipart upload for very large files | n/a | n/a | n/a | **yes**<sup>vv</sup> | **no**<sup>ww</sup> | yes | n/a | n/a |
-| Stop actually stops the bytes | yes | yes | yes | yes | yes | yes | n/a | yes<sup>qqq</sup> |
-| Server-side copy (bytes never touch this Mac) | yes<sup>kk</sup> | yes<sup>kk</sup> | n/a | yes, limited<sup>ll</sup> | **no**<sup>ll</sup> | yes | n/a | n/a |
-| Duplicate a file inside one account | yes | yes | n/a | yes, limited<sup>ll</sup> | yes, limited<sup>ll</sup> | yes | n/a | n/a |
-| Conditional write (nobody overwrote it meanwhile) | n/a | n/a | n/a | yes, limited<sup>mm</sup> | yes, limited<sup>mm</sup> | yes | n/a | n/a |
-| Certificate / host-key trust prompt, saved | n/a | n/a | n/a | yes | yes | yes | yes | n/a |
-| Credentials in the Keychain, never in `argv` | n/a | n/a | n/a | yes | yes | yes | yes | n/a |
+| Functionality | Local | Cloud mount | Archive | SFTP | FTP | WebDAV | S3 | S3 acct | Photos |
+|---|---|---|---|---|---|---|---|---|---|
+| Determinate byte progress, downloading | yes | yes | n/a | yes | yes | yes | yes | n/a | yes<sup>qqq</sup> |
+| Determinate byte progress, uploading | yes | yes | n/a | **yes, limited**<sup>jj</sup> | yes | yes | yes | n/a | n/a |
+| Resume an interrupted transfer | n/a | n/a | n/a | yes | yes | yes, limited<sup>aaj</sup> | yes | n/a | no |
+| Split one file over several connections | n/a | n/a | n/a | yes | yes | no<sup>aak</sup> | yes | n/a | n/a |
+| Multipart upload for very large files | n/a | n/a | n/a | **yes**<sup>vv</sup> | **no**<sup>ww</sup> | **no**<sup>aak</sup> | yes | n/a | n/a |
+| Stop actually stops the bytes | yes | yes | yes | yes | yes | yes | yes | n/a | yes<sup>qqq</sup> |
+| Server-side copy (bytes never touch this Mac) | yes<sup>kk</sup> | yes<sup>kk</sup> | n/a | yes, limited<sup>ll</sup> | **no**<sup>ll</sup> | yes, limited<sup>ll</sup> | yes | n/a | n/a |
+| Duplicate a file inside one account | yes | yes | n/a | yes, limited<sup>ll</sup> | yes, limited<sup>ll</sup> | yes, limited<sup>ll</sup> | yes | n/a | n/a |
+| Conditional write (nobody overwrote it meanwhile) | n/a | n/a | n/a | yes, limited<sup>mm</sup> | yes, limited<sup>mm</sup> | yes, limited<sup>mm</sup> | yes | n/a | n/a |
+| Certificate / host-key trust prompt, saved | n/a | n/a | n/a | yes | yes | yes | yes | yes | n/a |
+| Credentials in the Keychain, never in `argv` | n/a | n/a | n/a | yes | yes | yes | yes | yes | n/a |
 
 <sup>jj</sup> `sftp` prints no progress meter to a spawned process, and no flag changes that
 (measured in six configurations over a 1 GiB transfer). A **download** watches its own destination
@@ -905,14 +957,22 @@ is the finest granularity this protocol allows (<sup>vv</sup>).
 server's own work through OpenSSH's `copy-data` extension, measured against a real `sshd` at M25
 Slice 3 — what it costs is the modification time, and the rest of the detail is under
 <sup>bbb</sup>. A server that does not advertise the extension makes the client refuse, the refusal
-is latched for that connection, and the copy is staged instead. FTP has no copy verb at all, so its
-`copyFile` *is* an upload or a download. Everything the fast path cannot serve — a refusing server,
+is latched for that connection, and the copy is staged instead. WebDAV's COPY is the same shape —
+the server's work, latched when the server lacks the method, and costing the date (<sup>bbb</sup>).
+FTP has no copy verb at all, so its `copyFile` *is* an upload or a download. Everything the fast path cannot serve — a refusing server,
 and **every** pair of ends on two different backends, which no server-side verb can address — is
 staged through this Mac (`RelayCopy`), costing the file's size in temp space and moving the bytes
 twice.
 
 <sup>mm</sup> S3 sends `If-Match`; SFTP and FTP re-`stat` before uploading and tell you if the
-file changed since it was fetched, which is a narrower window and not a guarantee.
+file changed since it was fetched, which is a narrower window and not a guarantee. WebDAV does both:
+the re-`stat` asks first, and the save then sends `If-Match` with the tag that check read, so a
+change landing between the two is refused by the server rather than written over. It is limited by
+what the server hands out. Apache's tag is **weak** for the second after any write, and no spelling
+of a weak tag can pass `If-Match` (both answered 412 for a file nobody had touched), so a save holding
+one sends no condition and rests on the re-`stat`, as SFTP's and FTP's always do (PLAN.md §M32
+Slice 4). ⇧F4's create is one PUT with `If-None-Match: *`, so it never truncates a file already
+there.
 
 <sup>vv</sup> Above 32 MiB an SFTP upload is cut into parts of 16–32 MiB, **four sent at once**,
 each under a hidden name beside the destination; the server joins them with one `cat` over the exec
@@ -939,6 +999,20 @@ bytes: `ALLO` is advisory (`202 No storage allocation necessary`) and there is n
 Two concurrent `APPE`s to one file interleave arbitrarily, with nothing naming which half is which.
 So the only route sends the file twice, which is worse than sending it once — see *Where remote still
 feels unlike local*.
+
+<sup>aaj</sup> A **download** resumes: a partial copy is continued with a Range request, which the NAS
+answered 206 with a byte-identical result, and a copy that is already complete starts over rather
+than asking for a range past its end, which answers 416 (PLAN.md §M32 Slice 2; the live suite checks
+both). An **upload** starts over. RFC 9110 has no partial PUT, and a server must refuse a
+`Content-Range` on one. Apache writes at the offset anyway, measured, and that stays unused until a
+second server family answers it the same way (PLAN.md §6).
+
+<sup>aak</sup> **No for a download, and nothing in the protocol prevents it.** The Range requests
+that resume one would split it, as SFTP's, FTP's and S3's downloads are split
+(`SegmentedDownloadPlan`), and M32 did not build it: one `curl` moved 32 MiB at 95 MB/s from the NAS
+on a LAN, so a single stream was not the limit there. No milestone owns it yet. An **upload** cannot
+be split for <sup>aaj</sup>'s reason: a PUT is whole, and the two ways round it are one server
+family's own each — Apache's offset PUT, and Nextcloud's chunked-upload API, which is not WebDAV.
 
 <sup>qqq</sup> True only since a fix on the evening of 2026-09-13 for an original that is only in
 iCloud. PhotoKit downloads such an original into the library in full before it hands over a byte, and
@@ -988,5 +1062,10 @@ rows, and the app is already as close as the technology permits:
   `.DS_Store` at all, and on Box such a delete does not land on this Mac. The origin is an opaque
   provider reference with no path in it. Dirnex's *own* deletes there are covered (M26 Slices 4–5,
   which also give Finder's Put Back back for them).
-- Live change notifications from any remote protocol: SFTP has no `inotify`, FTP has no verb, and
-  S3 has no session to hold one open on. A poll is not a notification, and nothing can make it one.
+- Live change notifications from any remote protocol: SFTP has no `inotify`, FTP and WebDAV have no
+  verb, and S3 has no session to hold one open on. A poll is not a notification, and nothing can make
+  it one.
+- Setting a modification time over WebDAV: `getlastmodified` is read-only, and the one way of trying
+  that answers 200 changes nothing (<sup>q</sup>). Nextcloud's own header is the one route left, on one
+  server family, and it is unmeasured.
+- A split or resumed **upload** over WebDAV: a PUT is whole by RFC 9110 (<sup>aaj</sup>).

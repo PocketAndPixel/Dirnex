@@ -17,8 +17,8 @@
 # there.
 #
 # Usage:
-#   scripts/live_test_servers.sh up      # start both, write /tmp/dirnex_{sftp,ftp}_live_test.json
-#   scripts/live_test_servers.sh down    # stop both, remove the configs, unpin the host key
+#   scripts/live_test_servers.sh up      # start all three, write /tmp/dirnex_{sftp,ftp,webdav}_live_test.json
+#   scripts/live_test_servers.sh down    # stop them, remove the configs, unpin the host key
 #
 # The six S3 live suites are gated on /tmp/dirnex_s3_live_test.json, which this script cannot write
 # — it needs a real account. `down` removes it and `status` reports it, so a live credential does not
@@ -26,7 +26,9 @@
 #   scripts/live_test_servers.sh status  # what is running, and which suites it enables
 #
 # Requires `pyftpdlib` for the FTP half (`python3 -m pip install pyftpdlib`); the SFTP half needs
-# only the system `sshd`, and Remote Login does **not** have to be switched on.
+# only the system `sshd`, and Remote Login does **not** have to be switched on. The WebDAV half is
+# macOS's own `/usr/sbin/httpd` with `mod_dav`, run unprivileged from a config written here, so it
+# needs nothing installed either (PLAN.md §M32).
 
 set -eu
 
@@ -41,8 +43,11 @@ set -eu
 STATE="/private/tmp/dirnex-live-servers"
 SFTP_PORT="${DIRNEX_SFTP_PORT:-2222}"
 FTP_PORT="${DIRNEX_FTP_PORT:-2121}"
+WEBDAV_PORT="${DIRNEX_WEBDAV_PORT:-8088}"
+WEBDAVS_PORT="${DIRNEX_WEBDAVS_PORT:-8443}"
 SFTP_CONFIG=/tmp/dirnex_sftp_live_test.json
 FTP_CONFIG=/tmp/dirnex_ftp_live_test.json
+WEBDAV_CONFIG=/tmp/dirnex_webdav_live_test.json
 # Not written by this script and never can be: it holds a real cloud credential, which nothing here
 # can mint. `status` reports whether it is there and `down` removes it, because unlike the two
 # throwaway loopback passwords above it is a live secret sitting in /tmp.
@@ -129,7 +134,9 @@ server.max_cons = 512
 server.max_cons_per_ip = 512
 server.serve_forever()
 PY
-    python3 "$STATE/serve_ftp.py" "$STATE/ftproot" "$STATE/ftpd.log" "$FTP_PORT" &
+    # Detached from this script's output, which it would otherwise hold open for as long as it
+    # runs: `up | tail` then never ends. It logs to its own file.
+    python3 "$STATE/serve_ftp.py" "$STATE/ftproot" "$STATE/ftpd.log" "$FTP_PORT" >/dev/null 2>&1 &
     echo $! > "$STATE/ftpd.pid"
 
     cat > "$FTP_CONFIG" <<EOF
@@ -145,27 +152,160 @@ EOF
     echo "ftp   127.0.0.1:$FTP_PORT   -> $STATE/ftproot"
 }
 
+start_webdav() {
+    dav="$STATE/dav"
+    # A fresh tree every time: the suites mint their fixtures under UUID-named folders, but a lock a
+    # killed run left in `DavLockDB` would answer 423 to the next one and read as a broken write.
+    rm -rf "$dav"
+    mkdir -p "$dav/data/basic" "$dav/data/digest" "$dav/data/public" "$dav/run" "$dav/lock" "$dav/logs"
+
+    # A new self-signed certificate per `up`, so the pin the suite trusts is read from the config
+    # and never from a constant someone copied. The `subjectAltName` is not needed by a pinned
+    # connection (`--insecure` skips the name check) and is there so a plain `curl --cacert` probe
+    # against the same server verifies.
+    openssl req -x509 -newkey rsa:2048 -nodes -days 30 -subj /CN=127.0.0.1 \
+        -addext subjectAltName=IP:127.0.0.1 \
+        -keyout "$dav/tls.key" -out "$dav/tls.crt" >/dev/null 2>&1
+    pin=$(openssl x509 -in "$dav/tls.crt" -pubkey -noout | openssl pkey -pubin -outform der \
+        | openssl dgst -sha256 -binary | openssl base64)
+
+    htpasswd -bc "$dav/basic.pw" probe probe-pw >/dev/null 2>&1
+    # `htdigest` prompts for the password and has no batch flag; its line is
+    # `user:realm:MD5(user:realm:password)`, which is all it would have written.
+    printf 'probe:dirnex-digest:%s\n' "$(printf 'probe:dirnex-digest:probe-pw' | md5 -q)" > "$dav/digest.pw"
+
+    # Three locations, one per way in: Basic, Digest (which macOS's Apache answers with Digest
+    # alone, so the probe has to read the challenge to log in at all), and a public folder with no
+    # account, which reads *and writes* anonymously. `DavDepthInfinity Off` is the NAS's setting,
+    # so a listing that forgot its `Depth: 1` gets the 403 the NAS would give it.
+    #
+    # The access log carries the user and the status of every request, and one live test reads it:
+    # how many logins a wrong password costs is the server's bookkeeping, not the client's opinion
+    # (docs/LIVE-VERIFICATION.md ▸ count `Accepted publickey` in the server's own log).
+    cat > "$dav/httpd.conf" <<EOF
+ServerRoot "/usr"
+ServerName 127.0.0.1
+Listen 127.0.0.1:$WEBDAV_PORT
+Listen 127.0.0.1:$WEBDAVS_PORT
+LoadModule mpm_prefork_module libexec/apache2/mod_mpm_prefork.so
+LoadModule unixd_module libexec/apache2/mod_unixd.so
+LoadModule authn_core_module libexec/apache2/mod_authn_core.so
+LoadModule authn_file_module libexec/apache2/mod_authn_file.so
+LoadModule authz_core_module libexec/apache2/mod_authz_core.so
+LoadModule authz_user_module libexec/apache2/mod_authz_user.so
+LoadModule auth_basic_module libexec/apache2/mod_auth_basic.so
+LoadModule auth_digest_module libexec/apache2/mod_auth_digest.so
+LoadModule dav_module libexec/apache2/mod_dav.so
+LoadModule dav_fs_module libexec/apache2/mod_dav_fs.so
+LoadModule log_config_module libexec/apache2/mod_log_config.so
+LoadModule mime_module libexec/apache2/mod_mime.so
+LoadModule ssl_module libexec/apache2/mod_ssl.so
+LoadModule socache_shmcb_module libexec/apache2/mod_socache_shmcb.so
+Mutex file:$dav/run default
+DefaultRuntimeDir "$dav/run"
+PidFile "$dav/run/httpd.pid"
+ErrorLog "$dav/logs/error.log"
+LogFormat "%h %{remote}p %u \"%r\" %>s" dav
+CustomLog "$dav/logs/access.log" dav
+KeepAlive On
+MaxKeepAliveRequests 100
+KeepAliveTimeout 5
+DavLockDB "$dav/lock/DavLock"
+DocumentRoot "$dav/data"
+<Directory "$dav/data">
+  Dav On
+  DavDepthInfinity Off
+  Require all granted
+</Directory>
+<Location "/basic">
+  AuthType Basic
+  AuthName "dirnex-basic"
+  AuthUserFile "$dav/basic.pw"
+  Require valid-user
+</Location>
+<Location "/digest">
+  AuthType Digest
+  AuthName "dirnex-digest"
+  AuthDigestProvider file
+  AuthUserFile "$dav/digest.pw"
+  Require valid-user
+</Location>
+SSLSessionCache "shmcb:$dav/run/ssl_scache(512000)"
+<VirtualHost 127.0.0.1:$WEBDAVS_PORT>
+  SSLEngine on
+  SSLCertificateFile "$dav/tls.crt"
+  SSLCertificateKeyFile "$dav/tls.key"
+</VirtualHost>
+EOF
+    if ! /usr/sbin/httpd -f "$dav/httpd.conf" -k start 2>"$dav/logs/start.log"; then
+        echo "webdav SKIPPED: httpd did not start ($(head -1 "$dav/logs/start.log"))" >&2
+        echo "      the WebDAV live suite stays dark" >&2
+        return 0
+    fi
+
+    # One entry per way in, and the suite runs every test once per entry. The facts each entry
+    # states are claims about *that* endpoint, written down rather than inferred (docs/NOTES.md ▸
+    # Live suites): which scheme the probe must settle on, whether its certificate is self-signed,
+    # and whether a wrong password may be tried at all — never on the NAS, whose Account
+    # Protection locks the account after a few.
+    cat > "$WEBDAV_CONFIG" <<EOF
+{
+  "endpoints": [
+    {
+      "name": "Apache, HTTP, Basic",
+      "host": "127.0.0.1", "port": $WEBDAV_PORT, "tls": false, "root": "/basic",
+      "user": "probe", "password": "probe-pw", "scheme": "basic",
+      "remotePath": "/", "mayTryWrongPassword": true, "accessLog": "$dav/logs/access.log",
+      "servedFrom": "$dav/data/basic"
+    },
+    {
+      "name": "Apache, HTTP, Digest",
+      "host": "127.0.0.1", "port": $WEBDAV_PORT, "tls": false, "root": "/digest",
+      "user": "probe", "password": "probe-pw", "scheme": "digest",
+      "remotePath": "/", "mayTryWrongPassword": true, "accessLog": "$dav/logs/access.log",
+      "servedFrom": "$dav/data/digest"
+    },
+    {
+      "name": "Apache, HTTP, public",
+      "host": "127.0.0.1", "port": $WEBDAV_PORT, "tls": false, "root": "/public",
+      "user": "", "remotePath": "/", "servedFrom": "$dav/data/public"
+    },
+    {
+      "name": "Apache, HTTPS, Basic, pinned",
+      "host": "127.0.0.1", "port": $WEBDAVS_PORT, "tls": true, "root": "/basic",
+      "user": "probe", "password": "probe-pw", "scheme": "basic",
+      "trustedPublicKey": "$pin", "selfSigned": true,
+      "remotePath": "/", "mayTryWrongPassword": true, "accessLog": "$dav/logs/access.log",
+      "servedFrom": "$dav/data/basic"
+    }
+  ]
+}
+EOF
+    echo "webdav 127.0.0.1:$WEBDAV_PORT (http) and :$WEBDAVS_PORT (https, pinned) -> $dav/data"
+}
+
 case "${1:-up}" in
 up)
     start_sftp
     start_ftp
+    start_webdav
     sleep 1
     echo
-    echo "Both configs written. Now run the app suite and read the *per-suite* lines, not the"
+    echo "Configs written. Now run the app suite and read the *per-suite* lines, not the"
     echo "summary count — the summary is identical whether these ran or not:"
     echo
     echo "  xcodebuild test -project Dirnex.xcodeproj -scheme Dirnex 2>&1 |"
-    echo "    command grep -cE '^✔ Test '     # 975 with servers up, 922 without"
+    echo "    command grep -cE '✔ Test '      # 1811 with servers up, 1755 without (2026-10-24)"
     ;;
 down)
     # By port rather than by pid file: a pid file is the one record that goes missing exactly when
     # it is needed (a moved state directory, a reboot, a crash), and a server left listening then
     # collides with the next `up` as `Address already in use` — which reads as a broken script.
-    for port in "$SFTP_PORT" "$FTP_PORT"; do
+    for port in "$SFTP_PORT" "$FTP_PORT" "$WEBDAV_PORT" "$WEBDAVS_PORT"; do
         pids=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
         [ -n "$pids" ] && echo "$pids" | xargs kill 2>/dev/null || true
     done
-    rm -f "$SFTP_CONFIG" "$FTP_CONFIG" "$STATE/sshd.pid" "$STATE/ftpd.pid"
+    rm -f "$SFTP_CONFIG" "$FTP_CONFIG" "$WEBDAV_CONFIG" "$STATE/sshd.pid" "$STATE/ftpd.pid"
     if [ -f "$S3_CONFIG" ]; then rm -f "$S3_CONFIG"; echo "removed $S3_CONFIG (it held a live credential)"; fi
     # Leave no pin behind for a port the next throwaway will reuse with a different host key.
     ssh-keygen -R "$KNOWN_HOSTS_KEY" >/dev/null 2>&1 || true
@@ -176,8 +316,11 @@ status)
         && echo "sftp  listening on $SFTP_PORT" || echo "sftp  not running"
     lsof -nP -iTCP:"$FTP_PORT" -sTCP:LISTEN >/dev/null 2>&1 \
         && echo "ftp   listening on $FTP_PORT" || echo "ftp   not running"
+    lsof -nP -iTCP:"$WEBDAV_PORT" -sTCP:LISTEN >/dev/null 2>&1 \
+        && echo "webdav listening on $WEBDAV_PORT and $WEBDAVS_PORT" || echo "webdav not running"
     [ -f "$SFTP_CONFIG" ] && echo "config $SFTP_CONFIG present" || echo "config $SFTP_CONFIG ABSENT — SFTP suites will skip silently"
     [ -f "$FTP_CONFIG" ] && echo "config $FTP_CONFIG present" || echo "config $FTP_CONFIG ABSENT — FTP suites will skip silently"
+    [ -f "$WEBDAV_CONFIG" ] && echo "config $WEBDAV_CONFIG present" || echo "config $WEBDAV_CONFIG ABSENT — the WebDAV suite will skip silently"
     [ -f "$S3_CONFIG" ] && echo "config $S3_CONFIG present (real credential)" || echo "config $S3_CONFIG absent — the six S3 suites will skip silently"
     ;;
 *)

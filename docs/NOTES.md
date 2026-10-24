@@ -6854,6 +6854,12 @@ whoever drives `curl` over HTTP next. Most of them apply to the S3 backend as mu
   In the app over pinned HTTPS, sizing a 250-folder tree took 4 TLS connections and 0.24 s, and the
   walk it replaced 251 and 4.2 s. Digest stays on the one connection but still pays its 401 per
   section, since `curl` keeps no nonce between transfers.
+- **In Apache's access log a failed login is a 401 that carries a user, and a Digest challenge is a
+  401 that does not.** Measured 2026-10-24 with `%u` in the log format: a wrong Basic password logged
+  `probe … 401`; a wrong Digest password logged `- … 401` (the challenge) and then `probe … 401`; a
+  right Digest password `-` 401 and then `probe` 207. So "how many failed logins did that cost" is the
+  401 lines with a user, which is how `WebDAVLiveIntegrationTests` counts them. Counting every 401
+  doubles Digest.
 
 ### The Trash
 
