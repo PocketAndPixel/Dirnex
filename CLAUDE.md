@@ -108,13 +108,14 @@ Both suites must stay green and both linters clean. SwiftLint's `file_length` 50
 `type_body_length` 250 are tight on the large AppKit controllers — see the file-splitting
 section of [docs/NOTES.md](docs/NOTES.md) before adding to one.
 
-**A green app run does not mean the live suites ran.** They are gated on a config file, and without
-it fourteen suites *skip* under a run summary that is byte-identical either way (measured: 979 tests
-executed with servers up against 922 without, both reported as `1018 tests in 169 suites passed`).
-Before trusting anything the remote backends are supposed to be holding up:
+**A green app run does not mean the live suites ran.** They are gated on config files, and without
+them eighteen suites *skip* under a run summary that is byte-identical either way (measured
+2026-10-24: 1811 tests executed with servers up against 1755 without, both reported as
+`1870 tests in 295 suites passed`). Before trusting anything the remote backends are supposed to be
+holding up:
 
 ```sh
-scripts/live_test_servers.sh up      # throwaway sshd + pyftpdlib, writes both configs
+scripts/live_test_servers.sh up      # throwaway sshd, pyftpdlib and httpd; writes the three configs
 xcodebuild test -project Dirnex.xcodeproj -scheme Dirnex
 scripts/live_test_servers.sh down    # stop, remove the configs, unpin the host key
 ```
