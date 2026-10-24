@@ -45,7 +45,7 @@ struct ConnectPlaceholderWidthTests {
 
     /// Every shipped translation of `key`, read from the **compiled** `.strings` in the app bundle,
     /// as ``StatusSentenceWidthTests`` reads them: the bundle is what runs.
-    private func translations(of key: String) -> [(language: String, text: String)] {
+    static func translations(of key: String) -> [(language: String, text: String)] {
         let bundle = Bundle(for: PanelViewController.self)
         var found: [(language: String, text: String)] = []
         for lproj in bundle.paths(forResourcesOfType: "lproj", inDirectory: nil) {
@@ -62,7 +62,7 @@ struct ConnectPlaceholderWidthTests {
     @Test("every placeholder fits its field in every language", arguments: keys)
     @MainActor
     func placeholderFits(key: String) throws {
-        let all = translations(of: key)
+        let all = Self.translations(of: key)
         #expect(all.count >= 14, "expected all 14 shipped languages for \(key), found \(all.count)")
         // A measure that cannot see its subject passes everything, which is how the placeholder's
         // own size fails (NOTES.md). The English has to come out as a real width first.

@@ -97900,95 +97900,6 @@
         }
       }
     },
-    "The report is in a new email in your mail app.": {
-      "comment": "Report a Bug dialog: status after Email Instead.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Der Bericht ist in einer neuen E-Mail in Ihrem Mail-Programm."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The report is in a new email in your mail app."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El informe está en un correo nuevo en tu app de correo."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Le rapport est dans un nouvel e-mail de votre app de messagerie."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La segnalazione è in una nuova email nella tua app di posta."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "レポートをメールアプリの新規メールに入れました。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "보고서가 메일 앱의 새 이메일에 들어 있습니다."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Het rapport staat in een nieuwe e-mail in je mailapp."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Raport jest w nowej wiadomości w aplikacji pocztowej."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Отчёт вставлен в новое письмо в вашем почтовом приложении."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Звіт вставлено в новий лист у вашому поштовому застосунку."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O relatório está em um novo e-mail no seu app de e-mail."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "报告已放入邮件 App 的新邮件中。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "報告已放入郵件 App 的新郵件中。"
-          }
-        }
-      }
-    },
     "The report is on the clipboard.": {
       "comment": "Report a Bug dialog: status after Copy Report.",
       "localizations": {
@@ -114834,6 +114745,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "此版本不在授權範圍內"
+          }
+        }
+      }
+    },
+    "Your mail app should open a new email with the report. If it doesn't, copy the report instead.": {
+      "comment": "Report a Bug dialog: status after Email Instead handed the report to the mail app. It may not open an email: Mail with no account shows its account setup instead.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihr Mail-Programm sollte eine neue E-Mail mit dem Bericht öffnen. Falls nicht, kopieren Sie den Bericht stattdessen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your mail app should open a new email with the report. If it doesn't, copy the report instead."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu app de correo debería abrir un correo nuevo con el informe. Si no lo hace, copia el informe."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre app de messagerie devrait ouvrir un nouvel e-mail avec le rapport. Sinon, copiez plutôt le rapport."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La tua app di posta dovrebbe aprire una nuova email con la segnalazione. Altrimenti, copia la segnalazione."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メールアプリでレポート入りの新規メールが開くはずです。開かない場合は、代わりにレポートをコピーしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메일 앱에서 보고서가 담긴 새 이메일이 열릴 것입니다. 열리지 않으면 대신 보고서를 복사하세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je mailapp zou een nieuwe e-mail met het rapport moeten openen. Zo niet, kopieer dan het rapport."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aplikacja pocztowa powinna otworzyć nową wiadomość z raportem. Jeśli tak się nie stanie, skopiuj raport."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seu app de e-mail deve abrir um novo e-mail com o relatório. Se isso não acontecer, copie o relatório."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Почтовое приложение должно открыть новое письмо с отчётом. Если письмо не появилось, скопируйте отчёт."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поштовий застосунок має відкрити новий лист зі звітом. Якщо лист не з’явився, скопіюйте звіт."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "邮件 App 应会打开一封包含报告的新邮件。如果没有，请改为拷贝报告。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "郵件 App 應會打開一封包含報告的新郵件。如果沒有，請改為拷貝報告。"
           }
         }
       }
