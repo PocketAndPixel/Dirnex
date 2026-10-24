@@ -181,8 +181,8 @@ extension PanelViewController {
         let sort = plan.sort
         let showHidden = plan.showHidden
         let sizes = plan.sizes
-        guard let model = try? await DirectoryLoader.model(
-            backend, at: watchedPath, sort: sort, showHidden: showHidden, directorySizes: sizes
+        guard let model = await refreshedModel(
+            at: watchedPath, sort: sort, showHidden: showHidden, sizes: sizes, token: token
         ) else { return }
         guard token == loadToken, panel.path == watchedPath else { return }
         noteRemoteListingArrived(at: watchedPath)
