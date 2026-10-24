@@ -41,7 +41,18 @@ enum WebDAVLiveEnvironment {
     static let endpoints: [WebDAVLiveEndpoint] = {
         guard let data = FileManager.default.contents(atPath: configPath),
               let file = try? JSONDecoder().decode(File.self, from: data) else { return [] }
-        return file.endpoints.compactMap(WebDAVLiveEndpoint.init)
+        // Each named item is read once, however many endpoints name it: every read of an item
+        // another binary filed raises the Keychain's prompt, and the NAS's two ports share one.
+        var secrets: [String: String?] = [:]
+        let secret = { (item: KeychainItem) -> String? in
+            let key = item.service + "\n" + item.account
+            if let known = secrets[key] { return known }
+            let read = KeychainSecretStore().secret(service: item.service, account: item.account)
+                .flatMap { String(data: $0, encoding: .utf8) }
+            secrets[key] = read
+            return read
+        }
+        return file.endpoints.compactMap { WebDAVLiveEndpoint($0, secret: secret) }
     }()
 
     static var isEnabled: Bool { !endpoints.isEmpty }
@@ -110,15 +121,15 @@ struct WebDAVLiveEndpoint: Sendable, CustomTestStringConvertible {
 
     var testDescription: String { name }
 
-    fileprivate init?(_ file: WebDAVLiveEnvironment.Endpoint) {
+    fileprivate init?(
+        _ file: WebDAVLiveEnvironment.Endpoint,
+        secret: (WebDAVLiveEnvironment.KeychainItem) -> String?
+    ) {
         let user = file.user ?? ""
         let password: String
         if let keychain = file.keychain {
-            guard let data = KeychainSecretStore().secret(
-                service: keychain.service,
-                account: keychain.account
-            ), let secret = String(data: data, encoding: .utf8) else { return nil }
-            password = secret
+            guard let read = secret(keychain) else { return nil }
+            password = read
         } else {
             password = file.password ?? ""
         }

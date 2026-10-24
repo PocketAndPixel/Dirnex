@@ -825,6 +825,40 @@ first half found WebDAV the only remote without a segmented download; this close
   four readers of one file faster or slower than one is unknown; measuring it needs the account's
   password in a run.
 
+**2026-10-24: The split, live in the app and on the NAS.** Three temporary probes, all removed
+afterwards and the build rebuilt (the binary checked for them): a WebDAV password from the
+environment, or from the account's SFTP Keychain item read once (Oleg answered the one prompt); a
+log of each `curl` request with its timing; and a switch turning the split off, so the same build ran
+both paths. The defaults domain was restored and compared unchanged (71 keys). A Debug build left
+running since 2026-10-23 had exited by itself before the run.
+
+- **In the app, F5 off the throttled Apache** (4 MiB/s a connection), 40 MiB dated 2020, from a
+  seeded tab that reconnected with one PROPFIND: one `Depth: 0` stat, then four GETs on four
+  connections, each 206 with exactly its range and the stat's tag as `If-Match` (the server's log
+  read the `Range` and `If-Match` headers back). **2.81 s from F5 to a complete file; with the split
+  switched off, one GET (200) and 10.27 s.** Byte-identical both ways, the 2020 date carried, no
+  pieces left in the temp folder.
+- **The whole WebDAV live suite against the NAS, over HTTPS 5006 and HTTP 5005** (22 cases; the
+  wrong-password test has none there by design). It closes Slice 6's NAS item, two of Slice 4's
+  "not run live yet" — a lock held by another client on the NAS says it is locked by name and
+  deletes nothing, and a refused `If-Match` is read as changed or as gone — and Slice 3's timing of
+  the bare name, which connected within the one second the config claims (through the test host,
+  not the app). The awkward names, resume and the batched listing held there too. The split test came
+  down as one stat and four ranges, byte-identical, and stale-tagged ranges were refused writing
+  nothing. Its folders and their copies in `/home/#recycle` were removed by the suite's own cleanup,
+  which was not read back afterwards.
+- **On the NAS the split is slower.** 256 MiB over gigabit, three alternating rounds a port: one
+  stream 2.43–2.62 s (102–111 MB/s), four ranges 2.62–3.29 s, on average **0.43 s slower over HTTPS
+  and 0.29 s over HTTP**. Joining 256 MiB of pieces takes 0.05–0.16 s here; the rest is the NAS and
+  the wire serving four connections where one already filled the link. Recorded in
+  `SegmentedDownloadLimits.webdav` and LOCATION-SUPPORT.md <sup>aak</sup>. Whether to keep splitting
+  where that is the case is open.
+- **The live config's Keychain item is read once per run**, however many endpoints name it, so the
+  NAS's two ports cost one prompt rather than two (`WebDAVLiveEnvironment`).
+- **Seen once and not chased:** `Panes divider detent / a queued release from another window cannot
+  end the divider drag` failed in one app run (the current event's location read 1642 pt where it
+  expected 430) and passed on the rerun. Nothing in this change reaches it.
+
 ### Still open
 
 Everything through M31 is shipped, and the record of it — the milestone checklists, the sixty

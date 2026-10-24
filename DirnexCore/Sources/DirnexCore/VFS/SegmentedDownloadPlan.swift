@@ -101,9 +101,13 @@ public struct SegmentedDownloadLimits: Sendable, Equatable {
     /// The ceiling is FTP's, for FTP's reason rather than for cost. A WebDAV server is often a NAS or
     /// a box behind a proxy that caps connections per client, and a capped server serves some
     /// sections and refuses the rest, so the pieces that did land are thrown away
-    /// (``SegmentedDownloadSupport``). Eight beat four only on the throttled link. A NAS reading one
-    /// file for eight clients at once from its disks was not measured: one stream from the NAS
-    /// already moved 95 MB/s on the LAN (PLAN.md §M32).
+    /// (``SegmentedDownloadSupport``). Eight beat four only on the throttled link.
+    ///
+    /// **Where one stream already fills the link, the split costs time.** Measured on the NAS over
+    /// gigabit, 256 MiB in three alternating rounds a port: one stream 2.43–2.62 s (102–111 MB/s),
+    /// four ranges 2.62–3.29 s, on average 0.43 s slower over HTTPS and 0.29 s over HTTP. Joining
+    /// the pieces here is up to 0.15 s of that (0.05–0.16 s for 256 MiB); the rest is the server and
+    /// the wire serving four connections where one was enough.
     public static let webdav = SegmentedDownloadLimits(
         threshold: 8 * 1024 * 1024,
         minimumSegmentSize: 4 * 1024 * 1024,
