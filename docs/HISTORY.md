@@ -16931,6 +16931,51 @@ Keychain (checked by attribute afterwards) and no prompt came up.
 - The defaults domain was restored and compared unchanged (71 keys), and the NAS fixture went to the
   share's bin.
 
+**2026-10-25: A pane whose folder is deleted under it moves up to the nearest folder that still
+exists** (core, app, tests and docs). Asked for by Oleg after the entry above, whose Put Back run
+left a pane listing a bin folder that had just been pruned. Every refresh read a failed listing as
+"keep the rows", through a `try?`: the watcher and the remote poll (`performListRefresh`), an
+operation's refresh, a tab switch, and the tree refresh.
+
+- **The core decides** (`FolderRefuge`), behind an injected `stat`. The folder itself is asked
+  first, and only "gone" (`meansPlaceIsGone`: not found, or a file where it was) starts the walk.
+  The first folder above that answers is where the pane goes, and any other error stops the walk.
+  A failed listing alone is not trusted, because FTP reads 550 as `notFound` for a folder the
+  account may no longer open as well as for one that is gone. 8 tests.
+- **The app** sends the four list refreshes through one `refreshedModel`, which hands a failure to
+  `leaveVanishedFolder`, and the tree refresh calls it when its root did not list. A listing error
+  that is not "gone" never starts a walk, and the move happens only if nothing has moved the pane
+  meanwhile. It is silent, as Total Commander and Finder are.
+- **Only a pane in a window moves.** The first build had no such rule, and the full app suite
+  stalled: orphaned test panes walked into the temp folder as their fixtures were deleted, a tree
+  there re-sorted tens of thousands of rows on the main actor at every write, one test took 351 s,
+  and unrelated suites failed waiting for their own listings. `sample` named the sort at once. The
+  rule is the remote poll's (`isRemoteRefreshWanted`), and a pane in the app is always in a window,
+  minimized or not (NOTES.md ▸ Fixtures and shared state).
+- **Tests:** `VanishedFolderTests` (6) on this disk, each pane in a window it never shows: an
+  operation's refresh, the watcher past two deleted levels, a tree, a tab switch, a folder that is
+  there but unreadable (stays), and a pane in no window (stays). Controls, one at a time: the helper
+  disabled failed the four moves; the core without its first `stat` failed six of its eight; an
+  unanswerable ancestor skipped rather than stopping failed its own test alone; the app's gone-only
+  check and the core's first `stat` both removed failed the unreadable-folder test; and the window
+  rule removed failed the no-window test.
+- **Live** in the Debug build. A local folder deleted from the shell moved its pane to the parent.
+  Over WebDAV, on a throwaway Apache's anonymous folder (so no Keychain), a folder deleted by `curl`
+  moved the pane at the next poll, in tree view and in list view: the server logged the listing's
+  404, a `stat` of the folder (404) and of its parent (207), and the new listing. With the server
+  stopped, the poll's failure reached the helper as `io` (code 5) and nothing moved, read from a
+  temporary log. The window rule came after these runs, and on the final build the local case was
+  run again and moved the same way.
+- **Seen once and not explained:** in the first stopped-server run an alert came up, *Can't open
+  "127.0.0.1"* (code 5), its title naming the connection's root, while the pane stayed on its
+  folder. Three reruns did not show it, two on this build and one with the walk disabled, and the log
+  showed the helper declining the dead server's failure each time. The only WebDAV navigation to a
+  root in the app is the one after a successful connect.
+- **Checks:** core 4483 tests in 445 suites, app 1896 in 302 with the 18 live suites running (72 s,
+  where the stalled run had passed 351 s on one test), both linters clean. The defaults domain was
+  restored to the pre-session backup and compared unchanged (71 keys), after the suite had moved
+  three keys of it (LIVE-VERIFICATION.md).
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

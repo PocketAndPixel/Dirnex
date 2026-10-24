@@ -19,6 +19,9 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   before, compare after with `scripts/check_defaults_unchanged.py`, then `defaults import` the
   backup and `defaults delete` the keys it added. Importing alone leaves an added key in place. That
   works with the release copy still running, as long as only the run's own keys moved.
+  - **So does the app test suite.** Seen 2026-10-24: after two full `xcodebuild test` runs and a few
+    single-suite ones, `SULastCheckTime`, `Dirnex.frecency` and `Dirnex.tabs.left` had all moved.
+    Restore after the suite, not only after the live run, or the next backup carries its drift.
 
 - **A tab seeded with `defaults write -string` is silently not restored, because `TabPersistence`
   reads `data(forKey:)`.** The pane falls back to Home, the app looks perfectly healthy, and nothing

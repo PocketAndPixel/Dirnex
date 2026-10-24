@@ -172,6 +172,15 @@ the same tree in the running app went from three `Accepted publickey` a refresh 
 throwaway `sshd`. S3 still lists the open folders in turn. FSEvents stays exact and free, which is
 why the local and cloud-mount columns are a plain yes.
 
+**A refresh that finds the pane's own folder gone moves the pane up** to the nearest folder that
+still exists, on every column and in both list and tree views (2026-10-25). Whether it is gone is
+asked of the folder itself before anything moves, because a failed listing is not proof: FTP
+answers 550 for a folder the account may no longer open as well as for one that is gone, and a
+server that did not answer says nothing about either. The folder and each one above it cost one
+`stat` until one answers, so over WebDAV the usual case was two PROPFINDs and then the listing of
+where the pane landed (measured against a throwaway Apache). S3 has no folder to lose, since a
+prefix whose objects were all deleted lists as empty.
+
 <sup>nn</sup> A bar is a row's share of **its own directory**, so it needs every sibling's total
 rather than the cursor's, where the `Space` total above needs one. That is what used to gate the mode
 to the local disk, and it was two different mistakes. An **archive** never cost anything — its whole

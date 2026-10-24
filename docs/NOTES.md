@@ -1063,6 +1063,17 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Fixtures and shared state
 
+- **A test's pane outlives the test, so anything a pane does on its own runs in every later
+  suite.** Measured 2026-10-25: the first build of "a pane whose folder vanished moves up" walked
+  every orphaned fixture pane into the temp folder as its fixture was deleted. One of them was a
+  tree there, and this Mac's temp folder holds tens of thousands of entries, so every other test's
+  write re-sorted them on the main actor: the full app run stalled, one test took 351 s, and
+  unrelated suites failed waiting for their own listings while each passed alone. The sample
+  (`sample <pid>`) named it at once: `performTreeRefresh` → `Panel.setListing` → a sort. The cure
+  was the rule the remote poll already had: only a pane **in a window** acts unasked
+  (`isRemoteRefreshWanted`), which is never true of a headless test pane. A test of such behavior
+  hosts its pane in a window it never shows and detaches it before deleting the fixture
+  (`VanishedFolderTests.Hosted`), and the no-window case gets a test of its own.
 - **Reading a system attribute does not mean a test may write it.** Measured 2026-10-18 in the
   cloud-folder fixtures: `setxattr` on `com.apple.file-provider-domain-id` returned `EPERM`, even
   on a new owned directory outside `CloudStorage`. The same bytes under

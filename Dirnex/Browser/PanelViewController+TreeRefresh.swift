@@ -150,6 +150,10 @@ extension PanelViewController {
         let root = plan.root
         let listings = await treeChildEntries(at: plan.directories)
         guard token == loadToken, panel.isTree, panel.path == root else { return }
+        // A root that did not list may be gone; `leaveVanishedFolder` asks before it moves anything.
+        if plan.directories.contains(root), !listings.contains(where: { $0.0 == root }) {
+            leaveVanishedFolder(root, after: nil, token: token)
+        }
         // Only when the server answered, as list mode stamps only a listing that landed: rows that
         // could not be refreshed are as stale as they were.
         if !listings.isEmpty { noteRemoteListingArrived(at: root) }
