@@ -3929,6 +3929,13 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   the front — "Не удалось вернуть %#@items@" — which a fixed word order could not express.
   `xcstringstool` validates it at build time, so a malformed entry fails the build rather than the
   user.
+  - **Two counts in one sentence are two substitutions, and each takes its own plural.** Added
+    2026-10-25 for "Download %lld files and %lld folders from the server?": `%#@files@` with
+    `argNum` 1 and `%#@folders@` with `argNum` 2. Russian came out "21 файл и 22 папки", one
+    category each. To test a translation whatever language the test host is pinned to, open the
+    compiled `<lang>.lproj` as a `Bundle`, take `localizedString(forKey:value:table:)` and format it
+    with `String(format:locale:arguments:)` in that language's locale: the stringsdict's plural rules
+    come along (`MaterializeTitleCountTests.rendered`).
 - **A String Catalog key with no value for the *source* language compiles to the key itself.**
   Not to "absent" — `xcstringstool` writes `functionBar.file.copy.shortLabel` as its own value into
   `en.lproj`, so a lookup succeeds and puts a dotted key on screen. An entry translated for `ru` and
