@@ -326,6 +326,20 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   and System Events needs assistive access the shell lacks. A display-scope `left_click_drag` moved
   it, which needs full-screen control and Oleg's approval. To check only that a saved frame comes
   back, quit the app and seed `NSWindow Frame <name>` with `defaults write` instead.
+- **A drag out to another app can be driven with full-screen control, one way.** Measured 2026-10-24
+  dragging rows from Dirnex into a Finder window: `left_click_drag` from a row to the target ran a
+  real drag session, and Finder took the drop and the promise was fulfilled. Pressing the button,
+  `mouse_move`, and releasing never started one (the table scrolled sideways instead), and a press
+  on Dirnex while another app was active only activated it. The drag raises the source window, so the
+  target has to sit **beside** it rather than under it: narrow the Dirnex window by its corner first.
+  The frame lands in the defaults domain, and the run's import puts it back. Each drag that worked
+  had clicked its row first.
+- **Two clicks on a row with only key presses between them make a double-click.** Seen 2026-10-24:
+  click, Space, Space, click on a zip, all inside the double-click interval, opened the archive. Wait
+  a second between clicks, or move the cursor with the arrow keys.
+- **`plutil -extract` cannot read a Dirnex key**, because its key path splits at the dot in
+  `Dirnex.serverConnections` and answers "No value at that key path". Read an export with Python's
+  `plistlib` instead.
 - **Background computer-use will not touch a password field at all.** Met 2026-10-17 on New Vault:
   typing by `element_index` and clicking the `NSSecureTextField` were both refused ("this is a
   password field"), while the plain name field beside it took text. Only full-screen control is

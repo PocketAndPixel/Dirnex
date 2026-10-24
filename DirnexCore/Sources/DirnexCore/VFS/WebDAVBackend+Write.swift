@@ -60,15 +60,26 @@ public extension WebDAVBackend {
     /// A rename that changes only the case of a name is refused on a server whose disk ignores case:
     /// macOS's Apache answered 412 with `Overwrite: F` and 403 "Source and Destination URIs are the
     /// same" with `T`, leaving the file as it was. The NAS's disk keeps case, and renames there.
+    ///
+    /// **A destination folder that does not exist is `notFound` for that folder**, which is what
+    /// RFC 4918's 409 says and what Nextcloud sends. Apache does not: the NAS and macOS's Apache both
+    /// answer a MOVE into a missing folder with **500** "Could not rename resource" (measured
+    /// 2026-10-23 and 2026-10-24), which is `rename(2)` failing on the server and would otherwise
+    /// read as an I/O error. So a 500 is followed by one stat of that folder, and only the server
+    /// saying it is gone turns it into `notFound`. That is the answer Put Back waits for before it
+    /// rebuilds a folder deleted since the item went into a share's `#recycle`.
     func moveItem(at source: VFSPath, to destination: VFSPath) throws {
         try requireOwnBackend(source)
         guard destination.backend == id else { throw VFSError.io(path: source, code: EXDEV) }
         guard !source.isRoot, !destination.isRoot else {
             throw VFSError.unsupported(.deleteConnectionRoot)
         }
-        try write(source, destination: destination, method: .move) {
-            try transport.move(source.path, to: destination.path)
+        let response = try mapping(source) { try transport.move(source.path, to: destination.path) }
+        guard let refusal = Self.refusal(response, method: .move) else { return }
+        if refusal.status == 500, let folder = destination.parent, isGone(folder) {
+            throw VFSError.notFound(folder)
         }
+        throw refusal.vfsError(for: source, destination: destination)
     }
 
     /// Permanently remove `path` with one DELETE, recursively for a folder. The protocol has no

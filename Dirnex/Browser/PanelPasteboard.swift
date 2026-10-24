@@ -88,19 +88,8 @@ enum PanelPasteboard {
         write(items(for: entries), to: pasteboard)
     }
 
-    /// Replace `pasteboard`'s contents with the drag writers for `entries` — the widening a
-    /// multi-row drag needs, once AppKit has already written the one row it knows about.
-    @discardableResult
-    static func writeDrag(
-        _ entries: [FileEntry],
-        promisedTo delegate: any NSFilePromiseProviderDelegate,
-        to pasteboard: NSPasteboard
-    ) -> Bool {
-        write(dragWriters(for: entries, promisedTo: delegate), to: pasteboard)
-    }
-
-    /// The one place the board is actually replaced, so ⌘C and a drag cannot disagree about what
-    /// "there was nothing to write" does to whatever was already on it.
+    /// The one place the board is actually replaced, so every caller agrees about what "there was
+    /// nothing to write" does to whatever was already on it.
     private static func write(
         _ writers: [any NSPasteboardWriting],
         to pasteboard: NSPasteboard

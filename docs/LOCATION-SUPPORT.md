@@ -86,9 +86,10 @@ tree refresh, ⌥F7, ⌘C ⌘V, Quick View, the compare window, Synchronize, Cre
 `WebDAVLiveIntegrationTests` (Slice 6) runs the verbs under these cells against four Apache endpoints
 on every live run: Basic, Digest and a public folder over HTTP, and Basic over HTTPS with a pinned
 self-signed certificate. Every cell follows from the backend answering `isRemoteConnection`,
-`acceptsUploads` and `[.read, .write, .rename]`, and these were not exercised live: dragging (a drag
-session cannot be synthesized), Open With, Share, Pack, user scripts, ⇧F2 and Put Back in a
-`#recycle`. **A second server family runs the same suite**: Nextcloud 34's sabre/dav, in a container
+`acceptsUploads` and `[.read, .write, .rename]`. The gestures no suite can drive ran live on
+2026-10-24 instead, on the NAS and a throwaway Apache: dragging out to Finder, Open With, Share,
+Pack, user scripts, F2 and ⇧F2, Put Back in a `#recycle`, Digest, and a server that refuses COPY
+(PLAN.md §M32). **A second server family runs the same suite**: Nextcloud 34's sabre/dav, in a container
 the server script starts when its image is on the Mac (PLAN.md §M32, 2026-10-24). Its listing parsed
 unchanged. Where it behaves differently, the cell says so: it stores names composed, it deletes a
 folder around a file another client has locked, it keeps the date an upload asks for
@@ -312,7 +313,9 @@ into one does not, `⌥⌘V` into one being unsupported either way.
 <sup>k</sup> What a drag can and cannot reach, in three parts. A row on a server is dragged **out**
 as an `NSFilePromiseProvider`: the board advertises the file and the bytes are fetched only if
 something accepts the drop, through the same funnel `⏎` and `F4` use — so a row already fetched for
-a preview drags out with no transfer at all. A **folder** is not promised (a promise is one file,
+a preview drags out with no transfer at all. A marked set is one promise per row, and the drag
+session is started with all of them: widening it afterwards carried local files and dropped no
+remote ones at all (measured into Finder 2026-10-24, PLAN.md §M32). A **folder** is not promised (a promise is one file,
 and a recursive fetch behind a Finder drop has no progress surface and no way to stop it), so it
 travels inside Dirnex only. And a **virtual listing** — a results tab, the merged Trash — is a
 source and never a destination: its rows carry their real paths and copy or drag out per row, while
@@ -378,9 +381,11 @@ which answers nothing for an item Finder wrote no record for. The restore rebuil
 that has since been deleted, never overwrites a name that has come back, and sweeps the empty mirror
 folders it leaves in the bin. **Limited** in three ways. It is `#recycle` only — **not** QNAP's
 `@Recycle`, whose mirroring is unmeasured, and guessing restores a file to a folder nobody named.
-Only **SMB was verified live**; SFTP, FTP and WebDAV follow structurally, since the origin carries the
-path's backend (pinned by a unit test) and every verb the restore uses exists on all three, but none
-has been exercised against a real server. Over WebDAV the NAS's bin is an ordinary row of the share,
+**SMB and WebDAV were verified live**, WebDAV on the NAS on 2026-10-24 with a folder deleted since
+included: Apache answers a MOVE into a missing folder with 500 rather than 409, so the backend asks
+whether the folder is there before it reports anything. SFTP and FTP follow structurally, since the
+origin carries the path's backend (pinned by a unit test) and every verb the restore uses exists on
+both, but neither has been exercised against a real server. Over WebDAV the NAS's bin is an ordinary row of the share,
 and a WebDAV delete lands in it (measured, PLAN.md §M32). So the delete confirmation asks the server
 first: one `Depth: 0` PROPFIND of `<share>/#recycle`, the share being the path's first segment, and
 the *may keep a copy* wording below when that is a folder. The sheet waits at most 1.5 s for the

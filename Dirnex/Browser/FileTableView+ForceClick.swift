@@ -56,16 +56,4 @@ extension FileTableView {
         guard let row = forceClick.pressureChanged(toStage: stage) else { return }
         inputDelegate?.fileTable(self, didForceClickRow: row)
     }
-
-    /// Called from inside `mouseDown`'s tracking loop the moment the press becomes a drag, so before
-    /// the press's queued pressure events are delivered. Measured 2026-10-18: 1 ms before `mouseDown`
-    /// returned, and ahead of the data source's own `willBeginAt`.
-    override func beginDraggingSession(
-        with items: [NSDraggingItem],
-        event: NSEvent,
-        source: any NSDraggingSource
-    ) -> NSDraggingSession {
-        forceClick.disarm()
-        return super.beginDraggingSession(with: items, event: event, source: source)
-    }
 }

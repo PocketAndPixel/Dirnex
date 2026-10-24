@@ -165,6 +165,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Swift Testing and `xcodebuild`
 
+- **`#expect(x as AnyObject === y)` crashes the compiler, not the test.** Seen 2026-10-24 on Xcode
+  26: SILGen aborted with *"Found an invalid conformance in SILGen"* in a reabstraction thunk the
+  macro's expansion builds, and the run reported only the file in *build commands failed*, with the
+  one-line message repeated under *Testing failed* and no `file:line: error:` to grep. The crash log
+  names the test function. `#expect(ObjectIdentifier(x as AnyObject) == ObjectIdentifier(y))`
+  compiles and says the same.
 - **`#expect(optionalNumeric == arithmeticExpression)` can report a false failure** even when
   both operands display as equal. Confirmed on Swift 6.3 / Xcode 26:
   `let v: Int64? = 1_048_576; #expect(v == 1024 * 1024)` FAILS, while `#expect(v == 1_048_576)`
@@ -3730,6 +3736,16 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     requirement is `NS_SWIFT_NONISOLATED`, and Swift 6 refuses to *send* the provider across an actor
     boundary because `NSFilePromiseProvider` is not `Sendable`. Read the row off it **before** the
     hop and send the `FileEntry` instead; the value is what the work needs anyway.
+- **A promise is kept only as one of the drag session's own items.** Measured 2026-10-24 dragging
+  rows from a server into Finder: the pane widened a one-row drag to the marked set by rewriting
+  `session.draggingPasteboard` in `tableView(_:draggingSession:willBeginAt:forRowIndexes:)`, and
+  that carried two local file URLs fine while two promises dropped **nothing**, three times. The
+  board was read at both indexes; `writePromiseTo` was never called. Starting the session with one
+  `NSDraggingItem` per row, in the table's `beginDraggingSession(with:event:source:)` override,
+  dropped both (`FileTableView+Drag`). Apple documents that method's event as the mouse-down, so
+  `row(at:)` of its location names the grabbed row, and in the live run it did.
+  - **`setDraggingFrame(_:contents: nil)` still gives the item an image component.** To make an
+    item carry no picture, set `draggingFrame` and then `imageComponentsProvider = nil`.
 - **A promise runs outside every progress surface the app has, so the completion handler is the only
   thing that can report — and there are three ways to get that wrong, not one.** Unanswered is a
   beachball in somebody else's app; answered with `nil` after a failed transfer is a **zero-byte
@@ -6858,6 +6874,19 @@ whoever drives `curl` over HTTP next. Most of them apply to the S3 backend as mu
   failed login.** `--digest` never goes first, since a new process has no nonce, so every invocation
   is a 401 and then the request (two lines in Apache's log for each). A Basic `Authorization` sent to
   a Digest location was logged with no user at all, the header ignored rather than weighed.
+  - **The body goes once.** A 5 MB PUT through `--digest` logged 136 bytes in on the 401 and
+    5 000 452 on the 201 (`mod_logio`'s `%I`, 2026-10-24): `curl` holds the body back until the
+    challenge is answered, so Digest doubles the requests of an upload and not its bytes.
+- **Apache answers a MOVE into a folder that does not exist with 500, not 409.** RFC 4918 says 409,
+  and Nextcloud sends it. The NAS (2026-10-24) and macOS's Apache (2026-10-23) both answered **500**
+  *"Could not rename resource"*, `rename(2)` failing on the server, and the source stayed where it
+  was. Read alone it is an I/O error, and anything waiting for "that folder is gone" (Put Back's
+  rebuild) never hears it, so `moveItem` stats the destination folder after a 500 and reports
+  `notFound` for it only when the server says it is missing.
+- **A server without COPY is one rewrite rule on the throwaway Apache.** `RewriteCond
+  %{REQUEST_METHOD} =COPY` and `RewriteRule ^/nocopy(/|$) - [R=501]` (with `mod_rewrite` loaded)
+  answer 501 at the server level, before authentication, and leave MOVE and every other verb alone.
+  An `R=` outside 300–399 drops the substitution, so the `-` is required.
 - **An entity tag read twice has to be compared weakly, and only a strong one may guard a write.**
   Measured on macOS's Apache 2026-10-23 (M32 Slice 4): the tag is the size and the modification time
   **truncated to the whole second** (six files written in one second carried one mtime, and the next
