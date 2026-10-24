@@ -139,6 +139,53 @@ struct WebDAVBackendWriteTests {
         }
     }
 
+    /// Apache answers a MOVE into a missing folder with 500 rather than RFC 4918's 409 (the NAS,
+    /// captured 2026-10-24 through the shipped arguments). Put Back rebuilds a folder only on
+    /// `notFound`, so one stat of the folder decides which the 500 was.
+    @Test("a 500 into a folder the server says is gone is notFound for that folder")
+    func moveIntoMissingFolder() {
+        let transport = FakeWebDAVTransport()
+        transport.answerWrite = { _ in
+            try WebDAVFixtures.run(
+                "curl-exit0-nas-move-noparent-500",
+                body: "nas-move-noparent-500",
+                bodyExtension: "html"
+            )
+        }
+        transport.respond = { _ in
+            try WebDAVFixtures.run(
+                "curl-exit0-nas-propfind-404",
+                body: "nas-missing-404",
+                bodyExtension: "html"
+            )
+        }
+        #expect(throws: VFSError.notFound(path("/fx/missing"))) {
+            try backend(transport).moveItem(at: path("/fx/c.txt"), to: path("/fx/missing/c.txt"))
+        }
+        #expect(transport.writes == [.move("/fx/c.txt", to: "/fx/missing/c.txt")])
+        #expect(
+            transport.propfinds == [.init(path: "/fx/missing", depth: .zero, isCollection: false)]
+        )
+    }
+
+    /// The control: the same 500 with the folder still there is the server failing, and stays an
+    /// I/O error rather than sending anybody to rebuild a folder that exists.
+    @Test("a 500 into a folder that is there stays an I/O error")
+    func moveFailsOnTheServer() {
+        let transport = FakeWebDAVTransport()
+        transport.answerWrite = { _ in
+            try WebDAVFixtures.run(
+                "curl-exit0-nas-move-noparent-500",
+                body: "nas-move-noparent-500",
+                bodyExtension: "html"
+            )
+        }
+        transport.respond = { _ in try WebDAVFixtures.multistatus("nas-folder-noslash-depth0-props") }
+        #expect(throws: VFSError.io(path: path("/fx/c.txt"), code: EIO)) {
+            try backend(transport).moveItem(at: path("/fx/c.txt"), to: path(Self.folder + "/c.txt"))
+        }
+    }
+
     @Test("a folder holding a locked file does not move, and the file is named")
     func moveLockedMember() {
         #expect(throws: VFSError.unsupported(.lockedOnServer(name: "locked.txt"))) {

@@ -16858,6 +16858,79 @@ sentence hedges the email and ends on the way out, as *No mail app opened* alrea
 - **Not seen live:** the new sentence on screen. Pressing Email Instead again would have opened
   Mail's account setup a second time, and the dialog's choice of sentence did not change.
 
+**2026-10-24: M32's "not run live" list, run, and the three bugs it found** (core, app, tests and
+docs). Against the NAS (`dirnex-test`, DSM's Apache on 5006) and, for what the NAS cannot be, a
+throwaway Apache on loopback: a Digest location, and a folder whose COPY is refused. The Debug build
+carried two temporary probes, both removed: a log of every `curl` run's arguments, exit and status,
+and an in-memory secret store answering the account's password, so nothing reached the login
+Keychain (checked by attribute afterwards) and no prompt came up.
+
+- **Changed certificate.** A saved server seeded with a wrong pin failed its first PROPFIND with exit
+  90 before sending anything, fetched the certificate with a credential-free OPTIONS, and showed the
+  NAS's SHA-256 fingerprint, the one `openssl` reads. Cancel said the certificate trusted before is
+  still the one expected, and wrote and sent nothing more. Trust New Certificate & Connect pinned the
+  new key, authenticated, listed the share and wrote the pin into the record.
+- **An edit saved through the sheet.** Edit… opened the sheet prefilled. Root `/home` and a new name,
+  then Connect: the record was **replaced in place**, renamed, root `/home`, the learned pin and
+  `basic` kept, the other twelve servers untouched.
+- **Digest**, with the record seeded as `basic` on purpose: the credential-free PROPFIND drew the
+  Digest challenge, the probe settled on `--digest`, and the record was rewritten to `digest`.
+  Listings, stats, three uploads and two COPYs went through. Every request costs the server two round
+  trips, a 401 and then the answer, because each `curl` starts without a nonce. A 5 MB upload sent its
+  body once: 136 bytes on the unauthenticated PUT, 5 000 452 on the second (`mod_logio`).
+- **A server without COPY**, made with `RewriteCond %{REQUEST_METHOD} =COPY` and
+  `RewriteRule ^/nocopy(/|$) - [R=501]`, MOVE still working. Two marked files F5'd into a subfolder
+  of the same account: **one** COPY, answered 501, then GET and PUT for the first file and GET and
+  PUT for the second with no COPY tried. Both byte-identical. The control, the same gesture on the
+  Digest location, was two COPYs and no GET or PUT.
+- **F2 and ⇧F2.** F2 to `report #2 [x] é.md`: one stat of the new name, one MOVE with
+  `Overwrite: F`. ⇧F2 with the mask `Мульти [C]-[N]` over three files: three MOVEs, the Cyrillic
+  names intact on the NAS.
+- **Open With, Share and user scripts.** Drawing Open With's app menu fetched nothing, and choosing
+  TextEdit cost one GET and opened the copy under its real name. Share fetched before presenting, one
+  GET for a byte-identical copy, and the picker named the row. A script appending a line ran once per
+  marked file on fetched copies, and both rewrites went back as `If-Match` PUTs that the NAS kept.
+- **⌥F5 with a server folder in the set was broken, since 2026-08-30.** The folder was walked and
+  every file fetched, then the pack refused with *couldn't be prepared … changed on the server*, and
+  the staged tree stayed in the temp root until the next launch. `deliver` resolved every row through
+  the window's `RemoteFileCache`, which deliberately does not adopt a staged folder, so a marked
+  folder could never resolve. The shipped tests covered the runner, not the gesture. **Fix:**
+  `fetchRemotely` hands `deliver` the staged folders from the run's own report, and a set that still
+  comes up short sweeps what was staged through `RemoteFileCache.sweepStagedTrees`, which the queue's
+  pack sweep now calls too. Live: a folder with one level of nesting and a file packed into a zip
+  whose members matched the NAS byte for byte, and no staged tree left. `PackStagedFolderTests` (3):
+  without the lookup the hand-off test failed, and without the sweep the sweep test did.
+- **Put Back in `#recycle`, and the bin check against the NAS.** F8 read `/home/#recycle` once and the
+  sheet said the server may keep a copy; one DELETE put the file at
+  `#recycle/dirnex-m32-live/a.txt`, and Put Back brought it home with one stat and one MOVE. **Into a
+  folder deleted since, it failed** with *code 5*: the NAS answers a MOVE into a missing folder with
+  **500** "Could not rename resource" rather than RFC 4918's 409, so the rebuild Put Back runs on
+  `notFound` never ran. macOS's Apache answers the same. **Fix, in the core:** `moveItem` follows a
+  500 with one stat of the destination folder, and only the server saying it is gone becomes
+  `notFound` for that folder. The fixtures are the NAS's own answer, captured through the shipped
+  arguments. Live in the fixed build: the MOVE's 500, the folder rebuilt with MKCOL, the MOVE again,
+  and the emptied bin folders pruned up to `#recycle`. The old `moveItem` failed the new test; the
+  control, a 500 whose folder is still there, stays an I/O error on both.
+- **Dragging out, which M23 left for a human.** One row into Finder: one GET, and the file
+  byte-identical under a name with `#`, brackets and é. **A marked set dropped nothing**, three
+  times, while the same gesture on one unmarked row, and on two marked *local* files, dropped first
+  time. The marked set was widened by rewriting the session's board in `willBeginAt`, which carries
+  file URLs and loses promises: the board was read at both indexes and no promise was ever asked for.
+  **Fix:** `FileTableView.beginDraggingSession` asks the pane for the marked set's writers
+  (`fileTable(_:dragWritersFromRow:)`) and starts the session with one item each, the first with the
+  row's picture, so the drag looks as it did. `PanelPasteboard.writeDrag` is gone. Live in the fixed
+  build: two marked NAS rows, two GETs, two byte-identical files, and two marked local zips still
+  copied. `DragMarkedRowsTests` (4): with the marked check dropped the unmarked-grab test failed, and
+  with every item keeping the picture the item test did. This held for every remote backend, not
+  WebDAV alone.
+- **Left for Oleg:** a pane whose folder is removed under it keeps its old rows when the refresh
+  fails, on every backend (seen after Put Back pruned the bin folder the pane was in); the fetch
+  confirmation says *Download 2 files* for one file and one folder, because it counts marked rows;
+  and a single remote file packed by ⌥F5 carries its download time, where a staged folder's files
+  keep the server's.
+- The defaults domain was restored and compared unchanged (71 keys), and the NAS fixture went to the
+  share's bin.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

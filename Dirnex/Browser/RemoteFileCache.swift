@@ -53,6 +53,28 @@ final class RemoteFileCache {
         try? FileManager.default.removeItem(at: temporaryRoot)
     }
 
+    /// Remove each **staged subtree** among `trees`, holder and all.
+    ///
+    /// A folder ⌥F5 brings down whole is not adopted (``adopt(_:)``), so nothing else would ever
+    /// remove it before the next launch. Only a directory under ``temporaryRoot`` is one this app
+    /// staged: a local folder the user packed is a directory somewhere else, and a staged file is a
+    /// file. The holder above it goes with it, since `MaterializeRunner` gives every source a
+    /// directory of its own so two folders called `docs` from two accounts cannot collide, and
+    /// leaving the empty holder would be the same leak one level up.
+    static func sweepStagedTrees(_ trees: some Sequence<URL>) {
+        let root = temporaryRoot.standardizedFileURL.path
+        for tree in trees {
+            let path = tree.standardizedFileURL.path
+            var isDirectory: ObjCBool = false
+            guard path.hasPrefix(root + "/"),
+                  FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
+                  isDirectory.boolValue else { continue }
+            try? FileManager.default.removeItem(
+                at: URL(fileURLWithPath: path).deletingLastPathComponent()
+            )
+        }
+    }
+
     /// The downloaded copy of `entry`'s object if one is here **and still matches what the listing
     /// says** — otherwise `nil`, which the caller reads as "nothing to show yet".
     ///

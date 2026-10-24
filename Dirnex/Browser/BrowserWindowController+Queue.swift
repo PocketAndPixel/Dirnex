@@ -176,9 +176,8 @@ extension BrowserWindowController {
     /// gigabytes. So nothing else would ever remove it: the cache clears its root at **launch**,
     /// which for a copy nobody may reuse is a whole session of somebody's disk.
     ///
-    /// The job carries the answer, so this needs no bookkeeping and no id to pair against: a source
-    /// that is a **directory** *and* sits under the fetch root is one this app staged, where a local
-    /// folder the user packed is a directory somewhere else entirely and a staged file is a file.
+    /// The job carries the answer, so this needs no bookkeeping and no id to pair against: which of
+    /// its sources this app staged is ``RemoteFileCache/sweepStagedTrees(_:)``'s to tell.
     private func sweepStagedTrees(of kind: FileOperation.Kind) {
         let sources: [PackSource]
         switch kind {
@@ -186,20 +185,7 @@ extension BrowserWindowController {
         case let .plainPack(job): sources = job.sources
         default: return
         }
-        let root = RemoteFileCache.temporaryRoot.standardizedFileURL.path
-        for source in sources {
-            let path = URL(fileURLWithPath: source.onDiskPath).standardizedFileURL.path
-            var isDirectory: ObjCBool = false
-            guard path.hasPrefix(root + "/"),
-                  FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
-                  isDirectory.boolValue else { continue }
-            // The holder above it, not the tree itself: `MaterializeRunner` gives every source a
-            // directory of its own so two folders called `docs` from two accounts cannot collide,
-            // and leaving the empty holder behind would be the same leak one level up.
-            try? FileManager.default.removeItem(
-                at: URL(fileURLWithPath: path).deletingLastPathComponent()
-            )
-        }
+        RemoteFileCache.sweepStagedTrees(sources.map { URL(fileURLWithPath: $0.onDiskPath) })
     }
 
     private func refreshPanes() {
