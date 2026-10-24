@@ -378,6 +378,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     sent no action. After `orderFront` it sent the action, with the window still not key. So a pointer
     click on a button is testable end to end, hit test included, which `performClick` and computer
     use's AXPress both skip. Keep a control that removes the thing letting the hit through.
+  - **`window.sendEvent` is the right instrument when the click into a window that isn't key is
+    itself the subject.** It hands the press on when the view under it accepts first mouse and keeps
+    it otherwise, as a click from another app does (▸ Text fields and text views). Measured
+    2026-10-24 in `MultiLineFieldTests.clickFromAnotherApp`: with the release queued first, a text
+    field and a first-mouse text view each took the focus, and a plain text view did not. Discard the
+    release a kept press leaves queued (`NSApp.discardEvents(matching: .leftMouseUp, before: nil)`).
+    Ordering the window front made its only key view the first responder, so clear that first or the
+    test proves nothing.
 
 ### Waits, run loops and timing
 
@@ -2758,6 +2766,15 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     coordinates, rounded out to whole points. It has a shadow and sits at window level 103.
   - **There is no public call to show it**, only the hover, so anything keyboard-driven needs its
     own window anyway (`CursorNamePeek`).
+
+- **A window that isn't key hands a click on only to a view that accepts first mouse, and a text
+  field does where a text view doesn't.** Measured 2026-10-24 with a throwaway app, both by asking
+  `acceptsFirstMouse(for:)` and by clicking into an app that was never active. `NSTextField` answers
+  `true`, so one click into it from another app focuses it. `NSTextView` answers `false`, so the same
+  click only brings the window forward and the focus stays where it was. Report a Bug… mixed the two,
+  and real clicks from Finder put a letter meant for Steps onto the end of the email address.
+  `MultiLineTextView` answers `true`, so a `MultiLineField` takes the click as the field it imitates
+  does.
 
 ### Views, layout and hit testing
 

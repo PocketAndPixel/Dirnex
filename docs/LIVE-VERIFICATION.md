@@ -350,6 +350,17 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   accessibility hit test at those points answers its `AXTextArea` (pinned in `MultiLineFieldTests`).
   Typing by `element_index` and `app_click` by `element_index` both worked. Neither moved the window's
   first responder, though, so a focus ring that should follow the click can't be checked this way.
+- **A background `app_click` on a text field or text view is an accessibility write, not a click,
+  and leaves the keyboard focus where it was.** Measured 2026-10-24 in Report a Bug…: the tool
+  reported `set AXSelectedTextRange={loc:0,len:0}` on Steps, then on the email field, and a letter
+  typed at the focus after each went into the description both times. This was M30's "a click in the
+  email field left the focus in Steps". To learn where a click puts the focus, use full-screen
+  control, whose clicks are real, and type one letter after it.
+- **In a full-screen run, a click on the wallpaper slides every window off the screen.** That is
+  macOS's *Click wallpaper to reveal desktop*. Seen 2026-10-24 putting Finder in front of Dirnex for a
+  click from another app. A second click on the wallpaper brings the windows back and leaves Finder
+  active, which is a cheap way to make the app under test inactive with its window still in view.
+  Zoom on the menu bar to check which app is active before the click.
 - **A background `app_screenshot` taken right after an action can show the window as it was before
   it.** Seen on 2026-10-14 checking the search edit: after Find, the capture still drew the pane's
   old folder while the same call's accessibility summary already named the new results tab, and a

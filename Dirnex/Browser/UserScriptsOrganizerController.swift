@@ -34,7 +34,7 @@ final class UserScriptsOrganizerController: NSViewController {
     private let functionKeyPopUp = NSPopUpButton()
     private let keywordsField = NSTextField.singleLine()
     /// Drawn as the Name and Keywords fields above it are drawn (``MultiLineField``).
-    private let commandBox = MultiLineField(NSTextView())
+    private let commandBox = MultiLineField(MultiLineTextView())
     private var commandTextView: NSTextView { commandBox.textView }
     private let detailStack = NSStackView()
 

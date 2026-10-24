@@ -13372,7 +13372,9 @@ was never sent live, since it opens a draft in the mail app; core tests pin its 
 **rate-limit and refusal messages** are pinned by app tests, and the server's answers by its own.
 **Escape** can't be tried live (LIVE-VERIFICATION.md). And one thing was seen once and is open: in
 a computer-use run, a click in the email field left the focus in Steps, so the address was typed
-there; whether a real click does the same isn't known.
+there; whether a real click does the same isn't known. **Closed 2026-10-24** (the last entry of
+§M32's log): it was the tool, and real clicks found the opposite case, now fixed; the messages and
+Escape were seen live the same day.
 
 Left deliberately undone: **anything the user didn't type or tick** — no logs, no screenshots, no
 file names or paths, and one crash report at most, the newest from the last 7 days, without the
@@ -16793,6 +16795,68 @@ and on a throttled link it is four times faster.
   already show for a row in the NAS's bin.
 - **With this, the done-when list is met**, and Slice 6's NAS run, second family and languages are
   all in. What stays "not run live yet" is listed under Slices 3–5.
+
+**2026-10-24: Report a Bug's text boxes take the click that brings the dialog forward, and M30's
+open item is closed** (app, tests and docs). The item was a 2026-10-07 computer-use run in which a
+click in the email field left the focus in Steps. That was the tool. The run found the opposite case,
+and that one was real.
+
+- **The recorded symptom was computer-use's.** Its background click on a text element is not a mouse
+  event: it reports setting `AXSelectedTextRange` on the element, and the window's first responder
+  does not move. Reproduced in the Debug build: a "click" on Steps and one on the email field, each
+  followed by a letter typed at the focus, put both letters in the description (LIVE-VERIFICATION.md).
+- **Real clicks, with full-screen control and Finder active.** One click into the email field while
+  Steps had the focus focused it, and the letter landed there. One click into Steps while the email
+  field had the focus brought the dialog forward and left the focus where it was, so the letter went
+  onto the end of the address.
+- **Why:** a window that isn't key hands a click on only to a view that accepts first mouse.
+  `NSTextField` answers `true` and `NSTextView` `false`, measured with a throwaway app both by asking
+  and by clicking into an app that was never active (NOTES.md ▸ Text fields and text views). The two
+  boxes are text views, so they took a click only once the window was key, while the field below them
+  took it at once.
+- **Fix:** `MultiLineTextView`, the text view every `MultiLineField` now takes, answers `true`. That
+  covers Report a Bug's two boxes and its preview, and the scripts organizer's Command, whose Name and
+  Keywords fields already took the click. Live with real clicks from Finder in the fixed build, one
+  click into Steps and one into the description each put the next letter there, and the address was
+  untouched.
+- **Tests:** `MultiLineFieldTests.clickFromAnotherApp` and `BugReportDialogTests.clickFromAnotherApp`
+  send the press through `NSWindow.sendEvent`, which in the test host is a click into a window that
+  isn't key (NOTES.md ▸ Testing). With `false` put back, the box test failed and the dialog test
+  failed once per box, while the email field, its control, passed.
+- **The rest of M30's "seen only in tests", live** against `Tooling/fake-bug-report-endpoint.py`.
+  With `STATUS=429`, `400` and `500`, Send left the text in place and showed the rate-limit, refusal
+  (*malformed*) and server-problem sentences in red; the rate-limit one wraps to two lines inside the
+  room the status line keeps. **Escape**, pressed by Oleg on his own keyboard, closed the dialog, and
+  Report a Bug… brought the same text back.
+- **Email Instead opened Mail, which has no account on this Mac**, so Mail showed Add Account and no
+  draft, and quit on Cancel. The dialog still said *"The report is in a new email in your mail app."*
+  `NSWorkspace.open` answered `true`, since Mail did open. The draft's contents stay pinned by the
+  core tests only.
+- The defaults domain was restored and compared unchanged (71 keys).
+
+**2026-10-24: Email Instead says what should happen, not what did** (app, catalog, tests). Asked for
+by Oleg after the entry above. The status after Email Instead is now *"Your mail app should open a
+new email with the report. If it doesn't, copy the report instead."*, in all 14 languages, and the
+old sentence is gone from the catalog. The mail app taking the link is all Dirnex learns, so the
+sentence hedges the email and ends on the way out, as *No mail app opened* already did.
+
+- **Translations** reuse each language's own words from the neighbouring Report a Bug sentences
+  (*Mail-Programm*, *app de correo*, *почтовое приложение*, *郵件 App*), and the form of address those
+  sentences use: *Sie* in German, *vous* in French, *tu* in Spanish and Italian. Ukrainian takes ’,
+  as the rest of its catalog does.
+- **It fits.** The status line wraps at 496 pt and holds two lines. In the label's font the new
+  sentence measures 355 pt (Chinese) to 611 pt (Russian), two lines at most, and one in English,
+  Korean and Chinese. In every language it is shorter than the rate-limit sentence the line already
+  shows.
+- **`BugReportStatusWidthTests`** pins all eleven sentences the line can show, in every compiled
+  language, through the dialog's own label, with the widest refusal reason the server names
+  (`unsupportedVersion`) and a three-digit status filled in. It checks its instrument twice: a third
+  line has to measure taller, and the English rate-limit sentence has to wrap, as it did live.
+  Negative control: the German translation doubled failed on that sentence alone. It reads the
+  compiled `.strings` through `ConnectPlaceholderWidthTests.translations(of:)`, now shared.
+- `scripts/check_localization_keys.py`: 1161 extracted keys, all in the catalogs.
+- **Not seen live:** the new sentence on screen. Pressing Email Instead again would have opened
+  Mail's account setup a second time, and the dialog's choice of sentence did not change.
 
 ---
 
