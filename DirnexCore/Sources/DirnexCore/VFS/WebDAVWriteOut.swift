@@ -98,9 +98,7 @@ public enum WebDAVWriteOut {
         standardError: String
     ) throws -> WebDAVHTTPResponse {
         let fields = parse(stderr: standardError)
-        let answered = fields.status != 0
-            && (exitCode == 0 || (exitCode == 22 && fields.status >= 400))
-        guard answered else {
+        guard isAnswer(status: fields.status, exitCode: exitCode) else {
             throw WebDAVResponseError.transport(.classify(curlExit: exitCode))
         }
         return WebDAVHTTPResponse(
@@ -110,5 +108,11 @@ public enum WebDAVWriteOut {
             bytesDownloaded: fields.bytesDownloaded,
             bytesUploaded: fields.bytesUploaded
         )
+    }
+
+    /// The rule above for one transfer's status and exit code, which a batched or segmented run
+    /// reads per section from `%{exitcode}`, since the run's own code is only its last section's.
+    static func isAnswer(status: Int, exitCode: Int32) -> Bool {
+        status != 0 && (exitCode == 0 || (exitCode == 22 && status >= 400))
     }
 }

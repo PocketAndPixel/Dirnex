@@ -195,6 +195,8 @@ final class CountingWebDAVTransport: WebDAVTransport, @unchecked Sendable {
         case propfind(WebDAVDepth)
         case propfindBatch(folders: Int)
         case get(resume: Bool)
+        /// One `curl` carrying this many guarded ranges of one file.
+        case getRanges(Int)
         case mkcol
         case put(S3WriteCondition)
         case putEmpty(S3WriteCondition)
@@ -255,6 +257,25 @@ final class CountingWebDAVTransport: WebDAVTransport, @unchecked Sendable {
             backendPath,
             to: localPath,
             resume: resume,
+            progress: progress,
+            isCancelled: isCancelled
+        )
+    }
+
+    /// Forwarded rather than left to the protocol's default, which would answer with one plain GET
+    /// and hide every split from the count.
+    func downloadSegments(
+        _ segments: [DownloadSegment],
+        of file: WebDAVTaggedFile,
+        to localPath: String,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> WebDAVSegmentedDownload {
+        record(.getRanges(segments.count))
+        return try base.downloadSegments(
+            segments,
+            of: file,
+            to: localPath,
             progress: progress,
             isCancelled: isCancelled
         )
@@ -377,7 +398,7 @@ extension CountingWebDAVTransport.Request {
     /// Whether the request carried a file's bytes across this Mac's connection, either way.
     var movesBytes: Bool {
         switch self {
-        case .get, .put: true
+        case .get, .getRanges, .put: true
         default: false
         }
     }

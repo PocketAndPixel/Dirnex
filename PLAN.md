@@ -773,6 +773,58 @@ sheet in other languages are still to come.
   - A Debug build from 2026-10-23 23:34 is still running (pid 52041), launched by nobody in this
     session; the test runs rebuilt the binary under it.
 
+**2026-10-24: A large WebDAV download splits over several connections** (core and app). Slice 6's
+first half found WebDAV the only remote without a segmented download; this closes that cell.
+
+- **Probed first**, against the throwaway Apache and a second scratch one holding every connection to
+  4 MiB/s with `mod_ratelimit`: four ranges in one `curl -Z` opened four connections at once and
+  joined SHA-256 identical; 40 MiB took **10.12 s in one stream, 5.08 s in two, 2.46 s in four and
+  1.25 s in eight** (two rounds alike), and the same over pinned HTTPS and Digest; with nothing
+  limiting a connection, four ranges of 16 MiB cost 4 ms over HTTP and 8 ms over HTTPS. A stale
+  `If-Range` answered 200 with the whole file, and a stale `If-Match` 412 with nothing sent, which
+  decided the guard. Three more findings went to NOTES.md ▸ curl (WebDAV).
+- **Core:**
+  - `SegmentedDownloadLimits.webdav`: 8 MiB, 4 MiB, at most 4 ranges. S3's threshold, since a range
+    costs one connection made in parallel; FTP's ceiling, since a NAS or a proxied server often caps
+    connections per client, and eight beat four only on the throttled link.
+  - `WebDAVProcessArguments.downloadSegments` and `WebDAVSegmentWriteOut`: one `-Z` run, each section
+    carrying `fail`, `If-Match` with the tag, its range, its own file, its own write-out line and the
+    connection's options (`-4`, scheme and credential, pin); `-q` first and `--parallel-immediate`
+    in `argv`. Each section is read by its own `%{exitcode}`. `WebDAVTaggedFile` carries the path and
+    the tag. The batch builder's connection lines and the exit-code rule (`WebDAVWriteOut.isAnswer`)
+    are shared now rather than written twice.
+  - `WebDAVTransport.downloadSegments`, whose default forwards to the plain download and says so.
+  - `WebDAVBackend+Segmented`: a file whose listing says it is over 8 MiB, with nothing on disk, is
+    stat'ed once for its current size and tag, then split. No strong tag, no split. All 206: joined.
+    A 412: the file changed, so one stream, no latch. A 200: the server ignores ranges, latched for
+    the connection. Some served and the rest refused or unanswered: latched, as a cap would be. Every
+    range refused: one stream, no latch. A short piece: one stream, latched. One tally spans the
+    split and its fallback, so no byte is reported twice. A stat the server refuses is thrown as the
+    file's answer.
+- **App:** `WebDAVCurlTransport+Segmented`, progress from the pieces growing and capped at the file's
+  size, and a backstop of the transfer budget, since `max-time` sits in the config.
+- **Tests:** 24 core tests in two new suites, 247 across WebDAV, and 12 new fixtures: ten runs
+  captured through the shipped builder (four ranges over HTTP, HTTPS and Digest, out of order; a stale
+  tag; a file shorter than the plan; a server ignoring `Range`; a wrong password; a refused
+  connection; a wrong pin; a cut) and two `Depth: 0` answers for a large file, strong and weak. Two
+  live tests on all four endpoints: F5's download of a 16 MiB file is one stat and four ranges,
+  byte-identical, with the same file fetched unhinted as the control that must go in one GET; and
+  ranges carrying a stale tag are refused, each one, writing nothing. The server's log agreed: four
+  206s and one 200 per run, and Digest one challenge per range. Core 4451 and app 1872 green, 1846
+  executed with the servers up; both linters clean.
+- **Negative controls:** each of seven breaks fails its own core test: `If-Match` dropped, a section's
+  exit code ignored, a weak tag allowed, the latch ignored, the 412 branch removed, the 200 branch
+  removed, and the fallback reporting bytes again. The first run put the 412 and 200 breaks beside the
+  latch break, which hid them; run alone, each failed. Live, dropping `If-Match` failed the guard
+  test on all four endpoints and switching the split off failed the split test on all four, with the
+  other ten tests green.
+- **Found on the way:** the first half's subtree test compared entity tags as strings and failed on
+  this run: the shortcut read `W/"40-…"` and the walk a moment later `"40-…"`, the weak second NOTES
+  already records. It compares weakly now.
+- **Not measured:** the NAS. One stream moved 95 MB/s there on the LAN, and whether its disks serve
+  four readers of one file faster or slower than one is unknown; measuring it needs the account's
+  password in a run.
+
 ### Still open
 
 Everything through M31 is shipped, and the record of it — the milestone checklists, the sixty

@@ -82,6 +82,23 @@ final class FakeWebDAVTransport: WebDAVTransport, @unchecked Sendable {
     /// or one that could not run at all.
     var batchAnswer: (([String]) throws -> [WebDAVBatchAnswer])?
 
+    /// One segmented download, as the backend asked for it.
+    struct SegmentRun: Equatable {
+        let path: String
+        let entityTag: String
+        let ranges: [Range<Int64>]
+    }
+
+    /// Each segmented download, in order.
+    private(set) var segmentRuns: [SegmentRun] = []
+    /// Replaces a segmented run's answers when set — a captured run's
+    /// (``WebDAVSegmentWriteOut/answers(segments:standardOutput:)``). Each piece is then written as
+    /// its answer says the server sent it: a 206's bytes from its range's start, a 200's from the
+    /// file's, and nothing for a refusal or a section that got no answer.
+    var segmentAnswer: (([DownloadSegment]) throws -> [WebDAVBatchAnswer])?
+    /// Called after the pieces land and before the run answers, as a Stop pressed mid-run would be.
+    var duringSegments: (() -> Void)?
+
     init(respond: @escaping (Propfind) throws -> WebDAVHTTPResponse = { _ in
         WebDAVHTTPResponse(status: 404)
     }) {
@@ -149,6 +166,35 @@ final class FakeWebDAVTransport: WebDAVTransport, @unchecked Sendable {
             status: resume ? 206 : 200,
             bytesDownloaded: Int64(served.count)
         )
+    }
+
+    /// A segmented run as `curl` was measured to run one: by default every section a 206 holding
+    /// exactly its range of ``fileBytes``, each piece reported as one delta when it lands.
+    func downloadSegments(
+        _ segments: [DownloadSegment],
+        of file: WebDAVTaggedFile,
+        to localPath: String,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> WebDAVSegmentedDownload {
+        segmentRuns.append(SegmentRun(
+            path: file.backendPath,
+            entityTag: file.entityTag,
+            ranges: segments.map(\.range)
+        ))
+        let answers = try segmentAnswer?(segments) ?? segments.map {
+            .response(WebDAVHTTPResponse(status: 206, bytesDownloaded: $0.length))
+        }
+        for (segment, answer) in zip(segments, answers) {
+            guard case let .response(response) = answer,
+                  response.status == 206 || response.status == 200 else { continue }
+            let start = response.status == 206 ? Int(segment.range.lowerBound) : 0
+            let end = min(start + Int(response.bytesDownloaded), fileBytes.count)
+            try fileBytes.subdata(in: start..<end).write(to: URL(fileURLWithPath: segment.localPath))
+            progress(Int64(end - start))
+        }
+        duringSegments?()
+        return .segments(answers)
     }
 
     func mkcol(_ backendPath: String) throws -> WebDAVHTTPResponse {

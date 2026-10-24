@@ -89,6 +89,26 @@ public protocol WebDAVTransport: Sendable {
         isCancelled: () -> Bool
     ) throws -> WebDAVHTTPResponse
 
+    /// Download one file as several byte ranges **at once**, each into its own file and each
+    /// carrying `If-Match` with the file's tag, for the caller to join (``SegmentAssembly``,
+    /// ``WebDAVProcessArguments/downloadSegments(session:file:segments:credentials:)``).
+    ///
+    /// One download is one `curl` and one connection, and a link that holds each connection to a
+    /// rate gives N times that to N of them: measured at 4 MiB/s a connection, 40 MiB took 10.12 s
+    /// in one stream and 2.46 s in four (``SegmentedDownloadLimits/webdav``).
+    ///
+    /// The default **forwards** to the plain download and says so (``WebDAVSegmentedDownload/whole(_:)``),
+    /// S3's rule for an additive verb: one stream produces the same file, unguarded as the plain
+    /// download always was, so a transport without this is slow and never wrong. `progress`
+    /// reports deltas as the pieces grow.
+    func downloadSegments(
+        _ segments: [DownloadSegment],
+        of file: WebDAVTaggedFile,
+        to localPath: String,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> WebDAVSegmentedDownload
+
     // MARK: - The write half (PLAN.md §M32 Slice 4)
 
     /// One MKCOL.
@@ -119,4 +139,24 @@ public protocol WebDAVTransport: Sendable {
 
     /// One DELETE.
     func delete(_ backendPath: String) throws -> WebDAVHTTPResponse
+}
+
+public extension WebDAVTransport {
+    /// The plain download, reported as what it is: the whole file in one stream, with nothing to
+    /// join.
+    func downloadSegments(
+        _ segments: [DownloadSegment],
+        of file: WebDAVTaggedFile,
+        to localPath: String,
+        progress: (Int64) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> WebDAVSegmentedDownload {
+        .whole(try download(
+            file.backendPath,
+            to: localPath,
+            resume: false,
+            progress: progress,
+            isCancelled: isCancelled
+        ))
+    }
 }
