@@ -43,6 +43,18 @@ public struct WebDAVHTTPResponse: Sendable, Equatable {
     public func value(_ name: String) -> String? { values(name).first }
 }
 
+/// What a PUT of a local file says besides its bytes: the condition that guards it, and the date
+/// to give the file (``WebDAVModificationTime``), which only Nextcloud and ownCloud read.
+public struct WebDAVPutHeaders: Sendable, Equatable {
+    public let condition: S3WriteCondition
+    public let modificationTime: Date?
+
+    public init(condition: S3WriteCondition = .unconditional, modificationTime: Date? = nil) {
+        self.condition = condition
+        self.modificationTime = modificationTime
+    }
+}
+
 /// The non-hermetic boundary beneath a ``WebDAVBackend``: it sends one HTTP request per call and
 /// hands back the raw answer. Everything above it — the URL rules, the multistatus parser, the
 /// listing split, the stat rule, the resume decision, the error mapping and the connect probe — is
@@ -114,7 +126,8 @@ public protocol WebDAVTransport: Sendable {
     /// One MKCOL.
     func mkcol(_ backendPath: String) throws -> WebDAVHTTPResponse
 
-    /// Upload one local file with `-T`, carrying `condition` as a header.
+    /// Upload one local file with `-T`, carrying `headers`: its condition, and the date to ask the
+    /// server for when there is one.
     ///
     /// `progress` reports **deltas** from `curl`'s meter, which is the only measure an upload has;
     /// the exact count is ``WebDAVHTTPResponse/bytesUploaded``, which the backend settles the bar
@@ -123,7 +136,7 @@ public protocol WebDAVTransport: Sendable {
     func upload(
         localPath: String,
         to backendPath: String,
-        condition: S3WriteCondition,
+        headers: WebDAVPutHeaders,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> WebDAVHTTPResponse

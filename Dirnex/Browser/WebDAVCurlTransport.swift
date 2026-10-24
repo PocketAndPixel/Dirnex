@@ -138,7 +138,7 @@ struct WebDAVCurlTransport: WebDAVTransport {
     func upload(
         localPath: String,
         to backendPath: String,
-        condition: S3WriteCondition,
+        headers: WebDAVPutHeaders,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> WebDAVHTTPResponse {
@@ -148,7 +148,8 @@ struct WebDAVCurlTransport: WebDAVTransport {
                 session: session,
                 localPath: localPath,
                 backendPath: backendPath,
-                condition: condition
+                condition: headers.condition,
+                modificationTime: headers.modificationTime
             ),
             session: session,
             watching: .uploadMeter(totalBytes: S3CurlTransport.fileSize(localPath)),

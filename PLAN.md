@@ -859,6 +859,107 @@ running since 2026-10-23 had exited by itself before the run.
   end the divider drag` failed in one app run (the current event's location read 1642 pt where it
   expected 430) and passed on the rerun. Nothing in this change reaches it.
 
+**2026-10-24: Slice 6, second half: a second server family, the date on Nextcloud, the delete sheet
+over WebDAV, and the sheet in other languages** (core, app, the server script and docs). **Decided
+by Oleg the same day: the split stays as it is**, since on the NAS it costs 0.3–0.4 s per 256 MiB
+and on a throttled link it is four times faster.
+
+- **Nextcloud, with Oleg's OK for the image**: `nextcloud:stable-apache` (504 MB compressed for
+  arm64; Nextcloud 34.0.5) as one container with SQLite on `127.0.0.1:8089`, with `files_trashbin`,
+  `files_lock` and `files_versions` on. Docker Desktop's own disk was full (57 of 59 GB), and pruning
+  the build cache, also with his OK, made room. Probed with plain `curl` before any Swift. The
+  listing parser read sabre's `d:` prefix, with `oc:` and `nc:` declared beside it, unchanged. What
+  differs is behaviour (NOTES.md ▸ curl (WebDAV)):
+  - **Names are stored composed** (NFC), files and folders alike. A stat by the decomposed spelling
+    answers under that spelling, and both spellings are one name: `If-None-Match: *` by the other
+    one answered 412.
+  - **Tags are strong, and one per second.** A file rewritten 10 bytes then 22 inside one second kept
+    its tag, so `If-Match` with the first reading passed over the second save (3 of 3). Apache at
+    least marks that second's tag weak.
+  - **`X-OC-Mtime` on a PUT sets the date**, and the answer carries `X-OC-MTime: accepted`. COPY and
+    MOVE keep the date after. Whole seconds only. `0`, `-86400` and `86400` answered 500 with the
+    bytes written anyway, over an existing file and as a new one; `86401` was accepted. MKCOL ignores
+    it. Apache, captured through the same builder, ignored it and wrote the file with today's date.
+  - **A lock guards the file and not its folder.** PUT, DELETE and MOVE of the locked file answer
+    423 with a `<d:error>` body naming it by a relative href, which maps to the lock sentence by the
+    request's own name. A DELETE of the folder answers 204 and takes the locked file with it, where
+    Apache answers 424 and deletes nothing. Seen twice.
+  - **`creationdate` is the Unix epoch** on every row a client uploaded, and **a PUT into a missing
+    folder is 404**, where Apache sends 409.
+- **Core:**
+  - `WebDAVModificationTime`: the header's value as whole seconds, none at or below one day after
+    1970, and `wasKept(by:)` reading the answer. `WebDAVPutHeaders` carries the condition and the
+    date together, which keeps the transport's `upload` at SwiftLint's five parameters.
+  - F5's upload asks for the source's date and counts it as not kept unless the server says it kept
+    it. F4's save-back asks for none. COPY still reports the date as not kept everywhere, which
+    under-claims on Nextcloud, whose answer says nothing either way.
+  - A `creationdate` at the epoch reads as no date, so Get Info falls back to the modification date.
+  - A 404 to a PUT names the parent folder, as Apache's 409 does.
+  - `ShareRecycleBin.webDAVBin(catching:)`: the bin that would catch a delete of every path is
+    `/<share>/#recycle`, the share being the server path's first segment. None for a path not on
+    WebDAV, one already in a bin, the share or the account root, a bin above the location's root, or
+    a set spanning two bins. Nextcloud's root is several segments deep, so the rule names no bin
+    there, and its trash is outside the files tree anyway.
+- **App:**
+  - **The permanent-delete sheet asks the server before it words itself.** For a set the rule names a
+    bin for, one `Depth: 0` stat of the bin; a folder there gives the *may keep a copy* sentence,
+    already in all 14 languages. The sheet waits at most 1.5 s (`recycleBinCheckBudget`), then shows
+    the strong wording and drops a late answer (`AnswerOnce`). Any doubt — a refusal, a timeout, a file
+    by that name — keeps the strong wording. A mounted share still asks this disk, as before.
+  - `WebDAVCurlTransport` hands the headers to the builder.
+  - The WebDAV user field's hint was cut off in three languages. Every control in the connect form
+    is pinned to 364 pt (now `ConnectFormFactory.fieldWidth`), and a field truncates at the head, so
+    the hint lost "user name" first: measured as a value in the field, Brazilian Portuguese 405 pt,
+    Ukrainian 384, Russian 367. A sweep of every localized placeholder in the form, in every
+    language, found nothing else over 308. Those three are shortened (306, 324 and 313 pt), and the
+    catalog comment says why.
+- **`scripts/live_test_servers.sh`** starts Nextcloud when Docker runs and the image is already here,
+  and never pulls it. A fresh container per `up`, sample files off, one request alone before the
+  config is written (a parallel first login raced over the new account's home: four of thirteen
+  tests failed their first MKCOL with 500 or 503), and the endpoint's claims in the config:
+  `composesNames`, `lockGuardsFolder: false`, `keepsUploadDates`. `down` removes the container by
+  name, since the port's listener is `com.docker.backend`. The image was deleted after this pass, as
+  agreed, so until someone pulls it again `up` says Nextcloud was skipped and the suite runs on the
+  four Apache endpoints.
+- **Tests:** core: `WebDAVNextcloudTests` (12), `WebDAVModificationTimeTests` (4) and
+  `ShareRecycleBinWebDAVTests` (6), over 16 response bodies and 17 `curl` captures made through the
+  shipped builders, with the container's session cookies stripped. App: `WebDAVRecycleBinCheckTests`
+  (4), its slow server held at a gate rather than timed, since the first, clock-based version was
+  flaky under a full run; `ConnectPlaceholderWidthTests` (2, one over eight placeholders). Live:
+  `uploadAsksForItsDate` on every endpoint; the awkward-name test compares names as the endpoint
+  stores them; the lock test checks the file's own refusals everywhere and the folder's by the
+  endpoint's claim; a colleague's save waits out the second. Core 4473 and app 1879 green, 1853
+  executed with every server up, Nextcloud among them: the WebDAV live suite ran 13 tests as 63
+  cases over five endpoints, the wrong-password test on the three Apache ones whose log it reads.
+  Both linters clean.
+- **Live in the app,** the fresh Debug build over the throwaway Apache's public folder, from a seeded
+  tab, with `osascript … run operation "file.deletePermanently"` and the sheet read on screen:
+  - no `#recycle`: one `PROPFIND /public/%23recycle` answered 404, and the sheet said *This can't be
+    undone*;
+  - with the folder: one PROPFIND answered 207, and the sheet said the share has its own recycle bin
+    and the server may keep a copy;
+  - with the folder and `httpd` stopped by `SIGSTOP`: the strong wording, and after `SIGCONT` the
+    late 207 reached the log and nothing changed on screen, still one sheet;
+  - Delete pressed: one `DELETE /public/victim.txt`, 204.
+  The NAS itself was not asked, but its earlier runs listed `#recycle` as an ordinary row and deleted
+  `/home/%23recycle/…` with 204, so the stat has a folder to find there.
+- **The sheet in other languages**, live in Brazilian Portuguese, Spanish (the longest HTTP note,
+  which wraps to two lines whole) and Japanese, reached by a seeded WebDAV server with no Keychain
+  item, which opens the prefilled sheet without a prompt. Background computer-use cannot type into a
+  field inside a sheet, so the overrun hint was found by measuring rather than on screen. The defaults
+  domain was restored and compared unchanged (71 keys) after each run.
+- **Negative controls:** six core breaks, one at a time, each failing only its own tests: the epoch
+  read as a date, `accepted` ignored, the date always counted as kept, a time of a day or less sent,
+  a PUT's 404 naming the file, and the save-back asking for a date. Two app breaks: no deadline, and
+  any 207 taken as a folder; the first rerun against the gated test. Live, the builder sending no
+  header failed Nextcloud's date test alone, on its date and on its loss count. The placeholder
+  suite failed on the shipped catalog, naming exactly the three languages, and holds the old
+  Brazilian hint as its own control.
+- **Not measured:** whether Put Back in a `#recycle` works over WebDAV, which is path-based and may
+  already show for a row in the NAS's bin.
+- **With this, the done-when list is met**, and Slice 6's NAS run, second family and languages are
+  all in. What stays "not run live yet" is listed under Slices 3–5.
+
 ### Still open
 
 Everything through M31 is shipped, and the record of it — the milestone checklists, the sixty
@@ -933,7 +1034,7 @@ plan keeps the strategy, which is a rule that outlives any one pass.
 | M29's reminder turns goodwill into irritation. A sheet Escape cannot close, at every launch, is the most hostile thing Dirnex will ever do, in an app whose reviews are written by keyboard users | The mitigations: 30 quiet days; a sentence that asks rather than scolds; one sheet per launch or per day, never stacked over onboarding; and every rule a named constant in `LicenseReminderPolicy`, so changing the cadence is a one-line, tested change rather than a redesign. The tell is feedback about the sheet outnumbering feedback about the app |
 | M29: a paying customer meets the reminder after an update they didn't choose | The notice before any uncovered install, and no silent background install of one. Slice 5's probe chose the hook, an app test pins that a background check cannot get past it, and Slice 6 watched it hold on a beta all night |
 | M31's compare window grows into an editor one small step at a time: selectable text, then editable text, then something has to save it. And a diff can be wrong in the quiet direction, showing two different files as the same | Editing is a later milestone's decision, stated in M31's first bullet. The tell is a text view becoming editable, or a Save command appearing, before that decision is taken. Against the quiet error there are three defenses: lines compare as bytes, every corpus pair has to match git's minimal counts, and a pair with no visible change says what differs. **Held (closed 2026-10-22).** Both panes are `isEditable = false`, and nothing in the window saves. All three defenses shipped and were seen working: the history run found no disagreement with git, and live, an encoding-only, a byte-order-mark-only and a line-ending-only pair each said what differed |
-| M32's WebDAV backend is fitted to one server. The NAS and the throwaway `httpd` are both Apache `mod_dav`, so every fixture, every live run and every probe agree with Apache, and a parser can pass all of them while reading Apache's spelling rather than the protocol | The parser matches elements by namespace URI and reads only what RFC 4918 promises, so `lp1:` and `D:` are one case rather than two. The fixtures are captured bytes, and the corpus gets a second implementation family (Nextcloud's sabre/dav, in a container) before the milestone closes. The tell is a branch keyed on a prefix, on the `Server` header or on a slash at the end of an href. A capability only Apache has, such as the offset PUT, stays unused until a second server answers it the same way |
+| M32's WebDAV backend is fitted to one server. The NAS and the throwaway `httpd` are both Apache `mod_dav`, so every fixture, every live run and every probe agree with Apache, and a parser can pass all of them while reading Apache's spelling rather than the protocol | The parser matches elements by namespace URI and reads only what RFC 4918 promises, so `lp1:` and `D:` are one case rather than two. The fixtures are captured bytes, and the corpus gets a second implementation family (Nextcloud's sabre/dav, in a container) before the milestone closes. The tell is a branch keyed on a prefix, on the `Server` header or on a slash at the end of an href. A capability only Apache has, such as the offset PUT, stays unused until a second server answers it the same way. **Held (2026-10-24).** Nextcloud 34's sabre/dav ran every probe and the whole live suite: its `d:` prefix, with `oc:` and `nc:` beside it, parsed unchanged, and no branch keys on a prefix, a header or a slash. What differed was behaviour, each now a claim in the endpoint's config or a rule with its fixture: names stored composed, a lock that guards only the file, a strong tag shared by every write in one second, `creationdate` at the epoch, a 404 for a PUT into a missing folder, and `X-OC-Mtime` honoured, which is the one capability Dirnex now uses there and asks of every server, believing only an answer that says so. The offset PUT stays unused |
 
 ## 7. Open questions
 

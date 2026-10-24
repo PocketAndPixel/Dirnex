@@ -146386,7 +146386,7 @@
       }
     },
     "username (blank for a public share)": {
-      "comment": "Placeholder in the WebDAV user field: a blank user connects without an account.",
+      "comment": "Placeholder in the WebDAV user field: a blank user connects without an account. The field has a fixed width and cuts the start of a longer text, so keep it as short as the other user hints.",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -146445,19 +146445,19 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "имя пользователя (пусто для общедоступного ресурса)"
+            "value": "имя пользователя (пусто для публичной папки)"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "ім’я користувача (порожньо для загальнодоступної папки)"
+            "value": "ім’я користувача (порожньо для публічної папки)"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "nome de usuário (em branco para um compartilhamento público)"
+            "value": "nome de usuário (em branco para pasta pública)"
           }
         },
         "zh-Hans": {

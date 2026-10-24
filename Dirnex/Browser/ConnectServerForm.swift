@@ -103,7 +103,7 @@ final class ConnectServerForm: NSObject {
             protocolControl, sftpHost, sftpPort, sftpUser, keyFile, sftpSecret, saveName
         ] + ftpControls + smbControls + webdavControls + s3Controls
         for control in controls {
-            control.widthAnchor.constraint(equalToConstant: 364).isActive = true
+            control.widthAnchor.constraint(equalToConstant: ConnectFormFactory.fieldWidth).isActive = true
         }
     }
 
@@ -350,6 +350,11 @@ final class ConnectServerForm: NSObject {
 /// `private` does not cross files (docs/NOTES.md).
 @MainActor
 enum ConnectFormFactory {
+    /// The width every control in the form is pinned to. A field's placeholder has to fit inside it
+    /// in every language, since the field cuts the *start* of a longer one
+    /// (`ConnectPlaceholderWidthTests`).
+    static let fieldWidth: CGFloat = 364
+
     static func isSafeArgument(_ value: String) -> Bool {
         !value.isEmpty && !value.hasPrefix("-")
     }

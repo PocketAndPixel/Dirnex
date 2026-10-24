@@ -162,6 +162,11 @@ public extension WebDAVServiceError {
         switch effectiveStatus {
         case 401, 403:
             return .permissionDenied(path)
+        // A PUT creates what it names, so a 404 to one can only be about the folder it goes in.
+        // sabre/dav answers a missing parent that way (Nextcloud 34, measured 2026-10-24) where
+        // Apache sends RFC 4918's 409, and both name the same folder.
+        case 404 where method == .put:
+            return .notFound(path.parent ?? path)
         case 404:
             return .notFound(path)
         // MKCOL's 405 is RFC 4918's "already exists". On any other method it is a server that does

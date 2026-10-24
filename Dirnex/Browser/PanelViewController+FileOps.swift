@@ -210,8 +210,10 @@ extension PanelViewController {
         guard strategy != .unsupported else { return }
         let goesToTrash = !permanent && strategy == .trash
         if !goesToTrash {
-            confirmPermanentDelete(of: targets) { [weak self] in
-                self?.runDelete(targets.map(\.path), permanent: true)
+            askWhetherARecycleBinGoverns(targets.map(\.path)) { [weak self] governed in
+                self?.confirmPermanentDelete(of: targets, recycleBinGoverns: governed) {
+                    self?.runDelete(targets.map(\.path), permanent: true)
+                }
             }
         } else if AppPreferences.shared.confirmTrash {
             confirmTrash(of: targets) { [weak self] in
@@ -275,7 +277,11 @@ extension PanelViewController {
     /// Permanent delete is irreversible, so it always asks first (PLAN.md §M2
     /// "Shift+F8 permanent with explicit confirm"). Trash needs no prompt — it's
     /// recoverable, matching Finder.
-    private func confirmPermanentDelete(of targets: [FileEntry], proceed: @escaping () -> Void) {
+    private func confirmPermanentDelete(
+        of targets: [FileEntry],
+        recycleBinGoverns: Bool,
+        proceed: @escaping () -> Void
+    ) {
         let alert = NSAlert()
         alert.alertStyle = .critical
         alert.messageText = targets.count == 1
@@ -289,7 +295,7 @@ extension PanelViewController {
             )
         // ⇧F8 needs this more than F8 does, not less: the user is deliberately destroying
         // something, and a server quietly keeping a copy is the fact they would most want to know.
-        alert.informativeText = shareRecycleBinGoverning(targets.map(\.path)) != nil
+        alert.informativeText = recycleBinGoverns
             ? String(
                 localized: """
                 Dirnex can’t undo this. The share has its own recycle bin (#recycle) and the \

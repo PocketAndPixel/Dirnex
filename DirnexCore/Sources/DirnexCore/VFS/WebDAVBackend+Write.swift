@@ -105,10 +105,12 @@ public extension WebDAVBackend {
     ) throws -> Bool {
         try requireOwnBackend(destination)
         if isCancelled() { throw CancellationError() }
+        // No date is asked for: the edited copy was written moments ago, and the server's own
+        // stamp says the same thing.
         let response = try send(
             localPath,
             to: destination,
-            condition: condition,
+            headers: WebDAVPutHeaders(condition: condition),
             progress: progress,
             isCancelled: isCancelled
         )
@@ -170,7 +172,9 @@ extension WebDAVBackend {
     /// `copyFile` has already made the destination free or means to replace it: the checksum
     /// manifest and the pack delivery both rely on an upload replacing (`ChecksumCreateRun`).
     ///
-    /// The server stamps the file with the moment it arrived, so its date is counted as not kept.
+    /// The PUT asks for the source's date (``WebDAVModificationTime``), and the date counts as kept
+    /// only when the server answers that it kept it. Everywhere else — Apache, the NAS — the server
+    /// stamps the file with the moment it arrived, and the date is counted as not kept.
     func upload(
         _ source: VFSPath,
         to destination: VFSPath,
@@ -178,17 +182,18 @@ extension WebDAVBackend {
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws {
+        let metadata = hint.metadata ?? .ofLocalFile(source.path)
         let response = try send(
             source.path,
             to: destination,
-            condition: .unconditional,
+            headers: WebDAVPutHeaders(modificationTime: metadata.modificationTime),
             progress: progress,
             isCancelled: isCancelled
         )
         if let refusal = Self.refusal(response, method: .put) {
             throw refusal.vfsError(for: destination)
         }
-        recordDateNotKept(hint.metadata ?? .ofLocalFile(source.path))
+        if !WebDAVModificationTime.wasKept(by: response) { recordDateNotKept(metadata) }
     }
 
     /// Count `source`'s date as not kept, when it had one.
@@ -208,7 +213,7 @@ extension WebDAVBackend {
     private func send(
         _ localPath: String,
         to destination: VFSPath,
-        condition: S3WriteCondition,
+        headers: WebDAVPutHeaders,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> WebDAVHTTPResponse {
@@ -217,7 +222,7 @@ extension WebDAVBackend {
             try transport.upload(
                 localPath: localPath,
                 to: destination.path,
-                condition: condition,
+                headers: headers,
                 progress: { delta in
                     tally.add(delta)
                     progress(delta)
@@ -241,7 +246,9 @@ extension WebDAVBackend {
     ///
     /// The copy is stamped with the moment it was made: Apache's COPY keeps the mode and not the
     /// date (measured 2026-10-23, a 2020 file copied as today), so the date is counted as not kept,
-    /// as for SFTP's server-side `cp`.
+    /// as for SFTP's server-side `cp`. Nextcloud's COPY keeps it (measured 2026-10-24), and the
+    /// answer says nothing either way, so there the count under-claims: the safe direction, and
+    /// not worth a `stat` per copied file to tell.
     func duplicate(_ source: VFSPath, to destination: VFSPath, hint: CopySourceHint) throws -> Int64 {
         guard !serverSideCopy.isRefused else { throw VFSError.unsupported(.remoteToRemoteCopy) }
         let response = try mapping(source) { try transport.copy(source.path, to: destination.path) }

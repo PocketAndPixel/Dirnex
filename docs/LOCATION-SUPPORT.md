@@ -88,8 +88,11 @@ on every live run: Basic, Digest and a public folder over HTTP, and Basic over H
 self-signed certificate. Every cell follows from the backend answering `isRemoteConnection`,
 `acceptsUploads` and `[.read, .write, .rename]`, and these were not exercised live: dragging (a drag
 session cannot be synthesized), Open With, Share, Pack, user scripts, ⇧F2 and Put Back in a
-`#recycle`. **Both servers measured are Apache `mod_dav`**, so a cell here is a statement about
-Apache until a second server family is (PLAN.md §6).
+`#recycle`. **A second server family runs the same suite**: Nextcloud 34's sabre/dav, in a container
+the server script starts when its image is on the Mac (PLAN.md §M32, 2026-10-24). Its listing parsed
+unchanged. Where it behaves differently, the cell says so: it stores names composed, it deletes a
+folder around a file another client has locked, it keeps the date an upload asks for
+(<sup>q</sup>), and its tag cannot see a second save inside one second (<sup>mm</sup>).
 
 ---
 
@@ -378,9 +381,12 @@ folders it leaves in the bin. **Limited** in three ways. It is `#recycle` only �
 Only **SMB was verified live**; SFTP, FTP and WebDAV follow structurally, since the origin carries the
 path's backend (pinned by a unit test) and every verb the restore uses exists on all three, but none
 has been exercised against a real server. Over WebDAV the NAS's bin is an ordinary row of the share,
-and a WebDAV delete lands in it (measured, PLAN.md §M32). The delete confirmation's *may keep a copy*
-wording below is gated on a local share, so over WebDAV it still promises a permanent delete on a NAS
-that keeps a copy. Whether the bin catches an SFTP or FTP delete has not been measured. And the bin is deliberately not treated as a Trash — `.rename` and
+and a WebDAV delete lands in it (measured, PLAN.md §M32). So the delete confirmation asks the server
+first: one `Depth: 0` PROPFIND of `<share>/#recycle`, the share being the path's first segment, and
+the *may keep a copy* wording below when that is a folder. The sheet waits at most 1.5 s for the
+answer and then warns as strongly as ever, dropping a late one. A root below the share cannot see
+the bin and keeps the strong wording, and so does Nextcloud, whose trash is outside the files tree.
+Whether the bin catches an SFTP or FTP delete has not been measured. And the bin is deliberately not treated as a Trash — `.rename` and
 `.trash` are not withdrawn there and it does not join the merged `trash:` listing — because it
 belongs to the *server*: it exists only while the share is mounted, and the NAS alone decides what
 lands in it. The neighbouring wart was fixed the same day: `trashItem` is refused on an SMB share
@@ -436,14 +442,20 @@ S3 remains `n/a`: it has no settable mtime, no permissions and no symlinks at al
 a row that reports no mode is *absent* rather than dropped — the distinction the whole carry turns
 on, since folding the two together would make every S3 copy claim damage it did not do.
 
-**WebDAV carries the date one way.** A download lands here, so it takes the server's modification
-time with `utimes`, as SFTP's and FTP's do. An upload cannot carry one, and that is the protocol:
-`getlastmodified` is read-only (PROPPATCH answers 409 "Property is read-only"), and the Windows
-client's `Win32LastModifiedTime` answers **200 and changes nothing**, stored as a dead property, so
-a 200 from PROPPATCH is never read as a time carried. Every upload, COPY and recreated folder
-therefore reports its date as not kept. A mode is not reported, for S3's reason: WebDAV has no
-permissions at all, so no row shows one (PLAN.md §M32 Slice 4). Nextcloud's `X-OC-Mtime` header
-could set a time on that one server family; Apache ignores it, and it is unmeasured on Nextcloud.
+**WebDAV carries the date one way, except to Nextcloud.** A download lands here, so it takes the
+server's modification time with `utimes`, as SFTP's and FTP's do. The protocol cannot set one on
+the server: `getlastmodified` is read-only (PROPPATCH answers 409 "Property is read-only"), and the
+Windows client's `Win32LastModifiedTime` answers **200 and changes nothing**, stored as a dead
+property, so a 200 from PROPPATCH is never read as a time carried. An F5 upload therefore asks with
+Nextcloud's own header, `X-OC-Mtime`, and counts the date as kept only when the answer says
+`X-OC-MTime: accepted`. Nextcloud does, to the whole second, and its COPY and MOVE keep the date
+after. Apache, the NAS included, ignores the header and says nothing, so there every upload reports
+its date as not kept, as before. A COPY and a recreated folder report it everywhere: Nextcloud's
+COPY keeps it but says nothing, so the report under-claims there, and MKCOL ignores the header. A
+time at or before one day after 1970 is not asked for, since Nextcloud refuses one with a 500 after
+writing the bytes (PLAN.md §M32, 2026-10-24). F4's save-back asks for no date. A mode is not
+reported, for S3's reason: WebDAV has no permissions at all, so no row shows one (PLAN.md §M32
+Slice 4).
 
 **What a copy could not keep is said on the status line under the pane** (PLAN.md §M25 Slice 5b),
 never in a dialog, and it is a per-*job* answer rather than a per-connection one — the connection's
@@ -611,7 +623,7 @@ about six months, the whole time of day (measured 41 617 s from the truth); FTP'
 year-less, zone-less and on the server's clock (a server that answers `MLSD` is exact since
 2026-10-19, but the comparison is decided per protocol rather than per server, so FTP stays out); and
 S3's `LastModified` and WebDAV's `getlastmodified` are exact and are the *upload* time, which nothing
-can set. Two sides of one coarse
+can set (Nextcloud aside, but the comparison is decided per protocol). Two sides of one coarse
 dialect are no better — two files thirty seconds apart list as the same minute, so a mirror would skip
 the one that changed.
 
@@ -958,7 +970,8 @@ server's own work through OpenSSH's `copy-data` extension, measured against a re
 Slice 3 — what it costs is the modification time, and the rest of the detail is under
 <sup>bbb</sup>. A server that does not advertise the extension makes the client refuse, the refusal
 is latched for that connection, and the copy is staged instead. WebDAV's COPY is the same shape —
-the server's work, latched when the server lacks the method, and costing the date (<sup>bbb</sup>).
+the server's work, latched when the server lacks the method, and costing the date on Apache
+(<sup>bbb</sup>, <sup>q</sup>).
 FTP has no copy verb at all, so its `copyFile` *is* an upload or a download. Everything the fast path cannot serve — a refusing server,
 and **every** pair of ends on two different backends, which no server-side verb can address — is
 staged through this Mac (`RelayCopy`), costing the file's size in temp space and moving the bytes
@@ -971,7 +984,10 @@ change landing between the two is refused by the server rather than written over
 what the server hands out. Apache's tag is **weak** for the second after any write, and no spelling
 of a weak tag can pass `If-Match` (both answered 412 for a file nobody had touched), so a save holding
 one sends no condition and rests on the re-`stat`, as SFTP's and FTP's always do (PLAN.md §M32
-Slice 4). ⇧F4's create is one PUT with `If-None-Match: *`, so it never truncates a file already
+Slice 4). Nextcloud's tag is strong and is the **same for every write inside one second**, so a
+colleague's save landing in the same second as the version Dirnex read keeps the tag, passes
+`If-Match`, and is written over (measured, 3 of 3). The window is that one second, and no tag the
+server hands out can close it. ⇧F4's create is one PUT with `If-None-Match: *`, so it never truncates a file already
 there.
 
 <sup>vv</sup> Above 32 MiB an SFTP upload is cut into parts of 16–32 MiB, **four sent at once**,
@@ -1075,7 +1091,7 @@ rows, and the app is already as close as the technology permits:
 - Live change notifications from any remote protocol: SFTP has no `inotify`, FTP and WebDAV have no
   verb, and S3 has no session to hold one open on. A poll is not a notification, and nothing can make
   it one.
-- Setting a modification time over WebDAV: `getlastmodified` is read-only, and the one way of trying
-  that answers 200 changes nothing (<sup>q</sup>). Nextcloud's own header is the one route left, on one
-  server family, and it is unmeasured.
+- Setting a modification time over WebDAV on Apache, the NAS included: `getlastmodified` is
+  read-only, the one way of trying that answers 200 changes nothing, and Apache ignores Nextcloud's
+  header. Nextcloud takes that header on an upload, and an F5 there carries the date (<sup>q</sup>).
 - A split or resumed **upload** over WebDAV: a PUT is whole by RFC 9110 (<sup>aaj</sup>).

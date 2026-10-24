@@ -84,6 +84,9 @@ enum WebDAVLiveEnvironment {
         let servedFrom: String?
         let connectWithinSeconds: Double?
         let recycleFolder: String?
+        let composesNames: Bool?
+        let lockGuardsFolder: Bool?
+        let keepsUploadDates: Bool?
     }
 }
 
@@ -118,6 +121,17 @@ struct WebDAVLiveEndpoint: Sendable, CustomTestStringConvertible {
     /// moves it into the share's `#recycle` (PLAN.md §M32). The suite empties its own folders out
     /// of it, so a run against the NAS leaves nothing behind.
     let recycleFolder: String?
+    /// Whether the server stores a name in Unicode's composed form whatever it was sent in.
+    /// Nextcloud does: `cafe\u{301}` comes back as `café`, in a file's name and a folder's, while
+    /// both Apaches keep the bytes they were sent (PLAN.md §M32).
+    let composesNames: Bool
+    /// Whether a lock on a file refuses a DELETE or MOVE of the folder holding it. Apache answers
+    /// 424 and deletes nothing; Nextcloud deletes the folder, locked file and all, refusing only
+    /// writes to the file itself.
+    let lockGuardsFolder: Bool
+    /// Whether a PUT asking for a date with `X-OC-Mtime` gets it, which the server says in its
+    /// answer. Nextcloud does; Apache ignores the header (``WebDAVModificationTime``).
+    let keepsUploadDates: Bool
 
     var testDescription: String { name }
 
@@ -151,6 +165,14 @@ struct WebDAVLiveEndpoint: Sendable, CustomTestStringConvertible {
         servedFrom = file.servedFrom
         connectWithinSeconds = file.connectWithinSeconds
         recycleFolder = file.recycleFolder
+        composesNames = file.composesNames ?? false
+        lockGuardsFolder = file.lockGuardsFolder ?? true
+        keepsUploadDates = file.keepsUploadDates ?? false
+    }
+
+    /// `name`'s bytes as this server stores them.
+    func stored(_ name: String) -> [UInt8] {
+        WebDAVLive.bytes(composesNames ? name.precomposedStringWithCanonicalMapping : name)
     }
 
     /// A transport for this endpoint as the app builds one after a connect: the scheme the probe
@@ -209,7 +231,8 @@ final class CountingWebDAVTransport: WebDAVTransport, @unchecked Sendable {
         /// One `curl` carrying this many guarded ranges of one file.
         case getRanges(Int)
         case mkcol
-        case put(S3WriteCondition)
+        /// A PUT of a local file, and whether it asked the server for a date.
+        case put(S3WriteCondition, askedForDate: Bool = false)
         case putEmpty(S3WriteCondition)
         case move
         case copy
@@ -300,15 +323,15 @@ final class CountingWebDAVTransport: WebDAVTransport, @unchecked Sendable {
     func upload(
         localPath: String,
         to backendPath: String,
-        condition: S3WriteCondition,
+        headers: WebDAVPutHeaders,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> WebDAVHTTPResponse {
-        record(.put(condition))
+        record(.put(headers.condition, askedForDate: headers.modificationTime != nil))
         return try base.upload(
             localPath: localPath,
             to: backendPath,
-            condition: condition,
+            headers: headers,
             progress: progress,
             isCancelled: isCancelled
         )
@@ -373,6 +396,19 @@ enum WebDAVLive {
         } catch let error as VFSError {
             return error
         }
+    }
+
+    /// Sleep until the server's clock has left the second `written` fell in, plus a margin.
+    ///
+    /// Nextcloud keeps **one strong tag for every write inside a second**, whatever the size: a
+    /// file rewritten twice in one second, 10 bytes then 22, kept its tag, and `If-Match` with the
+    /// first reading passed over the second write (measured 2026-10-24, 3 of 3). No tag can see a
+    /// colleague's save in that second, on that server or on Apache, whose tag is weak for it. A
+    /// test about a later save waits it out.
+    static func waitOutTheSecond(of written: Date) {
+        let next = (written.timeIntervalSince1970 + 1).rounded(.down) + 0.1
+        let wait = next - Date().timeIntervalSince1970
+        if wait > 0 { Thread.sleep(forTimeInterval: wait) }
     }
 
     /// The tag a save-back may send for `path`, waiting out the second in which Apache hands out a

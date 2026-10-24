@@ -31,6 +31,7 @@ extension WebDAVLiveIntegrationTests {
             defer { endpoint.discard(root, on: backend) }
             let file = root.appending("notes.txt")
             try WebDAVLive.upload(Data("as read\n".utf8), to: file, on: backend)
+            let written = Date()
             let local = WebDAVLive.scratchFile()
             try mine.write(to: local)
             defer { try? FileManager.default.removeItem(at: local) }
@@ -46,8 +47,9 @@ extension WebDAVLiveIntegrationTests {
             var run = SaveBackRun(file: file)
 
             guard let read = try WebDAVLive.strongTag(of: file, on: backend) else { return run }
-            // A different length, so even a tag made of the size and a time cut to the second
-            // moves when the colleague saves inside the same second.
+            // In a later second than the read's write, since no server's tag can see a save in the
+            // same one (``WebDAVLive/waitOutTheSecond(of:)``), and a different length as well.
+            WebDAVLive.waitOutTheSecond(of: written)
             run.outsideStatus = try WebDAVOutsideClient(endpoint: endpoint).put(
                 theirs,
                 at: file.path
@@ -74,7 +76,7 @@ extension WebDAVLiveIntegrationTests {
         )
         #expect(run.overChanged == .unsupported(.remoteFileChangedSinceFetch(name: "notes.txt")))
         #expect(run.overChangedRequests.first.map {
-            if case .put(.ifMatches) = $0 { true } else { false }
+            if case .put(.ifMatches, _) = $0 { true } else { false }
         } == true, "the save carried If-Match")
         #expect(run.afterRefusal == theirs)
         #expect(run.sentCondition)
@@ -98,9 +100,13 @@ extension WebDAVLiveIntegrationTests {
 
     // MARK: - Locks
 
-    /// A file locked by another client: a write says it is locked, by name, and a delete of the
-    /// folder holding it names the file and deletes nothing. Reads pass a write lock. Once it is
-    /// released, the same delete is one request.
+    /// A file locked by another client: a write and a delete of the file say it is locked, by name,
+    /// and change nothing. Reads pass a write lock.
+    ///
+    /// What a delete of the **folder** holding it does is the server's, and the endpoint says which
+    /// (``WebDAVLiveEndpoint/lockGuardsFolder``). Apache answers 424, names the file and deletes
+    /// nothing, and once the lock is released the same delete is one request. Nextcloud deletes the
+    /// folder, locked file and all, so there the claim checked is that it did.
     @Test(
         "a file locked by another client says it is locked",
         arguments: WebDAVLiveEnvironment.endpoints
@@ -127,9 +133,14 @@ extension WebDAVLiveIntegrationTests {
             run.write = try WebDAVLive.caught {
                 try WebDAVLive.upload(Data("overwritten\n".utf8), to: held, on: backend)
             }
-            run.delete = try WebDAVLive.caught { try backend.removeItem(at: root) }
-            run.rowsAfterDelete = try backend.listDirectory(at: root).map(\.name)
+            run.fileDelete = try WebDAVLive.caught { try backend.removeItem(at: held) }
             run.read = try WebDAVLive.download(held, on: backend)
+            run.delete = try WebDAVLive.caught { try backend.removeItem(at: root) }
+            guard endpoint.lockGuardsFolder else {
+                run.afterDelete = try WebDAVLive.caught { _ = try backend.stat(at: root) }
+                return run
+            }
+            run.rowsAfterDelete = try backend.listDirectory(at: root).map(\.name)
 
             run.unlockStatus = try outside.unlock(held.path, token: token)
             counting.reset()
@@ -140,18 +151,24 @@ extension WebDAVLiveIntegrationTests {
         }
         try #require(run.locked, "the outside client could not take the lock")
         #expect(run.write == .unsupported(.lockedOnServer(name: "held.txt")))
+        #expect(run.fileDelete == .unsupported(.lockedOnServer(name: "held.txt")))
+        #expect(run.read == original, "neither refusal touched the file")
+        #expect(run.afterDelete == .notFound(run.root))
+        guard endpoint.lockGuardsFolder else {
+            #expect(run.delete == nil, "this server deletes a folder around a lock")
+            return
+        }
         #expect(run.delete == .unsupported(.lockedOnServer(name: "held.txt")))
         #expect(run.rowsAfterDelete == ["held.txt"], "a refused delete deletes nothing")
-        #expect(run.read == original)
         #expect(run.unlockStatus == 204)
         #expect(run.deleteRequests == [.delete])
-        #expect(run.afterDelete == .notFound(run.root))
     }
 
     struct LockRun: Sendable {
         let root: VFSPath
         var locked = false
         var write: VFSError?
+        var fileDelete: VFSError?
         var delete: VFSError?
         var rowsAfterDelete: [String] = []
         var read = Data()

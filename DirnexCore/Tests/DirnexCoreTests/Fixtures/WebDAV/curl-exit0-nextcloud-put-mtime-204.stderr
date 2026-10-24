@@ -1,0 +1,27 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100     7    0     0  100     7      0     51 --:--:-- --:--:-- --:--:--    51
+100     7    0     0  100     7      0     51 --:--:-- --:--:-- --:--:--    51
+dav-status=204
+dav-size=0
+dav-up=7
+dav-headers={"date":["Sat, 24 Oct 2026 16:56:18 GMT"],
+"server":["Apache/2.4.69 (Debian)"],
+"x-content-type-options":["nosniff"],
+"x-frame-options":["SAMEORIGIN"],
+"x-permitted-cross-domain-policies":["none"],
+"x-robots-tag":["noindex, nofollow"],
+"referrer-policy":["no-referrer"],
+"x-powered-by":["PHP/8.5.12"],
+"content-security-policy":["default-src 'none';"],
+"x-oc-mtime":["accepted"],
+"x-user-id":["probe"],
+"oc-fileid":["00000248oc59dnxcgfss"],
+"etag":["\"3e0cfb819d7b2eec533612a7625dc101\""],
+"x-request-id":["mZW7xC61LUIJRMxCGV50"],
+"oc-etag":["\"3e0cfb819d7b2eec533612a7625dc101\""],
+"x-nc-ownerid":["probe"],
+"x-nc-permissions":["RGDNVW"]
+}

@@ -191,19 +191,20 @@ struct WebDAVLiveIntegrationTests {
             run.root = root
             return run
         }
-        let file = WebDAVLive.bytes(Self.awkwardFile)
-        #expect(run.rootRows == [WebDAVLive.bytes(Self.awkwardFolder)])
+        // As the server stores them: Nextcloud composes the decomposed é, and says nothing.
+        let file = endpoint.stored(Self.awkwardFile)
+        #expect(run.rootRows == [endpoint.stored(Self.awkwardFolder)])
         #expect(run.folderRows == [file])
         if endpoint.servedFrom != nil { #expect(run.onDisk == [file]) }
         #expect(run.renameRequests == [.move], "a rename is one MOVE")
-        #expect(run.afterRename == [WebDAVLive.bytes(Self.renamedFile)])
+        #expect(run.afterRename == [endpoint.stored(Self.renamedFile)])
         #expect(run.copyRequests.contains(.copy))
         #expect(
             !run.copyRequests.contains { $0.movesBytes },
             "a copy in the account is the server's"
         )
         #expect(run.folderMoveRequests == [.move], "a folder moves in one MOVE")
-        #expect(run.movedFolderRows == [WebDAVLive.bytes(Self.renamedFile)])
+        #expect(run.movedFolderRows == [endpoint.stored(Self.renamedFile)])
         #expect(run.renamedBytes == payload)
         #expect(run.copyBytes == payload)
         #expect(run.deleteRequests == [.delete], "a tree is deleted in one DELETE")

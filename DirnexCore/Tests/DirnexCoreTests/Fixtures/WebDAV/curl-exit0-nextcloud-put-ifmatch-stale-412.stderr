@@ -1,0 +1,20 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100   310  100   308  100     2   2736     17 --:--:-- --:--:-- --:--:--  2743100   310  100   308  100     2   2734     17 --:--:-- --:--:-- --:--:--  2743
+dav-status=412
+dav-size=308
+dav-up=2
+dav-headers={"date":["Sat, 24 Oct 2026 16:56:19 GMT"],
+"server":["Apache/2.4.69 (Debian)"],
+"x-content-type-options":["nosniff"],
+"x-frame-options":["SAMEORIGIN"],
+"x-permitted-cross-domain-policies":["none"],
+"x-robots-tag":["noindex, nofollow"],
+"referrer-policy":["no-referrer"],
+"x-powered-by":["PHP/8.5.12"],
+"content-security-policy":["default-src 'none';"],
+"x-user-id":["probe"],
+"etag":["\"3e0cfb819d7b2eec533612a7625dc101\""],
+"content-length":["308"],
+"content-type":["application/xml; charset=utf-8"]
+}
