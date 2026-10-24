@@ -74,6 +74,9 @@ final class FakeWebDAVTransport: WebDAVTransport, @unchecked Sendable {
     private(set) var propfinds: [Propfind] = []
     private(set) var downloads: [Download] = []
     private(set) var writes: [Write] = []
+    /// The date each upload asked the server for, in order — kept beside ``writes`` rather than in
+    /// it, so a test about a write's shape need not spell a date.
+    private(set) var uploadTimes: [Date?] = []
     /// Each batched run, as the paths it carried.
     private(set) var batches: [[String]] = []
     /// Every section a batched run actually sent, in order, across all runs.
@@ -204,12 +207,15 @@ final class FakeWebDAVTransport: WebDAVTransport, @unchecked Sendable {
     func upload(
         localPath: String,
         to backendPath: String,
-        condition: S3WriteCondition,
+        headers: WebDAVPutHeaders,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> WebDAVHTTPResponse {
         for delta in streamedUploadProgress { progress(delta) }
-        return try record(.upload(localPath: localPath, path: backendPath, condition: condition))
+        uploadTimes.append(headers.modificationTime)
+        return try record(
+            .upload(localPath: localPath, path: backendPath, condition: headers.condition)
+        )
     }
 
     func putEmpty(_ backendPath: String, condition: S3WriteCondition) throws -> WebDAVHTTPResponse {

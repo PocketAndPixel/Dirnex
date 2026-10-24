@@ -40,13 +40,18 @@ public extension WebDAVProcessArguments {
     /// were sent whole and refused, 1 048 577 sent nothing), and Apache answers the precondition
     /// there: a 64 MiB upload with `If-None-Match: *` onto an existing file reported
     /// `size_upload=0` in 0.4 ms, and one with a stale `If-Match` the same.
+    ///
+    /// `modificationTime` asks the server to give the file that date (``WebDAVModificationTime``),
+    /// which only Nextcloud and ownCloud do, and which the answer then says.
     static func upload(
         session: WebDAVSession,
         localPath: String,
         backendPath: String,
-        condition: S3WriteCondition = .unconditional
+        condition: S3WriteCondition = .unconditional,
+        modificationTime: Date? = nil
     ) -> [String] {
         common(session: session, showingProgress: true) + condition.headerArguments
+            + WebDAVModificationTime.headerArguments(for: modificationTime)
             + ["--upload-file", localPath, url(session, backendPath, isCollection: false)]
     }
 

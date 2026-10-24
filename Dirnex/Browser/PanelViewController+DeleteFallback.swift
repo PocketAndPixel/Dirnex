@@ -1,6 +1,23 @@
 import AppKit
 import DirnexCore
 
+/// An answer that can be given once: the first of a check and its deadline wins, and the other is
+/// dropped.
+@MainActor
+private final class AnswerOnce {
+    private var answer: ((Bool) -> Void)?
+
+    init(_ answer: @escaping (Bool) -> Void) {
+        self.answer = answer
+    }
+
+    func give(_ value: Bool) {
+        guard let answer else { return }
+        self.answer = nil
+        answer(value)
+    }
+}
+
 extension PanelViewController {
     /// The share recycle bin that would catch a delete of **every** one of `paths`, if there is one.
     ///
@@ -39,6 +56,43 @@ extension PanelViewController {
         }
         return governing
     }
+
+    /// Whether a share's recycle bin would catch a delete of every one of `paths`, for the
+    /// permanent-delete sheet to word itself by — a mounted share's, asked of this disk, or a
+    /// WebDAV share's on the NAS, asked of the server (``ShareRecycleBin/webDAVBin(catching:)``).
+    ///
+    /// The WebDAV half costs one `Depth: 0` request and is **bounded**: a sheet that waits on a
+    /// server nobody can reach is worse than one that warns too strongly, so after `budget` the
+    /// strong wording goes up and a late answer is dropped. On the NAS's LAN the request is tens
+    /// of milliseconds. Every doubt — a refusal, a timeout, a file where the folder should be —
+    /// answers `false`, the strong warning.
+    func askWhetherARecycleBinGoverns(
+        _ paths: [VFSPath],
+        within budget: Duration = recycleBinCheckBudget,
+        answer: @escaping (Bool) -> Void
+    ) {
+        if shareRecycleBinGoverning(paths) != nil {
+            answer(true)
+            return
+        }
+        guard let bin = ShareRecycleBin.webDAVBin(catching: paths) else {
+            answer(false)
+            return
+        }
+        let backend = backend
+        let once = AnswerOnce(answer)
+        Task {
+            let isFolder = await BlockingWork.run { (try? backend.stat(at: bin))?.isDirectory == true }
+            once.give(isFolder)
+        }
+        Task {
+            try? await Task.sleep(for: budget)
+            once.give(false)
+        }
+    }
+
+    /// How long the delete sheet waits for a server to say whether its share keeps a recycle bin.
+    static let recycleBinCheckBudget: Duration = .milliseconds(1500)
 
     private func isDirectory(_ path: VFSPath) -> Bool {
         var directory: ObjCBool = false

@@ -1448,6 +1448,22 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - Same family as the probe-size lesson above and worth stating as one rule: **a live test's
     constants are claims about the endpoint**, and the ones that expire are the ones nobody wrote
     down as claims — a bandwidth hidden in a byte count, a region hidden in an expected path.
+- **A server installed in a container has a first login, and a parallel suite's first requests race
+  over it.** Seen 2026-10-24 with Nextcloud 34, M32's second server family: four of thirteen WebDAV
+  live tests failed their first MKCOL with 500 or 503, and the server's log held `"/probe" is locked`
+  and `UNIQUE constraint failed: oc_addressbooks…`, the account's home, calendar and address book
+  being created once per parallel request. The run before had passed only because hand-made `curl`
+  probes had already logged in, so the first clean `up` was the first to meet it. The script now
+  sends one request alone before it writes the config, and turns the sample files off
+  (`skeletondirectory`) so the account's root holds only what the suite makes. The server's
+  behaviour differences are claims in the endpoint's config (`composesNames`, `lockGuardsFolder`,
+  `keepsUploadDates`), per the entry above.
+  - **Docker Desktop's disk is its own, and fills while the Mac has room.** The same install failed
+    with the VM's disk at 57 of 59 GB and 0 bytes free, while the Mac had 534 GB free. `docker system
+    df` shows it; pruning the build cache made room.
+  - **Stop a container by name, never by its port.** The published port's listener is
+    `com.docker.backend` itself (`lsof -iTCP:8089 -sTCP:LISTEN`), so the kill-by-port `down` uses for
+    `sshd`, pyftpdlib and `httpd` would take Docker down. `down` removes `dirnex-nextcloud` by name.
 
 ## AppKit
 
@@ -4121,6 +4137,15 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   (Polish cleared a 330 pt field by 10 pt, which the note above says is not clearance). A
   placeholder is drawn in the value's own rect with the value's font, so measuring the value is the
   honest proxy; measuring the placeholder measures nothing at all.
+  - **The connect form's fields truncate at the *head*, so there an overrun placeholder loses the
+    words that name the field.** M32's WebDAV user hint, "username (blank for a public share)",
+    measured 405 pt in Brazilian Portuguese, 384 in Ukrainian and 367 in Russian against the 364 pt
+    every control is pinned to, so a blank field showed only the remark about public shares. Swept
+    2026-10-24: every other placeholder in the form, in every language, measured 308 pt or less.
+    Background computer-use could not show it live (it cannot reach a text field inside a sheet), so
+    the measurement is the evidence, and `ConnectPlaceholderWidthTests` now pins every localized
+    placeholder in the form against `ConnectFormFactory.fieldWidth`, with the shipped hint as its
+    negative control.
 - **A fixed-width horizontal `NSStackView` collapses a *segmented control* under a longer
   translation, not just a label.** The sync sheet's controls row (`Направление:` + a 3-segment
   direction control + `Сравнивать по:` + a 2-segment comparison control + a hint, pinned to 680 pt)
@@ -6875,6 +6900,34 @@ whoever drives `curl` over HTTP next. Most of them apply to the S3 backend as mu
   four `probe … 401` together. The batched listing's guard (`fail` on the first section with
   `--fail-early`) cannot help, since every section starts before any answers; the split proves the
   login with one stat before it sends them.
+- **Nextcloud's sabre/dav differs from Apache where it matters to a client, and agrees on the
+  parse.** Measured 2026-10-24 against Nextcloud 34.0.5 in a container (PLAN.md §M32, the second
+  server family). The listing parser read it unchanged, and the traps are behavior:
+  - **A strong tag that cannot see a save in the same second.** Every write inside one second keeps
+    one strong `ETag`: a file rewritten 10 bytes then 22 within a second kept its tag, and `If-Match`
+    with the first reading passed over the second write (3 of 3). Apache marks that second's tag
+    weak, so a save-back there knowingly sends no condition and rests on the re-`stat`. Here the
+    condition goes out and cannot see the save. A test about a colleague's save has to land it in a
+    later second (`WebDAVLive.waitOutTheSecond`).
+  - **`X-OC-Mtime` on a PUT sets the date, and a value it refuses fails the request *after writing
+    the bytes*.** The answer carries `X-OC-MTime: accepted` when it took the date, so that header,
+    and never the status, says the date was kept. `0`, `-86400` and `86400` answered **500** ("must be
+    a valid positive unix timestamp greater than one day") with the new bytes stored, over an existing
+    file and as a new one; `86401` was accepted. A 500 from a PUT is therefore not "nothing changed",
+    and `WebDAVModificationTime` sends no time at or below one day. Fractions are cut to the second.
+    Apache ignores the header and says nothing.
+  - **A lock guards the file and not the folder around it.** PUT, DELETE and MOVE of a file locked by
+    another client answer 423 with a `<d:error>` body naming it by a relative href, but a DELETE of
+    the folder holding it answers **204 and deletes the locked file with it**, where Apache answers 424
+    and deletes nothing. Seen in two runs.
+  - **Names are stored composed.** A decomposed `cafe\u{301}` comes back as `café`, file or folder; a
+    stat by the decomposed spelling answers under the spelling it was asked by; and both spellings are
+    one name, so `If-None-Match: *` by the other spelling answers 412. Compare listings as the server
+    stores them, not as they were sent.
+  - **A PUT into a missing folder answers 404**, where Apache sends RFC 4918's 409. Both are about the
+    folder, since a PUT creates what it names (`WebDAVServiceError`).
+  - **`creationdate` is `1970-01-01T00:00:00+00:00` on every row** a client uploaded. Read as a date,
+    Get Info would show each file as made in 1970, so the epoch reads as no date.
 
 ### The Trash
 

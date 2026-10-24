@@ -352,7 +352,11 @@ extension ConnectText {
     static var webDAVUserHint: String {
         String(
             localized: "username (blank for a public share)",
-            comment: "Placeholder in the WebDAV user field: a blank user connects without an account."
+            comment: """
+            Placeholder in the WebDAV user field: a blank user connects without an account. The field \
+            has a fixed width and cuts the start of a longer text, so keep it as short as the other \
+            user hints.
+            """
         )
     }
 }

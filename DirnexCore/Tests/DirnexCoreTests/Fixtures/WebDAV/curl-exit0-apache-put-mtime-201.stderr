@@ -1,0 +1,12 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100   259  100   253  100     6   162k   3949 --:--:-- --:--:-- --:--:--  252k
+dav-status=201
+dav-size=253
+dav-up=6
+dav-headers={"date":["Sat, 24 Oct 2026 17:04:53 GMT"],
+"server":["Apache/2.4.67 (Unix) LibreSSL/3.3.6"],
+"location":["http://127.0.0.1:8088/basic/dirnex-webdav-fixture/w/dated.txt"],
+"content-length":["253"],
+"content-type":["text/html; charset=ISO-8859-1"]
+}

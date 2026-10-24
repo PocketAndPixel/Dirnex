@@ -57,7 +57,7 @@ private struct OneFolderTransport: WebDAVTransport {
     func upload(
         localPath _: String,
         to _: String,
-        condition _: S3WriteCondition,
+        headers _: WebDAVPutHeaders,
         progress _: (Int64) -> Void,
         isCancelled _: () -> Bool
     ) throws -> WebDAVHTTPResponse {

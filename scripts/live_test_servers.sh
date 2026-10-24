@@ -29,6 +29,13 @@
 # only the system `sshd`, and Remote Login does **not** have to be switched on. The WebDAV half is
 # macOS's own `/usr/sbin/httpd` with `mod_dav`, run unprivileged from a config written here, so it
 # needs nothing installed either (PLAN.md §M32).
+#
+# **Nextcloud joins the WebDAV suite when Docker is running and its image is already here**, as the
+# second server family PLAN.md §M32's risk row asks for: sabre/dav, which shares no code with
+# Apache's `mod_dav`. This script never pulls the image (504 MB, `docker pull nextcloud:stable-apache`):
+# that download is somebody's decision, and without it the Apache endpoints run as before. A fresh
+# container per `up`, so its brute-force counter, which slows every request after a few wrong
+# passwords, starts at zero; installing takes about half a minute.
 
 set -eu
 
@@ -45,6 +52,9 @@ SFTP_PORT="${DIRNEX_SFTP_PORT:-2222}"
 FTP_PORT="${DIRNEX_FTP_PORT:-2121}"
 WEBDAV_PORT="${DIRNEX_WEBDAV_PORT:-8088}"
 WEBDAVS_PORT="${DIRNEX_WEBDAVS_PORT:-8443}"
+NEXTCLOUD_PORT="${DIRNEX_NEXTCLOUD_PORT:-8089}"
+NEXTCLOUD_IMAGE=nextcloud:stable-apache
+NEXTCLOUD_CONTAINER=dirnex-nextcloud
 SFTP_CONFIG=/tmp/dirnex_sftp_live_test.json
 FTP_CONFIG=/tmp/dirnex_ftp_live_test.json
 WEBDAV_CONFIG=/tmp/dirnex_webdav_live_test.json
@@ -239,7 +249,7 @@ SSLSessionCache "shmcb:$dav/run/ssl_scache(512000)"
 EOF
     if ! /usr/sbin/httpd -f "$dav/httpd.conf" -k start 2>"$dav/logs/start.log"; then
         echo "webdav SKIPPED: httpd did not start ($(head -1 "$dav/logs/start.log"))" >&2
-        echo "      the WebDAV live suite stays dark" >&2
+        echo "      the Apache endpoints of the WebDAV live suite stay dark" >&2
         return 0
     fi
 
@@ -248,9 +258,7 @@ EOF
     # Live suites): which scheme the probe must settle on, whether its certificate is self-signed,
     # and whether a wrong password may be tried at all — never on the NAS, whose Account
     # Protection locks the account after a few.
-    cat > "$WEBDAV_CONFIG" <<EOF
-{
-  "endpoints": [
+    APACHE_ENDPOINTS=$(cat <<EOF
     {
       "name": "Apache, HTTP, Basic",
       "host": "127.0.0.1", "port": $WEBDAV_PORT, "tls": false, "root": "/basic",
@@ -278,10 +286,89 @@ EOF
       "remotePath": "/", "mayTryWrongPassword": true, "accessLog": "$dav/logs/access.log",
       "servedFrom": "$dav/data/basic"
     }
-  ]
-}
 EOF
+)
     echo "webdav 127.0.0.1:$WEBDAV_PORT (http) and :$WEBDAVS_PORT (https, pinned) -> $dav/data"
+}
+
+start_nextcloud() {
+    NEXTCLOUD_ENDPOINTS=""
+    if ! docker info >/dev/null 2>&1; then
+        echo "nextcloud SKIPPED: Docker is not running (the WebDAV suite's second server family stays dark)"
+        return 0
+    fi
+    if ! docker image inspect "$NEXTCLOUD_IMAGE" >/dev/null 2>&1; then
+        echo "nextcloud SKIPPED: no $NEXTCLOUD_IMAGE image here (docker pull $NEXTCLOUD_IMAGE, 504 MB)"
+        return 0
+    fi
+    docker rm -f "$NEXTCLOUD_CONTAINER" >/dev/null 2>&1 || true
+    # SQLite, so it is one container, and on loopback only. Nextcloud's password policy refuses a
+    # short password, so the throwaway ones are longer than Apache's.
+    docker run -d --name "$NEXTCLOUD_CONTAINER" -p "127.0.0.1:$NEXTCLOUD_PORT:80" \
+        -e SQLITE_DATABASE=nextcloud -e NEXTCLOUD_ADMIN_USER=admin \
+        -e NEXTCLOUD_ADMIN_PASSWORD=dirnex-admin-Nc-pw \
+        -e NEXTCLOUD_TRUSTED_DOMAINS="127.0.0.1 localhost" "$NEXTCLOUD_IMAGE" >/dev/null
+    installed=""
+    for _ in $(seq 1 120); do
+        if curl -q -s "http://127.0.0.1:$NEXTCLOUD_PORT/status.php" 2>/dev/null \
+            | command grep -q '"installed":true'; then
+            installed=yes
+            break
+        fi
+        sleep 2
+    done
+    # No sample files in the account, so its root holds only what the suite makes.
+    if [ -z "$installed" ] \
+        || ! docker exec -u www-data "$NEXTCLOUD_CONTAINER" \
+            php occ config:system:set skeletondirectory --value= >/dev/null 2>&1 \
+        || ! docker exec -u www-data -e OC_PASS=dirnex-probe-Nc-pw "$NEXTCLOUD_CONTAINER" \
+            php occ user:add --password-from-env probe >/dev/null 2>&1; then
+        echo "nextcloud SKIPPED: the container did not install (docker logs $NEXTCLOUD_CONTAINER)" >&2
+        return 0
+    fi
+    # **One request first, alone.** A new account's first login sets up its home, a calendar and
+    # an address book, and the suite's parallel first requests raced over it: measured 2026-10-24,
+    # four of thirteen tests failed their first MKCOL with 500 or 503, `"/probe" is locked` and
+    # `UNIQUE constraint failed: oc_addressbooks…` in the server's log. A client connecting the
+    # ordinary way asks one thing at a time and never meets it.
+    printf 'user = "probe:dirnex-probe-Nc-pw"\n' | curl -q -s -o /dev/null --basic -K - -X PROPFIND \
+        -H 'Depth: 0' "http://127.0.0.1:$NEXTCLOUD_PORT/remote.php/dav/files/probe/"
+    version=$(curl -q -s "http://127.0.0.1:$NEXTCLOUD_PORT/status.php" \
+        | python3 -c 'import json, sys; print(json.load(sys.stdin)["versionstring"])')
+    # Its claims, each measured (PLAN.md §M32): names stored composed, a lock that guards only the
+    # file itself, and `X-OC-Mtime` honoured. No access log or served folder: its Apache logs no
+    # user, and its files live inside the container.
+    NEXTCLOUD_ENDPOINTS=$(cat <<EOF
+    {
+      "name": "Nextcloud $version, HTTP, Basic",
+      "host": "127.0.0.1", "port": $NEXTCLOUD_PORT, "tls": false,
+      "root": "/remote.php/dav/files/probe",
+      "user": "probe", "password": "dirnex-probe-Nc-pw", "scheme": "basic",
+      "remotePath": "/", "mayTryWrongPassword": true,
+      "composesNames": true, "lockGuardsFolder": false, "keepsUploadDates": true
+    }
+EOF
+)
+    echo "nextcloud 127.0.0.1:$NEXTCLOUD_PORT ($version, container $NEXTCLOUD_CONTAINER)"
+}
+
+# One file for every WebDAV endpoint that came up, so the suite runs each test once per server.
+write_webdav_config() {
+    endpoints=""
+    for entry in "${APACHE_ENDPOINTS:-}" "${NEXTCLOUD_ENDPOINTS:-}"; do
+        [ -z "$entry" ] && continue
+        if [ -z "$endpoints" ]; then
+            endpoints="$entry"
+        else
+            endpoints="$endpoints,
+$entry"
+        fi
+    done
+    if [ -z "$endpoints" ]; then
+        echo "webdav: no endpoint came up, so $WEBDAV_CONFIG is not written and the suite stays dark" >&2
+        return 0
+    fi
+    printf '{\n  "endpoints": [\n%s\n  ]\n}\n' "$endpoints" > "$WEBDAV_CONFIG"
 }
 
 case "${1:-up}" in
@@ -289,6 +376,8 @@ up)
     start_sftp
     start_ftp
     start_webdav
+    start_nextcloud
+    write_webdav_config
     sleep 1
     echo
     echo "Configs written. Now run the app suite and read the *per-suite* lines, not the"
@@ -305,6 +394,10 @@ down)
         pids=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
         [ -n "$pids" ] && echo "$pids" | xargs kill 2>/dev/null || true
     done
+    # By name, never by port: that port is Docker's own proxy, and killing it takes Docker down.
+    if docker info >/dev/null 2>&1 && docker rm -f "$NEXTCLOUD_CONTAINER" >/dev/null 2>&1; then
+        echo "removed the $NEXTCLOUD_CONTAINER container (the image stays)"
+    fi
     rm -f "$SFTP_CONFIG" "$FTP_CONFIG" "$WEBDAV_CONFIG" "$STATE/sshd.pid" "$STATE/ftpd.pid"
     if [ -f "$S3_CONFIG" ]; then rm -f "$S3_CONFIG"; echo "removed $S3_CONFIG (it held a live credential)"; fi
     # Leave no pin behind for a port the next throwaway will reuse with a different host key.
@@ -318,6 +411,8 @@ status)
         && echo "ftp   listening on $FTP_PORT" || echo "ftp   not running"
     lsof -nP -iTCP:"$WEBDAV_PORT" -sTCP:LISTEN >/dev/null 2>&1 \
         && echo "webdav listening on $WEBDAV_PORT and $WEBDAVS_PORT" || echo "webdav not running"
+    docker ps --filter "name=^$NEXTCLOUD_CONTAINER\$" --format '{{.Names}}' 2>/dev/null \
+        | command grep -q . && echo "nextcloud running on $NEXTCLOUD_PORT" || echo "nextcloud not running"
     [ -f "$SFTP_CONFIG" ] && echo "config $SFTP_CONFIG present" || echo "config $SFTP_CONFIG ABSENT — SFTP suites will skip silently"
     [ -f "$FTP_CONFIG" ] && echo "config $FTP_CONFIG present" || echo "config $FTP_CONFIG ABSENT — FTP suites will skip silently"
     [ -f "$WEBDAV_CONFIG" ] && echo "config $WEBDAV_CONFIG present" || echo "config $WEBDAV_CONFIG ABSENT — the WebDAV suite will skip silently"

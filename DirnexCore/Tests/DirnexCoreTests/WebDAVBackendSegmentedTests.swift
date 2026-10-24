@@ -360,14 +360,14 @@ private struct UnsplittingTransport: WebDAVTransport {
     func upload(
         localPath: String,
         to backendPath: String,
-        condition: S3WriteCondition,
+        headers: WebDAVPutHeaders,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws -> WebDAVHTTPResponse {
         try base.upload(
             localPath: localPath,
             to: backendPath,
-            condition: condition,
+            headers: headers,
             progress: progress,
             isCancelled: isCancelled
         )

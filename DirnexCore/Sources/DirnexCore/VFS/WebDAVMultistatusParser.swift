@@ -324,7 +324,13 @@ struct WebDAVDate {
         return iso.parse(value)
     }
 
+    /// A `creationdate` at the Unix epoch is no date at all. Nextcloud 34 sends
+    /// `1970-01-01T00:00:00+00:00` for every row whose creation it never recorded, which is every
+    /// file a client uploaded (measured 2026-10-24), and taken as a date it would show each one in
+    /// Get Info as made in 1970. Absent, the row falls back to its modification date, as it does
+    /// on a server that sends none.
     func creationDate(_ value: String) -> Date? {
-        iso.parse(value) ?? httpDate(value)
+        guard let date = iso.parse(value) ?? httpDate(value) else { return nil }
+        return date.timeIntervalSince1970 == 0 ? nil : date
     }
 }
