@@ -936,7 +936,7 @@ local one.
 | Determinate byte progress, downloading | yes | yes | n/a | yes | yes | yes | yes | n/a | yes<sup>qqq</sup> |
 | Determinate byte progress, uploading | yes | yes | n/a | **yes, limited**<sup>jj</sup> | yes | yes | yes | n/a | n/a |
 | Resume an interrupted transfer | n/a | n/a | n/a | yes | yes | yes, limited<sup>aaj</sup> | yes | n/a | no |
-| Split one file over several connections | n/a | n/a | n/a | yes | yes | no<sup>aak</sup> | yes | n/a | n/a |
+| Split one file over several connections | n/a | n/a | n/a | yes | yes | yes<sup>aak</sup> | yes | n/a | n/a |
 | Multipart upload for very large files | n/a | n/a | n/a | **yes**<sup>vv</sup> | **no**<sup>ww</sup> | **no**<sup>aak</sup> | yes | n/a | n/a |
 | Stop actually stops the bytes | yes | yes | yes | yes | yes | yes | yes | n/a | yes<sup>qqq</sup> |
 | Server-side copy (bytes never touch this Mac) | yes<sup>kk</sup> | yes<sup>kk</sup> | n/a | yes, limited<sup>ll</sup> | **no**<sup>ll</sup> | yes, limited<sup>ll</sup> | yes | n/a | n/a |
@@ -1007,12 +1007,20 @@ both). An **upload** starts over. RFC 9110 has no partial PUT, and a server must
 `Content-Range` on one. Apache writes at the offset anyway, measured, and that stays unused until a
 second server family answers it the same way (PLAN.md §6).
 
-<sup>aak</sup> **No for a download, and nothing in the protocol prevents it.** The Range requests
-that resume one would split it, as SFTP's, FTP's and S3's downloads are split
-(`SegmentedDownloadPlan`), and M32 did not build it: one `curl` moved 32 MiB at 95 MB/s from the NAS
-on a LAN, so a single stream was not the limit there. No milestone owns it yet. An **upload** cannot
-be split for <sup>aaj</sup>'s reason: a PUT is whole, and the two ways round it are one server
-family's own each — Apache's offset PUT, and Nextcloud's chunked-upload API, which is not WebDAV.
+<sup>aak</sup> **A download splits; an upload cannot.** A file over 8 MiB with nothing of it on
+disk yet comes down as up to four Range requests at once, in one `curl`, as SFTP's, FTP's and S3's
+do (`SegmentedDownloadPlan`, since 2026-10-24). With each connection held to 4 MiB/s, 40 MiB took
+10.12 s in one stream and 2.46 s in four, over HTTP, Digest and pinned HTTPS alike; where nothing
+limits a connection the split cost 4–8 ms. Every range carries `If-Match` with the tag a `Depth: 0`
+stat just read, so a file rewritten meanwhile is refused range by range rather than spliced from two
+versions, which is the one exposure S3's split documents and cannot close. A file with no strong tag
+(Apache's is weak for the second after a write), a server that answers a range with the whole file,
+and one that serves some ranges and refuses the rest all get the single stream, the last two for the
+rest of the connection. The stat also proves the login first: four ranges with a wrong password were
+four failed logins at once, measured. Not measured: a NAS's disks serving four readers of one file,
+where one stream already moved 95 MB/s on the LAN. An **upload** cannot be split for
+<sup>aaj</sup>'s reason: a PUT is whole, and the two ways round it are one server family's own each
+— Apache's offset PUT, and Nextcloud's chunked-upload API, which is not WebDAV.
 
 <sup>qqq</sup> True only since a fix on the evening of 2026-09-13 for an original that is only in
 iCloud. PhotoKit downloads such an original into the library in full before it hands over a byte, and

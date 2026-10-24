@@ -82,6 +82,33 @@ public struct SegmentedDownloadLimits: Sendable, Equatable {
         minimumSegmentSize: 8 * 1024 * 1024,
         maximumSegments: 4
     )
+
+    /// WebDAV: S3's threshold and floor, 8 MiB and 4 MiB, under FTP's ceiling of 4.
+    ///
+    /// The threshold is S3's for S3's reason: a segment is one more connection and its handshake,
+    /// all made at once, so the split costs about one connection's setup in wall time whatever the
+    /// count. Measured 2026-10-24 against macOS's Apache on loopback, where nothing limits a
+    /// connection, 16 MiB took 0.029 s in one stream and 0.034 s in four over HTTP, and 0.068 s
+    /// against 0.076 s over pinned HTTPS. Digest adds a 401 to every section, sent in parallel with
+    /// the rest.
+    ///
+    /// What the split buys is a link that limits each connection rather than the whole. With Apache
+    /// holding every connection to 4 MiB/s (`mod_ratelimit`), 40 MiB took **10.12 s in one stream,
+    /// 5.08 s in two, 2.46 s in four and 1.25 s in eight**, the same in both rounds; 10.44, 2.54 and
+    /// 1.29 s over pinned HTTPS; 10.13, 2.47 and 1.24 s with Digest. Every split reassembled
+    /// SHA-256 identical.
+    ///
+    /// The ceiling is FTP's, for FTP's reason rather than for cost. A WebDAV server is often a NAS or
+    /// a box behind a proxy that caps connections per client, and a capped server serves some
+    /// sections and refuses the rest, so the pieces that did land are thrown away
+    /// (``SegmentedDownloadSupport``). Eight beat four only on the throttled link. A NAS reading one
+    /// file for eight clients at once from its disks was not measured: one stream from the NAS
+    /// already moved 95 MB/s on the LAN (PLAN.md §M32).
+    public static let webdav = SegmentedDownloadLimits(
+        threshold: 8 * 1024 * 1024,
+        minimumSegmentSize: 4 * 1024 * 1024,
+        maximumSegments: 4
+    )
 }
 
 /// How one file is cut into byte ranges — the pure arithmetic behind a segmented download.

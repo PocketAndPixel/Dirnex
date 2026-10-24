@@ -6860,6 +6860,21 @@ whoever drives `curl` over HTTP next. Most of them apply to the S3 backend as mu
   right Digest password `-` 401 and then `probe` 207. So "how many failed logins did that cost" is the
   401 lines with a user, which is how `WebDAVLiveIntegrationTests` counts them. Counting every 401
   doubles Digest.
+- **To guard a parallel range download, use `If-Match`; a stale `If-Range` sends the whole file.**
+  Measured 2026-10-24 on macOS's Apache with a 100-byte range of a 40 MiB file: `If-Range` with the
+  current tag answered 206 and 100 bytes, and with a stale tag **200 and all 41 943 040 bytes**, which
+  is what RFC 9110 says it does, and in a four-range split it would be four whole copies. `If-Match`
+  with a stale tag answered 412 with nothing sent, and under `fail` no file was created. A weak tag
+  fails `If-Match` too (412), so only a strong one can guard (`WebDAVBackend+Segmented`). The GET's
+  `ETag` header and the PROPFIND's `getetag` are the same string, so a `Depth: 0` stat supplies it.
+- **A range that starts inside the file and ends past it is clipped, not refused.** Four 10 MiB
+  ranges cut for 40 MiB, asked of a 16 MiB file: 206 with 10 485 760 bytes, **206 with 6 291 456**,
+  then 416 and 416. So "every section answered 206" does not mean every piece is whole, and the
+  length check in `SegmentAssembly` is what catches the short one.
+- **N parallel sections with a wrong password are N failed logins, all at once.** Four ranges logged
+  four `probe … 401` together. The batched listing's guard (`fail` on the first section with
+  `--fail-early`) cannot help, since every section starts before any answers; the split proves the
+  login with one stat before it sends them.
 
 ### The Trash
 

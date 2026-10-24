@@ -115,15 +115,7 @@ public extension WebDAVProcessArguments {
             "max-time = \(session.maxTime)\n"
         ]
         if stopsOnRefusal { lines.append("fail\n") }
-        if session.dial.restrictsToIPv4 { lines.append("ipv4\n") }
-        if let credentials, let scheme = session.authentication {
-            lines.append(scheme == .digest ? "digest\n" : "basic\n")
-            lines.append(credentials.hasSuffix("\n") ? credentials : credentials + "\n")
-        }
-        if session.location.usesTLS, case let .pinned(publicKey) = session.trust {
-            lines.append("insecure\n")
-            lines.append("pinnedpubkey = \(FTPConfigFile.quote("sha256//\(publicKey)"))\n")
-        }
+        lines += connectionLines(session: session, credentials: credentials)
         lines += [
             "request = \"PROPFIND\"\n",
             "header = \(FTPConfigFile.quote("Depth: \(WebDAVDepth.one.rawValue)"))\n",
@@ -134,6 +126,23 @@ public extension WebDAVProcessArguments {
             "url = \(FTPConfigFile.quote(url(session, request.backendPath, isCollection: true)))\n"
         ]
         return lines.joined()
+    }
+
+    /// How one section reaches the server, in config spelling: the address family, the scheme and
+    /// the credential when the session sends one, and the pin over HTTPS. Every section of a run
+    /// repeats them, since `curl` reads one option set per transfer.
+    internal static func connectionLines(session: WebDAVSession, credentials: String?) -> [String] {
+        var lines: [String] = []
+        if session.dial.restrictsToIPv4 { lines.append("ipv4\n") }
+        if session.sendsCredentials, let credentials, let scheme = session.authentication {
+            lines.append(scheme == .digest ? "digest\n" : "basic\n")
+            lines.append(credentials.hasSuffix("\n") ? credentials : credentials + "\n")
+        }
+        if session.location.usesTLS, case let .pinned(publicKey) = session.trust {
+            lines.append("insecure\n")
+            lines.append("pinnedpubkey = \(FTPConfigFile.quote("sha256//\(publicKey)"))\n")
+        }
+        return lines
     }
 }
 
@@ -174,8 +183,9 @@ public enum WebDAVBatchWriteOut {
         }
         return (0..<sections).map { section in
             guard let (status, exit) = reported[section] else { return .notSent }
-            let answered = status != 0 && (exit == 0 || (exit == 22 && status >= 400))
-            guard answered else { return .noAnswer(.classify(curlExit: exit)) }
+            guard WebDAVWriteOut.isAnswer(status: status, exitCode: exit) else {
+                return .noAnswer(.classify(curlExit: exit))
+            }
             return .response(WebDAVHTTPResponse(status: status, body: body(section)))
         }
     }

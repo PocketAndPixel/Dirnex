@@ -17,6 +17,10 @@ public struct WebDAVBackend: ConnectionScopedBackend {
     /// Whether this server has answered COPY as a method it does not have, so the next duplicate is
     /// staged through this disk without asking again.
     let serverSideCopy = ServerSideCopySupport()
+    /// Whether this server has shown it will not serve a download in several ranges at once, so the
+    /// next large file goes in one stream without paying to find out again
+    /// (``SegmentedDownloadSupport``).
+    let segmentation = SegmentedDownloadSupport()
     /// The most entries the subtree shortcut may gather before it stops and reports itself
     /// incomplete. FTP's 50 000 and its reason: a whole tree is held in memory, and settable so a
     /// test can reach the rule (``FTPBackend/subtreeRowLimit``).
@@ -149,7 +153,13 @@ public struct WebDAVBackend: ConnectionScopedBackend {
     ) throws {
         if isCancelled() { throw CancellationError() }
         if source.backend == id, destination.backend == .local {
-            try download(source, to: destination, progress: progress, isCancelled: isCancelled)
+            try download(
+                source,
+                to: destination,
+                expectedSize: hint.expectedSize,
+                progress: progress,
+                isCancelled: isCancelled
+            )
             carryOntoLocal(hint.metadata, at: destination.path)
         } else if source.backend == .local, destination.backend == id {
             try upload(
@@ -178,24 +188,48 @@ public struct WebDAVBackend: ConnectionScopedBackend {
     ///
     /// What streams while the bytes move is the destination growing; what the run reports at the
     /// end is exact. The tail reports the difference, so the bar settles on `curl`'s own count.
+    ///
+    /// **A large file with nothing on disk yet is tried in several ranges at once first**
+    /// (``downloadInSegments(_:to:progress:isCancelled:)``), decided on the size the caller's own
+    /// listing gave, never on a request. When that comes back with nothing to join, the single
+    /// stream runs, and one tally spans both, so bytes the split already reported are not reported
+    /// again.
     private func download(
         _ source: VFSPath,
         to destination: VFSPath,
+        expectedSize: Int64?,
         progress: (Int64) -> Void,
         isCancelled: () -> Bool
     ) throws {
         let existing = localFileSize(destination.path)
-        let resume = existing > 0 && remoteSize(of: source) > existing
-
         var tally = TransferProgressTally()
+        if existing == 0,
+           let expectedSize,
+           SegmentedDownloadPlan.isWorthwhile(totalSize: expectedSize, limits: .webdav),
+           !segmentation.isRefused,
+           let moved = try downloadInSegments(
+               source,
+               to: destination.path,
+               progress: { delta in
+                   tally.add(delta)
+                   progress(delta)
+               },
+               isCancelled: isCancelled
+           ) {
+            if let remainder = tally.remainder(against: moved) { progress(remainder) }
+            return
+        }
+
+        let resume = existing > 0 && remoteSize(of: source) > existing
+        var streamed: Int64 = 0
         let response = try mapping(source) {
             try transport.download(
                 source.path,
                 to: destination.path,
                 resume: resume,
                 progress: { delta in
-                    tally.add(delta)
-                    progress(delta)
+                    streamed += max(0, delta)
+                    if let fresh = tally.delta(movedSoFar: streamed) { progress(fresh) }
                 },
                 isCancelled: isCancelled
             )

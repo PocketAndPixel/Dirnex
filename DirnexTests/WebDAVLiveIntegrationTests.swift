@@ -312,7 +312,14 @@ extension WebDAVLiveIntegrationTests {
             #expect(entry.kind == match.kind)
             #expect(entry.byteSize == match.byteSize)
             #expect(entry.modificationDate == match.modificationDate)
-            #expect(entry.entityTag == match.entityTag)
+            // Weakly, as two readings of one file are compared everywhere else: Apache's tag is
+            // weak for the second after a write, so the shortcut read `W/"40-…"` and the walk a
+            // moment later `"40-…"` for a file nobody touched (docs/NOTES.md ▸ curl (WebDAV)).
+            if let mine = entry.entityTag, let theirs = match.entityTag {
+                #expect(HTTPEntityTag.weaklyEqual(mine, theirs))
+            } else {
+                #expect(entry.entityTag == match.entityTag)
+            }
         }
     }
 
