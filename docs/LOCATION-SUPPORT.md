@@ -1017,8 +1017,10 @@ versions, which is the one exposure S3's split documents and cannot close. A fil
 (Apache's is weak for the second after a write), a server that answers a range with the whole file,
 and one that serves some ranges and refuses the rest all get the single stream, the last two for the
 rest of the connection. The stat also proves the login first: four ranges with a wrong password were
-four failed logins at once, measured. Not measured: a NAS's disks serving four readers of one file,
-where one stream already moved 95 MB/s on the LAN. An **upload** cannot be split for
+four failed logins at once, measured. **Where one stream already fills the link, the split is
+slower**: from the NAS over gigabit, 256 MiB took 2.43–2.62 s in one stream (102–111 MB/s) and
+2.62–3.29 s in four ranges, about 0.3–0.4 s more, of which joining the pieces is up to 0.15 s. An
+**upload** cannot be split for
 <sup>aaj</sup>'s reason: a PUT is whole, and the two ways round it are one server family's own each
 — Apache's offset PUT, and Nextcloud's chunked-upload API, which is not WebDAV.
 
