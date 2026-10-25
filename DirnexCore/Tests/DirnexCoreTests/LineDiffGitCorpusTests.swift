@@ -34,7 +34,7 @@ struct LineDiffGitCorpusTests {
     ]
 
     /// Every seventh source file of the core, and three documents.
-    private static func corpus() throws -> [URL] {
+    static func corpus() throws -> [URL] {
         let sources = root.appending(path: "DirnexCore/Sources/DirnexCore/Services")
         let swiftFiles = try FileManager.default.contentsOfDirectory(atPath: sources.path)
             .filter { $0.hasSuffix(".swift") }
@@ -118,7 +118,7 @@ struct LineDiffGitCorpusTests {
     }
 
     /// `text` with between three and ten edits, of the kinds people make.
-    private static func edit(_ text: String, using rng: inout SeededGenerator) -> String {
+    static func edit(_ text: String, using rng: inout SeededGenerator) -> String {
         var lines = text.components(separatedBy: "\n")
         if lines.last?.isEmpty == true {
             lines.removeLast()

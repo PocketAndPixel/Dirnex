@@ -36,6 +36,11 @@ public struct ComparedText: Sendable {
         contentsOf url: URL,
         byteLimit: Int64 = ByteComparator.prescanByteLimit
     ) throws(Failure) -> ComparedText {
+        try decode(contents(of: url, byteLimit: byteLimit))
+    }
+
+    /// A whole local file's bytes, refused past `byteLimit`. Blocking.
+    static func contents(of url: URL, byteLimit: Int64) throws(Failure) -> Data {
         guard let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize else {
             throw .unreadable
         }
@@ -47,7 +52,7 @@ public struct ComparedText: Sendable {
         guard Int64(data.count) <= byteLimit else {
             throw .tooLarge(byteSize: Int64(data.count), limit: byteLimit)
         }
-        return try decode(data)
+        return data
     }
 
     /// Decode a whole file's bytes.

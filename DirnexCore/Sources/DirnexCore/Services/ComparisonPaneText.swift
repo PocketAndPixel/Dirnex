@@ -114,7 +114,7 @@ public struct ComparisonPaneText: Sendable {
             let to = reachesEnd ? line.content.utf16.count : selection.upperBound - rowRange.lowerBound
             copied += Self.slice(line.content, utf16: from..<max(from, to))
             if selection.upperBound > rowRange.upperBound {
-                copied += Self.terminatorText(line.terminator)
+                copied += line.terminator.text
             }
         }
         return copied
@@ -184,14 +184,5 @@ public struct ComparisonPaneText: Sendable {
         let lower = utf16.index(utf16.startIndex, offsetBy: min(range.lowerBound, count))
         let upper = utf16.index(utf16.startIndex, offsetBy: min(range.upperBound, count))
         return content[lower..<upper]
-    }
-
-    private static func terminatorText(_ terminator: LineTerminator) -> String {
-        switch terminator {
-        case .lf: "\n"
-        case .crlf: "\r\n"
-        case .cr: "\r"
-        case .none: ""
-        }
     }
 }
