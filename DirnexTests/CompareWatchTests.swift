@@ -42,12 +42,16 @@ struct CompareWatchTests {
     }
 
     /// Wait until the file on `side` shows `expected` and the pair has been compared as it stands.
+    ///
+    /// 60 s, not the house 30: it is the first wait in most of these tests, so in a full run it
+    /// sits in the main-actor stall at the run's start. Measured 2026-10-26: 22–27 s in a green full
+    /// run, and past 30 in each of five slower ones (docs/NOTES.md ▸ Testing).
     private func shows(
         _ expected: String,
         on side: ComparisonPaneText.Side,
         in rig: CompareSaveRig
     ) async throws {
-        try await settleUntil {
+        try await settleUntil(within: .seconds(60)) {
             text(rig.controller.source(on: side)) == expected
                 && rig.controller.comparedRevision == rig.controller.sidesRevision
         }

@@ -106,6 +106,14 @@ public extension VFSUnsupportedReason {
                 """,
                 [name]
             )
+        case let .fileHeldByAnotherApp(name):
+            return (
+                """
+                “%@” is open in another app that didn’t let Dirnex write to it. \
+                Save or close it there, then try again.
+                """,
+                [name]
+            )
         case let .objectNotRestored(name):
             return (
                 """
@@ -200,6 +208,7 @@ public extension VFSUnsupportedReason {
             .remoteFileChangedSinceFetch(name: ""),
             .remoteFileGoneSinceFetch(name: ""),
             .lockedOnServer(name: ""),
+            .fileHeldByAnotherApp(name: ""),
             .objectNotRestored(name: ""),
             .bucketOperationInProgress(name: ""),
             .bucketNameTakenGlobally(name: ""),

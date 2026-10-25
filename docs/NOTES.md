@@ -604,6 +604,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
       listing landed 18–30.5 s in across seven runs (25 ms alone), and the pane's `Task` could not
       even start until 7–21 s in. A detached task beside it was never more than 53 ms late. Such a
       wait needs more than the house 30 s, and that one got 60 (HISTORY.md ▸ the 2026-10-14 entries).
+      - **Met again 2026-10-26, at 1980 tests.** The first green full run took 56 s, and the next
+        five took 81–87 s on the same code with WindowServer at 40–45% (one with Spotlight at
+        250%, one with it quiet). Five tests whose first wait sits in the stall had taken 22–27 s
+        in the green run and failed at 30 in all five: three `CompareWatchTests`, both
+        archive-encoding tests that open a member, and in some runs `RemotePreviewFetchTests` and
+        `RemoteFetchPromptTests`. The committed tree failed the same way, which is what cleared the
+        change under test. At 60 s they passed at 40–56 s. Read the duration of a *passing* test
+        against its budget: a margin of 3 s in a quiet run is the next evening's failure.
     - **A `sample` names whose code is on the main thread, not what makes the queue long.** The
       stall's profile put 40% of samples in `MultiLineFieldTests`' per-pixel `colorAt` loop. Skipped,
       the same wait landed at 30.1–30.5 s behind a 12.8 s stall: the other suites filled the time.
@@ -8193,6 +8201,26 @@ against a second APFS volume from `hdiutil`.
   once. The open document is a file presenter, and presenters hear only coordinated writes. A shell
   `printf >` over the file went unseen by TextEdit as well. So any write Dirnex makes to a
   file the user may have open in an editor wants a coordinator, in-place or not.
+  - **Which coordination decides what happens to the editor's unsaved edit**, and the plain one
+    loses it. Measured 2026-10-26 against TextEdit with a line typed and not saved ("— Edited",
+    "Undo Typing"): with no options the write landed, TextEdit showed the new bytes, and the typed
+    line was gone from the window and from Undo. With `.forMerging` TextEdit saved its edit into the
+    file first (the accessor read it there), then showed the new bytes. Uncoordinated, TextEdit kept
+    the edit, and its next autosave asked "could not be autosaved, changed by another application".
+    So `CoordinatedFileWrite` merges, and the compare window's witness check runs *inside* the
+    accessor, where it finds the editor's save and asks before writing over it.
+  - The first probe of this measured an unedited document, because background typing is not an
+    edit to NSDocument (docs/LIVE-VERIFICATION.md).
+  - **TextEdit autosaves in place when it loses focus.** Typing in it and then clicking Dirnex put
+    the typed line on disk before Dirnex did anything, and the compare window read it in. So the
+    unsaved-edit case cannot be reached by switching to Dirnex: it needs the write to arrive while
+    the editor is still in front, as a script's does.
+  - **A presenter that never lets go holds a coordination forever, and `cancel()` ends it.**
+    Probed with a test-process presenter whose `relinquishPresentedItem(toWriter:)` never called
+    back: `NSFileCoordinator.cancel()` from another thread after 1 s returned the call with
+    `NSUserCancelledError` (3072) and never ran the accessor. The writer gives up after 10 s.
+  - **Coordination matches across `/var` and `/private/var`.** A presenter registered at the
+    `/var/folders/…` path heard a write coordinated on the `realpath` under `/private/var`.
 
 ### shasum, md5sum and the checksum-file formats
 

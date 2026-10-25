@@ -642,8 +642,8 @@ archive runs are Slice 6's.
   - ⌘W asked about the unsaved left file, and Don't Save closed the window.
   - The defaults domain was restored and compared unchanged, and the run's three undo copies were
     deleted.
-- **Found live and not fixed: an editor that already has the file open does not see the window's
-  save.** After Save and Edit, TextEdit, which had `right.txt` open from the first Edit, went on
+- **Found live, and fixed in the entry below: an editor that already has the file open does not see
+  the window's save.** After Save and Edit, TextEdit, which had `right.txt` open from the first Edit, went on
   showing the old text, even after Dirnex and then TextEdit were activated again. Its next save
   refused with "The file has been changed by another application" (Save Anyway, Revert, Save As),
   so nothing was lost in silence, but Save and Edit's promise, that the editor opens the file with
@@ -653,6 +653,57 @@ archive runs are Slice 6's.
 - **Left for Slice 6:** the live runs over SFTP, WebDAV and a zip member, among them an editor's
   save through Edit Right; this slice's sentences in the 14 languages; and the compare window's
   cells in [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md).
+
+**2026-10-26: the window's saves are coordinated** (core, then a live check). Closes Slice 5's
+finding above.
+
+- **Probed first** (docs/NOTES.md ▸ Keeping a file's previous bytes), with a test-process presenter
+  and with TextEdit, the three ways of writing:
+  - **Uncoordinated**, as before: a presenter heard nothing. TextEdit kept a stale document, and
+    kept an unsaved edit over the new bytes until its next autosave asked about it.
+  - **Coordinated with no options**: TextEdit refreshed an unedited document at once, but
+    **discarded an unsaved edit**, from the window and from Undo.
+  - **Coordinated for merging**: TextEdit saved its unsaved edit into the file first, then showed
+    the new bytes. An unedited document refreshed.
+  - A presenter's write while it let go was already in the file when the accessor ran. And
+    `cancel()` from another thread ended a coordination stuck on a presenter that never let go.
+- **Core:**
+  - `CoordinatedFileWrite.run` runs a block inside a merging coordinated write, and gives up after
+    10 s, answering `nil` without running it.
+  - `ComparedFileSave` runs its witness check, its read of the old bytes, the undo copy and the
+    write inside that block, so an editor's unsaved edit, saved by the coordination, is found by the
+    check and refused as changed since read. Saving anyway writes over it, and the undo copy holds
+    it.
+  - ⌘Z of a save (`restoreSavedFile`) runs its witness check and the in-place exchange inside one
+    coordinated write too. An archive's swap is unchanged.
+  - `VFSUnsupportedReason.fileHeldByAnotherApp(name:)` for a write no app let go of in time,
+    translated in all 14 languages, since the coverage test reads every reason.
+- **Tests:** 6 in `CoordinatedFileWriteTests`, with a file presenter standing in for the editor:
+  the save and ⌘Z are heard, an unsaved edit is saved first and kept, saving anyway leaves it in the
+  undo copy, ⌘Z refuses over it, and an editor that never lets go fails the save by name after its
+  patience. 10 of 10 runs green alone. Full runs: 4 543 core tests, and 1 980 app tests green in
+  two consecutive runs, without the live server suites.
+- **Negative controls:**
+  - With no coordination, all six fail. Coordinated without merging, the three unsaved-edit tests
+    fail and the other three pass, as TextEdit predicted.
+  - With the save's check before the coordination, the two save-side unsaved-edit tests fail. With
+    the undo's check before it, the undo one fails.
+  - With no watchdog, the stuck-editor test was still running when killed at 90 s.
+- **Seen live** in the Debug build, with TextEdit holding `right.txt` open and unedited from Edit
+  Right:
+  - A copy, then the pencil's Save and Edit: TextEdit showed the copied line without being touched,
+    the case that had stayed stale.
+  - Edit ▸ Undo Save in the browser window: TextEdit went back to the old line, and the compare
+    window read the file in.
+  - Typing in TextEdit and switching to Dirnex: TextEdit autosaved the line on losing focus, so the
+    window read it in silently. The unsaved-edit case is the core tests' and the probe's to show.
+  - The defaults domain was restored and compared unchanged, and the run's undo copy was deleted.
+- **Found on the way: five tests' first waits had outgrown 30 s.** The first full run of the night
+  took 56 s and the next five 81–87 s, on the same code, and the committed tree failed the same five
+  tests the same way (three in `CompareWatchTests`, the two archive-encoding member opens, and in
+  some runs `RemotePreviewFetchTests` and `RemoteFetchPromptTests`). Each sat in the main-actor stall
+  at a full run's start, at 22–27 s even in the green run. They now get 60 s and passed at 40–56 s
+  (docs/NOTES.md ▸ Testing).
 
 ### M34 — A three-way merge (M)
 

@@ -152310,6 +152310,95 @@
         }
       }
     },
+    "vfs.unsupported.fileHeldByAnotherApp": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the compare window's save failure title, or as the reason ⌘Z of a saved file failed. %@ is the file's name. Raised when an app that has the local file open (an editor) does not let Dirnex write to it within ten seconds.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ ist in einer anderen App geöffnet, die Dirnex nicht darin schreiben ließ. Sichern oder schließen Sie die Datei dort und versuchen Sie es dann erneut."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is open in another app that didn’t let Dirnex write to it. Save or close it there, then try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» está abierto en otra app que no dejó a Dirnex escribir en él. Guárdalo o ciérralo allí y vuelve a intentarlo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« %@ » est ouvert dans une autre app qui n’a pas laissé Dirnex y écrire. Enregistrez-le ou fermez-le dans cette app, puis réessayez."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” è aperto in un’altra app che non ha lasciato scrivere Dirnex. Salvalo o chiudilo lì, poi riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」はほかのAppで開かれていて、Dirnexによる書き込みが受け入れられませんでした。そのAppで保存するか閉じてから、もう一度お試しください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%@’이(가) 다른 앱에서 열려 있어 Dirnex가 쓸 수 없었습니다. 그 앱에서 저장하거나 닫은 뒤 다시 시도하세요."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is geopend in een andere app die Dirnex er niet in liet schrijven. Bewaar of sluit het daar en probeer het daarna opnieuw."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plik „%@” jest otwarty w innym programie, który nie pozwolił programowi Dirnex na zapis. Zapisz lub zamknij go tam i spróbuj ponownie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” está aberto em outro app que não deixou o Dirnex gravar nele. Salve ou feche o arquivo nesse app e tente novamente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл «%@» открыт в другом приложении, которое не дало Dirnex записать его. Сохраните или закройте его там и повторите попытку."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл «%@» відкрито в іншій програмі, яка не дала Dirnex записати його. Збережіть або закрийте його там і спробуйте ще раз."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”正在另一个 App 中打开，该 App 未让 Dirnex 写入。请在那里存储或关闭它，然后再试。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」正在另一個 App 中開啟，該 App 未讓 Dirnex 寫入。請在那裡儲存或關閉它，然後再試一次。"
+          }
+        }
+      }
+    },
     "vfs.unsupported.lockedOnServer": {
       "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the locked item's name — for a folder, the locked file inside it. Raised when a WebDAV server refuses a write because someone else holds a lock on the item (HTTP 423 or 424).",
       "localizations": {
