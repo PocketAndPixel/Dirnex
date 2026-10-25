@@ -426,6 +426,12 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
 - **F-keys cannot be sent to a background app, and the function bar can be clicked instead.** `app_key
   f5` was refused outright (2026-10-23), while the bar's "F5 Copy" button took an `AXPress` and ran
   the shipped copy with no sheet. Put the cursor on the row with a click first.
+- **Text typed into a document app from the background is not an edit to its document.** Seen
+  2026-10-26 in TextEdit: `app_type` set the text through `AXSelectedText`, and the window showed it,
+  but the title had no "— Edited" and Edit ▸ Undo was empty. A coordinated write then reverted the
+  window, which read as TextEdit discarding an unsaved edit. The same line typed with full-screen
+  control's real keys gave "— Edited" and "Undo Typing". Read the title before believing a
+  dirty-document result.
 - **A transparent overlay from another app can gate every mouse click.** LanguageTool for
   Desktop did this for four passes; keyboard input still reached Dirnex, which masked it.
   Quitting the overlay app restored mouse verification.

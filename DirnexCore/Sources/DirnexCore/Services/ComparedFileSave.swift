@@ -14,6 +14,10 @@ import Foundation
 /// 4. The new bytes are written into the file in place (`InPlaceFileWrite`), which keeps the file
 ///    and everything stored on it. A write that fails partway is undone by writing the old bytes
 ///    back the same way, with their modification time, and the store's copy is dropped.
+///
+/// Steps 2 to 4 run inside one coordinated write (`CoordinatedFileWrite`, PLAN.md §M33 Slice 5),
+/// so an editor with the file open saves its own unsaved edit first, which step 2 then finds, and
+/// shows the saved file afterwards.
 public enum ComparedFileSave {
     /// Why a save did not happen.
     public enum Failure: Error, Equatable {
@@ -84,13 +88,14 @@ public enum ComparedFileSave {
         )
     }
 
-    /// `save`, with the writer a test can make fail partway.
+    /// `save`, with the writer a test can make fail partway, and the patience a test can shorten.
     static func save(
         _ document: ComparedDocument,
         to target: Target,
         overwritingChanges: Bool,
         undo: UndoCopy?,
-        writer: InPlaceFileWrite.Writer
+        writer: InPlaceFileWrite.Writer,
+        patience: TimeInterval = CoordinatedFileWrite.patience
     ) throws(Failure) -> Saved {
         let file = VFSPath.local(target.path)
         let data: Data
@@ -102,36 +107,48 @@ public enum ComparedFileSave {
                 throw .unencodable(line: line, character: character)
             }
         }
-        guard let resolved = resolvedPath(target.path),
-              let current = ArchiveUndoWitness.current(ofFileAt: resolved)
-        else { throw .failed(.notFound(file)) }
-        guard overwritingChanges || current == target.witness else { throw .changedSinceRead }
-        guard let previous = FileManager.default.contents(atPath: resolved) else {
-            throw .failed(.permissionDenied(file))
-        }
-        let previousTime = InPlaceFileWrite.modificationTime(ofFileAt: resolved)
+        guard let resolved = resolvedPath(target.path) else { throw .failed(.notFound(file)) }
 
-        let snapshot = undo?.store.capture(archiveAt: resolved, live: undo?.live ?? [])
-        do {
-            try InPlaceFileWrite.replaceContents(ofFileAt: resolved, with: data, writer: writer)
-        } catch {
-            if error.touchedTheFile {
-                try? InPlaceFileWrite.replaceContents(
-                    ofFileAt: resolved,
-                    with: previous,
-                    modified: previousTime
-                )
+        /// Steps 2 to 4, run inside the coordinated write, on the file a symlink points at.
+        func write(over resolved: String) throws(Failure) -> Saved {
+            guard let current = ArchiveUndoWitness.current(ofFileAt: resolved) else {
+                throw .failed(.notFound(file))
             }
-            snapshot.map { undo?.store.discard($0.snapshot) }
-            throw .failed(VFSError.fromErrno(error.code, path: file))
+            guard overwritingChanges || current == target.witness else { throw .changedSinceRead }
+            guard let previous = FileManager.default.contents(atPath: resolved) else {
+                throw .failed(.permissionDenied(file))
+            }
+            let previousTime = InPlaceFileWrite.modificationTime(ofFileAt: resolved)
+
+            let snapshot = undo?.store.capture(archiveAt: resolved, live: undo?.live ?? [])
+            do {
+                try InPlaceFileWrite.replaceContents(ofFileAt: resolved, with: data, writer: writer)
+            } catch {
+                if error.touchedTheFile {
+                    try? InPlaceFileWrite.replaceContents(
+                        ofFileAt: resolved,
+                        with: previous,
+                        modified: previousTime
+                    )
+                }
+                snapshot.map { undo?.store.discard($0.snapshot) }
+                throw .failed(VFSError.fromErrno(error.code, path: file))
+            }
+            guard let saved = ArchiveUndoWitness.current(ofFileAt: resolved) else {
+                throw .failed(.notFound(file))
+            }
+            return Saved(
+                target: Target(path: target.path, witness: saved),
+                undo: snapshot?.savedFileRecord()
+            )
         }
-        guard let saved = ArchiveUndoWitness.current(ofFileAt: resolved) else {
-            throw .failed(.notFound(file))
+        let written = CoordinatedFileWrite.run(resolved, patience: patience) { resolved in
+            Result { () throws(Failure) in try write(over: resolved) }
         }
-        return Saved(
-            target: Target(path: target.path, witness: saved),
-            undo: snapshot?.savedFileRecord()
-        )
+        guard let written else {
+            throw .failed(.unsupported(.fileHeldByAnotherApp(name: file.lastComponent)))
+        }
+        return try written.get()
     }
 
     /// The file `path` names with every symlink resolved: the one a save writes into, and the one

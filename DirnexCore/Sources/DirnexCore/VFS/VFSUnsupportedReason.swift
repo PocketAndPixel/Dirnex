@@ -171,6 +171,13 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
     /// file open (Finder and Office both lock around an edit), and the answer is to wait. Only a
     /// write can meet it: reading, listing and copying *from* a locked file all pass (Slice 1).
     case lockedOnServer(name: String)
+    /// A save into a local file was not made because an app with the file open did not let go of it
+    /// (`CoordinatedFileWrite`, PLAN.md §M33 Slice 5). The file is as it was.
+    ///
+    /// The local twin of ``lockedOnServer(name:)``: nothing is broken, another program has the file,
+    /// and the answer is to save or close it there and try again. Named for the same reason, since
+    /// the generic mapping would read as a system error with a number.
+    case fileHeldByAnotherApp(name: String)
 
     /// A read was refused because the object sits in an archival storage class and has not been
     /// restored — S3 answers `403 InvalidObjectState` (measured against real AWS 2026-08-18).
@@ -279,6 +286,7 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
         case .remoteFileChangedSinceFetch: return "remoteFileChangedSinceFetch"
         case .remoteFileGoneSinceFetch: return "remoteFileGoneSinceFetch"
         case .lockedOnServer: return "lockedOnServer"
+        case .fileHeldByAnotherApp: return "fileHeldByAnotherApp"
         case .objectNotRestored: return "objectNotRestored"
         case .bucketOperationInProgress: return "bucketOperationInProgress"
         case .bucketNameTakenGlobally: return "bucketNameTakenGlobally"
