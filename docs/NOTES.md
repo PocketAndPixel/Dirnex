@@ -821,6 +821,22 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Negative controls
 
+- **A bare `return` on its own line in a `Void` function returns the line below it.** Swift reads
+  `return` followed by an expression on the next line as `return <that expression>`, and an
+  assignment is a `Void` expression, so a control written as `return` above the line it meant to
+  skip ran that line anyway. Met 2026-10-25 controlling M33 Slice 4's `acknowledgeWrite(to:)`: the
+  test passed with the control in, which read as a test that could not see the rule, and a probe
+  logged the acknowledged revision being recorded after all. The compiler warns ("expression
+  following 'return' is treated as an argument of the 'return'") in a build log nobody reads with
+  `-quiet`. Delete the line, or bind it to `_`, rather than putting a `return` above it.
+  - **The probe that settles it is a print in the code under test, not in the test.** The test's own
+    timeline said only that no offer came; the handler's line said what it compared, and the
+    recorded side already held the acknowledged write.
+- **A control that leaves a question unanswered wedges the test that asks it, however the test is
+  written.** M33 Slice 4's announcement test saved twice in one window, and with the copy's witness
+  left stale the second save raised "changed since this window read it" and waited on it for ten
+  minutes. Two windows, one save each, turn that into a failure. Where a second save in one window
+  is the subject, wait for either outcome and end any sheet that came up, then assert.
 - **A decision that reads live global state *inside itself* cannot be varied by a test, and the tell
   is a negative control that fails nothing.** `PanelViewController+Drop.resolvedKind` asked
   `NSEvent.modifierFlags` directly, so a rule keyed on ⌘ or ⌥ had exactly one reachable value — the

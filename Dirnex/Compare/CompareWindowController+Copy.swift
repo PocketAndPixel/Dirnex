@@ -28,17 +28,27 @@ extension CompareWindowController {
         return nil
     }
 
-    /// The sides no copy may go to because the file would not come back byte for byte, which the
-    /// banner names. Empty in a window that takes no copies at all, which shows no copy buttons.
-    var readOnlySides: [ComparisonPaneText.Side] {
+    /// The sides no copy may go to, and why, which the banner names. Empty in a window that takes
+    /// no copies at all, which shows no copy buttons.
+    var readOnlySides: [ReadOnlySide] {
         guard allowsCopies else { return [] }
-        return Self.sides.filter { !source(on: $0).document.isSavable }
+        return Self.sides.compactMap { side in
+            readOnlyReason(for: side).map { ReadOnlySide(side: side, reason: $0) }
+        }
+    }
+
+    /// Why no copy may go to `side`, or `nil` when one may. A copy nobody could save would be
+    /// dropped at close, so a side with nowhere to save takes none (PLAN.md §M33 Slice 4).
+    func readOnlyReason(for side: ComparisonPaneText.Side) -> ReadOnlySide.Reason? {
+        let source = source(on: side)
+        if source.target == nil { return .nowhereToSave }
+        return source.document.isSavable ? nil : .notExact
     }
 
     /// Whether a copy to `side` would go through now: there is a current change, it belongs to a
     /// comparison of the sides as they stand, and the file there takes copies.
     func canCopy(to side: ComparisonPaneText.Side) -> Bool {
-        guard allowsCopies, source(on: side).document.isSavable, comparedRevision == sidesRevision,
+        guard allowsCopies, readOnlyReason(for: side) == nil, comparedRevision == sidesRevision,
               let comparison, let currentChange else { return false }
         return comparison.diff.changes.indices.contains(currentChange)
     }

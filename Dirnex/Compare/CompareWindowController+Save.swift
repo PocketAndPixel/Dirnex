@@ -1,32 +1,37 @@
 import AppKit
 import DirnexCore
 
-/// What a compare window's saves need besides the file (PLAN.md §M33 Slice 3): the undo store, and
-/// the browser window whose journal ⌘Z in a pane reads.
+/// What a compare window's saves need besides the file (PLAN.md §M33 Slice 3): the undo store, the
+/// browser window whose journal ⌘Z in a pane reads, and the write-back that carries a copy of a
+/// server file or an archive member back where it came from (Slice 4).
 ///
 /// Handed in with no default, as `ArchiveWriter` takes its undo request: the app test target runs
 /// inside the app, so a window a test builds must not file copies into the developer's own store or
-/// records into their journal.
+/// records into their journal, nor upload anything.
 struct CompareSaving {
     /// The store and the snapshots the journal still names, read at each save.
     let undo: @MainActor () -> ArchiveUndoStorage.Request
     /// Files a save's undo record with the browser window the comparison came from.
     let journal: @MainActor (UndoRecord) -> Void
+    /// Carries a copy the window has written back where it came from, asking over the window
+    /// given, and answers whether it landed (`BrowserWindowController.writeBack(_:askingOver:)`).
+    let writeBack: @MainActor (EditedFile, NSWindow?) async -> Bool
 
-    /// For a window whose saves keep no undo: a test's, or the conflict dialog's, which saves
-    /// nothing.
+    /// For a window whose saves keep no undo and carry nothing back: a test's, or the conflict
+    /// dialog's, which saves nothing.
     static var none: CompareSaving {
-        CompareSaving(undo: { .none }, journal: { _ in })
+        CompareSaving(undo: { .none }, journal: { _ in }, writeBack: { _, _ in false })
     }
 }
 
-/// Saving the compare window's files (PLAN.md §M33 Slice 3): ⌘S, the question when a file changed
-/// since it was read, and the one when an edited window closes or the app quits.
+/// Saving the compare window's files (PLAN.md §M33 Slices 3 and 4): ⌘S, the question when a file
+/// changed since it was read, and the one when an edited window closes or the app quits.
 ///
-/// A side saves when its file is a local file read as itself (`CompareSource.target`). A server file
-/// or an archive member is Slice 4's, and until then its copies are not saved, as in Slice 2. The
-/// bytes are the core's `ComparedFileSave`, off the main thread; this asks the questions and hands
-/// the undo record to the browser window.
+/// A side saves when its file can be reached (`CompareSource.target`). A local file read as itself
+/// is written in place, and its undo record goes to the browser window. A server file or an archive
+/// member is written into the copy the window read, which F4's write-back then carries where it
+/// came from, with its own check and question; the side counts as saved once that lands. The bytes
+/// are the core's `ComparedFileSave`, off the main thread; this asks the questions.
 extension CompareWindowController {
     /// The answers to the question asked before edits would be lost.
     enum CloseAnswer {
@@ -63,7 +68,12 @@ extension CompareWindowController {
         guard let side = side(ofFile: id), let target = source(on: side).target else { return false }
         let document = source(on: side).document
         let name = source(on: side).name
-        let request = saving.undo()
+        let carried = source(on: side).writeBack.map {
+            EditedFile(destination: $0, temporaryURL: URL(fileURLWithPath: target.path), name: name)
+        }
+        // A copy carried elsewhere keeps no undo here. An upload has none, and an archive's rewrite
+        // journals its own.
+        let request = carried == nil ? saving.undo() : .none
         let undo = request.store.map { ComparedFileSave.UndoCopy(store: $0, live: request.live) }
         var overwriting = false
         while true {
@@ -80,6 +90,12 @@ extension CompareWindowController {
             }
             switch result {
             case let .success(saved):
+                if let carried {
+                    // The copy holds these lines whether or not they get any further, so the next
+                    // save is checked against it as it now stands.
+                    keep(saved.target, inFile: id)
+                    guard await saving.writeBack(carried, window) else { return false }
+                }
                 land(saved, of: document, inFile: id)
                 return true
             case .failure(.changedSinceRead):
@@ -99,25 +115,58 @@ extension CompareWindowController {
     }
 
     /// The file holds `document`'s lines now: they are what the side is compared with for its
-    /// edited mark, and the next save is checked against the file as it now stands.
+    /// edited mark, and the next save is checked against the file as it now stands. A Synchronize
+    /// window showing the file is told, and compares its row again.
     private func land(
         _ saved: ComparedFileSave.Saved,
         of document: ComparedDocument,
         inFile id: UUID
     ) {
+        keep(saved.target, inFile: id)
+        let origin: VFSPath
         switch side(ofFile: id) {
         case .left?:
-            left.target = saved.target
             left.document.markSaved(document.lines)
+            origin = left.origin
         case .right?:
-            right.target = saved.target
             right.document.markSaved(document.lines)
+            origin = right.origin
         case nil:
             return
         }
         savesLanded += 1
         if let record = saved.undo { saving.journal(record) }
         refreshEditedMarks()
+        Self.announceSave(of: origin)
+    }
+
+    /// The file `id` names now looks like `target`, which the next save is checked against.
+    private func keep(_ target: ComparedFileSave.Target, inFile id: UUID) {
+        switch side(ofFile: id) {
+        case .left?: left.target = target
+        case .right?: right.target = target
+        case nil: break
+        }
+    }
+
+    // MARK: - Telling the Synchronize window
+
+    /// Posted on the main thread once a save has landed, naming the file where it lives
+    /// (``savedOrigin(in:)``). The Synchronize window compares the row showing that file again
+    /// (PLAN.md §M33 Slice 4), so the row the window was opened from stops offering to copy over the
+    /// edit just saved. A notification rather than a handler passed down, because any compare window
+    /// open on the file counts, not only one opened from that row.
+    nonisolated static let fileSaved = Notification.Name("DirnexCompareWindowFileSaved")
+    private nonisolated static let originKey = "origin"
+
+    static func announceSave(of origin: VFSPath) {
+        NotificationCenter.default.post(name: fileSaved, object: nil, userInfo: [originKey: origin])
+    }
+
+    /// The file a ``fileSaved`` notification names. Read where the notification is delivered,
+    /// before it is handed to the main actor.
+    nonisolated static func savedOrigin(in notification: Notification) -> VFSPath? {
+        notification.userInfo?[originKey] as? VFSPath
     }
 
     /// Mark each side edited or not as it stands, after a save. Worked out off the main thread,

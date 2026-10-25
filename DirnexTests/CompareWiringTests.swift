@@ -200,6 +200,7 @@ struct CompareWiringTests {
         let side = try CompareSource(
             name: "a",
             detail: "",
+            origin: .local("/tmp/a"),
             document: ComparedDocument.decode(Data()),
             language: nil
         )
@@ -214,6 +215,7 @@ struct CompareWiringTests {
         let side = try CompareSource(
             name: "a",
             detail: "",
+            origin: .local("/tmp/a"),
             document: ComparedDocument.decode(Data()),
             language: nil
         )

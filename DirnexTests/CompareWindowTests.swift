@@ -22,6 +22,7 @@ struct CompareWindowTests {
         try CompareSource(
             name: name,
             detail: "/tmp/\(name)",
+            origin: .local("/tmp/\(name)"),
             document: ComparedDocument.decode(Data(text.utf8)),
             language: language
         )
