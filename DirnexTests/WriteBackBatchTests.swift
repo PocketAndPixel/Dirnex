@@ -30,6 +30,14 @@ struct WriteBackBatchTests {
         )
     }
 
+    /// A save of the copy at `copy`, on its way back to `entry`'s path.
+    private func pending(_ entry: FileEntry, at copy: URL) -> PendingWriteBack {
+        let edit = EditedFile(
+            destination: .remoteFile(entry.path), temporaryURL: copy, name: entry.name
+        )
+        return (edit: edit, destination: entry.path)
+    }
+
     /// Whether the *running* app resolves to English. The app test target inherits whichever
     /// `AppleLanguages` the developer has Dirnex pinned to (docs/NOTES.md ▸ Localization), so an
     /// assertion over English wording is true only here.
@@ -228,5 +236,70 @@ struct WriteBackBatchTests {
         #expect(
             BrowserWindowController.conflictKind(of: [(first, .gone), (second, .changed)]) == .changed
         )
+    }
+
+    // MARK: - What the check compares against
+
+    /// The silent overwrite from M21 Slice 10 to 2026-10-25. F4 (or the compare window) holds a copy
+    /// of `a.txt`; somebody changes it on the server; a preview brings the new version down beside
+    /// it. Read by path, the older copy's save was checked against that newer download, found the
+    /// server agreeing with it, and uploaded the older bytes over the change with no question.
+    @Test("an older copy's save is checked against its own download, not a newer fetch of the path")
+    func olderCopyIsCheckedAgainstItsOwnRevision() async throws {
+        let backend = CountingBackend()
+        let cache = RemoteFileCache()
+        let first = Fixture.entry("a.txt")
+        let older = try await cache.fetch(first, using: backend, progress: { _ in }, isCancelled: {
+            false
+        })
+        let changed = Fixture.entry("a.txt", byteSize: 99)
+        let newer = try await cache.fetch(changed, using: backend, progress: { _ in }, isCancelled: {
+            false
+        })
+        try #require(older != newer)
+
+        let recorded = BrowserWindowController.recordedRevision(
+            of: pending(first, at: older), in: cache
+        )
+        #expect(recorded == RemoteFileRevision(first))
+        // The server holds the changed version, so the save has something to say.
+        #expect(BrowserWindowController.writeBackConcern(
+            recorded: recorded, current: RemoteFileRevision(changed)
+        ) != nil)
+
+        // And the newer copy's save, against the same server, has nothing to say: the fix must not
+        // make every save ask.
+        let quiet = BrowserWindowController.recordedRevision(
+            of: pending(changed, at: newer), in: cache
+        )
+        #expect(BrowserWindowController.writeBackConcern(
+            recorded: quiet, current: RemoteFileRevision(changed)
+        ) == nil)
+    }
+
+    /// The same hole from the other side: both copies are open, and the older one is saved first.
+    /// Its upload moved the server, so the newer copy's save must ask rather than go up over it.
+    @Test("after one copy is uploaded, the other copy's save is checked against its own download")
+    func otherCopyIsCheckedAfterAnUpload() async throws {
+        let backend = CountingBackend()
+        let cache = RemoteFileCache()
+        let first = Fixture.entry("a.txt")
+        let older = try await cache.fetch(first, using: backend, progress: { _ in }, isCancelled: {
+            false
+        })
+        let changed = Fixture.entry("a.txt", byteSize: 99)
+        let newer = try await cache.fetch(changed, using: backend, progress: { _ in }, isCancelled: {
+            false
+        })
+        let uploaded = Fixture.entry("a.txt", byteSize: 40, modified: Date(timeIntervalSince1970: 1))
+        cache.rebaseline(first.path, to: RemoteFileRevision(uploaded), url: older)
+
+        let recorded = BrowserWindowController.recordedRevision(
+            of: pending(changed, at: newer), in: cache
+        )
+        #expect(recorded == RemoteFileRevision(changed))
+        #expect(BrowserWindowController.writeBackConcern(
+            recorded: recorded, current: RemoteFileRevision(uploaded)
+        ) != nil)
     }
 }

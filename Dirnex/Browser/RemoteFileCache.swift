@@ -23,14 +23,24 @@ import Foundation
 /// AppKit). The root is purged at launch, exactly like `ArchiveExtractor`'s.
 @MainActor
 final class RemoteFileCache {
-    /// One downloaded copy: where it landed, and what the object looked like when it was fetched.
-    struct Entry {
-        let url: URL
-        /// What a save compares against before it overwrites — see `RemoteFileRevision`.
-        let revision: RemoteFileRevision
-    }
+    /// The newest copy of each path: the one a preview, an open or F4 is handed.
+    private var fetched: [VFSPath: URL] = [:]
 
-    private var fetched: [VFSPath: Entry] = [:]
+    /// What each copy stood for, by the copy: the revision it was downloaded at, or the one its
+    /// last upload left on the server. What a save compares against before it overwrites — see
+    /// `RemoteFileRevision`.
+    ///
+    /// **By copy rather than by path, because a save is about one copy and a path can have two.**
+    /// F4 opens one, the file changes on the server, and the next preview brings the new version
+    /// down into a directory of its own. Read by path, the older copy's save was checked against
+    /// the newer download, found nothing, and went up over the change without a question (M21
+    /// Slice 10 to 2026-10-25). Kept after the path stops handing a copy out, for the same reason:
+    /// an edit outlives the listing that superseded it. Each record is a few bytes beside a copy
+    /// that stays on disk until the next launch anyway.
+    ///
+    /// Keyed by `standardizedFileURL`, which also folds a `/private/var` spelling of the temp root
+    /// into `/var`, so a caller that resolved the path still finds its copy.
+    private var revisions: [URL: RemoteFileRevision] = [:]
 
     /// How large a file this window's previews may fetch unasked on each connection beyond the
     /// Settings limit, because the user has already agreed to one about that size
@@ -83,41 +93,50 @@ final class RemoteFileCache {
     /// spending anything, which is the whole reason the split between the passive and explicit paths
     /// can exist at all.
     func cachedURL(for entry: FileEntry) -> URL? {
-        cached(for: entry)?.url
-    }
-
-    /// The same, with the revision the copy was taken at — what a save re-`stat`s against.
-    func cached(for entry: FileEntry) -> Entry? {
-        guard let held = fetched[entry.path] else { return nil }
-        guard !held.revision.isSuperseded(by: RemoteFileRevision(entry)) else {
+        guard let url = fetched[entry.path] else { return nil }
+        // A copy with no record left is one nothing can judge, so it is a miss too.
+        guard let revision = revision(ofCopy: url),
+              !revision.isSuperseded(by: RemoteFileRevision(entry)) else {
             drop(entry.path)
             return nil
         }
         // A temp directory the OS cleared out from under us is a miss, never "unchanged": handing
         // back a path with no file at it would render as a damaged document rather than as an error.
-        guard FileManager.default.fileExists(atPath: held.url.path) else {
+        guard FileManager.default.fileExists(atPath: url.path) else {
             drop(entry.path)
             return nil
         }
-        return held
+        return url
     }
 
-    /// What the copy of `path` was last known to be, for a write-back's conflict check. Unlike
-    /// ``cached(for:)`` this asks nothing about freshness — the caller is about to go and ask the
-    /// server itself, which is the only answer worth having before an overwrite.
-    func revision(for path: VFSPath) -> RemoteFileRevision? {
-        fetched[path]?.revision
+    /// What the copy at `url` stood for when it was downloaded, or when this window last uploaded
+    /// it, for a write-back's conflict check. Unlike ``cachedURL(for:)`` this asks nothing about
+    /// freshness — the caller is about to go and ask the server itself, which is the only answer
+    /// worth having before an overwrite.
+    ///
+    /// `nil` when there is no record of that copy, never another copy's revision: the check then
+    /// says it cannot tell, which is true.
+    func revision(ofCopy url: URL) -> RemoteFileRevision? {
+        revisions[url.standardizedFileURL]
     }
 
-    /// Forget the copy of `path`, without deleting it — the file may still be open in an editor, and
-    /// the write-back watcher holds its own reference to it.
-    func drop(_ path: VFSPath) {
+    /// Forget what the copy at `url` stands for, without deleting it: after an upload whose outcome
+    /// is unknown, nothing true is left to record. The path stops handing it out as well, since
+    /// ``cachedURL(for:)`` judges a copy by its record.
+    func forget(copy url: URL) {
+        revisions[url.standardizedFileURL] = nil
+    }
+
+    /// Stop handing out the newest copy of `path`, without deleting it — the file may still be open
+    /// in an editor, and its record stays for the save that editor may make.
+    private func drop(_ path: VFSPath) {
         fetched[path] = nil
     }
 
-    /// Record that the copy of `path` now stands for `revision` — what a successful upload leaves
-    /// behind, since the editor still holds that same file and a second save must be compared
-    /// against what *we* just wrote rather than against what was there before.
+    /// Record that the copy of `path` at `url` now stands for `revision` — what a successful upload
+    /// leaves behind, since the editor still holds that same file and a second save must be compared
+    /// against what *we* just wrote rather than against what was there before. Another copy of the
+    /// same path keeps its own record, so its save is checked against this upload too.
     func rebaseline(_ path: VFSPath, to revision: RemoteFileRevision, url: URL) {
         record(path, url: url, revision: revision)
     }
@@ -126,8 +145,8 @@ final class RemoteFileCache {
     ///
     /// The job runs in `DirnexCore`, which cannot see this object at all — so a bulk fetch produces
     /// `MaterializedFile` values and the window hands them here, rather than the runner growing a
-    /// store of its own. That is the whole of "the cache stays the store": there is one dictionary,
-    /// one staleness rule, and every way in goes through ``record(_:url:revision:)``.
+    /// store of its own. That is the whole of "the cache stays the store": there is one store, one
+    /// staleness rule, and every way in goes through ``record(_:url:revision:)``.
     ///
     /// Adopting is what makes the second gesture over the same rows free — mark four objects, run a
     /// checksum, then ⌥F3 two of them, and only the first run transfers anything.
@@ -149,8 +168,11 @@ final class RemoteFileCache {
 
     /// The one way an entry is filled. Private so that "no second way to be filled" is a property of
     /// the type rather than a rule three call sites have to keep.
+    ///
+    /// The copy becomes the path's newest, and any other copy of the path keeps its own record.
     private func record(_ path: VFSPath, url: URL, revision: RemoteFileRevision) {
-        fetched[path] = Entry(url: url, revision: revision)
+        fetched[path] = url
+        revisions[url.standardizedFileURL] = revision
     }
 
     /// Download `entry`'s bytes into a fresh temp directory and remember where they landed.
@@ -171,7 +193,7 @@ final class RemoteFileCache {
         progress: @escaping @Sendable (Int64) -> Void,
         isCancelled: @escaping @Sendable () -> Bool
     ) async throws -> URL {
-        if let held = cached(for: entry) { return held.url }
+        if let held = cachedURL(for: entry) { return held }
         let root = Self.temporaryRoot
 
         // One definition of "fetch this row", shared with the queued bulk job: `MaterializeRunner`

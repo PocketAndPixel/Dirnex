@@ -118,7 +118,7 @@ extension BrowserWindowController {
                 comment: "Status while a batch of edited files is checked before being uploaded."
             ))
         }
-        let recorded = batch.map { remoteFileCache.revision(for: $0.destination) }
+        let recorded = batch.map { Self.recordedRevision(of: $0, in: remoteFileCache) }
         let destinations = batch.map(\.destination)
         let localPaths = batch.map(\.edit.temporaryURL.path)
         let current: [RemoteFileRevision?] = await BlockingWork.run {
@@ -143,6 +143,20 @@ extension BrowserWindowController {
                 byteSize: sizes[index]
             )
         }
+    }
+
+    /// The revision a save of `pending` is checked against: the one **its copy** was downloaded at,
+    /// or last uploaded at, and never the newest fetch of the path.
+    ///
+    /// A path can have two copies, an edit's and a newer one a preview brought down after the server
+    /// changed. Read by path, the edit's save was checked against the newer revision, found nothing,
+    /// and uploaded the older bytes over the change with no question (M21 Slice 10 to 2026-10-25).
+    /// `static` so the choice is assertable with no window.
+    static func recordedRevision(
+        of pending: PendingWriteBack,
+        in cache: RemoteFileCache
+    ) -> RemoteFileRevision? {
+        cache.revision(ofCopy: pending.edit.temporaryURL)
     }
 
     // MARK: - The one question
@@ -295,7 +309,7 @@ extension BrowserWindowController {
         // what this file looked like"*, which is true, instead of *"someone else has edited it"*,
         // which is a confident answer about our own interrupted write.
         for item in chosen where !landed.contains(item.destination) {
-            remoteFileCache.drop(item.destination)
+            remoteFileCache.forget(copy: item.edit.temporaryURL)
         }
         for directory in Set(landed.compactMap(\.parent)) {
             refreshPanesShowingWriteBack(directory)
@@ -306,9 +320,9 @@ extension BrowserWindowController {
 
     /// Re-read what the server now holds and record it as the copy's revision.
     ///
-    /// A failed read drops the entry instead of keeping the stale one: with nothing recorded the
-    /// next save says plainly that it cannot tell, which is true, where a stale revision would say
-    /// something false with confidence.
+    /// A failed read forgets the copy's record instead of keeping the stale one: with nothing
+    /// recorded the next save says plainly that it cannot tell, which is true, where a stale
+    /// revision would say something false with confidence.
     private func rebaselineWriteBack(
         _ path: VFSPath,
         to url: URL,
@@ -316,7 +330,7 @@ extension BrowserWindowController {
     ) async {
         let uploaded = await BlockingWork.run { try? backend.stat(at: path) }
         guard let uploaded else {
-            remoteFileCache.drop(path)
+            remoteFileCache.forget(copy: url)
             return
         }
         remoteFileCache.rebaseline(path, to: RemoteFileRevision(uploaded), url: url)

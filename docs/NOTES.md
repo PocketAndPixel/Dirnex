@@ -10379,6 +10379,13 @@ overturned the obvious implementation.
     quietly becoming "re-read every time" — proved by withdrawing *read* permission after the first
     mount, since `stat` still answers while `bsdtar` could not open the file, so a second listing
     that succeeds could only have come from the cache.
+  - **Key a record by what the question is about, which is not always what was fetched.** Fixed
+    2026-10-25 (PLAN.md §M33): `RemoteFileCache` kept a remote file's revision per path, which is
+    right for "is there a fresh copy to show", and the write-back's check read that revision to ask
+    "has the server changed since *this* copy". A preview that brought down a newer version beside
+    an open edit moved the path's record, so the older copy's save was checked against the newer
+    revision, found nothing, and uploaded over the change without a question. The test needs two
+    copies of one path, and nothing with one copy can fail.
 - **A poll spaced by its own wall-clock cost counts latency as expense, and over a real link latency
   is most of it.** `RemoteRefreshPolicy` holds an unattended pane to 5 % of its wall time, which was
   argued from S3's billed requests and a 50 000-object prefix. Measured 2026-10-19 on an FTPES server

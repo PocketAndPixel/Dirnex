@@ -180,9 +180,86 @@ struct RemoteFileCacheTests {
         let uploaded = Fixture.entry("a.txt", byteSize: 40, modified: Date(timeIntervalSince1970: 1))
         cache.rebaseline(entry.path, to: RemoteFileRevision(uploaded), url: url)
 
-        #expect(cache.revision(for: entry.path) == RemoteFileRevision(uploaded))
+        #expect(cache.revision(ofCopy: url) == RemoteFileRevision(uploaded))
         // And the copy the editor still has open stays served, since the listing will now agree
         // with what was just written.
         #expect(cache.cachedURL(for: uploaded) == url)
+    }
+
+    // MARK: - Each copy keeps its own revision
+
+    /// Two copies of one path, the ordinary way: F4 took the first, the file changed on the server,
+    /// and the next preview brought the new version down beside it. Each copy has to answer for
+    /// itself, because a save is about one copy — the batch's check (`WriteBackBatchTests`) is what
+    /// reads this.
+    @Test("two copies of one path each answer the revision they were fetched at")
+    func twoCopiesKeepTheirOwnRevisions() async throws {
+        let backend = CountingBackend()
+        let cache = RemoteFileCache()
+        let first = Fixture.entry("a.txt")
+        let older = try await cache.fetch(first, using: backend, progress: { _ in }, isCancelled: {
+            false
+        })
+        let changed = Fixture.entry("a.txt", byteSize: 99)
+        let newer = try await cache.fetch(changed, using: backend, progress: { _ in }, isCancelled: {
+            false
+        })
+
+        // Two transfers into two directories, or the rest of this proves nothing.
+        #expect(backend.copyCount == 2)
+        #expect(older != newer)
+        #expect(cache.revision(ofCopy: older) == RemoteFileRevision(first))
+        #expect(cache.revision(ofCopy: newer) == RemoteFileRevision(changed))
+        // The path still hands out its newest copy.
+        #expect(cache.cachedURL(for: changed) == newer)
+    }
+
+    /// An upload of one copy is a change the other copy's save must be told about: it was taken
+    /// before it, so its record must not move.
+    @Test("re-baselining one copy leaves the other copy's revision where it was")
+    func rebaselineMovesOnlyItsOwnCopy() async throws {
+        let backend = CountingBackend()
+        let cache = RemoteFileCache()
+        let first = Fixture.entry("a.txt")
+        let older = try await cache.fetch(first, using: backend, progress: { _ in }, isCancelled: {
+            false
+        })
+        let changed = Fixture.entry("a.txt", byteSize: 99)
+        let newer = try await cache.fetch(changed, using: backend, progress: { _ in }, isCancelled: {
+            false
+        })
+
+        let uploaded = Fixture.entry("a.txt", byteSize: 40, modified: Date(timeIntervalSince1970: 1))
+        cache.rebaseline(first.path, to: RemoteFileRevision(uploaded), url: older)
+
+        #expect(cache.revision(ofCopy: older) == RemoteFileRevision(uploaded))
+        #expect(cache.revision(ofCopy: newer) == RemoteFileRevision(changed))
+        // The uploaded copy holds what the server now does, so it is the one the path hands out.
+        #expect(cache.cachedURL(for: uploaded) == older)
+    }
+
+    /// What an upload of unknown outcome leaves: no record of that copy, so its next save says it
+    /// cannot tell. The other copy's record is not part of that.
+    @Test("forgetting a copy leaves no record of it, and the other copy keeps its own")
+    func forgettingACopyLeavesTheOther() async throws {
+        let backend = CountingBackend()
+        let cache = RemoteFileCache()
+        let first = Fixture.entry("a.txt")
+        let older = try await cache.fetch(first, using: backend, progress: { _ in }, isCancelled: {
+            false
+        })
+        let changed = Fixture.entry("a.txt", byteSize: 99)
+        let newer = try await cache.fetch(changed, using: backend, progress: { _ in }, isCancelled: {
+            false
+        })
+
+        cache.forget(copy: older)
+        #expect(cache.revision(ofCopy: older) == nil)
+        #expect(cache.revision(ofCopy: newer) == RemoteFileRevision(changed))
+        #expect(cache.cachedURL(for: changed) == newer)
+
+        // A copy with no record is one nothing can judge, so the path stops handing it out.
+        cache.forget(copy: newer)
+        #expect(cache.cachedURL(for: changed) == nil)
     }
 }
