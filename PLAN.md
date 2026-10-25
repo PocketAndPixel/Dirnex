@@ -523,6 +523,37 @@ stand-in write-back.
 - **Left for Slice 6:** the compare window's cells in [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md),
   the new sentences' translations, and the live runs over SFTP, WebDAV and a zip.
 
+**2026-10-25: the write-back check reads the copy's revision** (app only). Closes Slice 4's
+*found and not fixed*. **Not yet run live.**
+
+- **App:**
+  - `RemoteFileCache` keeps a revision **per copy**, by the copy's URL. Before this it kept one per
+    path, and `fetched[path]` still names the path's newest copy, which is what previews and opens
+    are handed. A copy keeps its record after the path stops handing it out, because the edit open
+    on it outlives the listing that superseded it.
+  - The check reads `revision(ofCopy:)` for the copy being saved, through
+    `BrowserWindowController.recordedRevision(of:in:)`. A copy with no record answers `nil`, never
+    another copy's revision, and the check then asks with the "no record" sentence.
+  - An upload re-baselines only its own copy. A failed re-`stat` or an unclaimed item forgets only
+    that copy's record (`forget(copy:)`), where it used to drop the whole path.
+  - **Chosen over** answering "no record" whenever the copy is not the path's newest. That also
+    closes the hole, but the user would read "can't tell" where "someone else has edited it" is
+    known. It would also lose the newer copy's record once the older one uploaded.
+  - `Entry` and `cached(for:)` are gone: the copy's URL was all their callers used, and without
+    them no path-keyed revision is left to reach for.
+- **Tests:** 5 new. `WriteBackBatchTests` has two: the older copy's save is checked against its own
+  download (and the newer copy's save stays quiet), and after one copy uploads, the other copy's save
+  is checked against its own revision. `RemoteFileCacheTests` has three, on two copies of one path:
+  each keeps its own revision, a re-baseline moves only its copy, and forgetting one leaves the
+  other. Full runs: 4 537 core and 1 960 app tests, without the live server suites. The S3 edit
+  suite now reads the per-copy accessor and still needs a real account to run.
+- **Negative controls:**
+  - The check reading the path's newest copy, as before, fails both batch tests. The concern comes
+    back `nil`, which is the silent overwrite.
+  - One record per path (a record dropped with its path, or replaced by the next copy) fails both
+    batch tests and two cache tests.
+  - A path-wide `forget` fails the forget test.
+
 ### M34 — A three-way merge (M)
 
 **Planned 2026-10-25.** A file manager has no common ancestor to merge from, except in two places
