@@ -203,7 +203,7 @@ struct CompareWiringTests {
             document: ComparedDocument.decode(Data()),
             language: nil
         )
-        let controller = CompareWindowController(left: side, right: side)
+        let controller = CompareWindowController(left: side, right: side, saving: .none)
         #expect(controller.window?.worksWhenModal == true)
     }
 
@@ -217,7 +217,7 @@ struct CompareWiringTests {
             document: ComparedDocument.decode(Data()),
             language: nil
         )
-        let controller = CompareWindowController(left: side, right: side)
+        let controller = CompareWindowController(left: side, right: side, saving: .none)
         #expect(controller.window?.delegate === controller)
         #expect(controller.responds(to: #selector(NSWindowDelegate.windowDidBecomeKey(_:))))
         #expect(controller.responds(to: #selector(NSWindowDelegate.windowDidResignKey(_:))))

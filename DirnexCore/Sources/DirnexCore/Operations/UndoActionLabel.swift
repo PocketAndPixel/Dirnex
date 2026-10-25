@@ -30,6 +30,10 @@ public enum UndoActionLabel: String, Sendable, Equatable, Codable, CaseIterable 
     /// the container as it was (``UndoStep/restoreArchive(archive:snapshot:expected:restored:)``).
     /// Phrased as ``changeAttributes`` is, since the menu reads "Undo <label>".
     case changeArchive
+    /// A text file saved from the compare window (PLAN.md §M33 Slice 3), which ⌘Z in a pane puts
+    /// back as it was before the save
+    /// (``UndoStep/restoreSavedFile(file:snapshot:expected:restored:)``).
+    case saveFile
 
     // Selection gestures — authored in the app, passed in on a `SelectionChange`.
     case mark
@@ -51,6 +55,7 @@ public enum UndoActionLabel: String, Sendable, Equatable, Codable, CaseIterable 
         case .moveToTrash: return "Move to Trash"
         case .changeAttributes: return "Change Attributes"
         case .changeArchive: return "Change Archive"
+        case .saveFile: return "Save"
         case .mark: return "Mark"
         case .selectAll: return "Select All"
         case .invertSelection: return "Invert Selection"

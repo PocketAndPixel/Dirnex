@@ -237,10 +237,12 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
     case archiveUpdateFailed(archive: String)
     /// ⌘Z on an archive rewrite whose snapshot is no longer in the store. It is evictable by
     /// construction (``ArchiveUndoBudget``), so a record can outlive the bytes it needs — a real
-    /// state with a plain reason, not a failure to report as one.
+    /// state with a plain reason, not a failure to report as one. A text file saved from the
+    /// compare window says the same (PLAN.md §M33 Slice 3): the sentence names no archive.
     case archiveUndoCopyUnavailable(archive: String)
     /// ⌘Z on an archive rewrite whose archive is no longer the file the rewrite produced: something
-    /// else has updated it since, and putting the old container back would discard that.
+    /// else has updated it since, and putting the old container back would discard that. Also a
+    /// saved text file changed since its save.
     case archiveChangedSinceRewrite(archive: String)
     /// A write into a Windows self-extractor, whose repack would drop the program (``SelfExtractingArchive``).
     case selfExtractingArchiveReadOnly(archive: String)

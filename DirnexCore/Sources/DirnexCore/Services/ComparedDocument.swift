@@ -25,8 +25,8 @@ public struct ComparedDocument: Sendable {
     /// The line ending lines copied in take: the one most of the file's lines ended in as it was
     /// read, the first met on a tie. `nil` for a file with no line break at all.
     public let commonLineEnding: LineTerminator?
-    /// The lines as read, which `isEdited` compares with.
-    private let readLines: [TextLine]
+    /// The lines the file holds, as read or as last saved, which `isEdited` compares with.
+    private var readLines: [TextLine]
 
     /// Why the lines cannot be written in the document's encoding.
     public enum EncodingFailure: Error, Equatable {
@@ -85,11 +85,18 @@ public struct ComparedDocument: Sendable {
 
     // MARK: - Editing
 
-    /// Whether any line differs from the file as read, by its bytes or its ending. An edit undone,
-    /// or copied back by hand, leaves the document unedited.
+    /// Whether any line differs from the file as read or last saved, by its bytes or its ending. An
+    /// edit undone, or copied back by hand, leaves the document unedited.
     public var isEdited: Bool {
         guard lines.count == readLines.count else { return true }
         return zip(lines, readLines).contains { !Self.sameBytes($0, $1) }
+    }
+
+    /// Note that the file now holds `saved`: the lines of a copy of this document that was saved.
+    /// Edits made while the save ran stay edits, and an undo past the save makes the document
+    /// edited again.
+    public mutating func markSaved(_ saved: [TextLine]) {
+        readLines = saved
     }
 
     /// Apply `edit`, and return the edit that undoes it.

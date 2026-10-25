@@ -83,12 +83,13 @@ enum ConflictDialog {
         }
         switch tool {
         case .dirnex:
+            // No `saving`, so the window changes neither file: the incoming one is waiting on this
+            // dialog.
             CompareOpener.openWindow(
                 CompareFile(path: existing, origin: existing),
                 detail: existing.path,
                 CompareFile(path: incoming, origin: incoming),
                 detail: incoming.path,
-                allowsCopies: false,
                 failed: failed
             )
         case let .external(external):
