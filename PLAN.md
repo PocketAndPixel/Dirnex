@@ -258,6 +258,66 @@ Expected to be left undone, each for its own reason: **typing in a pane** and **
 M11's call; **copying every change at once**, which is F5; **a save that changes the encoding or the
 line endings**, since a save keeps both; and **editing in the conflict dialog's window**.
 
+#### Progress
+
+**2026-10-25: Slice 1 landed** (core only; the app is untouched).
+
+- **Core:**
+  - `ComparedDocument` holds a side's lines, encoding and byte-order mark. `read` and `decode` write
+    the unedited lines back once, and `isSavable` says whether that gave the file's own bytes. It
+    also has `commonLineEnding`, `isEdited` (by bytes, against the file as read), `apply(_:)`, which
+    returns the inverse edit, and `encoded()`, which throws `unencodable(line:character:)`.
+  - `LineEdit` replaces some lines with others. `LineEdit.copying(_:to:left:right:)` builds the copy
+    of one change, with the destination's line ending.
+  - `TextComparison` compares two documents as they stand.
+  - `LineTerminator.text` and `TextPreview.byteOrderMark(for:)` are now the only spelling of a line
+    ending and of a mark.
+- **Tests:** 18 in two new suites.
+  - `ComparedDocumentTests` pins each line-ending rule, both refusals, each encoding's round trip
+    and the not-savable cases.
+  - `ComparedDocumentPropertyTests` applies up to 8 random edits to each of 1 000 random documents,
+    then walks every one back by its inverse and forward again by theirs. It draws 2 000 random
+    pairs under four option sets and copies changes in random order and direction until the pair
+    agrees. Every pair agrees within as many copies as the first comparison had changed lines, and
+    undo restores both sides: 4 545 copies, 81 of them giving the line before a break of its own.
+  - The same suite takes M31's 35 corpus files and their seeded edits in UTF-8, UTF-8 with a mark,
+    UTF-16LE and UTF-16BE. Each comes back byte for byte, and copying every change of a file into
+    its edit gives the file back (205 copies).
+- **Measured** (throwaway harnesses, not checked in):
+  - **This repository's whole history:** 7 480 blob versions. 7 449 are text, and every one is
+    savable and comes back byte for byte; the other 31 are binary.
+  - **The development Mac:** 835 018 files under `~/Dev`, `/usr/share`, `/etc` and three
+    frameworks. 555 676 decode as text, in 25 encodings: 5 124 UTF-8 with a mark, 596 UTF-16LE and
+    280 legacy files in 23 encodings among them. Every one comes back byte for byte.
+  - **Two hand-made files do not**, and are not savable. One has a second UTF-8 mark, which
+    Foundation drops when decoding; the other is UTF-16 with an odd last byte, dropped too
+    (docs/NOTES.md ▸ Text fields and text views).
+  - **The check costs little at open**, in release: 0.35 → 0.48 s for 58 MiB of UTF-8, +0.08 s for
+    15 MiB of UTF-16 and +0.3 s for 7.7 MB of Windows-1251.
+- **Decided in the slice:**
+  - **Outside UTF-8, the writer encodes one line at a time**, so a refused character is found on
+    its own line. The check at open covers an encoding whose state would run across lines. The
+    character named is the last of the shortest prefix the encoding refuses, so a flag or a
+    decomposed letter is named whole.
+  - **`commonLineEnding` comes from the file as read and stays.** A tie goes to the ending met
+    first. A file with no line break takes the source's, and two such files get LF.
+  - **A copy that lands after a last line with no break gives that line one**, so the edit starts a
+    line early. Only an option that overlooks line endings can leave a change there; without the
+    break the two lines would join. `apply` traps on any edit that leaves a line without a break
+    ahead of another.
+  - **An undo, or a change copied back by hand, leaves a side unedited**, because `isEdited`
+    compares bytes with the file as read rather than counting edits.
+- **Negative controls:**
+  - Without the line-break step, its unit test and the copy property both trap in `apply`.
+  - With copied lines keeping their own ending, the CRLF-into-LF test fails. It is the only test
+    that does, since the property draws both sides from one ending under the default options.
+  - With a copied last line always gaining a break, three unit tests, the corpus copy and the
+    default-option property fail.
+  - Writing no mark fails five round trips and the not-savable test's controls.
+- **Found on the way:** M31's decoder takes 6 s to open a 7.7 MB Windows-1251 file, in
+  `NSString.stringEncoding(for:)`. The compare window has paid that since M31, and this slice adds
+  0.3 s to it.
+
 ### M34 — A three-way merge (M)
 
 **Planned 2026-10-25.** A file manager has no common ancestor to merge from, except in two places

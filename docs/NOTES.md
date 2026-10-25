@@ -2638,6 +2638,17 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     "Arabic (Windows)" — **and lossy about MacRoman** (`Caf<?> na夫e` for `Café naïve`). Refuse the
     lossy answers; take the rest. It is what TextEdit shows, and doing better means shipping a
     charset detector.
+  - **It is also slow on a large file:** 6 s for 7.7 MB of Windows-1251 (measured 2026-10-25),
+    where 58 MiB of UTF-8 decodes in 0.35 s. The compare window pays it when it opens such a file.
+  - **Decoding and encoding back are exact inverses everywhere but two places**, so anything that
+    saves has to check the round trip rather than trust it (`ComparedDocument.isSavable`). Probed
+    2026-10-25 for M33: `String(data:encoding: .utf8)` drops a *leading* U+FEFF, so a file with
+    two UTF-8 marks reads with one; and a UTF-16 decode drops an odd last byte. Nothing else
+    differed over this repository's history and 555 676 text files on the development Mac, in 25
+    encodings. Going back, `data(using:allowLossyConversion: false)` never substitutes (an em dash
+    in Latin-1 and `¥` in Windows-932 both give `nil`) but does compose (`e` + U+0301 is Latin-1's
+    `0xE9`). `.utf16` and `.utf32` write a mark of their own; `.utf16LittleEndian` and the other
+    spellings with a byte order do not.
   - **`NSTextView.textStorage` is *not* the TextKit 1 trapdoor, and `.layoutManager` is** — worth
     stating because it is the natural next worry: `textStorage` is historically
     `layoutManager.textStorage`, so an attributed document installed through it looks like the exact

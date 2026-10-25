@@ -130,6 +130,12 @@ public struct TextPreview: Sendable, Equatable {
 
     // MARK: - Encodings
 
+    /// The byte-order mark `decodedText` reads for `encoding`, which a save writes back in front of
+    /// the text (`ComparedDocument`). `nil` for an encoding no mark names.
+    static func byteOrderMark(for encoding: String.Encoding) -> [UInt8]? {
+        ByteOrderMark.all.first { $0.encoding == encoding }?.bytes
+    }
+
     /// One byte-order mark and what it says: which encoding follows, and how wide that encoding's
     /// code unit is (which is what a truncated read has to cut back to).
     private struct ByteOrderMark {

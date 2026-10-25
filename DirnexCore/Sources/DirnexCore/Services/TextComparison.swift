@@ -41,8 +41,46 @@ public struct TextComparison: Sendable {
         _ right: ComparedText,
         options: LineDiffOptions = LineDiffOptions()
     ) {
-        let leftLines = TextLines.split(left.text)
-        let rightLines = TextLines.split(right.text)
+        self.init(
+            TextLines.split(left.text),
+            TextLines.split(right.text),
+            encodings: (
+                SideEncoding(encoding: left.encoding, hasByteOrderMark: left.hasByteOrderMark),
+                SideEncoding(encoding: right.encoding, hasByteOrderMark: right.hasByteOrderMark)
+            ),
+            options: options
+        )
+    }
+
+    /// Compare two documents as they stand, edits included (PLAN.md §M33).
+    public init(
+        _ left: ComparedDocument,
+        _ right: ComparedDocument,
+        options: LineDiffOptions = LineDiffOptions()
+    ) {
+        self.init(
+            left.lines,
+            right.lines,
+            encodings: (
+                SideEncoding(encoding: left.encoding, hasByteOrderMark: left.hasByteOrderMark),
+                SideEncoding(encoding: right.encoding, hasByteOrderMark: right.hasByteOrderMark)
+            ),
+            options: options
+        )
+    }
+
+    /// How one side is written: the part of a file a comparison reads apart from its lines.
+    private struct SideEncoding {
+        let encoding: String.Encoding
+        let hasByteOrderMark: Bool
+    }
+
+    private init(
+        _ leftLines: [TextLine],
+        _ rightLines: [TextLine],
+        encodings: (left: SideEncoding, right: SideEncoding),
+        options: LineDiffOptions
+    ) {
         let diff = LineDiff.compare(leftLines, rightLines, options: options)
         let layout = RowAlignment.layout(
             left: leftLines,
@@ -57,8 +95,8 @@ public struct TextComparison: Sendable {
         rows = layout.rows
         changeRows = layout.changeRows
         unshownDifferences = Self.unshownDifferences(
-            left,
-            right,
+            encodings.left,
+            encodings.right,
             rows: layout.rows,
             lines: (leftLines, rightLines),
             options: options
@@ -87,8 +125,8 @@ public struct TextComparison: Sendable {
     // MARK: - What the rows do not show
 
     private static func unshownDifferences(
-        _ left: ComparedText,
-        _ right: ComparedText,
+        _ left: SideEncoding,
+        _ right: SideEncoding,
         rows: [AlignedRow],
         lines: (left: [TextLine], right: [TextLine]),
         options: LineDiffOptions

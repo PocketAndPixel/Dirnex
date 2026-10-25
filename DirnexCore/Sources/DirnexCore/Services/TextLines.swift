@@ -10,6 +10,16 @@ public enum LineTerminator: Sendable, Hashable {
     case cr
     /// The last line of a file that does not end in a line break.
     case none
+
+    /// The characters that end the line in the file: empty for `none`.
+    public var text: String {
+        switch self {
+        case .lf: "\n"
+        case .crlf: "\r\n"
+        case .cr: "\r"
+        case .none: ""
+        }
+    }
 }
 
 /// One line of a text file: what it says, and how it ended.
