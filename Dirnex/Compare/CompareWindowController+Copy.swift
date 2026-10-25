@@ -55,6 +55,7 @@ extension CompareWindowController {
 
     func refreshCopyControls() {
         toolbar.enableCopy(toLeft: canCopy(to: .left), toRight: canCopy(to: .right))
+        refreshEditControls()
     }
 
     /// Copy the current change across to `side`, then go on to the next change.
@@ -69,16 +70,22 @@ extension CompareWindowController {
         apply(edit, toFile: source(on: side).id, named: CompareToolbar.copyTitle(to: side))
     }
 
-    /// Apply `edit` to the file `id` names, wherever it is now, register the edit that undoes it,
-    /// and compare the two files again.
+    /// Apply `edit` to the file `id` names, wherever it is now, register the edit that undoes it
+    /// under that file's own undo target, and compare the two files again.
     func apply(_ edit: LineEdit, toFile id: UUID, named name: String) {
         guard let side = side(ofFile: id) else { return }
         let inverse = side == .left ? left.document.apply(edit) : right.document.apply(edit)
         let undoing = edits.isUndoing
-        edits.registerUndo(withTarget: self) { controller in
-            controller.apply(inverse, toFile: id, named: name)
+        // One copy is one step, grouped here rather than by the event, so no step holds both files'
+        // copies, which a file read again could not take apart (`+Watch`). An undo or a redo
+        // registers its inverse into the group the manager opened for it.
+        let grouping = !edits.isUndoing && !edits.isRedoing
+        if grouping { edits.beginUndoGrouping() }
+        edits.registerUndo(withTarget: source(on: side).undoTarget) { [weak self] _ in
+            self?.apply(inverse, toFile: id, named: name)
         }
         edits.setActionName(name)
+        if grouping { edits.endUndoGrouping() }
         sidesRevision += 1
         refreshCopyControls()
         // The other file's lines did not move, so its line at the top is the one to keep there.

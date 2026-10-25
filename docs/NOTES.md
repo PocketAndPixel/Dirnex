@@ -3320,6 +3320,16 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     arrive as more than one callback, so a reset taken on the first of them is overtaken by the rest.
     A sibling-silence test flaked 1 run in 5 at a count of 1 that was never the sibling. Quiesce
     until the counts stop moving, *then* start counting — 22 consecutive green runs after.
+  - **The same stream sees every way an editor saves**, which is what lets the compare window watch
+    a file in a busy folder (PLAN.md §M33 Slice 5). Measured 2026-10-25: a write in place gave 1
+    callback, and a rename over the file, a delete and create, `replaceItemAt` from the item
+    replacement directory, `NSDocument.writeSafely` (TextEdit's save) and vim's `:wq` gave 2 each.
+    Read the file again on each callback, guarded so a second one arriving mid-read waits. A
+    symlink's own path fired for a write to its target, and so did `/var/folders` for a file under
+    `/private/var/folders`.
+  - **`NSDocument.writeSafely` to a symlink's own URL fails** with "doesn't exist", and to the
+    resolved URL it works, so a document-based editor saves the target and gives it a new inode.
+    Watch the resolved path.
 - **An `FSEventStream` is *recursive*, so a pane on a home directory is told about `~/Library` several
   times a second — and reacting to each with a `reloadData` is visible to the user, because AppKit's
   expansion tooltip dies with the cell view a reload discards.** `DirectoryWatcher` also discards the
@@ -8174,6 +8184,15 @@ against a second APFS volume from `hdiutil`.
   - BBEdit was not on the Mac, so vim stood in as the second editor. Not probed, because nothing here
     can make one: a file owned by another user. A write in place keeps the owner by construction,
     where a replacing save would make the file the saver's.
+- **A write that goes around `NSFileCoordinator` never reaches a document an NSDocument app has
+  open.** Seen live 2026-10-26 (PLAN.md §M33 Slice 5): TextEdit had `right.txt` open and unedited,
+  the compare window saved it in place, and TextEdit went on showing the old text, through
+  reactivating Dirnex and then TextEdit. Its next save refused with "The file has been changed by
+  another application". The same in-place write made inside
+  `NSFileCoordinator(filePresenter: nil).coordinate(writingItemAt:)` refreshed TextEdit's window at
+  once. The open document is a file presenter, and presenters hear only coordinated writes. A shell
+  `printf >` over the file went unseen by TextEdit as well. So any write Dirnex makes to a
+  file the user may have open in an editor wants a coordinator, in-place or not.
 
 ### shasum, md5sum and the checksum-file formats
 
@@ -9638,6 +9657,15 @@ overturned the obvious implementation.
   instead makes `inverse` a swap of two witnesses, one stored copy serves both directions, and there
   is no state in which only one version exists. Worth reaching for whenever an operation's undo is a
   whole-object replacement rather than a delta.
+- **`removeAllActions(withTarget:)` takes a target's actions out of their groups and leaves the
+  groups, under the name each was given.** So an undo that must drop one object's steps needs one
+  target per object *and* one object per group. Found 2026-10-25 when the compare window drops a
+  file's copies after reading it again: with `groupsByEvent` on, two copies made in a test with no
+  event between them shared one open group, and removing the right file's action left a group
+  holding the left file's under "Copy to Right". The app's key presses close a group each, so it
+  would have passed live and stayed wrong for any path that registers without an event. Group
+  explicitly (`groupsByEvent = false`, a `beginUndoGrouping` around each registration outside an
+  undo or a redo, which the manager groups itself).
 
 ### Transfers and batches
 

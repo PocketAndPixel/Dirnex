@@ -12,6 +12,10 @@ final class ComparePaneView: NSView {
     private let coloring = CompareRowColoring()
     let nameLabel = NSTextField(labelWithString: "")
     private let pathLabel = NSTextField(labelWithString: "")
+    /// Edit Left or Edit Right, at the end of the name's row: the file in the user's editor
+    /// (PLAN.md §M33 Slice 5).
+    let editButton = NSButton()
+    var onEdit: (() -> Void)?
     /// The width the current text needs to show its widest row on one line.
     private var documentWidth: CGFloat = 0
 
@@ -40,6 +44,36 @@ final class ComparePaneView: NSView {
         pathLabel.stringValue = detail
         pathLabel.toolTip = detail
         textView.setAccessibilityLabel(name)
+    }
+
+    /// "Edit Left in TextEdit", or "Edit Left" when no editor resolves.
+    static func editTitle(_ side: ComparisonPaneText.Side, in editor: String? = nil) -> String {
+        switch (side, editor) {
+        case (.left, nil):
+            String(
+                localized: "Edit Left",
+                comment: "Compare window button: open the left file in a text editor."
+            )
+        case (.right, nil):
+            String(
+                localized: "Edit Right",
+                comment: "Compare window button: open the right file in a text editor."
+            )
+        case let (.left, editor?):
+            String(
+                localized: "Edit Left in \(editor)",
+                comment: "Compare window button tooltip: open the left file in a text editor; %@ is the editor's name."
+            )
+        case let (.right, editor?):
+            String(
+                localized: "Edit Right in \(editor)",
+                comment: "Compare window button tooltip: open the right file in a text editor; %@ is the editor's name."
+            )
+        }
+    }
+
+    @objc private func edit(_ sender: Any?) {
+        onEdit?()
     }
 
     /// Show one side of a comparison.
@@ -86,10 +120,25 @@ final class ComparePaneView: NSView {
             label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
             addSubview(label)
         }
+        editButton.image = NSImage(
+            systemSymbolName: "pencil",
+            accessibilityDescription: Self.editTitle(side)
+        )
+        editButton.imagePosition = .imageOnly
+        editButton.isBordered = false
+        editButton.target = self
+        editButton.action = #selector(edit(_:))
+        editButton.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(editButton)
         NSLayoutConstraint.activate([
+            editButton.centerYAnchor.constraint(equalTo: nameLabel.centerYAnchor),
+            editButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
             nameLabel.topAnchor.constraint(equalTo: topAnchor, constant: 6),
             nameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -8),
+            nameLabel.trailingAnchor.constraint(
+                lessThanOrEqualTo: editButton.leadingAnchor,
+                constant: -4
+            ),
             pathLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 1),
             pathLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
             pathLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -8)

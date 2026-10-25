@@ -3,11 +3,12 @@ import DirnexCore
 
 /// What a compare window's saves need besides the file (PLAN.md §M33 Slice 3): the undo store, the
 /// browser window whose journal ⌘Z in a pane reads, and the write-back that carries a copy of a
-/// server file or an archive member back where it came from (Slice 4).
+/// server file or an archive member back where it came from (Slice 4). Edit Left and Edit Right
+/// hand a file to the user's editor and watch a copy for its save, as F4 does (Slice 5).
 ///
 /// Handed in with no default, as `ArchiveWriter` takes its undo request: the app test target runs
 /// inside the app, so a window a test builds must not file copies into the developer's own store or
-/// records into their journal, nor upload anything.
+/// records into their journal, nor upload anything, nor open an editor.
 struct CompareSaving {
     /// The store and the snapshots the journal still names, read at each save.
     let undo: @MainActor () -> ArchiveUndoStorage.Request
@@ -16,11 +17,23 @@ struct CompareSaving {
     /// Carries a copy the window has written back where it came from, asking over the window
     /// given, and answers whether it landed (`BrowserWindowController.writeBack(_:askingOver:)`).
     let writeBack: @MainActor (EditedFile, NSWindow?) async -> Bool
+    /// Opens a file in the user's editor, then answers with the editor, `nil` when there is none,
+    /// and the launch's failure (`ExternalTextEditorLauncher.edit`).
+    let openInEditor: @MainActor (URL, @escaping (ApplicationRef?, (any Error)?) -> Void) -> Void
+    /// Watches a copy handed to the editor, so its save is offered back as F4's is
+    /// (`EditedFileRegistry.watch`).
+    let watchCopy: @MainActor (EditedFile) -> Void
 
     /// For a window whose saves keep no undo and carry nothing back: a test's, or the conflict
     /// dialog's, which saves nothing.
     static var none: CompareSaving {
-        CompareSaving(undo: { .none }, journal: { _ in }, writeBack: { _, _ in false })
+        CompareSaving(
+            undo: { .none },
+            journal: { _ in },
+            writeBack: { _, _ in false },
+            openInEditor: { _, done in done(nil, nil) },
+            watchCopy: { _ in }
+        )
     }
 }
 
@@ -60,6 +73,15 @@ extension CompareWindowController {
             guard await saveFile(id) else { return false }
         }
         return true
+    }
+
+    /// Save only the file `id` names, before Edit opens it (`+Edit`). `false` when another save is
+    /// running or this one did not happen.
+    func saveOnly(_ id: UUID) async -> Bool {
+        guard !isSaving else { return false }
+        isSaving = true
+        defer { isSaving = false }
+        return await saveFile(id)
     }
 
     /// Save the file `id` names, wherever Swap Sides has put it, asking first when the file changed

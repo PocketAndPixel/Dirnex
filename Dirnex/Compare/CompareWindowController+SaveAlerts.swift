@@ -1,17 +1,14 @@
 import AppKit
 import DirnexCore
 
-/// The questions and reports a save raises in the compare window (PLAN.md §M33 Slice 3), each a
-/// sheet on the window.
+/// The questions and reports a save raises in the compare window (PLAN.md §M33 Slice 3), and those
+/// a file changing under it raises (Slice 5), each a sheet on the window.
 extension CompareWindowController {
     /// The file changed since it was read: write over it or leave it. `true` to save anyway.
     func askToSaveAnyway(_ name: String) async -> Bool {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = String(
-            localized: "“\(name)” has changed since this window read it.",
-            comment: "Compare window save prompt title; %@ is a file name."
-        )
+        alert.messageText = Self.changedSinceReadTitle(name)
         alert.informativeText = String(
             localized: "Saving now replaces those changes with the lines shown here.",
             comment: "Compare window save prompt body, when the file changed since it was read."
@@ -24,6 +21,87 @@ extension CompareWindowController {
         alert.enableEscapeToCancel(safe: .alertSecondButtonReturn)
         let response = await alert.sheetAnswer(over: window, whenUnasked: .alertSecondButtonReturn)
         return response == .alertFirstButtonReturn
+    }
+
+    /// The file changed since it was read, while copies made on it here are not yet saved: read it
+    /// again, dropping them, or keep them. `true` to read it again. Kept, they are what ⌘S writes,
+    /// and ⌘S asks first, as for any file changed since it was read.
+    func askToReadAgain(_ name: String) async -> Bool {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = Self.changedSinceReadTitle(name)
+        alert.informativeText = String(
+            localized: """
+            Reading it again shows it as it is now, without the changes copied into it here.
+            """,
+            comment: """
+            Compare window prompt body, when a file with changes copied into it but not saved has \
+            changed on disk, for instance saved in a text editor.
+            """
+        )
+        alert.addButton(withTitle: String(
+            localized: "Read Again",
+            comment: "Button that shows a file as it now is on disk, dropping the compare window's unsaved copies."
+        ))
+        alert.addButton(withTitle: String(
+            localized: "Keep Copied Changes",
+            comment: "Button that keeps the compare window's unsaved copies over a file that changed on disk."
+        ))
+        alert.enableEscapeToCancel(safe: .alertSecondButtonReturn)
+        let response = await alert.sheetAnswer(over: window, whenUnasked: .alertSecondButtonReturn)
+        return response == .alertFirstButtonReturn
+    }
+
+    /// Edit was pressed on a side with copies not yet saved: save them first, since the editor
+    /// opens the file and not this window's lines. `true` to save and edit.
+    func askToSaveBeforeEditing(_ name: String) async -> Bool {
+        let alert = NSAlert()
+        alert.messageText = String(
+            localized: "Save the changes to “\(name)” before editing it?",
+            comment: """
+            Compare window prompt title, before opening a file with unsaved copies in a text \
+            editor; %@ is a file name.
+            """
+        )
+        alert.informativeText = String(
+            localized: """
+            The editor opens the file as it is saved, so the changes copied into it here are \
+            saved first.
+            """,
+            comment: "Compare window prompt body, before opening a file with unsaved copies in a text editor."
+        )
+        alert.addButton(withTitle: String(
+            localized: "Save and Edit",
+            comment: "Button that saves a file from the compare window, then opens it in a text editor."
+        ))
+        alert.addButton(withTitle: String(localized: "Cancel", comment: "Cancel button."))
+        alert.enableEscapeToCancel(safe: .alertSecondButtonReturn)
+        let response = await alert.sheetAnswer(over: window, whenUnasked: .alertSecondButtonReturn)
+        return response == .alertFirstButtonReturn
+    }
+
+    /// A file changed and can no longer be compared as text. The window goes on showing it as it
+    /// was read.
+    func reportUnreadableAgain(_ failure: CompareReadFailure) async {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = CompareOpener.failureTitle
+        alert.informativeText = CompareOpener.failureDetail(failure)
+        alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
+        _ = await alert.sheetAnswer(over: window, whenUnasked: .alertFirstButtonReturn)
+    }
+
+    /// "The file has changed since this window read it", which a save asks over and a read again
+    /// asks over.
+    private static func changedSinceReadTitle(_ name: String) -> String {
+        String(
+            localized: "“\(name)” has changed since this window read it.",
+            comment: """
+            Compare window prompt title, when a file changed on disk since the window read it; %@ \
+            is a file name.
+            """
+        )
     }
 
     /// A save that did not happen, and why.

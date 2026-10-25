@@ -20,10 +20,11 @@ extension PanelViewController {
         }
     }
 
-    /// What the window's saves keep and where they go (PLAN.md §M33 Slices 3 and 4): the app's undo
-    /// store, and this pane's browser window, whose journal ⌘Z in a pane reads and whose write-back
-    /// carries a server file or an archive member back. A window that outlives its pane's browser
-    /// window goes to whichever browser window is in front.
+    /// What the window's saves keep and where they go (PLAN.md §M33 Slices 3 to 5): the app's undo
+    /// store, and this pane's browser window, whose journal ⌘Z in a pane reads, whose write-back
+    /// carries a server file or an archive member back, and whose registry watches a copy Edit Left
+    /// or Edit Right handed to the editor, as it does F4's. A window that outlives its pane's
+    /// browser window goes to whichever browser window is in front.
     var compareSaving: CompareSaving {
         CompareSaving(
             undo: { ArchiveUndoStorage.request() },
@@ -35,14 +36,20 @@ extension PanelViewController {
                 }
             },
             writeBack: { [weak self] edit, window in
-                // The browser window that downloaded a server file holds what it looked like then,
-                // which the write-back's check reads. Another window has no record of it, and its
-                // check asks rather than uploading in silence.
-                guard let browser = (self?.host as? BrowserWindowController) ?? Self.frontBrowserWindow
-                else { return false }
+                guard let browser = self?.compareBrowserWindow else { return false }
                 return await browser.writeBack(edit, askingOver: window)
-            }
+            },
+            openInEditor: { url, done in ExternalTextEditorLauncher.edit(url, completion: done) },
+            watchCopy: { [weak self] edit in self?.compareBrowserWindow?.editedFiles.watch(edit) }
         )
+    }
+
+    /// The browser window a compare window's copies go back through: this pane's, else the one in
+    /// front. The one that downloaded a server file holds what it looked like then, which the
+    /// write-back's check reads. Another window has no record of it, and its check asks rather than
+    /// uploading in silence.
+    private var compareBrowserWindow: BrowserWindowController? {
+        (host as? BrowserWindowController) ?? Self.frontBrowserWindow
     }
 
     private static var frontBrowserWindow: BrowserWindowController? {

@@ -98,19 +98,46 @@ enum CompareOpener {
             let document = try ComparedDocument.read(
                 contentsOf: URL(fileURLWithPath: file.path.path)
             )
-            let opening = document.text(ofFirstLines: SyntaxLanguage.contentsLineLimit)
             return CompareSource(
                 name: name,
                 detail: detail,
                 origin: file.origin,
                 document: document,
-                language: SyntaxLanguage.forFile(named: name, text: opening),
+                language: language(of: name, document),
                 target: target,
                 writeBack: file.writeBack
             )
         } catch {
             throw CompareReadFailure(name: name, reason: error)
         }
+    }
+
+    /// `source`'s file read again from `path` after it changed (PLAN.md §M33 Slice 5): its lines,
+    /// its grammar, and what it looked like just before the read. Its name, its origin and where a
+    /// save goes stay as they were, and so does which file it is. Blocking; call it off the main
+    /// thread.
+    nonisolated static func reread(
+        _ source: CompareSource,
+        at path: String
+    ) -> Result<CompareSource, CompareReadFailure> {
+        var reread = source
+        reread.target = .reading(path)
+        do {
+            reread.document = try ComparedDocument.read(contentsOf: URL(fileURLWithPath: path))
+        } catch {
+            return .failure(CompareReadFailure(name: source.name, reason: error))
+        }
+        reread.language = language(of: source.name, reread.document)
+        return .success(reread)
+    }
+
+    /// The grammar Quick View would pick for a file of this name that opens this way.
+    private nonisolated static func language(
+        of name: String,
+        _ document: ComparedDocument
+    ) -> SyntaxLanguage? {
+        let opening = document.text(ofFirstLines: SyntaxLanguage.contentsLineLimit)
+        return SyntaxLanguage.forFile(named: name, text: opening)
     }
 
     /// What an alert says about a file the window could not read.
