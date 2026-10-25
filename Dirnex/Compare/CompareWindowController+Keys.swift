@@ -11,6 +11,8 @@ import DirnexCore
 /// - ⌥⌘↓ / ⌥⌘↑: the next and the previous change. No command in any preset is bound to either.
 /// - ⌥⌘→ / ⌥⌘←: copy the current change to the right or the left file (`+Copy`, PLAN.md §M33),
 ///   free in every preset as well. A window that takes no copies takes the keys and beeps.
+/// - F4: open the file in the pane holding the keyboard in the user's editor (`+Edit`, PLAN.md §M33
+///   Slice 5), as F4 does in a pane. A window that takes no copies takes the key and beeps.
 /// - ⌘U: swap sides, after Total Commander's Ctrl+U, which swaps its two panels. No command is
 ///   bound to it by default.
 /// - ⌘S: save every edited side (`+Save`, PLAN.md §M33 Slice 3). The main menu has no Save item
@@ -64,6 +66,9 @@ extension CompareWindowController {
             return true
         case (.leftArrow?, [.option, .command]):
             copyCurrentChange(to: .left)
+            return true
+        case (.f4?, []):
+            editFile(on: focusedPane.side)
             return true
         default:
             break

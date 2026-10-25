@@ -10,7 +10,8 @@ import Testing
 /// With `rightOrigin` the right file stands for a copy of a file somewhere else, and with
 /// `rightWriteBack` it has somewhere to go back to (Slice 4). The write-back is a stand-in that
 /// records what it was handed and answers ``WriteBackBox/answer``; the real one is the browser
-/// window's, whose checks and endings are tested beside it.
+/// window's, whose checks and endings are tested beside it. So are the editor and the copy watch
+/// Edit hands a file to (Slice 5), which record it in ``EditorBox``.
 @MainActor
 struct CompareSaveRig {
     let directory: URL
@@ -19,6 +20,8 @@ struct CompareSaveRig {
     let journal: JournalBox
     /// What the window's saves handed the write-back.
     let writeBacks: WriteBackBox
+    /// What Edit handed the editor and the copy watch.
+    let editor: EditorBox
 
     final class JournalBox {
         var records: [UndoRecord] = []
@@ -38,12 +41,27 @@ struct CompareSaveRig {
         var calls: [WriteBackCall] = []
     }
 
+    final class EditorBox {
+        /// The editor that opens each file, or `nil` for none.
+        var editor: ApplicationRef? = ApplicationRef(
+            bundlePath: "/Applications/Stand-in.app",
+            displayName: "Stand-in"
+        )
+        /// The launch's failure, if it fails.
+        var failure: (any Error)?
+        var opened: [URL] = []
+        /// What the file held when it was handed over.
+        var openedBytes: [Data] = []
+        var watched: [EditedFile] = []
+    }
+
     init(
         _ left: Data,
         _ right: Data,
         store: ArchiveUndoStore? = nil,
         rightOrigin: VFSPath? = nil,
-        rightWriteBack: EditDestination? = nil
+        rightWriteBack: EditDestination? = nil,
+        allowsCopies: Bool = true
     ) throws {
         directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("dirnex-compare-save-\(UUID().uuidString)", isDirectory: true)
@@ -66,9 +84,12 @@ struct CompareSaveRig {
         self.journal = journal
         let writeBacks = WriteBackBox()
         self.writeBacks = writeBacks
+        let editor = EditorBox()
+        self.editor = editor
         controller = CompareWindowController(
             left: leftSource,
             right: rightSource,
+            allowsCopies: allowsCopies,
             saving: CompareSaving(
                 undo: { ArchiveUndoStorage.Request(store: store, live: []) },
                 journal: { journal.records.append($0) },
@@ -76,7 +97,13 @@ struct CompareSaveRig {
                     let bytes = (try? Data(contentsOf: edit.temporaryURL)) ?? Data()
                     writeBacks.calls.append(.init(edit: edit, bytes: bytes, host: host))
                     return writeBacks.answer
-                }
+                },
+                openInEditor: { url, done in
+                    editor.opened.append(url)
+                    editor.openedBytes.append((try? Data(contentsOf: url)) ?? Data())
+                    done(editor.editor, editor.failure)
+                },
+                watchCopy: { editor.watched.append($0) }
             )
         )
         controller.show(CompareWindowController.prepare(
@@ -120,6 +147,7 @@ struct CompareSaveRig {
     }
 
     func cleanup() {
+        controller.stopWatchingFiles()
         if let window = controller.window, let sheet = window.attachedSheet {
             window.endSheet(sheet)
         }

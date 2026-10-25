@@ -553,6 +553,106 @@ stand-in write-back.
   - One record per path (a record dropped with its path, or replaced by the next copy) fails both
     batch tests and two cache tests.
   - A path-wide `forget` fails the forget test.
+- **Left for Slice 6's live runs over SFTP and WebDAV:** F4 a file, change it on the server, let a
+  preview bring the new version down, then save the old copy and see it ask. Once with F4's editor
+  and once with the compare window's ⌘S.
+
+**2026-10-25: Slice 5 landed** (app only). Run live on a local pair the same night; the server and
+archive runs are Slice 6's.
+
+- **Probed first** (a throwaway package over `DirnexCore`, not checked in):
+  - **A file-path FSEvents stream with file events fires for every way an editor saves.** Counted
+    `DirectoryWatcher(filePath:)` callbacks: a write in place gave 1, and a rename over the file, a
+    delete and create, `replaceItemAt` from the item replacement directory, `NSDocument.writeSafely`
+    (TextEdit's save) and vim's `:wq` gave 2 each. A sibling written five times gave 0. The
+    `/var/folders` spelling of a temporary copy fired, and so did a symlink's own path for a write
+    to its target.
+  - `NSDocument.writeSafely` to a symlink's own URL failed ("doesn't exist"), and to the resolved
+    URL it worked, so a document-based editor saves the target. The stream is given the resolved
+    path.
+  - `UndoManager.removeAllActions(withTarget:)` took one target's actions off both stacks and left
+    another's, with their titles and order.
+- **Decided with Oleg before writing it:** every savable side is watched from the moment the window
+  opens, not only after Edit; the pencils sit in the pane headers, with F4; a side with unsaved
+  copies asks Save and Edit or Cancel, with no Discard; and a change under unsaved copies asks Read
+  Again or Keep Copied Changes rather than keeping them in silence.
+- **App:**
+  - `+Watch` watches each side a save can write. A change is a file that no longer matches the
+    witness its side was read or last saved at, so the window's own save is not one. A look that
+    comes during a save, or during a read of the same file, waits until it ends.
+  - The file is read again off the main thread and replaces its side. The pair is compared again
+    with the other file's top line kept, and the first change at or below that line is current, so
+    the copy keys go on working.
+  - **The file's copies leave Edit ▸ Undo**, since their ranges name the old lines, and the other
+    file's stay. Each file registers its copies under its own `CompareUndoTarget`.
+  - **Each copy is its own undo group now** (`groupsByEvent = false`), found by the undo test. In
+    the test host two copies made with no event between them shared one open group, and removing
+    one file's action left the group holding the other's under the first one's name. In the app each
+    key press closes its group, but a step holding both files' copies is one a read again cannot
+    take apart.
+  - A side holding unsaved copies asks first. Read Again drops them. Keep Copied Changes leaves
+    them, and ⌘S then asks Save Anyway, as for any file changed since it was read. A state the user
+    kept, or one that could not be read as text, is not asked about again; a later change is.
+  - A file that can no longer be read as text gets "Couldn’t compare these files" with the opener's
+    reason, and the window goes on showing it as read.
+  - A local file's change posts `fileSaved`, so a Synchronize row showing it compares again. A
+    server copy's does not, since the server is unchanged until the copy's write-back lands.
+  - `+Edit` adds Edit Left and Edit Right: a pencil at the end of each pane's name, and F4 for the
+    pane holding the keyboard. The editor is handed what F4 would hand it: a local file itself, or
+    for a server file or an archive member the copy the window read, registered with the browser
+    window's `EditedFileRegistry`, so its save is offered back exactly as F4's is. A side with
+    nowhere to save has its pencil grayed. The conflict dialog's window shows none and beeps at F4.
+    No editor, or a launch that fails, gets F4's own alert, on the compare window.
+  - `CompareSaving` gained `openInEditor` and `watchCopy`, stand-ins in tests, so a test window
+    opens no editor.
+  - `buildContent` moved to `+Layout` when the controller passed the type-body ceiling.
+- **Tests:** 20 in two new suites: `CompareEditTests` (9) and `CompareWatchTests` (11), over real
+  FSEvents streams on the rig's files. Full runs: 4 537 core and 1 980 app tests, without the live
+  server suites, which this slice does not touch.
+- **Negative controls:**
+  - With no watch, 10 of the 11 watch tests fail (all but the pure change-picking one).
+  - Without the witness comparison, the window's own save is read back, and the own-save and undo
+    tests fail. Without the passed-over check, the kept state is asked about again.
+  - With every copy registered under the controller, as before, the undo test and Read Again's
+    fail. Grouping by event fails the undo test.
+  - Reading again without asking fails Keep and Read Again. Editing without saving first fails both
+    save-first tests.
+  - Without the copy watch, the server test fails; without the notice, the Synchronize test;
+    without F4, both F4 tests; without stopping at close, the close test.
+- **Seen live** (2026-10-26) in the Debug build on a local pair, with TextEdit as the editor. The
+  saved tabs were set aside so no WebDAV tab asked the Keychain. Computer-use drove it, in the
+  background and then with Dirnex in front for the window's keys, and a temporary probe (since
+  removed) logged every look at a file, question and save:
+  - Both pencils sat at the end of their name rows, enabled, titled "Edit Right in TextEdit (F4)".
+    The right pencil handed TextEdit `right.txt` itself and watched no copy. TextEdit merely opening
+    the file fired the stream, and the witness answered "unchanged".
+  - TextEdit's save (a new inode) fired twice. The first read the file again and showed the added
+    line, 3 changes and no edited mark. The second answered "unchanged".
+  - The pencil on an edited side asked Save and Edit. The save landed and was journaled, its own
+    stream event answered "unchanged", and TextEdit was handed the file.
+  - With a copy unsaved, TextEdit's save asked Read Again or Keep Copied Changes, and the save's
+    second event waited behind the question. Keep left the copy, and that event, looked at
+    afterwards, was passed over. ⌘S then asked Save Anyway, and Cancel left TextEdit's save on disk.
+    A later TextEdit save asked again, and Read Again showed it, unedited, with the right file's
+    copies gone from undo.
+  - F4 followed the keyboard: in the right pane it asked about `right.txt`, and Cancel opened
+    nothing. In the left pane it handed TextEdit `left.txt`.
+  - After ⌥⌘←, ⌥⌘→ and ⌘S, an outside write to the right file was read in silence, and Edit ▸ Undo
+    said "Undo Copy to Left". Choosing it put the left file's line back, with nothing left to undo.
+  - ⌘W asked about the unsaved left file, and Don't Save closed the window.
+  - The defaults domain was restored and compared unchanged, and the run's three undo copies were
+    deleted.
+- **Found live and not fixed: an editor that already has the file open does not see the window's
+  save.** After Save and Edit, TextEdit, which had `right.txt` open from the first Edit, went on
+  showing the old text, even after Dirnex and then TextEdit were activated again. Its next save
+  refused with "The file has been changed by another application" (Save Anyway, Revert, Save As),
+  so nothing was lost in silence, but Save and Edit's promise, that the editor opens the file with
+  the copies in it, does not hold there. The window's save writes in place without
+  `NSFileCoordinator`. The same in-place write made through a coordinator refreshed TextEdit's
+  window at once. ⌘Z's write-back of a saved file (`exchangeInPlace`) is the same kind of write.
+- **Left for Slice 6:** the live runs over SFTP, WebDAV and a zip member, among them an editor's
+  save through Edit Right; this slice's sentences in the 14 languages; and the compare window's
+  cells in [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md).
 
 ### M34 — A three-way merge (M)
 

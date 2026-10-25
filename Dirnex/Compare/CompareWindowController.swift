@@ -12,8 +12,9 @@ struct CompareSource: Sendable {
     let origin: VFSPath
     /// The file's lines, copies included (PLAN.md §M33).
     var document: ComparedDocument
-    /// The grammar its syntax is colored by, or `nil` for none.
-    let language: SyntaxLanguage?
+    /// The grammar its syntax is colored by, or `nil` for none. Picked again when the file is read
+    /// again (`+Watch`).
+    var language: SyntaxLanguage?
     /// The local file a save writes, as it was read or last saved, or `nil` for a side this window
     /// cannot save (PLAN.md §M33 Slice 3). For a server file or an archive member it is the copy
     /// read, which the save writes before ``writeBack`` carries it there (Slice 4).
@@ -22,7 +23,16 @@ struct CompareSource: Sendable {
     var writeBack: EditDestination?
     /// Which file this is, on whichever side Swap Sides has put it. An undo finds its file by this.
     let id = UUID()
+    /// What the window's undo files this file's copies under, so a file read again drops its own
+    /// copies from Edit ▸ Undo and keeps the other file's (PLAN.md §M33 Slice 5).
+    let undoTarget = CompareUndoTarget()
 }
+
+/// The object one file's copies are registered with in the compare window's undo manager.
+/// `UndoManager.removeAllActions(withTarget:)` then reaches that file's copies and no other's:
+/// probed 2026-10-25, it took one target's actions off both stacks and left the other's, titles
+/// and order intact.
+final class CompareUndoTarget: Sendable {}
 
 /// The compare window, which takes clicks and keys while another window is modal.
 ///
@@ -40,7 +50,8 @@ final class CompareWindow: NSWindow {
 /// Everything it shows is `TextComparison`'s, computed off the main thread together with each pane's
 /// text and syntax colors; the main thread only sets the text. Changing an option computes it all
 /// again and keeps the same line of the left file at the top. So does a copy across (`+Copy`, PLAN.md
-/// §M33), which changes one side's lines and compares the two again.
+/// §M33), which changes one side's lines and compares the two again, and a file that changed on
+/// disk (`+Watch`), which is read again.
 @MainActor
 final class CompareWindowController: NSWindowController, NSWindowDelegate {
     /// Windows on screen. A controller holds itself here until its window closes.
@@ -54,13 +65,25 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
     let allowsCopies: Bool
     /// Where a save keeps its undo, and whose journal records it (`+Save`).
     let saving: CompareSaving
-    /// Whether a save is running, which a second ⌘S waits out.
-    var isSaving = false
+    /// Whether a save is running, which a second ⌘S waits out. A file that changed meanwhile is
+    /// looked at once it ends (`+Watch`).
+    var isSaving = false {
+        didSet { if oldValue, !isSaving { lookAgainAfterSave() } }
+    }
+
+    /// Each file's watch, and the reads running on it (`+Watch`).
+    let fileWatch = CompareFileWatch()
     /// Bumped whenever a save lands, so a comparison computed before it does not mark a saved side
     /// as edited.
     var savesLanded = 0
     /// The window's undo: Edit ▸ Undo reaches it through `NSWindow`, which asks the delegate for it.
-    let edits = UndoManager()
+    /// Each copy groups itself (`+Copy`), so it does not group by event.
+    let edits: UndoManager = {
+        let manager = UndoManager()
+        manager.groupsByEvent = false
+        return manager
+    }()
+
     /// Bumped whenever what either side holds changes, by a copy, an undo or Swap Sides. A copy acts
     /// only on a comparison of the sides as they stand, which `comparedRevision` says this is.
     var sidesRevision = 0
@@ -76,7 +99,8 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
     let rightPane = ComparePaneView(side: .right)
     let band = CompareBandView()
     let overview = CompareOverviewView()
-    private(set) var sync: CompareScrollSync?
+    /// Keeps the two panes level as either scrolls. Set once the views are built (`+Layout`).
+    var sync: CompareScrollSync?
     var keyMonitor: Any?
     /// Watches for the end of the modal window this one was raised over (`+Modal`).
     var modalLevelObserver: (any NSObjectProtocol)?
@@ -102,6 +126,7 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
         controller.raiseAboveModalWindow()
         controller.showWindow(nil)
         controller.compute(options: LineDiffOptions())
+        controller.startWatchingFiles()
         return controller
     }
 
@@ -283,69 +308,11 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         stopWatchingModalWindow()
+        stopWatchingFiles()
         removeKeyMonitor()
         sync?.stop()
         edits.removeAllActions()
         Self.open.removeAll { $0 === self }
-    }
-
-    private func buildContent(in window: NSWindow) {
-        let content = NSView()
-        let body = NSView()
-        body.translatesAutoresizingMaskIntoConstraints = false
-        banner.translatesAutoresizingMaskIntoConstraints = false
-        banner.textColor = .secondaryLabelColor
-        banner.isHidden = true
-        for view in [leftPane, band, rightPane, overview] as [NSView] {
-            view.translatesAutoresizingMaskIntoConstraints = false
-            body.addSubview(view)
-        }
-        let column = NSStackView(views: [toolbar, banner, body])
-        column.orientation = .vertical
-        column.spacing = 0
-        column.setHuggingPriority(.defaultLow, for: .vertical)
-        column.translatesAutoresizingMaskIntoConstraints = false
-        content.addSubview(column)
-        NSLayoutConstraint.activate([
-            column.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-            column.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            column.topAnchor.constraint(equalTo: content.topAnchor),
-            column.bottomAnchor.constraint(equalTo: content.bottomAnchor),
-            toolbar.widthAnchor.constraint(equalTo: column.widthAnchor),
-            body.widthAnchor.constraint(equalTo: column.widthAnchor),
-            banner.leadingAnchor.constraint(equalTo: column.leadingAnchor, constant: 12),
-            banner.trailingAnchor.constraint(equalTo: column.trailingAnchor, constant: -12),
-            leftPane.leadingAnchor.constraint(equalTo: body.leadingAnchor),
-            band.leadingAnchor.constraint(equalTo: leftPane.trailingAnchor),
-            rightPane.leadingAnchor.constraint(equalTo: band.trailingAnchor),
-            overview.leadingAnchor.constraint(equalTo: rightPane.trailingAnchor),
-            overview.trailingAnchor.constraint(equalTo: body.trailingAnchor),
-            band.widthAnchor.constraint(equalToConstant: CompareBandView.width),
-            overview.widthAnchor.constraint(equalToConstant: CompareOverviewView.width),
-            leftPane.widthAnchor.constraint(equalTo: rightPane.widthAnchor)
-        ])
-        for view in [leftPane, band, rightPane, overview] as [NSView] {
-            view.topAnchor.constraint(equalTo: body.topAnchor).isActive = true
-            view.bottomAnchor.constraint(equalTo: body.bottomAnchor).isActive = true
-        }
-        window.contentView = content
-
-        showTitles()
-        leftPane.textView.nextKeyView = rightPane.textView
-        rightPane.textView.nextKeyView = leftPane.textView
-        window.initialFirstResponder = leftPane.textView
-        band.textView = leftPane.textView
-
-        let sync = CompareScrollSync(left: leftPane, right: rightPane)
-        sync.didScroll = { [weak self] in self?.refreshScrolledViews() }
-        self.sync = sync
-        toolbar.onPrevious = { [weak self] in self?.goToPreviousChange() }
-        toolbar.onNext = { [weak self] in self?.goToNextChange() }
-        toolbar.onOptionsChange = { [weak self] options in self?.compute(options: options) }
-        toolbar.onSwap = { [weak self] in self?.swapSides() }
-        toolbar.onCopy = { [weak self] side in self?.copyCurrentChange(to: side) }
-        toolbar.copy.isHidden = !allowsCopies
-        overview.onJump = { [weak self] row in self?.jump(toRow: row) }
     }
 }
 
