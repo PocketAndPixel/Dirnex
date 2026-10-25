@@ -23,8 +23,8 @@ protocol TabBarViewDelegate: AnyObject {
 }
 
 /// A pane's tab strip: one chip per open directory plus a trailing `+`. The active
-/// chip is filled (accent when the pane is active, muted otherwise); chips carry a
-/// close button and a menu, and can be dragged along the strip or onto the other pane's
+/// chip is filled (accent when the pane is active, muted otherwise) and the others are
+/// outlined; chips carry a close button and a menu, and can be dragged along the strip or onto the other pane's
 /// (`TabBarView+Drag`). Tabs that do not fit at a readable width wait behind a » before the `+`
 /// (`TabBarView+Overflow`). Hidden when a pane has a single tab so the browser looks unchanged
 /// until you actually open a second one.
@@ -293,6 +293,7 @@ final class TabChipView: NSView {
         translatesAutoresizingMaskIntoConstraints = false
         wantsLayer = true
         layer?.cornerRadius = 5
+        layer?.borderWidth = 1
 
         // No description: the label beside it names the tab, and the glyph is not a control.
         icon.image = NSImage(systemSymbolName: item.symbolName, accessibilityDescription: nil)?
@@ -387,6 +388,12 @@ final class TabChipView: NSView {
         return (.clear, .secondaryLabelColor)
     }
 
+    /// The hairline around the chip: every tab but the one showing has one, so where one ends and
+    /// the next begins reads without a fill. The showing tab's fill marks it out on its own.
+    var border: NSColor {
+        isActive ? .clear : .separatorColor
+    }
+
     private func applyStyle() {
         let text = colors.text
         icon.contentTintColor = text
@@ -397,12 +404,13 @@ final class TabChipView: NSView {
 
     override var wantsUpdateLayer: Bool { true }
 
-    /// The fill is a layer's `CGColor`, which keeps the appearance it was resolved under, so it is
-    /// resolved here: AppKit runs this under the chip's own appearance, and again whenever that
-    /// changes. Set once in `applyStyle`, a light window kept the inactive pane's tab in the
-    /// dark-mode gray (`#464646`) after a switch from dark.
+    /// The fill and the hairline are a layer's `CGColor`s, which keep the appearance they were
+    /// resolved under, so they are resolved here: AppKit runs this under the chip's own appearance,
+    /// and again whenever that changes. Set once in `applyStyle`, a light window kept the inactive
+    /// pane's tab in the dark-mode gray (`#464646`) after a switch from dark.
     override func updateLayer() {
         layer?.backgroundColor = colors.background.cgColor
+        layer?.borderColor = border.cgColor
     }
 
     /// Where the glyph and the label sit in the chip, for the drag image to draw them in place.
