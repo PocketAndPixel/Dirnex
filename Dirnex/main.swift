@@ -27,6 +27,8 @@ TabShortcuts.install()
 // A value its column cuts short floats whole: on hover, and for the cursor row while ⌘ is held.
 HoverExpansion.install()
 CursorNamePeek.install()
+// A lone tap of ⌥ opens the context menu over the cursor row.
+OptionTapMenu.install()
 // XCTest uses this app as its host, with the user's real defaults domain. Keep the AppKit
 // setup above, but do not start the normal lifecycle: it restores tabs, records visits and
 // saves window geometry before a test even runs. Tests build the controllers they need.

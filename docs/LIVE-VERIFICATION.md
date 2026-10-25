@@ -22,6 +22,10 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   - **So does the app test suite.** Seen 2026-10-24: after two full `xcodebuild test` runs and a few
     single-suite ones, `SULastCheckTime`, `Dirnex.frecency` and `Dirnex.tabs.left` had all moved.
     Restore after the suite, not only after the live run, or the next backup carries its drift.
+  - **Marking rows in a live run shortens the saved undo journal.** Seen 2026-10-25: mark changes
+    are undo entries that share the journal's 50 slots and are never saved, so a run with eight of
+    them saved the file operations eight entries shorter, and the defaults check named
+    `Dirnex.undoJournal`. Nothing was undone, and the import puts the entries back.
 
 - **A tab seeded with `defaults write -string` is silently not restored, because `TabPersistence`
   reads `data(forKey:)`.** The pane falls back to Home, the app looks perfectly healthy, and nothing
