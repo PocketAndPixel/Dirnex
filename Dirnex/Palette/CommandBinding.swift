@@ -19,6 +19,7 @@ enum CommandBinding {
         "file.newTab": #selector(PanelViewController.newTab(_:)),
         "file.closeTab": #selector(PanelViewController.closeCurrentTab(_:)),
         "file.openWith": #selector(PanelViewController.showOpenWithMenu(_:)),
+        "file.contextMenu": #selector(PanelViewController.showContextMenu(_:)),
         "file.share": #selector(PanelViewController.shareSelection(_:)),
         "file.showInFinder": #selector(PanelViewController.showInFinder(_:)),
         "file.downloadNow": #selector(PanelViewController.downloadNow(_:)),

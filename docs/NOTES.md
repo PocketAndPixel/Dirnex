@@ -2264,6 +2264,16 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   ⇧⌘M (characters `M`) matched nothing. The shipped menu does neither, so in that process shift
   matching is not evidence in either direction. Settle a ⇧ chord inside the app's test target, or by
   analogy with one that already ships, and keep a bare-chord item in the probe as the control.
+- **An open `NSMenu` runs its own event loop, and a local event monitor sees none of it.** Measured
+  2026-10-25 with a logging monitor: ↓ and Escape pressed in a popped context menu never reached it,
+  as `addLocalMonitorForEvents`' documentation says of menu tracking. That has two consequences.
+  A gesture made *inside* a menu has to be read by sampling: `NSEvent.modifierFlags` from a timer in
+  `.common` mode, which includes the event-tracking mode, plus `CGEventSource.counterForEventType`
+  for keys and clicks. The counters are the system's own and need no Input Monitoring permission
+  (`OptionTapMenuCloser`). And a monitor that tracks what is held goes stale across a menu, because
+  a modifier pressed before the menu opened can be let go inside it. Start it again from
+  `NSEvent.modifierFlags` when the menu closes (`OptionTapMenu.resetFromKeyboard`). Seen live
+  without that: after a right-click made with ⌥ held, the next ⌥ tap opened nothing.
 
 ### Tables and outline views
 

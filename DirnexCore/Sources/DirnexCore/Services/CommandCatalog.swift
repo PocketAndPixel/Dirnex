@@ -86,6 +86,18 @@ public enum CommandCatalog {
             shortcut: CommandShortcut(key: "i", modifiers: .command)
         ),
         Command(
+            id: "file.contextMenu",
+            title: "Show Context Menu",
+            category: .file,
+            keywords: [
+                "context", "contextual", "right-click", "right click", "secondary click", "popup",
+                "shift+f10", "menu key"
+            ]
+            // No shortcut. The keyboard's way in is a lone tap of ⌥ (`OptionTapMenu`), which a
+            // `CommandShortcut` cannot describe, and Total Commander's ⇧F10 is left alone because
+            // the F-keys are kept for commands. A user who wants a chord can bind one.
+        ),
+        Command(
             id: "file.copy",
             title: "Copy to Other Panel",
             category: .file,

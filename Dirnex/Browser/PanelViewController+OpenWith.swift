@@ -87,6 +87,11 @@ extension PanelViewController {
         switch menuItem.action {
         case #selector(showOpenWithMenu(_:)), #selector(shareSelection(_:)):
             return canHandOff && !(view.window?.firstResponder is NSText)
+        case #selector(showContextMenu(_:)):
+            // The menu that offers these handoffs, dropped over the cursor row the way Open With's
+            // is, and held back from a field editor for the same reason. It always has something to
+            // offer: with nothing to act on it is the folder's menu.
+            return !(view.window?.firstResponder is NSText)
         case #selector(editCursorFile(_:)), #selector(editNewFile(_:)):
             // F4/⇧F4 are handoffs too — to a text editor rather than to a chosen app — and they
             // ride this helper rather than the main switch, which sits at SwiftLint's
@@ -277,9 +282,12 @@ extension PanelViewController {
 
     // MARK: - Shared plumbing
 
-    /// Drop `menu` under the cursor row, where the tags menu appears.
-    private func popUpOverCursorRow(_ menu: NSMenu) {
+    /// Drop `menu` under the cursor row, where the tags menu appears. The row is scrolled into view
+    /// first, or the menu would open beside a row the pane is not showing. With no rows at all the
+    /// table answers a zero rect, which puts the menu at the top of the pane.
+    func popUpOverCursorRow(_ menu: NSMenu) {
         let row = cursorOnParentRow ? 0 : row(forEntryIndex: panel.cursor)
+        if row < tableView.numberOfRows { tableView.scrollRowToVisible(row) }
         let anchor = tableView.rect(ofRow: row)
         menu.popUp(
             positioning: nil,

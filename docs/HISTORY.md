@@ -17003,6 +17003,63 @@ folders included.
 - **Checks:** core 4483 tests, app 1902 in 303 suites, both linters clean. The defaults domain was
   restored and compared unchanged (71 keys) after the live run and again after the suite.
 
+**2026-10-25: A tap of ⌥ opens the context menu over the cursor row, and a second tap closes it**
+(core, app, catalog, tests and docs). Asked for by Oleg, who wanted the right-click menu from the
+keyboard without giving up an F-key, so Total Commander's ⇧F10 was not taken. A hold was turned
+down at the design step. ⌥ starts ⌥F5, ⌥↓, ⌥-click, ⌥-drag and ⌥E (é in type-to-filter), and a
+menu that opened while a slow chord was still being finished would swallow the rest of it. A tap
+opens on the release, so nothing is left for the menu to take.
+
+- **The core decides what a tap is** (`ModifierTap`): ⌥ pressed with no other modifier held, let go
+  within `TabShortcuts.revealDelay` (0.4 s, the hold that shows a dialog's tab numbers), with no key,
+  click or scroll in between. A second modifier, both ⌥ keys, or a press seen only as its release
+  is not a tap. 10 tests. `PolledModifierTap` is the same rule read from samples, for inside a
+  menu; a count of keys and clicks that moves spoils it, even in the sample that ends it. 6 tests.
+- **The app** (`OptionTapMenu`) feeds the rule from a local monitor, as `CursorNamePeek` is fed. It
+  opens the menu a run-loop turn after the release, and only when a file list holds the focus, so
+  a rename field, a sheet or the sidebar opens nothing. The menu is the right-click one without the
+  retargeting: the keyboard chose no row, so the marks stay and the menu acts on what F5 would
+  (`keyboardContextMenu`). On `..` with no marks it is the parent's folder menu, and in an empty
+  folder the folder's own. `popUpOverCursorRow` now scrolls the cursor row into view first, which
+  Open With gets too.
+- **Closing needed a second mechanism.** An open menu runs its own event loop, which no local monitor
+  sees: in the live run, ↓ and Escape pressed in the menu never reached the monitor. So every
+  context menu, a right-click's included, has `OptionTapMenuCloser` as its delegate. While the menu
+  is open it samples `NSEvent.modifierFlags` from a `.common`-mode timer every 10 ms, along with
+  `CGEventSource.counterForEventType` for key presses, clicks and scrolls, and calls
+  `cancelTracking()` on a tap. The counters need no Input Monitoring permission (a run with some
+  15 menu opens made no permission request for them). The closer also resets the monitor's
+  recognizer from the keyboard. Found live: ⌥ held for a right-click was pressed where the monitor
+  saw it and let go inside the menu, where it did not, so the next tap opened nothing.
+- **File ▸ Show Context Menu** (`file.contextMenu`) is the palette's way in, with no default key: a
+  `CommandShortcut` cannot describe a lone modifier, and a user can bind a chord. It is in the File
+  menu because the menu bar is the only dispatch path for a bound chord, and it is held back from a
+  field editor like Open With. Title and keywords in all 14 languages; the keywords carry
+  "right-click" and "shift+f10" for the Total Commander user who searches for them.
+- **Tests:** `KeyboardContextMenuTests` (12) decide the tap from hand-built `NSEvent`s, check which
+  table answers, which menu the keyboard gets and what it acts on, the File menu's wiring, the
+  closer on every context menu, and the reset on close. Controls: the core without its
+  "from nothing held" rule failed the second-modifier and both-⌥-keys tests; `interrupt()` emptied
+  failed the interruption test; a tap allowed to end in a sample whose count moved failed that
+  test; the keyboard menu retargeted like a right-click failed three menu tests; the monitor
+  letting a key through failed the ⌥E test; the field-editor validation removed failed the wiring
+  test; the closer left off the menus, and the reset on close removed, each failed its own test.
+- **Live**, in the Debug build, Oleg pressing the keys and a temporary log (since removed) recording
+  every event the monitor and the closer saw. Left and right ⌥ (key codes 58 and 61) opened the
+  menu. Marks stayed marked and the menu said Copy Paths. A one-second hold, ⌥E, ⌥-click, ⌥F5 (the
+  log shows ⌥, fn, F5, then the sheet) and a tap in a rename field opened nothing. A second tap
+  closed the menu, from inside Tags as well. So did a tap over right-click and Control-click menus.
+  ⌥↓ and a long hold inside the menu left it open, and a menu opened with ⌥ held stayed open when ⌥
+  was let go. The stale-⌥ case was run again after the fix, and the tap opened the menu.
+- **Seen once:** a menu closed with ⌥ down and nothing counted, and the next tap opened nothing (its
+  focus check failed). At that moment the system log shows an accessibility request to Dirnex from
+  outside, with its TCC check, the only one in the run.
+- **Checks:** core 4500 tests in 447 suites, app 1916 in 304, both linters clean,
+  `check_localization_keys.py` 1165 keys present. The defaults domain was restored to the
+  backup taken after Oleg's Debug build quit and compared unchanged (71 keys). The run had moved
+  five keys, among them `Dirnex.undoJournal`, which had lost its 8 oldest entries
+  (LIVE-VERIFICATION.md).
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

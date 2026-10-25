@@ -23,7 +23,20 @@ extension PanelViewController {
         // would otherwise misread a marked row as the parent row.
         let onParentRow = isParentRow(row)
         retargetSelection(forClickedRow: row)
-        let onEntry = row >= 0 && !onParentRow
+        return contextMenu(onEntry: row >= 0 && !onParentRow, onParentRow: onParentRow)
+    }
+
+    /// The menu about the selection when `onEntry`, and otherwise about a folder: the one `..` points
+    /// at when `onParentRow`, or the pane's own. A right-click decides which from the row it landed
+    /// on; the keyboard decides from the cursor and the marks (`showContextMenu`). Every one closes
+    /// on a tap of ⌥, as on Escape (`OptionTapMenuCloser`).
+    func contextMenu(onEntry: Bool, onParentRow: Bool) -> NSMenu {
+        let menu = contextMenuItems(onEntry: onEntry, onParentRow: onParentRow)
+        menu.delegate = OptionTapMenuCloser.shared
+        return menu
+    }
+
+    private func contextMenuItems(onEntry: Bool, onParentRow: Bool) -> NSMenu {
         // The Trash gets its own pair. Not a matter of graying the ordinary menu down: what a
         // trashed file offers is a *different* list — there is no folder to make something in, no
         // in-place rename (the merged container advertises no `.rename`), and the one delete that
