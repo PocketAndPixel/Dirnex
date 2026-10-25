@@ -8,9 +8,14 @@ final class CompareToolbar: NSView {
     var onPrevious: (() -> Void)?
     var onNext: (() -> Void)?
     var onSwap: (() -> Void)?
+    var onCopy: ((ComparisonPaneText.Side) -> Void)?
     var onOptionsChange: ((LineDiffOptions) -> Void)?
 
     let navigation = NSSegmentedControl()
+    /// Copy to Left and Copy to Right, beside the change arrows: the side each segment copies to
+    /// is `copySides`'.
+    let copy = NSSegmentedControl()
+    static let copySides: [ComparisonPaneText.Side] = [.left, .right]
     let counter = NSTextField(labelWithString: "")
     /// Swap Sides: one momentary segment, so it draws like the change buttons beside it.
     let swap = NSSegmentedControl()
@@ -75,6 +80,28 @@ final class CompareToolbar: NSView {
         navigation.setEnabled(count > 0, forSegment: 1)
     }
 
+    /// Enable each copy button when a copy to its side would go through.
+    func enableCopy(toLeft: Bool, toRight: Bool) {
+        copy.setEnabled(toLeft, forSegment: 0)
+        copy.setEnabled(toRight, forSegment: 1)
+    }
+
+    /// What the menu's Undo names a copy by: "Undo Copy to Right".
+    static func copyTitle(to side: ComparisonPaneText.Side) -> String {
+        switch side {
+        case .left:
+            String(
+                localized: "Copy to Left",
+                comment: "Compare window button, tooltip and undo name."
+            )
+        case .right:
+            String(
+                localized: "Copy to Right",
+                comment: "Compare window button, tooltip and undo name."
+            )
+        }
+    }
+
     /// Size the counter for the longest text it can show in a comparison with `count` changes, so
     /// stepping from "Change 9 of 12" to "Change 10 of 12" never makes it wider than the window has
     /// already made room for.
@@ -113,6 +140,7 @@ final class CompareToolbar: NSView {
         navigation.setToolTip("\(next) (⌥⌘↓)", forSegment: 1)
         navigation.target = self
         navigation.action = #selector(navigate(_:))
+        buildCopy()
 
         let swapSides = String(
             localized: "Swap Sides",
@@ -156,7 +184,9 @@ final class CompareToolbar: NSView {
         let spacer = NSView()
         spacer.setContentHuggingPriority(.init(1), for: .horizontal)
         let stack = NSStackView(
-            views: [navigation, counter, spacer, swap, whitespace, ignoresCase, ignoresLineEndings]
+            views: [
+                navigation, copy, counter, spacer, swap, whitespace, ignoresCase, ignoresLineEndings
+            ]
         )
         stack.orientation = .horizontal
         stack.spacing = 10
@@ -169,6 +199,24 @@ final class CompareToolbar: NSView {
             stack.topAnchor.constraint(equalTo: topAnchor),
             stack.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
+    }
+
+    /// Copy to Left and Copy to Right, one momentary control drawn like the change arrows.
+    private func buildCopy() {
+        copy.segmentCount = 2
+        copy.trackingMode = .momentary
+        copy.segmentStyle = .separated
+        for (segment, side) in Self.copySides.enumerated() {
+            let title = Self.copyTitle(to: side)
+            let symbol = side == .left ? "arrow.left" : "arrow.right"
+            copy.setImage(
+                NSImage(systemSymbolName: symbol, accessibilityDescription: title),
+                forSegment: segment
+            )
+            copy.setToolTip("\(title) (\(side == .left ? "⌥⌘←" : "⌥⌘→"))", forSegment: segment)
+        }
+        copy.target = self
+        copy.action = #selector(copyChange(_:))
     }
 
     static func title(for whitespace: LineDiffOptions.Whitespace) -> String {
@@ -200,6 +248,11 @@ final class CompareToolbar: NSView {
 
     @objc private func swapSides(_ sender: Any?) {
         onSwap?()
+    }
+
+    @objc private func copyChange(_ sender: NSSegmentedControl) {
+        guard Self.copySides.indices.contains(sender.selectedSegment) else { return }
+        onCopy?(Self.copySides[sender.selectedSegment])
     }
 
     @objc private func optionsChanged(_ sender: Any?) {

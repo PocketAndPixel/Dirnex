@@ -88,6 +88,7 @@ enum ConflictDialog {
                 detail: existing.path,
                 CompareFile(path: incoming, origin: incoming),
                 detail: incoming.path,
+                allowsCopies: false,
                 failed: failed
             )
         case let .external(external):

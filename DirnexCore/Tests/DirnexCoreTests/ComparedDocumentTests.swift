@@ -265,6 +265,27 @@ struct ComparedDocumentTests {
         #expect(ending.isEdited)
     }
 
+    @Test("a file's first lines name its language as its whole text does")
+    func leadingText() throws {
+        let script = try Self.document("#!/bin/sh\r\necho a\nb")
+        #expect(script.text(ofFirstLines: 2) == "#!/bin/sh\r\necho a\n")
+        #expect(script.text(ofFirstLines: 9) == "#!/bin/sh\r\necho a\nb")
+        let limit = SyntaxLanguage.contentsLineLimit
+        // An nginx block early, and one past the lines the contents are read for.
+        let early = "server {\n" + String(repeating: "listen 80;\n", count: limit + 100)
+        let late = String(repeating: "x\n", count: limit + 100) + "server {\nlisten 80;\n"
+        for text in [early, late] {
+            let document = try Self.document(text)
+            let whole = SyntaxLanguage.forFile(named: "default", text: text)
+            let opening = SyntaxLanguage.forFile(
+                named: "default",
+                text: document.text(ofFirstLines: limit)
+            )
+            #expect(opening == whole)
+        }
+        #expect(SyntaxLanguage.forFile(named: "default", text: early) == .nginx)
+    }
+
     @Test("two unedited documents compare as their texts do")
     func comparisonOfDocuments() throws {
         let leftText = "one\ntwo\r\nthree\nfour"

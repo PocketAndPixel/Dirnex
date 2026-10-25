@@ -228,13 +228,15 @@ Decided before Slice 1:
    (a throwaway harness, recorded in the slice note).
 2. **Copying across** (app). The two keys and buttons; comparing again after each copy, with the
    current change kept; the window's undo manager under Edit ▸ Undo; the title bar's edited state;
-   Swap Sides carrying unsaved edits with their side; the close prompt.
+   Swap Sides carrying unsaved edits with their side; the conflict dialog's window read-only (moved
+   up from Slice 4).
 3. **Saving a local file** (core, then app). First a probe of what a save must keep, against
    TextEdit's and BBEdit's own saves: mode, owner, Finder tags, other extended attributes, an ACL,
    the creation date, a symlink (saved through to its target) and a file with a second hard link.
-   Then the writer, the witness check, the journal step and ⌘S.
-4. **Saving anywhere else** (app). Server and archive sides through the write-back; the conflict
-   dialog's window read-only; the Synchronize row the window came from compared again after a save.
+   Then the writer, the witness check, the journal step, ⌘S, and the close prompt (moved from
+   Slice 2, which had no Save for it to offer).
+4. **Saving anywhere else** (app). Server and archive sides through the write-back; the Synchronize
+   row the window came from compared again after a save.
 5. **Edit in the user's editor** (app). Edit Left and Edit Right open that side the way F4 does, so
    a server side's save is offered back exactly as F4's is. The window watches the file as
    `EditedFileRegistry` does and compares again when it changes. With unsaved edits on that side, it
@@ -317,6 +319,67 @@ line endings**, since a save keeps both; and **editing in the conflict dialog's 
 - **Found on the way:** M31's decoder takes 6 s to open a 7.7 MB Windows-1251 file, in
   `NSString.stringEncoding(for:)`. The compare window has paid that since M31, and this slice adds
   0.3 s to it.
+
+**2026-10-25: Slice 2 landed** (the window; nothing is saved yet, which is Slice 3).
+
+- **Core:** `ComparedDocument.text(ofFirstLines:)` and `SyntaxLanguage.contentsLineLimit`, so the
+  opener names a file's language from its first 500 lines without joining the whole file.
+- **App:**
+  - `CompareSource` holds a `ComparedDocument` and an `id`, and the opener reads one, so a file
+    that would not come back byte for byte is known when the window opens.
+  - `+Copy` adds Copy to Right (⌥⌘→) and Copy to Left (⌥⌘←), and two arrows right after the change
+    arrows. A copy is the core's `LineEdit`. The pair is then compared again, and the change below
+    the copied lines becomes the current one, or the last change when none is below.
+  - The window has its own `UndoManager`, handed to AppKit by `windowWillReturnUndoManager`. Edit ▸
+    Undo names the copy ("Undo Copy to Right"), and an undo makes the change it brought back the
+    current one.
+  - A side that differs from its file says "— Edited" in its header, and the close button carries
+    the edited dot. Both read `isEdited`, which is computed with the comparison, off the main thread.
+  - Swap Sides takes each file's copies with it. An undo finds its file by `id`, on whichever side
+    the file is.
+  - A side that is not savable takes no copy: its arrow is grayed and the banner says why. The
+    conflict dialog's window shows no arrows and ignores both keys.
+- **Tests:** 11 in `CompareCopyTests` and one in the core. The existing compare suites now build
+  their sides from documents.
+- **Probed before writing it:**
+  - **Edit ▸ Undo needs nothing from the window but an undo manager.** In a throwaway app, `undo:`
+    with a read-only text view first walked past it to `NSWindow`. The window asked its delegate's
+    `windowWillReturnUndoManager`, enabled the item and titled it "Undo Copy to Right", and ⌘Z
+    through `NSMenu.performKeyEquivalent` ran the handler.
+  - **A momentary `NSSegmentedControl` keeps no selection set from code**, so the button test
+    presses the segment through its accessibility element (docs/NOTES.md ▸ Windows).
+- **Decided in the slice:**
+  - **The close prompt moved to Slice 3**, since Save has nothing to do until a save exists. In this
+    slice, closing an edited window drops copies that nothing could have kept.
+  - **The conflict dialog's window became read-only here rather than in Slice 4.** The arrows
+    arrive in this slice, and that window's right-hand file is a copy waiting on the dialog.
+  - **A copy waits for a comparison of the sides as they stand.** `sidesRevision` counts every
+    copy, undo and swap. A copy is refused with a beep until a comparison of that revision has
+    landed, because a change's ranges name lines of the comparison it came from.
+  - **After a copy or a redo, the next change is current. After an undo, the restored one is.**
+- **Negative controls:**
+  - With an undo landing as a copy does, the window's undo test fails. At first only the unit test
+    failed: the window test copied the last change, where "the last one left" and "the one restored"
+    are the same change. The test now copies a middle one.
+  - Without the revision guard, the stale-comparison test fails.
+  - With an undo finding its file by side rather than by `id`, the Swap Sides test fails.
+  - Without `windowWillReturnUndoManager`, two tests fail.
+- **Seen live** in the Debug build, on a three-change pair opened with ⌥F3. The saved tabs were
+  cleared first, since a WebDAV tab would have asked the Keychain. A temporary probe (since removed)
+  logged both files' text, the current change, the edited marks, and the Edit menu's Undo and Redo
+  titles after each step:
+  - ⌥⌘→ and ⌥⌘← arrived as key events (keyCodes 124 and 123, with ⌥⌘) and copied each way. The
+    arrow button copied too.
+  - The Edit menu said "Undo Copy to Right". Choosing it made the restored change the current one,
+    and Redo then said "Redo Copy to Right". ⇧⌘Z and ⌘Z did the same by key.
+  - Undoing every copy cleared the "— Edited" mark and the close button's dot, and a copy put both
+    back.
+  - ⌘U took the left file's copy and its mark to the right, and ⌘Z then restored that file there.
+  - **The keys needed Dirnex in front** (full-screen control). Driven from the background, the
+    window is not key, so its key monitor is not installed (docs/LIVE-VERIFICATION.md).
+  - The defaults domain was put back afterwards and compared unchanged.
+- **Seen, and left as it was:** after Swap Sides no change is current, so both arrows stay grayed
+  until ⌥⌘↓. That is M31's swap, which compares again rather than mirroring the comparison.
 
 ### M34 — A three-way merge (M)
 

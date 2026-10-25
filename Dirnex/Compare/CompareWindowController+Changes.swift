@@ -10,6 +10,7 @@ extension CompareWindowController {
         currentChange = index
         band.current = index
         toolbar.showCounter(current: index, count: comparison.changeRows.count)
+        refreshCopyControls()
         sync?.reveal(row: comparison.changeRows[index].lowerBound)
     }
 
@@ -44,6 +45,7 @@ extension CompareWindowController {
         currentChange = nil
         band.current = nil
         toolbar.showCounter(current: nil, count: comparison?.changeRows.count ?? 0)
+        refreshCopyControls()
         sync?.reveal(row: row)
     }
 }
