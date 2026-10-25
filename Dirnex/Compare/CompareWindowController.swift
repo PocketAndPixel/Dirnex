@@ -7,13 +7,19 @@ struct CompareSource: Sendable {
     let name: String
     /// Where the file is, under its name.
     let detail: String
+    /// Where the file lives: a server object's or an archive member's own location, never the copy
+    /// read. A save names it to the Synchronize window, which compares that row again.
+    let origin: VFSPath
     /// The file's lines, copies included (PLAN.md §M33).
     var document: ComparedDocument
     /// The grammar its syntax is colored by, or `nil` for none.
     let language: SyntaxLanguage?
     /// The local file a save writes, as it was read or last saved, or `nil` for a side this window
-    /// cannot save: a copy of a file that is not on this Mac (PLAN.md §M33 Slice 3).
+    /// cannot save (PLAN.md §M33 Slice 3). For a server file or an archive member it is the copy
+    /// read, which the save writes before ``writeBack`` carries it there (Slice 4).
     var target: ComparedFileSave.Target?
+    /// Where a save of the copy goes back to, or `nil` for a local file saved in place.
+    var writeBack: EditDestination?
     /// Which file this is, on whichever side Swap Sides has put it. An undo finds its file by this.
     let id = UUID()
 }

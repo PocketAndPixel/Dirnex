@@ -23,24 +23,34 @@ import DirnexCore
 /// autosaves — so silence here would rewrite an archive because a text editor flushed a buffer.
 /// That reasoning is unchanged by batching; what changed is how many times it is put.
 extension BrowserWindowController {
-    /// Group by archive and run each group.
+    /// Group by archive and run each group. `true` when every group was written back.
     ///
     /// Sequentially, because each group ends in a sheet and a rewrite: two archives being repacked
     /// at once would put two questions on screen and two `bsdtar` passes over the same disk.
-    func runArchiveWriteBacks(_ batch: [PendingArchiveWriteBack]) async {
+    ///
+    /// `host` is the window the questions go on, or `nil` for this one (`writeBack(_:askingOver:)`).
+    @discardableResult
+    func runArchiveWriteBacks(_ batch: [PendingArchiveWriteBack], over host: NSWindow?) async -> Bool {
+        var everyOne = true
         for group in ArchiveWriteBackPlan.groups(of: batch) {
-            await runArchiveWriteBack(group)
+            let written = await runArchiveWriteBack(group, over: host)
+            everyOne = everyOne && written
         }
+        return everyOne
     }
 
-    /// Ask about one archive's members, then write them all back in one rewrite.
-    private func runArchiveWriteBack(_ group: ArchiveWriteBackGroup) async {
-        guard await confirmArchiveWriteBack(group) else { return }
-        await writeArchiveMembersBack(group)
+    /// Ask about one archive's members, then write them all back in one rewrite. `true` once the
+    /// rewrite landed.
+    private func runArchiveWriteBack(_ group: ArchiveWriteBackGroup, over host: NSWindow?) async -> Bool {
+        guard await confirmArchiveWriteBack(group, over: host) else { return false }
+        return await writeArchiveMembersBack(group, over: host)
     }
 
     /// The one question for this archive.
-    private func confirmArchiveWriteBack(_ group: ArchiveWriteBackGroup) async -> Bool {
+    private func confirmArchiveWriteBack(
+        _ group: ArchiveWriteBackGroup,
+        over host: NSWindow?
+    ) async -> Bool {
         let alert = NSAlert()
         alert.messageText = Self.archiveWriteBackTitle(group)
         alert.informativeText = Self.archiveWriteBackBody(
@@ -64,16 +74,20 @@ extension BrowserWindowController {
         // The watcher raised this, not the user, so a window that has gone away has nobody to ask —
         // and the answer to a question nobody was put is to write nothing back, which leaves every
         // copy watched and asks again on the next save.
-        let response = await alert.sheetAnswer(over: window, whenUnasked: .cancel)
+        let response = await alert.sheetAnswer(over: host ?? window, whenUnasked: .cancel)
         return response == .alertFirstButtonReturn
     }
 
-    /// Add every member of the group back in one rewrite.
+    /// Add every member of the group back in one rewrite. `true` once it landed; a failure and a
+    /// Cancel at the passphrase prompt are both `false`.
     ///
     /// One `ArchiveWriter.add` over ``ArchiveMutation/Addition`` pairs, so members that came from
     /// *different folders* inside the archive still travel in a single pass — which is the whole
     /// difference between this and calling the old single-file spelling in a loop.
-    private func writeArchiveMembersBack(_ group: ArchiveWriteBackGroup) async {
+    private func writeArchiveMembersBack(
+        _ group: ArchiveWriteBackGroup,
+        over host: NSWindow?
+    ) async -> Bool {
         // The passphrase prompt and its retry belong to a pane (it owns the sheet's parent window
         // and the funnel), so the write runs through whichever pane is focused. The *edits* did not
         // come from that pane and do not need to.
@@ -82,7 +96,7 @@ extension BrowserWindowController {
         let additions = group.additions
         let copies = group.items.map(\.edit.temporaryURL)
         let encoding = pane.declaredNameEncoding(forArchiveAt: archivePath)
-        await withCheckedContinuation { continuation in
+        return await withCheckedContinuation { continuation in
             pane.withArchivePassphrase(forArchiveAt: archivePath) { passphrase in
                 try await BlockingWork.run {
                     Result {
@@ -99,10 +113,12 @@ extension BrowserWindowController {
                 self?.finishArchiveWriteBack(
                     group, snapshot: snapshot, copies: copies, pane: pane
                 )
-                continuation.resume()
+                continuation.resume(returning: true)
             } onFailure: { [weak self] error in
-                self?.presentArchiveWriteBackFailure(group, error: error, pane: pane)
-                continuation.resume()
+                self?.presentArchiveWriteBackFailure(group, error: error, pane: pane, over: host)
+                continuation.resume(returning: false)
+            } onCancel: {
+                continuation.resume(returning: false)
             }
         }
     }
@@ -127,11 +143,20 @@ extension BrowserWindowController {
     private func presentArchiveWriteBackFailure(
         _ group: ArchiveWriteBackGroup,
         error: any Error,
-        pane: PanelViewController
+        pane: PanelViewController,
+        over host: NSWindow?
     ) {
-        pane.presentOperationFailure(
+        guard host != nil else {
+            pane.presentOperationFailure(
+                message: Self.archiveWriteBackFailureTitle(group),
+                detail: pane.describe(error)
+            )
+            return
+        }
+        presentWriteBackFailure(
             message: Self.archiveWriteBackFailureTitle(group),
-            detail: pane.describe(error)
+            detail: pane.describe(error),
+            over: host
         )
     }
 

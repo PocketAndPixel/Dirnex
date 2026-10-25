@@ -6,18 +6,45 @@ import Testing
 
 /// A compare window over two real files in a temporary folder, read through the opener, so each
 /// side has the target a save writes (PLAN.md §M33 Slice 3).
+///
+/// With `rightOrigin` the right file stands for a copy of a file somewhere else, and with
+/// `rightWriteBack` it has somewhere to go back to (Slice 4). The write-back is a stand-in that
+/// records what it was handed and answers ``WriteBackBox/answer``; the real one is the browser
+/// window's, whose checks and endings are tested beside it.
 @MainActor
 struct CompareSaveRig {
     let directory: URL
     let controller: CompareWindowController
     /// What the window's saves filed with the browser window's journal.
     let journal: JournalBox
+    /// What the window's saves handed the write-back.
+    let writeBacks: WriteBackBox
 
     final class JournalBox {
         var records: [UndoRecord] = []
     }
 
-    init(_ left: Data, _ right: Data, store: ArchiveUndoStore? = nil, rightOrigin: VFSPath? = nil) throws {
+    /// One hand-over to the write-back.
+    struct WriteBackCall {
+        let edit: EditedFile
+        /// The copy's bytes when it was handed over.
+        let bytes: Data
+        let host: NSWindow?
+    }
+
+    final class WriteBackBox {
+        /// Whether the write-back lands.
+        var answer = true
+        var calls: [WriteBackCall] = []
+    }
+
+    init(
+        _ left: Data,
+        _ right: Data,
+        store: ArchiveUndoStore? = nil,
+        rightOrigin: VFSPath? = nil,
+        rightWriteBack: EditDestination? = nil
+    ) throws {
         directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("dirnex-compare-save-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -28,17 +55,28 @@ struct CompareSaveRig {
         let (leftSource, rightSource) = try CompareOpener.sources(
             CompareFile(path: .local(leftURL.path), origin: .local(leftURL.path)),
             detail: "",
-            CompareFile(path: .local(rightURL.path), origin: rightOrigin ?? .local(rightURL.path)),
+            CompareFile(
+                path: .local(rightURL.path),
+                origin: rightOrigin ?? .local(rightURL.path),
+                writeBack: rightWriteBack
+            ),
             detail: ""
         ).get()
         let journal = JournalBox()
         self.journal = journal
+        let writeBacks = WriteBackBox()
+        self.writeBacks = writeBacks
         controller = CompareWindowController(
             left: leftSource,
             right: rightSource,
             saving: CompareSaving(
                 undo: { ArchiveUndoStorage.Request(store: store, live: []) },
-                journal: { journal.records.append($0) }
+                journal: { journal.records.append($0) },
+                writeBack: { edit, host in
+                    let bytes = (try? Data(contentsOf: edit.temporaryURL)) ?? Data()
+                    writeBacks.calls.append(.init(edit: edit, bytes: bytes, host: host))
+                    return writeBacks.answer
+                }
             )
         )
         controller.show(CompareWindowController.prepare(
@@ -231,24 +269,5 @@ struct CompareSaveTests {
 
         #expect(await rig.controller.saveEditedSides())
         #expect(rig.contents(rig.rightPath) == "a\nB\nc\n")
-    }
-
-    @Test("a copy of a server file has no target, so ⌘S has nothing to save and beeps")
-    func serverSideIsNotSaved() async throws {
-        let server = VFSPath(backend: Handoff.remoteID, path: "/srv/right.txt")
-        let rig = try CompareSaveRig(
-            Data("a\nB\nc\n".utf8),
-            Data("a\nb\nc\n".utf8),
-            rightOrigin: server
-        )
-        defer { rig.cleanup() }
-        #expect(rig.controller.right.target == nil)
-        #expect(rig.controller.left.target == .reading(rig.leftPath))
-        try await rig.copy(to: .right)
-
-        #expect(rig.controller.unsavedSides.isEmpty)
-        #expect(rig.controller.handleKey(CompareSaveRig.commandS))
-        #expect(rig.controller.isSaving == false)
-        #expect(rig.contents(rig.rightPath) == "a\nb\nc\n")
     }
 }

@@ -20,9 +20,10 @@ extension PanelViewController {
         }
     }
 
-    /// What the window's saves keep and where they are journaled (PLAN.md §M33 Slice 3): the app's
-    /// undo store, and this pane's browser window, so ⌘Z in a pane puts a saved file back. A window
-    /// that outlives its pane's browser window files with whichever browser window is in front.
+    /// What the window's saves keep and where they go (PLAN.md §M33 Slices 3 and 4): the app's undo
+    /// store, and this pane's browser window, whose journal ⌘Z in a pane reads and whose write-back
+    /// carries a server file or an archive member back. A window that outlives its pane's browser
+    /// window goes to whichever browser window is in front.
     var compareSaving: CompareSaving {
         CompareSaving(
             undo: { ArchiveUndoStorage.request() },
@@ -30,11 +31,22 @@ extension PanelViewController {
                 if let host = self?.host {
                     host.recordUndoableAction(record)
                 } else {
-                    (NSApp.delegate as? AppDelegate)?.activeBrowserWindowController?
-                        .recordUndoableAction(record)
+                    Self.frontBrowserWindow?.recordUndoableAction(record)
                 }
+            },
+            writeBack: { [weak self] edit, window in
+                // The browser window that downloaded a server file holds what it looked like then,
+                // which the write-back's check reads. Another window has no record of it, and its
+                // check asks rather than uploading in silence.
+                guard let browser = (self?.host as? BrowserWindowController) ?? Self.frontBrowserWindow
+                else { return false }
+                return await browser.writeBack(edit, askingOver: window)
             }
         )
+    }
+
+    private static var frontBrowserWindow: BrowserWindowController? {
+        (NSApp.delegate as? AppDelegate)?.activeBrowserWindowController
     }
 
     /// Where a file lives, as a pane's header says it: Copy Path's text, with the server's name in

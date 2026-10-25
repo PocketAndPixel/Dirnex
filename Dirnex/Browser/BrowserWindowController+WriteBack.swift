@@ -26,4 +26,49 @@ extension BrowserWindowController {
         isGatheringWriteBacks = true
         Task { await gatherWriteBacks() }
     }
+
+    /// Carry one copy Dirnex itself has just written back where it came from, asking over `host`,
+    /// and say whether it landed (PLAN.md §M33 Slice 4).
+    ///
+    /// The compare window's save of a server file or an archive member. The window writes the copy,
+    /// and this is everything an editor's save of that copy gets: the re-`stat`, the prompt and the
+    /// precondition and the queued upload, or the archive's question and its rewrite. The endings
+    /// are the batch's own, run at once rather than gathered: the gathering paces saves a watcher
+    /// noticed, and this one was pressed for and is waited on, which a batch has no way to answer.
+    ///
+    /// The questions go on `host`, the window the user pressed ⌘S in. The browser window can be
+    /// behind it, or behind the Synchronize window the comparison was opened from.
+    func writeBack(_ edit: EditedFile, askingOver host: NSWindow?) async -> Bool {
+        // F4 may have this very copy open, and its watch would offer the window's write a second
+        // time once the event arrives.
+        editedFiles.acknowledgeWrite(to: edit.temporaryURL)
+        switch edit.destination {
+        case let .remoteFile(path):
+            let landed = await runRemoteWriteBacks([(edit: edit, destination: path)], over: host)
+            return landed.contains(path)
+        case let .archiveMember(archivePath, innerDirectory):
+            return await runArchiveWriteBacks(
+                [PendingArchiveWriteBack(
+                    edit: edit, archivePath: archivePath, innerDirectory: innerDirectory
+                )],
+                over: host
+            )
+        }
+    }
+
+    /// A write-back's failure, on `host` when one asked, else on the focused pane's window as
+    /// before.
+    func presentWriteBackFailure(message: String, detail: String, over host: NSWindow?) {
+        guard let host else {
+            focusedPanel.presentOperationFailure(message: message, detail: detail)
+            return
+        }
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = message
+        alert.informativeText = detail
+        alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
+        alert.beginSheetIfVisible(over: host)
+    }
 }

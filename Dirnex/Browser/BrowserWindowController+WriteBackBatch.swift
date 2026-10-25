@@ -55,8 +55,8 @@ extension BrowserWindowController {
     /// silence, where every archive rewrite asks by construction.
     private func runWriteBackBatch(_ batch: [EditedFile]) async {
         let split = Self.split(batch)
-        await runRemoteWriteBacks(split.remote)
-        await runArchiveWriteBacks(split.members)
+        await runRemoteWriteBacks(split.remote, over: nil)
+        await runArchiveWriteBacks(split.members, over: nil)
     }
 
     /// Which ending each save belongs to, in the order the batch gathered them.
@@ -83,15 +83,19 @@ extension BrowserWindowController {
         return (remote, members)
     }
 
-    /// Check, ask if there is anything to ask, upload, and report.
-    private func runRemoteWriteBacks(_ batch: [PendingWriteBack]) async {
-        guard !batch.isEmpty else { return }
+    /// Check, ask if there is anything to ask, upload, and report. Answers the destinations that
+    /// landed, an upload anyway after a refused precondition included.
+    ///
+    /// `host` is the window the questions go on, or `nil` for this one (`writeBack(_:askingOver:)`).
+    @discardableResult
+    func runRemoteWriteBacks(_ batch: [PendingWriteBack], over host: NSWindow?) async -> Set<VFSPath> {
+        guard !batch.isEmpty else { return [] }
         let checked = await checkWriteBacks(batch)
-        guard !checked.isEmpty else { return }
-        let answer = await writeBackAnswer(for: checked)
+        guard !checked.isEmpty else { return [] }
+        let answer = await writeBackAnswer(for: checked, over: host)
         let chosen = WriteBackBatchPlan.items(for: answer, from: checked)
-        guard !chosen.isEmpty else { return }
-        await uploadWriteBacks(chosen)
+        guard !chosen.isEmpty else { return [] }
+        return await uploadWriteBacks(chosen, over: host)
     }
 
     // MARK: - The check
@@ -150,13 +154,19 @@ extension BrowserWindowController {
     /// answered nothing is not a question, it is the save that was already asked for. Which is the
     /// common case here by construction — the copies were downloaded minutes ago by the same
     /// gesture that rewrote them, so nobody else has touched them.
-    private func writeBackAnswer(for checked: [CheckedWriteBack]) async -> WriteBackAnswer {
+    private func writeBackAnswer(
+        for checked: [CheckedWriteBack],
+        over host: NSWindow?
+    ) async -> WriteBackAnswer {
         guard WriteBackBatchPlan.needsConfirmation(checked) else { return .all }
-        return await confirmWriteBacks(checked)
+        return await confirmWriteBacks(checked, over: host)
     }
 
     /// The one sheet, however many files it is about.
-    private func confirmWriteBacks(_ checked: [CheckedWriteBack]) async -> WriteBackAnswer {
+    private func confirmWriteBacks(
+        _ checked: [CheckedWriteBack],
+        over host: NSWindow?
+    ) async -> WriteBackAnswer {
         let contested = checked.filter(\.hasConcern)
         let alert = NSAlert()
         alert.messageText = Self.writeBackPromptTitle(contested: contested, total: checked.count)
@@ -193,7 +203,7 @@ extension BrowserWindowController {
         // The watcher raised this, not the user, so a window that has gone away has nobody to ask
         // — and the answer to a question nobody was put is to upload nothing, which leaves every
         // copy watched and asks again on the next save (`sheetAnswer`).
-        let response = await alert.sheetAnswer(over: window, whenUnasked: .cancel)
+        let response = await alert.sheetAnswer(over: host ?? window, whenUnasked: .cancel)
         return Self.answer(for: response, offersSkip: offersSkip)
     }
 
@@ -212,12 +222,13 @@ extension BrowserWindowController {
 
     // MARK: - The upload
 
-    /// Hand the chosen items to the queue and wait for the report.
+    /// Hand the chosen items to the queue, wait for the report, and answer the destinations that
+    /// landed.
     ///
     /// Internal rather than private because the *retry* after a refused precondition comes back
     /// through it (`+WriteBackReport`), which is what keeps an unconditional second attempt on the
     /// same bar and the same Stop as the first — and Swift's `private` does not cross files.
-    func uploadWriteBacks(_ chosen: [CheckedWriteBack]) async {
+    func uploadWriteBacks(_ chosen: [CheckedWriteBack], over host: NSWindow?) async -> Set<VFSPath> {
         let job = WriteBackBatchPlan.job(for: chosen)
         // Any of the destinations would do — the queue reads it only to decide which volume this
         // job stresses, and a batch spanning two accounts is one job either way.
@@ -227,7 +238,7 @@ extension BrowserWindowController {
                 continuation.resume(returning: report)
             }
         }
-        await finishWriteBacks(chosen, report: report)
+        return await finishWriteBacks(chosen, report: report, over: host)
     }
 
     /// Queue the job and pair its id with what to do about the report.
@@ -260,11 +271,13 @@ extension BrowserWindowController {
 
     // MARK: - Afterwards
 
-    /// Re-baseline what landed, refresh what is on screen, and say what happened.
+    /// Re-baseline what landed, refresh what is on screen, say what happened, and answer what
+    /// landed, now or by an upload anyway the report offered.
     private func finishWriteBacks(
         _ chosen: [CheckedWriteBack],
-        report: OperationReport
-    ) async {
+        report: OperationReport,
+        over host: NSWindow?
+    ) async -> Set<VFSPath> {
         let landed = Set(report.writtenBack ?? [])
         let backend = focusedPanel.backend
         for item in chosen where landed.contains(item.destination) {
@@ -287,7 +300,8 @@ extension BrowserWindowController {
         for directory in Set(landed.compactMap(\.parent)) {
             refreshPanesShowingWriteBack(directory)
         }
-        reportWriteBacks(chosen, landed: landed, report: report)
+        let retried = await reportWriteBacks(chosen, landed: landed, report: report, over: host)
+        return landed.union(retried)
     }
 
     /// Re-read what the server now holds and record it as the copy's revision.

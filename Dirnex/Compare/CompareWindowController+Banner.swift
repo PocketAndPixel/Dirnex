@@ -1,6 +1,20 @@
 import AppKit
 import DirnexCore
 
+/// A side no copy may go to, and why, which the banner names (PLAN.md §M33).
+struct ReadOnlySide: Equatable {
+    enum Reason: Equatable {
+        /// The file, written back unedited, would not be the same bytes.
+        case notExact
+        /// The file is a copy of one Dirnex has no way to write: a member of an archive inside
+        /// another archive, or a file on a backend that takes no uploads.
+        case nowhereToSave
+    }
+
+    let side: ComparisonPaneText.Side
+    let reason: Reason
+}
+
 /// The line under the toolbar that says what differs where the rows cannot show it (PLAN.md §M31
 /// Slice 3): an encoding, a byte-order mark, and whatever the options overlooked.
 ///
@@ -10,7 +24,7 @@ import DirnexCore
 extension CompareWindowController {
     static func bannerText(
         for comparison: TextComparison,
-        readOnly: [ComparisonPaneText.Side] = []
+        readOnly: [ReadOnlySide] = []
     ) -> String? {
         var sentences: [String] = []
         if comparison.diff.isIdentical {
@@ -29,25 +43,41 @@ extension CompareWindowController {
                 comment: "Compare window: some changed lines also differ in their line ending, marked ↵ in the gutter."
             ))
         }
-        for side in readOnly {
-            sentences.append(readOnlySentence(for: side))
+        for readOnlySide in readOnly {
+            sentences.append(readOnlySentence(for: readOnlySide))
         }
         return sentences.isEmpty ? nil : sentences.joined(separator: " ")
     }
 
-    /// Why no copy can go to `side`: its file, written back unedited, would not be the same bytes
-    /// (`ComparedDocument.isSavable`).
-    private static func readOnlySentence(for side: ComparisonPaneText.Side) -> String {
-        switch side {
-        case .left:
+    /// Why no copy can go to a side: its file, written back unedited, would not be the same bytes
+    /// (`ComparedDocument.isSavable`), or there is nowhere to write it.
+    private static func readOnlySentence(for readOnly: ReadOnlySide) -> String {
+        switch (readOnly.side, readOnly.reason) {
+        case (.left, .notExact):
             String(
                 localized: "The left file is read-only here: Dirnex can’t write it back exactly as it was read.",
                 comment: "Compare window: changes can't be copied into the left file, and why."
             )
-        case .right:
+        case (.right, .notExact):
             String(
                 localized: "The right file is read-only here: Dirnex can’t write it back exactly as it was read.",
                 comment: "Compare window: changes can't be copied into the right file, and why."
+            )
+        case (.left, .nowhereToSave):
+            String(
+                localized: "The left file is read-only here: Dirnex can’t save it back where it came from.",
+                comment: """
+                Compare window: changes can't be copied into the left file, because it is a copy of \
+                a file Dirnex cannot write, such as a member of an archive inside another archive.
+                """
+            )
+        case (.right, .nowhereToSave):
+            String(
+                localized: "The right file is read-only here: Dirnex can’t save it back where it came from.",
+                comment: """
+                Compare window: changes can't be copied into the right file, because it is a copy \
+                of a file Dirnex cannot write, such as a member of an archive inside another archive.
+                """
             )
         }
     }

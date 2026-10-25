@@ -8,9 +8,13 @@ struct CompareFile: Sendable {
     /// Where the file lives, which the window's header names. A server object's or an archive
     /// member's own location, never the temporary copy's.
     let origin: VFSPath
+    /// Where a save of the copy goes back to: the server file or the archive member F4 would write
+    /// back (PLAN.md §M33 Slice 4). `nil` for a local file, which is saved in place, and for a file
+    /// with nowhere to go back to, such as a member of an archive inside another archive.
+    var writeBack: EditDestination?
 
     /// Whether the copy read is the file itself, a local file a save writes in place. A copy brought
-    /// down from a server or out of an archive goes back another way (PLAN.md §M33 Slice 4).
+    /// down from a server or out of an archive goes back through ``writeBack`` instead.
     var isSavedInPlace: Bool {
         origin.backend == .local && path == origin
     }
@@ -80,14 +84,16 @@ enum CompareOpener {
     /// One side: the text read whole, named after the file where it lives, and colored by the
     /// grammar Quick View would pick for it.
     ///
-    /// A local file read as itself is one a save can write, so what it looks like is taken just
-    /// before the read, for the save to be checked against (PLAN.md §M33 Slice 3).
+    /// A file a save can write is either a local file read as itself (PLAN.md §M33 Slice 3) or a
+    /// copy that goes back where it came from (Slice 4), so what the file read looks like is taken
+    /// just before the read, for the save to be checked against.
     nonisolated static func source(
         _ file: CompareFile,
         detail: String
     ) throws(CompareReadFailure) -> CompareSource {
         let name = file.origin.lastComponent
-        let target = file.isSavedInPlace ? ComparedFileSave.Target.reading(file.path.path) : nil
+        let saveable = file.isSavedInPlace || file.writeBack != nil
+        let target = saveable ? ComparedFileSave.Target.reading(file.path.path) : nil
         do {
             let document = try ComparedDocument.read(
                 contentsOf: URL(fileURLWithPath: file.path.path)
@@ -96,9 +102,11 @@ enum CompareOpener {
             return CompareSource(
                 name: name,
                 detail: detail,
+                origin: file.origin,
                 document: document,
                 language: SyntaxLanguage.forFile(named: name, text: opening),
-                target: target
+                target: target,
+                writeBack: file.writeBack
             )
         } catch {
             throw CompareReadFailure(name: name, reason: error)

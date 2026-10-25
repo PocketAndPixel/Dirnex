@@ -72,6 +72,8 @@ final class SyncDirectoriesController: NSViewController {
     /// Stop, for the sheet's own scan: set when the sheet goes away and polled by the walk and the
     /// byte reads, both of which run off the main actor.
     let scanControl = SyncScanControl()
+    /// Watches for a compare window saving a file a row shows (`+Saves`).
+    var compareSaveObserver: (any NSObjectProtocol)?
 
     /// One diff row: the comparison entry, its current action under the chosen direction, and
     /// whether the user has it checked for the run.
@@ -133,6 +135,7 @@ final class SyncDirectoriesController: NSViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        startObservingCompareSaves()
         startScan()
     }
 
@@ -196,6 +199,7 @@ final class SyncDirectoriesController: NSViewController {
     override func viewDidDisappear() {
         super.viewDidDisappear()
         scanControl.stop()
+        stopObservingCompareSaves()
     }
 
     @objc func cancel(_ sender: Any?) {
@@ -222,6 +226,10 @@ final class SyncDirectoriesController: NSViewController {
     // MARK: - Helpers
 
     func isActionable(_ action: SyncAction) -> Bool {
+        Self.isActionable(action)
+    }
+
+    static func isActionable(_ action: SyncAction) -> Bool {
         action != .none && action != .conflict
     }
 

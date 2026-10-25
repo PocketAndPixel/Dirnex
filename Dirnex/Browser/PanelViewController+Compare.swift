@@ -47,14 +47,24 @@ extension PanelViewController {
     /// the row that would otherwise beachball the diff tool instead of us — and they are the one
     /// source `materialize` fetches without weighing, since `CloudDownloadPrompt` is already their
     /// progress surface.
+    ///
+    /// Each copy carries where F4 would write it back (PLAN.md §M33 Slice 4), decided here from the
+    /// row as the gesture saw it, the rule `editDestination(for:)` keeps for every edit: the pane
+    /// may show something else by the time the compare window saves.
     func compare(_ left: FileEntry, _ right: FileEntry) {
+        let leftBack = editDestination(for: left)
+        let rightBack = editDestination(for: right)
         materialize([left, right], for: .compare, includingPlaceholders: true) {
             CompareOpener.failureTitle
         } then: { [weak self] urls in
             guard urls.count == 2 else { return }
             self?.launchCompare(
-                CompareFile(path: .local(urls[0].path), origin: left.path),
-                with: CompareFile(path: .local(urls[1].path), origin: right.path)
+                CompareFile(path: .local(urls[0].path), origin: left.path, writeBack: leftBack),
+                with: CompareFile(
+                    path: .local(urls[1].path),
+                    origin: right.path,
+                    writeBack: rightBack
+                )
             )
         }
     }

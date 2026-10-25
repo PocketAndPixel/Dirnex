@@ -11,12 +11,16 @@ import Testing
 @Suite("Compare window copies")
 @MainActor
 struct CompareCopyTests {
+    /// A side as the opener builds one for a local file: it has a file to save to, so it takes
+    /// copies. Nothing here saves, and the window's `saving` is `.none`.
     private func source(_ name: String, _ bytes: Data) throws -> CompareSource {
         try CompareSource(
             name: name,
             detail: "/tmp/\(name)",
+            origin: .local("/tmp/\(name)"),
             document: ComparedDocument.decode(bytes),
-            language: nil
+            language: nil,
+            target: ComparedFileSave.Target(path: "/tmp/\(name)", witness: nil)
         )
     }
 

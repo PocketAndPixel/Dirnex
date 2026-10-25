@@ -468,6 +468,61 @@ yet, which is Slice 4.
   - The defaults domain was restored and compared unchanged, and the run's three undo copies were
     deleted.
 
+**2026-10-25: Slice 4 landed** (app only). **Not yet run live**; the tests drive the window with a
+stand-in write-back.
+
+- **App:**
+  - A server file or an archive member is saved into the copy the window read, then handed to F4's
+    write-back: the re-`stat`, the question only when the check found something, the precondition
+    and the queued upload, or the archive's question and its rewrite.
+    `BrowserWindowController.writeBack(_:askingOver:)` runs the batch's two endings at once rather
+    than gathering, puts their sheets on the compare window, and answers whether the copy landed.
+  - **A side counts as saved only once it lands.** Keep Editing, a failed upload or a declined
+    rewrite leaves it edited, so the close prompt still asks and the next ⌘S carries it again. The
+    copy's witness moves with the window's own write, so that save does not ask whether the copy
+    changed.
+  - Where each copy goes back to is `editDestination(for:)`'s answer when ⌥F3 is pressed, as for F4.
+    A side with nowhere to go (a member of a nested archive or a self-extractor, an iCloud Photos
+    original) is read-only: its arrow is grayed and the banner says Dirnex can't save it back where
+    it came from. It took copies until now, which close dropped without asking.
+  - The window keeps no undo for these. An upload has none, and an archive's rewrite journals its
+    own, as it does for F4.
+  - **The Synchronize row is compared again.** A landed save posts `CompareWindowController.fileSaved`
+    with the file's origin. The Synchronize window re-`stat`s the row showing it and answers the row
+    under the comparison on screen (`SyncDirectoriesController+Saves`). The row leaves the list once
+    its two files agree. A row whose status did not move keeps its action and tick, and every other
+    row keeps them too. A notification rather than a handler passed down, so a compare window
+    opened before the sheet counts as well.
+  - `EditedFileRegistry.acknowledgeWrite(to:)`: F4 may have the same copy open, and its watch would
+    offer the window's write a second time.
+- **Fixed on the way:**
+  - Cancel at an encrypted archive's passphrase prompt called nothing back, so the archive
+    write-back waited forever and that window's later write-backs queued behind it.
+    `withArchivePassphrase` now has `onCancel`.
+  - The upload anyway after a refused precondition ran detached, where no caller could hear of it.
+    It is awaited now, and the next batch's sheet waits behind it.
+- **Found and not fixed:** the write-back's check reads the revision the cache holds for the
+  *path*, not for the copy being written back. If a preview downloads a newer version of the file
+  while an edit is open, F4's or the window's, the check compares the server with that newer
+  revision, finds nothing, and uploads the older copy over it without a question. It has been so
+  since M21 Slice 10, and the compare window makes it easier to reach.
+- **Tests:** 15 in three new suites. `CompareWriteBackTests` covers what the window hands over, when,
+  over which window, and what it does with the answer, plus the read-only side and the
+  announcement. `SyncCompareAgainTests` covers the row leaving, the other rows keeping their ticks,
+  and the four ways an answer lands in the list. `EditedFileRegistryTests` covers the acknowledged
+  write. Full runs: 4 537 core and 1 955 app tests, without the live server suites; the backends and
+  the runner are untouched.
+- **Negative controls:**
+  - Without the witness moving with the window's write, the not-landed test fails.
+  - A side saved whatever the write-back answered fails that test and the announcement test.
+  - Without the read-only reason, the nowhere-to-save test fails. Without the observer, the
+    Synchronize row test fails.
+  - Without the status-kept branch, its row test fails. Without the acknowledgement, the watch test
+    fails: its first control was a `return` above the line, which Swift ran anyway
+    (docs/NOTES.md ▸ Negative controls).
+- **Left for Slice 6:** the compare window's cells in [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md),
+  the new sentences' translations, and the live runs over SFTP, WebDAV and a zip.
+
 ### M34 — A three-way merge (M)
 
 **Planned 2026-10-25.** A file manager has no common ancestor to merge from, except in two places
