@@ -141,10 +141,11 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 | M31 | A compare window of our own | 10-22 | **Editing, copying a block across and saving**, a later milestone's decision; **a three-way merge**; **a file over 64 MiB** in the window, refused by name and left to the external tools; **a binary comparison**. **Seen only through a probe**: a Mac with no external diff tool. **Not run live**: an external tool from the conflict dialog, FTP and S3 pairs, and Escape |
 | M32 | WebDAV | 10-24 | **Depth infinity**; **locks of our own**; **NTLM, Negotiate and OAuth**; **setting a time on Apache**, which has no way to take one (Nextcloud's `X-OC-Mtime` is used where it is answered); **Apache's offset PUT** as a segmented upload; **quota**; **CalDAV, CardDAV, versioning and WebDAV ACLs**; **a Trash**, which the protocol does not have, so a NAS's `#recycle` softens the delete sheet instead. **All run live 2026-10-24**, on the NAS and a throwaway Apache, which found and fixed three bugs: ⌥F5 with a server folder in the set, Put Back into a folder deleted since, and dragging a marked set out (HISTORY.md §M32) |
 
-### Next
+### Next: M33 and M34 (planned 2026-10-25)
 
-No milestone is planned. M32 (WebDAV) closed 2026-10-24 and is archived in
-[docs/HISTORY.md](docs/HISTORY.md).
+M33 and M34 take the two items in M31's *undone* column that are product decisions rather than
+limits: copying a change across and saving it, and a three-way merge. M33 comes first, because
+M34's result pane, its undo and its save are M33's.
 
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both
@@ -153,6 +154,201 @@ stays open source, fully usable without paying, and it never asks a server wheth
 real. Before the store opens (the private repo's C12), the licensing switch goes on for stable, and
 two small changes are proposed: Help ▸ Release Notes opening the website's changelog, and a "Lost
 your key?" link in Settings ▸ License.
+
+### M33 — Copy a change across, and save (M)
+
+**Planned 2026-10-25.** Dirnex's compare window shows two files and changes neither. Total
+Commander's compare tool, the one M31 named, copies a block from one side to the other and saves
+the result, and that is what editing a comparison is mostly for: making one file agree with the
+other where it should. This milestone adds that and stops short of typing. M11's call stands: a
+built-in text editor is encoding detection, line-ending preservation, undo grouping and find and
+replace, a whole app, and every Mac already has the editor its user chose. So the window edits
+*lines*, through a model in the core, and an edit by hand goes to the user's own editor, which the
+window watches and compares again when it saves.
+
+Read before deciding (2026-10-25):
+
+- **A pane's text is not the file's text** (`ComparisonPaneText`). A gap is an empty line; U+2028,
+  U+2029, U+0085, a vertical tab and a form feed show as stand-ins; a line over 10 000 UTF-16 units
+  is cut at `…`; and every row ends in `\n`, whatever the file's line ended in. An editable pane
+  would have to map every keystroke, every marked-text composition and every `NSTextFinder` replace
+  back through all four, a keystroke landing in a gap included.
+- **The window already holds what a save needs.** `ComparedText` keeps the encoding and the
+  byte-order mark, and `TextLine` keeps each line's own ending, so the bytes can be written back
+  without a guess.
+- **Every place a side comes from already has a way back.** A local file is a path. A server file
+  or an archive member reaches the window as a temporary copy (`CompareFile.path` beside `origin`),
+  and F4's write-back already puts such a copy back, re-`stat`ing the server and conditioning the
+  upload on what the check read (`WriteBackJob`, §M21 Slice 10).
+- **Comparing again after every change is cheap enough.** M31 measured 0.03 s for a 20 000-line
+  file with 200 edits and 0.43 s for the dense 100 000-line pair, in release.
+- **⌥⌘← and ⌥⌘→ are free.** No catalog command is bound to either, and the window's own change
+  keys, ⌥⌘↑ and ⌥⌘↓, sit beside them (`CompareWindowController+Keys`).
+- **An archive rewrite is already undone by exchanging two files** (`ArchiveUndoStore.exchange`,
+  with `ArchiveUndoWitness` checked at ⌘Z): the self-inverse step NOTES.md ▸ Undo and redo
+  recommends for any whole-object replacement. A saved file is one.
+
+Decided before Slice 1:
+
+- **The panes stay `isEditable = false`.** An edit is a line operation on the core model, never a
+  keystroke in a text view. Hand edits go to the user's editor (Slice 5).
+- **Two verbs: Copy to Right (⌥⌘→) and Copy to Left (⌥⌘←).** Each acts on the current change, then
+  moves to the next one. Copying a side whose block is empty is how a block is deleted, so there is
+  no third verb. Buttons beside the change arrows carry the same two.
+- **Copied lines take the line ending most common in the file they land in**, and a copied line
+  that had none, being its file's last, gains one unless it lands last too. Otherwise a CRLF block
+  lands in an LF file unannounced, the one change nobody expects from "copy".
+- **A copy acts on what the comparison shows.** Under an ignore option, lines shown as the same are
+  not copied, and the banner goes on naming what still differs.
+- **Undo belongs to the window.** Every edit replaces some lines with others, and its inverse is an
+  edit of the same shape, so ⌘Z and ⇧⌘Z come free.
+- **A side is saved as it was read, apart from the lines that changed**: the same encoding, the
+  same byte-order mark, and every unchanged line with its own ending. A character the encoding
+  cannot hold is refused by name, with its line, never substituted. A side whose unedited bytes do
+  not come back identical from the model opens read-only, and the banner says why.
+- **⌘S saves every edited side.** The title bar shows unsaved changes, and closing the window asks
+  Save, Don't Save or Cancel.
+- **A local save is checked, kept and journaled.** Before writing, the file's size and modification
+  date are compared with what was read, and if either moved the window asks rather than writes. The
+  old bytes go to the undo store, and ⌘Z in a pane exchanges them back:
+  `ArchiveUndoStore.exchange`'s step, widened from archives to any file, with the same witness.
+- **A server file or an archive member is saved into its temporary copy and handed to the
+  write-back F4 uses**, re-`stat`, prompt and precondition included. There is no second upload path
+  (§6's M23 row), and the save is not journaled, as no remote write-back is.
+- **The window opened from the conflict dialog stays read-only.** Its right-hand file is the source
+  of a copy that is waiting on that dialog.
+
+#### Slices
+
+1. **The editable side** (core, additive). `ComparedDocument`: owned lines, the encoding and the
+   byte-order mark; `LineEdit` and its inverse; copying a change either way with the destination's
+   line ending; encoding back to bytes, with `unencodable(line:character:)`. Tests: edits and their
+   inverses as properties over random texts, every line-ending case, the round trip over M31's
+   checked-in corpus, and once over every version of every text file in this repository's history
+   (a throwaway harness, recorded in the slice note).
+2. **Copying across** (app). The two keys and buttons; comparing again after each copy, with the
+   current change kept; the window's undo manager under Edit ▸ Undo; the title bar's edited state;
+   Swap Sides carrying unsaved edits with their side; the close prompt.
+3. **Saving a local file** (core, then app). First a probe of what a save must keep, against
+   TextEdit's and BBEdit's own saves: mode, owner, Finder tags, other extended attributes, an ACL,
+   the creation date, a symlink (saved through to its target) and a file with a second hard link.
+   Then the writer, the witness check, the journal step and ⌘S.
+4. **Saving anywhere else** (app). Server and archive sides through the write-back; the conflict
+   dialog's window read-only; the Synchronize row the window came from compared again after a save.
+5. **Edit in the user's editor** (app). Edit Left and Edit Right open that side the way F4 does, so
+   a server side's save is offered back exactly as F4's is. The window watches the file as
+   `EditedFileRegistry` does and compares again when it changes. With unsaved edits on that side, it
+   asks to save them first.
+6. **Live, and the record.** A local pair, a zip member, and the throwaway SFTP and WebDAV servers;
+   the 14 languages; the compare window's rows in
+   [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md).
+
+**Done when:**
+- every version of every text file in this repository's history either comes back byte-identical
+  from an unedited side or opens read-only with the reason named;
+- after any sequence of copies the window shows what a fresh comparison of the two texts shows, and
+  ⌘Z walks every copy back;
+- a local save keeps what Slice 3's probe says it must, is undone by ⌘Z in a pane, and is never
+  written over a file that changed since it was read;
+- a server file and an archive member save through the existing write-back, byte-exact, and a server
+  file changed in the meantime gets the write-back's own prompt;
+- a save in the user's editor shows in the window without reopening it.
+
+Expected to be left undone, each for its own reason: **typing in a pane** and **find and replace**,
+M11's call; **copying every change at once**, which is F5; **a save that changes the encoding or the
+line endings**, since a save keeps both; and **editing in the conflict dialog's window**.
+
+### M34 — A three-way merge (M)
+
+**Planned 2026-10-25.** A file manager has no common ancestor to merge from, except in two places
+where Dirnex already holds three versions of one file. The first is its own. F4 on a server file
+downloads a copy, and when the user saves, the write-back can find that the server's copy changed
+in the meantime. The prompt then offers Upload Anyway or Cancel, so one of the two edits is lost.
+The second is git's: a file in a conflicted merge, which `GitStatus.conflicted` already badges U.
+This milestone merges the three in a window built on M33's, and saves only once every conflict has
+an answer.
+
+Probed 2026-10-25 with git 2.54, on small triples and in a scratch repository:
+
+- **`git merge-file -p --diff3 --diff-algorithm=minimal ours base theirs` is the oracle**, as
+  `git diff --minimal` was M31's. Its regions are what the engine has to reproduce:
+  - the same change on both sides merges cleanly;
+  - changes that touch, with no unchanged line of the base between them, conflict, and so do two
+    insertions at the same place and a deletion against an edit;
+  - one unchanged line between two changes is enough for both to merge.
+- **git's default style is not the one to match.** It joins two conflicts that are three or fewer
+  lines apart (four apart stay two), and it moves lines both sides share out of a conflict.
+  `--diff3` does neither, and `--zdiff3` does only the second.
+- **The exit status is the conflict count, capped at 127**: 200 conflicts answered 127. The oracle
+  counts markers rather than reading the status.
+- **A conflicted file's three versions read without writing the index.**
+  `git --no-optional-locks show :1:<path>`, `:2:` and `:3:` left `.git/index`'s modification time as
+  it was, and `git ls-files -u` lists which stages exist. A file both sides added (`AA`) has no
+  stage 1.
+- **Real merges are too few to be a corpus**: 10 of this repository's 799 commits. git does not care
+  whether a triple came from a merge, so the corpus is triples of versions of one file from the
+  history.
+
+Decided before Slice 1:
+
+- **The regions are `--diff3`'s, and a conflict's shared first and last lines move out of it as
+  `--zdiff3` moves them**, so Take Both does not repeat them. Each half is checked against its own
+  git style.
+- **No ignore options in a merge.** Under `-w` a whitespace edit on one side reads as no edit, and
+  the merge would drop it without a word.
+- **Two entry points**: the server write-back's prompt and a conflicted row. Not Synchronize, which
+  keeps no record of the last sync and so has no base; not three files picked by hand, whose base
+  would be a guess; and not an archive member.
+- **A server file's base is kept when F4 downloads it**: an APFS clone of the copy, outside the
+  directory the edit watch watches. The uploaded bytes replace it after every upload, and it goes
+  when the watch ends. An edit opened before this milestone has no base and keeps today's prompt.
+- **Merge… joins the prompt only when it can work**: a base is there and all three versions are
+  text. The server's current version comes down through the download funnel, and the upload's
+  precondition is read off that download's revision, the rule `writeCondition` already states. The
+  merged result is written into the copy the user's editor has open, then uploaded.
+- **git stays read-only.** The stages come through `GitCommand` with `--no-optional-locks`. Save
+  writes the working-tree file, and `git add` stays the user's, so the U badge stays until they
+  stage it. `AA` merges against an empty base, and a deletion on either side (`DU`, `UD`, `DD`) is
+  refused by name, since there is no one file to write.
+- **Three panes level by row: Yours, Result, Theirs**, with the base shown on request. Each conflict
+  takes Yours, Theirs, or Both in either order, and a region only one side changed is applied from
+  the start. A hand edit is Take Both, save, then the user's editor: once saved, the result is an
+  ordinary file.
+- **Save is refused while a conflict is open.** Conflict markers are never written, to a server or
+  to a working tree.
+
+#### Slices
+
+1. **The merge engine** (core, additive). `ThreeWayMerge`: two `LineDiff`s against the base, the
+   regions, and the trimming. Properties that need no git: merging a text with itself gives it
+   back, a side equal to the base yields the other side, and every change only one side made is in
+   the result. Then the oracle over the corpus, with and without M31's sliding, keeping whichever
+   agrees more. Triples where two minimal alignments tie are counted and named in the slice note.
+2. **What the merge window shows** (core). Rows level across the three versions and the result, a
+   resolution per conflict as M33's line edits, and the pane text generalized from two sides to N.
+3. **The window** (app). Three panes, `CompareScrollSync` over N of them, the band and overview for
+   conflicts, "Conflict 2 of 5", the take keys, Show Base, and Save held back while a conflict is
+   open.
+4. **The server entry** (app). Keeping and refreshing the base, Merge… in the prompt, fetching the
+   server's version, writing the result into the editor's copy, and the conditioned upload.
+5. **The git entry** (core, then app). The stage reads in `GitCommand`, their parse in the core
+   against a fake, Resolve Conflict… on a U row, `AA`, and the refusals.
+6. **Live, and the record.** F4 a file on the throwaway SFTP and WebDAV servers, change it on the
+   server, save, merge and upload; a real conflict in a scratch repository; the 14 languages.
+
+**Done when:**
+- every corpus triple gives git's text where git merges cleanly and git's regions where it does not,
+  apart from the ties Slice 1 names;
+- a server file changed under an F4 edit is merged and uploaded with both edits in it, over SFTP and
+  WebDAV, and a third write during the merge is caught by the precondition rather than overwritten;
+- a `UU` and an `AA` file resolve and save, a `DU` is refused by name, and no git command Dirnex
+  runs writes to the repository;
+- nothing is saved while a conflict is open.
+
+Expected to be left undone, each for its own reason: **Synchronize as an entry point**, until a sync
+keeps a record of the last one; **three files picked by hand**; **an archive member** changed behind
+an edit; **being git's merge tool**, which needs a command-line entry point Dirnex does not have;
+**conflict markers** in any form; a merge that ignores whitespace; and a binary file.
 
 ### Still open
 
@@ -229,6 +425,8 @@ plan keeps the strategy, which is a rule that outlives any one pass.
 | M29: a paying customer meets the reminder after an update they didn't choose | The notice before any uncovered install, and no silent background install of one. Slice 5's probe chose the hook, an app test pins that a background check cannot get past it, and Slice 6 watched it hold on a beta all night |
 | M31's compare window grows into an editor one small step at a time: selectable text, then editable text, then something has to save it. And a diff can be wrong in the quiet direction, showing two different files as the same | Editing is a later milestone's decision, stated in M31's first bullet. The tell is a text view becoming editable, or a Save command appearing, before that decision is taken. Against the quiet error there are three defenses: lines compare as bytes, every corpus pair has to match git's minimal counts, and a pair with no visible change says what differs. **Held (closed 2026-10-22).** Both panes are `isEditable = false`, and nothing in the window saves. All three defenses shipped and were seen working: the history run found no disagreement with git, and live, an encoding-only, a byte-order-mark-only and a line-ending-only pair each said what differed |
 | M32's WebDAV backend is fitted to one server. The NAS and the throwaway `httpd` are both Apache `mod_dav`, so every fixture, every live run and every probe agree with Apache, and a parser can pass all of them while reading Apache's spelling rather than the protocol | The parser matches elements by namespace URI and reads only what RFC 4918 promises, so `lp1:` and `D:` are one case rather than two. The fixtures are captured bytes, and the corpus gets a second implementation family (Nextcloud's sabre/dav, in a container) before the milestone closes. The tell is a branch keyed on a prefix, on the `Server` header or on a slash at the end of an href. A capability only Apache has, such as the offset PUT, stays unused until a second server answers it the same way. **Held (closed 2026-10-24).** Nextcloud 34's sabre/dav ran every probe and the whole live suite: its `d:` prefix, with `oc:` and `nc:` beside it, parsed unchanged, and no branch keys on a prefix, a header or a slash. What differed was behaviour, each now a claim in the endpoint's config or a rule with its fixture: names stored composed, a lock that guards only the file, a strong tag shared by every write in one second, `creationdate` at the epoch, a 404 for a PUT into a missing folder, and `X-OC-Mtime` honoured, which is the one capability Dirnex now uses there and asks of every server, believing only an answer that says so. The offset PUT stays unused |
+| M33 grows the compare window into the text editor M11 refused, one reasonable step at a time: copy a block, then fix one character, then type. And a save can write bytes nobody chose: an encoding, a byte-order mark or line endings the file did not have | M31's row named a Save command appearing *before the decision* as its tell, and M33 is that decision, taken for line operations only. The panes stay `isEditable = false` and an edit is a `LineEdit` on the core model, so the tell is now a keystroke reaching a pane's text storage, or find and replace appearing. Hand edits go to the user's own editor, which the window watches. Against the quiet error: an unedited side must encode back byte-identical over the repository's history, a side that does not opens read-only with the reason named, and a character the encoding cannot hold is refused rather than substituted |
+| M34's merge is wrong in the quiet direction: a region read as changed on one side when both sides changed it drops an edit, and nothing on screen shows what went missing. A stale base does the same | git is the oracle in two styles, `--diff3` for the regions and `--zdiff3` for the trimming, and the properties that need no git (a text merged with itself comes back, a side equal to the base yields the other, every one-sided change survives) run over random texts. No ignore option reaches a merge, the uploaded bytes replace the base after every upload, and Save is refused while a conflict is open. The tell is a merge offered without a real base, such as the server's copy standing in for one, or an ignore option reaching `ThreeWayMerge` |
 
 ## 7. Open questions
 
