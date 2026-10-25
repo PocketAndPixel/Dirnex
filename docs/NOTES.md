@@ -393,6 +393,13 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     Ordering the window front made its only key view the first responder, so clear that first or the
     test proves nothing.
 
+- **A deferred window takes no sheet until it has been shown.** Measured 2026-10-25 in
+  `CompareSaveTests`: the compare window was built with `defer: true`, and every `NSAlert`
+  `beginSheetModal(for:)` on it left `attachedSheet` nil for the whole 30 s wait, eight tests out of
+  eight. Built with `defer: false`, the same tests passed in 0.5 s with the window never ordered in.
+  A window a test builds to answer a sheet needs `defer: false`, as `TrashlessProbe.window()` has;
+  the window shown at once in the app is unaffected either way.
+
 ### Waits, run loops and timing
 
 - **Spinning the run loop is not the same as awaiting, and a view-shaped test cannot tell.**
@@ -8128,6 +8135,29 @@ against a second APFS volume from `hdiutil`.
   an equal key. `sorted(by:)` is not stable, so the result is a non-deterministic comparator: it
   failed about one full test run in three while passing alone every time. ▸ Design lessons for what
   replaced it.
+- **Only a write in place keeps everything a saved file carries; every replacing save drops
+  something.** Probed 2026-10-25 for M33's compare-window save, on one fixture per case, each with
+  mode 0640, a group the folder does not have (`admin` in a `wheel` folder), two Finder tags, a private
+  extended attribute, an ACL entry and a 2020 creation date:
+  - **TextEdit** (an `NSDocument` safe save) kept all of those and wrote through a symlink. It gave a
+    hard-linked file a **new inode**, so the other name kept the old bytes, and it could not save a
+    file whose ACL says `everyone deny delete` at all: AppleScript's `save` never returned (a 60 s
+    alarm ended it), and `denied.txt.sb-<random>` was left beside the file holding the new bytes. It also added
+    `com.apple.TextEncoding`, `com.apple.lastuseddate#PS` and a `kMDLabel_…` attribute.
+  - **`FileManager.replaceItemAt`** behaved the same: everything kept, the hard link broken, the
+    deny-delete file refused with Cocoa error 513. Given a symlink's own path it failed with "doesn't
+    exist", so a caller has to resolve the link first.
+  - **vim** (`backupcopy=auto`) wrote in place, keeping the inode, the link and the ACL, and **dropped
+    both tags and the private attribute**.
+  - **`open(O_WRONLY | O_TRUNC)` and `write`** kept all of it on all five cases, the inode included.
+  - So the compare window writes in place (`InPlaceFileWrite`) and gives up atomicity, which costs a
+    copy of the old bytes held for the write. A real full disk confirmed the fallback: on a 3 MB APFS
+    image, saving 17 MB failed with `ENOSPC` partway, and writing the old bytes back with their
+    modification time left the file byte-identical and its witness unchanged. Its ⌘Z writes in place
+    too, since a rename there would break the hard link the save kept.
+  - BBEdit was not on the Mac, so vim stood in as the second editor. Not probed, because nothing here
+    can make one: a file owned by another user. A write in place keeps the owner by construction,
+    where a replacing save would make the file the saver's.
 
 ### shasum, md5sum and the checksum-file formats
 

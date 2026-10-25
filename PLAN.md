@@ -381,6 +381,93 @@ line endings**, since a save keeps both; and **editing in the conflict dialog's 
 - **Seen, and left as it was:** after Swap Sides no change is current, so both arrows stay grayed
   until ⌥⌘↓. That is M31's swap, which compares again rather than mirroring the comparison.
 
+**2026-10-25: Slice 3 landed** (core, then app). A server file or an archive member is not saved
+yet, which is Slice 4.
+
+- **Probed first** (docs/NOTES.md ▸ Keeping a file's previous bytes): what TextEdit, vim,
+  `FileManager.replaceItemAt` and a write in place keep. The fixture had mode 0640, a group the
+  folder does not have, two Finder tags, a private extended attribute, an ACL entry and a 2020
+  creation date, and the cases were a plain file, a symlink, a second hard link and an ACL denying
+  delete.
+  - All four kept the mode, group, ACL and creation date. vim dropped the tags and the private
+    attribute.
+  - TextEdit and `replaceItemAt` gave the hard-linked file a new inode, so the other name kept the
+    old bytes. Neither could save the file whose ACL denies delete: TextEdit's save never returned
+    and left a temporary file beside it.
+  - Only the write in place kept everything in every case. BBEdit is not on this Mac, so vim stood
+    in. A file owned by another user could not be made here; a write in place keeps its owner by
+    construction.
+- **Core:**
+  - `InPlaceFileWrite` replaces a file's bytes through `open(O_TRUNC)`. Its writer is the one seam
+    a test can fail partway.
+  - `ComparedFileSave` encodes first, so an unencodable character is refused before anything is
+    touched. It then checks the file against the `Target` taken when it was read, captures the old
+    bytes into the undo store and writes in place. A write that fails is undone by writing the old
+    bytes back with their modification time.
+  - `UndoStep.restoreSavedFile` is the archive step with the same store, witness and both refusals.
+    It writes back in place too (`ArchiveUndoStore.exchangeInPlace`), labelled `.saveFile` ("Undo
+    Save", translated in all 14 languages, since the coverage test reads every label).
+  - `ComparedDocument.markSaved` makes the saved lines what `isEdited` compares with.
+- **App:**
+  - ⌘S saves every edited side and beeps when there is nothing to save. It is a key the window
+    takes, like ⌥⌘→, since the main menu has no Save item.
+  - A file changed since it was read asks "Save Anyway" or Cancel. A character the encoding cannot
+    hold is reported with its line and the encoding's name.
+  - Closing an edited window asks Save, Don't Save (⌘D) or Cancel. So does quitting, through
+    `applicationShouldTerminate`.
+  - ⌘W closes the window, through the same question. Since M31 it had done nothing there: the
+    menu's ⌘W is the browser's Close Tab, which is disabled in the compare window.
+  - The undo record goes to the browser window the comparison came from, or the front one if that
+    has closed. `CompareSaving` carries the store and the journal, with no default, as
+    `ArchiveWriter`'s request does.
+  - `CompareOpener.openWindow`'s `allowsCopies` became `saving: CompareSaving?`: a window with
+    nowhere to save takes no copies, which is the conflict dialog's.
+- **Tests:** 18 in the core, in `ComparedFileSaveTests` and `SavedFileUndoTests`, and 15 in the
+  app, in `CompareSaveTests` and `CompareCloseTests`. Full runs: 4 537 core and 1 940 app tests,
+  without the live server suites, which this slice does not touch.
+- **Decided in the slice:**
+  - **A save writes in place**, the only way that kept everything. It gives up atomicity, so the old
+    bytes are read first and put back if the write fails. Measured on a 3 MB APFS disk image: a
+    17 MB save failed with `ENOSPC`, and the file came back byte for byte with its witness
+    unchanged.
+  - **⌘Z writes in place as well.** The plan named `ArchiveUndoStore.exchange`'s rename, which would
+    break the hard link the save kept and fail on the ACL. The undo puts back the modification time
+    the file had before the save, as an archive's undo does, so the witness stays exact.
+  - **The witness is taken just before the read**, so a write during the read makes the save ask.
+    A symlink is resolved when saving, and the undo record names its target.
+  - **A server or archive side still takes copies and is not saved**, as in Slice 2. ⌘S and both
+    prompts pass over it until Slice 4.
+  - **The compare window is no longer deferred.** Probed: a deferred window takes no sheet until it
+    has been shown, so a test's window raised none (docs/NOTES.md ▸ Testing).
+  - The window's new sentences wait for Slice 6's translations, as Slice 2's do.
+- **Negative controls:**
+  - `replaceItemAt` in place of the write fails the hard-link, symlink, deny-delete and disk-full
+    tests.
+  - Without the put-back, the disk-full test fails. Without the witness check, both changed-file
+    tests fail.
+  - An undo by rename fails the hard-link and deny-delete undo tests.
+  - With a saved file's snapshot left out of `archiveSnapshotPaths`, three tests fail. Launch's
+    prune would otherwise delete the copy.
+  - In the app, a save without `markSaved`, without the journal call, without the ⌘S key or the ⌘W
+    key, or a close that never asks, each fails its test.
+- **Seen live** in the Debug build, on a pair whose right file carried tags, a private attribute, an
+  ACL, the `admin` group, a 2020 creation date and a second hard link. Computer-use pressed the keys;
+  a temporary probe (since removed) logged the window, and a sampler logged the file whenever it
+  changed:
+  - ⌥⌘→ then ⌘S wrote the line into the same inode. Both names showed it, every attribute stayed,
+    and the "— Edited" mark cleared.
+  - In the pane, Edit ▸ Undo said "Undo Save". It put the old bytes and the 2024 modification time
+    back, and ⇧⌘Z put the saved ones back, all in that inode.
+  - Closing with an edit asked; ⌘D answered Don't Save and left the file alone, and Return answered
+    Save and wrote it.
+  - With the file changed behind the window, ⌘S asked. Cancel kept the other write; Save Anyway
+    replaced it, and its undo copy held the other write.
+  - Quit asked the same question. Cancel kept the app running, and Don't Save quit it.
+  - In a second run, ⌘W closed an unedited window at once and left the browser's tab alone. With an
+    edit it asked; Cancel kept the window, and ⌘D closed it with the file untouched.
+  - The defaults domain was restored and compared unchanged, and the run's three undo copies were
+    deleted.
+
 ### M34 — A three-way merge (M)
 
 **Planned 2026-10-25.** A file manager has no common ancestor to merge from, except in two places

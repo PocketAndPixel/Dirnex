@@ -8,6 +8,12 @@ struct CompareFile: Sendable {
     /// Where the file lives, which the window's header names. A server object's or an archive
     /// member's own location, never the temporary copy's.
     let origin: VFSPath
+
+    /// Whether the copy read is the file itself, a local file a save writes in place. A copy brought
+    /// down from a server or out of an archive goes back another way (PLAN.md §M33 Slice 4).
+    var isSavedInPlace: Bool {
+        origin.backend == .local && path == origin
+    }
 }
 
 /// A file the compare window could not read, and why.
@@ -24,14 +30,15 @@ enum CompareOpener {
     /// Read the pair and open the window on it, or hand `failed` the alert's detail.
     ///
     /// `leftDetail` and `rightDetail` are what each pane's header says under the file's name: where
-    /// the file is, as the user knows it. `allowsCopies` is false for a window that changes neither
-    /// file, such as the conflict dialog's, whose right-hand file is a copy waiting on that dialog.
+    /// the file is, as the user knows it. `saving` is where the window's saves keep their undo
+    /// (PLAN.md §M33 Slice 3); without it the window changes neither file, as the conflict dialog's
+    /// must, whose right-hand file is a copy waiting on that dialog.
     static func openWindow(
         _ left: CompareFile,
         detail leftDetail: String,
         _ right: CompareFile,
         detail rightDetail: String,
-        allowsCopies: Bool = true,
+        saving: CompareSaving? = nil,
         failed: @escaping @MainActor (String) -> Void
     ) {
         Task {
@@ -43,7 +50,8 @@ enum CompareOpener {
                 CompareWindowController.present(
                     left: leftSource,
                     right: rightSource,
-                    allowsCopies: allowsCopies
+                    allowsCopies: saving != nil,
+                    saving: saving ?? .none
                 )
             case let .failure(failure):
                 failed(failureDetail(failure))
@@ -71,11 +79,15 @@ enum CompareOpener {
 
     /// One side: the text read whole, named after the file where it lives, and colored by the
     /// grammar Quick View would pick for it.
+    ///
+    /// A local file read as itself is one a save can write, so what it looks like is taken just
+    /// before the read, for the save to be checked against (PLAN.md §M33 Slice 3).
     nonisolated static func source(
         _ file: CompareFile,
         detail: String
     ) throws(CompareReadFailure) -> CompareSource {
         let name = file.origin.lastComponent
+        let target = file.isSavedInPlace ? ComparedFileSave.Target.reading(file.path.path) : nil
         do {
             let document = try ComparedDocument.read(
                 contentsOf: URL(fileURLWithPath: file.path.path)
@@ -85,7 +97,8 @@ enum CompareOpener {
                 name: name,
                 detail: detail,
                 document: document,
-                language: SyntaxLanguage.forFile(named: name, text: opening)
+                language: SyntaxLanguage.forFile(named: name, text: opening),
+                target: target
             )
         } catch {
             throw CompareReadFailure(name: name, reason: error)

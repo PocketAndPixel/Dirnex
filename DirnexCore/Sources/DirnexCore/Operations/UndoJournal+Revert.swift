@@ -40,6 +40,10 @@ extension UndoJournal {
                 restoreArchive(
                     archive, from: snapshot, expecting: expected, failures: &failures
                 )
+            case let .restoreSavedFile(file, snapshot, expected, _):
+                restoreArchive(
+                    file, from: snapshot, expecting: expected, inPlace: true, failures: &failures
+                )
             }
         }
         return UndoReport(failures: failures)
@@ -211,10 +215,14 @@ extension UndoJournal {
     /// Local file primitives rather than a backend verb: the swap is an atomic same-directory
     /// rename, which no `VFSBackend` offers, and an archive is a real file on this disk whatever
     /// backend is showing its insides.
+    ///
+    /// A text file saved from the compare window takes the same two refusals, and `inPlace` swaps
+    /// it by writing into it, as the save did (``ArchiveUndoStore/exchangeInPlace(fileAt:snapshotAt:)``).
     private static func restoreArchive(
         _ archive: VFSPath,
         from snapshot: VFSPath,
         expecting expected: ArchiveUndoWitness,
+        inPlace: Bool = false,
         failures: inout [OperationItemFailure]
     ) {
         let name = archive.lastComponent
@@ -233,7 +241,11 @@ extension UndoJournal {
             return
         }
         do {
-            try ArchiveUndoStore.exchange(archiveAt: archive.path, snapshotAt: snapshot.path)
+            if inPlace {
+                try ArchiveUndoStore.exchangeInPlace(fileAt: archive.path, snapshotAt: snapshot.path)
+            } else {
+                try ArchiveUndoStore.exchange(archiveAt: archive.path, snapshotAt: snapshot.path)
+            }
         } catch let error as VFSError {
             failures.append(.init(path: archive, error: error))
         } catch {

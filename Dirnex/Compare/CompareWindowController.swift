@@ -11,6 +11,9 @@ struct CompareSource: Sendable {
     var document: ComparedDocument
     /// The grammar its syntax is colored by, or `nil` for none.
     let language: SyntaxLanguage?
+    /// The local file a save writes, as it was read or last saved, or `nil` for a side this window
+    /// cannot save: a copy of a file that is not on this Mac (PLAN.md §M33 Slice 3).
+    var target: ComparedFileSave.Target?
     /// Which file this is, on whichever side Swap Sides has put it. An undo finds its file by this.
     let id = UUID()
 }
@@ -35,7 +38,7 @@ final class CompareWindow: NSWindow {
 @MainActor
 final class CompareWindowController: NSWindowController, NSWindowDelegate {
     /// Windows on screen. A controller holds itself here until its window closes.
-    private static var open: [CompareWindowController] = []
+    private(set) static var open: [CompareWindowController] = []
 
     /// The file on the left, and the one on the right. Swap Sides exchanges them, and a copy changes
     /// one of their documents.
@@ -43,6 +46,13 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
     var right: CompareSource
     /// Whether changes may be copied across at all. The conflict dialog's window takes none.
     let allowsCopies: Bool
+    /// Where a save keeps its undo, and whose journal records it (`+Save`).
+    let saving: CompareSaving
+    /// Whether a save is running, which a second ⌘S waits out.
+    var isSaving = false
+    /// Bumped whenever a save lands, so a comparison computed before it does not mark a saved side
+    /// as edited.
+    var savesLanded = 0
     /// The window's undo: Edit ▸ Undo reaches it through `NSWindow`, which asks the delegate for it.
     let edits = UndoManager()
     /// Bumped whenever what either side holds changes, by a copy, an undo or Swap Sides. A copy acts
@@ -72,12 +82,14 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
     static func present(
         left: CompareSource,
         right: CompareSource,
-        allowsCopies: Bool = true
+        allowsCopies: Bool = true,
+        saving: CompareSaving
     ) -> CompareWindowController {
         let controller = CompareWindowController(
             left: left,
             right: right,
-            allowsCopies: allowsCopies
+            allowsCopies: allowsCopies,
+            saving: saving
         )
         open.append(controller)
         controller.place()
@@ -87,15 +99,23 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
         return controller
     }
 
-    init(left: CompareSource, right: CompareSource, allowsCopies: Bool = true) {
+    init(
+        left: CompareSource,
+        right: CompareSource,
+        allowsCopies: Bool = true,
+        saving: CompareSaving
+    ) {
         self.left = left
         self.right = right
         self.allowsCopies = allowsCopies
+        self.saving = saving
+        // Not deferred, so a save's sheets attach to a window a test builds and never shows. Probed
+        // 2026-10-25: a deferred one took no sheet at all.
         let window = CompareWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1100, height: 720),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
-            defer: true
+            defer: false
         )
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 640, height: 320)
@@ -136,6 +156,7 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
         generation += 1
         let generation = generation
         let revision = sidesRevision
+        let saves = savesLanded
         let left = left
         let right = right
         let limit = CompareTextStyle.syntaxColoringLimit
@@ -146,6 +167,7 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
             guard let self, generation == self.generation else { return }
             comparedRevision = revision
             show(prepared, keeping: kept, selecting: select)
+            if saves != savesLanded { refreshEditedMarks() }
         }
     }
 
@@ -218,7 +240,7 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
     /// The window's title and each pane's header, for the sides as they stand. A side whose lines
     /// differ from its file is marked in its header, and the close button carries the window's
     /// edited dot while either is.
-    private func showTitles(edited: (left: Bool, right: Bool) = (false, false)) {
+    func showTitles(edited: (left: Bool, right: Bool) = (false, false)) {
         window?.title = "\(left.name) ↔ \(right.name)"
         leftPane.setTitle(left.name, detail: left.detail, edited: edited.left)
         rightPane.setTitle(right.name, detail: right.detail, edited: edited.right)

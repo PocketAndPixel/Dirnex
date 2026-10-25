@@ -12,11 +12,29 @@ extension PanelViewController {
             left,
             detail: compareDetail(for: left.origin),
             right,
-            detail: compareDetail(for: right.origin)
+            detail: compareDetail(for: right.origin),
+            saving: compareSaving
         ) { [weak self] detail in
             self?.clearTransientStatus()
             self?.presentCompareFailure(message: CompareOpener.failureTitle, detail: detail)
         }
+    }
+
+    /// What the window's saves keep and where they are journaled (PLAN.md §M33 Slice 3): the app's
+    /// undo store, and this pane's browser window, so ⌘Z in a pane puts a saved file back. A window
+    /// that outlives its pane's browser window files with whichever browser window is in front.
+    var compareSaving: CompareSaving {
+        CompareSaving(
+            undo: { ArchiveUndoStorage.request() },
+            journal: { [weak self] record in
+                if let host = self?.host {
+                    host.recordUndoableAction(record)
+                } else {
+                    (NSApp.delegate as? AppDelegate)?.activeBrowserWindowController?
+                        .recordUndoableAction(record)
+                }
+            }
+        )
     }
 
     /// Where a file lives, as a pane's header says it: Copy Path's text, with the server's name in

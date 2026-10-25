@@ -33,7 +33,8 @@ struct CompareCopyTests {
         let controller = CompareWindowController(
             left: leftSource,
             right: rightSource,
-            allowsCopies: allowsCopies
+            allowsCopies: allowsCopies,
+            saving: .none
         )
         controller.show(CompareWindowController.prepare(
             left: leftSource,

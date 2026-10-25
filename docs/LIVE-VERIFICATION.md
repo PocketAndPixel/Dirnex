@@ -419,6 +419,10 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   control) the same key arrived at once. The compare window and `TabShortcuts` both work this way.
   The window's toolbar buttons still work from the background. Its Edit ▸ Undo does not: with the
   window not key, the probe read the item as plain "Undo", disabled.
+- **computer-use will not send ⌘Q without a separate grant, and Dirnex ▸ Quit Dirnex does the same
+  thing.** Seen 2026-10-25 checking the compare window's quit prompt: ⌘Q came back "a system-level
+  shortcut" needing the `systemKeyCombos` grant. The menu item runs the same `terminate:`, so
+  `applicationShouldTerminate` asked exactly as the key would have.
 - **F-keys cannot be sent to a background app, and the function bar can be clicked instead.** `app_key
   f5` was refused outright (2026-10-23), while the bar's "F5 Copy" button took an `AXPress` and ran
   the shipped copy with no sheet. Put the cursor on the row with a click first.

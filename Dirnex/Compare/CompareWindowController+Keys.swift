@@ -13,6 +13,10 @@ import DirnexCore
 ///   free in every preset as well. A window that takes no copies takes the keys and beeps.
 /// - ⌘U: swap sides, after Total Commander's Ctrl+U, which swaps its two panels. No command is
 ///   bound to it by default.
+/// - ⌘S: save every edited side (`+Save`, PLAN.md §M33 Slice 3). The main menu has no Save item
+///   to take it, and no command is bound to it either.
+/// - ⌘W: close the window, asking first about unsaved edits, as its close button does. The menu's
+///   ⌘W is the browser's Close Tab, which is disabled here, so until Slice 3 the key did nothing.
 /// - ⌘F, ⌘G, ⇧⌘G: find in the pane holding the keyboard, with the system's find bar.
 /// - ⎋: close the find bar if it is open, else the window. A field editor's own ⎋ (the find bar's
 ///   field) is left to it.
@@ -76,6 +80,12 @@ extension CompareWindowController {
             return true
         case ("u", [.command]):
             swapSides()
+            return true
+        case ("s", [.command]):
+            saveFromKey()
+            return true
+        case ("w", [.command]):
+            window?.performClose(nil)
             return true
         default:
             break
