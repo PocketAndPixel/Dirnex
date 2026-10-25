@@ -43,7 +43,7 @@ struct CompareWiringTests {
         #expect(left.name == "main.swift")
         #expect(left.detail == "host:/srv/app/main.swift")
         #expect(left.language == .swift, "named by the server's name, so colored as Swift")
-        #expect(left.text.text == "let a = 1\n")
+        #expect(left.document.text(ofFirstLines: .max) == "let a = 1\n")
         #expect(right.name == "plain.txt")
         #expect(right.language == nil)
     }
@@ -196,8 +196,13 @@ struct CompareWiringTests {
     /// The Synchronize window is app-modal and opens comparisons; a plain window opened from it
     /// takes no click until it closes (probed for Slice 4).
     @Test("the compare window takes events while another window is modal")
-    func windowWorksWhenModal() {
-        let side = CompareSource(name: "a", detail: "", text: ComparedText(text: ""), language: nil)
+    func windowWorksWhenModal() throws {
+        let side = try CompareSource(
+            name: "a",
+            detail: "",
+            document: ComparedDocument.decode(Data()),
+            language: nil
+        )
         let controller = CompareWindowController(left: side, right: side)
         #expect(controller.window?.worksWhenModal == true)
     }
@@ -205,8 +210,13 @@ struct CompareWiringTests {
     /// The key-window delegate methods live in `+Keys`, a file away from the conformance, and AppKit
     /// only calls them if they are visible to the Objective-C runtime.
     @Test("the window's delegate answers the key-window callbacks that install the key monitor")
-    func keyCallbacksReachTheRuntime() {
-        let side = CompareSource(name: "a", detail: "", text: ComparedText(text: ""), language: nil)
+    func keyCallbacksReachTheRuntime() throws {
+        let side = try CompareSource(
+            name: "a",
+            detail: "",
+            document: ComparedDocument.decode(Data()),
+            language: nil
+        )
         let controller = CompareWindowController(left: side, right: side)
         #expect(controller.window?.delegate === controller)
         #expect(controller.responds(to: #selector(NSWindowDelegate.windowDidBecomeKey(_:))))

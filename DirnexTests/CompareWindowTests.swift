@@ -14,11 +14,15 @@ import Testing
 @Suite("Compare window")
 @MainActor
 struct CompareWindowTests {
-    private func source(_ name: String, _ text: String, language: SyntaxLanguage? = nil) -> CompareSource {
-        CompareSource(
+    private func source(
+        _ name: String,
+        _ text: String,
+        language: SyntaxLanguage? = nil
+    ) throws -> CompareSource {
+        try CompareSource(
             name: name,
             detail: "/tmp/\(name)",
-            text: ComparedText(text: text),
+            document: ComparedDocument.decode(Data(text.utf8)),
             language: language
         )
     }
@@ -30,8 +34,8 @@ struct CompareWindowTests {
         _ right: String,
         options: LineDiffOptions = LineDiffOptions()
     ) async throws -> CompareWindowController {
-        let leftSource = source("left.swift", left, language: .swift)
-        let rightSource = source("right.swift", right, language: .swift)
+        let leftSource = try source("left.swift", left, language: .swift)
+        let rightSource = try source("right.swift", right, language: .swift)
         let controller = CompareWindowController(left: leftSource, right: rightSource)
         let prepared = CompareWindowController.prepare(
             left: leftSource,
@@ -39,7 +43,7 @@ struct CompareWindowTests {
             options: options,
             coloringLimit: CompareTextStyle.syntaxColoringLimit
         )
-        controller.show(prepared, keepingLeftLine: nil)
+        controller.show(prepared)
         try await settle(controller)
         return controller
     }

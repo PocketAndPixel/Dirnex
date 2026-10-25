@@ -10,7 +10,7 @@ final class ComparePaneView: NSView {
     let textView = CompareTextView()
     let lineNumbers: CompareLineNumbers
     private let coloring = CompareRowColoring()
-    private let nameLabel = NSTextField(labelWithString: "")
+    let nameLabel = NSTextField(labelWithString: "")
     private let pathLabel = NSTextField(labelWithString: "")
     /// The width the current text needs to show its widest row on one line.
     private var documentWidth: CGFloat = 0
@@ -29,8 +29,14 @@ final class ComparePaneView: NSView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func setTitle(_ name: String, detail: String) {
-        nameLabel.stringValue = name
+    /// Name the file over the pane, marked when its lines differ from the file as read.
+    func setTitle(_ name: String, detail: String, edited: Bool = false) {
+        nameLabel.stringValue = edited
+            ? String(
+                localized: "\(name) — Edited",
+                comment: "Compare window pane header: a file with copied changes not yet saved; %@ is its name."
+            )
+            : name
         pathLabel.stringValue = detail
         pathLabel.toolTip = detail
         textView.setAccessibilityLabel(name)

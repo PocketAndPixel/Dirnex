@@ -412,6 +412,13 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     element "no longer names what is at its position", and the pane was already connected. The
     server's log held the pinned requests only that button sends. The alert had closed before the
     tool's check ran. Read the server or the screen before pressing again.
+- **A key a window takes with a local key monitor cannot be sent from the background.** Seen
+  2026-10-25 on the compare window's ⌥⌘→: `app_key` reported the key delivered, and the probe in
+  `handleKey` logged nothing. The monitor is installed in `windowDidBecomeKey` and removed when the
+  window resigns key, and a window of an inactive app is not key. With Dirnex in front (full-screen
+  control) the same key arrived at once. The compare window and `TabShortcuts` both work this way.
+  The window's toolbar buttons still work from the background. Its Edit ▸ Undo does not: with the
+  window not key, the probe read the item as plain "Undo", disabled.
 - **F-keys cannot be sent to a background app, and the function bar can be clicked instead.** `app_key
   f5` was refused outright (2026-10-23), while the bar's "F5 Copy" button took an `AXPress` and ran
   the shipped copy with no sheet. Put the cursor on the row with a click first.

@@ -24,12 +24,14 @@ enum CompareOpener {
     /// Read the pair and open the window on it, or hand `failed` the alert's detail.
     ///
     /// `leftDetail` and `rightDetail` are what each pane's header says under the file's name: where
-    /// the file is, as the user knows it.
+    /// the file is, as the user knows it. `allowsCopies` is false for a window that changes neither
+    /// file, such as the conflict dialog's, whose right-hand file is a copy waiting on that dialog.
     static func openWindow(
         _ left: CompareFile,
         detail leftDetail: String,
         _ right: CompareFile,
         detail rightDetail: String,
+        allowsCopies: Bool = true,
         failed: @escaping @MainActor (String) -> Void
     ) {
         Task {
@@ -38,7 +40,11 @@ enum CompareOpener {
             }
             switch sources {
             case let .success((leftSource, rightSource)):
-                CompareWindowController.present(left: leftSource, right: rightSource)
+                CompareWindowController.present(
+                    left: leftSource,
+                    right: rightSource,
+                    allowsCopies: allowsCopies
+                )
             case let .failure(failure):
                 failed(failureDetail(failure))
             }
@@ -71,12 +77,15 @@ enum CompareOpener {
     ) throws(CompareReadFailure) -> CompareSource {
         let name = file.origin.lastComponent
         do {
-            let text = try ComparedText.read(contentsOf: URL(fileURLWithPath: file.path.path))
+            let document = try ComparedDocument.read(
+                contentsOf: URL(fileURLWithPath: file.path.path)
+            )
+            let opening = document.text(ofFirstLines: SyntaxLanguage.contentsLineLimit)
             return CompareSource(
                 name: name,
                 detail: detail,
-                text: text,
-                language: SyntaxLanguage.forFile(named: name, text: text.text)
+                document: document,
+                language: SyntaxLanguage.forFile(named: name, text: opening)
             )
         } catch {
             throw CompareReadFailure(name: name, reason: error)

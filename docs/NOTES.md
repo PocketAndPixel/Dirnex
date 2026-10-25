@@ -1991,6 +1991,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     control's cell answers one `NSAccessibilitySegment` per tab with its screen frame. Read it through
     `NSObject`: the segment class adopts no protocol that exposes `accessibilityFrame()`, and casting
     to `NSAccessibilityElementProtocol` silently drops every one of them.
+  - **The same segment is how a test presses one button of a momentary control.** A `.momentary`
+    control keeps no selection set from code: probed 2026-10-25, `selectedSegment = 1` and
+    `setSelected(true, forSegment: 0)` both read back -1 at once, so setting a segment and sending
+    the action reaches the action with no segment at all. `perform(#selector(NSAccessibilityElement.accessibilityPerformPress))` on the second
+    `NSAccessibilitySegment` fired the action with `selectedSegment` 1, the route VoiceOver takes
+    (`CompareCopyTests.press(segment:of:)`).
   - **In Settings the tab bar sits under the title bar, and neither `bounds` nor `visibleRect` knows.**
     SwiftUI places the tab view 6 pt above the content area, so a badge straddling a tab's top edge
     was drawn where the title bar paints over the content: only its lower half showed. Clamping to

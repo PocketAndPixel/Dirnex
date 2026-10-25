@@ -75,6 +75,14 @@ public struct ComparedDocument: Sendable {
         )
     }
 
+    /// The first `count` lines as text, each with its ending.
+    public func text(ofFirstLines count: Int) -> String {
+        lines.prefix(count).reduce(into: "") { text, line in
+            text += line.content
+            text += line.terminator.text
+        }
+    }
+
     // MARK: - Editing
 
     /// Whether any line differs from the file as read, by its bytes or its ending. An edit undone,

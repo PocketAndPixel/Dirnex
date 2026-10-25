@@ -9,6 +9,8 @@ import DirnexCore
 /// runs only while this window is key.
 ///
 /// - ⌥⌘↓ / ⌥⌘↑: the next and the previous change. No command in any preset is bound to either.
+/// - ⌥⌘→ / ⌥⌘←: copy the current change to the right or the left file (`+Copy`, PLAN.md §M33),
+///   free in every preset as well. A window that takes no copies takes the keys and beeps.
 /// - ⌘U: swap sides, after Total Commander's Ctrl+U, which swaps its two panels. No command is
 ///   bound to it by default.
 /// - ⌘F, ⌘G, ⇧⌘G: find in the pane holding the keyboard, with the system's find bar.
@@ -52,6 +54,12 @@ extension CompareWindowController {
             return true
         case (.upArrow?, [.option, .command]):
             goToPreviousChange()
+            return true
+        case (.rightArrow?, [.option, .command]):
+            copyCurrentChange(to: .right)
+            return true
+        case (.leftArrow?, [.option, .command]):
+            copyCurrentChange(to: .left)
             return true
         default:
             break
