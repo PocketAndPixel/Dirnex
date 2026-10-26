@@ -65,6 +65,11 @@ enum ArchiveWriter {
         if SelfExtractingArchive.inspect(fileAt: archiveOnDiskPath) != nil {
             throw VFSError.unsupported(.selfExtractingArchiveReadOnly(archive: name))
         }
+        // Every step below runs `zstd` for a Zstandard archive, starting with the inspection, so
+        // a Mac without one is told so before any of them fails as unreadable (``ZstdTool``).
+        if let reason = ZstdTool.refusal(forArchiveAt: archiveOnDiskPath, zstd: ZstdTool.locate()) {
+            throw VFSError.unsupported(reason)
+        }
 
         // Headers only — no passphrase needed to learn whether one is needed, which is what lets the
         // caller be asked before any work starts rather than after the extract has failed.
@@ -226,8 +231,9 @@ enum ArchiveWriter {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/bsdtar")
         // A rewrite re-packs every member, so it writes names as well as reading them — both
-        // halves of ``ChildProcessLocale``'s finding apply.
-        process.environment = ChildProcessLocale.inherited()
+        // halves of ``ChildProcessLocale``'s finding apply. Rewriting a `.tar.zst` runs `zstd` both
+        // ways, so it goes on `PATH` too (``ZstdTool``).
+        process.environment = BsdtarEnvironment.inherited()
         process.arguments = arguments
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice

@@ -149,6 +149,14 @@ public extension VFSUnsupportedReason {
             return ("Couldn’t run bsdtar to extract from the archive.", [])
         case let .archiveUnreadable(archive):
             return ("Couldn’t read the archive “%@”.", [archive])
+        case let .archiveNeedsZstd(archive):
+            return (
+                """
+                Opening “%@” needs the zstd tool, which Dirnex couldn’t find on this Mac. You can \
+                install it with Homebrew (brew install zstd).
+                """,
+                [archive]
+            )
         case let .archiveCreateFailed(archive):
             return ("Couldn’t create the archive “%@”.", [archive])
         case let .archiveExtractFailed(archive):
@@ -219,6 +227,7 @@ public extension VFSUnsupportedReason {
             .archiveToolUnavailableForCreate,
             .archiveToolUnavailableForExtract,
             .archiveUnreadable(archive: ""),
+            .archiveNeedsZstd(archive: ""),
             .archiveCreateFailed(archive: ""),
             .archiveExtractFailed(archive: ""),
             .archiveAddFailed(item: "", archive: ""),

@@ -58,6 +58,10 @@ often renamed to `.zip`. It browses, previews and copies out like any archive (a
 smaller than `0x27000`, which `bsdtar` cannot find, is read in-process through a window), but a
 rewrite repacks the archive alone and would write it over the program, so every write refuses
 (`SelfExtractingArchive`, 2026-09-21). Pressing ⏎ on a file *named* `.exe` still launches it.
+A **`.tar.zst`** needs a `zstd` program, since macOS's libarchive has no Zstandard of its own and
+macOS ships no `zstd`. Dirnex finds Homebrew's or MacPorts' whether or not it is on the `PATH`
+Dirnex was launched with, and on a Mac with none it says the archive needs `zstd` rather than calling
+it unreadable (`ZstdTool`, 2026-10-26).
 
 <sup>3</sup> The merged iCloud row is a *place* rather than a set of hits, so it navigates in
 place, accepts creates and pastes (they land in the CloudDocs container underneath), and is

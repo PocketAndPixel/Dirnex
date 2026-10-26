@@ -102,6 +102,9 @@ final class ArchiveReadHandle {
     /// `deinit`, so the close callback `archive_read_free` makes still finds it alive.
     var window: ArchiveByteWindow?
 
+    /// Whether this handle holds ``externalProgramTurn``, given back once `deinit` has freed it.
+    private var holdsExternalProgramTurn = false
+
     init?() {
         guard let handle = archive_read_new() else { return nil }
         raw = handle
@@ -109,5 +112,31 @@ final class ArchiveReadHandle {
 
     deinit {
         archive_read_free(raw)
+        if holdsExternalProgramTurn { Self.externalProgramTurn.signal() }
     }
+
+    /// One reader at a time may have libarchive run an external program, because libarchive's
+    /// spawn leaks the pipes of every child already running into the next.
+    ///
+    /// libarchive creates a child's two pipes with no `FD_CLOEXEC` and spawns with no
+    /// `POSIX_SPAWN_CLOEXEC_DEFAULT`, so each child inherits both ends of every live sibling's
+    /// pipes. A child holding a sibling's stdin keeps that sibling from ever seeing end of input,
+    /// and `archive_read_free` waits for its child in `waitpid`. Measured 2026-10-26 with
+    /// `zstd -d -qq` over the `.tar.zst` fixture: four threads reading 25 times each completed **0
+    /// of 100**, and so did two threads, every run, hung on four `zstd` children each holding the
+    /// others' pipes. With this turn held from open to free, 100 of 100 in all three runs.
+    /// Foundation's `Process` does not leak this way: a `Process` child of a process holding a
+    /// stray pipe had only its own three descriptors (measured), so `bsdtar` and `sftp` children
+    /// never hold a reader's child open.
+    ///
+    /// Held for the handle's whole life rather than only for the spawn, since a later child that
+    /// inherited this one's stdin would make this read wait for that one to finish. Not re-entrant:
+    /// nothing may open a second such handle while holding one, which is why `extract` gives its
+    /// outer handle back before unwrapping a hidden-names archive.
+    func takeExternalProgramTurn() {
+        Self.externalProgramTurn.wait()
+        holdsExternalProgramTurn = true
+    }
+
+    private static let externalProgramTurn = DispatchSemaphore(value: 1)
 }

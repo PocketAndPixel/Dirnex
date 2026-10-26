@@ -777,9 +777,64 @@ finding above.
   holding `inner.txt` and `sibling.txt` and nothing else. `unzip -p pair.zip inner.txt` printed the
   copied line, and `zipfile` found the member. Edit ▸ Undo put the original back byte for byte. The
   defaults domain was restored and compared unchanged, and the undo copy was deleted.
-- **Found, not fixed: `.tar.zst` needs an external `zstd`.** Apple's bsdtar runs one to read and
-  write, and with the system `PATH` both fail, so the new suite leaves `.tar.zst` out. A Dock-launched
-  Dirnex has that `PATH`, so it likely cannot open a `.tar.zst` without one. Not yet tried in the app.
+- **Found: `.tar.zst` needs an external `zstd`.** Apple's bsdtar runs one to read and write, and
+  with the system `PATH` both fail, so the new suite left `.tar.zst` out. Fixed in the entry below.
+
+**2026-10-26: a `.tar.zst` opens from the Dock** (core, then app). Closes the finding above.
+
+- **Measured first**, in the Debug build launched with a Dock's environment (`PATH` read back as
+  `/usr/bin:/bin:/usr/sbin:/sbin`): Enter on a `.tar.zst` answered *Can't open “sample.tar.zst”*,
+  *Couldn't read the archive “sample.tar.zst”.*, the generic `archiveUnreadable`. Quick View on the
+  row showed an icon, as for any file it cannot preview, and F5 or F8 inside could not be reached. A
+  `.tar.gz` beside it opened, and so did the `.tar.zst` once the same build was relaunched with
+  `/opt/homebrew/bin` on `PATH`.
+- **Probed** (docs/NOTES.md ▸ bsdtar), against libarchive 3.7.4:
+  - The system libarchive has no zstd (`archive_libzstd_version()` is NULL, both zstd filters answer
+    *Using external zstd program*), and neither have Compression.framework or AppleArchive. So the
+    in-process option was out. The in-process reader needs `zstd` too, through Dirnex's own `PATH`,
+    and every rewrite starts with its inspection.
+  - An absolute-path `archive_read_support_filter_program_signature` registered before
+    `filter_all` wins the bid. A second one covers `pzstd`'s leading skippable frame.
+  - **libarchive's external-program filters deadlock when two run at once**: children inherit each
+    other's pipes. Four threads, and also two, completed 0 of 100 reads. One reader at a time
+    completed 100 of 100. This was already true of a build launched from a shell.
+- **Oleg chose the known-locations route** over the login shell's `PATH` and over refusing only.
+- **Core:** `ZstdTool` searches the inherited `PATH`, then `ToolSearchPath`'s directories, then
+  MacPorts' `/opt/local/bin`, and recognizes a Zstandard stream by its first four bytes.
+  `BsdtarEnvironment` is `ChildProcessLocale`'s environment with `zstd`'s directory appended to
+  `PATH`, so no argv changed. The reader registers the two program filters, and an
+  `ArchiveReadHandle` reading a Zstandard file holds one external-program turn from open to free.
+  `extract` frees its outer handle before unwrapping a hidden-names archive, since the turn is not
+  re-entrant. New refusal `archiveNeedsZstd`: *Opening “x” needs the zstd tool, which Dirnex couldn't
+  find on this Mac. You can install it with Homebrew (brew install zstd).*, in all 13 languages.
+- **App:** all four `bsdtar` runners take `BsdtarEnvironment`. The mounter and the extractor say
+  `archiveNeedsZstd` where they would have said unreadable, and the writer says it before anything
+  runs.
+- **Tests:** 19 in the core over two committed fixtures that `bsdtar` and `pzstd` wrote. A stand-in
+  `zstd` that records its runs shows the reader used the path it was given, and eight concurrent
+  reads must finish within 30 s. A new app suite, `ZstdArchiveTests`, has 5 tests over 7 cases: list,
+  extract and rewrite under the test host's launchd `PATH`, and the three refusals.
+  `ArchiveRewriteNamesTests` has `tar.zst` back in its suffixes. The CI image carries zstd 1.5.7.
+  Full runs: 4 567 core and 1 990 app tests, without the live server suites, which this change does
+  not touch.
+- **Negative controls:**
+  - With the reader's filters registered after `filter_all`, the three tests that read through the
+    stand-in failed. The first try at this control hung instead, which is how the deadlock above
+    was found.
+  - Without the turn, the concurrency test failed at its deadline.
+  - With the four runners back on `ChildProcessLocale`, exactly the five `zstd`-found cases failed as
+    `archiveUnreadable`, the rewrite suite's `tar.zst` among them. That also shows the test host's
+    `PATH` has no `zstd`.
+  - With `ZstdTool.refusal` never refusing, the three refusal tests failed. The rewrite's error was
+    then `EncryptedArchiveError.archiveUnreadable`, *This archive couldn't be read. It may be damaged
+    or incomplete.*
+- **Seen live** in the Debug build, launched again with a Dock's environment: Enter on the
+  `.tar.zst` listed `alpha.txt` and `beta.txt`. Quick View showed `alpha`, and F5 copied
+  `alpha.txt` out byte for byte. F8 on `beta.txt` rewrote the archive as a Zstandard stream holding
+  `alpha.txt` alone, under its bare name, and Edit ▸ Undo Change Archive put it back byte for byte.
+  - With a temporary probe that made the search find nothing, Enter showed the new sentence in
+    English and in Russian, each in full. The probe was then removed and the app rebuilt.
+  - The defaults domain was restored and compared unchanged, and the run's undo copy was deleted.
 
 ### M34 — A three-way merge (M)
 

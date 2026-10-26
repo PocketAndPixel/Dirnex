@@ -106,8 +106,8 @@ enum ArchiveExtractor {
         return Extraction(directory: directory, extractedPaths: extractedPaths)
     }
 
-    /// Why an extraction placed nothing — a damaged archive, or one whose names nobody has declared
-    /// a code page for.
+    /// Why an extraction placed nothing — a damaged archive, one whose names nobody has declared
+    /// a code page for, or a Zstandard archive on a Mac with no `zstd` (``ZstdTool``).
     ///
     /// `bsdtar` cannot be handed a member it could not decode: the pane drew that row as `���.txt`,
     /// which is the name the extraction then asks for, and no entry is called that. So an extraction
@@ -121,6 +121,9 @@ enum ArchiveExtractor {
     /// from an ordinary archive — costs no extra read at all.
     private static func reasonNothingLanded(forArchiveAt archiveOnDiskPath: String) -> Error {
         let name = (archiveOnDiskPath as NSString).lastPathComponent
+        if let reason = ZstdTool.refusal(forArchiveAt: archiveOnDiskPath, zstd: ZstdTool.locate()) {
+            return VFSError.unsupported(reason)
+        }
         do {
             _ = try EncryptedArchiveReader.inspect(archiveAt: archiveOnDiskPath)
         } catch {
@@ -170,8 +173,9 @@ enum ArchiveExtractor {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/bsdtar")
         // Member names go out as arguments and come back as files on disk, so both directions
-        // need the locale settled (``ChildProcessLocale``).
-        process.environment = ChildProcessLocale.inherited()
+        // need the locale settled (``ChildProcessLocale``), and a `.tar.zst` needs `zstd` on
+        // `PATH` (``ZstdTool``).
+        process.environment = BsdtarEnvironment.inherited()
         process.arguments = ArchiveExtraction.extractionArguments(
             archiveOnDiskPath: archiveOnDiskPath,
             innerPaths: innerPaths,

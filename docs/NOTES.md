@@ -4940,12 +4940,46 @@ do not share a resolver, and neither half of that is obvious from either call si
     bare, Sparkle's own release tarball was `./` throughout, and none mixed the two. Two zips in
     `~/Downloads` held the `./` root entry this repack leaves, likely earlier Dirnex rewrites.
     `ArchiveNameForm` keeps the `./` form only when every name had it.
-- **`.tar.zst` needs an external `zstd`, and only a shell's `PATH` has one here.** Apple's bsdtar
-  has no built-in zstd: it runs `zstd --no-check -3` to write and `zstd -d -qq` to read. With
+- **`.tar.zst` needs an external `zstd` in both engines, and macOS has none.** Apple's bsdtar has no
+  built-in zstd: it runs `zstd --no-check -3` to write and `zstd -d -qq` to read. With
   `PATH=/usr/bin:/bin`, the test host's, writing fails with *Can't launch external program*, and
-  listing with *unable to run program "zstd -d -qq"*. A Dock-launched Dirnex gets that same `PATH`
-  (docs/LIVE-VERIFICATION.md ▸ `open` from a shell), so a `.tar.zst` is likely unreadable there unless
-  `zstd` is on it. Measured 2026-10-26 from a shell, not yet in the app.
+  listing with *unable to run program "zstd -d -qq"*. Measured 2026-10-26 against libarchive 3.7.4 on
+  macOS 26.7; `ZstdTool` is the fix.
+  - **In the app:** the Debug build launched with a Dock's environment (docs/LIVE-VERIFICATION.md ▸
+    `open` from a shell) answered *Couldn't read the archive* on Enter, the generic
+    `archiveUnreadable`. A `.tar.gz` beside it opened, and so did the `.tar.zst` once the same build
+    was relaunched with `/opt/homebrew/bin` on `PATH`. Quick View on the archive row is only an icon,
+    and F5 or F8 inside it cannot be reached when browsing in fails.
+  - **The in-process reader needs it too.** `archive_libzstd_version()` answers NULL, and both
+    `archive_read_support_filter_zstd` and `archive_write_add_filter_zstd` answer `ARCHIVE_WARN`,
+    *Using external zstd program*. Compression.framework and AppleArchive have no zstd either. That
+    reader runs `zstd` from Dirnex's own `PATH`, and every archive rewrite starts with its inspection,
+    so fixing only the `bsdtar` children's `PATH` would have left F8 and paste inside a `.tar.zst`
+    failing.
+  - **`archive_read_support_filter_program_signature` with an absolute path reaches it**, if it is
+    registered *before* `archive_read_support_filter_all`. Both bid 32 bits and the first registered
+    wins the tie. Registered after, the built-in filter wins and fails. libarchive's command parser
+    splits on spaces and honours double quotes: an unquoted path with a space ran its first word.
+  - **`pzstd` starts every archive with a skippable frame** (`50 2a 4d 18`), on which libarchive's own
+    filter bids too, so the reader registers a second filter for it. libarchive has 16 bidder slots,
+    `filter_all` takes 13, and only one is left after these two.
+  - **`bsdtar -c` without `-a` writes a plain tar under a `.tar.zst` name**, and a failed create
+    leaves a 0-byte archive behind. Both cost a fixture before anything else was measured.
+- **libarchive's external-program filters deadlock when two run at once.** It makes each child's
+  pipes with no `FD_CLOEXEC` and spawns with no `POSIX_SPAWN_CLOEXEC_DEFAULT`, so every child holds
+  both ends of every live sibling's pipes. A child holding a sibling's stdin keeps that sibling from
+  seeing end of input, and `archive_read_free` waits for it in `waitpid`. Measured 2026-10-26 with
+  `zstd -d -qq`: four threads reading a `.tar.zst` 25 times each completed **0 of 100**, as did two
+  threads, every run. With one reader at a time, 100 of 100. `ArchiveReadHandle`'s external-program
+  turn is that rule, held from open to free.
+  - **Foundation's `Process` does not leak this way.** Its child of a process holding a stray pipe had
+    only its own three descriptors, so a `bsdtar` or `sftp` child never holds a reader's `zstd` open.
+  - **The turn is not re-entrant**, so nothing may open a second reader while holding one.
+    `EncryptedArchiveReader.extract` frees its outer handle before it unwraps a hidden-names
+    archive's inner tar.
+  - **A test that deadlocks this way also holds `swift test` open.** The stuck children inherit the
+    runner's output pipe, so after the test process has exited, `swift test` waits until they are
+    killed.
 - **`-tvf`'s date column omits the year for recent files**, so a `MMM d HH:mm` parse yields year
   2000. Set `defaultDate` on year-less formats and roll the year back if the result is in
   the future — but set it to **now truncated to the minute**, not to a bare `Date()`. This entry
