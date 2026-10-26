@@ -33,8 +33,9 @@ struct ArchivePacker: PlainPackWriting {
         // A pack *writes* the names, and this is the direction that outlives the session: under
         // the `C` locale libarchive stores the right UTF-8 bytes with the zip's UTF-8 flag
         // (general-purpose bit 11) **clear**, so Windows Explorer, Info-ZIP and Python all read
-        // the member as CP437 mojibake (``ChildProcessLocale``).
-        process.environment = ChildProcessLocale.inherited()
+        // the member as CP437 mojibake (``ChildProcessLocale``). `zstd` goes on `PATH` as for every
+        // `bsdtar` (``BsdtarEnvironment``), though no pack format offered today needs it.
+        process.environment = BsdtarEnvironment.inherited()
         process.arguments = ArchivePacking.packingArguments(
             archiveOnDiskPath: request.archiveOnDiskPath,
             sources: request.sources,

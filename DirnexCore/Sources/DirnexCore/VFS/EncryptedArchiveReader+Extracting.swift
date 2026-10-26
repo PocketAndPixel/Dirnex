@@ -59,17 +59,22 @@ extension EncryptedArchiveReader {
         let outerMembers: ArchiveMemberFilter = isWrapped ? .everything : members
 
         let reporting = Reporting(onProgress: onProgress, isCancelled: isCancelled)
-        // The *inner* extraction of a wrapped archive deliberately takes no encoding: that tar is
-        // one Dirnex wrote, so its names are UTF-8 by construction.
-        let handle = try openForReading(path, passphrase: passphrase, nameEncoding: nameEncoding)
-        let session = Session(
-            handle: handle, root: destinationDirectory,
-            totalBytes: inspection.totalByteSize(matching: outerMembers),
-            reporting: reporting
-        )
-        let report = try placeSelectedEntries(
-            named: (path as NSString).lastPathComponent, matching: outerMembers, in: session
-        )
+        // The handle is freed when this closure returns, before any unwrap below opens the inner
+        // tar: a handle reading through `zstd` holds the one external-program turn
+        // (`ArchiveReadHandle`), and a second open on this thread would wait for it forever.
+        let report = try {
+            // The *inner* extraction of a wrapped archive deliberately takes no encoding: that tar
+            // is one Dirnex wrote, so its names are UTF-8 by construction.
+            let handle = try openForReading(path, passphrase: passphrase, nameEncoding: nameEncoding)
+            let session = Session(
+                handle: handle, root: destinationDirectory,
+                totalBytes: inspection.totalByteSize(matching: outerMembers),
+                reporting: reporting
+            )
+            return try placeSelectedEntries(
+                named: (path as NSString).lastPathComponent, matching: outerMembers, in: session
+            )
+        }()
         guard isWrapped, ArchiveNamePrivacy.looksWrapped(report.extractedPaths) else {
             return report
         }

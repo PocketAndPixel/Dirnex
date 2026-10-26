@@ -237,6 +237,9 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
     case archiveToolUnavailableForCreate
     case archiveToolUnavailableForExtract
     case archiveUnreadable(archive: String)
+    /// A Zstandard archive on a Mac where ``ZstdTool`` found no `zstd`: macOS's libarchive has no
+    /// zstd of its own, so nothing can read one, and the user can do something about it.
+    case archiveNeedsZstd(archive: String)
     case archiveCreateFailed(archive: String)
     case archiveExtractFailed(archive: String)
     case archiveAddFailed(item: String, archive: String)
@@ -297,6 +300,7 @@ public enum VFSUnsupportedReason: Sendable, Equatable {
         case .archiveToolUnavailableForCreate: return "archiveToolUnavailableForCreate"
         case .archiveToolUnavailableForExtract: return "archiveToolUnavailableForExtract"
         case .archiveUnreadable: return "archiveUnreadable"
+        case .archiveNeedsZstd: return "archiveNeedsZstd"
         case .archiveCreateFailed: return "archiveCreateFailed"
         case .archiveExtractFailed: return "archiveExtractFailed"
         case .archiveAddFailed: return "archiveAddFailed"

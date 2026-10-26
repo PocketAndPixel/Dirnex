@@ -14,11 +14,12 @@ import Testing
 @Suite("Archive rewrite names")
 struct ArchiveRewriteNamesTests {
     /// Every suffix the repack writes: the three containers, each tar compression under both its
-    /// spellings, and a zip alias that needs `--format zip`. Not `.tar.zst`: Apple's `bsdtar` runs an
-    /// external `zstd` to read or write one, and the test host's `PATH` has none (docs/NOTES.md ▸
-    /// bsdtar). The same argv, run from a shell with Homebrew's `zstd`, wrote bare names like the rest.
+    /// spellings, and a zip alias that needs `--format zip`. `.tar.zst` needs an external `zstd`
+    /// that the test host's `PATH` lacks, as a Dock launch's does, and is here because the writer
+    /// and these fixtures find it the way the app does (``ZstdTool``). macOS has no `zstd`, so a
+    /// Mac without Homebrew's fails that case; the CI image has one.
     static let suffixes = [
-        "zip", "jar", "7z", "tar", "tgz", "tar.gz", "tbz2", "tar.bz2", "txz", "tar.xz"
+        "zip", "jar", "7z", "tar", "tgz", "tar.gz", "tbz2", "tar.bz2", "txz", "tar.xz", "tar.zst"
     ]
 
     @Test("bare names come back bare", arguments: suffixes)
@@ -176,9 +177,11 @@ struct ArchiveRewriteNamesTests {
         }
 
         /// Run `bsdtar` to completion and answer its standard output, failing on a non-zero exit.
+        /// It gets the app's `bsdtar` environment, which is what lets it pack and read a `.tar.zst`.
         private static func bsdtar(_ arguments: [String]) throws -> String {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/bin/bsdtar")
+            process.environment = BsdtarEnvironment.inherited()
             process.arguments = arguments
             let output = Pipe()
             process.standardOutput = output

@@ -152398,6 +152398,95 @@
         }
       }
     },
+    "vfs.unsupported.archiveNeedsZstd": {
+      "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown when a .tar.zst archive can't be opened because the zstd command-line tool it needs isn't installed (macOS doesn't include one). %@ is the archive name. Keep “zstd”, “Homebrew” and “brew install zstd” as they are: the last is a command to type.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum Öffnen von „%@“ wird das Programm zstd benötigt, das Dirnex auf diesem Mac nicht gefunden hat. Sie können es mit Homebrew installieren (brew install zstd)."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opening “%@” needs the zstd tool, which Dirnex couldn’t find on this Mac. You can install it with Homebrew (brew install zstd)."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para abrir «%@» se necesita la herramienta zstd, que Dirnex no ha encontrado en este Mac. Puedes instalarla con Homebrew (brew install zstd)."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’ouverture de «%@» nécessite l’outil zstd, que Dirnex n’a pas trouvé sur ce Mac. Vous pouvez l’installer avec Homebrew (brew install zstd)."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per aprire “%@” serve lo strumento zstd, che Dirnex non ha trovato su questo Mac. Puoi installarlo con Homebrew (brew install zstd)."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”を開くにはzstdツールが必要ですが、DirnexはこのMacで見つけられませんでした。Homebrewでインストールできます（brew install zstd）。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”을(를) 열려면 zstd 도구가 필요하지만 Dirnex가 이 Mac에서 찾지 못했습니다. Homebrew로 설치할 수 있습니다(brew install zstd)."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Om “%@” te openen is het hulpprogramma zstd nodig, maar Dirnex kon het niet vinden op deze Mac. Je kunt het installeren met Homebrew (brew install zstd)."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do otwarcia „%@” potrzebne jest narzędzie zstd, którego Dirnex nie znalazł na tym Macu. Możesz je zainstalować za pomocą Homebrew (brew install zstd)."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Чтобы открыть «%@», нужна утилита zstd, но Dirnex не нашёл её на этом Mac. Её можно установить через Homebrew (brew install zstd)."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Щоб відкрити «%@», потрібна утиліта zstd, але Dirnex не знайшов її на цьому Mac. Її можна встановити через Homebrew (brew install zstd)."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para abrir “%@”, é necessária a ferramenta zstd, que o Dirnex não encontrou neste Mac. Você pode instalá-la com o Homebrew (brew install zstd)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开“%@”需要 zstd 工具，但 Dirnex 未能在这台 Mac 上找到它。你可以用 Homebrew 安装它（brew install zstd）。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打開「%@」需要 zstd 工具，但 Dirnex 無法在這台 Mac 上找到它。你可以用 Homebrew 安裝它（brew install zstd）。"
+          }
+        }
+      }
+    },
     "vfs.unsupported.archiveRewriteFailed": {
       "comment": "Why an operation is unsupported; DirnexCore data (VFSUnsupportedReason), keyed by the reason's stable case name. Shown under the alert title in every file-op and load failure. %@ is the archive name.",
       "localizations": {
