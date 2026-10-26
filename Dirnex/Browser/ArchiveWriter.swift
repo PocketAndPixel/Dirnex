@@ -167,9 +167,11 @@ enum ArchiveWriter {
     /// Pack the edited tree back into a new archive, re-stating what the original was.
     ///
     /// The unencrypted route packs `.` through `bsdtar`, which is what preserves the container
-    /// format from the new archive's suffix. The encrypted route enumerates the working directory's
-    /// top level instead — **including dot-files**, since a rewrite that quietly dropped a
-    /// `.gitignore` somebody packed would be a data loss nobody would notice until much later.
+    /// format from the new archive's suffix, and spells the names as the original did
+    /// (``ArchiveNameForm``). The encrypted route enumerates the working directory's top level
+    /// instead — **including dot-files**, since a rewrite that quietly dropped a `.gitignore`
+    /// somebody packed would be a data loss nobody would notice until much later — and writes bare
+    /// names whatever the original's were.
     private static func repackAll(
         from workingDirectory: String,
         into newArchiveOnDiskPath: String,
@@ -181,7 +183,8 @@ enum ArchiveWriter {
             try run(
                 ArchiveMutation.repackAllArguments(
                     newArchiveOnDiskPath: newArchiveOnDiskPath,
-                    from: workingDirectory
+                    from: workingDirectory,
+                    nameForm: format.nameForm
                 ),
                 failure: .archiveRewriteFailed(archive: name)
             )

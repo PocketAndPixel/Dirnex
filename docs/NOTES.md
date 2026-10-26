@@ -4922,6 +4922,30 @@ do not share a resolver, and neither half of that is obvious from either call si
   filesystem path.
 - **`-a` misreads the zip-family aliases `.jar` and `.cbz` as TAR** — force `--format zip` on
   create and repack. All other browsable suffixes infer correctly.
+- **Packing `-C dir .` names every member `./name`, beside a `./` entry for the root, and to any
+  other tool that is a different name.** Every archive rewrite packed this way from M4 to
+  2026-10-26, so a zip holding `inner.txt` came back holding `./inner.txt`. Dirnex browsed both the
+  same, which is why it was kept (▸ Design lessons, the two routes). `unzip -p pair.zip inner.txt`
+  and Python's `zipfile.getinfo("inner.txt")` both fail on it. Measured against bsdtar 3.5.3
+  (libarchive 3.7.4):
+  - **Keep `.` and strip with `-s`**: `-s '|^\./||S' -s '|^\.$||S'`. The first strips the prefix;
+    the second empties the root's name, and `bsdtar` leaves an entry with an empty name out. Bare
+    names came out in zip, jar, 7z, tar and every compressed tar, and an emptied tree still packed,
+    into an archive with no entries. `S` leaves a symlink's target as written (`./inner.txt` stays),
+    while a hard link's target is a member name and is rewritten with the members.
+  - **Naming the tree's entries instead is worse.** A top-level `@at.zip` on the argument list is
+    read as an archive to copy members from, and `-dash.txt` as an option. Either fails the whole
+    pack, and an emptied tree has no names to pass.
+  - **The `./` form is real and has to survive a rewrite too.** Of 160 archives on this Mac, 157 were
+    bare, Sparkle's own release tarball was `./` throughout, and none mixed the two. Two zips in
+    `~/Downloads` held the `./` root entry this repack leaves, likely earlier Dirnex rewrites.
+    `ArchiveNameForm` keeps the `./` form only when every name had it.
+- **`.tar.zst` needs an external `zstd`, and only a shell's `PATH` has one here.** Apple's bsdtar
+  has no built-in zstd: it runs `zstd --no-check -3` to write and `zstd -d -qq` to read. With
+  `PATH=/usr/bin:/bin`, the test host's, writing fails with *Can't launch external program*, and
+  listing with *unable to run program "zstd -d -qq"*. A Dock-launched Dirnex gets that same `PATH`
+  (docs/LIVE-VERIFICATION.md ▸ `open` from a shell), so a `.tar.zst` is likely unreadable there unless
+  `zstd` is on it. Measured 2026-10-26 from a shell, not yet in the app.
 - **`-tvf`'s date column omits the year for recent files**, so a `MMM d HH:mm` parse yields year
   2000. Set `defaultDate` on year-less formats and roll the year back if the result is in
   the future — but set it to **now truncated to the minute**, not to a bare `Date()`. This entry
@@ -10353,10 +10377,12 @@ overturned the obvious implementation.
   - **libarchive's reader does not report a zip's cipher strength**, so an AES-128 archive made
     elsewhere comes back AES-256. Stated rather than guessed — the alternative is inferring a weaker
     cipher from no evidence.
-  - The two routes spell entry names differently and that is pre-existing: `bsdtar` packs `.`, so its
-    rewrites carry `./name`, while the libarchive route enumerates the top level and writes bare
-    names (what the pack sheet produces). Both browse identically. Enumerate **including dot-files**
-    or a rewrite silently drops the `.gitignore` somebody packed.
+  - The two routes spelled entry names differently until 2026-10-26: `bsdtar` packed `.`, so its
+    rewrites carried `./name`, while the libarchive route enumerates the top level and writes bare
+    names (what the pack sheet produces). It was kept because both browse identically, and that was
+    the wrong test: to `unzip -p` and Python's `zipfile` the rewrite had renamed every member. Ask
+    whether a difference is invisible to *other* tools, not to the app (▸ bsdtar). Enumerate
+    **including dot-files** or a rewrite silently drops the `.gitignore` somebody packed.
 - **A transparent unwrap is exactly wrong for the one caller that wants the container, and the pane
   is that caller.** `EncryptedArchiveReader.extract` undoes a hidden-names archive's wrapper and
   deletes it, which is right for everything that wants the *files* — and a browsed archive lists the

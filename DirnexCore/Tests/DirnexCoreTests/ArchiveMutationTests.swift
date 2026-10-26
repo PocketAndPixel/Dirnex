@@ -14,14 +14,29 @@ struct ArchiveMutationTests {
         #expect(argv == ["-x", "-f", "/Users/me/pkg.zip", "-C", "/tmp/DirnexArchiveWrite/abc"])
     }
 
-    @Test("repack-all argv packs the whole working tree via '.'")
+    @Test("repack-all argv packs '.' and strips its ./ for an archive with bare names")
     func repackAllArguments() {
         let argv = ArchiveMutation.repackAllArguments(
             newArchiveOnDiskPath: "/Users/me/.dirnex-rewrite-TOK-pkg.zip",
-            from: "/tmp/DirnexArchiveWrite/abc"
+            from: "/tmp/DirnexArchiveWrite/abc",
+            nameForm: .bare
         )
         #expect(argv == [
-            "-a", "-c", "-f", "/Users/me/.dirnex-rewrite-TOK-pkg.zip",
+            "-a", "-c", "-s", "|^\\./||S", "-s", "|^\\.$||S",
+            "-f", "/Users/me/.dirnex-rewrite-TOK-pkg.zip",
+            "-C", "/tmp/DirnexArchiveWrite/abc", "."
+        ])
+    }
+
+    @Test("repack-all argv keeps ./ for an archive whose names were spelled that way")
+    func repackAllArgumentsKeepsDotSlash() {
+        let argv = ArchiveMutation.repackAllArguments(
+            newArchiveOnDiskPath: "/Users/me/.dirnex-rewrite-TOK-pkg.tar.gz",
+            from: "/tmp/DirnexArchiveWrite/abc",
+            nameForm: .dotSlash
+        )
+        #expect(argv == [
+            "-a", "-c", "-f", "/Users/me/.dirnex-rewrite-TOK-pkg.tar.gz",
             "-C", "/tmp/DirnexArchiveWrite/abc", "."
         ])
     }
@@ -33,7 +48,8 @@ struct ArchiveMutationTests {
         for name in ["book.cbz", "app.JAR"] {
             let argv = ArchiveMutation.repackAllArguments(
                 newArchiveOnDiskPath: "/p/.dirnex-rewrite-T-\(name)",
-                from: "/tmp/w"
+                from: "/tmp/w",
+                nameForm: .bare
             )
             #expect(argv.prefix(4) == ["-a", "-c", "--format", "zip"])
         }

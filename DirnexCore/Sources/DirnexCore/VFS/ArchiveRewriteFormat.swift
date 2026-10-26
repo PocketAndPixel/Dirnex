@@ -9,22 +9,28 @@ import Foundation
 /// rewrite path knows that on its own. Reading it off an inspection keeps the answer in one place
 /// and makes it testable, rather than each call site guessing.
 ///
-/// Two properties, because two are all that a repack cannot re-derive from the extracted tree: a
-/// tree on disk says nothing about whether it came out of an encrypted archive, and — since the
-/// reader unwraps a hidden-names archive transparently — nothing about whether its names were
-/// hidden either. Everything else (the container format, the compression) is carried by the new
-/// archive's suffix and libarchive's own defaults.
+/// Three properties, because three are all that a repack cannot re-derive from the extracted tree: a
+/// tree on disk says nothing about whether it came out of an encrypted archive, nothing — since the
+/// reader unwraps a hidden-names archive transparently — about whether its names were hidden, and
+/// nothing about whether they were spelled `./name` (``ArchiveNameForm``). Everything else (the
+/// container format, the compression) is carried by the new archive's suffix and libarchive's own
+/// defaults.
 public struct ArchiveRewriteFormat: Sendable, Equatable {
     public let encryption: ArchiveEncryption
     public let namePrivacy: ArchiveNamePrivacy
+    public let nameForm: ArchiveNameForm
 
-    public init(encryption: ArchiveEncryption, namePrivacy: ArchiveNamePrivacy) {
+    public init(
+        encryption: ArchiveEncryption,
+        namePrivacy: ArchiveNamePrivacy,
+        nameForm: ArchiveNameForm = .bare
+    ) {
         self.encryption = encryption
         self.namePrivacy = namePrivacy
+        self.nameForm = nameForm
     }
 
-    /// An ordinary archive: no passphrase, names visible. What every rewrite did before encrypted
-    /// archives could be written into at all.
+    /// An ordinary archive: no passphrase, names visible and bare.
     public static let plain = ArchiveRewriteFormat(encryption: .none, namePrivacy: .visible)
 
     /// Whether rewriting this archive needs the user's passphrase.
@@ -46,11 +52,11 @@ public struct ArchiveRewriteFormat: Sendable, Equatable {
     /// and reads as hidden-names; that is the pre-existing cost of a marker-free format, and it is
     /// deliberate (a marker would announce in plaintext that the archive is worth attacking).
     public static func inferred(from inspection: EncryptedArchiveReader.Inspection) -> Self {
-        ArchiveRewriteFormat(
+        let names = inspection.entries.map(\.archivePath)
+        return ArchiveRewriteFormat(
             encryption: inspection.needsPassphrase ? .aes256 : .none,
-            namePrivacy: ArchiveNamePrivacy.looksWrapped(inspection.entries.map(\.archivePath))
-                ? .hidden
-                : .visible
+            namePrivacy: ArchiveNamePrivacy.looksWrapped(names) ? .hidden : .visible,
+            nameForm: ArchiveNameForm.inferred(from: names)
         )
     }
 }
