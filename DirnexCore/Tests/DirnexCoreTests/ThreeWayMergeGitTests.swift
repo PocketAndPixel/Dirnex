@@ -37,10 +37,12 @@ struct ThreeWayMergeGitTests {
         let zdiff3: [UInt8]
         let yoursChanges: [LineDiff.Change]
         let theirsChanges: [LineDiff.Change]
+        /// `--zdiff3` with every conflict settled each way git can (`TextMergeGitTests`).
+        let favored: [GitMergeOracle.Favor: [UInt8]]
     }
 
-    /// git's answers for every triple, asked once for the whole suite, many at a time: each run of
-    /// git costs about 9 ms, and there are four per triple.
+    /// git's answers for every triple, asked once for this suite and `TextMergeGitTests`, many at a
+    /// time: each run of git costs about 9 ms, and there are seven per triple.
     static let answers: Result<[Answer], any Error> = Result {
         let triples = try corpusTriples() + randomTriples(count: 600, seed: 0x0034_0001)
         return try answers(for: triples)
@@ -247,12 +249,16 @@ struct ThreeWayMergeGitTests {
                 let answer = Result<Answer, any Error> {
                     let oracle = try GitMergeOracle()
                     defer { oracle.cleanup() }
-                    func merged(_ style: GitMergeOracle.Style) throws -> [UInt8] {
+                    func merged(
+                        _ style: GitMergeOracle.Style,
+                        favor: GitMergeOracle.Favor? = nil
+                    ) throws -> [UInt8] {
                         try oracle.merged(
                             base: triple.base,
                             yours: triple.yours,
                             theirs: triple.theirs,
-                            style: style
+                            style: style,
+                            favor: favor
                         )
                     }
                     return try Answer(
@@ -260,7 +266,12 @@ struct ThreeWayMergeGitTests {
                         diff3: merged(.diff3),
                         zdiff3: merged(.zdiff3),
                         yoursChanges: oracle.changes(from: triple.base, to: triple.yours),
-                        theirsChanges: oracle.changes(from: triple.base, to: triple.theirs)
+                        theirsChanges: oracle.changes(from: triple.base, to: triple.theirs),
+                        favored: [
+                            .ours: merged(.zdiff3, favor: .ours),
+                            .theirs: merged(.zdiff3, favor: .theirs),
+                            .union: merged(.zdiff3, favor: .union)
+                        ]
                     )
                 }
                 lock.withLock { results[index] = answer }

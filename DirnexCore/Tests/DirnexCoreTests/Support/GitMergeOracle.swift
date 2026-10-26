@@ -17,6 +17,16 @@ struct GitMergeOracle {
         case zdiff3
     }
 
+    /// How git settles every conflict instead of marking it.
+    enum Favor: String {
+        /// Yours' lines.
+        case ours
+        /// Theirs' lines.
+        case theirs
+        /// Yours' lines, then theirs'.
+        case union
+    }
+
     let tree: TempTree
 
     init() throws {
@@ -28,9 +38,17 @@ struct GitMergeOracle {
     }
 
     /// git's merge of `yours` and `theirs` against `base`, as the bytes it prints.
-    func merged(base: String, yours: String, theirs: String, style: Style) throws -> [UInt8] {
+    /// With `favor`, every conflict is settled that way and nothing is marked.
+    func merged(
+        base: String,
+        yours: String,
+        theirs: String,
+        style: Style,
+        favor: Favor? = nil
+    ) throws -> [UInt8] {
         let (status, output) = try git([
-            "merge-file", "-p", "--\(style.rawValue)", "--diff-algorithm=minimal",
+            "merge-file", "-p", "--\(style.rawValue)", "--diff-algorithm=minimal"
+        ] + (favor.map { ["--\($0.rawValue)"] } ?? []) + [
             "-L", "O", "-L", "B", "-L", "T",
             tree.writeFile("yours", contents: yours),
             tree.writeFile("base", contents: base),
