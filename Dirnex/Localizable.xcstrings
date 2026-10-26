@@ -1692,6 +1692,95 @@
         }
       }
     },
+    "%@ — Edited": {
+      "comment": "Compare window pane header: a file with copied changes not yet saved; %@ is its name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — Bearbeitet"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — Edited"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — Editado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — Modifié"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — Modificato"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — 編集済み"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — 편집됨"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — Gewijzigd"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — Edytowany"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — Editado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — Изменено"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — Змінено"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — 已编辑"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — 已編輯"
+          }
+        }
+      }
+    },
     "%@/s": {
       "comment": "Queue-bar throughput readout; %@ is a byte count, e.g. “1.2 MB/s”.",
       "localizations": {
@@ -28023,6 +28112,184 @@
         }
       }
     },
+    "Copy to Left": {
+      "comment": "Compare window button, tooltip and undo name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach links kopieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy to Left"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar a la izquierda"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copier à gauche"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia a sinistra"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左へコピー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "왼쪽으로 복사"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopiëren naar links"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopiuj w lewo"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar para a Esquerda"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копировать влево"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копіювати ліворуч"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拷贝到左侧"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拷貝到左側"
+          }
+        }
+      }
+    },
+    "Copy to Right": {
+      "comment": "Compare window button, tooltip and undo name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach rechts kopieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy to Right"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar a la derecha"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copier à droite"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia a destra"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右へコピー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오른쪽으로 복사"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopiëren naar rechts"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopiuj w prawo"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar para a Direita"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копировать вправо"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копіювати праворуч"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拷贝到右侧"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拷貝到右側"
+          }
+        }
+      }
+    },
     "Copying %@": {
       "comment": "Queue-bar status; %@ is the file being copied.",
       "localizations": {
@@ -36113,6 +36380,95 @@
         }
       }
     },
+    "Couldn’t save “%@”": {
+      "comment": "Compare window save failure title; %@ is a file name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ konnte nicht gesichert werden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t save “%@”"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo guardar «%@»"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible d’enregistrer « %@ »"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile salvare “%@”"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」を保存できませんでした"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”을(를) 저장할 수 없음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kon ‘%@’ niet bewaren"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można zachować „%@”"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível salvar “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось сохранить «%@»"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося зберегти «%@»"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法存储“%@”"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法儲存「%@」"
+          }
+        }
+      }
+    },
     "Couldn’t save “%@” back": {
       "comment": "Alert title when writing an edited member back into its archive fails.",
       "localizations": {
@@ -42730,6 +43086,184 @@
         }
       }
     },
+    "Do you want to save the changes you made to “%@” and “%@”?": {
+      "comment": "Compare window close prompt title for both files; each %@ is a file name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Möchten Sie die Änderungen an „%1$@“ und „%2$@“ sichern?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do you want to save the changes you made to “%@” and “%@”?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Quieres guardar los cambios realizados en «%1$@» y «%2$@»?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voulez-vous enregistrer les modifications apportées à « %1$@ » et à « %2$@ » ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuoi salvare le modifiche apportate a “%1$@” e “%2$@”?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%1$@」と「%2$@」に加えた変更を保存しますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@” 및 “%2$@”에 대한 변경 사항을 저장하겠습니까?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wil je de wijzigingen in ‘%1$@’ en ‘%2$@’ bewaren?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czy chcesz zachować zmiany wprowadzone w „%1$@” i „%2$@”?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deseja salvar as alterações feitas em “%1$@” e “%2$@”?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранить изменения в файлах «%1$@» и «%2$@»?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зберегти зміни у файлах «%1$@» і «%2$@»?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要存储对“%1$@”和“%2$@”所做的更改吗？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要儲存對「%1$@」和「%2$@」所做的更改嗎？"
+          }
+        }
+      }
+    },
+    "Do you want to save the changes you made to “%@”?": {
+      "comment": "Compare window close prompt title; %@ is a file name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Möchten Sie die Änderungen an „%@“ sichern?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do you want to save the changes you made to “%@”?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Quieres guardar los cambios realizados en «%@»?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voulez-vous enregistrer les modifications apportées à « %@ » ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuoi salvare le modifiche apportate a “%@”?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」に加えた変更を保存しますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”에 대한 변경 사항을 저장하겠습니까?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wil je de wijzigingen in ‘%@’ bewaren?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czy chcesz zachować zmiany wprowadzone w „%@”?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deseja salvar as alterações feitas em “%@”?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранить изменения в файле «%@»?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зберегти зміни у файлі «%@»?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要存储对“%@”所做的更改吗？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要儲存對「%@」所做的更改嗎？"
+          }
+        }
+      }
+    },
     "Doesn’t match — expected %@": {
       "comment": "Checksum report row: digest differs; %@ is the expected digest.",
       "localizations": {
@@ -42904,6 +43438,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "完成"
+          }
+        }
+      }
+    },
+    "Don’t Save": {
+      "comment": "Button that closes the compare window and drops the copies made in it.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht sichern"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Don’t Save"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No guardar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ne pas enregistrer"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non salvare"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存しない"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장 안 함"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niet bewaren"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie zachowuj"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não Salvar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не сохранять"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не зберігати"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不存储"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不儲存"
           }
         }
       }
@@ -46491,6 +47114,362 @@
           "stringUnit": {
             "state": "translated",
             "value": "編輯檔案…"
+          }
+        }
+      }
+    },
+    "Edit Left": {
+      "comment": "Compare window button: open the left file in a text editor.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linke Datei bearbeiten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit Left"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar el archivo de la izquierda"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier le fichier de gauche"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifica il file a sinistra"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左のファイルを編集"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "왼쪽 파일 편집"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wijzig linkerbestand"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edytuj lewy plik"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar Arquivo da Esquerda"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Редактировать левый файл"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Редагувати лівий файл"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑左侧文件"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編輯左側檔案"
+          }
+        }
+      }
+    },
+    "Edit Left in %@": {
+      "comment": "Compare window button tooltip: open the left file in a text editor; %@ is the editor's name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linke Datei in %@ bearbeiten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit Left in %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar el archivo de la izquierda en %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier le fichier de gauche dans %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifica il file a sinistra con %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左のファイルを%@で編集"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@에서 왼쪽 파일 편집"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wijzig linkerbestand in %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edytuj lewy plik w programie %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar Arquivo da Esquerda no %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Редактировать левый файл в %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Редагувати лівий файл у %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 %@ 中编辑左侧文件"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 %@ 中編輯左側檔案"
+          }
+        }
+      }
+    },
+    "Edit Right": {
+      "comment": "Compare window button: open the right file in a text editor.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechte Datei bearbeiten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit Right"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar el archivo de la derecha"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier le fichier de droite"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifica il file a destra"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右のファイルを編集"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오른쪽 파일 편집"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wijzig rechterbestand"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edytuj prawy plik"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar Arquivo da Direita"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Редактировать правый файл"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Редагувати правий файл"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑右侧文件"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編輯右側檔案"
+          }
+        }
+      }
+    },
+    "Edit Right in %@": {
+      "comment": "Compare window button tooltip: open the right file in a text editor; %@ is the editor's name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechte Datei in %@ bearbeiten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit Right in %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar el archivo de la derecha en %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier le fichier de droite dans %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifica il file a destra con %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右のファイルを%@で編集"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@에서 오른쪽 파일 편집"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wijzig rechterbestand in %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edytuj prawy plik w programie %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar Arquivo da Direita no %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Редактировать правый файл в %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Редагувати правий файл у %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 %@ 中编辑右侧文件"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 %@ 中編輯右側檔案"
           }
         }
       }
@@ -58342,6 +59321,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "兩者都保留"
+          }
+        }
+      }
+    },
+    "Keep Copied Changes": {
+      "comment": "Button that keeps the compare window's unsaved copies over a file that changed on disk.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopierte Änderungen behalten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep Copied Changes"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conservar los cambios copiados"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conserver les modifications copiées"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantieni le modifiche copiate"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コピーした変更を残す"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복사한 변경 사항 유지"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gekopieerde wijzigingen behouden"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pozostaw skopiowane zmiany"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manter Alterações Copiadas"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оставить скопированные изменения"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Залишити скопійовані зміни"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保留拷贝的更改"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保留拷貝的更改"
           }
         }
       }
@@ -76651,6 +77719,95 @@
         }
       }
     },
+    "Read Again": {
+      "comment": "Button that shows a file as it now is on disk, dropping the compare window's unsaved copies.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neu einlesen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read Again"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a leer"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relire"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rileggi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み込み直す"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다시 읽기"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opnieuw inlezen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wczytaj ponownie"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ler Novamente"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прочитать заново"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прочитати знову"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新读取"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新讀取"
+          }
+        }
+      }
+    },
     "Read Attributes": {
       "comment": "ACL right readattr: read basic attributes.",
       "localizations": {
@@ -77283,6 +78440,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在辨識 %1$lld / %2$lld 個掃描頁"
+          }
+        }
+      }
+    },
+    "Reading it again shows it as it is now, without the changes copied into it here.": {
+      "comment": "Compare window prompt body, when a file with changes copied into it but not saved has changed on disk, for instance saved in a text editor.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beim erneuten Einlesen wird die Datei so angezeigt, wie sie jetzt ist, ohne die hier hineinkopierten Änderungen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading it again shows it as it is now, without the changes copied into it here."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Al volver a leerlo, se muestra tal como está ahora, sin los cambios copiados en él aquí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le relire l’affiche tel qu’il est maintenant, sans les modifications qui y ont été copiées ici."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rileggendolo, viene mostrato com’è ora, senza le modifiche copiate qui."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み込み直すと、ここでコピーした変更を含まない現在の状態で表示されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다시 읽으면 여기에서 복사한 변경 사항 없이 현재 상태로 표시됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opnieuw inlezen toont het zoals het nu is, zonder de wijzigingen die je er hier naartoe hebt gekopieerd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ponowne wczytanie pokaże plik w obecnej postaci, bez zmian skopiowanych do niego tutaj."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ler novamente mostra o arquivo como está agora, sem as alterações copiadas para ele aqui."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Если прочитать файл заново, он будет показан таким, какой он сейчас, без изменений, скопированных в него здесь."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Якщо прочитати файл знову, його буде показано таким, яким він є зараз, без змін, скопійованих у нього тут."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新读取会显示文件现在的内容，不含在此拷贝进去的更改。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新讀取會顯示檔案現在的內容，不含在此拷貝進去的更改。"
           }
         }
       }
@@ -85251,6 +86497,95 @@
         }
       }
     },
+    "Save Anyway": {
+      "comment": "Button that saves a file from the compare window over changes made since it was read.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trotzdem sichern"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save Anyway"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar de todos modos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrer quand même"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salva comunque"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "それでも保存"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그래도 저장"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toch bewaren"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zachowaj mimo to"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvar Mesmo Assim"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Всё равно сохранить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Усе одно зберегти"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仍要存储"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仍要儲存"
+          }
+        }
+      }
+    },
     "Save Back": {
       "comment": "Button that writes an edited member back into its archive.",
       "localizations": {
@@ -85607,6 +86942,95 @@
         }
       }
     },
+    "Save and Edit": {
+      "comment": "Button that saves a file from the compare window, then opens it in a text editor.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sichern und bearbeiten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save and Edit"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar y editar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrer et modifier"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salva e modifica"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存して編集"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장 후 편집"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewaar en wijzig"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zachowaj i edytuj"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvar e Editar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранить и редактировать"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зберегти й редагувати"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "存储并编辑"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "儲存並編輯"
+          }
+        }
+      }
+    },
     "Save as:": {
       "comment": "Connect field label: name to save under.",
       "localizations": {
@@ -85785,6 +87209,95 @@
         }
       }
     },
+    "Save the changes to “%@” before editing it?": {
+      "comment": "Compare window prompt title, before opening a file with unsaved copies in a text editor; %@ is a file name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Änderungen an „%@“ vor dem Bearbeiten sichern?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save the changes to “%@” before editing it?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Guardar los cambios de «%@» antes de editarlo?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrer les modifications de « %@ » avant de le modifier ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvare le modifiche a “%@” prima di modificarlo?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編集する前に「%@」への変更を保存しますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "편집하기 전에 “%@”의 변경 사항을 저장하겠습니까?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wijzigingen in ‘%@’ bewaren voordat je het bewerkt?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zachować zmiany w „%@” przed edycją?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvar as alterações em “%@” antes de editá-lo?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранить изменения в «%@» перед редактированием?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зберегти зміни у «%@» перед редагуванням?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑前要存储对“%@”的更改吗？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編輯前要儲存對「%@」的更改嗎？"
+          }
+        }
+      }
+    },
     "Save “%@” back into “%@”?": {
       "comment": "Title of the write-back prompt after an archive member was edited; the first %@ is the file's name and the second the archive's.",
       "localizations": {
@@ -85959,6 +87472,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "儲存的搜尋"
+          }
+        }
+      }
+    },
+    "Saving now replaces those changes with the lines shown here.": {
+      "comment": "Compare window save prompt body, when the file changed since it was read.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wenn Sie jetzt sichern, werden diese Änderungen durch die hier angezeigten Zeilen ersetzt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saving now replaces those changes with the lines shown here."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si guardas ahora, esos cambios se sustituirán por las líneas que se muestran aquí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrer maintenant remplace ces modifications par les lignes affichées ici."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvando ora, quelle modifiche vengono sostituite dalle righe mostrate qui."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今保存すると、それらの変更はここに表示されている行で置き換えられます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 저장하면 해당 변경 사항이 여기에 표시된 줄로 대치됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Als je nu bewaart, worden die wijzigingen vervangen door de regels die hier worden getoond."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zachowanie teraz zastąpi te zmiany wierszami pokazanymi tutaj."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvar agora substitui essas alterações pelas linhas mostradas aqui."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Если сохранить сейчас, эти изменения будут заменены строками, показанными здесь."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Якщо зберегти зараз, ці зміни буде замінено рядками, показаними тут."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "现在存储会用此处显示的行替换那些更改。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在儲存會以此處顯示的行取代那些更改。"
           }
         }
       }
@@ -97669,6 +99271,95 @@
         }
       }
     },
+    "The editor opens the file as it is saved, so the changes copied into it here are saved first.": {
+      "comment": "Compare window prompt body, before opening a file with unsaved copies in a text editor.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Editor öffnet die Datei so, wie sie gesichert ist. Deshalb werden die hier hineinkopierten Änderungen zuerst gesichert."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The editor opens the file as it is saved, so the changes copied into it here are saved first."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El editor abre el archivo tal como está guardado, así que primero se guardan los cambios copiados en él aquí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’éditeur ouvre le fichier tel qu’il est enregistré : les modifications qui y ont été copiées ici sont donc d’abord enregistrées."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’editor apre il file così com’è salvato, quindi le modifiche copiate qui vengono salvate prima."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エディタは保存されている状態のファイルを開くため、ここでコピーした変更を先に保存します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "편집기는 저장된 상태의 파일을 열기 때문에 여기에서 복사한 변경 사항을 먼저 저장합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De editor opent het bestand zoals het is bewaard, dus de wijzigingen die je er hier naartoe hebt gekopieerd, worden eerst bewaard."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edytor otwiera plik w zachowanej postaci, więc zmiany skopiowane do niego tutaj zostaną najpierw zachowane."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O editor abre o arquivo como está salvo, então as alterações copiadas para ele aqui são salvas primeiro."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Редактор открывает файл в сохранённом виде, поэтому изменения, скопированные в него здесь, сначала будут сохранены."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Редактор відкриває файл у збереженому вигляді, тож зміни, скопійовані в нього тут, спершу буде збережено."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑器打开的是已存储的文件，因此会先存储在此拷贝进去的更改。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編輯器開啟的是已儲存的檔案，因此會先儲存在此拷貝進去的更改。"
+          }
+        }
+      }
+    },
     "The email address doesn't look complete.": {
       "comment": "Report a Bug dialog: status when the reply email is not an address.",
       "localizations": {
@@ -99183,6 +100874,184 @@
         }
       }
     },
+    "The left file is read-only here: Dirnex can’t save it back where it came from.": {
+      "comment": "Compare window: changes can't be copied into the left file, because it is a copy of a file Dirnex cannot write, such as a member of an archive inside another archive.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die linke Datei ist hier schreibgeschützt: Dirnex kann sie nicht dorthin zurücksichern, woher sie stammt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The left file is read-only here: Dirnex can’t save it back where it came from."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El archivo de la izquierda es de solo lectura aquí: Dirnex no puede volver a guardarlo en su lugar de origen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le fichier de gauche est en lecture seule ici : Dirnex ne peut pas l’enregistrer là d’où il vient."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il file a sinistra qui è di sola lettura: Dirnex non può salvarlo nel punto da cui proviene."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左のファイルはここでは読み出し専用です。Dirnexは元の場所に保存し直せません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "왼쪽 파일은 여기에서 읽기 전용입니다. Dirnex가 원래 위치에 다시 저장할 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het linkerbestand is hier alleen-lezen: Dirnex kan het niet terugzetten waar het vandaan komt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lewy plik jest tutaj tylko do odczytu: Dirnex nie może zapisać go z powrotem tam, skąd pochodzi."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O arquivo da esquerda é somente leitura aqui: o Dirnex não consegue salvá-lo de volta no lugar de origem."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Левый файл здесь доступен только для чтения: Dirnex не может сохранить его обратно туда, откуда он взят."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лівий файл тут доступний лише для читання: Dirnex не може зберегти його назад туди, звідки його взято."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左侧文件在此为只读：Dirnex 无法将其存回原来的位置。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左側檔案在此為唯讀：Dirnex 無法將其存回原來的位置。"
+          }
+        }
+      }
+    },
+    "The left file is read-only here: Dirnex can’t write it back exactly as it was read.": {
+      "comment": "Compare window: changes can't be copied into the left file, and why.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die linke Datei ist hier schreibgeschützt: Dirnex kann sie nicht genau so zurückschreiben, wie sie gelesen wurde."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The left file is read-only here: Dirnex can’t write it back exactly as it was read."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El archivo de la izquierda es de solo lectura aquí: Dirnex no puede volver a escribirlo exactamente como se leyó."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le fichier de gauche est en lecture seule ici : Dirnex ne peut pas le réécrire exactement tel qu’il a été lu."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il file a sinistra qui è di sola lettura: Dirnex non può riscriverlo esattamente come è stato letto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左のファイルはここでは読み出し専用です。Dirnexは読み込んだときとまったく同じ状態に書き戻せません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "왼쪽 파일은 여기에서 읽기 전용입니다. Dirnex가 읽은 그대로 정확하게 다시 쓸 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het linkerbestand is hier alleen-lezen: Dirnex kan het niet precies zo terugschrijven als het is ingelezen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lewy plik jest tutaj tylko do odczytu: Dirnex nie może zapisać go z powrotem dokładnie tak, jak został wczytany."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O arquivo da esquerda é somente leitura aqui: o Dirnex não consegue gravá-lo de volta exatamente como foi lido."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Левый файл здесь доступен только для чтения: Dirnex не может записать его обратно точно таким, каким прочитал."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лівий файл тут доступний лише для читання: Dirnex не може записати його назад точно таким, яким прочитав."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左侧文件在此为只读：Dirnex 无法按读取时的原样将其写回。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左側檔案在此為唯讀：Dirnex 無法按讀取時的原樣將其寫回。"
+          }
+        }
+      }
+    },
     "The modification time was not stored. This server refused the command that sets one.": {
       "comment": "Remote Get Info: the modification time was refused.",
       "localizations": {
@@ -100247,6 +102116,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "其餘部分太多，無法還原，因此這次更改無法復原。"
+          }
+        }
+      }
+    },
+    "The right file is read-only here: Dirnex can’t save it back where it came from.": {
+      "comment": "Compare window: changes can't be copied into the right file, because it is a copy of a file Dirnex cannot write, such as a member of an archive inside another archive.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die rechte Datei ist hier schreibgeschützt: Dirnex kann sie nicht dorthin zurücksichern, woher sie stammt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The right file is read-only here: Dirnex can’t save it back where it came from."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El archivo de la derecha es de solo lectura aquí: Dirnex no puede volver a guardarlo en su lugar de origen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le fichier de droite est en lecture seule ici : Dirnex ne peut pas l’enregistrer là d’où il vient."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il file a destra qui è di sola lettura: Dirnex non può salvarlo nel punto da cui proviene."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右のファイルはここでは読み出し専用です。Dirnexは元の場所に保存し直せません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오른쪽 파일은 여기에서 읽기 전용입니다. Dirnex가 원래 위치에 다시 저장할 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het rechterbestand is hier alleen-lezen: Dirnex kan het niet terugzetten waar het vandaan komt."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prawy plik jest tutaj tylko do odczytu: Dirnex nie może zapisać go z powrotem tam, skąd pochodzi."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O arquivo da direita é somente leitura aqui: o Dirnex não consegue salvá-lo de volta no lugar de origem."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Правый файл здесь доступен только для чтения: Dirnex не может сохранить его обратно туда, откуда он взят."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Правий файл тут доступний лише для читання: Dirnex не може зберегти його назад туди, звідки його взято."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右侧文件在此为只读：Dirnex 无法将其存回原来的位置。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右側檔案在此為唯讀：Dirnex 無法將其存回原來的位置。"
+          }
+        }
+      }
+    },
+    "The right file is read-only here: Dirnex can’t write it back exactly as it was read.": {
+      "comment": "Compare window: changes can't be copied into the right file, and why.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die rechte Datei ist hier schreibgeschützt: Dirnex kann sie nicht genau so zurückschreiben, wie sie gelesen wurde."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The right file is read-only here: Dirnex can’t write it back exactly as it was read."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El archivo de la derecha es de solo lectura aquí: Dirnex no puede volver a escribirlo exactamente como se leyó."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le fichier de droite est en lecture seule ici : Dirnex ne peut pas le réécrire exactement tel qu’il a été lu."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il file a destra qui è di sola lettura: Dirnex non può riscriverlo esattamente come è stato letto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右のファイルはここでは読み出し専用です。Dirnexは読み込んだときとまったく同じ状態に書き戻せません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오른쪽 파일은 여기에서 읽기 전용입니다. Dirnex가 읽은 그대로 정확하게 다시 쓸 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het rechterbestand is hier alleen-lezen: Dirnex kan het niet precies zo terugschrijven als het is ingelezen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prawy plik jest tutaj tylko do odczytu: Dirnex nie może zapisać go z powrotem dokładnie tak, jak został wczytany."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O arquivo da direita é somente leitura aqui: o Dirnex não consegue gravá-lo de volta exatamente como foi lido."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Правый файл здесь доступен только для чтения: Dirnex не может записать его обратно точно таким, каким прочитал."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Правий файл тут доступний лише для читання: Dirnex не може записати його назад точно таким, яким прочитав."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右侧文件在此为只读：Dirnex 无法按读取时的原样将其写回。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右側檔案在此為唯讀：Dirnex 無法按讀取時的原樣將其寫回。"
           }
         }
       }
@@ -116384,6 +118431,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "你編輯了從封存中取出的副本。寫回會把封存整體重寫一次，包含全部檔案；還原可以復原。"
+          }
+        }
+      }
+    },
+    "Your changes will be lost if you don’t save them.": {
+      "comment": "Compare window close prompt body.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihre Änderungen gehen verloren, wenn Sie sie nicht sichern."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your changes will be lost if you don’t save them."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si no los guardas, tus cambios se perderán."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos modifications seront perdues si vous ne les enregistrez pas."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se non le salvi, le modifiche andranno perse."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存しないと、変更内容は失われます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "변경 사항을 저장하지 않으면 유실됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je wijzigingen gaan verloren als je ze niet bewaart."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jeśli nie zachowasz zmian, zostaną one utracone."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suas alterações serão perdidas se você não salvá-las."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Если не сохранить изменения, они будут потеряны."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Якщо не зберегти зміни, їх буде втрачено."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果不存储，你的更改将会丢失。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果不儲存，你的更改將會遺失。"
           }
         }
       }
@@ -155071,6 +157207,95 @@
         }
       }
     },
+    "“%@” has changed since this window read it.": {
+      "comment": "Compare window prompt title, when a file changed on disk since the window read it; %@ is a file name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ wurde geändert, seit dieses Fenster die Datei gelesen hat."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” has changed since this window read it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» ha cambiado desde que esta ventana lo leyó."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« %@ » a changé depuis que cette fenêtre l’a lu."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” è cambiato da quando questa finestra lo ha letto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」は、このウインドウが読み込んだ後に変更されています。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 윈도우가 읽은 후 “%@”이(가) 변경되었습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%@’ is gewijzigd sinds dit venster het heeft ingelezen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plik „%@” zmienił się, odkąd to okno go wczytało."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” foi alterado desde que esta janela o leu."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл «%@» изменился с тех пор, как это окно его прочитало."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл «%@» змінився відтоді, як це вікно його прочитало."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自此窗口读取后，“%@”已更改。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自此視窗讀取後，「%@」已更改。"
+          }
+        }
+      }
+    },
     "“%@” is already back": {
       "comment": "Put-Back result for one item whose original folder already holds that name; %@ is the item name.",
       "localizations": {
@@ -156710,6 +158935,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "「%@」不再通過功能鍵執行"
+          }
+        }
+      }
+    },
+    "“%@” on line %lld can’t be written in %@, the file’s encoding. Dirnex saves a file in the encoding it was read in.": {
+      "comment": "Compare window save failure detail; %1$@ is a character, %2$lld a line number, %3$@ an encoding name such as “Western (Windows Latin 1)”.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%1$@“ in Zeile %2$lld kann nicht in %3$@, der Kodierung der Datei, geschrieben werden. Dirnex sichert eine Datei in der Kodierung, in der sie gelesen wurde."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” on line %lld can’t be written in %@, the file’s encoding. Dirnex saves a file in the encoding it was read in."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» en la línea %2$lld no se puede escribir en %3$@, la codificación del archivo. Dirnex guarda cada archivo en la codificación con la que se leyó."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« %1$@ » à la ligne %2$lld ne peut pas être écrit en %3$@, l’encodage du fichier. Dirnex enregistre un fichier dans l’encodage dans lequel il a été lu."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@” alla riga %2$lld non può essere scritto in %3$@, la codifica del file. Dirnex salva un file nella codifica in cui è stato letto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$lld行目の「%1$@」は、ファイルのエンコーディングである%3$@では書き込めません。Dirnexはファイルを読み込んだときのエンコーディングで保存します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$lld번째 줄의 “%1$@”은(는) 파일의 인코딩인 %3$@(으)로 쓸 수 없습니다. Dirnex는 파일을 읽어 들인 인코딩으로 저장합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@” op regel %2$lld kan niet worden geschreven in %3$@, de codering van het bestand. Dirnex bewaart een bestand in de codering waarin het is ingelezen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Znaku „%1$@” w wierszu %2$lld nie można zapisać w kodowaniu pliku (%3$@). Dirnex zachowuje plik w kodowaniu, w którym go wczytano."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@” na linha %2$lld não pode ser gravado em %3$@, a codificação do arquivo. O Dirnex salva um arquivo na codificação em que ele foi lido."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Символ «%1$@» в строке %2$lld нельзя записать в кодировке файла (%3$@). Dirnex сохраняет файл в той кодировке, в которой его прочитал."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Символ «%1$@» у рядку %2$lld не можна записати в кодуванні файлу (%3$@). Dirnex зберігає файл у тому кодуванні, у якому його прочитав."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第 %2$lld 行的“%1$@”无法以文件的编码 %3$@ 写入。Dirnex 会以读取文件时的编码存储文件。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第 %2$lld 行的「%1$@」無法以檔案的編碼 %3$@ 寫入。Dirnex 會以讀取檔案時的編碼儲存檔案。"
           }
         }
       }

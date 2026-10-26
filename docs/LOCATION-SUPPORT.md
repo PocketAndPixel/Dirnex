@@ -580,6 +580,7 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | Show in Finder | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes |
 | Send to a **Service** | yes | yes | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | n/a | **no**<sup>zz</sup> | yes | yes |
 | Compare By Contents (`⌥F3`) | yes | yes | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | n/a | yes, limited<sup>w</sup> | yes | yes |
+| In the compare window: copy a change across (`⌥⌘←` `⌥⌘→`), save (`⌘S`), and edit a side in your own editor<sup>vvv</sup> | yes | yes | yes, limited<sup>v</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | yes | yes |
 | Synchronize Directories | yes | yes | **no**<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | n/a | yes, limited<sup>x</sup> | n/a<sup>x</sup> | n/a<sup>x</sup> |
 | Browse *into* an archive file | yes | yes | yes | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | n/a | n/a | yes | yes |
 
@@ -629,6 +630,32 @@ pair *is*: a folder has no contents to compare, and Dirnex's window compares tex
 64 MiB, refusing a binary or larger file by name (an external tool takes anything, and asks first past
 64 MiB). The Synchronize sheet's Compare Contents… brings its pair down the same way since M31
 Slice 4; it used to hand a server pair's own paths to the diff tool.
+
+<sup>vvv</sup> The window edits **lines**, never keystrokes (PLAN.md §M33): a copy replaces one change's
+lines on one side with the other side's, and ⌘Z walks every copy back. A side is saved as it was
+read: the same encoding, the same byte-order mark, and each unchanged line with its own ending, while
+copied lines take the ending most common in their file. A file whose unedited bytes would not come
+back identical opens read-only, and the banner says so. Where the save lands depends on where the
+file lives.
+- **A file on this disk**, a cloud mount's included, is written in place through a coordinated
+  write, so it keeps its inode, a second hard link, its mode, owner, ACL, tags, other extended
+  attributes and creation date, and an editor holding it open shows the new lines. If the file's
+  size or modification date moved since it was read, the window asks before writing, and ⌘Z in a
+  pane puts the old bytes back.
+- **A server file or an archive member** is saved into the copy the window read and handed to F4's
+  own write-back: the server is checked against the revision that copy was downloaded at, a changed
+  file gets the write-back's question, and the upload is a queued job. An archive member gets the
+  archive's question and one repack, undone as any repack is (▸ <sup>qq</sup>). The window adds no
+  undo of its own to either, since an upload has none.
+- **A member of a nested archive or a self-extractor, and an iCloud Photos original** have nowhere to
+  be written back, so they open read-only, as they are for F4.
+
+Edit Left and Edit Right hand a side to the user's editor the way F4 does — a server or archive copy
+registered, so its save is offered back — and the window compares again whenever the file changes.
+The window that the copy-conflict dialog opens stays read-only, since its right-hand file is waiting
+on that dialog. Verified live on a local pair (PLAN.md §M33 Slices 2, 3 and 5), and on a zip member,
+a throwaway SFTP server and a public WebDAV folder (Slice 6). The server files' saves include the
+case the check exists for: a newer copy brought down by a preview while the window held an older one.
 
 <sup>x</sup> A side stopped having to be on this disk at PLAN.md §M25 Slice 5c, and what it gains is
 comparison by **size**, which is honest anywhere. Comparing by **timestamp** is withdrawn the moment
