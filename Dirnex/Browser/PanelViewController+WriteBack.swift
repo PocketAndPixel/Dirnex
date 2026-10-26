@@ -44,11 +44,14 @@ extension PanelViewController {
     /// Watch one copy for a save. A no-op for a row with nowhere to go back to, and for a copy
     /// already watched — opening a file with ⏎ and then running a script over it must leave one
     /// watcher on it rather than two questions on every save.
+    ///
+    /// A server file's copy also keeps a base, the bytes the edit starts from, so a save that finds
+    /// the server's copy changed can offer to merge the two (PLAN.md §M34 Slice 4).
     func watchForWriteBack(of entry: FileEntry, at url: URL) {
         guard let destination = editDestination(for: entry) else { return }
-        host?.editedFiles.watch(
-            EditedFile(destination: destination, temporaryURL: url, name: entry.name)
-        )
+        let edit = EditedFile(destination: destination, temporaryURL: url, name: entry.name)
+        host?.editedFiles.watch(edit)
+        host?.remoteFileCache.keepBase(for: edit)
     }
 
     /// The same over a whole set, pairing rows with copies **positionally**.

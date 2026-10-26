@@ -28,7 +28,9 @@ struct MergeRig {
         yours: Data = Data(MergeRig.yours.utf8),
         theirs: Data = Data(MergeRig.theirs.utf8),
         target: Data? = nil,
-        store: ArchiveUndoStore? = nil
+        store: ArchiveUndoStore? = nil,
+        carry: (@MainActor (NSWindow?) async -> Void)? = nil,
+        closed: @escaping @MainActor () -> Void = {}
     ) throws {
         directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("dirnex-merge-\(UUID().uuidString)", isDirectory: true)
@@ -50,7 +52,9 @@ struct MergeRig {
             input: input,
             saving: MergeSaving(
                 undo: { ArchiveUndoStorage.Request(store: store, live: []) },
-                journal: { journal.records.append($0) }
+                journal: { journal.records.append($0) },
+                carry: carry,
+                closed: closed
             )
         )
         let merge = TextMerge(

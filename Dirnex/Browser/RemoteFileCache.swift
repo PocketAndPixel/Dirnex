@@ -42,6 +42,11 @@ final class RemoteFileCache {
     /// into `/var`, so a caller that resolved the path still finds its copy.
     private var revisions: [URL: RemoteFileRevision] = [:]
 
+    /// What each copy's own bytes are known to be against the server's, and the base kept for a
+    /// merge of its edit (`+Bases`, PLAN.md §M34 Slice 4). By copy, as ``revisions`` is, and moved
+    /// with it: a base stands for the revision its copy is checked against, or for nothing.
+    var copyBases: [URL: CopyBase] = [:]
+
     /// How large a file this window's previews may fetch unasked on each connection beyond the
     /// Settings limit, because the user has already agreed to one about that size
     /// (`RemotePreviewAllowance`).
@@ -125,11 +130,12 @@ final class RemoteFileCache {
     /// ``cachedURL(for:)`` judges a copy by its record.
     func forget(copy url: URL) {
         revisions[url.standardizedFileURL] = nil
+        dropBase(ofCopy: url)
     }
 
     /// Stop handing out the newest copy of `path`, without deleting it — the file may still be open
     /// in an editor, and its record stays for the save that editor may make.
-    private func drop(_ path: VFSPath) {
+    func drop(_ path: VFSPath) {
         fetched[path] = nil
     }
 
@@ -137,8 +143,19 @@ final class RemoteFileCache {
     /// leaves behind, since the editor still holds that same file and a second save must be compared
     /// against what *we* just wrote rather than against what was there before. Another copy of the
     /// same path keeps its own record, so its save is checked against this upload too.
-    func rebaseline(_ path: VFSPath, to revision: RemoteFileRevision, url: URL) {
+    ///
+    /// `sent` is the duplicate the upload sent, which becomes the copy's base. Without one, nothing
+    /// says what the server now holds byte for byte, so the copy keeps no base.
+    func rebaseline(_ path: VFSPath, to revision: RemoteFileRevision, url: URL, sent: URL? = nil) {
         record(path, url: url, revision: revision)
+        replaceBase(ofCopy: url, with: sent)
+    }
+
+    /// Record that the copy at `url` now stands for `revision` without becoming the newest copy of
+    /// its path: a merge with the server's version at that revision was written into it (PLAN.md
+    /// §M34 Slice 4), so its bytes are the merge's and not the server's.
+    func rebase(copy url: URL, onto revision: RemoteFileRevision) {
+        revisions[url.standardizedFileURL] = revision
     }
 
     /// Take in the copies a queued `.materialize` job landed (PLAN.md §M24 Slice 2).
@@ -158,11 +175,9 @@ final class RemoteFileCache {
         // The other half is size: a staged tree can be gigabytes, and this cache holds what it is
         // given for the life of the window (PLAN.md §4 ▸ *Smaller than a milestone*).
         for file in files where !file.isDirectory {
-            record(
-                file.source,
-                url: URL(fileURLWithPath: file.localPath),
-                revision: file.revision
-            )
+            let url = URL(fileURLWithPath: file.localPath)
+            record(file.source, url: url, revision: file.revision)
+            noteServed(url)
         }
     }
 
@@ -216,6 +231,7 @@ final class RemoteFileCache {
         let file = try outcome.get()
         let url = URL(fileURLWithPath: file.localPath)
         record(file.source, url: url, revision: file.revision)
+        noteServed(url)
         return url
     }
 

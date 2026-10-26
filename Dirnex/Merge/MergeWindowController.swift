@@ -31,6 +31,13 @@ struct MergeInput: Sendable {
 struct MergeSaving {
     let undo: @MainActor () -> ArchiveUndoStorage.Request
     let journal: @MainActor (UndoRecord) -> Void
+    /// Carries the result on once it is in the file, asking over the window given: the server
+    /// entry's upload (PLAN.md §M34 Slice 4). `nil` where a save ends at the file, as a working-tree
+    /// file's does. The save counts as done before it runs, since the file it carries is the
+    /// editor's watched copy, whose next save is carried as F4's is.
+    var carry: (@MainActor (NSWindow?) async -> Void)?
+    /// Called once the window has closed.
+    var closed: @MainActor () -> Void = {}
 
     /// For a window whose saves keep no undo: a test's.
     static var none: MergeSaving {
@@ -321,5 +328,6 @@ final class MergeWindowController: NSWindowController, NSWindowDelegate {
         sync?.stop()
         edits.removeAllActions()
         Self.open.removeAll { $0 === self }
+        saving.closed()
     }
 }

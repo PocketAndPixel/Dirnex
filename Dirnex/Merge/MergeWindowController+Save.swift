@@ -8,7 +8,8 @@ import DirnexCore
 /// The result is written into the target as the compare window writes a side
 /// (`ComparedFileSave`): encoded in yours' encoding with yours' byte-order mark, checked against the
 /// file as it was read, kept in the undo store and written in place, inside a coordinated write.
-/// A save is refused while any conflict has no choice, so no conflict marker is ever written.
+/// A save is refused while any conflict has no choice, so no conflict marker is ever written. A
+/// server file's result then goes on up (`MergeSaving.carry`, Slice 4).
 extension MergeWindowController {
     /// Whether the result as it stands is not in the file: never saved, or chosen differently since.
     var hasUnsavedResult: Bool {
@@ -70,6 +71,7 @@ extension MergeWindowController {
                 self.target = saved.target
                 savedChoices = choices
                 if let record = saved.undo { saving.journal(record) }
+                await saving.carry?(window)
                 return true
             case .failure(.changedSinceRead):
                 guard await CompareWindowController.askToSaveAnyway(input.name, over: window) else {
@@ -101,9 +103,10 @@ extension MergeWindowController {
     // MARK: - Closing
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        guard hasUnsavedChoices else { return true }
-        // A second ⌘W or ⎋ while the question is up asks nothing more.
+        // A second ⌘W or ⎋ while a question is up asks nothing more, and a save carrying the
+        // result on to a server may still put one on this window.
         guard sender.attachedSheet == nil, !isSaving else { return false }
+        guard hasUnsavedChoices else { return true }
         Task { await closeAfterAsking() }
         return false
     }

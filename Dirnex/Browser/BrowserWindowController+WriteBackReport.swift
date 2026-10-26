@@ -158,26 +158,34 @@ extension BrowserWindowController {
         over host: NSWindow?
     ) async -> Set<VFSPath> {
         let items = refused.map(\.item)
+        let kind = Self.conflictKind(of: refused)
+        let answers = Self.uploadAnywayAnswers(for: items, kind: kind)
         let alert = NSAlert()
         alert.messageText = Self.writeBackPromptTitle(contested: items, total: items.count)
-        alert.informativeText = Self.uploadAnywayBody(Self.conflictKind(of: refused))
-        alert.addButton(withTitle: String(
-            localized: "Upload Anyway",
-            comment: """
-            Button that uploads an edited file over the server's copy after the server refused the \
-            guarded upload.
-            """
-        ))
-        alert.addButton(withTitle: String(
-            localized: "Keep Editing",
-            comment: """
-            Button that declines uploading an edited file, leaving the editor open so the user can \
-            save again later.
-            """
-        ))
-        alert.enableEscapeToCancel(safe: .alertSecondButtonReturn)
+        let body = Self.uploadAnywayBody(kind)
+        alert.informativeText = answers.contains(.merge) ? Self.mergeOfferBody(body) : body
+        for answer in answers {
+            alert.addButton(withTitle: answer == .all
+                ? String(
+                    localized: "Upload Anyway",
+                    comment: """
+                    Button that uploads an edited file over the server's copy after the server \
+                    refused the guarded upload.
+                    """
+                )
+                : Self.buttonTitle(for: answer, files: items.count))
+        }
+        alert.enableEscapeToCancel(safe: Self.response(for: .none, in: answers))
         let response = await alert.sheetAnswer(over: host ?? window, whenUnasked: .cancel)
-        guard response == .alertFirstButtonReturn else { return [] }
+        switch Self.answer(for: response, among: answers) {
+        case .merge:
+            await mergeWriteBack(items[0], over: host)
+            return []
+        case .all:
+            break
+        case .clean, .none:
+            return []
+        }
         // Unconditional, and through the ordinary batch path so it gets the same bar and Stop.
         let retry = items.map {
             CheckedWriteBack(
@@ -189,6 +197,17 @@ extension BrowserWindowController {
             )
         }
         return await uploadWriteBacks(retry, over: host)
+    }
+
+    /// The offer's buttons in the order it draws them: Upload Anyway and Keep Editing, with Merge…
+    /// first for a refused save of one changed file whose base is still kept. The server wrote
+    /// nothing, so `finishWriteBacks` kept the copy's record and base (PLAN.md §M34 Slice 4).
+    static func uploadAnywayAnswers(
+        for items: [CheckedWriteBack],
+        kind: RemoteWriteBackConflict
+    ) -> [WriteBackAnswer] {
+        let offersMerge = items.count == 1 && kind == .changed && items[0].mergeBase != nil
+        return (offersMerge ? [.merge] : []) + [.all, .none]
     }
 
     /// Which refusal to word the offer for.

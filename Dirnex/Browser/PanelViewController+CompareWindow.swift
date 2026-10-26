@@ -40,7 +40,10 @@ extension PanelViewController {
                 return await browser.writeBack(edit, askingOver: window)
             },
             openInEditor: { url, done in ExternalTextEditorLauncher.edit(url, completion: done) },
-            watchCopy: { [weak self] edit in self?.compareBrowserWindow?.editedFiles.watch(edit) }
+            watchCopy: { [weak self] edit in
+                self?.compareBrowserWindow?.editedFiles.watch(edit)
+                self?.compareBrowserWindow?.remoteFileCache.keepBase(for: edit)
+            }
         )
     }
 

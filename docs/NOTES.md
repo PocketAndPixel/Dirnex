@@ -5374,6 +5374,12 @@ do not share a resolver, and neither half of that is obvious from either call si
     targets. The test that had pinned the old behaviour was pinning a fiction ("compatibility with a
     plain shell `ls -la`", output this parser is never handed), which is the tell worth keeping: a
     test named for a *hypothetical* caller is one to check against the real one before trusting it.
+- **A write-back's check cannot see a same-size write in the same minute over SFTP.** Its `stat` is
+  an `ls -la` row: a size and a minute, and no entity tag, so the upload is unconditional too. Seen
+  live 2026-10-27 (PLAN.md §M34 Slice 4): a server edit from "Goodbye" to "See you" in the minute of
+  Dirnex's own upload was overwritten by the next save with no question. The same edit at another
+  length was caught and offered Merge…. M21's doc comments already say an unchanged verdict over
+  SFTP or FTP is only an absence of evidence; this is the case that costs an edit.
 
 #### Writing a file: `put`, exclusive creates and offsets
 
