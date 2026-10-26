@@ -55,6 +55,17 @@ public struct LineDiff: Sendable, Equatable {
         _ right: [TextLine],
         options: LineDiffOptions = LineDiffOptions()
     ) -> LineDiff {
+        compare(left, right, options: options, placement: .readable)
+    }
+
+    /// Compare two sequences of lines, placing each block that could sit in more than one place
+    /// as `placement` says.
+    static func compare(
+        _ left: [TextLine],
+        _ right: [TextLine],
+        options: LineDiffOptions,
+        placement: ChangeSliding.Placement
+    ) -> LineDiff {
         var identities = LineIdentities(options: options)
         let leftIDs = left.map { identities.identity(of: $0) }
         let rightIDs = right.map { identities.identity(of: $0) }
@@ -88,7 +99,7 @@ public struct LineDiff: Sendable, Equatable {
         for (position, index) in rightKept.enumerated() {
             rightSide.changed[index] = kept.right[position]
         }
-        ChangeSliding.slide(&leftSide, &rightSide)
+        ChangeSliding.slide(&leftSide, &rightSide, placement: placement)
         return LineDiff(
             changes: blocks(leftSide.changed, rightSide.changed),
             leftLineCount: left.count,
