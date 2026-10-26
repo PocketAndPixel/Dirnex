@@ -93,6 +93,10 @@ extension BrowserWindowController {
         let checked = await checkWriteBacks(batch)
         guard !checked.isEmpty else { return [] }
         let answer = await writeBackAnswer(for: checked, over: host)
+        if answer == .merge, let item = checked.first {
+            await mergeWriteBack(item, over: host)
+            return []
+        }
         let chosen = WriteBackBatchPlan.items(for: answer, from: checked)
         guard !chosen.isEmpty else { return [] }
         return await uploadWriteBacks(chosen, over: host)
@@ -121,17 +125,20 @@ extension BrowserWindowController {
         let recorded = batch.map { Self.recordedRevision(of: $0, in: remoteFileCache) }
         let destinations = batch.map(\.destination)
         let localPaths = batch.map(\.edit.temporaryURL.path)
-        let current: [RemoteFileRevision?] = await BlockingWork.run {
-            destinations.map { destination in
-                (try? backend.stat(at: destination)).map(RemoteFileRevision.init)
-            }
+        let found: [FileEntry?] = await BlockingWork.run {
+            destinations.map { destination in try? backend.stat(at: destination) }
         }
+        let current = found.map { $0.map(RemoteFileRevision.init) }
         let sizes: [Int64] = await BlockingWork.run {
             localPaths.map { path in
                 let attributes = try? FileManager.default.attributesOfItem(atPath: path)
                 return (attributes?[.size] as? NSNumber)?.int64Value ?? 0
             }
         }
+        // Merge… is offered for a save of one file: a batch's one question is about a set.
+        let mergeBase = batch.count == 1
+            ? await mergeBase(for: batch[0], recorded: recorded[0], current: found[0])
+            : nil
         return zip(batch.indices, batch).map { index, pending in
             CheckedWriteBack(
                 edit: pending.edit,
@@ -140,7 +147,8 @@ extension BrowserWindowController {
                     recorded: recorded[index], current: current[index]
                 ),
                 condition: Self.writeCondition(checked: current[index]),
-                byteSize: sizes[index]
+                byteSize: sizes[index],
+                mergeBase: mergeBase
             )
         }
     }
@@ -182,55 +190,97 @@ extension BrowserWindowController {
         over host: NSWindow?
     ) async -> WriteBackAnswer {
         let contested = checked.filter(\.hasConcern)
+        // Skip is offered only when there is a clean remainder to upload: with every file contested
+        // it would be a button that does exactly what Cancel does, under a name that says otherwise.
+        let offersSkip = contested.count < checked.count
+        let offersMerge = checked.count == 1 && checked[0].mergeBase != nil
         let alert = NSAlert()
         alert.messageText = Self.writeBackPromptTitle(contested: contested, total: checked.count)
-        alert.informativeText = Self.writeBackPromptBody(contested: contested, total: checked.count)
-        alert.addButton(withTitle: String(
-            localized: "Upload All",
-            comment: "Button that uploads every edited file in a batch, contested ones included."
-        ))
-        // Offered only when there is a clean remainder to upload: with every file contested it
-        // would be a button that does exactly what Cancel does, under a name that says otherwise.
-        let offersSkip = contested.count < checked.count
-        if offersSkip {
-            alert.addButton(withTitle: String(
-                localized: "Skip Changed Files",
-                comment: """
-                Button that uploads only the edited files nobody else has touched, leaving the rest \
-                for the user to look at.
-                """
-            ))
+        let body = Self.writeBackPromptBody(contested: contested, total: checked.count)
+        alert.informativeText = offersMerge ? Self.mergeOfferBody(body) : body
+        let answers = Self.promptAnswers(offersSkip: offersSkip, offersMerge: offersMerge)
+        for answer in answers {
+            alert.addButton(withTitle: Self.buttonTitle(for: answer, files: checked.count))
         }
-        alert.addButton(withTitle: String(
-            localized: "Keep Editing",
-            comment: """
-            Button that declines uploading an edited file, leaving the editor open so the user can \
-            save again later.
-            """
-        ))
         // `NSAlert` binds Escape by matching the byte string "Cancel", which none of these is — so
         // the response, not the title, is what says which one ⎋ means (docs/NOTES.md).
-        alert.enableEscapeToCancel(
-            safe: offersSkip ? .alertThirdButtonReturn : .alertSecondButtonReturn
-        )
+        alert.enableEscapeToCancel(safe: Self.response(for: .none, in: answers))
 
         // The watcher raised this, not the user, so a window that has gone away has nobody to ask
         // — and the answer to a question nobody was put is to upload nothing, which leaves every
         // copy watched and asks again on the next save (`sheetAnswer`).
         let response = await alert.sheetAnswer(over: host ?? window, whenUnasked: .cancel)
-        return Self.answer(for: response, offersSkip: offersSkip)
+        return Self.answer(for: response, offersSkip: offersSkip, offersMerge: offersMerge)
+    }
+
+    /// The prompt's buttons in the order it draws them. Merge… comes first where it is offered, so
+    /// Return takes the one answer that loses nobody's edit; Keep Editing is always last.
+    static func promptAnswers(offersSkip: Bool, offersMerge: Bool) -> [WriteBackAnswer] {
+        (offersMerge ? [.merge] : []) + [.all] + (offersSkip ? [.clean] : []) + [.none]
     }
 
     /// Which answer a response means. `static` and pure: the mapping is the part worth pinning, and
     /// it changes shape with the button count, which is exactly where an off-by-one lives.
     static func answer(
         for response: NSApplication.ModalResponse,
-        offersSkip: Bool
+        offersSkip: Bool,
+        offersMerge: Bool = false
     ) -> WriteBackAnswer {
-        switch response {
-        case .alertFirstButtonReturn: return .all
-        case .alertSecondButtonReturn: return offersSkip ? .clean : .none
-        default: return .none
+        answer(for: response, among: promptAnswers(offersSkip: offersSkip, offersMerge: offersMerge))
+    }
+
+    /// Which of `answers`, drawn as buttons in that order, a response means. Anything else is
+    /// Keep Editing's: a sheet nobody answered uploads nothing.
+    static func answer(
+        for response: NSApplication.ModalResponse,
+        among answers: [WriteBackAnswer]
+    ) -> WriteBackAnswer {
+        let index = response.rawValue - NSApplication.ModalResponse.alertFirstButtonReturn.rawValue
+        return answers.indices.contains(index) ? answers[index] : .none
+    }
+
+    /// The response the button for `answer` gives, in a prompt drawing `answers`.
+    static func response(
+        for answer: WriteBackAnswer,
+        in answers: [WriteBackAnswer]
+    ) -> NSApplication.ModalResponse {
+        let index = answers.firstIndex(of: answer) ?? answers.count - 1
+        return NSApplication.ModalResponse(
+            NSApplication.ModalResponse.alertFirstButtonReturn.rawValue + index
+        )
+    }
+
+    /// Each answer's button, in a prompt about `files` files. One file is uploaded, not all of it.
+    static func buttonTitle(for answer: WriteBackAnswer, files: Int) -> String {
+        switch answer {
+        case .merge:
+            mergeButtonTitle
+        case .all where files == 1:
+            String(
+                localized: "Upload",
+                comment: "Button that uploads an edited file back to the server it came from."
+            )
+        case .all:
+            String(
+                localized: "Upload All",
+                comment: "Button that uploads every edited file in a batch, contested ones included."
+            )
+        case .clean:
+            String(
+                localized: "Skip Changed Files",
+                comment: """
+                Button that uploads only the edited files nobody else has touched, leaving the rest \
+                for the user to look at.
+                """
+            )
+        case .none:
+            String(
+                localized: "Keep Editing",
+                comment: """
+                Button that declines uploading an edited file, leaving the editor open so the user \
+                can save again later.
+                """
+            )
         }
     }
 
@@ -243,6 +293,7 @@ extension BrowserWindowController {
     /// through it (`+WriteBackReport`), which is what keeps an unconditional second attempt on the
     /// same bar and the same Stop as the first — and Swift's `private` does not cross files.
     func uploadWriteBacks(_ chosen: [CheckedWriteBack], over host: NSWindow?) async -> Set<VFSPath> {
+        let chosen = await withSentDuplicates(chosen)
         let job = WriteBackBatchPlan.job(for: chosen)
         // Any of the destinations would do — the queue reads it only to decide which volume this
         // job stresses, and a batch spanning two accounts is one job either way.
@@ -300,7 +351,7 @@ extension BrowserWindowController {
             // here. What must move is the revision the next check compares against — leaving the
             // pre-upload one would have our own write read back as "someone else has edited it",
             // which is the one sentence that must never be wrong.
-            await rebaselineWriteBack(item.destination, to: item.edit.temporaryURL, using: backend)
+            await rebaselineWriteBack(item, using: backend)
         }
         // An item that was **chosen and not claimed** is one whose remote state nobody knows: a
         // stopped batch can leave a file whose bytes had already gone up, or a truncated one, and
@@ -308,7 +359,15 @@ extension BrowserWindowController {
         // Dropping its recorded revision is what makes the next save say *"Dirnex has no record of
         // what this file looked like"*, which is true, instead of *"someone else has edited it"*,
         // which is a confident answer about our own interrupted write.
+        //
+        // Except where the server refused the precondition: it wrote nothing, so the record and the
+        // base still say what the copy came from, and Merge… can be offered (PLAN.md §M34 Slice 4).
+        let refused = Set(report.failures.compactMap { failure in
+            Self.writeBackConflict(from: failure.error) == nil ? nil : failure.path
+        })
         for item in chosen where !landed.contains(item.destination) {
+            if let sent = item.sent { remoteFileCache.baseStore.discard(sent) }
+            guard !refused.contains(item.destination) else { continue }
             remoteFileCache.forget(copy: item.edit.temporaryURL)
         }
         for directory in Set(landed.compactMap(\.parent)) {
@@ -318,22 +377,36 @@ extension BrowserWindowController {
         return landed.union(retried)
     }
 
-    /// Re-read what the server now holds and record it as the copy's revision.
+    /// Re-read what the server now holds and record it as the copy's revision, with the duplicate
+    /// the upload sent as its base.
     ///
     /// A failed read forgets the copy's record instead of keeping the stale one: with nothing
     /// recorded the next save says plainly that it cannot tell, which is true, where a stale
     /// revision would say something false with confidence.
-    private func rebaselineWriteBack(
-        _ path: VFSPath,
-        to url: URL,
-        using backend: any VFSBackend
-    ) async {
+    private func rebaselineWriteBack(_ item: CheckedWriteBack, using backend: any VFSBackend) async {
+        let path = item.destination
+        let url = item.edit.temporaryURL
         let uploaded = await BlockingWork.run { try? backend.stat(at: path) }
         guard let uploaded else {
             remoteFileCache.forget(copy: url)
+            if let sent = item.sent { remoteFileCache.baseStore.discard(sent) }
             return
         }
-        remoteFileCache.rebaseline(path, to: RemoteFileRevision(uploaded), url: url)
+        remoteFileCache.rebaseline(path, to: RemoteFileRevision(uploaded), url: url, sent: item.sent)
+    }
+
+    /// `chosen`, each carrying a duplicate of its copy taken now for the upload to send. Off the
+    /// main thread, since a copy that cannot be cloned is copied. An item whose duplicate could not
+    /// be taken sends the copy itself, and keeps no base once it lands.
+    private func withSentDuplicates(_ chosen: [CheckedWriteBack]) async -> [CheckedWriteBack] {
+        let store = remoteFileCache.baseStore
+        let copies = chosen.map(\.edit.temporaryURL)
+        let sent = await BlockingWork.run { copies.map { store.keep($0) } }
+        return zip(chosen, sent).map { item, duplicate in
+            var item = item
+            item.sent = duplicate
+            return item
+        }
     }
 
     /// Re-list any pane drawing `directory`, so the size and date it shows are the ones just

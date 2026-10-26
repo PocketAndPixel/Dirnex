@@ -585,6 +585,7 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | Send to a **Service** | yes | yes | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | n/a | **no**<sup>zz</sup> | yes | yes |
 | Compare By Contents (`⌥F3`) | yes | yes | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | n/a | yes, limited<sup>w</sup> | yes | yes |
 | In the compare window: copy a change across (`⌥⌘←` `⌥⌘→`), save (`⌘S`), and edit a side in your own editor<sup>vvv</sup> | yes | yes | yes, limited<sup>v</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | yes | yes |
+| Merge a file the server changed under an `F4` edit (Merge… in the save's question)<sup>www</sup> | n/a | n/a | no<sup>www</sup> | yes, limited<sup>www</sup> | yes, limited<sup>www</sup> | yes | yes | n/a | no<sup>jjj</sup> | yes | n/a |
 | Synchronize Directories | yes | yes | **no**<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | n/a | yes, limited<sup>x</sup> | n/a<sup>x</sup> | n/a<sup>x</sup> |
 | Browse *into* an archive file | yes | yes | yes | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | n/a | n/a | yes | yes |
 
@@ -660,6 +661,17 @@ The window that the copy-conflict dialog opens stays read-only, since its right-
 on that dialog. Verified live on a local pair (PLAN.md §M33 Slices 2, 3 and 5), and on a zip member,
 a throwaway SFTP server and a public WebDAV folder (Slice 6). The server files' saves include the
 case the check exists for: a newer copy brought down by a preview while the window held an older one.
+
+<sup>www</sup> When F4's save finds the file changed on the server, the question offers **Merge…**
+first (PLAN.md §M34 Slice 4): the server's version comes down and opens in the merge window beside the
+edit and the version the edit started from, kept when the edit began and replaced by the bytes each
+upload sends. The result is saved into the editor's copy and uploaded, checked against the version
+merged, so a write meanwhile asks again. It is offered for a save of one file whose three versions
+are text within 64 MiB, and not inside an archive, where no base is kept. **SFTP and FTP are
+limited by the check, not the merge:** with no entity tag, a change is seen only by its size and its
+listed time, minute-resolution over SFTP and coarser over FTP, so a same-size write in the minute of
+the last upload goes unseen and is overwritten (docs/NOTES.md ▸ sftp). WebDAV and S3 compare entity
+tags and condition the upload on one. Verified live over SFTP; WebDAV is Slice 6's.
 
 <sup>x</sup> A side stopped having to be on this disk at PLAN.md §M25 Slice 5c, and what it gains is
 comparison by **size**, which is honest anywhere. Comparing by **timestamp** is withdrawn the moment

@@ -407,6 +407,9 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   - **A segment of a momentary `NSSegmentedControl` answers the same way with no sheet at all.** Seen
     2026-10-22 pressing the compare window's Swap Sides by element index: `AXError: failure`, and the
     window had swapped exactly once. A second press would have swapped it back.
+  - **So does a button whose action awaits an upload.** Seen 2026-10-27 on the merge window's Save
+    for a server file: `AXError: failure` all three times, and each time the result was in the copy
+    and on the server. Read the file before pressing again.
   - **An alert's button can be refused as "Nothing was done" after it was pressed.** Seen 2026-10-23
     on the WebDAV trust alert: `app_click` by element index on Trust & Connect answered that the
     element "no longer names what is at its position", and the pane was already connected. The

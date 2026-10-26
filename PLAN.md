@@ -742,7 +742,8 @@ finding above.
     neither did Python's `zipfile.getinfo("inner.txt")`. It held for F8, paste, rename and F4's
     save-back alike, from M4 on. Fixed in the entry below.
   - **A write-back question about one file offers Upload All**, the batch's button
-    (`BrowserWindowController+WriteBackBatch`), under a title naming the one file. Not fixed.
+    (`BrowserWindowController+WriteBackBatch`), under a title naming the one file. Fixed in M34
+    Slice 4.
 
 **2026-10-26: archive rewrites keep their members' names** (core, then app). Closes Slice 6's first
 finding above.
@@ -1112,6 +1113,70 @@ an edit; **being git's merge tool**, which needs a command-line entry point Dirn
   - The defaults domain was restored and compared unchanged.
   - **Not seen live:** the keys, which the tests drive through `handleKey` (the monitor is the
     compare window's, seen live in M33 Slice 2), and the light appearance.
+
+**2026-10-27: Slice 4 landed** (core, then app). A server file changed under an F4 edit can be
+merged instead of overwritten.
+
+- **Decided with Oleg before writing it:** Merge… is the prompt's first button, so Return takes it,
+  and Keep Editing stays last and takes ⎋. The merge window counts a server file saved once the result
+  is in the editor's copy. The upload is then that copy's ordinary write-back, with its own check,
+  question and report.
+- **Core:** `EditBaseStore` duplicates a file into a folder of its own under its root, an APFS clone
+  where it can, keeping the modification time, and removes only what it made.
+- **App:**
+  - **The base** (`RemoteFileCache+Bases`). For each copy the cache keeps the copy's own revision
+    when it last held the server's bytes, and a base. The base is taken when an edit's watch starts
+    on a copy nothing has written since its download: F4, ⏎, a user script, the compare window's
+    Edit. It lives in `DirnexRemote/Bases`, which the launch purge clears and no watch watches. An
+    archive member keeps none.
+  - **Every upload sends a duplicate taken as it is queued**, and once that lands it is the copy's
+    base, so the base is what the server holds to the byte whatever the editor wrote meanwhile. A
+    record forgotten after an upload of unknown outcome takes its base with it. A refused
+    precondition no longer forgets the record, since the server wrote nothing.
+  - **Merge… is offered** for a save of one file when the check found the server's copy changed, a
+    base is kept, the server's size is within the window's 64 MiB, and the base and the copy read as
+    text. It is offered again after a refused precondition on one changed file. Nothing is fetched to
+    decide.
+  - **Merge…** reads the file's size afresh and brings the server's version down through the
+    download funnel, unweighed, since the window's limit is the edit row's threshold. A held copy
+    something has written is passed over. The window reads a duplicate of the download. One merge
+    window per copy: one with choices not saved comes forward instead, and one already saved closes.
+  - **The window's save** writes the result into the editor's copy, coordinated so TextEdit
+    refreshes. The first save then makes the server's version the copy's base and its revision what
+    the next save is checked against, and every save carries the copy up through
+    `writeBack(_:askingOver:)`. A server unchanged since uploads, its precondition read off that
+    revision; a write since asks again, Merge… included. The window will not close while the upload
+    may still ask. `MergeSaving` gains `carry` and `closed`, and a window closed without a save
+    removes the server's version kept for it.
+- **Fixed on the way:** a write-back question about one file said Upload All (M33 Slice 6's finding).
+  It says Upload, a catalog key already translated with this meaning and unused since the batch.
+- **[docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md):** a row for the merge, with footnote www on
+  what limits it over SFTP and FTP.
+- **Tests:** 4 in the core (`EditBaseStoreTests`) and 17 in three app suites:
+  `RemoteWriteBackBaseTests` (6), `RemoteWriteBackMergeOfferTests` (8) and `MergeServerSaveTests`
+  (3). Full runs: 4 597 core and 2 033 app tests. One run before the last two tests were added had
+  the live server suites up, and they ran, the save-back batch and WebDAV ones included.
+- **Negative controls**, each failing its own test: a base kept from a written copy; an upload's
+  duplicate not made the base; a forgotten record keeping its base; a merge making the copy its
+  path's newest; Merge… offered with nothing changed; a written held copy read as the server's
+  version; the carry run before the window counts the save; the window closing while it carries. The
+  store discarding outside its root failed the core test.
+- **Seen live** in the Debug build against the throwaway SFTP server, on a seeded key tab, driven by
+  background computer-use. A shell write to the copy stood in for TextEdit's save.
+  - F4 kept the base beside the copy, byte for byte. A server edit and a copy edit raised the prompt
+    with Merge… first and Upload second. The window showed theirs' change merged and the two touching
+    edits as one conflict. Take Yours and Save put both edits on the server, the copy matched, and the
+    one base left was the uploaded bytes.
+  - A third write while a second merge was open: Save wrote the copy, the check found the server
+    changed and asked over the merge window, and Merge… closed the saved window and opened one with
+    the third write. Its save landed all three. TextEdit showed the final text, unedited.
+  - The defaults domain was restored and compared unchanged, and the servers were stopped.
+- **Found on the way:** a same-size server edit in the minute of Dirnex's own upload was overwritten
+  by the next save with no question. An SFTP `stat` is a minute-resolution `ls -la` row with no entity
+  tag (docs/NOTES.md ▸ sftp). It is M21's check, not the merge's. Not fixed.
+- **Left for Slice 6:** WebDAV, whose precondition is an entity tag; the refused precondition's
+  Merge… live, which needs a write between the check and the PUT; and the 14 languages. A batch's
+  prompt offers no Merge…, by design.
 
 ### Still open
 
