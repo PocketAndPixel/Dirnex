@@ -30,9 +30,9 @@ struct ArchiveMultiAddTests {
         )
 
         // Both landed, each where it was told, and the untouched member survived.
-        #expect(try fixture.members().contains("./one.txt"))
-        #expect(try fixture.members().contains("./docs/deep.txt"))
-        #expect(try fixture.members().contains("./two.txt"))
+        #expect(try fixture.members().contains("one.txt"))
+        #expect(try fixture.members().contains("docs/deep.txt"))
+        #expect(try fixture.members().contains("two.txt"))
         #expect(try fixture.readBack("one.txt") == "edited one")
         #expect(try fixture.readBack("docs/deep.txt") == "edited deep")
         #expect(try fixture.readBack("two.txt") == "second")

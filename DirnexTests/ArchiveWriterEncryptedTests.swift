@@ -111,13 +111,12 @@ struct ArchiveWriterEncryptedTests {
 
         let inspection = try EncryptedArchiveReader.inspect(archiveAt: fixture.archive)
         #expect(!inspection.needsPassphrase)
-        // **The two routes spell their entry names differently, and that is pre-existing.** `bsdtar`
-        // packs `.` — so an archive it rewrites carries `./` and `./two.txt` — while the encrypted
-        // route enumerates the top level and writes bare names, the same shape the pack sheet
-        // produces. Asserted rather than normalized: both browse identically (the `./` form has
-        // shipped since archive writes did), so making them agree would be a change to the
-        // unencrypted path for the benefit of a test rather than a user.
-        #expect(inspection.entries.map(\.archivePath).sorted() == ["./", "./two.txt"])
+        // **Both routes give a bare-named archive its bare names back.** Until 2026-10-26 this
+        // asserted `["./", "./two.txt"]`: `bsdtar` packed `.`, and the difference was kept on the
+        // grounds that both spellings browse identically in Dirnex. They do, but `unzip -p` and
+        // Python's `zipfile` look a member up by its exact name, so to every other tool the rewrite
+        // had renamed it (``ArchiveNameForm``).
+        #expect(inspection.entries.map(\.archivePath).sorted() == ["two.txt"])
     }
 
     // MARK: - Failures leave the original alone

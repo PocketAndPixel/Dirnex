@@ -26,7 +26,7 @@ struct ArchiveUndoReachTests {
         let snapshot = try #require(try ArchiveWriter.delete(
             innerPaths: ["/one.txt"], fromArchiveAt: fixture.archive, undo: fixture.undo
         ))
-        #expect(try fixture.members() == ["./", "./two.txt"])
+        #expect(try fixture.members() == ["two.txt"])
 
         // Driven through a real journal rather than by inverting the record by hand, so the stack
         // shuffling `UndoController` relies on is exercised too.
@@ -38,16 +38,12 @@ struct ArchiveUndoReachTests {
         // Byte-identical, which a re-pack could never be: what is put back is the container the
         // user had, not one rebuilt from its contents.
         #expect(try fixture.archiveBytes() == before)
-        // Down to the member *spelling*, which is the sharpest witness available here: the fixture
-        // is packed by libarchive under bare names and `bsdtar` rewrites it under `./` ones (the
-        // pre-existing difference `ArchiveWriterEncryptedTests` pins), so an undo that rebuilt the
-        // archive rather than restoring it would come back with the rewrite's spelling.
         #expect(try fixture.members() == ["one.txt", "two.txt"])
 
         // And redo puts the rewrite back off the same one snapshot — nothing else was stored.
         let redone = try #require(journal.takeForRedo()?.fileOperation)
         #expect(UndoJournal.revert(redone, using: backend).succeeded)
-        #expect(try fixture.members() == ["./", "./two.txt"])
+        #expect(try fixture.members() == ["two.txt"])
         #expect(fixture.storeContents().count == 1)
     }
 
@@ -63,10 +59,10 @@ struct ArchiveUndoReachTests {
             ofArchiveAt: fixture.archive,
             undo: fixture.undo
         ))
-        #expect(try fixture.members().contains("./added.txt"))
+        #expect(try fixture.members().contains("added.txt"))
 
         #expect(UndoJournal.revert(try #require(snapshot.record()), using: backend).succeeded)
-        #expect(try !fixture.members().contains("./added.txt"))
+        #expect(try !fixture.members().contains("added.txt"))
     }
 
     @Test("an encrypted archive is undone through the same one step, and still opens")
@@ -113,7 +109,7 @@ struct ArchiveUndoReachTests {
             innerPaths: ["/one.txt"], fromArchiveAt: fixture.archive, undo: .none
         )
         #expect(snapshot == nil)
-        #expect(try fixture.members() == ["./", "./two.txt"])
+        #expect(try fixture.members() == ["two.txt"])
         #expect(fixture.storeContents().isEmpty)
     }
 
@@ -133,7 +129,7 @@ struct ArchiveUndoReachTests {
         // The rewrite still happens — the budget decides whether it can be *reversed*, never
         // whether it may run. The gesture's own sheet said which it would be before it started.
         #expect(snapshot == nil)
-        #expect(try fixture.members() == ["./", "./two.txt"])
+        #expect(try fixture.members() == ["two.txt"])
     }
 
     // MARK: - What the store is pruned against

@@ -735,15 +735,51 @@ finding above.
     question, all drawn whole.
   - The defaults domain was restored and compared unchanged. The run's undo copy was deleted,
     `known_hosts` was put back, and the servers were stopped.
-- **Found, not fixed (neither is M33's):**
-  - **Every archive rewrite renames the archive's members.** `ArchiveMutation.repackAllArguments`
-    packs `-C <dir> .`, so `inner.txt` comes back as `./inner.txt`, beside a new `./` entry. Dirnex
-    and `unzip -l` read it as before, but `unzip -p pair.zip inner.txt` no longer finds the file, and
-    neither does Python's `zipfile.getinfo("inner.txt")`. Packing the top-level names instead of `.`
-    keeps them plain (probed with `bsdtar` alone). This holds for F8, paste, rename and F4's
-    save-back alike, and has since M4.
+- **Found on the way (neither is M33's):**
+  - **Every archive rewrite renamed the archive's members.** `ArchiveMutation.repackAllArguments`
+    packed `-C <dir> .`, so `inner.txt` came back as `./inner.txt`, beside a new `./` entry. Dirnex
+    and `unzip -l` read it as before, but `unzip -p pair.zip inner.txt` no longer found the file, and
+    neither did Python's `zipfile.getinfo("inner.txt")`. It held for F8, paste, rename and F4's
+    save-back alike, from M4 on. Fixed in the entry below.
   - **A write-back question about one file offers Upload All**, the batch's button
-    (`BrowserWindowController+WriteBackBatch`), under a title naming the one file.
+    (`BrowserWindowController+WriteBackBatch`), under a title naming the one file. Not fixed.
+
+**2026-10-26: archive rewrites keep their members' names** (core, then app). Closes Slice 6's first
+finding above.
+
+- **Probed first** (docs/NOTES.md ▸ bsdtar), against bsdtar 3.5.3:
+  - `-s '|^\./||S' -s '|^\.$||S'` on the same `-C dir .` gave bare names in zip, jar, 7z, tar and
+    every compressed tar, dropped the root entry, left a symlink's `./` target alone, and rewrote a
+    hard link's target with its member. An emptied tree packed into an archive with no entries.
+  - Passing the tree's names instead fails on two of them: `@at.zip` is read as an archive to copy
+    from, and `-dash.txt` as an option.
+  - 160 archives on this Mac: 157 bare, one `./` throughout (Sparkle's release tarball), none mixed.
+    Two zips in `~/Downloads` carry the `./` root entry this repack left, likely earlier Dirnex
+    rewrites. They keep it, since a rewrite keeps whatever form it finds.
+- **Core:** `ArchiveNameForm` (`.bare`, `.dotSlash`) is a third property of `ArchiveRewriteFormat`,
+  read off the same header inspection as encryption and name privacy. It is `.dotSlash` only when
+  every name is spelled that way. `repackAllArguments` takes it and adds the two substitutions for
+  `.bare`. The encrypted route already wrote bare names, and still does whatever the form.
+- **Tests:** 5 new in the core (the `./` argv and four inference cases, beside the bare argv's
+  updated test) and a new app suite, `ArchiveRewriteNamesTests`, of 5 tests over 18 cases, against
+  archives `bsdtar` itself packs and reads back: bare names in
+  10 suffixes, the `./` form in zip, tar.gz and 7z, a hard link's target in two tars, `@` and `-`
+  names added, and an emptied archive. Four existing suites had pinned `./` as expected:
+  `ArchiveUndoReachTests`, `ArchiveMultiAddTests`, `ArchiveWriterEncryptedTests`, and
+  `ArchiveRenameTests`, whose helper stripped `./` before comparing and so could not see it. They now
+  assert the names as stored. Full runs: 4 548 core and 1 985 app tests, without the live server
+  suites, which this change does not touch.
+- **Negative controls:**
+  - With `.bare` given no substitutions, the old argv, every bare-name test failed across all
+    formats, and so did the four corrected suites. The `./` test still passed.
+  - With the form always inferred `.bare`, only the `./` test failed, in all three formats.
+- **Seen live** in the Debug build: a zip member saved back from the compare window left `pair.zip`
+  holding `inner.txt` and `sibling.txt` and nothing else. `unzip -p pair.zip inner.txt` printed the
+  copied line, and `zipfile` found the member. Edit ▸ Undo put the original back byte for byte. The
+  defaults domain was restored and compared unchanged, and the undo copy was deleted.
+- **Found, not fixed: `.tar.zst` needs an external `zstd`.** Apple's bsdtar runs one to read and
+  write, and with the system `PATH` both fail, so the new suite leaves `.tar.zst` out. A Dock-launched
+  Dirnex has that `PATH`, so it likely cannot open a `.tar.zst` without one. Not yet tried in the app.
 
 ### M34 — A three-way merge (M)
 
