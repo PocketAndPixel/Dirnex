@@ -705,6 +705,46 @@ finding above.
   at a full run's start, at 22–27 s even in the green run. They now get 60 s and passed at 40–56 s
   (docs/NOTES.md ▸ Testing).
 
+**2026-10-26: Slice 6 landed** (the catalog and the record; no code changed).
+
+- **Translations:** `scripts/check_localization_keys.py` named 26 strings from Slices 2–5 missing from
+  the catalog. They are now there in all 13 languages, with the comments the compiler extracted, and
+  the script reports all 1 191 keys present. Every new string sits in an alert, the wrapping banner,
+  a tooltip, or the pane's name label, which truncates in the middle and so keeps "— Edited" at its
+  end. No fixed-width control holds one.
+- **[docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md):** a row for copying, saving and editing in
+  the compare window, with footnote vvv on where each location's save lands.
+- **Seen live** in the Debug build against the throwaway servers. The panes were seeded with a
+  local folder, an SFTP tab with a key, a public WebDAV tab and a zip's folder, so nothing asked the
+  Keychain. Background computer-use drove it. ⌘S needs Dirnex in front, so each save went through
+  the close prompt's Save, which runs the same save:
+  - **SFTP:** copying `bravo` into a CRLF file landed on the server as `bravo\r\n`, with every other
+    byte as it was.
+  - **WebDAV:** Save and Edit uploaded first (one PUT). The byte-order mark stayed, and the editor
+    was handed the copy. A write to that copy, standing in for the editor's save, was uploaded by F4's
+    write-back, and the window read it in, unedited.
+  - **Zip member:** the archive's own question, then one repack. The member held the copied line and
+    the sibling's bytes were untouched. Edit ▸ Undo Change Archive put the archive back byte for
+    byte.
+  - **The stale copy, closed by the write-back fix above:** the window was open on a copy, the
+    server changed, and Quick View brought the newer version down as a second copy. The window's
+    save asked "someone else has edited it". Keep Editing left the server alone, and the close prompt
+    asked again. Upload All then wrote the window's lines. F4's own path asked the same, for an
+    edit saved 7 s after the newer copy had landed.
+  - **In Russian:** the copy and edit buttons, "— Изменено", the close prompt and Save and Edit's
+    question, all drawn whole.
+  - The defaults domain was restored and compared unchanged. The run's undo copy was deleted,
+    `known_hosts` was put back, and the servers were stopped.
+- **Found, not fixed (neither is M33's):**
+  - **Every archive rewrite renames the archive's members.** `ArchiveMutation.repackAllArguments`
+    packs `-C <dir> .`, so `inner.txt` comes back as `./inner.txt`, beside a new `./` entry. Dirnex
+    and `unzip -l` read it as before, but `unzip -p pair.zip inner.txt` no longer finds the file, and
+    neither does Python's `zipfile.getinfo("inner.txt")`. Packing the top-level names instead of `.`
+    keeps them plain (probed with `bsdtar` alone). This holds for F8, paste, rename and F4's
+    save-back alike, and has since M4.
+  - **A write-back question about one file offers Upload All**, the batch's button
+    (`BrowserWindowController+WriteBackBatch`), under a title naming the one file.
+
 ### M34 — A three-way merge (M)
 
 **Planned 2026-10-25.** A file manager has no common ancestor to merge from, except in two places
