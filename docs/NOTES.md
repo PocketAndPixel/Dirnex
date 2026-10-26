@@ -9190,6 +9190,12 @@ ships a third-party binary. All measured 2026-09-20 against two HERO7 files befo
   same lines in a conflict, say each deleted a different one of two equal lines, the trimming takes
   every line and git still writes the markers around the base. Seen in 5 of 9 114 history triples.
   `ThreeWayMerge` merges such a region instead (PLAN.md §M34).
+- **`--ours`, `--theirs` and `--union` settle every conflict instead of marking it, and `--union`
+  means "both, shared lines once" only beside `--zdiff3`.** With `--diff3` a union repeats the lines
+  both sides share at a conflict's edges, since nothing moved them out. A union also gives ours' last
+  line a line break when it has none and ends a conflict, even with nothing of theirs after it, and
+  that break is CRLF when `is_cr_needed` finds CRLF around the conflict. Probed 2026-10-26 for M34
+  Slice 2, whose result is held to all three.
 
 ## Release pipeline
 

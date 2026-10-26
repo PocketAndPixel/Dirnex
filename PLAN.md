@@ -991,7 +991,60 @@ an edit; **being git's merge tool**, which needs a command-line entry point Dirn
   - **Many `Process` runs with pipes from several threads failed with `EBADF`**, so the oracle
     writes git's output to a file (docs/NOTES.md ▸ Fixtures and shared state).
 - **Left for Slice 2:** Take Both can put a side's last line, one with no line break, ahead of the
-  other's. git adds a break there.
+  other's. git adds a break there. Closed in Slice 2.
+
+**2026-10-26: Slice 2 landed** (core only; the app is untouched).
+
+- **Core:**
+  - `TextMerge` holds the three documents, the merge, the result, a choice for each conflict, and
+    rows level across all four. The result starts as yours' document with every region merged
+    and nothing where a conflict is. So it keeps yours' encoding, byte-order mark and line endings,
+    and `result.isEdited` says whether a save would change yours' file.
+  - `Choice` is yours, theirs, or both in either order. `apply(_:)` makes one choice, or opens a
+    conflict again, as a `LineEdit` on the result, and returns the step that undoes it. Also
+    `isResolved`, `openConflictCount`, and `conflict(after:)`, `conflict(before:)` and
+    `conflict(containing:)`, which pass over chosen conflicts on request.
+  - `MergeRow` is a line or a gap in each of four columns, yours, result, theirs and base, with the
+    region it belongs to. `MergeRowLayout` lays each region out once. A region one side changed
+    pairs that side's lines with the base's, as the compare window pairs them, and a conflict pairs
+    yours with theirs and puts the base from its first row down. Only the result column follows
+    the choices.
+  - `ComparisonPaneText(lines:rows:)` builds a pane for any column on shared rows. Its `side` is
+    now `nil` for such a pane; the app's two panes read it as before.
+- **Tests:** 11 in three suites.
+  - `TextMergeTests` (9) pins the layouts, the pairing, each choice's result and rows, undo, the
+    break taking both adds, the result as yours' document, moving between conflicts, and the panes.
+  - `TextMergePropertyTests` (1) makes up to 8 random choices on each of 2 000 random triples. After
+    every step, each column shows each of its lines once and in order, each result line sits on the
+    row of the line it came from, and the result is what the regions and choices call for, built
+    without `TextMerge`. Undoing every step gives back the merge as it opened.
+  - `TextMergeGitTests` (1) takes every conflict one way over Slice 1's 678 triples, from git's own
+    comparisons, and compares the encoded result with `git merge-file --zdiff3` and `--ours`,
+    `--theirs` or `--union`: 1 990 results, byte for byte. 44 unions are passed over, where the two
+    rules for a break differ (below).
+  - Full run: 4 593 core tests. The app was compiled into a separate DerivedData folder, since
+    `ComparisonPaneText.side` became optional; the app suite was not run.
+- **Measured** in release, on Slice 1's largest triple (`Localizable.xcstrings`, 33 582 rows, 272
+  conflicts): opening took 0.121 s, a choice 0.001 s, and the four panes' text 0.137 s.
+- **Decided in the slice:**
+  - **An open conflict has no lines in the result**, and its rows show gaps there. `isResolved` is
+    what holds Save back, so no marker is ever written.
+  - **Lines are taken as their side has them, endings included**, as git takes them, so a clean
+    region from a CRLF theirs brings CRLF lines. M33's copy rule is the window's, not the merge's.
+  - **Taking both gives the first side's last line a break only when it has none and the second
+    side has lines**, and the break is yours' common ending. git's `--union` adds one even with
+    nothing after it, and makes it CRLF from the lines around the conflict (docs/NOTES.md ▸ git).
+  - **Both sides taken: the second side's lines go on the rows after the first's last**, adding rows
+    below the conflict when they run out.
+- **Negative controls:**
+  - With no break when taking both, or with a region's result count left stale, the run trapped in
+    `ComparedDocument.apply`'s precondition rather than writing a joined or misplaced line.
+  - With a reopened conflict holding yours' lines, or a step returning itself instead of its
+    inverse, the undo test and the property failed.
+  - With both sides' lines starting on the conflict's first row, the choices test and the property
+    failed.
+- **Not in the model:** the words that differ inside a row's lines, which the compare window marks.
+  Nothing in Slice 3's list needs them.
 
 ### Still open
 

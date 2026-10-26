@@ -17,6 +17,9 @@ import Foundation
 ///
 /// Copying goes the other way (`originalText(for:)`): a selection gives the file's own text, gaps
 /// give nothing, and each line ends as it did in the file.
+///
+/// A pane is any text's lines laid out on shared rows, so the merge window's panes, three or four
+/// of them, are built the same way (`init(lines:rows:)`, PLAN.md §M34 Slice 2).
 public struct ComparisonPaneText: Sendable {
     public enum Side: Sendable {
         case left
@@ -26,7 +29,8 @@ public struct ComparisonPaneText: Sendable {
     /// The longest line shown whole, in UTF-16 units: the same bound as `InlineDiff`'s.
     public static let maximumShownLength = InlineDiff.maximumLineLength
 
-    public let side: Side
+    /// The side of a two-way comparison this pane shows, or `nil` for a pane of the merge window.
+    public let side: Side?
     /// What the pane's text view holds: one line per row, each ending in `\n`, the last included.
     /// TextKit 2 gives an empty last line no paragraph of its own, so a gap at the end would
     /// otherwise have no line to be drawn on.
@@ -44,9 +48,22 @@ public struct ComparisonPaneText: Sendable {
     private let utf16Length: Int
 
     public init(_ comparison: TextComparison, side: Side) {
+        self.init(
+            lines: side == .left ? comparison.leftLines : comparison.rightLines,
+            lineOfRow: comparison.rows.map { side == .left ? $0.left : $0.right },
+            side: side
+        )
+    }
+
+    /// A pane showing `lines` on shared rows: `rows[n]` is the line row `n` shows, `nil` for a gap.
+    public init(lines: [TextLine], rows: [Int?]) {
+        self.init(lines: lines, lineOfRow: rows, side: nil)
+    }
+
+    private init(lines: [TextLine], lineOfRow: [Int?], side: Side?) {
         self.side = side
-        lines = side == .left ? comparison.leftLines : comparison.rightLines
-        lineOfRow = comparison.rows.map { side == .left ? $0.left : $0.right }
+        self.lines = lines
+        self.lineOfRow = lineOfRow
         var text = ""
         var starts: [Int] = []
         starts.reserveCapacity(lineOfRow.count)
