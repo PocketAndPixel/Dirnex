@@ -144,12 +144,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         browserWindowController != nil
     }
 
-    /// Ask about a compare window's unsaved edits before quitting (PLAN.md §M33 Slice 3), as closing
-    /// that window does: quitting would drop them without a word.
+    /// Ask about a compare window's unsaved edits before quitting (PLAN.md §M33 Slice 3), and a
+    /// merge window's unsaved choices (PLAN.md §M34 Slice 3), as closing either window does:
+    /// quitting would drop them without a word.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard CompareWindowController.anyUnsaved else { return .terminateNow }
+        guard CompareWindowController.anyUnsaved || MergeWindowController.anyUnsaved else {
+            return .terminateNow
+        }
         Task { @MainActor in
-            sender.reply(toApplicationShouldTerminate: await CompareWindowController.confirmQuit())
+            var confirmed = await CompareWindowController.confirmQuit()
+            if confirmed { confirmed = await MergeWindowController.confirmQuit() }
+            sender.reply(toApplicationShouldTerminate: confirmed)
         }
         return .terminateLater
     }

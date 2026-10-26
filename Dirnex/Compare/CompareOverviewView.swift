@@ -84,8 +84,8 @@ final class CompareOverviewView: NSView {
         }
     }
 
-    /// One change kind per point of height, the strongest where changes share a point: a removal
-    /// and an insertion together are a change.
+    /// One change kind per point of height, the strongest where changes share a point
+    /// (`CompareChangeKind.combined(with:)`).
     static func buckets(
         height: Int,
         rowCount: Int,
@@ -101,11 +101,7 @@ final class CompareOverviewView: NSView {
             // At least two points tall, so a one-line change is still visible on a long file.
             let last = min(height - 1, max(first + 1, Int(Double(rows.upperBound) * scale)))
             for point in first...last {
-                if let existing = buckets[point], existing != kind {
-                    buckets[point] = .change
-                } else {
-                    buckets[point] = kind
-                }
+                buckets[point] = buckets[point].map { $0.combined(with: kind) } ?? kind
             }
         }
         return buckets

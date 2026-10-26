@@ -41,11 +41,22 @@ final class CompareTextView: NSTextView {
     }
 
     /// The rows at least partly visible.
+    ///
+    /// Below the last row there is no fragment, so a pane showing the end of its text is visible
+    /// down to the last row. Seen live 2026-10-26 in the merge window (PLAN.md §M34 Slice 3): taking
+    /// the first row instead left the bands marking no change below row 0, and the overview strip
+    /// outlining a sliver at its top, in any comparison shorter than the window. Further up a long
+    /// text it stays the first row, so the band never lays out every change below the screen.
     func visibleRows() -> ClosedRange<Int>? {
         guard let pane, let first = fragment(atY: visibleRect.minY) else { return nil }
-        let last = fragment(atY: visibleRect.maxY - 1) ?? first
         let firstRow = pane.row(containingUTF16Offset: offset(of: first))
-        let lastRow = pane.row(containingUTF16Offset: offset(of: last))
+        let lastRow = if let last = fragment(atY: visibleRect.maxY - 1) {
+            pane.row(containingUTF16Offset: offset(of: last))
+        } else if visibleRect.maxY >= bounds.maxY - 1 {
+            pane.rowStarts.count - 1
+        } else {
+            firstRow
+        }
         return firstRow...max(firstRow, lastRow)
     }
 

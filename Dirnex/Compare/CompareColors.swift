@@ -21,10 +21,22 @@ enum CompareColors {
     /// A gap: the side that has nothing opposite the other's line.
     static let gapRow = pair(light: 0xF2F2F2, dark: 0x2A2A2A)
 
+    /// The merge window's rows (PLAN.md §M34 Slice 3), from the same palette: GitHub's accent,
+    /// severe and success tints, the dark ones composited at 15 % onto `#1E1E1E` as above. A change
+    /// one side made, or both made alike, which merges on its own.
+    static let changedRow = pair(light: 0xDDF4FF, dark: 0x222E3F)
+    /// A conflict nobody has chosen for yet.
+    static let conflictRow = pair(light: 0xFFF1E5, dark: 0x3A2A1F)
+    /// A conflict with a choice.
+    static let resolvedRow = pair(light: 0xDAFBE1, dark: 0x203224)
+
     /// A change's mark in the band and the overview strip, by what the change does.
     static let removalMark = pair(light: 0xCF222E, dark: 0xF85149)
     static let insertionMark = pair(light: 0x1A7F37, dark: 0x3FB950)
     static let changeMark = pair(light: 0x0969DA, dark: 0x58A6FF)
+    /// The merge window's marks for an open conflict and a chosen one.
+    static let conflictMark = pair(light: 0xBC4C00, dark: 0xDB6D28)
+    static let resolvedMark = insertionMark
 
     /// A row's background in one pane, or `nil` for a row that is the same on both sides.
     static func rowFill(_ row: AlignedRowFill) -> NSColor? {
@@ -33,6 +45,9 @@ enum CompareColors {
         case .gap: gapRow
         case .removed: removedRow
         case .inserted: insertedRow
+        case .changed: changedRow
+        case .conflict: conflictRow
+        case .resolved: resolvedRow
         }
     }
 
@@ -41,6 +56,8 @@ enum CompareColors {
         case .removal: removalMark
         case .insertion: insertionMark
         case .change: changeMark
+        case .conflict: conflictMark
+        case .resolved: resolvedMark
         }
     }
 
@@ -68,6 +85,12 @@ enum AlignedRowFill: Equatable {
     case gap
     case removed
     case inserted
+    /// The merge window's (PLAN.md §M34 Slice 3): a line of a change that merges on its own.
+    case changed
+    /// A line of a conflict nobody has chosen for, or the result's gap where its lines will go.
+    case conflict
+    /// A line of a conflict with a choice.
+    case resolved
 }
 
 /// What a change does, for its mark in the band and the overview strip.
@@ -76,6 +99,19 @@ enum CompareChangeKind: Equatable {
     case removal
     /// Lines only the right side has.
     case insertion
-    /// Lines on both sides.
+    /// Lines on both sides; in the merge window, a change that merges on its own.
     case change
+    /// The merge window's conflict nobody has chosen for yet.
+    case conflict
+    /// The merge window's conflict with a choice.
+    case resolved
+
+    /// The one mark for two kinds that share a point of the overview strip: an open conflict over
+    /// anything, then a chosen one, and a removal beside an insertion is a change.
+    func combined(with other: CompareChangeKind) -> CompareChangeKind {
+        if self == other { return self }
+        if self == .conflict || other == .conflict { return .conflict }
+        if self == .resolved || other == .resolved { return .resolved }
+        return .change
+    }
 }

@@ -97,6 +97,11 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
     let banner = NSTextField(wrappingLabelWithString: "")
     let leftPane = ComparePaneView(side: .left)
     let rightPane = ComparePaneView(side: .right)
+    /// Each side's pane, left first.
+    var panes: [(side: ComparisonPaneText.Side, pane: ComparePaneView)] {
+        [(.left, leftPane), (.right, rightPane)]
+    }
+
     let band = CompareBandView()
     let overview = CompareOverviewView()
     /// Keeps the two panes level as either scrolls. Set once the views are built (`+Layout`).
@@ -216,26 +221,21 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
         showTitles(edited: (prepared.leftEdited, prepared.rightEdited))
         changeKinds = CompareTextStyle.changeKinds(comparison)
         currentChange = nil
-        leftPane.show(
-            prepared.left,
-            document: CompareTextStyle.document(
-                for: prepared.left,
-                rows: comparison.rows,
-                tokens: prepared.leftTokens
-            ),
-            rows: comparison.rows,
-            lineCount: comparison.leftLines.count
-        )
-        rightPane.show(
-            prepared.right,
-            document: CompareTextStyle.document(
-                for: prepared.right,
-                rows: comparison.rows,
-                tokens: prepared.rightTokens
-            ),
-            rows: comparison.rows,
-            lineCount: comparison.rightLines.count
-        )
+        let endingDiffers = comparison.rows.map(\.lineEndingsDiffer)
+        for (side, pane) in panes {
+            let text = side == .left ? prepared.left : prepared.right
+            pane.show(
+                text,
+                document: CompareTextStyle.document(
+                    for: text,
+                    rows: comparison.rows,
+                    tokens: side == .left ? prepared.leftTokens : prepared.rightTokens
+                ),
+                fills: CompareTextStyle.fills(for: side, rows: comparison.rows),
+                endingDiffers: endingDiffers,
+                lineCount: side == .left ? comparison.leftLines.count : comparison.rightLines.count
+            )
+        }
         band.changeRows = comparison.changeRows
         band.kinds = changeKinds
         band.current = nil

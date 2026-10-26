@@ -963,6 +963,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Runs and assertions that prove nothing
 
+- **A sheet gone is not its answer handled.** `endSheet` and a wait for `attachedSheet == nil`
+  return before the `async` function that asked has resumed, so whatever it does with the answer
+  happens after the test has looked. Met 2026-10-26 on M34's merge-window close prompt: a control
+  that swapped Cancel and Don't Save passed, because the close Cancel now made landed during the
+  test's next wait, where the count it was meant to fail was read as the second answer's. Start
+  the question in a `Task`, answer the sheet, `await` the task, then assert.
 - **Assert Objective-C selectors by name when a framework dispatches by selector.** Swift may
   import a delegate callback under a different Swift signature (Sparkle's choice callback comes
   in as `updater(_:userDidMake:forUpdate:state:)`, not `userDidMakeChoice:`). A drifted Swift
@@ -2756,6 +2762,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     from the layout manager delegate can paint a full-width background in `draw(at:in:)`, once its
     `renderingSurfaceBounds` are widened to cover it. A position computed as `row × height` drifts
     from the text it belongs to.
+  - **Below the last line there is no fragment, so `textLayoutFragment(for:)` answers `nil` there.**
+    A text shorter than its pane leaves the bottom of the view empty, and M31's `visibleRows()` read
+    that `nil` as "only the top row is visible". Seen live 2026-10-26 in M34's merge window: the
+    bands between the panes marked no change below row 0, and the overview strip outlined a sliver
+    at its top, in every comparison shorter than the window, the compare window's included. A pane
+    whose visible area reaches the bottom of the view is showing the end of its text, so it is
+    visible down to the last row. Further up a long text a missing fragment keeps meaning the top
+    row, or the band would lay out every change below the screen to draw nothing.
 - **A TextKit 2 view that sizes itself to its widest line lays out the whole document.** With
   `isHorizontallyResizable` on and an unbounded container, `layoutSubtreeIfNeeded` sat in
   `textContainerOrigin` → `ensureLayoutForRange` typesetting 100 000 lines, and was still at it
