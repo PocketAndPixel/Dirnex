@@ -18,7 +18,18 @@ import Foundation
 ///
 /// The scoring is Dirnex's own rather than git's indent heuristic, and it is held to git's choices
 /// by test cases probed from git and by a run over this repository's history.
+///
+/// A merge places its blocks without the scoring (`Placement.lowest`), because `git merge-file`
+/// runs with git's own heuristic off (PLAN.md §M34).
 struct ChangeSliding {
+    /// Where a block goes when no changed block on the other side gives it a place.
+    enum Placement {
+        /// The position with the cheapest boundaries: M31's choice, for a comparison a person reads.
+        case readable
+        /// The lowest position, git's choice with its indent heuristic off.
+        case lowest
+    }
+
     /// One side of the comparison: its line identities, which lines are changed, and the shape of
     /// each line for scoring.
     struct Side {
@@ -57,14 +68,14 @@ struct ChangeSliding {
 
     /// Slide the blocks of both sides, the left first. Each side's blocks keep the other side's in
     /// view, so the second pass sees where the first one put things.
-    static func slide(_ left: inout Side, _ right: inout Side) {
-        slide(&left, against: right)
-        slide(&right, against: left)
+    static func slide(_ left: inout Side, _ right: inout Side, placement: Placement) {
+        slide(&left, against: right, placement: placement)
+        slide(&right, against: left, placement: placement)
     }
 
-    private static func slide(_ side: inout Side, against other: Side) {
+    private static func slide(_ side: inout Side, against other: Side, placement: Placement) {
         let otherHasChange = changesByGap(other.changed)
-        let costs = BoundaryCosts(side.shapes)
+        let costs = placement == .readable ? BoundaryCosts(side.shapes) : nil
         var block = Block(start: 0, end: 0, gap: 0)
         while block.end < side.changed.count {
             guard side.changed[block.end] else {
@@ -88,12 +99,13 @@ struct ChangeSliding {
         var gap: Int
     }
 
-    /// Move one block to its chosen position, absorbing any neighbor it comes to touch.
+    /// Move one block to its chosen position, absorbing any neighbor it comes to touch. Without
+    /// `costs`, a block with nothing opposite stays at the lowest position.
     private static func place(
         _ block: inout Block,
         in side: inout Side,
         otherHasChange: [Bool],
-        costs: BoundaryCosts
+        costs: BoundaryCosts?
     ) {
         var length: Int
         var highestEnd: Int
@@ -114,7 +126,7 @@ struct ChangeSliding {
         var target = block.end
         if let opposite {
             target = opposite
-        } else if block.end > highestEnd {
+        } else if let costs, block.end > highestEnd {
             let lowest = block.end
             var best = costs.cost(start: lowest - length, end: lowest)
             for end in stride(

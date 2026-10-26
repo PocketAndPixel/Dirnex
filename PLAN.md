@@ -928,6 +928,71 @@ keeps a record of the last one; **three files picked by hand**; **an archive mem
 an edit; **being git's merge tool**, which needs a command-line entry point Dirnex does not have;
 **conflict markers** in any form; a merge that ignores whitespace; and a binary file.
 
+#### Progress
+
+**2026-10-26: Slice 1 landed** (core only; the app is untouched).
+
+- **Core:**
+  - `ThreeWayMerge` holds regions that tile the base, yours and theirs in order, each `unchanged`,
+    `yours`, `theirs`, `same` or `conflict`, with `conflictCount`, `isClean`, and `mergedLines`,
+    which is `nil` while a conflict is open. `same` is one change made on both sides, or the lines
+    a conflict's two sides share at its edges.
+  - `ThreeWayMerge+Walk` is git's walk, `xdl_do_merge` and `xdl_append_merge`, with their
+    arithmetic kept as it is. A conflict's shared first and last lines then move out into `same`
+    regions with no base lines, and its base range stays whole.
+  - `ChangeSliding.Placement`: `readable` is M31's scoring, and `lowest` is git's with its indent
+    heuristic off. `LineDiff.compare` takes it internally; the compare window is unchanged.
+- **Tests:** 15 in three suites.
+  - `ThreeWayMergeTests` (10) pins the probed cases: touching, one line apart, two insertions at
+    one place, a deletion against an edit, joined and bridged changes, both kinds of trimming,
+    bytes over characters, and line endings.
+  - `ThreeWayMergePropertyTests` (3) runs without git. A text merged with itself, a side left as
+    the base and the same edit on both sides each come back, over 2 000 random texts. The regions
+    tile and each kind says what its lines show, over 3 000 triples. Every change only one side
+    made is in the result, whichever way the conflicts are taken, over 1 000 triples of unique
+    lines.
+  - `ThreeWayMergeGitTests` (2) asks `git merge-file` about 678 triples, eight at a time: the
+    corpus files edited twice, and 600 short random texts. Given git's own comparisons, every
+    merge is git's to the byte in both styles. Given its own, every one is too but 28, and each of
+    those is a tie: the same counts, aligned another way.
+  - Full run: 4 582 core tests. The app suite was not run, since the app is untouched.
+- **Measured** (a throwaway harness, not checked in): 9 114 triples from this repository's history,
+  7 578 text versions of 2 001 paths, each version taken as the base between its neighbours and as
+  the base of the next two.
+  - Given git's comparisons, all 9 114 came back byte for byte in `--diff3` and `--zdiff3`. 5 406
+    merged clean and 3 708 had conflicts, 18 714 of them; 3 287 moved shared lines out of one.
+  - Given its own, `lowest` agreed with git on 9 001. The other **113 are ties**, across 63 files:
+    11 in `Localizable.xcstrings`, and 5 each in `PathBarView.swift` and
+    `PanelViewController+ArchivePack.swift`. None disagreed for any other reason.
+  - M31's `readable` placement agreed on 8 982, with 132 ties, and no sliding at all on 7 979.
+  - In release, the default (cost-limited) merge of the largest triple, three versions of
+    `Localizable.xcstrings` at 25 380 / 30 594 / 30 594 lines with 272 conflicts, took 0.077 s.
+    `docs/HISTORY.md` at 21 000 lines took 0.038 s.
+- **Decided in the slice:**
+  - **`lowest` over M31's sliding**, since it agrees with git more often. `git merge-file` runs with
+    git's indent heuristic off (docs/NOTES.md ▸ git).
+  - **A conflict whose two sides are the same lines merges as `same`.** It comes from how the two
+    comparisons aligned one edit, such as each side's deleting a different one of two equal lines.
+    git's `--zdiff3` keeps it, with nothing on either side of the markers, and there is nothing to
+    choose. Seen in 5 history triples. The git suite renders those the way git does, so every
+    other byte is still compared.
+- **Negative controls:**
+  - Without the join, the unit tests failed and the run then trapped.
+  - With touching changes taken as one-sided, the property and git suites failed. The touching
+    unit test still passed: the join alone makes that case a conflict, as it does in git.
+  - With the same change taken as a conflict, both git tests failed; the unit and property tests
+    passed, since the trimming then empties it and the rule above merges it.
+  - With no trimming, the own-comparisons git test and the tiling property failed. With identical
+    sides left a conflict, the tiling property failed.
+- **Found on the way:**
+  - **`git diff -U0` places blocks differently from `merge-file`**: at zero context it trims the
+    files' common tail first. The first history run read 25 such triples as merge bugs. The oracle
+    reads `-U1` hunk bodies now (docs/NOTES.md ▸ git).
+  - **Many `Process` runs with pipes from several threads failed with `EBADF`**, so the oracle
+    writes git's output to a file (docs/NOTES.md ▸ Fixtures and shared state).
+- **Left for Slice 2:** Take Both can put a side's last line, one with no line break, ahead of the
+  other's. git adds a break there.
+
 ### Still open
 
 Everything through M32 is shipped, and the record of it — the milestone checklists, the sixty

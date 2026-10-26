@@ -1094,6 +1094,13 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Fixtures and shared state
 
+- **Thousands of `Process` runs with a `Pipe`, from several threads at once, can fail with
+  `EBADF`.** Seen 2026-10-26 in M34's history harness: 14 `concurrentPerform` workers ran about
+  36 000 `git` commands, each with a fresh `Pipe` on stdout, and partway through `Process.run()`
+  threw `NSPOSIXErrorDomain` 9, *Bad file descriptor*. The same harness with stdout going to a file
+  per run, opened and closed by the caller, ran all of them twice. Eight workers and 2 700 runs had
+  passed with pipes, so a suite can be green for a while before it turns flaky. `GitMergeOracle`
+  writes git's output to a file in its own temporary tree for that reason.
 - **A test's pane outlives the test, so anything a pane does on its own runs in every later
   suite.** Measured 2026-10-25: the first build of "a pane whose folder vanished moves up" walked
   every orphaned fixture pane into the temp folder as its fixture was deleted. One of them was a
@@ -9165,6 +9172,24 @@ ships a third-party binary. All measured 2026-09-20 against two HERO7 files befo
   than aligning the same lines differently. M31's corpus test met it on its first run: the test's
   own edits had put text after a CRLF line's `\r`, making a lone CR that `TextLines` splits and git
   does not. The engine was right.
+- **`git diff -U0` can place a block where a whole-file diff does not.** With no context lines,
+  `xdi_diff` first trims the two files' common tail in 1 KiB blocks (`trim_common_tail` in git's
+  `xdiff-interface.c`), so a block that could slide lower stops where the trimmed text ends.
+  Measured 2026-10-26 on two versions of `ArchiveTOC.swift`: `-U0` put an eight-line deletion at
+  lines 71–78, where `-U1` and `git merge-file` put it at 73–80. Both are minimal, so M31's counts
+  could not see it. It made 25 of 9 114 history triples read as merge bugs in M34's first run.
+  Read placement from a diff with context, `-U1`, and walk its hunk bodies.
+- **`git merge-file` slides blocks with git's indent heuristic off.** It never sets
+  `XDF_INDENT_HEURISTIC`, so a block with nothing opposite it sits at its lowest position, and
+  `git diff --no-indent-heuristic -U1 base side` gives the very comparisons it merges. Over
+  9 114 history triples, merging those two comparisons reproduced `merge-file`'s output byte for
+  byte in `--diff3` and `--zdiff3` alike (M34 Slice 1). `--no-indent-heuristic` does take effect
+  with `--no-index`; check it on a case where the lowest slot is not the readable one, since most
+  blocks have only one candidate either way.
+- **`--zdiff3` can print a conflict with nothing on either side.** When both sides end up with the
+  same lines in a conflict, say each deleted a different one of two equal lines, the trimming takes
+  every line and git still writes the markers around the base. Seen in 5 of 9 114 history triples.
+  `ThreeWayMerge` merges such a region instead (PLAN.md §M34).
 
 ## Release pipeline
 
@@ -9573,6 +9598,9 @@ overturned the obvious implementation.
   the right predicate and is also more honest about line *numbers*, since it counts CRLF as one
   separator rather than two. The same trap sits behind any hand-rolled scan that compares against
   `"\r"`; anything splitting text a user's other OS produced should use `isNewline` on principle.
+  - **So does `split(separator: "\n")` on a tool's output.** Met 2026-10-26 reading `git diff`'s
+    hunk headers: a header right after a CRLF content line stayed glued to it and was never read.
+    Split the output's bytes at `\n`, then decode each line.
 - **With Foundation imported, `text.lowercased().contains(needle)` is the standard library's
   `contains`, which compares whole characters, and not Foundation's `range(of:)`.** Measured
   2026-09-15 on the expression both Quick View filters used: half a flag is not found in a flag, nor 👨
