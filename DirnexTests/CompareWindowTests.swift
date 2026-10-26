@@ -120,6 +120,17 @@ struct CompareWindowTests {
         #expect(pasteboard.string(forType: .string) == "one\r\ntwo\n")
     }
 
+    /// Seen live in the merge window (PLAN.md §M34 Slice 3): below the last row there is no
+    /// fragment, and the band stopped at row 0, marking nothing further down.
+    @Test("a comparison shorter than the pane is visible down to its last row")
+    func shortTextIsVisibleToItsEnd() async throws {
+        let controller = try await window("a\nb\nc\nd\ne\nf\n", "a\nb\nc\nd\ne\nF\n")
+        let textView = controller.leftPane.textView
+        #expect(textView.visibleRect.height > 6 * CompareTextStyle.lineHeight)
+        #expect(textView.visibleRows() == 0...5)
+        #expect(controller.overview.visibleRows == 0...5)
+    }
+
     @Test("far into a large file, the two panes show the same row at the top")
     func panesStayLevel() async throws {
         // Lines of different lengths on each side, so TextKit's estimates of where a far row is

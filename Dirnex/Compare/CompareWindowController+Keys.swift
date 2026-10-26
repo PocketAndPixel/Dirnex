@@ -68,7 +68,7 @@ extension CompareWindowController {
             copyCurrentChange(to: .left)
             return true
         case (.f4?, []):
-            editFile(on: focusedPane.side)
+            editFile(on: focusedPane === rightPane ? .right : .left)
             return true
         default:
             break

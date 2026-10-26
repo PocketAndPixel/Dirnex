@@ -1046,6 +1046,73 @@ an edit; **being git's merge tool**, which needs a command-line entry point Dirn
 - **Not in the model:** the words that differ inside a row's lines, which the compare window marks.
   Nothing in Slice 3's list needs them.
 
+**2026-10-26: Slice 3 landed** (app only). Nothing opens the window yet; that is Slices 4 and 5.
+
+- **Decided with Oleg before writing it:** the take keys point the way the lines go, ⌥⌘→ Take Yours
+  and ⌥⌘← Take Theirs, as ⌥⌘→ copies to the right in the compare window, and ⇧ takes both sides with
+  the arrow's side first. Show Base adds the base as a fourth pane at the left edge.
+- **App:**
+  - `MergeWindowController` takes a `MergeInput` (the three versions, the file Save writes and where
+    the result goes) and a `MergeSaving` (the undo store and the journal). It merges off the main
+    thread, and prepares each state off it too (`MergePrepared`): each column's text, every row's
+    color, the syntax colors and the marks.
+  - Yours, Result and Theirs, with Show Base (⌥⌘B, a checkbox) putting Base at the left edge, a band
+    between each two panes and the overview strip. A change one side made is blue in that side, the
+    result and the base; an open conflict is orange in every column, the result's empty rows
+    included; a chosen one is green.
+  - "Conflict 2 of 5", ⌥⌘↓ and ⌥⌘↑ and the arrows, and a click in the overview makes the conflict
+    under it current. The four takes are keys and one segmented control. After a take the next open
+    conflict is current, going round to the start; after an undo, the conflict it changed. Edit ▸
+    Undo names the take ("Undo Take Both, Theirs First").
+  - Save (⌘S and a button) is disabled while a conflict is open. ⌘S then beeps and goes to the first
+    open one, and the banner says how many are open. The save is the compare window's
+    `ComparedFileSave`: checked against the file as read, kept in the undo store and journaled, and
+    written in place inside a coordinated write. A conflicted working-tree file is replaced whole,
+    markers and all.
+  - Closing with choices not saved asks Save, Cancel or Don't Save once every conflict has one, and
+    Cancel (the default) or Don't Save while one is open. Quitting asks the same, after the compare
+    window's question.
+  - Shared with the compare window: `ComparePaneView`, whose `side` is `nil` for a merge pane, which
+    has no Edit button; `CompareScrollSync`, now over any number of panes, passing hidden ones over
+    and bringing one level when it appears; and the save alerts. `CompareColors` gains three row
+    colors and two marks, and an open conflict wins a point of the overview.
+  - The three counted sentences have English plurals in the catalog. The 13 other languages wait for
+    Slice 6, as M33's did.
+- **Fixed on the way:** in a comparison shorter than its pane, the compare window's band marked
+  nothing below row 0, and the overview outlined a sliver at its top. `visibleRows()` read the missing
+  fragment below the last line as "only row 0 is visible" (docs/NOTES.md ▸ Text fields and text
+  views). It has been so since M31, and was found here because every fixture was short.
+- **Tests:** 25 in three new suites, `MergeWindowTests` (9), `MergeTakeTests` (8) and
+  `MergeSaveTests` (8), and one in `CompareWindowTests`. Full runs: 4 593 core and 2 016 app tests,
+  without the live server suites; the core is untouched.
+- **Negative controls:**
+  - A save not held back fails the open-conflict save test. An undo landing as a take does fails the
+    undo test. A sync following one pane fails the level test. The base never placed fails the Show
+    Base and level tests. The unchanged side marked fails the fills test. No English plural fails
+    the counter test. No going round fails its unit test. The visible-rows fallback off fails the
+    new compare test.
+  - Cancel and Don't Save swapped first passed: the test read the close count before the task that
+    asked had acted on Cancel (docs/NOTES.md ▸ Runs and assertions that prove nothing). Awaited now,
+    it fails.
+- **Seen live** in the Debug build, through a temporary probe (since removed) that opened the window
+  on three versions of a Swift file at launch. The saved tabs were set aside, and computer-use drove
+  it from the background:
+  - Dark appearance: rows level across the panes, with syntax colors. Yours' doc comment was blue in
+    Yours and Result, theirs' farewell blue in Theirs and Result, and both conflicts orange with the
+    result's rows empty.
+  - The first look showed no marks in the bands, which is the fix above. After it, each band marked
+    every region, the current conflict solid.
+  - Take Yours put the line in the result and turned the conflict green in every pane and band; the
+    counter said "Conflict 2 of 2" and the banner "1 conflict is still open". Show Base put the base
+    at the left edge, four equal panes, level. Take Both, Theirs First put theirs' line, then yours'
+    two on a row added below, and enabled Save. Edit ▸ Undo said "Undo Take Both, Theirs First".
+  - Save wrote exactly the chosen merge. Undo then opened the conflict again, and the close button
+    asked "Close the merge of “Greeter.swift” without saving?" with Cancel the default. Don't Save
+    closed the window, and the file kept what Save had written.
+  - The defaults domain was restored and compared unchanged.
+  - **Not seen live:** the keys, which the tests drive through `handleKey` (the monitor is the
+    compare window's, seen live in M33 Slice 2), and the light appearance.
+
 ### Still open
 
 Everything through M32 is shipped, and the record of it — the milestone checklists, the sixty

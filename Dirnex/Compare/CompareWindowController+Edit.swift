@@ -22,9 +22,9 @@ extension CompareWindowController {
     /// The pencil buttons as the sides stand, each naming the editor it would open.
     func refreshEditControls() {
         let editor = ExternalTextEditorLauncher.preferredEditor()?.displayName
-        for pane in [leftPane, rightPane] {
-            pane.editButton.isEnabled = canEdit(pane.side)
-            pane.editButton.toolTip = "\(ComparePaneView.editTitle(pane.side, in: editor)) (F4)"
+        for (side, pane) in panes {
+            pane.editButton.isEnabled = canEdit(side)
+            pane.editButton.toolTip = "\(ComparePaneView.editTitle(side, in: editor)) (F4)"
         }
     }
 

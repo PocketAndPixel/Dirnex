@@ -121,16 +121,21 @@ extension CompareWindowController {
                 land(saved, of: document, inFile: id)
                 return true
             case .failure(.changedSinceRead):
-                guard await askToSaveAnyway(name) else { return false }
+                guard await Self.askToSaveAnyway(name, over: window) else { return false }
                 overwriting = true
             case let .failure(.unencodable(line, character)):
-                await reportSaveFailure(
+                await Self.reportSaveFailure(
                     name,
-                    detail: Self.unencodableDetail(character, line: line, in: document.encoding)
+                    detail: Self.unencodableDetail(character, line: line, in: document.encoding),
+                    over: window
                 )
                 return false
             case let .failure(.failed(error)):
-                await reportSaveFailure(name, detail: VFSErrorText.sentence(for: error))
+                await Self.reportSaveFailure(
+                    name,
+                    detail: VFSErrorText.sentence(for: error),
+                    over: window
+                )
                 return false
             }
         }

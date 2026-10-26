@@ -55,7 +55,7 @@ extension CompareWindowController {
         window.initialFirstResponder = leftPane.textView
         band.textView = leftPane.textView
 
-        let sync = CompareScrollSync(left: leftPane, right: rightPane)
+        let sync = CompareScrollSync(panes: [leftPane, rightPane])
         sync.didScroll = { [weak self] in self?.refreshScrolledViews() }
         self.sync = sync
         toolbar.onPrevious = { [weak self] in self?.goToPreviousChange() }
@@ -64,9 +64,9 @@ extension CompareWindowController {
         toolbar.onSwap = { [weak self] in self?.swapSides() }
         toolbar.onCopy = { [weak self] side in self?.copyCurrentChange(to: side) }
         toolbar.copy.isHidden = !allowsCopies
-        for pane in [leftPane, rightPane] {
+        for (side, pane) in panes {
             pane.editButton.isHidden = !allowsCopies
-            pane.onEdit = { [weak self, side = pane.side] in self?.editFile(on: side) }
+            pane.onEdit = { [weak self] in self?.editFile(on: side) }
         }
         overview.onJump = { [weak self] row in self?.jump(toRow: row) }
     }

@@ -2,10 +2,11 @@ import AppKit
 import DirnexCore
 
 /// The questions and reports a save raises in the compare window (PLAN.md §M33 Slice 3), and those
-/// a file changing under it raises (Slice 5), each a sheet on the window.
+/// a file changing under it raises (Slice 5), each a sheet on the window. The merge window's save
+/// asks and reports the first two the same way (PLAN.md §M34 Slice 3).
 extension CompareWindowController {
     /// The file changed since it was read: write over it or leave it. `true` to save anyway.
-    func askToSaveAnyway(_ name: String) async -> Bool {
+    static func askToSaveAnyway(_ name: String, over window: NSWindow?) async -> Bool {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = Self.changedSinceReadTitle(name)
@@ -105,7 +106,7 @@ extension CompareWindowController {
     }
 
     /// A save that did not happen, and why.
-    func reportSaveFailure(_ name: String, detail: String) async {
+    static func reportSaveFailure(_ name: String, detail: String, over window: NSWindow?) async {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = String(

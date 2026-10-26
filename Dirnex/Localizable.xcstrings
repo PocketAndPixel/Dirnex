@@ -2814,6 +2814,75 @@
         }
       }
     },
+    "%lld conflicts": {
+      "comment": "Merge window: how many conflicts; %lld is the count.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflict"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflicts"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld conflicts are still open, so the result can’t be saved yet. The choices made here will be lost.": {
+      "comment": "Merge window close prompt body; %lld is how many conflicts have no choice yet.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflict is still open, so the result can’t be saved yet. The choices made here will be lost."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflicts are still open, so the result can’t be saved yet. The choices made here will be lost."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld conflicts are still open. The result can be saved once each has a choice.": {
+      "comment": "Merge window: why Save is unavailable; %lld is how many conflicts have no choice yet.",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflict is still open. The result can be saved once it has a choice."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflicts are still open. The result can be saved once each has a choice."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld conflicts skipped": {
       "comment": "Sync status suffix; %lld conflicting items left unchanged. Plural.",
       "localizations": {

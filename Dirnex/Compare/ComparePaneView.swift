@@ -2,10 +2,13 @@ import AppKit
 import DirnexCore
 
 /// One side of the compare window (PLAN.md §M31 Slice 3): the file's name and where it is, then
-/// its text with line numbers beside it.
+/// its text with line numbers beside it. The merge window's panes are the same view with no side
+/// (PLAN.md §M34 Slice 3).
 @MainActor
 final class ComparePaneView: NSView {
-    let side: ComparisonPaneText.Side
+    /// The side of a two-way comparison, or `nil` for a pane of the merge window, which has no
+    /// Edit button.
+    let side: ComparisonPaneText.Side?
     let scrollView = NSScrollView()
     let textView = CompareTextView()
     let lineNumbers: CompareLineNumbers
@@ -19,7 +22,7 @@ final class ComparePaneView: NSView {
     /// The width the current text needs to show its widest row on one line.
     private var documentWidth: CGFloat = 0
 
-    init(side: ComparisonPaneText.Side) {
+    init(side: ComparisonPaneText.Side?) {
         self.side = side
         lineNumbers = CompareLineNumbers(textView: textView)
         super.init(frame: .zero)
@@ -76,19 +79,18 @@ final class ComparePaneView: NSView {
         onEdit?()
     }
 
-    /// Show one side of a comparison.
+    /// Show one column of rows: `fills` paints each row, and `endingDiffers` marks the rows whose
+    /// line ending differs from the other side's.
     func show(
         _ pane: ComparisonPaneText,
         document: NSAttributedString,
-        rows: [AlignedRow],
+        fills: [AlignedRowFill],
+        endingDiffers: [Bool] = [],
         lineCount: Int
     ) {
-        coloring.update(
-            fills: CompareTextStyle.fills(for: side, rows: rows),
-            rowStarts: pane.rowStarts
-        )
+        coloring.update(fills: fills, rowStarts: pane.rowStarts)
         textView.pane = pane
-        lineNumbers.endingDiffers = rows.map(\.lineEndingsDiffer)
+        lineNumbers.endingDiffers = endingDiffers
         lineNumbers.largestNumber = lineCount
         let padding = textView.textContainer?.lineFragmentPadding ?? 5
         documentWidth = CompareTextStyle.documentWidth(for: pane, padding: padding)
@@ -120,10 +122,10 @@ final class ComparePaneView: NSView {
             label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
             addSubview(label)
         }
-        editButton.image = NSImage(
-            systemSymbolName: "pencil",
-            accessibilityDescription: Self.editTitle(side)
-        )
+        editButton.image = side.flatMap {
+            NSImage(systemSymbolName: "pencil", accessibilityDescription: Self.editTitle($0))
+        }
+        editButton.isHidden = side == nil
         editButton.imagePosition = .imageOnly
         editButton.isBordered = false
         editButton.target = self
