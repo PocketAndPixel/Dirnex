@@ -8,6 +8,9 @@
 /// command registry). It survives a relaunch with its tab (`StoredNavigationHistory`, in
 /// `NavigationHistory+Storage`).
 ///
+/// Each entry also keeps where the pane was left in it (``NavigationSpot``), so ⌘[ comes back to the
+/// row the cursor was on and the tree folders that were open rather than to the top of the folder.
+///
 /// ## A walk is not over until the folder has listed
 ///
 /// `back`, `forward` and `jump` move ``currentIndex`` at once, because the next ⌘[ pressed before
@@ -40,6 +43,10 @@ public struct NavigationHistory: Sendable, Equatable {
     /// Index into `entries` of the directory whose listing last landed — what the pane is showing.
     /// Equal to ``currentIndex`` except while a walk is in flight.
     public private(set) var landedIndex: Int
+    /// Where the pane was left in each entry, index for index with ``entries``: `nil` for an entry it
+    /// has not left yet. The entry on screen holds the place it was last left at, if any, until the
+    /// pane leaves it again (``remember(_:leaving:)``).
+    public private(set) var spots: [NavigationSpot?]
     /// The walk in flight, or `nil` when the trail is settled.
     public private(set) var walk: Walk?
     /// The most entries kept; older ones fall off the front (a tab visited all day never
@@ -51,8 +58,11 @@ public struct NavigationHistory: Sendable, Equatable {
     }
 
     /// A trail as given. Callers keep `currentIndex` inside `entries`, which must not be empty.
-    init(entries: [VFSPath], currentIndex: Int, capacity: Int) {
+    /// `spots` that do not pair up with `entries` are dropped whole.
+    init(entries: [VFSPath], currentIndex: Int, capacity: Int, spots: [NavigationSpot?] = []) {
         self.entries = entries
+        let paired = spots.count == entries.count
+        self.spots = paired ? spots : Array(repeating: nil, count: entries.count)
         self.currentIndex = currentIndex
         landedIndex = currentIndex
         self.capacity = max(capacity, 1)
@@ -82,7 +92,9 @@ public struct NavigationHistory: Sendable, Equatable {
             return
         }
         entries.removeSubrange((landedIndex + 1)...)
+        spots.removeSubrange((landedIndex + 1)...)
         entries.append(path)
+        spots.append(nil)
         currentIndex = entries.count - 1
         landedIndex = currentIndex
         trimToCapacity()
@@ -111,6 +123,25 @@ public struct NavigationHistory: Sendable, Equatable {
         currentIndex = index
         walk = .jump
         return currentPath
+    }
+
+    // MARK: - Where the pane was in each folder
+
+    /// Note where the pane is in `path` as the listing of somewhere else replaces it, so a walk back
+    /// to this entry can put the pane back there (``spot(landingOn:)``). Kept on the entry **on
+    /// screen**, and only when that is `path`: a results listing, which never enters the trail, has
+    /// no entry to keep it on.
+    public mutating func remember(_ spot: NavigationSpot, leaving path: VFSPath) {
+        guard entries[landedIndex] == path else { return }
+        spots[landedIndex] = spot
+    }
+
+    /// Where the pane was left in `path`, for the listing of a walk that is landing there. `nil` for
+    /// a listing that is no walk's or not the one the walk was heading for, and for an entry the pane
+    /// has never left.
+    public func spot(landingOn path: VFSPath) -> NavigationSpot? {
+        guard walk != nil, entries[currentIndex] == path else { return nil }
+        return spots[currentIndex]
     }
 
     // MARK: - Ending a walk
@@ -175,16 +206,20 @@ public struct NavigationHistory: Sendable, Equatable {
 
     /// Take out the entry at `index`, keeping both positions on the entries they named, and fold
     /// the two neighbours it leaves side by side into one if they are the same folder — `A, B, A`
-    /// with `B` gone is one visit to `A`, not two in a row that ⌘[ would step between.
+    /// with `B` gone is one visit to `A`, not two in a row that ⌘[ would step between. The visit that
+    /// is kept takes the later one's spot, the more recent word on where the pane was in `A`.
     ///
     /// Never called on ``landedIndex``.
     private mutating func removeEntry(at index: Int) {
         entries.remove(at: index)
+        spots.remove(at: index)
         if landedIndex > index { landedIndex -= 1 }
         if currentIndex > index { currentIndex -= 1 }
         // The two that now touch are `index - 1` and `index`.
         guard index > 0, index < entries.count, entries[index - 1] == entries[index] else { return }
+        if let later = spots[index] { spots[index - 1] = later }
         entries.remove(at: index)
+        spots.remove(at: index)
         if landedIndex >= index { landedIndex -= 1 }
         if currentIndex >= index { currentIndex -= 1 }
     }
@@ -196,6 +231,7 @@ public struct NavigationHistory: Sendable, Equatable {
         let overflow = entries.count - capacity
         guard overflow > 0 else { return }
         entries.removeFirst(overflow)
+        spots.removeFirst(overflow)
         currentIndex -= overflow
         landedIndex -= overflow
     }

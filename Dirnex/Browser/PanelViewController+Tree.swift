@@ -322,9 +322,18 @@ extension PanelViewController {
 
     /// The lazy load itself. Guarded on `loadToken` so a navigation that lands first wins, and on the
     /// pane still being this tree.
+    ///
+    /// A restore load reports in only while its token is current. One the pane has moved on from
+    /// belongs to a restore window that is already over, and counting it would close the window the
+    /// next landing opened (`preparePendingRestore`) — ⌘[ twice in a tree, with the first folder's
+    /// expansions still listing, would drop a cursor waiting inside the second one's.
     @discardableResult
     func performTreeChildLoad(_ plan: TreeChildLoadPlan) async -> TreeChildLoadOutcome {
-        defer { if plan.duringRestore { finishRestoreTreeLoad(inTab: plan.tabIndex) } }
+        defer {
+            if plan.duringRestore, plan.token == loadToken {
+                finishRestoreTreeLoad(inTab: plan.tabIndex)
+            }
+        }
         let listing = await treeChildListing(at: plan.path)
         guard plan.token == loadToken, panel.isTree, panel.path == plan.root else { return .dropped }
         switch listing {
@@ -414,8 +423,9 @@ extension PanelViewController {
     }
 
     /// Re-expand and lazily re-list the folders a restored tree had open (PLAN.md §M15 "relaunch
-    /// restores the expansion"). One-shot: the pending list is cleared after, so a later navigation
-    /// in the tab starts collapsed. Runs after the root's first load, inside `navigate` — and
+    /// restores the expansion"), or the ones a walk along the trail is putting back
+    /// (`preparePendingRestore`). One-shot: the pending list is cleared after, so a later navigation
+    /// in the tab starts collapsed. Runs after the root's load, inside `navigate` — and
     /// *before* the cursor/marks are re-applied, so the count of listings still to come is armed
     /// before the first pass at them: each one that lands is another chance to anchor a row that
     /// lives inside one of these folders, and the last one closes the restore window
