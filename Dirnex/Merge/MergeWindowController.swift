@@ -59,6 +59,9 @@ struct MergeSaving {
 final class MergeWindowController: NSWindowController, NSWindowDelegate {
     /// Windows on screen. A controller holds itself here until its window closes.
     private(set) static var open: [MergeWindowController] = []
+    /// The content size a window opens at before the user has moved it. Each pane's subtitle is
+    /// sized for four panes at this width (`MergeSubtitleWidthTests`).
+    static let openingSize = NSSize(width: 1320, height: 760)
 
     let input: MergeInput
     let saving: MergeSaving
@@ -136,7 +139,7 @@ final class MergeWindowController: NSWindowController, NSWindowDelegate {
         // Not deferred, so a save's sheets attach to a window a test builds and never shows
         // (docs/NOTES.md ▸ Testing).
         let window = CompareWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1320, height: 760),
+            contentRect: NSRect(origin: .zero, size: Self.openingSize),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
