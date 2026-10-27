@@ -250,8 +250,10 @@ struct MergeWindowTests {
         let window = try #require(controller.window)
         window.contentView?.layoutSubtreeIfNeeded()
         #expect(controller.yoursPane.frame.minX == 0)
+        let toolbar = controller.toolbar
         #expect(controller.yoursPane.textView.nextKeyView === controller.resultPane.textView)
-        #expect(controller.theirsPane.textView.nextKeyView === controller.yoursPane.textView)
+        #expect(controller.theirsPane.textView.nextKeyView === toolbar.navigation)
+        #expect(toolbar.save.nextKeyView === controller.yoursPane.textView)
 
         #expect(controller.handleKey(MergeRig.showBase))
         #expect(controller.isBaseShown)
@@ -260,14 +262,15 @@ struct MergeWindowTests {
         #expect(controller.basePane.frame.minX == 0)
         #expect(controller.yoursPane.frame.minX > controller.basePane.frame.maxX)
         #expect(abs(controller.basePane.frame.width - controller.resultPane.frame.width) < 0.5)
-        #expect(controller.theirsPane.textView.nextKeyView === controller.basePane.textView)
+        #expect(controller.theirsPane.textView.nextKeyView === toolbar.navigation)
+        #expect(toolbar.save.nextKeyView === controller.basePane.textView)
         #expect(controller.basePane.textView.nextKeyView === controller.yoursPane.textView)
 
         controller.toolbar.showBase.performClick(nil)
         #expect(!controller.isBaseShown)
         #expect(controller.basePane.isHidden)
         #expect(controller.yoursPane.frame.minX == 0)
-        #expect(controller.theirsPane.textView.nextKeyView === controller.yoursPane.textView)
+        #expect(toolbar.save.nextKeyView === controller.yoursPane.textView)
     }
 
     @Test("far into a large merge, every pane shown has the same row at the top, the base included")

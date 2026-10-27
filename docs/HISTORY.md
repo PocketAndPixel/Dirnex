@@ -18403,6 +18403,69 @@ met, and the milestone closed with it.
 - **Left undone**, as planned: Synchronize as an entry point, three files picked by hand, an archive
   member, being git's merge tool, conflict markers, a merge that ignores whitespace, and a binary file.
 
+**2026-10-27: Tab reaches the compare window's toolbar, and the pane F4 and Find act on is marked**
+(app only). Asked for with a screenshot of the window: "let's make tab navigation in the compare
+window", then "toolbar for sure", and a question back: what is a pane's focus for at all?
+
+- **Measured first**, in a throwaway test on the real window. Tab already went left pane ⇄ right pane
+  (M31 Slice 3 set the two text views' `nextKeyView`), but nothing on screen said which pane had the
+  keyboard. The toolbar's changes arrows, Swap, the whitespace popup and both checkboxes could hold
+  the keyboard (`KeyboardReachableControls` puts them on the loop in every window but the browser's),
+  yet no `nextKeyView` led to them, and once one had the keyboard, Tab left it there.
+- **What a pane's focus is for**, measured on a read-only `NSTextView` like the panes': ↑↓, Page
+  Up/Down and Home/End scroll it (the other pane follows), ⇧↓ and ⌘A select lines for ⌘C, and F4 and
+  ⌘F/⌘G act on that pane's file. The change keys, the copy keys, ⌘U, ⌘S, ⌘W and ⎋ are the window's
+  monitor's and act the same from anywhere. So both panes stay on the loop, as two stops.
+- **The loop** is left pane → right pane → changes → Copy → Swap → whitespace → Ignore Case → Ignore
+  Line Endings → left pane, and ⇧Tab backwards. The panes come first, because the keyboard spends
+  its time there. Copy is passed over while neither side takes a copy, since a segmented control
+  with every segment disabled refuses first responder, and so is a window that takes no copies,
+  where it is hidden. The pencils stay off the loop, since F4 does what they do.
+- **The mark:** the pane F4 and Find act on draws its file's name in the user's accent, as the
+  browser draws its active pane's folder, and follows the palette when it changes. While the toolbar
+  has the keyboard, the mark and F4 and Find stay with the pane that had it last. Before this, a
+  focus in the toolbar or the find bar's field sent F4 and Find to the left pane.
+- **Tests:** `CompareTabTests` (3) send a real Tab key-down through the window: the whole loop both
+  ways with Copy in it, Copy passed over when disabled, and the mark following Tab and a click but
+  not the toolbar. `CompareEditTests` pins F4 from the toolbar to the right file. With the old loop
+  wiring put back (`git stash` of `+Layout`), all three new tests failed (11 issues). Full runs green
+  (4 640 core, 2 054 app).
+- **Seen live** in the Debug build, launched by path. A two-file fixture was opened with `reveal`,
+  `select.all` and `file.compareByContents`, and a temporary probe, gated on an environment variable
+  and removed afterwards, logged each `makeFirstResponder` with the pane that held the mark. Eight Tabs
+  from background computer-use went right pane → Previous Change → Copy to Left → Swap Sides →
+  Compare Whitespace → Ignore Case → Ignore Line Endings → left pane. Eight ⇧Tabs went back through
+  the same stops in reverse. The mark moved with each pane and stayed on the last one through every
+  toolbar stop. The focus ring drew on a segment and on a checkbox, and Space ticked and unticked
+  Ignore Case. The defaults domain was restored and compared unchanged.
+- **Not seen live:** a physical keyboard, since these were computer-use's synthetic key-downs; F4
+  and Find from the toolbar, which the test pins; and a palette change while the window is open.
+
+**2026-10-28: the merge window gets the same Tab and the same mark** (app only). Asked for straight
+after the entry above.
+
+- **The loop** is the panes on screen, left to right, then the toolbar: Base (while shown) → Yours →
+  Result → Theirs → the conflict arrows → the takes → Show Base → Save → round again. `setBaseShown`
+  still rebuilds it, as it did for the panes alone. The takes are passed over with no conflict
+  current, and Save until it can save, both by AppKit's own refusal of a disabled control.
+- **The mark** is the compare window's (`ComparePaneView.holdsKeyboard`), on the pane Find acts on.
+  The window opens with it on Result, where the keyboard starts. Hiding the base moves a mark that
+  was on it to Result even when the keyboard is elsewhere, which is what Space on a focused Show Base
+  does. Before this, Find from the toolbar went to Result whatever pane had been in use.
+- **Tests:** `MergeTabTests` (4): the whole loop both ways with Save enabled, Save and a hidden base
+  passed over, the mark following Tab but not the toolbar, and the mark leaving a hidden base. The
+  existing Show Base test now expects the toolbar in the loop. The Tab key-down helper moved to a
+  shared `pressTab(in:backwards:)`. With `+Layout`'s change stashed, all five failed (19 issues).
+  Full runs green (4 640 core, 2 058 app).
+- **Seen live** in the Debug build, on a scratch repository stopped in a merge, through `reveal` and
+  `file.resolveConflict`, with the same temporary probe, since removed. Six Tabs from Result went
+  Theirs → Previous Conflict → Take Yours → Show Base → Yours → Result, Save disabled and passed over,
+  and six ⇧Tabs came back the same way. Space on Show Base showed the base, Tab went into it and
+  marked it, and ⇧Tab and Space hid it again: the keyboard stayed on the checkbox and Result's name
+  took the accent. The repository was left as it was, and the defaults domain was restored and
+  compared unchanged.
+- **Not seen live:** a physical keyboard, and Save as a stop, which the test pins.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

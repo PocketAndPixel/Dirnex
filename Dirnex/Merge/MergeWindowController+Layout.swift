@@ -67,6 +67,10 @@ extension MergeWindowController {
         self.sync = sync
         setBaseShown(false)
         window.initialFirstResponder = resultPane.textView
+        resultPane.holdsKeyboard = true
+        for (column, pane) in panes {
+            pane.textView.onFocus = { [weak self] in self?.paneTookKeyboard(column) }
+        }
 
         toolbar.onPrevious = { [weak self] in self?.goToPreviousConflict() }
         toolbar.onNext = { [weak self] in self?.goToNextConflict() }
@@ -89,13 +93,19 @@ extension MergeWindowController {
         yoursAtEdge?.isActive = !shown
         yoursAfterBase?.isActive = shown
         toolbar.showBase.state = shown ? .on : .off
-        // Tab goes round the panes on screen, left to right.
+        // Tab goes round the panes on screen, left to right, then along the toolbar, as in the compare
+        // window.
         let order = (shown ? [basePane] : []) + [yoursPane, resultPane, theirsPane]
-        for (index, pane) in order.enumerated() {
-            pane.textView.nextKeyView = order[(index + 1) % order.count].textView
+        let loop = order.map { $0.textView as NSView } + toolbar.keyViews
+        for (index, view) in loop.enumerated() {
+            view.nextKeyView = loop[(index + 1) % loop.count]
         }
         if !shown, window?.firstResponder === basePane.textView {
             window?.makeFirstResponder(resultPane.textView)
+        }
+        // The toolbar can hold the keyboard with the base marked, as it does after Space on Show Base.
+        if !shown, basePane.holdsKeyboard {
+            paneTookKeyboard(.result)
         }
         window?.contentView?.layoutSubtreeIfNeeded()
         if shown { sync?.align() }

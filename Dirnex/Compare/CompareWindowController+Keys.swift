@@ -22,6 +22,10 @@ import DirnexCore
 /// - ⌘F, ⌘G, ⇧⌘G: find in the pane holding the keyboard, with the system's find bar.
 /// - ⎋: close the find bar if it is open, else the window. A field editor's own ⎋ (the find bar's
 ///   field) is left to it.
+///
+/// Tab and ⇧Tab are the key view loop's, set up in `+Layout`: the left pane, the right pane, then
+/// the toolbar's controls, whose options have no key of their own. F4 and Find act on the pane
+/// holding the keyboard, and while the toolbar has it, on the pane that had it last.
 extension CompareWindowController {
     func windowDidBecomeKey(_ notification: Notification) {
         installKeyMonitor()
@@ -99,9 +103,16 @@ extension CompareWindowController {
         return escape()
     }
 
-    /// The pane the keyboard is in, the left one when neither is.
+    /// The pane the keyboard is in, or was in last: the left one until the right one has had it.
     var focusedPane: ComparePaneView {
-        window?.firstResponder === rightPane.textView ? rightPane : leftPane
+        rightPane.holdsKeyboard ? rightPane : leftPane
+    }
+
+    /// Mark the pane on `side` as the one the keyboard is in.
+    func paneTookKeyboard(_ side: ComparisonPaneText.Side) {
+        for (each, pane) in panes {
+            pane.holdsKeyboard = each == side
+        }
     }
 
     private func find(_ action: NSTextFinder.Action) {

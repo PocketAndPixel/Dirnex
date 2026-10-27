@@ -19,6 +19,13 @@ final class ComparePaneView: NSView {
     /// (PLAN.md §M33 Slice 5).
     let editButton = NSButton()
     var onEdit: (() -> Void)?
+    /// Whether this is the pane the window's keys act on, F4 and Find: the one holding the keyboard,
+    /// or the one that held it last while the toolbar has it. Its name is drawn in the accent, as the
+    /// browser draws its active pane's folder.
+    var holdsKeyboard = false {
+        didSet { restyleName() }
+    }
+
     /// The width the current text needs to show its widest row on one line.
     private var documentWidth: CGFloat = 0
 
@@ -29,6 +36,13 @@ final class ComparePaneView: NSView {
         translatesAutoresizingMaskIntoConstraints = false
         buildHeader()
         buildText()
+        // Removed by the blanket `removeObserver(self)` a deallocated object gets.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(paletteChanged),
+            name: AppPreferences.paletteDidChange,
+            object: nil
+        )
     }
 
     @available(*, unavailable)
@@ -77,6 +91,16 @@ final class ComparePaneView: NSView {
 
     @objc private func edit(_ sender: Any?) {
         onEdit?()
+    }
+
+    @objc private func paletteChanged() {
+        restyleName()
+    }
+
+    /// The user's accent while this pane holds the keyboard, which resolves to
+    /// `.controlAccentColor` untouched (PLAN.md §M15).
+    private func restyleName() {
+        nameLabel.textColor = holdsKeyboard ? AppPreferences.shared.palette.resolvedAccent : .labelColor
     }
 
     /// Show one column of rows: `fills` paints each row, and `endingDiffers` marks the rows whose

@@ -50,9 +50,14 @@ extension CompareWindowController {
         window.contentView = content
 
         showTitles()
-        leftPane.textView.nextKeyView = rightPane.textView
-        rightPane.textView.nextKeyView = leftPane.textView
+        // Tab goes from the left pane to the right, then along the toolbar and round again: the panes
+        // first, since that is where the keyboard scrolls, selects and finds.
+        let loop = [leftPane.textView, rightPane.textView] + toolbar.keyViews
+        for (index, view) in loop.enumerated() {
+            view.nextKeyView = loop[(index + 1) % loop.count]
+        }
         window.initialFirstResponder = leftPane.textView
+        leftPane.holdsKeyboard = true
         band.textView = leftPane.textView
 
         let sync = CompareScrollSync(panes: [leftPane, rightPane])
@@ -67,6 +72,7 @@ extension CompareWindowController {
         for (side, pane) in panes {
             pane.editButton.isHidden = !allowsCopies
             pane.onEdit = { [weak self] in self?.editFile(on: side) }
+            pane.textView.onFocus = { [weak self] in self?.paneTookKeyboard(side) }
         }
         overview.onJump = { [weak self] row in self?.jump(toRow: row) }
     }
