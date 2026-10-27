@@ -44,6 +44,12 @@ final class CompareToolbar: NSView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    /// The controls Tab stops at, left to right. One that cannot take the keyboard is passed over:
+    /// Copy with neither side taking a copy, or hidden in a window that takes none.
+    var keyViews: [NSView] {
+        [navigation, copy, swap, whitespace, ignoresCase, ignoresLineEndings]
+    }
+
     /// The options the controls show.
     var options: LineDiffOptions {
         LineDiffOptions(

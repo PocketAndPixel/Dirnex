@@ -75,6 +75,12 @@ struct CompareEditTests {
         #expect(rig.controller.handleKey(Self.f4))
         try await settleUntil { rig.editor.opened.count == 2 }
         #expect(rig.editor.opened.last?.path == rig.rightPath)
+
+        // Tab on to the toolbar: F4 still edits the file the keyboard was last in.
+        #expect(window.makeFirstResponder(rig.controller.toolbar.whitespace))
+        #expect(rig.controller.handleKey(Self.f4))
+        try await settleUntil { rig.editor.opened.count == 3 }
+        #expect(rig.editor.opened.last?.path == rig.rightPath)
     }
 
     @Test("Edit on a side with unsaved copies asks first, and Cancel saves and opens nothing")

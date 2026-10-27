@@ -12,6 +12,10 @@ import DirnexCore
 /// - ⌘S: save the result, once every conflict has a choice. ⌘W: close, asking first about choices
 ///   not saved.
 /// - ⌘F, ⌘G, ⇧⌘G: find in the pane holding the keyboard. ⎋: close the find bar, else the window.
+///
+/// Tab and ⇧Tab are the key view loop's, set up in `+Layout`: the panes on screen, left to right,
+/// then the toolbar's controls. Find acts on the pane holding the keyboard, and while the toolbar
+/// has it, on the pane that had it last.
 extension MergeWindowController {
     func windowDidBecomeKey(_ notification: Notification) {
         installKeyMonitor()
@@ -83,9 +87,16 @@ extension MergeWindowController {
         return true
     }
 
-    /// The pane the keyboard is in, the result when none is.
+    /// The pane the keyboard is in, or was in last: the result until another one has had it.
     var focusedPane: ComparePaneView {
-        panes.first { window?.firstResponder === $0.pane.textView }?.pane ?? resultPane
+        panes.first { $0.pane.holdsKeyboard }?.pane ?? resultPane
+    }
+
+    /// Mark the pane of `column` as the one the keyboard is in.
+    func paneTookKeyboard(_ column: MergeRow.Column) {
+        for (each, pane) in panes {
+            pane.holdsKeyboard = each == column
+        }
     }
 
     private func find(_ action: NSTextFinder.Action) {

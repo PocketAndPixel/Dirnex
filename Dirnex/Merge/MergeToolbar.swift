@@ -61,6 +61,12 @@ final class MergeToolbar: NSView {
         )
     }
 
+    /// The controls Tab stops at, left to right. One that cannot take the keyboard is passed over:
+    /// the takes with no conflict current, and Save until it can save.
+    var keyViews: [NSView] {
+        [navigation, take, showBase, save]
+    }
+
     /// Show where the merge stands. `count` is `nil` while the merge is being computed, which says
     /// nothing yet rather than "No conflicts".
     func showCounter(current: Int?, count: Int?) {

@@ -15,6 +15,14 @@ final class CompareTextView: NSTextView {
     var pane: ComparisonPaneText?
     /// Where ⌘C writes. A seam, so a test does not overwrite the clipboard of whoever runs it.
     var pasteboard = NSPasteboard.general
+    /// Called when the view takes the keyboard, by a click or by Tab.
+    var onFocus: (() -> Void)?
+
+    override func becomeFirstResponder() -> Bool {
+        let accepted = super.becomeFirstResponder()
+        if accepted { onFocus?() }
+        return accepted
+    }
 
     /// ⌘C copies the file's own text: gaps give nothing, a line cut short in the pane is copied
     /// whole, and each line ends as it did in the file.
