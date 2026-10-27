@@ -33,6 +33,13 @@ extension RemoteFileCache {
         EditBaseStore(root: Self.basesRoot)
     }
 
+    /// Where a save's content check brings the server's bytes down to compare with a base
+    /// (`WriteBackContentCheck`). Each download is removed once compared, and the launch purge
+    /// clears whatever a crash left.
+    static var checksRoot: URL {
+        temporaryRoot.appendingPathComponent("Checks", isDirectory: true)
+    }
+
     /// Note that the copy at `url` holds the server's bytes as it stands now: it was just
     /// downloaded.
     func noteServed(_ url: URL) {

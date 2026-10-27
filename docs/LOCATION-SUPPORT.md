@@ -668,10 +668,15 @@ edit and the version the edit started from, kept when the edit began and replace
 upload sends. The result is saved into the editor's copy and uploaded, checked against the version
 merged, so a write meanwhile asks again. It is offered for a save of one file whose three versions
 are text within 64 MiB, and not inside an archive, where no base is kept. **SFTP and FTP are
-limited by the check, not the merge:** with no entity tag, a change is seen only by its size and its
-listed time, minute-resolution over SFTP and coarser over FTP, so a same-size write in the minute of
-the last upload goes unseen and is overwritten (docs/NOTES.md ▸ sftp). WebDAV and S3 compare entity
-tags and condition the upload on one. Verified live over SFTP; WebDAV is Slice 6's.
+limited by the check, not the merge:** with no entity tag, the listing gives a size and a time,
+minute-resolution over SFTP and coarser over FTP without `MLSD`. Since 2026-10-27, when both agree,
+the save brings the server's file down and compares it with the base. So a same-size write in the
+minute of the last upload is caught and offered Merge…, where it used to be overwritten
+(docs/NOTES.md ▸ sftp). That download is bounded by the Settings ▸ Panels limit (10 MB by default).
+Past it, or for a copy with no base, the save rests on the size and time, and such a write still
+goes unseen. The upload carries no condition, so a write between the check and the upload is not
+caught. WebDAV and S3 compare entity tags and condition the upload on one. Verified live over SFTP,
+the same-size case included; WebDAV is Slice 6's.
 
 <sup>x</sup> A side stopped having to be on this disk at PLAN.md §M25 Slice 5c, and what it gains is
 comparison by **size**, which is honest anywhere. Comparing by **timestamp** is withdrawn the moment
@@ -1035,7 +1040,10 @@ staged through this Mac (`RelayCopy`), costing the file's size in temp space and
 twice.
 
 <sup>mm</sup> S3 sends `If-Match`; SFTP and FTP re-`stat` before uploading and tell you if the
-file changed since it was fetched, which is a narrower window and not a guarantee. WebDAV does both:
+file changed since it was fetched, which is a narrower window and not a guarantee. Where the size and
+time agree, they also compare the server's bytes with the version the edit started from, within the
+Settings ▸ Panels limit (<sup>www</sup>), so a same-size write inside the listing's minute is caught
+too. The upload itself is still unconditional. WebDAV does both:
 the re-`stat` asks first, and the save then sends `If-Match` with the tag that check read, so a
 change landing between the two is refused by the server rather than written over. It is limited by
 what the server hands out. Apache's tag is **weak** for the second after any write, and no spelling

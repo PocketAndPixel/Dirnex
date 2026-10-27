@@ -26,6 +26,14 @@ struct CheckedWriteBack: Equatable {
     var hasConcern: Bool { concern != nil }
 }
 
+/// What a save's check read from the server for one destination: the re-`stat`, and what the bytes
+/// said where the size and time could not (PLAN.md §M34 ▸ 2026-10-27, the content check).
+struct WriteBackServerReading: Sendable, Equatable {
+    /// The server's file, or `nil` when the re-`stat` could not reach it.
+    let entry: FileEntry?
+    let content: WriteBackContentVerdict
+}
+
 /// What the user is asked about a checked batch, and what each answer means.
 ///
 /// Three outcomes rather than two, and the middle one is why the sheet exists at all: a batch is

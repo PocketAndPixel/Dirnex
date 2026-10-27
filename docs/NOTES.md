@@ -5393,7 +5393,13 @@ do not share a resolver, and neither half of that is obvious from either call si
     - FTP: `MLSD`'s `modify` and `MDTM` (`curl -I`) both give the second and caught a rewrite two
       seconds later; `LIST` printed the same row for both.
   - **The fix compares the server's bytes with the edit's base** instead (`WriteBackContentCheck`):
-    a second is still a window, and a match with the base is proof the upload loses nothing.
+    a second is still a window, and a match with the base is proof the upload loses nothing. Seen
+    live the same day: the Goodbye/See you write, stamped back to the upload's own second, raised the
+    changed question with Merge… (PLAN.md §M34 ▸ the content check).
+  - **A live test that needs "the same minute" should stamp both versions to one second** rather than
+    race the clock: `FileManager.setAttributes` on the server's own file for SFTP, `MFMT` through
+    `applyMetadata` for FTP. Then neither a minute nor a second can tell them apart, and the run
+    does not depend on where the minute boundary falls (`RemoteWriteBackContentLiveTests`).
 
 #### Writing a file: `put`, exclusive creates and offsets
 

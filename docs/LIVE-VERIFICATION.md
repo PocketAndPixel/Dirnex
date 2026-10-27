@@ -243,6 +243,12 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     app reconnects at launch since session restore learned to (NOTES.md ▸ Design lessons). Back the domain up
     with `defaults export` first, and `ssh-keyscan` the throwaway host key into `known_hosts` or the
     connect raises a trust dialog that wedges a headless run; put both back afterwards.
+    - **`ssh-keyscan … >> ~/.ssh/known_hosts` also appends comment lines, and `down` leaves them.**
+      Seen 2026-10-27: it printed `# 127.0.0.1:2222 SSH-2.0-OpenSSH_10.3` on stdout five times
+      beside the key, `ssh-keygen -R` removed the key and kept the five, and two more from an earlier
+      run were already there. Copy the file aside first and put the copy back, or append only
+      `ssh-keyscan … | command grep -v '^#'`. A cleanup that deletes every such comment also deletes
+      the ones that were there before.
 
 - **A speedup measured in the running app needs the slow path run *beside* it, and for a remote
   backend the server's own config is the cheapest way to arrange one.** Adopting
