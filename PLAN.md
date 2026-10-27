@@ -1255,6 +1255,107 @@ bytes compared with the copy's base when the size and time agree, and a differen
   - **Not seen live in the app:** FTP (its live test drives the real transport), a batch, and a file
     past the limit.
 
+**2026-10-27: Slice 5 landed** (core, then app). A file git has badged U opens in the merge window
+on the versions git holds of it.
+
+- **Decided with Oleg before writing it:**
+  - Each version is read as a checkout would write it (`cat-file --filters`), so a file under
+    `eol=crlf` or a `working-tree-encoding` keeps its form when saved.
+  - Resolve Conflict… is a registry command: in the File menu after Compare By Contents, in ⌘K, by
+    `run operation`, and first in the right-click menu over a conflicted file, as Put Back leads in
+    a `#recycle`.
+  - Each pane says what its version is in the operation in progress, since in a rebase git's ours is
+    the branch being rebased onto and theirs the user's own commit.
+- **Probed first** on git 2.54, in scratch repositories (docs/NOTES.md ▸ git):
+  - `ls-files --unmerged --format` gives each stage's mode, object and size in one run (git 2.38 or
+    later), and a path given to it is a pattern: `a[1].txt` also listed `a1.txt`, and `:colon.txt`
+    listed nothing. `--literal-pathspecs` fixes both.
+  - Under `eol=crlf` the stored blob is LF and the working-tree file CRLF; `cat-file --filters`
+    gives the CRLF.
+  - Which stages exist names the conflict. A deletion on both sides is resolved by `ort` itself, so
+    stage 1, 2 or 3 alone comes from a rename to two names. A link both sides changed is a file at
+    stage 1 and links at 2 and 3.
+  - The git directory names the operation, a worktree's included (`rev-parse --absolute-git-dir`).
+  - With a clean file's time made stale, a plain `git status` rewrote the index, and the three reads
+    changed nothing in `.git`.
+- **Core:**
+  - `GitCommand` gains `unmergedStages`, `stageContents` and `gitDirectory`, each a read.
+  - `GitStage` parses the listing. `GitConflictStages.choose` takes both sides, with the base when
+    there is one, or refuses by name: `deletedByUs`, `deletedByThem`, `deletedByBoth`, `addedByUs`,
+    `addedByThem`, `notAFile`, `notConflicted`.
+  - `GitOperation.inProgress` reads the markers, a rebase first, since one stopped on a merge commit
+    writes `MERGE_HEAD` too.
+  - `GitConflictReader`, behind `GitTransport`: the listing decides before a byte is read, a version
+    over the window's 64 MiB refuses the read, and git's own words come back when it fails. With no
+    git directory to read, the versions still read and no operation is named.
+- **App:**
+  - `GitProcessTransport` runs the `git` the status provider runs, draining both pipes.
+  - `conflictTarget`: one file, not a folder, whose own badge is U. A folder's U is a roll-up.
+  - Resolve Conflict… takes the working-tree file's witness, reads off the main thread, and opens
+    the merge window, or brings forward one already open on the file. Save is the window's own, with
+    the undo store and this pane's journal as the compare window's, so ⌘Z puts the conflicted file
+    back.
+  - The refusals do not say which side deleted the file, for the rebase's reason above.
+  - The command's title and keywords are in all 14 languages, which the coverage test asks of every
+    command. The other new sentences are English and wait for Slice 6.
+- **Decided in the slice:**
+  - **A name only one side has is refused**, as the plan refuses a deletion: there is no second
+    version to merge it with. The plan named DU, UD and DD only.
+  - **What git holds decides, not the badge**, which a snapshot drew earlier: a file staged since is
+    refused as no longer conflicted.
+- **[docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md):** a row, with footnote xxx.
+- **Tests:** 28 in the core, in `GitConflictTests` (11), `GitConflictReaderTests` (8) over a
+  scripted git, and `GitConflictReaderLiveTests` (9) over real git in scratch repositories: each
+  kind of conflict, `eol=crlf`, a rebase and a cherry-pick, a name with pattern characters and one
+  starting with a colon, and nothing in `.git` changed by the reads where a plain `git status` does
+  change it. 9 in the app, in `ResolveConflictTests` (7) and `ResolveConflictReachTests` (2),
+  through the shipped transport: the save writes the working-tree file and git still lists `UU`, and
+  the right-click menu leads with the command. Full runs: 4 640 core and 2 049 app tests, without
+  the live server suites, whose code this slice does not touch.
+- **Negative controls**, each failing its own tests:
+  - In the core: no `--literal-pathspecs` (the colon name and the argv test), the raw blob for
+    `--filters` (the CRLF test), the two deletions swapped, no filter by path, no size check, a
+    merge marker asked before a rebase's, a link's mode taken as a file's, and the request's
+    spelling of a name in `--path` rather than git's.
+  - In the app: a folder taken as the target, the menu entry not offered, a rebase worded as a
+    merge, and the transport ignoring git's exit status. With the save's witness dropped, the save
+    test hung on the changed-since-read sheet instead of failing, and was stopped by hand.
+  - Two controls passed at first, and the tests were fixed. Without `--literal-pathspecs` the live
+    test still passed, since the reader keeps only its own path's records; the colon name fails it.
+    The `--path` test compared `String`s, which are equal across normalizations (docs/NOTES.md ▸
+    Runs and assertions that prove nothing).
+  - `--no-optional-locks` changes nothing measurable for these three commands and is kept as
+    `status` keeps it.
+- **Found on the way:** two full app runs each failed one timing test elsewhere, a 100 ms deadline
+  in the WebDAV bin check and a compare window's file watch, while the new fixture built
+  repositories with `waitUntilExit` on the main actor. Moved off it, the new suites took 0.6 s
+  instead of 5.4 s and the full run passed (docs/NOTES.md ▸ External CLI tools). The link is likely,
+  not proven.
+- **Seen live** in the Debug build on two scratch repositories, one stopped in a merge with a `UU`,
+  an `AA` and a `DU` file and one stopped in a rebase. The first look had the screen locked, so it
+  read only window sizes; the rest was driven by background computer-use, with full-screen control
+  for the right-click menu.
+  - File ▸ Resolve Conflict… on `Greeter.swift` opened "Merge of “Greeter.swift”": Yours "HEAD, the
+    branch you’re on", Theirs "The branch being merged in", yours' doc comment and theirs' farewell
+    already merged in blue, the two greetings one orange conflict, and Save held back.
+  - Take Theirs and Save wrote the merged file with no marker in it, and git still listed `UU
+    Greeter.swift`. The save left the index as it was: its time was the second of a plain `git
+    status` run by hand before the launch. Every read after that left both `.git` directories
+    exactly as they were, and the rebase repository's as it was built.
+  - On `gone.txt` (`DU`): "Couldn’t resolve the conflict in “gone.txt”" and the deletion sentence.
+    On `added.txt` (`AA`): Base "None: both sides added the file", empty, with one conflict. On the
+    rebase: Yours "HEAD, the branch being rebased onto" with upstream's line, and Theirs "The commit
+    being replayed" with the user's own.
+  - A right-click on the conflicted file led with Resolve Conflict… and a separator; on `keep.txt`
+    the menu began at Open.
+  - A saved window and one with no choice closed without asking.
+  - The defaults domain was restored and compared unchanged.
+- **Fixed after the live look:** the Result pane's subtitle named the file's full path, and a
+  working tree's path cut it mid-sentence ("…tage it with git add"), shorter still with the base
+  shown. It says "Saved to the working tree; git add marks it resolved" now, since the window's
+  title names the file, and it fits in four panes (seen live).
+- **Left for Slice 6:** the 13 languages for the new sentences, and the server entry's WebDAV run.
+
 ### Still open
 
 Everything through M32 is shipped, and the record of it — the milestone checklists, the sixty

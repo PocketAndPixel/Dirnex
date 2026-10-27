@@ -969,6 +969,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   that swapped Cancel and Don't Save passed, because the close Cancel now made landed during the
   test's next wait, where the count it was meant to fail was read as the second answer's. Start
   the question in a `Task`, answer the sheet, `await` the task, then assert.
+- **Two `String`s that differ only in normalization are equal, so an assertion about which spelling
+  was sent passes for both.** Met 2026-10-27 on M34 Slice 5: a test that `--path=` carried git's
+  precomposed name passed with the decomposed one put back, since `contains` and `==` compare by
+  canonical equivalence. Compare `unicodeScalars` when the bytes are the claim.
+- **A plain `git status` is no control for an index write in a repository where every tracked file
+  is conflicted.** Probed 2026-10-27: it rewrote the index in a clean repository with a file's time
+  made stale, and wrote nothing mid-merge when no clean file was left to refresh. The live suite
+  keeps a clean file and moves its time back before the control.
 - **Assert Objective-C selectors by name when a framework dispatches by selector.** Swift may
   import a delegate callback under a different Swift signature (Sparkle's choice callback comes
   in as `updater(_:userDidMake:forUpdate:state:)`, not `userDidMakeChoice:`). A drifted Swift
@@ -4617,6 +4625,13 @@ against a fake.
   else. `ProcessWaiting.joinTermination(of:into:)` is the one home; `exitWaiter(for:)` is the same
   mechanism for a site with no group of its own. Both must be installed **before** `run()`, and
   neither may be waited on after a `run()` that threw.
+  - **In an app test on the main actor, that poll runs the main run loop, and other tests' work runs
+    inside it.** Seen 2026-10-27 on M34 Slice 5: a fixture built a scratch git repository with
+    thirteen `waitUntilExit` runs on the main actor, and two full runs each failed a different
+    timing test elsewhere, the WebDAV bin check's 100 ms deadline and a compare window's file watch.
+    With the fixture's runs waited for through `terminationHandler` and moved to `BlockingWork`, its
+    suites took 0.6 s instead of 5.4 s and the full run passed. Neither failure reproduced alone, so
+    the link is likely rather than proven.
   - **Its relative size is inversely proportional to how fast the child is, which is exactly why it
     hid for the life of the app.** On `git status` (≈320 ms, measured on this repo) it is a quarter
     of the cost and reads as git being slow; on a listing it is nearly all of it. Nothing surfaces
@@ -9236,6 +9251,29 @@ ships a third-party binary. All measured 2026-09-20 against two HERO7 files befo
   line a line break when it has none and ends a conflict, even with nothing of theirs after it, and
   that break is CRLF when `is_cr_needed` finds CRLF around the conflict. Probed 2026-10-26 for M34
   Slice 2, whose result is held to all three.
+- **A path handed to `ls-files` is a pattern unless `--literal-pathspecs` says otherwise.** Probed
+  2026-10-27 on git 2.54 for M34 Slice 5: `ls-files -u -- 'a[1].txt'` listed `a1.txt` as well, and
+  `:colon.txt` listed nothing, because a leading colon starts pathspec magic. `--literal-pathspecs`
+  is a global option, before the subcommand. Filtering the records by path hides the first case and
+  not the second, which only a name starting with a colon shows.
+- **A conflicted file's versions, without touching the index.** `ls-files --unmerged -z
+  --format='%(objectmode) %(objectname) %(stage) %(objectsize)%x09%(path)'` gives each stage with
+  its size, so a version too large to read is refused first (`--format` needs git 2.38). Then
+  `cat-file --filters --path=<path> <object>` prints what a checkout would write. Under
+  `eol=crlf` the blob is LF and the working-tree file CRLF, so merging blobs would change every
+  line ending of the file saved. `--path` without `--filters` or `--textconv` exits 129.
+  - **Which stages exist says what kind of conflict it is.** 1-2-3 both modified, 2-3 both added,
+    1-3 deleted by us, 1-2 deleted by them. `ort` resolves a deletion on both sides by itself, so
+    1 alone, 2 alone and 3 alone come from a rename to two names: the old name, and each new one.
+    A link both sides changed lists a file at stage 1 and links (`120000`) at 2 and 3. A file
+    against a link renames one side `name~HEAD`.
+  - **The git directory names the operation.** `rebase-merge/` (and `rebase-apply/rebasing`) for a
+    rebase, `rebase-apply/applying` for `git am`, `MERGE_HEAD`, `CHERRY_PICK_HEAD`, `REVERT_HEAD`.
+    `git stash pop` leaves only `AUTO_MERGE`, which all of them write. A linked worktree keeps
+    these in `.git/worktrees/<name>`, which `rev-parse --absolute-git-dir` prints. In a rebase,
+    stage 2 is the branch being rebased onto and stage 3 the commit being replayed.
+  - **`ls-files`, `cat-file` and `rev-parse` write nothing with or without `--no-optional-locks`**,
+    since none refreshes the index. Removing the flag failed only the test that pins the argv.
 
 ## Release pipeline
 

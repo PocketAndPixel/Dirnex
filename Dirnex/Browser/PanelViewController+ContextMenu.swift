@@ -103,6 +103,12 @@ extension PanelViewController {
             add(["file.putBack"], to: menu)
             menu.addSeparator()
         }
+        // A file git has badged U gets Resolve Conflict… first, for the same reason: it is what
+        // the file needs before anything else (PLAN.md §M34 Slice 5).
+        if conflictTarget != nil {
+            add(["file.resolveConflict"], to: menu)
+            menu.addSeparator()
+        }
         let open = NSMenuItem(
             title: String(localized: "Open", comment: "Context-menu item: open the file or folder."),
             action: #selector(openContextEntry(_:)),

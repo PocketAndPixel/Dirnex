@@ -35,6 +35,7 @@ enum CommandBinding {
             #selector(PanelViewController.chooseArchiveNameEncoding(_:)),
         "file.syncDirectories": #selector(PanelViewController.synchronizeDirectories(_:)),
         "file.compareByContents": #selector(PanelViewController.compareByContents(_:)),
+        "file.resolveConflict": #selector(PanelViewController.resolveConflict(_:)),
         "file.attributes": #selector(PanelViewController.showAttributes(_:)),
         "file.checksumVerify": #selector(PanelViewController.verifyChecksums(_:)),
         "file.checksumCreate": #selector(PanelViewController.createChecksumFile(_:)),

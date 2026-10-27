@@ -586,6 +586,7 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | Compare By Contents (`⌥F3`) | yes | yes | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | n/a | yes, limited<sup>w</sup> | yes | yes |
 | In the compare window: copy a change across (`⌥⌘←` `⌥⌘→`), save (`⌘S`), and edit a side in your own editor<sup>vvv</sup> | yes | yes | yes, limited<sup>v</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | yes | yes |
 | Merge a file the server changed under an `F4` edit (Merge… in the save's question)<sup>www</sup> | n/a | n/a | no<sup>www</sup> | yes, limited<sup>www</sup> | yes, limited<sup>www</sup> | yes | yes | n/a | no<sup>jjj</sup> | yes | n/a |
+| Resolve a git conflict (Resolve Conflict… on a file badged U)<sup>xxx</sup> | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
 | Synchronize Directories | yes | yes | **no**<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | n/a | yes, limited<sup>x</sup> | n/a<sup>x</sup> | n/a<sup>x</sup> |
 | Browse *into* an archive file | yes | yes | yes | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | n/a | n/a | yes | yes |
 
@@ -677,6 +678,16 @@ Past it, or for a copy with no base, the save rests on the size and time, and su
 goes unseen. The upload carries no condition, so a write between the check and the upload is not
 caught. WebDAV and S3 compare entity tags and condition the upload on one. Verified live over SFTP,
 the same-size case included; WebDAV is Slice 6's.
+
+<sup>xxx</sup> A file git has badged U opens in the merge window on the versions git holds of it
+(PLAN.md §M34 Slice 5), each read as a checkout would write it, so the file's line endings and
+encoding survive the save. Save writes the working-tree file and nothing else: no git command Dirnex
+runs writes to the repository, and the U stays until `git add`. A file both sides added merges
+against an empty base. A deletion on either side, a name only one side has (as a rename to two names
+leaves), a link or a submodule, a binary file and a version over 64 MiB are each refused by name.
+Only a local working tree has a git status, so nothing on a server, in an archive or in a listing is
+badged U. Verified live on scratch repositories stopped in a merge and in a rebase: a take and a
+save, a deletion refused, both sides adding a file, and `.git` untouched throughout.
 
 <sup>x</sup> A side stopped having to be on this disk at PLAN.md §M25 Slice 5c, and what it gains is
 comparison by **size**, which is honest anywhere. Comparing by **timestamp** is withdrawn the moment

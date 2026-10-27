@@ -158,6 +158,9 @@ extension PanelViewController: NSMenuItemValidation {
                 : tool.compareItemTitle
             // Two real local files: marked in this pane (exactly two), else one under each cursor.
             return canCompareByContents
+        case #selector(resolveConflict(_:)):
+            // One file git has badged U, its own badge rather than a folder's roll-up.
+            return conflictTarget != nil
         case #selector(showAttributes(_:)):
             // Needs a real item on disk under the cursor: a mode, a flags word and an ACL are
             // things an inode has, which an archive member and an SFTP listing are not.
