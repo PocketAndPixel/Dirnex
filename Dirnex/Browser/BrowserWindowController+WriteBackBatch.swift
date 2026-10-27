@@ -114,6 +114,10 @@ extension BrowserWindowController {
     ///
     /// A status line while it runs, because forty round trips is seconds during which the save the
     /// user pressed ⌘S for has visibly done nothing.
+    ///
+    /// Where a `stat` agrees with the record on size and time alone, the server's bytes are compared
+    /// with the copy's base (``readServer(at:recorded:bases:check:)``), and a difference is the same
+    /// "changed" as a size that moved.
     private func checkWriteBacks(_ batch: [PendingWriteBack]) async -> [CheckedWriteBack] {
         let backend = focusedPanel.backend
         if batch.count > 1 {
@@ -123,12 +127,17 @@ extension BrowserWindowController {
             ))
         }
         let recorded = batch.map { Self.recordedRevision(of: $0, in: remoteFileCache) }
+        let bases = batch.map { remoteFileCache.base(ofCopy: $0.edit.temporaryURL) }
         let destinations = batch.map(\.destination)
         let localPaths = batch.map(\.edit.temporaryURL.path)
-        let found: [FileEntry?] = await BlockingWork.run {
-            destinations.map { destination in try? backend.stat(at: destination) }
+        let check = WriteBackContentCheck(
+            backend: backend,
+            previewLimit: AppPreferences.shared.quickViewFetchLimit,
+            scratch: RemoteFileCache.checksRoot
+        )
+        let readings = await BlockingWork.run {
+            Self.readServer(at: destinations, recorded: recorded, bases: bases, check: check)
         }
-        let current = found.map { $0.map(RemoteFileRevision.init) }
         let sizes: [Int64] = await BlockingWork.run {
             localPaths.map { path in
                 let attributes = try? FileManager.default.attributesOfItem(atPath: path)
@@ -137,18 +146,63 @@ extension BrowserWindowController {
         }
         // Merge… is offered for a save of one file: a batch's one question is about a set.
         let mergeBase = batch.count == 1
-            ? await mergeBase(for: batch[0], recorded: recorded[0], current: found[0])
+            ? await mergeBase(
+                for: batch[0],
+                recorded: recorded[0],
+                current: readings[0].entry,
+                contentChanged: readings[0].content.isChange
+            )
             : nil
-        return zip(batch.indices, batch).map { index, pending in
-            CheckedWriteBack(
+        return Self.checkedWriteBacks(
+            batch, recorded: recorded, readings: readings, sizes: sizes, mergeBase: mergeBase
+        )
+    }
+
+    /// Each save of `batch` paired with what its check found: the concern the prompt names, and the
+    /// precondition the upload carries, read off the server's file as the check found it. `static`
+    /// and pure so what a reading turns into is assertable with no window.
+    static func checkedWriteBacks(
+        _ batch: [PendingWriteBack],
+        recorded: [RemoteFileRevision?],
+        readings: [WriteBackServerReading],
+        sizes: [Int64],
+        mergeBase: URL?
+    ) -> [CheckedWriteBack] {
+        zip(batch.indices, batch).map { index, pending in
+            let current = readings[index].entry.map(RemoteFileRevision.init)
+            return CheckedWriteBack(
                 edit: pending.edit,
                 destination: pending.destination,
-                concern: Self.writeBackConcern(
-                    recorded: recorded[index], current: current[index]
+                concern: writeBackConcern(
+                    recorded: recorded[index],
+                    current: current,
+                    contentChanged: readings[index].content.isChange
                 ),
-                condition: Self.writeCondition(checked: current[index]),
+                condition: writeCondition(checked: current),
                 byteSize: sizes[index],
                 mergeBase: mergeBase
+            )
+        }
+    }
+
+    /// What the server holds at each destination: its re-`stat`, and what its bytes say against the
+    /// copy's base where that `stat` agrees with `recorded` on size and time alone.
+    ///
+    /// Over SFTP the time is a minute, so a same-size write in the minute of the last upload agrees,
+    /// and the next save went over it with no question until the bytes were asked (seen live
+    /// 2026-10-27, docs/NOTES.md ▸ sftp). One file after another, as the `stat`s always were.
+    /// Blocking; call it off the main thread. `static` so the wiring is assertable with no window.
+    nonisolated static func readServer(
+        at destinations: [VFSPath],
+        recorded: [RemoteFileRevision?],
+        bases: [URL?],
+        check: WriteBackContentCheck
+    ) -> [WriteBackServerReading] {
+        destinations.indices.map { index in
+            let entry = try? check.backend.stat(at: destinations[index])
+            return WriteBackServerReading(
+                entry: entry,
+                content: check.verdict(recorded: recorded[index], current: entry, base: bases[index])
             )
         }
     }

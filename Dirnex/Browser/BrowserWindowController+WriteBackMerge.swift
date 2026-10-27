@@ -17,31 +17,35 @@ extension BrowserWindowController {
     // MARK: - Whether Merge… is offered
 
     /// The base a merge of `pending` starts from, or `nil` when Merge… cannot work
-    /// (``mergeBase(_:yours:recorded:current:)``).
+    /// (``mergeBase(_:yours:recorded:current:contentChanged:)``).
     func mergeBase(
         for pending: PendingWriteBack,
         recorded: RemoteFileRevision?,
-        current: FileEntry?
+        current: FileEntry?,
+        contentChanged: Bool
     ) async -> URL? {
         await Self.mergeBase(
             remoteFileCache.base(ofCopy: pending.edit.temporaryURL),
             yours: pending.edit.temporaryURL,
             recorded: recorded,
-            current: current
+            current: current,
+            contentChanged: contentChanged
         )
     }
 
     /// `base`, when Merge… can work from it: the check found the server's copy changed since
-    /// `recorded`, the server's copy is small enough for the window to read, and `base` and the copy
-    /// at `yours` both read as text. `static` so the decision is assertable with no window.
+    /// `recorded`, by its size and time or by its bytes (`contentChanged`), the server's copy is
+    /// small enough for the window to read, and `base` and the copy at `yours` both read as text.
+    /// `static` so the decision is assertable with no window.
     static func mergeBase(
         _ base: URL?,
         yours: URL,
         recorded: RemoteFileRevision?,
-        current: FileEntry?
+        current: FileEntry?,
+        contentChanged: Bool = false
     ) async -> URL? {
         guard let base, let recorded, let current,
-              recorded.isSuperseded(by: RemoteFileRevision(current)),
+              contentChanged || recorded.isSuperseded(by: RemoteFileRevision(current)),
               mergeReads(byteSize: current.byteSize) else { return nil }
         let readable = await BlockingWork.run {
             (try? ComparedDocument.read(contentsOf: base)) != nil

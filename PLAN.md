@@ -1216,6 +1216,45 @@ the copy is checked against.
   raises the changed question with Merge…, then a live run on the throwaway SFTP server and footnote
   www.
 
+**2026-10-27: the content check, app.** Every save of an F4 edit over SFTP or FTP now has the server's
+bytes compared with the copy's base when the size and time agree, and a difference asks.
+
+- **App:**
+  - `readServer(at:recorded:bases:check:)` `stat`s each destination and runs the check against that
+    copy's own base, one file after another as the `stat`s always ran. It is `nonisolated static`,
+    so the wiring is testable with no window. The check downloads into `DirnexRemote/Checks`, within
+    `AppPreferences.quickViewFetchLimit`.
+  - `checkedWriteBacks(_:recorded:readings:sizes:mergeBase:)` turns readings into the prompt's items,
+    pure and `static` for the same reason. `writeBackConcern` and `mergeBase` take `contentChanged`,
+    so a `different` verdict gets the changed sentence and Merge…, as a size that moved does.
+  - Merge… fetches the server's version as before. Its carry goes through the same check against the
+    version merged, so a stale copy would cost a second question rather than an edit.
+- **[docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md):** footnotes www and mm say what the bytes
+  now catch, and what is still open: a file past the limit, a copy with no base, and a write between
+  the check and the unconditional upload.
+- **Tests:** 5 in `RemoteWriteBackContentTests` over a fake server listing every file at one minute,
+  and 2 live in `RemoteWriteBackContentLiveTests`. Over SFTP the server's own file and over FTP an
+  `MFMT` stamps both versions to one second, so the server's listing cannot tell them apart and the
+  bytes can. Full runs: 4 612 core and 2 040 app tests, 2 014 of them executed with the throwaway
+  servers up, the new live suites included.
+- **Negative controls**, each failing its own tests: the reader skipping the bytes (5 tests, both live
+  ones included), the items dropping the finding (2), the concern ignoring it (4), and the Merge…
+  offer ignoring it (1).
+- **Seen live** in the Debug build against the throwaway SFTP server, on a seeded key tab, driven by
+  background computer-use, with shell writes to the copy standing in for TextEdit's saves:
+  - The first save went up with nothing asked, the base became the bytes it sent, and `Checks` was
+    left empty.
+  - The server's "Goodbye" became "See you", the same 24 bytes, stamped back to the upload's own
+    second. The next save asked "The file on the server has changed since you downloaded it —
+    someone else has edited it" with Merge… first, and the server kept its edit.
+  - Merge… showed "See you" as Theirs. The two touching edits were one conflict. Take Both, Theirs
+    First and Save put both on the server, the copy matched, and the one base left was the uploaded
+    bytes. A third save went up with nothing asked.
+  - The defaults domain was restored and compared unchanged, the servers were stopped, and
+    `known_hosts` was put back (docs/LIVE-VERIFICATION.md, on `ssh-keyscan`'s comment lines).
+  - **Not seen live in the app:** FTP (its live test drives the real transport), a batch, and a file
+    past the limit.
+
 ### Still open
 
 Everything through M32 is shipped, and the record of it — the milestone checklists, the sixty

@@ -56,10 +56,15 @@ extension BrowserWindowController {
     /// evidence and declining produced the same sentence again on the next save. The core type that
     /// graded it was removed with them, so `isSuperseded(by:)` is now the whole comparison.
     ///
+    /// `contentChanged` is the content check's finding (`WriteBackContentCheck`): the server's bytes
+    /// differ from the copy's base where the size and time agree. It is the same fact as a size or
+    /// time that moved, so it gets the same sentence.
+    ///
     /// `static` and pure so both the decision and its wording are testable without a window.
     static func writeBackConcern(
         recorded: RemoteFileRevision?,
-        current: RemoteFileRevision?
+        current: RemoteFileRevision?,
+        contentChanged: Bool = false
     ) -> String? {
         let overwrite = String(
             localized: "Uploading replaces the copy on the server and can’t be undone.",
@@ -89,7 +94,7 @@ extension BrowserWindowController {
                 """
             )
         }
-        guard !recorded.isSuperseded(by: current) else {
+        guard !contentChanged, !recorded.isSuperseded(by: current) else {
             return String(
                 localized: """
                 The file on the server has changed since you downloaded it — someone else has \
