@@ -81,7 +81,8 @@ public struct RemoteFileRevision: Sendable, Equatable {
     /// *no* difference is only as strong as the fields that could be compared — an entity tag is
     /// proof of sameness, a size and a date are an absence of evidence, and over FTP that date is
     /// year-less, zone-less and on the server's clock. So the two verdicts are not symmetric, and
-    /// a caller must not read "not superseded" as "provably untouched".
+    /// a caller must not read "not superseded" as "provably untouched". A write-back that keeps a
+    /// base asks the bytes in that case (``matchesOnlyBySizeAndTime(_:)``).
     ///
     /// The tags are compared **weakly** (``HTTPEntityTag/weaklyEqual(_:_:)``), since one unchanged
     /// WebDAV file reads `W/"x"` in the second after a write and `"x"` after it. S3's tags are never
@@ -91,6 +92,18 @@ public struct RemoteFileRevision: Sendable, Equatable {
             return !HTTPEntityTag.weaklyEqual(mine, theirs)
         }
         return byteSize != other.byteSize || modified != other.modified
+    }
+
+    /// Whether `other` agrees with this revision on size and time **and on nothing stronger**: not
+    /// superseded, with no entity tag on both sides to prove it.
+    ///
+    /// That is the verdict that is only an absence of evidence, and the one a write-back settles by
+    /// comparing the server's bytes with the edit's base (``WriteBackContentCheck``). Over SFTP the
+    /// time is a minute, so a same-size write in the minute of the last upload agrees here (seen
+    /// live 2026-10-27, docs/NOTES.md ▸ sftp). A pair whose tags match is proof and needs no bytes.
+    public func matchesOnlyBySizeAndTime(_ other: Self) -> Bool {
+        guard !isSuperseded(by: other) else { return false }
+        return entityTag == nil || other.entityTag == nil
     }
 
     /// The tag a save-back may send as `If-Match`, or `nil` when there is none worth sending.

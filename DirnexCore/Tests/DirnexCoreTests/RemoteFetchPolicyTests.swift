@@ -28,7 +28,7 @@ struct RemoteFetchPolicyTests {
     /// here rather than read from the code under test: borrowing `isAutomatic` would prove the two
     /// agree, not that either is right.
     private func expectedRefusal(for purpose: RemoteFetchPurpose) -> RemoteFetchDecision {
-        purpose == .cursorPreview ? .decline : .confirm
+        [.cursorPreview, .writeBackCheck].contains(purpose) ? .decline : .confirm
     }
 
     // MARK: - The size rows
@@ -141,14 +141,51 @@ struct RemoteFetchPolicyTests {
         }
     }
 
-    /// Exactly one gesture is automatic. Pinned because `isAutomatic` is what turns every refusal
-    /// above into a silent one, so a second case answering `true` by accident would make a
-    /// key-pressed gesture stop asking — a fetch the user is waiting for that quietly never starts.
-    @Test("only the cursor-following preview is automatic")
-    func onlyTheCursorPreviewIsAutomatic() {
+    /// Exactly two purposes are automatic: the preview following the cursor, and a save's content
+    /// check, which nobody pressed a key to download. Pinned because `isAutomatic` is what turns
+    /// every refusal above into a silent one, so a third case answering `true` by accident would make
+    /// a key-pressed gesture stop asking — a fetch the user is waiting for that quietly never starts.
+    @Test("only the cursor-following preview and a save's content check are automatic")
+    func onlyTheCursorPreviewAndTheWriteBackCheckAreAutomatic() {
         let automatic = RemoteFetchPurpose.allCases.filter(\.isAutomatic)
 
-        #expect(automatic == [.cursorPreview])
+        #expect(automatic == [.cursorPreview, .writeBackCheck])
+    }
+
+    // MARK: - A save's content check
+
+    /// The check's whole budget is the user's limit: up to it the bytes come down, past it the save
+    /// rests on the size and time without a word, and at zero nothing does.
+    @Test("a save's content check fetches up to the Settings limit and declines past it")
+    func writeBackCheckFollowsTheSettingsLimit() {
+        for limit in Self.limits {
+            let at = RemoteFetchPolicy.decision(
+                forByteSize: limit, purpose: .writeBackCheck, previewLimit: limit
+            )
+            let past = RemoteFetchPolicy.decision(
+                forByteSize: limit + 1, purpose: .writeBackCheck, previewLimit: limit
+            )
+            #expect(RemoteFetchPolicy.threshold(for: .writeBackCheck, previewLimit: limit) == limit)
+            #expect(at == .fetch)
+            #expect(past == .decline)
+        }
+    }
+
+    /// Agreeing to preview a 300 MB photograph is not agreeing to download it again on every save.
+    @Test("a save's content check ignores the session's preview allowance")
+    func writeBackCheckIgnoresTheAllowance() {
+        let limit = RemoteFetchPolicy.defaultPreviewLimit
+        let photograph: Int64 = 300 * 1_000_000
+
+        let threshold = RemoteFetchPolicy.threshold(
+            for: .writeBackCheck, previewLimit: limit, sessionAllowance: photograph
+        )
+        let preview = RemoteFetchPolicy.threshold(
+            for: .cursorPreview, previewLimit: limit, sessionAllowance: photograph
+        )
+
+        #expect(threshold == limit)
+        #expect(preview == photograph)
     }
 
     // MARK: - The limit the user owns
