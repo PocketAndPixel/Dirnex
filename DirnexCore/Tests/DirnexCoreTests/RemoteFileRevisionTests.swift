@@ -122,6 +122,44 @@ struct RemoteFileRevisionTests {
         #expect(downloaded.isSuperseded(by: RemoteFileRevision(byteSize: 4096, modified: noon)))
     }
 
+    // MARK: - What only the bytes can settle
+
+    /// The pair the write-back's content check exists for: the same size and minute, no tags.
+    @Test("an agreement on size and time alone is what the bytes can settle")
+    func sizeAndTimeAloneAreUnsettled() {
+        let uploaded = RemoteFileRevision(byteSize: 14, modified: noon)
+
+        #expect(uploaded.matchesOnlyBySizeAndTime(RemoteFileRevision(byteSize: 14, modified: noon)))
+    }
+
+    /// A difference is already evidence, so there is nothing for the bytes to add.
+    @Test("a size or time difference is settled without the bytes")
+    func aDifferenceIsSettled() {
+        let uploaded = RemoteFileRevision(byteSize: 14, modified: noon)
+
+        #expect(!uploaded.matchesOnlyBySizeAndTime(RemoteFileRevision(byteSize: 15, modified: noon)))
+        #expect(!uploaded.matchesOnlyBySizeAndTime(
+            RemoteFileRevision(byteSize: 14, modified: noon.addingTimeInterval(60))
+        ))
+        #expect(!uploaded.matchesOnlyBySizeAndTime(RemoteFileRevision(byteSize: 14, modified: nil)))
+    }
+
+    /// Matching tags are proof and differing ones are evidence, so both settle it. A tag on one side
+    /// only proves nothing, and the comparison falls back to size and time.
+    @Test("tags on both sides settle it, and a tag on one side does not")
+    func tagsSettleItOnlyOnBothSides() {
+        let tagged = RemoteFileRevision(byteSize: 14, modified: noon, entityTag: "\"aaa\"")
+
+        #expect(!tagged.matchesOnlyBySizeAndTime(
+            RemoteFileRevision(byteSize: 14, modified: noon, entityTag: "\"aaa\"")
+        ))
+        #expect(!tagged.matchesOnlyBySizeAndTime(
+            RemoteFileRevision(byteSize: 14, modified: noon, entityTag: "\"bbb\"")
+        ))
+        #expect(tagged.matchesOnlyBySizeAndTime(RemoteFileRevision(byteSize: 14, modified: noon)))
+        #expect(RemoteFileRevision(byteSize: 14, modified: noon).matchesOnlyBySizeAndTime(tagged))
+    }
+
     // MARK: - Building one from a listing
 
     @Test("an entry's unknown date becomes no timestamp, not a date in year 1")

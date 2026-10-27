@@ -23,7 +23,7 @@ struct RemoteFetchSetPolicyTests {
     /// Written out rather than read from `isAutomatic`: borrowing it would prove the two agree, not
     /// that either is right.
     private func expectedRefusal(for purpose: RemoteFetchPurpose) -> RemoteFetchDecision {
-        purpose == .cursorPreview ? .decline : .confirm
+        [.cursorPreview, .writeBackCheck].contains(purpose) ? .decline : .confirm
     }
 
     private func entry(

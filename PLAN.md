@@ -1173,10 +1173,48 @@ merged instead of overwritten.
   - The defaults domain was restored and compared unchanged, and the servers were stopped.
 - **Found on the way:** a same-size server edit in the minute of Dirnex's own upload was overwritten
   by the next save with no question. An SFTP `stat` is a minute-resolution `ls -la` row with no entity
-  tag (docs/NOTES.md ▸ sftp). It is M21's check, not the merge's. Not fixed.
+  tag (docs/NOTES.md ▸ sftp). It is M21's check, not the merge's. Not fixed. (Taken up the same day,
+  below.)
 - **Left for Slice 6:** WebDAV, whose precondition is an entity tag; the refused precondition's
   Merge… live, which needs a write between the check and the PUT; and the 14 languages. A batch's
   prompt offers no Merge…, by design.
+
+**2026-10-27: the content check, core** (app untouched). Closes Slice 4's *Found on the way* in the
+core. Over SFTP and FTP a write-back's re-`stat` is a size and a time, and when both agree the save
+now compares the server's bytes with the copy's base, which is the server's bytes at the revision
+the copy is checked against.
+
+- **Probed first**, against the throwaway servers (docs/NOTES.md ▸ sftp):
+  - `sftp`'s `ls -la` rows for "Goodbye" and "See you", three seconds apart, were byte-identical.
+  - `get -a -p` onto an empty file of the same size sets that file to the server's second and sends
+    no bytes. A second is still a window.
+  - Exec `cksum` reads the content of any size in one round trip (85 ms at 10 MB), but not on an
+    `internal-sftp` or non-admin NAS account.
+  - `ls -la` plus a 10 MB `get` in one `sftp` session took 125 ms against 75 ms for `ls -la` alone,
+    so a download costs its bytes.
+  - FTP's `MLSD` and `MDTM` give the second; `LIST` alone missed a rewrite two seconds later.
+- **Decided with Oleg:** the bytes, not a finer clock, since a match with the base is proof that the
+  upload loses nothing. Bounded by the Settings ▸ Panels limit, and run for each file of a batch.
+  Not taken: exec `cksum` for files over the limit, and folding the `stat` and the download into one
+  session.
+- **Core:**
+  - `RemoteFileRevision.matchesOnlyBySizeAndTime(_:)`: not superseded, with no entity tag on both
+    sides. That is the verdict only the bytes can settle.
+  - `RemoteFetchPurpose.writeBackCheck`, the table's second automatic row. It takes the Settings limit,
+    declines past it without asking, and ignores the session's preview allowance.
+  - `WriteBackContentCheck` brings the server's file down through `MaterializeRunner` into a scratch
+    folder, compares it with the base through `ByteComparator`, and removes it. Its verdict is
+    `notAsked`, `noBase`, `overLimit`, `same`, `different` or `unreadable`. Only `different` is a
+    change, so a fetch that fails leaves the save where the `stat` put it.
+- **Tests:** 10 in `WriteBackContentCheckTests`, over a fake server that lists every file at one
+  minute; 3 in `RemoteFileRevisionTests`; 2 in `RemoteFetchPolicyTests`. The automatic-purpose test
+  and two refusal helpers now name both automatic rows.
+- **Negative controls**, each failing only its own tests: the comparison ignored (the same-minute
+  rewrite passed), the download left in the scratch folder, the limit not applied, tags on both sides
+  ignored, the row reading the preview allowance, and the row not automatic.
+- **Next, the app:** `checkWriteBacks` runs the check per file after its `stat`, a `different` verdict
+  raises the changed question with Merge…, then a live run on the throwaway SFTP server and footnote
+  www.
 
 ### Still open
 

@@ -5380,6 +5380,20 @@ do not share a resolver, and neither half of that is obvious from either call si
   Dirnex's own upload was overwritten by the next save with no question. The same edit at another
   length was caught and offered Merge…. M21's doc comments already say an unchanged verdict over
   SFTP or FTP is only an absence of evidence; this is the case that costs an edit.
+  - **What can read finer than the row, measured 2026-10-27** against the throwaway `sshd` (OpenSSH
+    10.3) and pyftpdlib, ~75 ms per connection on loopback:
+    - `get -a -p <remote> <stub>`, where the stub is an empty file of the remote's size, sends **no
+      bytes**, prints `File "…" was not modified`, exits 0, and sets the stub's mtime to the server's
+      exact **second**. The protocol's v3 times are seconds, so that is as fine as SFTP goes.
+    - Over the exec channel, `date -r <file> +%s` gives the second and POSIX `cksum <file>` gives a
+      CRC-32 and the size, echoing the path. Both cost a connection whatever the file's size (85 ms
+      at 10 MB), and neither works where the exec channel is refused.
+    - `ls -la` and `get` of 10 MB in **one** `sftp` batch took 125 ms against 75 ms for `ls -la`
+      alone, so a download that rides the stat's session costs only its bytes.
+    - FTP: `MLSD`'s `modify` and `MDTM` (`curl -I`) both give the second and caught a rewrite two
+      seconds later; `LIST` printed the same row for both.
+  - **The fix compares the server's bytes with the edit's base** instead (`WriteBackContentCheck`):
+    a second is still a window, and a match with the base is proof the upload loses nothing.
 
 #### Writing a file: `put`, exclusive creates and offsets
 
