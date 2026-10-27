@@ -202,6 +202,14 @@ public enum CommandCatalog {
             shortcut: CommandShortcut(key: "F3", modifiers: [.function, .option])
         ),
         Command(
+            id: "file.resolveConflict",
+            title: "Resolve Conflict…",
+            category: .file,
+            keywords: ["git", "merge", "conflict", "unmerged", "three-way", "rebase"]
+            // No shortcut: it applies only to a file git has badged U, and the right-click menu
+            // offers it first over exactly those rows (PLAN.md §M34 Slice 5).
+        ),
+        Command(
             id: "file.edit",
             title: "Edit",
             category: .file,

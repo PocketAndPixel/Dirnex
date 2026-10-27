@@ -88,8 +88,11 @@ enum MainMenuBuilder {
             // (PLAN.md §M27) — somebody who merely wants to read the names had none.
             .command("file.archiveNameEncoding"),
             .command("file.syncDirectories"), .command("file.compareByContents"),
-            // The checksum pair sits with Compare By Contents: all three answer "are these bytes
-            // the ones I expect", differing only in what they are compared against.
+            // Resolve Conflict… follows Compare By Contents, since its window is the compare
+            // window with a third side (PLAN.md §M34).
+            .command("file.resolveConflict"),
+            // The checksum pair sits with the compare: both answer "are these bytes the ones I
+            // expect", differing only in what they are compared against.
             .command("file.checksumVerify"), .command("file.checksumCreate"), .separator,
             .command("file.edit"), .command("file.editNew"), .separator,
             .command("file.tags"), .command("file.manageScripts"), .separator,
