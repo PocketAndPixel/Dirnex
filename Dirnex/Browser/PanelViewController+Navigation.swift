@@ -310,6 +310,8 @@ extension PanelViewController {
                     showHidden: AppPreferences.shared.showHidden
                 )
                 guard token == loadToken else { return }
+                // Before the folder on screen is replaced: where the pane was in it, for ⌘[ back.
+                rememberSpot(leaving: departed, inTab: tabIndex)
                 panel.setModel(model)
                 // Bring the pane into the tab's shape (PLAN.md §M15 Slice 4) before the render: a
                 // fresh model is an all-collapsed tree, so this seeds `panel.tree` when the tab wants
@@ -325,7 +327,10 @@ extension PanelViewController {
                 // the cursor is on a row the pane does not draw — which it did for an empty results
                 // listing, whose synthetic path has a parent that is not somewhere to go.
                 cursorOnParentRow = panel.isEmpty && canGoToParent
-                // A restored tab's first listing: re-open the folders a restored tree had expanded,
+                // A walk back or forward puts the pane where it was left in this folder, through the
+                // same two steps as a restored tab's first listing.
+                preparePendingRestore(landingOn: path, inTab: tabIndex)
+                // A restored tab's first listing, or a walk: re-open the folders that were expanded,
                 // listing each lazily…
                 restorePendingTreeExpansion()
                 // …then re-anchor its saved cursor and re-mark its saved selection, overriding the

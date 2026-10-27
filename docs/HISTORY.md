@@ -18466,6 +18466,44 @@ after the entry above.
   compared unchanged.
 - **Not seen live:** a physical keyboard, and Save as a stop, which the test pins.
 
+**2026-10-28: ⌘[ and ⌘] come back to where the pane was left in the folder** (core and app). Asked
+for: "let's restore a cursor position (including expanded tree) when traveling on history".
+
+- **What was there:** a walk along the trail listed its folder fresh, so it landed on the first row
+  of an all-collapsed tree, while walking up already landed on the folder just left. The relaunch
+  restore already re-anchored a tab's cursor and re-opened its tree folders by root-relative path,
+  lazily and by identity (`applyPendingRestore`, `restorePendingTreeExpansion`), so a walk reuses it.
+- **Core:** each trail entry keeps a `NavigationSpot`, the cursor's row (or `..`) and the open tree
+  folders, spelled root-relative like `PersistedTab`, in `NavigationHistory.spots`, index for index
+  with the entries. `remember(_:leaving:)` keeps it on the entry on screen, and `spot(landingOn:)`
+  hands it back only to the listing of a walk heading there. It stays with its entry through a branch
+  (the forward spots go), a gone folder (a fold keeps the later visit's spot), the capacity trim and
+  the stored trail, so ⌘[ after a relaunch lands on the row too. A spot list that does not pair up
+  with the entries is dropped whole, and an unreadable spot decodes as no place.
+- **App:** `navigate` remembers the departing folder's spot just before the new listing replaces it,
+  so a cursor moved while that listing was on its way counts. When a walk lands,
+  `preparePendingRestore` seeds the restore's pending cursor and expansions from the spot: ⌘[, ⌘] and
+  the ⌥↓ list alike. Any other listing clears whatever an earlier one left pending. Marks are not part
+  of a spot, since leaving a folder's marks is already an undo entry.
+- **A race closed on the way:** a restore window's tree listings reported in whatever the pane had
+  done since, so ⌘[ twice in a tree, with the first folder's expansions still listing, could close
+  the second window early and drop a cursor waiting inside it. A load now reports in only while its
+  token is current, and each landing starts the count at zero.
+- **Tests:** `NavigationHistorySpotTests` (13, core) and `HistorySpotTests` (4, app): back and
+  forward to the row, a row inside a re-opened tree, a fresh navigation starting at the top (the
+  control), and the spots surviving a write and a restore. With `navigate`'s two calls stashed, the
+  three walk tests failed (6 issues) and the control passed. Full runs green (4 653 core, 2 062 app).
+  A first full app run, made beside the core suite, lost a compare-window sheet and a WebDAV deadline
+  to the load; both passed alone and in a second full run.
+- **Seen live** in the Debug build, launched by path, through `reveal`, `go.back`, `go.forward` and
+  `view.treeView`, with arrow keys from background computer-use. ⌘[ came back to `two.txt`, ⌘] to
+  `b2.txt`, and ⌘[ again to `three.txt`, where an arrow key had moved the cursor in between. In Tree
+  View, with `sub` opened by → and the cursor on `sub/nested-2.txt`, a reveal in `beta` and then ⌘[
+  re-opened `sub` and landed on `nested-2.txt`. The saved trail held the same spots. The defaults
+  domain was restored and compared unchanged.
+- **Not seen live:** a physical keyboard; a server folder or an archive, whose walks run the same
+  code; and ⌘[ after a relaunch, which the test pins.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
