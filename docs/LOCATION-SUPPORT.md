@@ -677,7 +677,8 @@ minute of the last upload is caught and offered Merge…, where it used to be ov
 Past it, or for a copy with no base, the save rests on the size and time, and such a write still
 goes unseen. The upload carries no condition, so a write between the check and the upload is not
 caught. WebDAV and S3 compare entity tags and condition the upload on one. Verified live over SFTP,
-the same-size case included; WebDAV is Slice 6's.
+the same-size case included, and over WebDAV (Slice 6): there a server write made while the question
+was up was refused by the upload's `If-Match` with a 412, and the question offered Merge… again.
 
 <sup>xxx</sup> A file git has badged U opens in the merge window on the versions git holds of it
 (PLAN.md §M34 Slice 5), each read as a checkout would write it, so the file's line endings and

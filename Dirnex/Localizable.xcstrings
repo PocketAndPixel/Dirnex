@@ -802,6 +802,95 @@
         }
       }
     },
+    "%@ Merge… brings the server’s version down beside yours, so both edits can be kept.": {
+      "comment": "Upload prompt body when a merge is offered; %@ is the prompt's own body, which says the server's copy changed.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ „Zusammenführen …“ lädt die Version vom Server neben Ihre, sodass beide Bearbeitungen erhalten bleiben können."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Merge… brings the server’s version down beside yours, so both edits can be kept."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Fusionar… descarga la versión del servidor junto a la tuya, para que puedan conservarse ambas ediciones."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Fusionner… télécharge la version du serveur à côté de la vôtre, afin de pouvoir conserver les deux modifications."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Unisci… scarica la versione del server accanto alla tua, così da poter mantenere entrambe le modifiche."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ “マージ…”を選ぶと、サーバー上のバージョンを自分のバージョンと並べてダウンロードするので、両方の編集を残せます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ‘병합…’을 선택하면 서버의 버전을 내 버전 옆에 다운로드하므로 두 편집을 모두 유지할 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Met ‘Voeg samen…’ wordt de versie van de server naast de jouwe gedownload, zodat beide bewerkingen behouden kunnen blijven."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ „Scal…” pobiera wersję z serwera obok twojej, aby można było zachować obie edycje."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Mesclar… baixa a versão do servidor ao lado da sua, para que as duas edições possam ser mantidas."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ «Объединить…» загрузит версию с сервера рядом с вашей, чтобы можно было сохранить обе правки."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ «Об’єднати…» завантажить версію із сервера поруч із вашою, щоб можна було зберегти обидві правки."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@“合并…”会将服务器上的版本下载到你的版本旁边，以便保留两处编辑。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@「合併…」會將伺服器上的版本下載到你的版本旁邊，以便保留兩處編輯。"
+          }
+        }
+      }
+    },
     "%@ available of %@": {
       "comment": "Volume capacity tooltip; %1$@ is free space, %2$@ is total capacity.",
       "localizations": {
@@ -2817,6 +2906,24 @@
     "%lld conflicts": {
       "comment": "Merge window: how many conflicts; %lld is the count.",
       "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Konflikt"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Konflikte"
+                }
+              }
+            }
+          }
+        },
         "en": {
           "variations": {
             "plural": {
@@ -2834,12 +2941,258 @@
               }
             }
           }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflicto"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflictos"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflit"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflits"
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflitto"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflitti"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 件の競合"
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "충돌 %lld개"
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflict"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflicten"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld konflikt"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld konflikty"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld konfliktów"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld konfliktu"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflito"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflitos"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликт"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликта"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликтов"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликта"
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфлікт"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфлікти"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфліктів"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфлікту"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 个冲突"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 個衝突"
+                }
+              }
+            }
+          }
         }
       }
     },
     "%lld conflicts are still open, so the result can’t be saved yet. The choices made here will be lost.": {
       "comment": "Merge window close prompt body; %lld is how many conflicts have no choice yet.",
       "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Konflikt ist noch offen, daher kann das Ergebnis noch nicht gesichert werden. Die hier getroffene Auswahl geht verloren."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Konflikte sind noch offen, daher kann das Ergebnis noch nicht gesichert werden. Die hier getroffene Auswahl geht verloren."
+                }
+              }
+            }
+          }
+        },
         "en": {
           "variations": {
             "plural": {
@@ -2857,12 +3210,258 @@
               }
             }
           }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflicto sigue abierto, así que el resultado aún no se puede guardar. Las elecciones hechas aquí se perderán."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflictos siguen abiertos, así que el resultado aún no se puede guardar. Las elecciones hechas aquí se perderán."
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflit est encore ouvert, le résultat ne peut donc pas encore être enregistré. Les choix faits ici seront perdus."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflits sont encore ouverts, le résultat ne peut donc pas encore être enregistré. Les choix faits ici seront perdus."
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflitto è ancora aperto, quindi il risultato non può ancora essere salvato. Le scelte fatte qui andranno perse."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflitti sono ancora aperti, quindi il risultato non può ancora essere salvato. Le scelte fatte qui andranno perse."
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 件の競合が未解決のため、結果はまだ保存できません。ここで行った選択は失われます。"
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "충돌 %lld개가 아직 해결되지 않아 결과를 아직 저장할 수 없습니다. 여기서 한 선택은 유실됩니다."
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflict is nog open, dus het resultaat kan nog niet worden bewaard. De hier gemaakte keuzes gaan verloren."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflicten zijn nog open, dus het resultaat kan nog niet worden bewaard. De hier gemaakte keuzes gaan verloren."
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld konflikt jest nadal otwarty, więc wyniku nie można jeszcze zachować. Dokonane tu wybory zostaną utracone."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld konflikty są nadal otwarte, więc wyniku nie można jeszcze zachować. Dokonane tu wybory zostaną utracone."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld konfliktów jest nadal otwartych, więc wyniku nie można jeszcze zachować. Dokonane tu wybory zostaną utracone."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld konfliktu jest nadal otwarte, więc wyniku nie można jeszcze zachować. Dokonane tu wybory zostaną utracone."
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflito ainda está aberto, então o resultado ainda não pode ser salvo. As escolhas feitas aqui serão perdidas."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflitos ainda estão abertos, então o resultado ainda não pode ser salvo. As escolhas feitas aqui serão perdidas."
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликт ещё не разрешён, поэтому результат пока нельзя сохранить. Сделанный здесь выбор будет потерян."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликта ещё не разрешены, поэтому результат пока нельзя сохранить. Сделанный здесь выбор будет потерян."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликтов ещё не разрешены, поэтому результат пока нельзя сохранить. Сделанный здесь выбор будет потерян."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликта ещё не разрешены, поэтому результат пока нельзя сохранить. Сделанный здесь выбор будет потерян."
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфлікт ще не розв’язано, тому результат поки не можна зберегти. Зроблений тут вибір буде втрачено."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфлікти ще не розв’язано, тому результат поки не можна зберегти. Зроблений тут вибір буде втрачено."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфліктів ще не розв’язано, тому результат поки не можна зберегти. Зроблений тут вибір буде втрачено."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфлікту ще не розв’язано, тому результат поки не можна зберегти. Зроблений тут вибір буде втрачено."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "还有 %lld 个冲突未解决，因此暂时无法存储结果。在此做出的选择将会丢失。"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "還有 %lld 個衝突未解決，因此暫時無法儲存結果。在此做出的選擇將會遺失。"
+                }
+              }
+            }
+          }
         }
       }
     },
     "%lld conflicts are still open. The result can be saved once each has a choice.": {
       "comment": "Merge window: why Save is unavailable; %lld is how many conflicts have no choice yet.",
       "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Konflikt ist noch offen. Das Ergebnis kann gesichert werden, sobald für ihn eine Auswahl getroffen ist."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Konflikte sind noch offen. Das Ergebnis kann gesichert werden, sobald für jeden eine Auswahl getroffen ist."
+                }
+              }
+            }
+          }
+        },
         "en": {
           "variations": {
             "plural": {
@@ -2876,6 +3475,234 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%lld conflicts are still open. The result can be saved once each has a choice."
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflicto sigue abierto. El resultado se podrá guardar cuando se haya elegido una opción para él."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflictos siguen abiertos. El resultado se podrá guardar cuando se haya elegido una opción para cada uno."
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflit est encore ouvert. Le résultat pourra être enregistré une fois un choix fait pour celui-ci."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflits sont encore ouverts. Le résultat pourra être enregistré une fois un choix fait pour chacun."
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflitto è ancora aperto. Il risultato potrà essere salvato dopo aver scelto come risolverlo."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflitti sono ancora aperti. Il risultato potrà essere salvato dopo aver scelto come risolvere ciascuno."
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 件の競合が未解決です。すべての競合で選択を済ませると、結果を保存できます。"
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "충돌 %lld개가 아직 해결되지 않았습니다. 모든 충돌에서 선택을 마치면 결과를 저장할 수 있습니다."
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflict is nog open. Het resultaat kan worden bewaard zodra er een keuze voor is gemaakt."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflicten zijn nog open. Het resultaat kan worden bewaard zodra er voor elk een keuze is gemaakt."
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld konflikt jest nadal otwarty. Wynik będzie można zachować, gdy zostanie dla niego dokonany wybór."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld konflikty są nadal otwarte. Wynik będzie można zachować, gdy dla każdego zostanie dokonany wybór."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld konfliktów jest nadal otwartych. Wynik będzie można zachować, gdy dla każdego zostanie dokonany wybór."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld konfliktu jest nadal otwarte. Wynik będzie można zachować, gdy dla każdego zostanie dokonany wybór."
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflito ainda está aberto. O resultado poderá ser salvo quando houver uma escolha para ele."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld conflitos ainda estão abertos. O resultado poderá ser salvo quando houver uma escolha para cada um."
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликт ещё не разрешён. Результат можно будет сохранить, когда для него будет сделан выбор."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликта ещё не разрешены. Результат можно будет сохранить, когда для каждого будет сделан выбор."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликтов ещё не разрешены. Результат можно будет сохранить, когда для каждого будет сделан выбор."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфликта ещё не разрешены. Результат можно будет сохранить, когда для каждого будет сделан выбор."
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфлікт ще не розв’язано. Результат можна буде зберегти, коли для нього буде зроблено вибір."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфлікти ще не розв’язано. Результат можна буде зберегти, коли для кожного буде зроблено вибір."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфліктів ще не розв’язано. Результат можна буде зберегти, коли для кожного буде зроблено вибір."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld конфлікту ще не розв’язано. Результат можна буде зберегти, коли для кожного буде зроблено вибір."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "还有 %lld 个冲突未解决。每个冲突都做出选择后即可存储结果。"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "還有 %lld 個衝突未解決。每個衝突都做出選擇後即可儲存結果。"
                 }
               }
             }
@@ -17081,6 +17908,95 @@
         }
       }
     },
+    "Base": {
+      "comment": "Merge window pane title: the version both sides started from.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Basis"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Base"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Base"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Base"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Base"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ベース"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기준 버전"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Basis"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wersja bazowa"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Base"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Базовая версия"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Базова версія"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "基础版本"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "基礎版本"
+          }
+        }
+      }
+    },
     "Blank Script": {
       "comment": "Scripts organizer + menu: create an empty script rather than one from a template.",
       "localizations": {
@@ -17433,6 +18349,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "兩個面板都必須顯示真實的檔案夾——本機上的或已連線伺服器上的。"
+          }
+        }
+      }
+    },
+    "Both sides deleted the file, so there’s nothing to merge. Remove it with git rm.": {
+      "comment": "Resolve Conflict failure detail; git rm is a command, not to be translated.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beide Seiten haben die Datei gelöscht, daher gibt es nichts zusammenzuführen. Entfernen Sie sie mit git rm."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Both sides deleted the file, so there’s nothing to merge. Remove it with git rm."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ambas partes eliminaron el archivo, así que no hay nada que fusionar. Quítalo con git rm."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les deux côtés ont supprimé le fichier : il n’y a donc rien à fusionner. Retirez-le avec git rm."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrambe le parti hanno eliminato il file, quindi non c’è nulla da unire. Rimuovilo con git rm."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "両方がファイルを削除したため、マージするものはありません。git rm で削除してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "양쪽 모두 파일을 삭제했으므로 병합할 내용이 없습니다. git rm으로 제거하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beide kanten hebben het bestand verwijderd, dus er valt niets samen te voegen. Verwijder het met git rm."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obie strony usunęły plik, więc nie ma czego scalać. Usuń go poleceniem git rm."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Os dois lados apagaram o arquivo, então não há nada para mesclar. Remova-o com git rm."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обе стороны удалили файл, поэтому объединять нечего. Удалите его командой git rm."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обидві сторони видалили файл, тому об’єднувати нічого. Вилучіть його командою git rm."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "双方都删除了此文件，因此没有可合并的内容。请用 git rm 将其移除。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雙方都刪除了此檔案，因此沒有可合併的內容。請用 git rm 將其移除。"
           }
         }
       }
@@ -24066,6 +25071,95 @@
         }
       }
     },
+    "Close the merge of “%@” without saving?": {
+      "comment": "Merge window close prompt title while a conflict is open; %@ is a file name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zusammenführung von „%@“ schließen, ohne zu sichern?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close the merge of “%@” without saving?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Cerrar la fusión de «%@» sin guardar?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fermer la fusion de « %@ » sans enregistrer ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiudere il merge di “%@” senza salvare?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」のマージを保存せずに閉じますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장하지 않고 “%@” 병합을 닫겠습니까?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Samenvoegen van ‘%@’ sluiten zonder te bewaren?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zamknąć scalanie „%@” bez zachowywania?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fechar a mesclagem de “%@” sem salvar?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закрыть объединение «%@» без сохранения?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закрити об’єднання «%@» без збереження?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要关闭“%@”的合并而不存储吗？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要關閉「%@」的合併而不儲存嗎？"
+          }
+        }
+      }
+    },
     "Collapsed": {
       "comment": "Accessibility state of a folded sidebar section's disclosure triangle.",
       "localizations": {
@@ -25396,6 +26490,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在計算 %@ 總和檢查碼…"
+          }
+        }
+      }
+    },
+    "Conflict %lld of %lld": {
+      "comment": "Merge window: the conflict on screen; the first %lld is its position, the second the count.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konflikt %1$lld von %2$lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflict %lld of %lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflicto %1$lld de %2$lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflit %1$lld sur %2$lld"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflitto %1$lld di %2$lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "競合 %1$lld / %2$lld"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "충돌 %1$lld/%2$lld"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflict %1$lld van %2$lld"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konflikt %1$lld z %2$lld"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflito %1$lld de %2$lld"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Конфликт %1$lld из %2$lld"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Конфлікт %1$lld з %2$lld"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第 %1$lld 个冲突，共 %2$lld 个"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第 %1$lld 個衝突，共 %2$lld 個"
           }
         }
       }
@@ -32983,6 +34166,95 @@
         }
       }
     },
+    "Couldn’t merge “%@”": {
+      "comment": "Alert title when the merge of a server file with its edit can't open; %@ is the name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ konnte nicht zusammengeführt werden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t merge “%@”"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha podido fusionar «%@»"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de fusionner « %@ »"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile eseguire il merge di “%@”"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」をマージできませんでした"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”을(를) 병합할 수 없음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kan ‘%@’ niet samenvoegen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można scalić „%@”"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível mesclar “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось объединить «%@»"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося об’єднати «%@»"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法合并“%@”"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法合併「%@」"
+          }
+        }
+      }
+    },
     "Couldn’t mount the share (error %d).": {
       "comment": "SMB mount failure with no specific diagnosis; %lld is the errno.",
       "localizations": {
@@ -36152,6 +37424,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "無法重新命名「%@」"
+          }
+        }
+      }
+    },
+    "Couldn’t resolve the conflict in “%@”": {
+      "comment": "Alert title when Resolve Conflict… can't open the merge of a file git left conflicted; %@ is its name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Konflikt in „%@“ konnte nicht aufgelöst werden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t resolve the conflict in “%@”"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha podido resolver el conflicto de «%@»"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de résoudre le conflit dans « %@ »"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile risolvere il conflitto in “%@”"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」の競合を解決できませんでした"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”의 충돌을 해결할 수 없음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kan het conflict in ‘%@’ niet oplossen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można rozwiązać konfliktu w „%@”"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível resolver o conflito em “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось разрешить конфликт в «%@»"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося розв’язати конфлікт у «%@»"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法解决“%@”中的冲突"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法解決「%@」中的衝突"
           }
         }
       }
@@ -42976,6 +44337,95 @@
         }
       }
     },
+    "Dirnex no longer has the version your edit started from, so it can’t tell your changes from the server’s.": {
+      "comment": "Merge failure detail when the base version kept for an edited server file is gone.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex hat die Version, von der Ihre Bearbeitung ausging, nicht mehr und kann Ihre Änderungen daher nicht von denen auf dem Server unterscheiden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex no longer has the version your edit started from, so it can’t tell your changes from the server’s."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex ya no tiene la versión de la que partió tu edición, así que no puede distinguir tus cambios de los del servidor."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex n’a plus la version dont votre modification est partie et ne peut donc pas distinguer vos changements de ceux du serveur."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex non ha più la versione da cui è partita la tua modifica, quindi non può distinguere le tue modifiche da quelle del server."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex には編集の元になったバージョンがもうないため、自分の変更とサーバー側の変更を区別できません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex에 편집을 시작한 버전이 더 이상 없으므로 내 변경 사항과 서버의 변경 사항을 구별할 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex heeft de versie waarmee je bewerking begon niet meer, dus kan het jouw wijzigingen niet onderscheiden van die op de server."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex nie ma już wersji, od której zaczęła się twoja edycja, więc nie może odróżnić twoich zmian od zmian na serwerze."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex não tem mais a versão a partir da qual sua edição começou, então não consegue distinguir suas alterações das do servidor."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У Dirnex больше нет версии, с которой началась ваша правка, поэтому он не может отличить ваши изменения от изменений на сервере."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex більше не має версії, з якої почалася ваша правка, тому не може відрізнити ваші зміни від змін на сервері."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 已不再保有你编辑时所基于的版本，因此无法区分你的更改和服务器上的更改。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 已不再保有你編輯時所根據的版本，因此無法區分你的更改和伺服器上的更改。"
+          }
+        }
+      }
+    },
     "Dirnex uses this name in the sidebar, in tabs and in the path bar. Nothing is renamed on your Mac or in the cloud. Leave the field empty to go back to “%@”.": {
       "comment": "Body of the dialog that renames a cloud row in the sidebar; %@ is the name Dirnex gives the row when the user has not renamed it.",
       "extractionState": "manual",
@@ -43329,6 +44779,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "要儲存對「%@」所做的更改嗎？"
+          }
+        }
+      }
+    },
+    "Do you want to save the merge of “%@”?": {
+      "comment": "Merge window close prompt title; %@ is the name of the file being merged.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Möchten Sie die Zusammenführung von „%@“ sichern?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do you want to save the merge of “%@”?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Quieres guardar la fusión de «%@»?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voulez-vous enregistrer la fusion de « %@ » ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuoi salvare il merge di “%@”?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」のマージを保存しますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” 병합을 저장하겠습니까?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wil je de samengevoegde versie van ‘%@’ bewaren?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czy chcesz zachować scalenie „%@”?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deseja salvar a mesclagem de “%@”?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранить результат объединения «%@»?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зберегти результат об’єднання «%@»?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要存储“%@”的合并吗？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要儲存「%@」的合併嗎？"
           }
         }
       }
@@ -49586,6 +51125,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "項目按顯示的順序生效——macOS 採用第一條能作出判定的項目，因此位於「允許」之上的「拒絕」會勝出。"
+          }
+        }
+      }
+    },
+    "Every change merged without a conflict.": {
+      "comment": "Merge window: both sides' changes merged on their own, and nothing waits for a choice.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Änderungen wurden ohne Konflikt zusammengeführt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every change merged without a conflict."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todos los cambios se fusionaron sin conflictos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toutes les modifications ont été fusionnées sans conflit."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tutte le modifiche sono state unite senza conflitti."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべての変更が競合なしでマージされました。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모든 변경 사항이 충돌 없이 병합되었습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle wijzigingen zijn zonder conflict samengevoegd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystkie zmiany zostały scalone bez konfliktów."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todas as alterações foram mescladas sem conflito."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все изменения объединены без конфликтов."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Усі зміни об’єднано без конфліктів."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所有更改均已合并，没有冲突。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所有變更均已合併，沒有衝突。"
           }
         }
       }
@@ -56082,6 +57710,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "群組"
+          }
+        }
+      }
+    },
+    "HEAD, the branch being rebased onto": {
+      "comment": "Merge window, under Yours, during a git rebase. HEAD is git's name, not to be translated.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, der Branch, auf den der Rebase erfolgt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, the branch being rebased onto"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, la rama sobre la que se hace el rebase"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, la branche sur laquelle le rebase s’effectue"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, il branch su cui si fa il rebase"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD（リベース先のブランチ）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, 리베이스 대상 브랜치"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, de branch waarop wordt gerebased"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, gałąź, na którą wykonywany jest rebase"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, o branch sobre o qual o rebase é feito"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, ветка, на которую выполняется ребейз"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, гілка, на яку виконується ребейз"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD，变基的目标分支"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD，重定基底的目標分支"
+          }
+        }
+      }
+    },
+    "HEAD, the branch you’re on": {
+      "comment": "Merge window, under Yours, for a git conflict. HEAD is git's name, not to be translated.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, Ihr aktueller Branch"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, the branch you’re on"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, la rama en la que estás"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, la branche sur laquelle vous êtes"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, il branch su cui ti trovi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD（現在のブランチ）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, 현재 브랜치"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, de branch waarop je zit"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, gałąź, na której jesteś"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, o branch em que você está"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, текущая ветка"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD, поточна гілка"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD，你当前所在的分支"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD，你目前所在的分支"
           }
         }
       }
@@ -62600,6 +64406,184 @@
         }
       }
     },
+    "Merge of “%@”": {
+      "comment": "Merge window title; %@ is the name of the file being merged.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zusammenführung von „%@“"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Merge of “%@”"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fusión de «%@»"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fusion de « %@ »"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Merge di “%@”"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」のマージ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” 병합"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Samenvoegen van ‘%@’"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scalanie „%@”"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mesclagem de “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объединение «%@»"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Об’єднання «%@»"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合并“%@”"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合併「%@」"
+          }
+        }
+      }
+    },
+    "Merge…": {
+      "comment": "Button in the upload prompt: merge the edited file with the server's changed version instead of uploading over it.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zusammenführen …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Merge…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fusionar…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fusionner…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unisci…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "マージ…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "병합…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voeg samen…"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scal…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mesclar…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объединить…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Об’єднати…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合并…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合併…"
+          }
+        }
+      }
+    },
     "Mode:": {
       "comment": "Info panel field label: the mode as ls and chmod spell it.",
       "localizations": {
@@ -66354,6 +68338,95 @@
         }
       }
     },
+    "Next Conflict": {
+      "comment": "Merge window button and tooltip.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nächster Konflikt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next Conflict"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflicto siguiente"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflit suivant"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflitto successivo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次の競合"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 충돌"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volgend conflict"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Następny konflikt"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próximo Conflito"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Следующий конфликт"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Наступний конфлікт"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一个冲突"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一個衝突"
+          }
+        }
+      }
+    },
     "No Applications": {
       "comment": "Open With menu, disabled item: nothing is registered to open this file.",
       "localizations": {
@@ -67420,6 +69493,95 @@
         }
       }
     },
+    "No conflicts": {
+      "comment": "Merge window: every change merged on its own.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Konflikte"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No conflicts"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin conflictos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun conflit"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun conflitto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "競合なし"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "충돌 없음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen conflicten"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak konfliktów"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum conflito"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Конфликтов нет"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Конфліктів немає"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无冲突"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無衝突"
+          }
+        }
+      }
+    },
     "No differences": {
       "comment": "Compare window: the two texts have no changed line.",
       "localizations": {
@@ -68217,6 +70379,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dirnex 提供的代碼頁都無法表示它們。該壓縮檔可能已損毀，或其檔名使用了 Dirnex 不認識的編碼。"
+          }
+        }
+      }
+    },
+    "None: both sides added the file": {
+      "comment": "Merge window, under Base, for a git conflict where each side added the same file.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine: Beide Seiten haben die Datei hinzugefügt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "None: both sides added the file"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguna: ambas partes añadieron el archivo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune : les deux côtés ont ajouté le fichier"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna: entrambe le parti hanno aggiunto il file"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "なし: 両方がファイルを追加しました"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "없음: 양쪽 모두 파일을 추가함"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen: beide kanten hebben het bestand toegevoegd"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak: obie strony dodały plik"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhuma: os dois lados adicionaram o arquivo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет: обе стороны добавили файл"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Немає: обидві сторони додали файл"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无：双方都添加了此文件"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無：雙方都加入了此檔案"
           }
         }
       }
@@ -69734,6 +71985,95 @@
         }
       }
     },
+    "On the server now": {
+      "comment": "Merge window, under Theirs: the server's current version of the file.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jetzt auf dem Server"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On the server now"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ahora en el servidor"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actuellement sur le serveur"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ora sul server"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在サーバー上にあるバージョン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 서버에 있는 버전"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nu op de server"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obecnie na serwerze"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agora no servidor"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сейчас на сервере"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зараз на сервері"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器上的当前版本"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器上的目前版本"
+          }
+        }
+      }
+    },
     "One of the folders no longer exists.": {
       "comment": "Sync error: a compared folder was removed.",
       "localizations": {
@@ -69819,6 +72159,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "其中一個檔案夾不再存在。"
+          }
+        }
+      }
+    },
+    "One side deleted the file and the other changed it, so there’s no one file to merge. Keep it with git add, or remove it with git rm.": {
+      "comment": "Resolve Conflict failure detail; git add and git rm are commands, not to be translated.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Seite hat die Datei gelöscht und die andere sie geändert, daher gibt es keine einzelne Datei zum Zusammenführen. Behalten Sie sie mit git add oder entfernen Sie sie mit git rm."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One side deleted the file and the other changed it, so there’s no one file to merge. Keep it with git add, or remove it with git rm."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una parte eliminó el archivo y la otra lo modificó, así que no hay un único archivo que fusionar. Consérvalo con git add o quítalo con git rm."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un côté a supprimé le fichier et l’autre l’a modifié : il n’y a donc pas un seul fichier à fusionner. Conservez-le avec git add ou retirez-le avec git rm."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una parte ha eliminato il file e l’altra lo ha modificato, quindi non c’è un unico file da unire. Mantienilo con git add o rimuovilo con git rm."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一方がファイルを削除し、もう一方が変更したため、マージする1つのファイルがありません。git add で残すか、git rm で削除してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한쪽은 파일을 삭제하고 다른 쪽은 변경했으므로 병합할 하나의 파일이 없습니다. git add로 유지하거나 git rm으로 제거하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De ene kant heeft het bestand verwijderd en de andere heeft het gewijzigd, dus er is niet één bestand om samen te voegen. Behoud het met git add of verwijder het met git rm."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jedna strona usunęła plik, a druga go zmieniła, więc nie ma jednego pliku do scalenia. Zachowaj go poleceniem git add albo usuń poleceniem git rm."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um lado apagou o arquivo e o outro o alterou, então não há um único arquivo para mesclar. Mantenha-o com git add ou remova-o com git rm."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Одна сторона удалила файл, а другая изменила его, поэтому нет одного файла для объединения. Оставьте его командой git add или удалите командой git rm."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Одна сторона видалила файл, а інша змінила його, тому немає одного файла для об’єднання. Залиште його командою git add або вилучіть командою git rm."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一方删除了此文件，另一方修改了它，因此没有单一的文件可合并。请用 git add 保留它，或用 git rm 将其移除。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一方刪除了此檔案，另一方修改了它，因此沒有單一的檔案可合併。請用 git add 保留它，或用 git rm 將其移除。"
+          }
+        }
+      }
+    },
+    "One side has a symbolic link or a submodule here rather than a file, so there’s no text to merge.": {
+      "comment": "Resolve Conflict failure detail.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Seite hat hier statt einer Datei einen symbolischen Link oder ein Submodul, daher gibt es keinen Text zum Zusammenführen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One side has a symbolic link or a submodule here rather than a file, so there’s no text to merge."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una parte tiene aquí un enlace simbólico o un submódulo en lugar de un archivo, así que no hay texto que fusionar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un côté a ici un lien symbolique ou un sous-module au lieu d’un fichier : il n’y a donc pas de texte à fusionner."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una parte ha qui un link simbolico o un sottomodulo invece di un file, quindi non c’è testo da unire."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一方ではここがファイルではなくシンボリックリンクまたはサブモジュールのため、マージするテキストがありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한쪽에는 여기에 파일 대신 심볼릭 링크나 하위 모듈이 있으므로 병합할 텍스트가 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eén kant heeft hier een symbolische koppeling of een submodule in plaats van een bestand, dus er is geen tekst om samen te voegen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jedna strona ma tu dowiązanie symboliczne lub podmoduł zamiast pliku, więc nie ma tekstu do scalenia."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um lado tem aqui um link simbólico ou um submódulo em vez de um arquivo, então não há texto para mesclar."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У одной из сторон здесь не файл, а символическая ссылка или подмодуль, поэтому нет текста для объединения."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В однієї зі сторін тут не файл, а символічне посилання або підмодуль, тому немає тексту для об’єднання."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一方在此处是符号链接或子模块而非文件，因此没有可合并的文本。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一方在此處是符號連結或子模組而非檔案，因此沒有可合併的文字。"
           }
         }
       }
@@ -70175,6 +72693,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "只能編輯此 Mac 上的檔案——先將其拷貝出來（F5）。"
+          }
+        }
+      }
+    },
+    "Only one side has the file under this name, so there’s nothing to merge it with. Keep it with git add, or remove it with git rm.": {
+      "comment": "Resolve Conflict failure detail, as when each side renamed a file differently; git add and git rm are commands, not to be translated.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur eine Seite hat die Datei unter diesem Namen, daher gibt es nichts, womit sie zusammengeführt werden könnte. Behalten Sie sie mit git add oder entfernen Sie sie mit git rm."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only one side has the file under this name, so there’s nothing to merge it with. Keep it with git add, or remove it with git rm."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo una parte tiene el archivo con este nombre, así que no hay nada con lo que fusionarlo. Consérvalo con git add o quítalo con git rm."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un seul côté possède le fichier sous ce nom : il n’y a donc rien avec quoi le fusionner. Conservez-le avec git add ou retirez-le avec git rm."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo una parte ha il file con questo nome, quindi non c’è nulla con cui unirlo. Mantienilo con git add o rimuovilo con git rm."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この名前のファイルは一方にしかないため、マージする相手がありません。git add で残すか、git rm で削除してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 이름의 파일은 한쪽에만 있으므로 병합할 대상이 없습니다. git add로 유지하거나 git rm으로 제거하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slechts één kant heeft het bestand onder deze naam, dus er is niets om het mee samen te voegen. Behoud het met git add of verwijder het met git rm."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tylko jedna strona ma plik pod tą nazwą, więc nie ma go z czym scalić. Zachowaj go poleceniem git add albo usuń poleceniem git rm."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Só um lado tem o arquivo com este nome, então não há com o que mesclá-lo. Mantenha-o com git add ou remova-o com git rm."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл под этим именем есть только у одной стороны, поэтому его не с чем объединить. Оставьте его командой git add или удалите командой git rm."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Файл під цією назвою є лише в однієї сторони, тому його немає з чим об’єднати. Залиште його командою git add або вилучіть командою git rm."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有一方有此名称的文件，因此没有可与之合并的内容。请用 git add 保留它，或用 git rm 将其移除。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有一方有此名稱的檔案，因此沒有可與之合併的內容。請用 git add 保留它，或用 git rm 將其移除。"
           }
         }
       }
@@ -76613,6 +79220,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "上一處變更"
+          }
+        }
+      }
+    },
+    "Previous Conflict": {
+      "comment": "Merge window button and tooltip.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorheriger Konflikt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previous Conflict"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflicto anterior"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflit précédent"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflitto precedente"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前の競合"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이전 충돌"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorig conflict"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poprzedni konflikt"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflito Anterior"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Предыдущий конфликт"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Попередній конфлікт"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上一个冲突"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上一個衝突"
           }
         }
       }
@@ -87456,6 +90152,95 @@
         }
       }
     },
+    "Saved into your editor’s copy and uploaded to %@": {
+      "comment": "Merge window, under Result: where a save puts the merged file; %@ is the server and path.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In die Kopie Ihres Editors gesichert und nach %@ hochgeladen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved into your editor’s copy and uploaded to %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se guarda en la copia de tu editor y se sube a %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistré dans la copie de votre éditeur et envoyé vers %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvato nella copia del tuo editor e caricato su %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エディタのコピーに保存され、%@ にアップロードされます"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "편집기의 사본에 저장되고 %@에 업로드됨"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewaard in de kopie van je editor en geüpload naar %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zachowywany w kopii twojego edytora i wysyłany do %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvo na cópia do seu editor e enviado para %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохраняется в копию вашего редактора и выгружается в %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зберігається в копію вашого редактора й вивантажується в %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "存储到编辑器的副本并上传到 %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "儲存到編輯器的副本並上傳到 %@"
+          }
+        }
+      }
+    },
     "Saved search": {
       "comment": "Accessibility label for a saved-search sidebar row's glyph.",
       "localizations": {
@@ -87541,6 +90326,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "儲存的搜尋"
+          }
+        }
+      }
+    },
+    "Saved to the working tree; git add marks it resolved": {
+      "comment": "Merge window, under Result, for a git conflict: Save writes the file in the working tree, and staging it is the user's. git add is a command, not to be translated.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Im Arbeitsverzeichnis gesichert; gelöst mit git add"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved to the working tree; git add marks it resolved"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se guarda en el árbol de trabajo; git add lo resuelve"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistré dans l’arbre de travail ; git add le résout"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvato nell’albero di lavoro; git add lo risolve"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "作業ツリーに保存されます。git add で解決済みになります"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작업 트리에 저장됨, git add로 해결됨으로 표시"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewaard in de werkmap; git add lost het op"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapis do drzewa roboczego; git add go rozwiązuje"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvo na árvore de trabalho; git add o resolve"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В рабочее дерево; git add разрешит конфликт"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запис у робоче дерево; git add розв’яже конфлікт"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "存储到工作区；git add 会将其标记为已解决"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "儲存到工作目錄；git add 會將其標記為已解決"
           }
         }
       }
@@ -90395,6 +93269,95 @@
         }
       }
     },
+    "Show Base": {
+      "comment": "Merge window option.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Basis anzeigen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Base"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar base"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher la base"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra base"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ベースを表示"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기준 버전 보기"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toon basis"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż wersję bazową"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar Base"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать базовую версию"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показати базову версію"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示基础版本"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顯示基礎版本"
+          }
+        }
+      }
+    },
     "Show What Will Be Sent…": {
       "comment": "Report a Bug dialog: button that shows the exact text that Send would send.",
       "localizations": {
@@ -90836,6 +93799,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "顯示授權設定"
+          }
+        }
+      }
+    },
+    "Show the version both sides started from": {
+      "comment": "Merge window tooltip for the Show Base option.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Version anzeigen, von der beide Seiten ausgegangen sind"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show the version both sides started from"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar la versión de la que partieron ambas partes"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher la version dont les deux côtés sont partis"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra la versione da cui sono partite entrambe le parti"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "両方の元になったバージョンを表示"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "양쪽이 시작한 버전 보기"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toon de versie waarvan beide kanten uitgingen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż wersję, od której wyszły obie strony"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar a versão da qual os dois lados partiram"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать версию, с которой начинали обе стороны"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показати версію, з якої починали обидві сторони"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示双方共同的起始版本"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顯示雙方共同的起始版本"
           }
         }
       }
@@ -96047,6 +99099,184 @@
         }
       }
     },
+    "Take Both, Theirs First": {
+      "comment": "Merge window button, tooltip and undo name: their lines, then yours.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beide übernehmen, andere zuerst"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Take Both, Theirs First"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar ambas, la otra primero"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prendre les deux, la leur d’abord"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa entrambe, prima la loro"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "両方を採用（相手が先）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "둘 다 사용, 상대 버전 먼저"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gebruik beide, hun versie eerst"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Użyj obu, najpierw ich"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar Ambas, a Deles Primeiro"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взять обе, сначала их"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взяти обидві, спершу їхню"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "两者都采用，对方的在前"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "兩者都採用，對方的在前"
+          }
+        }
+      }
+    },
+    "Take Both, Yours First": {
+      "comment": "Merge window button, tooltip and undo name: your lines, then theirs.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beide übernehmen, Ihre zuerst"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Take Both, Yours First"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar ambas, la tuya primero"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prendre les deux, la vôtre d’abord"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa entrambe, prima la tua"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "両方を採用（自分が先）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "둘 다 사용, 내 버전 먼저"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gebruik beide, jouw versie eerst"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Użyj obu, najpierw twojej"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar Ambas, a Sua Primeiro"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взять обе, сначала вашу"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взяти обидві, спершу вашу"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "两者都采用，你的在前"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "兩者都採用，你的在前"
+          }
+        }
+      }
+    },
     "Take Ownership": {
       "comment": "ACL right chown: become the item's owner.",
       "localizations": {
@@ -96132,6 +99362,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "取得擁有權"
+          }
+        }
+      }
+    },
+    "Take Theirs": {
+      "comment": "Merge window button, tooltip and undo name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Andere übernehmen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Take Theirs"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar la otra"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prendre la leur"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa la loro"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "相手の方を採用"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "상대 버전 사용"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gebruik hun versie"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Użyj ich"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar a Deles"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взять их"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взяти їхню"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "采用对方的"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "採用對方的"
+          }
+        }
+      }
+    },
+    "Take Yours": {
+      "comment": "Merge window button, tooltip and undo name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihre übernehmen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Take Yours"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar la tuya"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prendre la vôtre"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa la tua"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自分の方を採用"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 버전 사용"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gebruik jouw versie"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Użyj twojej"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar a Sua"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взять вашу"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взяти вашу"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "采用你的"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "採用你的"
           }
         }
       }
@@ -98450,6 +101858,95 @@
         }
       }
     },
+    "The branch being merged in": {
+      "comment": "Merge window, under Theirs, during a git merge.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Branch, der zusammengeführt wird"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The branch being merged in"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La rama que se está fusionando"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La branche en cours de fusion"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il branch di cui si sta facendo il merge"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "マージされるブランチ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "병합되는 브랜치"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De branch die wordt samengevoegd"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gałąź, która jest scalana"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O branch sendo mesclado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вливаемая ветка"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Гілка, що вливається"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要合并进来的分支"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要合併進來的分支"
+          }
+        }
+      }
+    },
     "The change was not stored as asked.": {
       "comment": "Remote Get Info: a refusal with no field named.",
       "localizations": {
@@ -98628,6 +102125,95 @@
         }
       }
     },
+    "The changes being merged in": {
+      "comment": "Merge window, under Theirs, for a git conflict whose operation git doesn't record, such as a stash pop.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Änderungen, die zusammengeführt werden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The changes being merged in"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los cambios que se están fusionando"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les modifications en cours de fusion"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le modifiche di cui si sta facendo il merge"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "マージされる変更"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "병합되는 변경 사항"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De wijzigingen die worden samengevoegd"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scalane zmiany"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As alterações sendo mescladas"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вливаемые изменения"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зміни, що вливаються"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要合并进来的更改"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要合併進來的變更"
+          }
+        }
+      }
+    },
     "The checksum file has to be written beside the items it describes, so this needs somewhere that can be written to.": {
       "comment": "Create-checksum failure detail: the manifest's own directory is read-only or is a virtual listing with no directory of its own.",
       "localizations": {
@@ -98802,6 +102388,362 @@
           "stringUnit": {
             "state": "translated",
             "value": "此伺服器記錄檔案時間所用的時鐘。僅在伺服器無法自行回報準確時間時使用。"
+          }
+        }
+      }
+    },
+    "The commit being picked": {
+      "comment": "Merge window, under Theirs, during a git cherry-pick.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Commit, der übernommen wird"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The commit being picked"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El commit que se está aplicando con cherry-pick"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le commit en cours de cherry-pick"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il commit di cui si sta facendo il cherry-pick"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "チェリーピック中のコミット"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "체리픽하는 커밋"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De commit die wordt overgenomen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit przenoszony przez cherry-pick"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O commit sendo aplicado com cherry-pick"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Коммит, переносимый через cherry-pick"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Коміт, що переноситься через cherry-pick"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在拣选的提交"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在揀選的提交"
+          }
+        }
+      }
+    },
+    "The commit being replayed": {
+      "comment": "Merge window, under Theirs, during a git rebase: the user's own commit.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Commit, der neu angewendet wird"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The commit being replayed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El commit que se está reaplicando"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le commit en cours de réapplication"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il commit che si sta riapplicando"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再適用中のコミット"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다시 적용되는 커밋"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De commit die opnieuw wordt toegepast"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit, który jest ponownie nakładany"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O commit sendo reaplicado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переносимый коммит"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Коміт, що переноситься"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在重新应用的提交"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在重新套用的提交"
+          }
+        }
+      }
+    },
+    "The commit being reverted, undone": {
+      "comment": "Merge window, under Theirs, during a git revert: the reverted commit's change, taken back.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Commit, der rückgängig gemacht wird, umgekehrt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The commit being reverted, undone"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El commit que se revierte, invertido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le commit en cours d’annulation, inversé"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il commit da annullare, invertito"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取り消し中のコミット（逆方向の変更）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "되돌리는 커밋(반대 방향 변경)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De commit die wordt teruggedraaid, omgekeerd"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wycofywany commit, odwrócony"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O commit sendo revertido, invertido"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отменяемый коммит, в обратную сторону"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скасовуваний коміт, у зворотний бік"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在还原的提交（反向更改）"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在還原的提交（反向變更）"
+          }
+        }
+      }
+    },
+    "The common ancestor": {
+      "comment": "Merge window, under Base, for a git conflict: the version both sides started from.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der gemeinsame Vorfahre"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The common ancestor"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El ancestro común"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’ancêtre commun"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’antenato comune"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共通の祖先"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "공통 조상"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De gemeenschappelijke voorouder"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wspólny przodek"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O ancestral comum"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Общий предок"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Спільний предок"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共同祖先"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共同祖先"
           }
         }
       }
@@ -101740,6 +105682,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "面板顯示相同的檔案夾"
+          }
+        }
+      }
+    },
+    "The patch being applied": {
+      "comment": "Merge window, under Theirs, during git am.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Patch, der angewendet wird"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The patch being applied"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El parche que se está aplicando"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le patch en cours d’application"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La patch che si sta applicando"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "適用中のパッチ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "적용하는 패치"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De patch die wordt toegepast"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nakładana poprawka"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O patch sendo aplicado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Применяемый патч"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Патч, що застосовується"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在应用的补丁"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在套用的修補程式"
           }
         }
       }
@@ -105211,6 +109242,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "保險庫檔案會留在原處，其中的內容不會被刪除。已儲存的通行密語會從鑰匙圈中移除，因此下次會再次詢問。"
+          }
+        }
+      }
+    },
+    "Theirs": {
+      "comment": "Merge window pane title: the other version of the file, merged into yours.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Andere Version"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Theirs"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La otra versión"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leur version"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La loro versione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "相手のバージョン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "상대 버전"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hun versie"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ich wersja"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versão deles"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Их версия"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Їхня версія"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "对方的版本"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "對方的版本"
           }
         }
       }
@@ -115947,6 +120067,95 @@
         }
       }
     },
+    "Where your edit started": {
+      "comment": "Merge window, under Base: the server's version the user's edit began from.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausgangspunkt Ihrer Bearbeitung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where your edit started"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Punto de partida de tu edición"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Point de départ de votre modification"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Punto di partenza della tua modifica"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編集の元のバージョン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "편집을 시작한 버전"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waar je bewerking begon"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Punkt wyjścia twojej edycji"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onde sua edição começou"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Исходная версия вашей правки"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Початкова версія вашої правки"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你开始编辑时的版本"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你開始編輯時的版本"
+          }
+        }
+      }
+    },
     "Where:": {
       "comment": "Info panel field label: the folder the item is in.",
       "localizations": {
@@ -118593,6 +122802,184 @@
         }
       }
     },
+    "Your choices will be lost if you don’t save them.": {
+      "comment": "Merge window close prompt body.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihre Auswahl geht verloren, wenn Sie sie nicht sichern."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your choices will be lost if you don’t save them."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si no las guardas, tus elecciones se perderán."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos choix seront perdus si vous ne les enregistrez pas."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se non le salvi, le scelte andranno perse."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存しないと、選択内容は失われます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택 사항을 저장하지 않으면 유실됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je keuzes gaan verloren als je ze niet bewaart."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jeśli nie zachowasz wyborów, zostaną one utracone."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suas escolhas serão perdidas se você não salvá-las."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Если не сохранить сделанный выбор, он будет потерян."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Якщо не зберегти зроблений вибір, його буде втрачено."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果不存储，你的选择将会丢失。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果不儲存，你的選擇將會遺失。"
+          }
+        }
+      }
+    },
+    "Your edit": {
+      "comment": "Merge window, under Yours: the user's edited copy of a server file.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihre Bearbeitung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your edit"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu edición"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre modification"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La tua modifica"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自分の編集"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 편집"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je bewerking"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twoja edycja"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sua edição"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваша правка"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваша правка"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的编辑"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的編輯"
+          }
+        }
+      }
+    },
     "Your files in iCloud Drive are listed above. The folders apps keep there — Pages, Preview, Shortcuts — are private to macOS until you allow Dirnex to read them.\n\nClick Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask Dirnex to relaunch so the new access takes effect.": {
       "comment": "FDA (iCloud) sheet body.",
       "localizations": {
@@ -119212,6 +123599,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "你的搜尋結果符合了更多項目。縮小範圍以檢視其餘內容。"
+          }
+        }
+      }
+    },
+    "Yours": {
+      "comment": "Merge window pane title: your version of the file.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihre Version"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yours"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu versión"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre version"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La tua versione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自分のバージョン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 버전"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jouw versie"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twoja wersja"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sua versão"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваша версия"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваша версія"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的版本"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的版本"
           }
         }
       }
@@ -142732,6 +147208,273 @@
           "stringUnit": {
             "state": "translated",
             "value": "檢視"
+          }
+        }
+      }
+    },
+    "git couldn’t read the file’s versions.": {
+      "comment": "Resolve Conflict failure detail when git exited with an error and said nothing.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git konnte die Versionen der Datei nicht lesen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git couldn’t read the file’s versions."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git no ha podido leer las versiones del archivo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git n’a pas pu lire les versions du fichier."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git non è riuscito a leggere le versioni del file."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git がファイルのバージョンを読み取れませんでした。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git이 파일의 버전을 읽을 수 없었습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git kon de versies van het bestand niet lezen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git nie mógł odczytać wersji pliku."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O git não conseguiu ler as versões do arquivo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git не смог прочитать версии файла."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git не зміг прочитати версії файла."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git 无法读取此文件的各个版本。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git 無法讀取此檔案的各個版本。"
+          }
+        }
+      }
+    },
+    "git couldn’t read the file’s versions. It said: %@": {
+      "comment": "Resolve Conflict failure detail; %@ is git's own error message, in English.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git konnte die Versionen der Datei nicht lesen. Meldung: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git couldn’t read the file’s versions. It said: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git no ha podido leer las versiones del archivo. Dijo: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git n’a pas pu lire les versions du fichier. Message : %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git non è riuscito a leggere le versioni del file. Messaggio: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git がファイルのバージョンを読み取れませんでした。メッセージ: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git이 파일의 버전을 읽을 수 없었습니다. 메시지: %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git kon de versies van het bestand niet lezen. Melding: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git nie mógł odczytać wersji pliku. Komunikat: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O git não conseguiu ler as versões do arquivo. Mensagem: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git не смог прочитать версии файла. Сообщение: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git не зміг прочитати версії файла. Повідомлення: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git 无法读取此文件的各个版本。它返回：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git 無法讀取此檔案的各個版本。它回報：%@"
+          }
+        }
+      }
+    },
+    "git no longer lists a conflict in this file. It may have been resolved since.": {
+      "comment": "Resolve Conflict failure detail when git holds no conflict for the file any more.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git führt für diese Datei keinen Konflikt mehr. Er wurde möglicherweise inzwischen aufgelöst."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git no longer lists a conflict in this file. It may have been resolved since."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git ya no indica ningún conflicto en este archivo. Puede que se haya resuelto entretanto."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git n’indique plus de conflit dans ce fichier. Il a peut-être été résolu entre-temps."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git non indica più alcun conflitto in questo file. Potrebbe essere stato risolto nel frattempo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git はこのファイルの競合をもう示していません。その後解決された可能性があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git에 이 파일의 충돌이 더 이상 없습니다. 그사이에 해결되었을 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git vermeldt geen conflict meer in dit bestand. Het is misschien inmiddels opgelost."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git nie wykazuje już konfliktu w tym pliku. Możliwe, że został w międzyczasie rozwiązany."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O git não lista mais um conflito neste arquivo. Ele pode ter sido resolvido nesse meio-tempo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git больше не показывает конфликт в этом файле. Возможно, его уже разрешили."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git більше не показує конфлікт у цьому файлі. Можливо, його вже розв’язали."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git 不再列出此文件中的冲突。它可能已经被解决。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git 不再列出此檔案中的衝突。它可能已經被解決。"
           }
         }
       }

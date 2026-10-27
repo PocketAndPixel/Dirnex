@@ -1356,6 +1356,74 @@ on the versions git holds of it.
   title names the file, and it fits in four panes (seen live).
 - **Left for Slice 6:** the 13 languages for the new sentences, and the server entry's WebDAV run.
 
+**2026-10-27: Slice 6 landed** (the catalog, one test, and the record). Every item of *Done when* is
+met; archiving M33 and M34 to [docs/HISTORY.md](docs/HISTORY.md) is what is left.
+
+- **Translations:** `scripts/check_localization_keys.py` named 45 strings from Slices 3–5 missing from
+  the catalog, and Slice 3's three counted sentences had English only. All 48 are now in the 13
+  languages, with the comments the compiler extracted, and the script reports all 1 240 keys present.
+  The words follow the compare window's (German "sichern", Russian «Сохранить»), and a pane's name,
+  a take's name and Merge… read the same in the prompt, the toolbar, the tooltips and Edit ▸ Undo.
+- **Measured** in each label's own font, from the compiled bundle (docs/NOTES.md ▸ Layout under a
+  longer translation):
+  - Four panes at the window's opening size leave each subtitle about 299 pt. "Saved to the working
+    tree; git add marks it resolved" is 270 pt in English and took 302–392 pt in nine languages. Those
+    nine were shortened to 227–274 pt; the Russian reads «В рабочее дерево; git add разрешит конфликт».
+  - Every other fixed subtitle measured 285 pt or less. The server's Result line names the server and
+    path, is cut in English already, and keeps its whole text in the tooltip.
+  - The widest toolbar label, Russian Show Base at 190 pt, leaves the controls inside the 860 pt
+    minimum.
+- **App:** `MergeWindowController.openingSize` names the 1 320 × 760 pt a window opens at, and
+  `ComparePaneView.pathLabel` is internal so a test can ask it. Nothing on screen changed.
+- **Tests:** `MergeSubtitleWidthTests` (2). Each of the 14 fixed subtitles, in every shipped language,
+  goes on the real Result pane of a four-pane window at its opening size, and
+  `expansionFrame(withFrame:in:)` says whether it is cut; the second test is the control, the English
+  fitting and the first Russian wording cut. Full runs: 4 640 core and 2 051 app tests, without the
+  live server suites, which were up for the live run only.
+- **Negative control:** with the first Russian wording back in the catalog, the subtitle test failed,
+  naming `ru` and nothing else.
+- **Seen live** in the Debug build in Russian against the throwaway WebDAV server's public share, on a
+  seeded tab, driven by background computer-use. Shell writes to the copy stood in for TextEdit's
+  saves, and writes into the served folder for another client.
+  - F4 kept the base beside the copy, byte for byte. A server edit and a touching edit to the copy
+    raised «Выгрузить «notes.txt» обратно на сервер?» with «Объединить…» first and the new sentence
+    whole.
+  - Merge… opened «Объединение «notes.txt»»: "Конфликт 1 из 1", the banner's singular, and the three
+    subtitles. Theirs' eggs and yours' Saturday line were merged in blue, and the two bread lines were
+    one conflict. Take Both, Yours First and Save: a PROPFIND, then a `PUT` answered 204. The server
+    held both edits, the copy matched it, and the one base left was the uploaded bytes.
+  - **The refused precondition.** A second server edit and a touching edit to the copy asked again,
+    and a third server write landed while the question was up. Upload's `PUT` carried the tag the
+    check had read and was answered 412, and the server kept the third write. The offer led with
+    Merge…, ahead of «Всё равно выгрузить».
+  - Merge… brought the third write down as Theirs. Show Base put the first round's upload at the left
+    edge, «Исходная версия вашей правки» under it and all four subtitles whole. Take Both, Theirs
+    First (Edit ▸ Undo read «Отменить Взять обе, сначала их») and Save: a `PUT` answered 204. Every
+    edit of both rounds and all three server writes were on the server, the copy matched it, and the
+    one base left was the uploaded bytes.
+  - **The git entry**, on a scratch repository stopped in a merge. Resolve Conflict… on the `UU` file
+    showed «HEAD, текущая ветка», «Вливаемая ветка» and «Общий предок». That build predated the
+    shortening, and with the base shown the Result line was cut to «Сохраняется в рабочем д…етит его
+    как разрешённый», the measurement above on screen. On the `DU` file the refusal and its deletion
+    sentence were whole. Nothing in `.git` was newer than the repository's own build.
+  - The defaults domain was restored and compared unchanged, `known_hosts` was unchanged, and the
+    servers were stopped.
+  - **Not seen live:** the shortened wording on screen, which the test pins on the real pane; the
+    other 12 languages; and the keys, as in Slice 3.
+- **Done when**, item by item:
+  - The corpus gives git's text and regions apart from the 113 ties Slice 1 names.
+  - A server file changed under an F4 edit merged and uploaded with both edits over SFTP (Slice 4) and
+    WebDAV (above), and over WebDAV a third write was caught by the precondition. Over SFTP and FTP the
+    upload carries no condition: a third write during the merge is caught by the check before the
+    upload (seen in Slice 4), and one between that check and the upload is not (footnote www).
+  - `UU` and `AA` files resolve and save, a `DU` is refused by name, and no git command Dirnex runs
+    writes to the repository (Slice 5, live and in `GitConflictReaderLiveTests`).
+  - Nothing is saved while a conflict is open (Slice 3).
+- **[docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md):** footnote www says WebDAV was seen live,
+  412 included.
+- **Left undone**, as planned: Synchronize as an entry point, three files picked by hand, an archive
+  member, being git's merge tool, conflict markers, a merge that ignores whitespace, and a binary file.
+
 ### Still open
 
 Everything through M32 is shipped, and the record of it — the milestone checklists, the sixty

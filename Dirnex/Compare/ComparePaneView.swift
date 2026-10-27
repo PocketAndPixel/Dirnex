@@ -14,7 +14,7 @@ final class ComparePaneView: NSView {
     let lineNumbers: CompareLineNumbers
     private let coloring = CompareRowColoring()
     let nameLabel = NSTextField(labelWithString: "")
-    private let pathLabel = NSTextField(labelWithString: "")
+    let pathLabel = NSTextField(labelWithString: "")
     /// Edit Left or Edit Right, at the end of the name's row: the file in the user's editor
     /// (PLAN.md §M33 Slice 5).
     let editButton = NSButton()
