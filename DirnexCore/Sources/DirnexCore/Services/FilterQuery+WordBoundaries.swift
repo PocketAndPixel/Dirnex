@@ -47,12 +47,9 @@ extension FilterQuery {
         from: Int,
         to: Int
     ) -> Bool {
-        if position > from, let before = scalar(
-            endingBefore: position,
-            in: haystack,
-            notBefore: from
-        ),
-            isWordScalar(before) {
+        if position > from,
+           let before = scalar(endingBefore: position, in: haystack, notBefore: from),
+           isWordScalar(before) {
             return false
         }
         let end = position + length

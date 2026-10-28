@@ -45,13 +45,12 @@ struct LicenseVectorFile: Decodable, Sendable {
     /// The fixture, or `nil` when it's missing. A missing file must fail ``fixtureIsComplete``
     /// rather than leave the parameterized test with nothing to run, which would pass.
     static let shared: LicenseVectorFile? = {
-        guard let url = Bundle.module.url(
+        let url = Bundle.module.url(
             forResource: "license-vectors",
             withExtension: "json",
             subdirectory: "Fixtures"
-        ),
-            let data = try? Data(contentsOf: url)
-        else {
+        )
+        guard let url, let data = try? Data(contentsOf: url) else {
             return nil
         }
         return try? JSONDecoder().decode(LicenseVectorFile.self, from: data)

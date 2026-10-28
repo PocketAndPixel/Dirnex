@@ -37,14 +37,15 @@ public enum TrashPutBackRecorder {
         case .unreadable: return false
         }
 
-        guard let merged = TrashPutBack.recording(
+        let merged = TrashPutBack.recording(
             origin,
             forItemNamed: landed.lastPathComponent,
             inTrashAt: .local(trash.path),
             into: existing
-        ),
-            let data = DSStoreWriter.data(for: merged),
-            readsBack(data, as: merged)
+        )
+        guard let merged,
+              let data = DSStoreWriter.data(for: merged),
+              readsBack(data, as: merged)
         else {
             return false
         }
