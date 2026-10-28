@@ -100,18 +100,22 @@ struct ZstdArchiveReaderTests {
         // holding each other's stdin never exit (`ArchiveReadHandle.takeExternalProgramTurn`).
         // Without the turn this never finishes, so it waits on a deadline rather than on the
         // reads: a regression fails here, and leaves its stuck `zstd` children to be killed.
+        // The reads run on threads of their own, not a global queue, which starts nothing while
+        // every cooperative thread is busy: with three free, as on CI, they never began and the
+        // wait ran out (docs/NOTES.md ▸ Testing).
         let archive = try ZstdFixture.archive("plain-bsdtar")
         let reads = 8
         let listed = OSAllocatedUnfairLock(initialState: 0)
         let finished = DispatchSemaphore(value: 0)
-        DispatchQueue.global().async {
-            DispatchQueue.concurrentPerform(iterations: reads) { _ in
+        for _ in 0..<reads {
+            Thread {
                 let count = (try? EncryptedArchiveReader.inspect(archiveAt: archive))?.entries.count
                 if count == 3 { listed.withLock { $0 += 1 } }
-            }
-            finished.signal()
+                finished.signal()
+            }.start()
         }
-        #expect(finished.wait(timeout: .now() + 30) == .success)
+        let deadline = DispatchTime.now() + 30
+        #expect((0..<reads).allSatisfy { _ in finished.wait(timeout: deadline) == .success })
         #expect(listed.withLock { $0 } == reads)
     }
 

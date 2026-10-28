@@ -16,11 +16,19 @@ jobs:
   core:
     name: DirnexCore (swift test)
     runs-on: macos-26
+    # Without a limit a stuck run sits for GitHub's six hours, as on 2026-10-28. The job takes 12 to
+    # 21 minutes, most of it the release build below.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
       - name: Swift version
         run: swift --version
       - name: Test DirnexCore
+        # 3 to 6 minutes when it passes. On 2026-10-27 and 28 three runs in a row stopped a second
+        # into the tests, with not one passing. A local run with three cooperative threads free,
+        # as here, stalled the same way on two tests waiting for work sent to a global queue,
+        # which starts nothing while those threads are all busy (docs/NOTES.md ▸ Testing).
+        timeout-minutes: 20
         run: swift test --package-path DirnexCore
       - name: Performance budgets (release)
         # The M1 hot-path budgets (PerformanceBudgetTests) only enforce in optimized
