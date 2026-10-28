@@ -635,6 +635,16 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
         the test still failed at 60.1 s. After restoring it, three separate full app runs passed
         (2062 tests reported per run; live-server suites skipped), as did all 4653 core tests and
         both linters. All 71 saved defaults keys were unchanged.
+      - **The WebDAV recycle-bin deadline test had the same 30 s limit (2026-10-28).** Two saved
+        full-run failures showed `answers` and `serverHadAnswered` both empty: the test's wait
+        ended before the main actor delivered the deadline callback. `slowServer` now uses
+        `settleUntil` with 60 s and requires the deadline answer before releasing the fake server.
+        The question still uses a 100 ms deadline. It then awaits the returned server task before
+        checking that the late reply did not answer twice. A transport's reply count alone is too
+        early: parsing and the main-actor callback follow it. Awaiting the task replaces the old
+        500 ms sleep with a check after that work has finished. Removing the answer-once guard
+        failed the final assertion with `[false, true]` in a full run. Removing the deadline
+        callback failed the first wait at 60.0 s in a focused run.
     - **A `sample` names whose code is on the main thread, not what makes the queue long.** The
       stall's profile put 40% of samples in `MultiLineFieldTests`' per-pixel `colorAt` loop. Skipped,
       the same wait landed at 30.1–30.5 s behind a 12.8 s stall: the other suites filled the time.

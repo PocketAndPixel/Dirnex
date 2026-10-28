@@ -171,25 +171,32 @@ struct WebDAVRecycleBinCheckTests {
     /// the strong wording goes up at the deadline, and the bin's late "yes" is dropped rather than
     /// answered a second time.
     @Test("a server too slow to answer gets the strong warning at the deadline, once")
-    func slowServer() async {
+    func slowServer() async throws {
         let gate = DispatchSemaphore(value: 0)
         let server = BinServer(gate: gate) { Self.folderOrMissing($0, folder: "/home/#recycle") }
         defer { gate.signal() }
         let pane = pane(over: server)
         var answers: [Bool] = []
         var serverHadAnswered: [Int] = []
-        pane.askWhetherARecycleBinGoverns([path("/home/a.txt")], within: .milliseconds(100)) {
+        let check = pane.askWhetherARecycleBinGoverns(
+            [path("/home/a.txt")],
+            within: .milliseconds(100)
+        ) {
             answers.append($0)
             serverHadAnswered.append(server.answers)
         }
-        await settle { !answers.isEmpty }
-        #expect(answers == [false])
+        // The full app suite can hold the main actor past 30 seconds, before the timer runs.
+        // This is the test's wait budget; the question still has its 100 ms deadline.
+        try await settleUntil(within: .seconds(60)) { !answers.isEmpty }
+        try #require(answers == [false])
         #expect(serverHadAnswered == [0], "the answer came before the server's")
 
         // Now let the server say yes, which must find the question already answered.
+        let request = try #require(check)
         gate.signal()
-        await settle { server.answers == 1 }
-        try? await Task.sleep(for: .milliseconds(500))
+        await request.value
+        #expect(server.paths == ["/home/#recycle"])
+        #expect(server.answers == 1)
         #expect(answers == [false])
     }
 
