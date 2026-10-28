@@ -68,6 +68,13 @@ struct DragPromiseTests {
         return board
     }
 
+    /// What a drag session puts on its board: each item's writer, as AppKit writes them.
+    private func writeDrag(_ entries: [FileEntry], to board: NSPasteboard) -> Bool {
+        let writers = PanelPasteboard.dragWriters(for: entries, promisedTo: pane())
+        board.clearContents()
+        return board.writeObjects(writers)
+    }
+
     private func pane() -> PanelViewController {
         PanelViewController(
             backend: StubBackend(),
@@ -151,9 +158,7 @@ struct DragPromiseTests {
     @Test("a promised row still carries the payload, so the drag reads the same inside Dirnex")
     func promiseCarriesPayload() throws {
         let board = board("remote")
-        #expect(
-            PanelPasteboard.writeDrag([remote("/srv/report.pdf")], promisedTo: pane(), to: board)
-        )
+        #expect(writeDrag([remote("/srv/report.pdf")], to: board))
 
         let item = try #require(board.pasteboardItems?.first)
         #expect(item.data(forType: PanelPasteboard.locationsType) != nil)
@@ -166,7 +171,7 @@ struct DragPromiseTests {
     func mixedDrag() throws {
         let board = board("mixed")
         let rows = [local("/tmp/x.txt"), remote("/srv/big.bin"), local("/tmp/y.txt")]
-        #expect(PanelPasteboard.writeDrag(rows, promisedTo: pane(), to: board))
+        #expect(writeDrag(rows, to: board))
 
         #expect(PanelPasteboard.payloads(in: board).map(\.name) == ["x.txt", "big.bin", "y.txt"])
         #expect(PanelPasteboard.fileURLs(in: board).map(\.lastPathComponent) == ["x.txt", "y.txt"])
@@ -190,7 +195,7 @@ struct DragPromiseTests {
         #expect(!(writers.first is RemoteFilePromiseProvider))
 
         let board = board("archive")
-        #expect(PanelPasteboard.writeDrag([member], promisedTo: pane(), to: board))
+        #expect(writeDrag([member], to: board))
         #expect(PanelPasteboard.payloads(in: board).map(\.name) == ["inner.txt"])
         // Nothing another app can accept: no file URL and no promised type at board level.
         #expect(PanelPasteboard.fileURLs(in: board).isEmpty)

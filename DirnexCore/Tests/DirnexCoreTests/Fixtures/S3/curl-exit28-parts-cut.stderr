@@ -1,0 +1,11 @@
+
+s3-part1-status=200
+s3-part1-exit=0
+s3-part1-etag="etag-part-1"
+s3-part1-up=1564505
+curl: (28) Operation timed out after 1004 milliseconds with 0 bytes received
+
+s3-part2-status=100
+s3-part2-exit=28
+s3-part2-etag=
+s3-part2-up=524288

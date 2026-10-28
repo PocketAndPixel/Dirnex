@@ -131,11 +131,11 @@ extension SyncDirectoriesController: NSMenuDelegate {
         let clicked = tableView.clickedRow
         guard let data = row(at: clicked) else { return }
 
-        // A both-sides pair of regular files can be opened in an external diff tool — the
-        // "how do they differ?" companion to the byte comparison (PLAN.md §M5 Compare-by-content).
+        // A both-sides pair of regular files can be compared line by line — the "how do they
+        // differ?" companion to the byte comparison (PLAN.md §M5 Compare-by-content).
         if data.entry.left?.kind == .file, data.entry.right?.kind == .file {
             let compare = NSMenuItem(
-                title: compareContentsTitle(),
+                title: ExternalDiffLauncher.preferredTool().compareItemTitle,
                 action: #selector(compareContents(_:)),
                 keyEquivalent: ""
             )
@@ -192,21 +192,6 @@ extension SyncDirectoriesController: NSMenuDelegate {
                 localized: "No actions available",
                 comment: "Sync override menu: this row has no legal override."
             )
-    }
-
-    /// Name the external-diff item after the tool that would open (so the user knows what launches),
-    /// or a neutral title when none is installed — the click then explains how to get one.
-    private func compareContentsTitle() -> String {
-        if let tool = ExternalDiffLauncher.preferredTool() {
-            return String(
-                localized: "Compare with \(tool.displayName)…",
-                comment: "Sync override menu: open the two files in an external diff tool; %@ is the tool name."
-            )
-        }
-        return String(
-            localized: "Compare Contents…",
-            comment: "Sync override menu: open the two files in an external diff tool (none configured)."
-        )
     }
 }
 

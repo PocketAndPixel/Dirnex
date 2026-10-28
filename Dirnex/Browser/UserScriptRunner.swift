@@ -34,18 +34,33 @@ enum UserScriptRunner {
 
     /// Run `script` against `context` using `shell`, off the main thread, then report the outcome
     /// back on the main actor. A `combined` script yields one invocation (even for an empty
-    /// selection); a `perFile` script yields one per selected file.
+    /// selection); a `perFile` script yields one per selected file. `inherited` is the environment
+    /// the child starts from, and `systemPaths` the directory whose `paths` and `paths.d` widen its
+    /// `PATH`: the app's own environment and `/etc`, or fixtures in a test.
     @MainActor
     static func run(
         _ script: UserScript,
         context: UserScriptContext,
         shell: String,
+        inherited: [String: String] = ProcessInfo.processInfo.environment,
+        systemPaths: URL = ToolSearchPath.systemRoot,
         completion: @escaping (RunOutcome) -> Void
     ) {
         let invocations = script.invocations(in: context, shell: shell)
         Task {
             let failures = await BlockingWork.run { () -> [InvocationFailure] in
-                invocations.compactMap(runOne)
+                // Every invocation of a run shares one folder, so one shell startup answers for
+                // all of them: a `perFile` script over 400 photos asks once, not 400 times.
+                guard let workingDirectory = invocations.first?.currentDirectoryPath else {
+                    return []
+                }
+                let environment = baseEnvironment(
+                    inherited: inherited,
+                    shell: shell,
+                    workingDirectory: workingDirectory,
+                    systemPaths: systemPaths
+                )
+                return invocations.compactMap { runOne($0, inheriting: environment) }
             }
             completion(RunOutcome(script: script, total: invocations.count, failures: failures))
         }
@@ -53,13 +68,16 @@ enum UserScriptRunner {
 
     /// Launch one invocation and wait for it, returning `nil` on success or a failure record on a
     /// non-zero exit / launch error. Runs on a background thread (the caller's detached task).
-    private static func runOne(_ invocation: UserScriptInvocation) -> InvocationFailure? {
+    private static func runOne(
+        _ invocation: UserScriptInvocation,
+        inheriting environment: [String: String]
+    ) -> InvocationFailure? {
         let files = Array(invocation.arguments.dropFirst(argumentsBeforeFiles))
         let process = Process()
         process.executableURL = URL(fileURLWithPath: invocation.executablePath)
         process.arguments = invocation.arguments
         process.currentDirectoryURL = URL(fileURLWithPath: invocation.currentDirectoryPath)
-        process.environment = childEnvironment(merging: invocation.environment)
+        process.environment = environment.merging(invocation.environment) { $1 }
 
         let errorPipe = Pipe()
         process.standardOutput = FileHandle.nullDevice
@@ -88,28 +106,35 @@ enum UserScriptRunner {
     /// `["-c", <command>, <name>]` (see `UserScript.invocations`). The files are everything after.
     private static let argumentsBeforeFiles = 3
 
-    /// The child's environment: the app's own, with a `PATH` widened to the tool directories a
-    /// login shell would add, then the script's `DIRNEX_*` variables layered on top.
+    /// The child's environment before the script's `DIRNEX_*` variables go on top: `inherited`,
+    /// with the `PATH` the user's terminal has.
     ///
-    /// A GUI process launched by LaunchServices inherits launchd's minimal `PATH`, without the
-    /// Homebrew / user-tool locations a login shell picks up from `~/.zprofile` — so `cwebp`,
-    /// `ffmpeg`, and friends (the whole reason to write a script) would fail to resolve. We union
-    /// the standard tool directories onto the inherited `PATH` rather than paying for a full
-    /// login-shell handshake per invocation; a directory that doesn't exist is inert in `PATH`, so
-    /// including both the Apple-silicon and Intel Homebrew prefixes costs nothing.
-    private static func childEnvironment(merging overrides: [String: String]) -> [String: String] {
-        var environment = ProcessInfo.processInfo.environment
-        let existing = environment["PATH"].map { $0.split(separator: ":").map(String.init) } ?? []
-        var merged = existing
-        for path in toolDirectories where !merged.contains(path) { merged.append(path) }
-        environment["PATH"] = merged.joined(separator: ":")
-        for (key, value) in overrides { environment[key] = value }
+    /// A GUI process launched by LaunchServices inherits launchd's minimal `PATH`, so `cwebp`,
+    /// `cargo`, `dotnet` and friends (the whole reason to write a script) would fail to resolve,
+    /// and `python3` would be Apple's rather than the user's. So the user's shell is asked first
+    /// (`LoginShellPathReader`). It starts in the script's own folder, so a startup file that looks
+    /// at the current folder sees the script's. `ToolSearchPath` then appends the Homebrew
+    /// prefixes and what `/etc/paths.d` names, which is all there is when the shell does not answer
+    /// in time.
+    private static func baseEnvironment(
+        inherited: [String: String],
+        shell: String,
+        workingDirectory: String,
+        systemPaths: URL
+    ) -> [String: String] {
+        let shellPath = LoginShellPathReader.directories(
+            shell: shell,
+            environment: inherited,
+            workingDirectory: workingDirectory
+        )
+        var environment = inherited
+        environment["PATH"] = ToolSearchPath.widening(
+            shellPath?.joined(separator: ":") ?? inherited["PATH"],
+            adding: ToolSearchPath.systemDirectories(
+                in: systemPaths,
+                home: inherited["HOME"] ?? NSHomeDirectory()
+            )
+        )
         return environment
     }
-
-    private static let toolDirectories = [
-        "/opt/homebrew/bin", "/opt/homebrew/sbin",
-        "/usr/local/bin", "/usr/local/sbin",
-        "/usr/bin", "/bin", "/usr/sbin", "/sbin"
-    ]
 }

@@ -151,8 +151,11 @@ struct ArchiveNameEncodingGestureTests {
         static let report = 1
     }
 
+    /// 60 s, not the house 30: the first wait in its test sits in a full run's opening main-actor
+    /// stall. Measured 2026-10-26: 24 s in a green full run, past 30 in five slower ones
+    /// (docs/NOTES.md ▸ Testing).
     private static func sheet(over window: NSWindow) async throws -> Int {
-        try await settleUntil { window.attachedSheet != nil }
+        try await settleUntil(within: .seconds(60)) { window.attachedSheet != nil }
         return sheetButtonCount(in: window)
     }
 

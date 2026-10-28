@@ -165,16 +165,11 @@ struct OperationsSettingsView: View {
             }
 
             Section {
-                Picker("Compare files with", selection: $preferences.diffToolIdentifier) {
-                    Text("Automatic").tag("")
-                    if !installedDiffTools.isEmpty {
-                        Divider()
-                        ForEach(installedDiffTools) { tool in
-                            Text(tool.displayName).tag(tool.identifier)
-                        }
+                Picker("Compare files with", selection: diffToolSelection) {
+                    ForEach(CompareTool.choices(installed: installedDiffTools)) { tool in
+                        Text(tool.settingsTitle).tag(tool.identifier)
                     }
                 }
-                .disabled(installedDiffTools.isEmpty)
             } footer: {
                 Text(diffToolFooter)
                     .font(.caption)
@@ -217,19 +212,27 @@ struct OperationsSettingsView: View {
         return String(localized: "Automatic (\(name))")
     }
 
-    /// Says which tool Compare By Contents will actually open — including the case that needs it
-    /// most, where the user has installed none and the command is grayed out with no explanation.
+    /// The picker's row for the saved tool, or Dirnex's while that tool is not installed, which is
+    /// what Compare By Contents opens then (`CompareTool.preferred`). Only picking a row saves, so
+    /// the choice comes back with the tool.
+    private var diffToolSelection: Binding<String> {
+        Binding(
+            get: {
+                CompareTool.preferred(
+                    identifier: preferences.diffToolIdentifier,
+                    installed: installedDiffTools
+                ).identifier
+            },
+            set: { preferences.diffToolIdentifier = $0 }
+        )
+    }
+
+    /// Says what Compare By Contents opens, and why the picker may hold Dirnex alone: an external
+    /// tool is listed only once it is installed.
     private var diffToolFooter: String {
-        guard !installedDiffTools.isEmpty else {
-            return String(localized: """
-            Compare By Contents (⌥F3) needs a diff tool. Install FileMerge (part of Xcode), \
-            Kaleidoscope, or BBEdit, then reopen Settings.
-            """)
-        }
-        let names = installedDiffTools.map(\.displayName).joined(separator: ", ")
-        return String(localized: """
-        The tool Compare By Contents (⌥F3) opens the two files in. Installed: \(names). \
-        Automatic picks the first of those still installed.
+        String(localized: """
+        Where Compare By Contents (⌥F3) shows how two files differ. Built-in shows them side by side in \
+        a Dirnex window. Kaleidoscope, BBEdit and FileMerge (part of Xcode) appear here once installed.
         """)
     }
 }

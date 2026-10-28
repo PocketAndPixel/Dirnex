@@ -59,7 +59,7 @@ enum SyntaxNginxScanner {
         return false
     }
 
-    private static let lineLimit = 500
+    static let lineLimit = 500
 
     /// The blocks that appear in a configuration and in nothing else that ends lines with `;`.
     /// `map`, `if` and `types` are nginx blocks too, and are left out as too common elsewhere to be

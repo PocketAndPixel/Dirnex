@@ -132,6 +132,42 @@ final class FakeFTPTransport: FTPTransport, @unchecked Sendable {
         }
     }
 
+    /// The tree refresh's batch, answered as a run with `--fail-early` answers: every section up to
+    /// the first failure, then where and why it stopped. A failure of every verb (``error``) stops it
+    /// at the first section, an unlistable folder at its own.
+    func listingsUntilFirstFailure(
+        of remotePaths: [String],
+        askingFacts: Bool,
+        isCancelled: () -> Bool
+    ) throws -> FTPBatchRun {
+        guard !isCancelled() else { throw CancellationError() }
+        batchListingAsks.append(askingFacts)
+        listedBatches.append(remotePaths)
+        var answered: [FTPListing?] = []
+        for path in remotePaths {
+            let cause = error.map(FTPBatchStop.Cause.init)
+                ?? (unlistablePaths.contains(path) ? .folder : nil)
+            if let cause {
+                let unsent = Array(
+                    repeating: FTPListing?.none,
+                    count: remotePaths.count - answered.count
+                )
+                return FTPBatchRun(
+                    listings: answered + unsent,
+                    stop: FTPBatchStop(index: answered.count, cause: cause)
+                )
+            }
+            listedPaths.append(path)
+            answered.append(
+                FTPListing(
+                    rows: listings[path] ?? "",
+                    facts: factsAnswer(for: path, asked: askingFacts)
+                )
+            )
+        }
+        return FTPBatchRun(listings: answered, stop: nil)
+    }
+
     private func factsAnswer(for remotePath: String, asked: Bool) -> FTPListing.Facts {
         guard asked else { return .notAsked }
         if refusesFacts { return .unsupported }

@@ -38,16 +38,17 @@ struct BugReportVectorFile: Sendable {
     /// where a text belongs) and is handed to `JSONDecoder` again as bytes. Nothing is read from it
     /// with an `as?` cast that would bridge `true` to 1 (docs/NOTES.md ▸ License keys).
     static let shared: BugReportVectorFile? = {
-        guard let url = Bundle.module.url(
+        let url = Bundle.module.url(
             forResource: "bug-report-vectors",
             withExtension: "json",
             subdirectory: "Fixtures"
-        ),
-            let data = try? Data(contentsOf: url),
-            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let limits = object["limits"] as? [String: Int],
-            let blank = object["blankCharacters"] as? [UInt32],
-            let cases = object["vectors"] as? [[String: Any]]
+        )
+        guard let url,
+              let data = try? Data(contentsOf: url),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let limits = object["limits"] as? [String: Int],
+              let blank = object["blankCharacters"] as? [UInt32],
+              let cases = object["vectors"] as? [[String: Any]]
         else {
             return nil
         }

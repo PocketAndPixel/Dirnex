@@ -43,6 +43,49 @@ extension PanelViewController {
         menu.popUp(positioning: nil, at: origin, in: pathBar)
     }
 
+    // MARK: - Where the pane was in each folder
+
+    /// Note where the pane is in the folder it is leaving — the cursor's row and the tree folders that
+    /// are open — on that folder's entry in the trail, so a walk back puts the pane there again. Called
+    /// as the listing that replaces it lands, so a cursor moved while that listing was on its way
+    /// counts. A tab that has never listed has no place in its folder to remember.
+    func rememberSpot(leaving departed: VFSPath, inTab index: Int) {
+        let tab = tabs[index]
+        guard tab.hasLoaded else { return }
+        let cursor = tab.cursorOnParentRow
+            ? nil
+            : tab.panel.currentEntry.flatMap { rootRelativePath($0.path, under: departed) }
+        let spot = NavigationSpot(
+            cursor: cursor,
+            cursorOnParent: tab.cursorOnParentRow,
+            expanded: persistedExpandedPaths(for: tab) ?? []
+        )
+        tab.history.remember(spot, leaving: departed)
+    }
+
+    /// Decide what the listing landing on `path` re-applies, through the pending state a relaunched
+    /// tab's own restore uses (`applyPendingRestore`, `restorePendingTreeExpansion`). A walk along the
+    /// trail puts back the spot its entry was left at. A restored tab's first listing keeps what the
+    /// relaunch seeded. Any other listing starts clean, so nothing an earlier landing left unanchored
+    /// lands on a row of a folder it was never about.
+    ///
+    /// Each landing opens a restore window of its own, so the count of tree listings still to come
+    /// starts again at zero: the ones an earlier landing started are stale now, and no longer count
+    /// towards closing this one (`performTreeChildLoad`).
+    func preparePendingRestore(landingOn path: VFSPath, inTab index: Int) {
+        let tab = tabs[index]
+        tab.pendingRestoreTreeLoads = 0
+        if let spot = tab.history.spot(landingOn: path) {
+            tab.pendingCursorPath = spot.cursor
+            tab.pendingCursorOnParent = spot.cursorOnParent
+            tab.pendingExpandedPaths = spot.expanded.isEmpty ? nil : spot.expanded
+            tab.pendingMarkPaths = nil
+        } else if tab.hasLoaded {
+            tab.pendingExpandedPaths = nil
+            tab.clearPendingRestore()
+        }
+    }
+
     // MARK: - A walk that did not land
 
     /// The walk's listing failed with `error`. Returns `true` when that is the end of it here — a

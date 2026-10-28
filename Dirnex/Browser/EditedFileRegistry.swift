@@ -8,7 +8,7 @@ import Foundation
 /// save has to be carried back to somewhere that is not a path on this Mac. Detecting that save is
 /// identical work — watch the directory, compare the revision, offer once — so it is one mechanism
 /// with two endings rather than two mechanisms that happen to look alike.
-enum EditDestination: Hashable {
+enum EditDestination: Hashable, Sendable {
     /// Back into the archive it was extracted from, at the inner directory it came from.
     case archiveMember(archivePath: String, innerDirectory: String)
     /// Back up to the remote path it was downloaded from. Carries the whole `VFSPath`, so the
@@ -92,6 +92,18 @@ final class EditedFileRegistry {
         watchers[temporaryURL]?.stop()
         watchers[temporaryURL] = nil
         watched[temporaryURL] = nil
+    }
+
+    /// Take the copy at `temporaryURL` as it is now as known, so the write Dirnex itself has just
+    /// made there is not offered back as an editor's save. A no-op for a copy nobody is watching.
+    ///
+    /// The compare window writes a copy F4 may also have open, then carries it back itself
+    /// (PLAN.md §M33 Slice 4). The watch stays, so the editor's own next save is still offered.
+    func acknowledgeWrite(to temporaryURL: URL) {
+        guard let entry = watched[temporaryURL] else { return }
+        watched[temporaryURL] = (
+            entry.edit, EditedFileRevision.current(ofFileAt: temporaryURL.path)
+        )
     }
 
     /// Re-read the watched file and, if it is genuinely a later revision, report it once.

@@ -1,7 +1,7 @@
 import AppKit
 import DirnexCore
 
-/// The "Connect to Server" dialog: pick a protocol (SFTP | FTP | SMB), fill in the coordinates and
+/// The "Connect to Server" dialog: pick a protocol (SMB | SFTP | FTP | WebDAV | S3), fill in the coordinates and
 /// credentials, and optionally name the connection to save it in the sidebar's Servers section.
 ///
 /// Unlike the original `NSAlert` shell, this is a **sheet that stays open until the connection
@@ -230,7 +230,7 @@ private enum ConnectPromptChrome {
     static var subtitle: String {
         String(
             localized: """
-            Browse a remote SFTP, FTP or S3 account, or an SMB share on your network.
+            Browse a remote SFTP, FTP, WebDAV or S3 account, or an SMB share on your network.
             """,
             comment: "Subtitle of the Connect to Server dialog."
         )

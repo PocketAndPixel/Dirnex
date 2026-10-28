@@ -190,9 +190,12 @@ public enum EncryptedArchiveReader {
         nameEncoding: ArchiveNameEncoding? = nil
     ) throws -> ArchiveReadHandle {
         guard let handle = ArchiveReadHandle() else { throw EncryptedArchiveError.archiveUnreadable }
-        guard archive_read_support_format_all(handle.raw) == LibArchive.ok,
+        guard supportZstd(handle, zstd: ZstdTool.locate()),
+              archive_read_support_format_all(handle.raw) == LibArchive.ok,
               archive_read_support_filter_all(handle.raw) == LibArchive.ok
         else { throw EncryptedArchiveError.archiveUnreadable }
+        // Whichever zstd filter wins the bid, it runs `zstd` as a child (``ZstdTool``).
+        if ZstdTool.isZstandard(fileAt: path) { handle.takeExternalProgramTurn() }
 
         // Declaring the code page has to happen before the file is opened, and it is validated here
         // rather than at the first name: libarchive answers `ARCHIVE_FATAL` for a token it does not
@@ -217,6 +220,27 @@ public enum EncryptedArchiveReader {
             throw EncryptedArchiveError.archiveUnreadable
         }
         return handle
+    }
+
+    /// Have `zstd` at its absolute path decompress a Zstandard archive, ahead of libarchive's own
+    /// zstd filter, which runs `zstd -d -qq` from this process's `PATH` and so fails in a
+    /// Dock-launched Dirnex (``ZstdTool``). One filter for a frame and one for the skippable frame
+    /// `pzstd` writes first. The other fifteen skippable signatures keep libarchive's own filter,
+    /// since its bidder slots have room for only these two (see `shim.h`). No `zstd` registers
+    /// nothing, and the open then fails as it always did.
+    ///
+    /// Must run before `archive_read_support_filter_all`: the two bid the same 32 bits, and the
+    /// filter registered first wins the tie (measured).
+    private static func supportZstd(_ handle: ArchiveReadHandle, zstd: String?) -> Bool {
+        guard let zstd else { return true }
+        let command = ZstdTool.readCommand(zstd: zstd)
+        return [ZstdTool.frameSignature, ZstdTool.skippableFrameSignature].allSatisfy { signature in
+            signature.withUnsafeBytes {
+                archive_read_support_filter_program_signature(
+                    handle.raw, command, $0.baseAddress, $0.count
+                ) == LibArchive.ok
+            }
+        }
     }
 
     /// Open `path` by name — or, when it is a Windows self-extractor carrying a 7z, from where that

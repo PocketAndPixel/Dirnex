@@ -121,7 +121,10 @@ extension PanelViewController {
     /// Re-apply a restored tab's saved cursor and marks, resolving the persisted root-relative paths
     /// against the pane's root and matching them by identity against what it is drawing.
     ///
-    /// Called at the root's first listing (from `navigate`) and **again as each restored tree
+    /// A walk along the trail (⌘[, ⌘], the ⌥↓ list) seeds the same pending cursor to put the pane back
+    /// where it was left in the folder (`preparePendingRestore`), and is re-applied the same way.
+    ///
+    /// Called at the root's listing (from `navigate`) and **again as each restored tree
     /// expansion's own listing lands**: a cursor or a mark inside an expanded folder has no row to
     /// anchor on until that folder has been listed, so one pass at the root is not enough — that is
     /// the shape of the bug this exists for, a tree tab whose cursor sat on a nested file coming back

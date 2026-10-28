@@ -177,8 +177,10 @@ final class RemoteFileEditLiveIntegrationTests {
         defer { Task { await remove(entry.path, using: backend) } }
 
         let cache = RemoteFileCache()
-        _ = try await cache.fetch(entry, using: backend, progress: { _ in }, isCancelled: { false })
-        let recorded = try #require(cache.revision(for: entry.path))
+        let copy = try await cache.fetch(entry, using: backend, progress: { _ in }, isCancelled: {
+            false
+        })
+        let recorded = try #require(cache.revision(ofCopy: copy))
 
         // Somebody else's write. A different length, so the change is visible to the weakest
         // evidence this check can rest on.
@@ -210,8 +212,10 @@ final class RemoteFileEditLiveIntegrationTests {
         defer { Task { await remove(entry.path, using: backend) } }
 
         let cache = RemoteFileCache()
-        _ = try await cache.fetch(entry, using: backend, progress: { _ in }, isCancelled: { false })
-        let recorded = try #require(cache.revision(for: entry.path))
+        let copy = try await cache.fetch(entry, using: backend, progress: { _ in }, isCancelled: {
+            false
+        })
+        let recorded = try #require(cache.revision(ofCopy: copy))
 
         let current = try await BlockingWork.run {
             Result { try backend.stat(at: entry.path) }

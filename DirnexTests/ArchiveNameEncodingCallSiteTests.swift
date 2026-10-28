@@ -122,7 +122,11 @@ struct ArchiveNameEncodingCallSiteTests {
         )
         pane.beginNestedArchiveEntry(for: member)
 
-        try await settleUntil { pane.panel.displayedEntries.map(\.name) == ["note.txt"] }
+        // 60 s, not the house 30: 23 s in a green full run on 2026-10-26, and past 30 in five
+        // slower ones, inside the main-actor stall at the run's start (docs/NOTES.md ▸ Testing).
+        try await settleUntil(within: .seconds(60)) {
+            pane.panel.displayedEntries.map(\.name) == ["note.txt"]
+        }
         #expect(pane.panel.displayedEntries.map(\.name) == ["note.txt"])
         // And it really is *inside* something else — a mount of the extracted copy, not the outer
         // archive it came from.

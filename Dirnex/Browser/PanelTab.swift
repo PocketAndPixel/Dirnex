@@ -46,9 +46,10 @@ final class PanelTab {
     /// relative to the tab's root (the shape `PersistedTab` stores) matched by identity against the
     /// fresh listing, so a file deleted since quit is simply dropped (PLAN.md §M1 "restored on
     /// relaunch"; the identity-not-index rule the cursor already follows across a live refresh).
-    /// Seeded from the on-disk `PersistedTab` in `restoredTabs`, consumed by
-    /// `PanelViewController.applyPendingRestore`; all `nil`/`false` for a tab that was not restored
-    /// from disk, which makes the re-apply a no-op there.
+    /// Seeded from the on-disk `PersistedTab` in `restoredTabs`, and by a walk along the trail from
+    /// the spot its folder was left at (`preparePendingRestore`, which also clears them for every
+    /// other listing); consumed by `PanelViewController.applyPendingRestore`. All `nil`/`false`
+    /// otherwise, which makes the re-apply a no-op.
     var pendingCursorPath: String?
     var pendingCursorOnParent = false
     var pendingMarkPaths: [String]?
@@ -59,9 +60,9 @@ final class PanelTab {
     /// which is what makes the restore one-shot there.
     var pendingRestoreTreeLoads = 0
     /// The tree folders to re-open once a *restored* tree tab's directory first lists (PLAN.md §M15
-    /// Slice 4), as paths relative to the tab's root — matching the shape `PersistedTab` stores.
-    /// Consumed and cleared by `restorePendingTreeExpansion` on the first load; `nil` for a tab that
-    /// was not restored from disk or was a flat list, which makes the re-open a no-op.
+    /// Slice 4), or once a walk along the trail lands, as paths relative to the tab's root — matching
+    /// the shape `PersistedTab` stores. Consumed and cleared by `restorePendingTreeExpansion`; `nil`
+    /// otherwise, or for a flat list, which makes the re-open a no-op.
     var pendingExpandedPaths: [String]?
     /// This tab's column widths/order, in display order (UI-only, like `cursorOnParentRow`;
     /// see `PanelViewController+Columns`). `nil` until the tab has been given an explicit

@@ -40,6 +40,10 @@ extension UndoJournal {
                 restoreArchive(
                     archive, from: snapshot, expecting: expected, failures: &failures
                 )
+            case let .restoreSavedFile(file, snapshot, expected, _):
+                restoreArchive(
+                    file, from: snapshot, expecting: expected, inPlace: true, failures: &failures
+                )
             }
         }
         return UndoReport(failures: failures)
@@ -211,10 +215,17 @@ extension UndoJournal {
     /// Local file primitives rather than a backend verb: the swap is an atomic same-directory
     /// rename, which no `VFSBackend` offers, and an archive is a real file on this disk whatever
     /// backend is showing its insides.
+    ///
+    /// A text file saved from the compare window takes the same two refusals, and `inPlace` swaps
+    /// it by writing into it, as the save did (``ArchiveUndoStore/exchangeInPlace(fileAt:snapshotAt:)``).
+    /// The witness check and the write run inside one coordinated write, as the save's do
+    /// (`CoordinatedFileWrite`, PLAN.md §M33 Slice 5): an editor with the file open saves its own
+    /// unsaved edit first, which the check then refuses to discard, and shows the file afterwards.
     private static func restoreArchive(
         _ archive: VFSPath,
         from snapshot: VFSPath,
         expecting expected: ArchiveUndoWitness,
+        inPlace: Bool = false,
         failures: inout [OperationItemFailure]
     ) {
         let name = archive.lastComponent
@@ -225,19 +236,46 @@ extension UndoJournal {
             ))
             return
         }
-        guard expected.matchesFile(at: archive.path) else {
+        guard inPlace else {
+            if let error = exchange(archive, with: snapshot, expecting: expected, inPlace: false) {
+                failures.append(.init(path: archive, error: error))
+            }
+            return
+        }
+        let outcome = CoordinatedFileWrite.run(archive.path) { _ in
+            exchange(archive, with: snapshot, expecting: expected, inPlace: true)
+        }
+        guard let outcome else {
             failures.append(.init(
                 path: archive,
-                error: .unsupported(.archiveChangedSinceRewrite(archive: name))
+                error: .unsupported(.fileHeldByAnotherApp(name: name))
             ))
             return
         }
+        if let error = outcome { failures.append(.init(path: archive, error: error)) }
+    }
+
+    /// The witness check and the swap itself: `nil` when the swap landed, else why not.
+    private static func exchange(
+        _ archive: VFSPath,
+        with snapshot: VFSPath,
+        expecting expected: ArchiveUndoWitness,
+        inPlace: Bool
+    ) -> VFSError? {
+        guard expected.matchesFile(at: archive.path) else {
+            return .unsupported(.archiveChangedSinceRewrite(archive: archive.lastComponent))
+        }
         do {
-            try ArchiveUndoStore.exchange(archiveAt: archive.path, snapshotAt: snapshot.path)
+            if inPlace {
+                try ArchiveUndoStore.exchangeInPlace(fileAt: archive.path, snapshotAt: snapshot.path)
+            } else {
+                try ArchiveUndoStore.exchange(archiveAt: archive.path, snapshotAt: snapshot.path)
+            }
+            return nil
         } catch let error as VFSError {
-            failures.append(.init(path: archive, error: error))
+            return error
         } catch {
-            failures.append(.init(path: archive, error: .io(path: archive, code: 0)))
+            return .io(path: archive, code: 0)
         }
     }
 }

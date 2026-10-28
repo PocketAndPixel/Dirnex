@@ -165,6 +165,17 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Swift Testing and `xcodebuild`
 
+- **Xcode's relaunch flag did not give Swift Testing a fresh host per repetition.** Measured
+  2026-10-28 on Xcode 27.1 with `-test-iterations 3 -test-repetition-relaunch-enabled YES`: the
+  same host started repetition 2 of fast tests while slow tests were still on their first run.
+  Several unrelated waits failed, and the run was stopped. Repeat full app runs with separate
+  `xcodebuild test` invocations, waiting for each to finish.
+- **`#expect(x as AnyObject === y)` crashes the compiler, not the test.** Seen 2026-10-24 on Xcode
+  26: SILGen aborted with *"Found an invalid conformance in SILGen"* in a reabstraction thunk the
+  macro's expansion builds, and the run reported only the file in *build commands failed*, with the
+  one-line message repeated under *Testing failed* and no `file:line: error:` to grep. The crash log
+  names the test function. `#expect(ObjectIdentifier(x as AnyObject) == ObjectIdentifier(y))`
+  compiles and says the same.
 - **`#expect(optionalNumeric == arithmeticExpression)` can report a false failure** even when
   both operands display as equal. Confirmed on Swift 6.3 / Xcode 26:
   `let v: Int64? = 1_048_576; #expect(v == 1024 * 1024)` FAILS, while `#expect(v == 1_048_576)`
@@ -238,6 +249,51 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     at once), and the termination handler needing a cooperative thread.
     `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1` passed as `TEST_RUNNER_…` did not limit the test host's
     pool (two tests still ran side by side), so it can't stand in for a small runner.
+- **The core suite froze on CI the same way, and the work it waited for was a timer and a test's
+  own reads.** Seen 2026-10-27 and 28: three `swift test` runs in a row started all ~4,600 tests
+  in a second and then finished none. The core job had no timeout, so one sat for GitHub's six
+  hours. The last green run was 2026-10-21, and two waits for work on `DispatchQueue.global()` had
+  landed since: `CoordinatedFileWrite`'s give-up timer and `ZstdArchiveReaderTests`'
+  concurrent reads.
+  - **The timer, alone:** a probe held 15 of this Mac's 16 cooperative threads in a synchronous
+    wait, then saved over a file whose presenter never lets go. The save ignored its 10 s patience
+    and returned at the moment the probe let the threads go, 30.00 s in, both runs. With the timer
+    on a serial queue of its own it gave up on time (2.13 s against 2 s) in every run.
+  - **The suite:** with 13 of the 16 held, leaving CI's three, the whole suite stood still until the
+    zstd test's 30 s deadline ran out, and both tests failed. A `sample` during the stall named
+    three threads: the stuck save in `coordinate`, the zstd test in its semaphore wait, and
+    `TextMergeGitTests` computing. With the timer on a serial queue and the reads on `Thread`s, both
+    passed under the same hold. Why CI never recovered, where this Mac did at 30 s, is not known:
+    the core job has no watchdog to sample it.
+  - **Hold the threads before the first test, or the run is mostly over before the hold begins.**
+    A hog test that spawned its blockers from its body took them a few seconds in. One that does it
+    from a function in `@Test(arguments:)` holds them from the start, because arguments are
+    evaluated while the run is planned.
+  - `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1 swift test` passed all 4,653 tests in 39 s, so it does not
+    reproduce this either. The likely reason is that a narrower pool still leaves GCD 16 CPUs to
+    count.
+  - **A shared `static let` makes the same stall shorter.** `ThreeWayMergeGitTests.answers` runs
+    about 4,200 git merges through `concurrentPerform`, and three tests in two suites read it. With
+    three threads free, those tests took all of them, one computing and two waiting in
+    `dispatch_once`. No worker was admitted, so one thread ran every merge itself, about 30 s here.
+    It ends, so nothing was changed.
+  - **With the two fixed, the next CI run finished in 7 minutes and failed the presenter tests
+    instead.** On 2026-10-28, five of `CoordinatedFileWriteTests`' six tests failed with
+    `fileHeldByAnotherApp` after the 10 s patience. The stand-in editor heard nothing, not even
+    "save". A save made before an editor was registered went through, so coordination itself
+    worked there. Only the stuck-editor test passed, and it would pass whether or not any message
+    arrived.
+  - **A presenter's messages run at user-initiated QoS, so holding the default-QoS pool never
+    starved them.** The stand-in's `relinquishPresentedItem` ran on its `OperationQueue` at QoS 25.
+    With all 16 cooperative threads held by tasks at `.medium`, a save with an answering editor
+    took 0.01 s. With them held at `.userInitiated`, the same save failed exactly as on CI: 10.5 s,
+    `fileHeldByAnotherApp`, the editor told nothing until the hold ended. Held *global*
+    user-initiated threads starved it only at the kernel's cap (80 here; 64 still worked). With the
+    queue's `underlyingQueue` a private serial queue, the editor was told in 0.01 s under both
+    holds. What held CI's user-initiated threads is not known.
+  - **This one is the stand-in's, not the app's.** The app registers no presenter. A real editor
+    answers from its own process and its own threads, which the stand-in now models with a serial
+    queue of its own.
 - **The CI runner's display is 1x, so a pixel test that passes on a Retina Mac can fail there.**
   `bitmapImageRepForCachingDisplay` captures at the window's screen scale. Measured 2026-10-15 on
   `FieldBorderTests.darkensTheRingOnly`: CI found 24 changed pixels outside the allowed band in Light
@@ -378,6 +434,27 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     sent no action. After `orderFront` it sent the action, with the window still not key. So a pointer
     click on a button is testable end to end, hit test included, which `performClick` and computer
     use's AXPress both skip. Keep a control that removes the thing letting the hit through.
+  - **`window.sendEvent` is the right instrument when the click into a window that isn't key is
+    itself the subject.** It hands the press on when the view under it accepts first mouse and keeps
+    it otherwise, as a click from another app does (▸ Text fields and text views). Measured
+    2026-10-24 in `MultiLineFieldTests.clickFromAnotherApp`: with the release queued first, a text
+    field and a first-mouse text view each took the focus, and a plain text view did not. Discard the
+    release a kept press leaves queued (`NSApp.discardEvents(matching: .leftMouseUp, before: nil)`).
+    Ordering the window front made its only key view the first responder, so clear that first or the
+    test proves nothing.
+    - **One press per window, because on CI the test host can be the active app.** Here it never is,
+      so its windows are never key, however often they are pressed. On CI (2026-10-28)
+      `BugReportDialogFocusTests.clickFromAnotherApp`, which pressed one window three times, found it
+      key before a press, while `MultiLineFieldTests`' single press passed in the same run. Activating
+      the host to reproduce it does not work here: `NSApp.activate(ignoringOtherApps:)` from a test
+      left `NSApp.isActive` false. Give each press a fresh window, and `#require` that it isn't key.
+
+- **A deferred window takes no sheet until it has been shown.** Measured 2026-10-25 in
+  `CompareSaveTests`: the compare window was built with `defer: true`, and every `NSAlert`
+  `beginSheetModal(for:)` on it left `attachedSheet` nil for the whole 30 s wait, eight tests out of
+  eight. Built with `defer: false`, the same tests passed in 0.5 s with the window never ordered in.
+  A window a test builds to answer a sheet needs `defer: false`, as `TrashlessProbe.window()` has;
+  the window shown at once in the app is unaffected either way.
 
 ### Waits, run loops and timing
 
@@ -583,6 +660,36 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
       listing landed 18–30.5 s in across seven runs (25 ms alone), and the pane's `Task` could not
       even start until 7–21 s in. A detached task beside it was never more than 53 ms late. Such a
       wait needs more than the house 30 s, and that one got 60 (HISTORY.md ▸ the 2026-10-14 entries).
+      - **Met again 2026-10-26, at 1980 tests.** The first green full run took 56 s, and the next
+        five took 81–87 s on the same code with WindowServer at 40–45% (one with Spotlight at
+        250%, one with it quiet). Five tests whose first wait sits in the stall had taken 22–27 s
+        in the green run and failed at 30 in all five: three `CompareWatchTests`, both
+        archive-encoding tests that open a member, and in some runs `RemotePreviewFetchTests` and
+        `RemoteFetchPromptTests`. The committed tree failed the same way, which is what cleared the
+        change under test. At 60 s they passed at 40–56 s. Read the duration of a *passing* test
+        against its budget: a margin of 3 s in a quiet run is the next evening's failure.
+      - **The unreadable-file sheet still had the old 30 s (2026-10-28).**
+        `CompareWatchTests.unreadableAgain` waits for a sheet, so it did not use the suite's 60 s
+        `shows` helper. A full-run trace after the `TreeTransferTests` cleanup fix saw FSEvents
+        deliver in 11 ms, its main-actor handler run at 12.2 s, the reread start at 25.5 s, and the
+        alert begin at 33.9 s. The host was the right window. That run passed: its next poll saw
+        the sheet at 34.2 s, and `settleUntil` checks readiness before the deadline. A poll just
+        before presentation can fail instead. `CompareSaveRig.sheet(within:)` now lets this one
+        first wait use 60 s too; other sheet waits keep 30 s. The real stream, invalid bytes,
+        alert text and unchanged-document assertions stay in place. With alert reporting removed,
+        the test still failed at 60.1 s. After restoring it, three separate full app runs passed
+        (2062 tests reported per run; live-server suites skipped), as did all 4653 core tests and
+        both linters. All 71 saved defaults keys were unchanged.
+      - **The WebDAV recycle-bin deadline test had the same 30 s limit (2026-10-28).** Two saved
+        full-run failures showed `answers` and `serverHadAnswered` both empty: the test's wait
+        ended before the main actor delivered the deadline callback. `slowServer` now uses
+        `settleUntil` with 60 s and requires the deadline answer before releasing the fake server.
+        The question still uses a 100 ms deadline. It then awaits the returned server task before
+        checking that the late reply did not answer twice. A transport's reply count alone is too
+        early: parsing and the main-actor callback follow it. Awaiting the task replaces the old
+        500 ms sleep with a check after that work has finished. Removing the answer-once guard
+        failed the final assertion with `[false, true]` in a full run. Removing the deadline
+        callback failed the first wait at 60.0 s in a focused run.
     - **A `sample` names whose code is on the main thread, not what makes the queue long.** The
       stall's profile put 40% of samples in `MultiLineFieldTests`' per-pixel `colorAt` loop. Skipped,
       the same wait landed at 30.1–30.5 s behind a 12.8 s stall: the other suites filled the time.
@@ -800,6 +907,22 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Negative controls
 
+- **A bare `return` on its own line in a `Void` function returns the line below it.** Swift reads
+  `return` followed by an expression on the next line as `return <that expression>`, and an
+  assignment is a `Void` expression, so a control written as `return` above the line it meant to
+  skip ran that line anyway. Met 2026-10-25 controlling M33 Slice 4's `acknowledgeWrite(to:)`: the
+  test passed with the control in, which read as a test that could not see the rule, and a probe
+  logged the acknowledged revision being recorded after all. The compiler warns ("expression
+  following 'return' is treated as an argument of the 'return'") in a build log nobody reads with
+  `-quiet`. Delete the line, or bind it to `_`, rather than putting a `return` above it.
+  - **The probe that settles it is a print in the code under test, not in the test.** The test's own
+    timeline said only that no offer came; the handler's line said what it compared, and the
+    recorded side already held the acknowledged write.
+- **A control that leaves a question unanswered wedges the test that asks it, however the test is
+  written.** M33 Slice 4's announcement test saved twice in one window, and with the copy's witness
+  left stale the second save raised "changed since this window read it" and waited on it for ten
+  minutes. Two windows, one save each, turn that into a failure. Where a second save in one window
+  is the subject, wait for either outcome and end any sheet that came up, then assert.
 - **A decision that reads live global state *inside itself* cannot be varied by a test, and the tell
   is a negative control that fails nothing.** `PanelViewController+Drop.resolvedKind` asked
   `NSEvent.modifierFlags` directly, so a rule keyed on ⌘ or ⌥ had exactly one reachable value — the
@@ -918,6 +1041,20 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Runs and assertions that prove nothing
 
+- **A sheet gone is not its answer handled.** `endSheet` and a wait for `attachedSheet == nil`
+  return before the `async` function that asked has resumed, so whatever it does with the answer
+  happens after the test has looked. Met 2026-10-26 on M34's merge-window close prompt: a control
+  that swapped Cancel and Don't Save passed, because the close Cancel now made landed during the
+  test's next wait, where the count it was meant to fail was read as the second answer's. Start
+  the question in a `Task`, answer the sheet, `await` the task, then assert.
+- **Two `String`s that differ only in normalization are equal, so an assertion about which spelling
+  was sent passes for both.** Met 2026-10-27 on M34 Slice 5: a test that `--path=` carried git's
+  precomposed name passed with the decomposed one put back, since `contains` and `==` compare by
+  canonical equivalence. Compare `unicodeScalars` when the bytes are the claim.
+- **A plain `git status` is no control for an index write in a repository where every tracked file
+  is conflicted.** Probed 2026-10-27: it rewrote the index in a clean repository with a file's time
+  made stale, and wrote nothing mid-merge when no clean file was left to refresh. The live suite
+  keeps a clean file and moves its time back before the control.
 - **Assert Objective-C selectors by name when a framework dispatches by selector.** Swift may
   import a delegate callback under a different Swift signature (Sparkle's choice callback comes
   in as `updater(_:userDidMake:forUpdate:state:)`, not `userDidMakeChoice:`). A drifted Swift
@@ -1049,6 +1186,33 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Fixtures and shared state
 
+- **Thousands of `Process` runs with a `Pipe`, from several threads at once, can fail with
+  `EBADF`.** Seen 2026-10-26 in M34's history harness: 14 `concurrentPerform` workers ran about
+  36 000 `git` commands, each with a fresh `Pipe` on stdout, and partway through `Process.run()`
+  threw `NSPOSIXErrorDomain` 9, *Bad file descriptor*. The same harness with stdout going to a file
+  per run, opened and closed by the caller, ran all of them twice. Eight workers and 2 700 runs had
+  passed with pipes, so a suite can be green for a while before it turns flaky. `GitMergeOracle`
+  writes git's output to a file in its own temporary tree for that reason.
+- **A test's pane outlives the test, so anything a pane does on its own runs in every later
+  suite.** Measured 2026-10-25: the first build of "a pane whose folder vanished moves up" walked
+  every orphaned fixture pane into the temp folder as its fixture was deleted. One of them was a
+  tree there, and this Mac's temp folder holds tens of thousands of entries, so every other test's
+  write re-sorted them on the main actor: the full app run stalled, one test took 351 s, and
+  unrelated suites failed waiting for their own listings while each passed alone. The sample
+  (`sample <pid>`) named it at once: `performTreeRefresh` → `Panel.setListing` → a sort. The cure
+  was the rule the remote poll already had: only a pane **in a window** acts unasked
+  (`isRemoteRefreshWanted`), which is never true of a headless test pane. A test of such behavior
+  hosts its pane in a window it never shows and detaches it before deleting the fixture
+  (`VanishedFolderTests.Hosted`), and the no-window case gets a test of its own.
+  - **The window rule misses a pane that is in a window for another reason.** Measured
+    2026-10-28, after Oleg found the laptop lagging during test runs: `TreeTransferTests` keeps its
+    pane in a `RetainedWindows` window for the rest of the run, so two of them still climbed into
+    the temp folder (44 000 entries by then, nearly all left by earlier runs) and listed it 149
+    times. The test host held every core for half a minute, used 8 min 39 s of CPU, and a
+    user-interactive thread woke up to 331 ms late. With the pane taken out of its window before the
+    folder goes (`window.contentViewController = nil`): no listings of the temp folder, 1 min 8 s of
+    CPU, a worst stall of 17 ms. A temporary probe in `DirectoryLoader.model` logging any listing
+    over 5 000 entries named the path, and one in `leaveVanishedFolder` named the fixture.
 - **Reading a system attribute does not mean a test may write it.** Measured 2026-10-18 in the
   cloud-folder fixtures: `setxattr` on `com.apple.file-provider-domain-id` returned `EPERM`, even
   on a new owned directory outside `CloudStorage`. The same bytes under
@@ -1448,6 +1612,22 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - Same family as the probe-size lesson above and worth stating as one rule: **a live test's
     constants are claims about the endpoint**, and the ones that expire are the ones nobody wrote
     down as claims — a bandwidth hidden in a byte count, a region hidden in an expected path.
+- **A server installed in a container has a first login, and a parallel suite's first requests race
+  over it.** Seen 2026-10-24 with Nextcloud 34, M32's second server family: four of thirteen WebDAV
+  live tests failed their first MKCOL with 500 or 503, and the server's log held `"/probe" is locked`
+  and `UNIQUE constraint failed: oc_addressbooks…`, the account's home, calendar and address book
+  being created once per parallel request. The run before had passed only because hand-made `curl`
+  probes had already logged in, so the first clean `up` was the first to meet it. The script now
+  sends one request alone before it writes the config, and turns the sample files off
+  (`skeletondirectory`) so the account's root holds only what the suite makes. The server's
+  behaviour differences are claims in the endpoint's config (`composesNames`, `lockGuardsFolder`,
+  `keepsUploadDates`), per the entry above.
+  - **Docker Desktop's disk is its own, and fills while the Mac has room.** The same install failed
+    with the VM's disk at 57 of 59 GB and 0 bytes free, while the Mac had 534 GB free. `docker system
+    df` shows it; pruning the build cache made room.
+  - **Stop a container by name, never by its port.** The published port's listener is
+    `com.docker.backend` itself (`lsof -iTCP:8089 -sTCP:LISTEN`), so the kill-by-port `down` uses for
+    `sshd`, pyftpdlib and `httpd` would take Docker down. `down` removes `dirnex-nextcloud` by name.
 
 ## AppKit
 
@@ -1547,6 +1727,16 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   housing the menu bar drops into the band and only the title bar covers content. The title bar's
   height is the close button's superview: 28 pt for a bare window, 32 pt for Dirnex, whose titlebar
   accessories grow it. An accessory with a hand-set 40 pt frame did not grow it.
+- **A window opened from an app-modal window draws but takes no click or key until that window
+  closes, unless it overrides `worksWhenModal`.** The Synchronize window is app-modal and opens the
+  M31 compare window. Probed 2026-10-22 with a throwaway app: a mouse-down posted to a plain window
+  inside `beginModalSession` was dropped, and one posted to an `NSWindow` subclass returning `true`
+  from `worksWhenModal` arrived. Apple's documentation says only `NSPanel` subclasses should override
+  it; on a plain `NSWindow` subclass it works (`CompareWindow`).
+  - **The harness's own first two runs measured nothing**: with no modal session at all, neither
+    window got the click either. A synthetic click on a window that is not key only makes it key, and
+    the view never sees it unless it answers `acceptsFirstMouse`. Run the no-session control first;
+    the comparison means something only once that one passes.
 
 ### Alerts, sheets and dialogs
 
@@ -1940,6 +2130,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     control's cell answers one `NSAccessibilitySegment` per tab with its screen frame. Read it through
     `NSObject`: the segment class adopts no protocol that exposes `accessibilityFrame()`, and casting
     to `NSAccessibilityElementProtocol` silently drops every one of them.
+  - **The same segment is how a test presses one button of a momentary control.** A `.momentary`
+    control keeps no selection set from code: probed 2026-10-25, `selectedSegment = 1` and
+    `setSelected(true, forSegment: 0)` both read back -1 at once, so setting a segment and sending
+    the action reaches the action with no segment at all. `perform(#selector(NSAccessibilityElement.accessibilityPerformPress))` on the second
+    `NSAccessibilitySegment` fired the action with `selectedSegment` 1, the route VoiceOver takes
+    (`CompareCopyTests.press(segment:of:)`).
   - **In Settings the tab bar sits under the title bar, and neither `bounds` nor `visibleRect` knows.**
     SwiftUI places the tab view 6 pt above the content area, so a badge straddling a tab's top edge
     was drawn where the title bar paints over the content: only its lower half showed. Clamping to
@@ -2213,6 +2409,16 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   ⇧⌘M (characters `M`) matched nothing. The shipped menu does neither, so in that process shift
   matching is not evidence in either direction. Settle a ⇧ chord inside the app's test target, or by
   analogy with one that already ships, and keep a bare-chord item in the probe as the control.
+- **An open `NSMenu` runs its own event loop, and a local event monitor sees none of it.** Measured
+  2026-10-25 with a logging monitor: ↓ and Escape pressed in a popped context menu never reached it,
+  as `addLocalMonitorForEvents`' documentation says of menu tracking. That has two consequences.
+  A gesture made *inside* a menu has to be read by sampling: `NSEvent.modifierFlags` from a timer in
+  `.common` mode, which includes the event-tracking mode, plus `CGEventSource.counterForEventType`
+  for keys and clicks. The counters are the system's own and need no Input Monitoring permission
+  (`OptionTapMenuCloser`). And a monitor that tracks what is held goes stale across a menu, because
+  a modifier pressed before the menu opened can be let go inside it. Start it again from
+  `NSEvent.modifierFlags` when the menu closes (`OptionTapMenu.resetFromKeyboard`). Seen live
+  without that: after a right-click made with ⌥ held, the next ⌥ tap opened nothing.
 
 ### Tables and outline views
 
@@ -2577,6 +2783,17 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     "Arabic (Windows)" — **and lossy about MacRoman** (`Caf<?> na夫e` for `Café naïve`). Refuse the
     lossy answers; take the rest. It is what TextEdit shows, and doing better means shipping a
     charset detector.
+  - **It is also slow on a large file:** 6 s for 7.7 MB of Windows-1251 (measured 2026-10-25),
+    where 58 MiB of UTF-8 decodes in 0.35 s. The compare window pays it when it opens such a file.
+  - **Decoding and encoding back are exact inverses everywhere but two places**, so anything that
+    saves has to check the round trip rather than trust it (`ComparedDocument.isSavable`). Probed
+    2026-10-25 for M33: `String(data:encoding: .utf8)` drops a *leading* U+FEFF, so a file with
+    two UTF-8 marks reads with one; and a UTF-16 decode drops an odd last byte. Nothing else
+    differed over this repository's history and 555 676 text files on the development Mac, in 25
+    encodings. Going back, `data(using:allowLossyConversion: false)` never substitutes (an em dash
+    in Latin-1 and `¥` in Windows-932 both give `nil`) but does compose (`e` + U+0301 is Latin-1's
+    `0xE9`). `.utf16` and `.utf32` write a mark of their own; `.utf16LittleEndian` and the other
+    spellings with a byte order do not.
   - **`NSTextView.textStorage` is *not* the TextKit 1 trapdoor, and `.layoutManager` is** — worth
     stating because it is the natural next worry: `textStorage` is historically
     `layoutManager.textStorage`, so an attributed document installed through it looks like the exact
@@ -2623,6 +2840,54 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - **A probe disagreed with the app by three orders of magnitude.** A scratch app measured
     `scrollRangeToVisible` at 3.7–4.6 s for the same file, against 1 ms in Dirnex, and its screenshot
     drew no text at all, so what it measured was its own text view. Time TextKit in the app's own view.
+- **Two TextKit 2 views cannot be kept level by scroll offset, even with every line the same height.**
+  Measured 2026-10-22 for M31's compare panes. Every line had a fixed height (minimum and maximum
+  line height equal), nothing wrapped, and the documents had 100 000 lines each of different
+  lengths. Row 1 000 sat at 14 716 in one document and 15 609 in the other, against 16 000 by
+  arithmetic. Row 99 999 moved by 280 000 points after one scroll. Where TextKit has not laid out,
+  a line's position is an estimate, and the estimate depends on the text.
+  - **What works is keeping them level by row.** Find the fragment at the top of the scrolled view
+    (`textLayoutFragment(for: point)`), turn its location into a row, then ask the other view for
+    *its* fragment of that row with `.ensuresLayout` and scroll there. It took 0.2 ms, and the two
+    agreed within a point for six turns afterwards. As a negative control, copying the offset
+    instead put row 2 356 opposite row 3 000 (`CompareScrollSync`).
+  - **Check a scroll to a far row, and scroll again if it missed.** A jump back up from row 19 000
+    to row 500 landed on row 499: laying out the target moved it. Three tries is enough.
+  - **Draw anything per line from the line's own layout fragment.** A custom `NSTextLayoutFragment`
+    from the layout manager delegate can paint a full-width background in `draw(at:in:)`, once its
+    `renderingSurfaceBounds` are widened to cover it. A position computed as `row × height` drifts
+    from the text it belongs to.
+  - **Below the last line there is no fragment, so `textLayoutFragment(for:)` answers `nil` there.**
+    A text shorter than its pane leaves the bottom of the view empty, and M31's `visibleRows()` read
+    that `nil` as "only the top row is visible". Seen live 2026-10-26 in M34's merge window: the
+    bands between the panes marked no change below row 0, and the overview strip outlined a sliver
+    at its top, in every comparison shorter than the window, the compare window's included. A pane
+    whose visible area reaches the bottom of the view is showing the end of its text, so it is
+    visible down to the last row. Further up a long text a missing fragment keeps meaning the top
+    row, or the band would lay out every change below the screen to draw nothing.
+- **A TextKit 2 view that sizes itself to its widest line lays out the whole document.** With
+  `isHorizontallyResizable` on and an unbounded container, `layoutSubtreeIfNeeded` sat in
+  `textContainerOrigin` → `ensureLayoutForRange` typesetting 100 000 lines, and was still at it
+  after ten minutes. A fixed width does not do this: turn horizontal resizing off, keep
+  `widthTracksTextView`, and set the frame width. A full layout is no way out either: 2.2 s for
+  5 000 lines and 34 s for 20 000, faster than linear, on lines mixing Latin, emoji and Hebrew.
+  - **Set the width after the view is the scroll view's document view.** A width set before that
+    was reset to the clip view's, and long lines wrapped. To keep lines from wrapping when the width
+    estimate falls short, use a paragraph style with `.byClipping`.
+- **In TextKit 2, text ending in a line break gets no fragment for the empty line after it.** For
+  `same\nold\n`, enumerating layout fragments gave two, not three. A view that needs every line to be
+  a fragment has to end every line with `\n`, the last one included. That leaves an extra empty line
+  at the end, carried by the last paragraph's fragment as a second line fragment, so a full-width
+  background should use the first line's height (`textLineFragments.first`).
+- **`NSTextLayoutManagerDelegate` is not main-actor isolated, so a `@MainActor` class cannot adopt it
+  in Swift 6.** It fails to compile with "crosses into main actor-isolated code". Make the delegate a
+  plain class. Whatever it reads, such as a color table, has to be nonisolated too. TextKit calls it
+  on the main thread anyway.
+- **An `NSRulerView` installed as the vertical ruler of a scroll view under Auto Layout overlapped
+  the text.** Seen live 2026-10-22: the ruler's frame was `(0, 0, 45, 641)` and the clip view's
+  `(0, 0, 625, 641)`, so the first five columns of every line were hidden under the line numbers.
+  A gutter as an ordinary view beside the scroll view, redrawn when the text scrolls, has no such
+  problem (`CompareLineNumbers`).
 - **On macOS 26 a text field's look can't be drawn by hand; borrow a real field.** Probed 2026-10-08
   for Report a Bug…'s text boxes, which sat as `.bezelBorder` scroll views under a modern email field.
   The bezel, fill and focus ring come from a private `_NSCoreHostingView<AppKitTextField>` subview,
@@ -2692,6 +2957,15 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     coordinates, rounded out to whole points. It has a shadow and sits at window level 103.
   - **There is no public call to show it**, only the hover, so anything keyboard-driven needs its
     own window anyway (`CursorNamePeek`).
+
+- **A window that isn't key hands a click on only to a view that accepts first mouse, and a text
+  field does where a text view doesn't.** Measured 2026-10-24 with a throwaway app, both by asking
+  `acceptsFirstMouse(for:)` and by clicking into an app that was never active. `NSTextField` answers
+  `true`, so one click into it from another app focuses it. `NSTextView` answers `false`, so the same
+  click only brings the window forward and the focus stays where it was. Report a Bug… mixed the two,
+  and real clicks from Finder put a letter meant for Steps onto the end of the email address.
+  `MultiLineTextView` answers `true`, so a `MultiLineField` takes the click as the field it imitates
+  does.
 
 ### Views, layout and hit testing
 
@@ -3170,6 +3444,16 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     arrive as more than one callback, so a reset taken on the first of them is overtaken by the rest.
     A sibling-silence test flaked 1 run in 5 at a count of 1 that was never the sibling. Quiesce
     until the counts stop moving, *then* start counting — 22 consecutive green runs after.
+  - **The same stream sees every way an editor saves**, which is what lets the compare window watch
+    a file in a busy folder (PLAN.md §M33 Slice 5). Measured 2026-10-25: a write in place gave 1
+    callback, and a rename over the file, a delete and create, `replaceItemAt` from the item
+    replacement directory, `NSDocument.writeSafely` (TextEdit's save) and vim's `:wq` gave 2 each.
+    Read the file again on each callback, guarded so a second one arriving mid-read waits. A
+    symlink's own path fired for a write to its target, and so did `/var/folders` for a file under
+    `/private/var/folders`.
+  - **`NSDocument.writeSafely` to a symlink's own URL fails** with "doesn't exist", and to the
+    resolved URL it works, so a document-based editor saves the target and gives it a new inode.
+    Watch the resolved path.
 - **An `FSEventStream` is *recursive*, so a pane on a home directory is told about `~/Library` several
   times a second — and reacting to each with a `reloadData` is visible to the user, because AppKit's
   expansion tooltip dies with the cell view a reload discards.** `DirectoryWatcher` also discards the
@@ -3647,6 +3931,16 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     requirement is `NS_SWIFT_NONISOLATED`, and Swift 6 refuses to *send* the provider across an actor
     boundary because `NSFilePromiseProvider` is not `Sendable`. Read the row off it **before** the
     hop and send the `FileEntry` instead; the value is what the work needs anyway.
+- **A promise is kept only as one of the drag session's own items.** Measured 2026-10-24 dragging
+  rows from a server into Finder: the pane widened a one-row drag to the marked set by rewriting
+  `session.draggingPasteboard` in `tableView(_:draggingSession:willBeginAt:forRowIndexes:)`, and
+  that carried two local file URLs fine while two promises dropped **nothing**, three times. The
+  board was read at both indexes; `writePromiseTo` was never called. Starting the session with one
+  `NSDraggingItem` per row, in the table's `beginDraggingSession(with:event:source:)` override,
+  dropped both (`FileTableView+Drag`). Apple documents that method's event as the mouse-down, so
+  `row(at:)` of its location names the grabbed row, and in the live run it did.
+  - **`setDraggingFrame(_:contents: nil)` still gives the item an image component.** To make an
+    item carry no picture, set `draggingFrame` and then `imageComponentsProvider = nil`.
 - **A promise runs outside every progress surface the app has, so the completion handler is the only
   thing that can report — and there are three ways to get that wrong, not one.** Unanswered is a
   beachball in somebody else's app; answered with `nil` after a failed transfer is a **zero-byte
@@ -3819,6 +4113,13 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   the front — "Не удалось вернуть %#@items@" — which a fixed word order could not express.
   `xcstringstool` validates it at build time, so a malformed entry fails the build rather than the
   user.
+  - **Two counts in one sentence are two substitutions, and each takes its own plural.** Added
+    2026-10-25 for "Download %lld files and %lld folders from the server?": `%#@files@` with
+    `argNum` 1 and `%#@folders@` with `argNum` 2. Russian came out "21 файл и 22 папки", one
+    category each. To test a translation whatever language the test host is pinned to, open the
+    compiled `<lang>.lproj` as a `Bundle`, take `localizedString(forKey:value:table:)` and format it
+    with `String(format:locale:arguments:)` in that language's locale: the stringsdict's plural rules
+    come along (`MaterializeTitleCountTests.rendered`).
 - **A String Catalog key with no value for the *source* language compiles to the key itself.**
   Not to "absent" — `xcstringstool` writes `functionBar.file.copy.shortLabel` as its own value into
   `en.lproj`, so a lookup succeeds and puts a dotted key on screen. An entry translated for `ru` and
@@ -4071,6 +4372,15 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   (Polish cleared a 330 pt field by 10 pt, which the note above says is not clearance). A
   placeholder is drawn in the value's own rect with the value's font, so measuring the value is the
   honest proxy; measuring the placeholder measures nothing at all.
+  - **The connect form's fields truncate at the *head*, so there an overrun placeholder loses the
+    words that name the field.** M32's WebDAV user hint, "username (blank for a public share)",
+    measured 405 pt in Brazilian Portuguese, 384 in Ukrainian and 367 in Russian against the 364 pt
+    every control is pinned to, so a blank field showed only the remark about public shares. Swept
+    2026-10-24: every other placeholder in the form, in every language, measured 308 pt or less.
+    Background computer-use could not show it live (it cannot reach a text field inside a sheet), so
+    the measurement is the evidence, and `ConnectPlaceholderWidthTests` now pins every localized
+    placeholder in the form against `ConnectFormFactory.fieldWidth`, with the shipped hint as its
+    negative control.
 - **A fixed-width horizontal `NSStackView` collapses a *segmented control* under a longer
   translation, not just a label.** The sync sheet's controls row (`Направление:` + a 3-segment
   direction control + `Сравнивать по:` + a 2-segment comparison control + a hint, pinned to 680 pt)
@@ -4148,6 +4458,19 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   `System Events` needs assistive access that `osascript` does not have (`-1719`), Dirnex's `.sdef`
   exposes no windows (`-1728`), and a synthetic corner drag misses the resize edge. The frame
   autosave key is deterministic and gives exact point widths.
+- **A label below the window-size priority is the first thing a longer translation erases.** The
+  compare window's change counter had compression resistance 250 (`.defaultLow`) beside a pop-up
+  and two checkboxes at 750. In English at the 640 pt minimum it truncated to "Cha…"; in German the
+  controls alone needed 770 pt, the window opened at that width, and the counter was squeezed to
+  **zero**, so the toolbar went straight from the arrows to the pop-up with nothing to say it was
+  missing (seen live 2026-10-22, M31 Slice 5). Anything that must stay readable needs a priority
+  above 500, the priority a window holds its size at, so the window refuses to shrink past it.
+  - For text that changes as the user works ("Change 9 of 12" → "Change 10 of 12"), reserve the
+    widest text it can show for the data on screen (`CompareToolbar.reserveCounterWidth`), not the
+    current one. Otherwise a window at its minimum grows by a few points as the user steps.
+  - The cost is a wider minimum: 949 pt in German. A test can pin it without a translation: set the
+    window to its `minSize`, lay it out, and require the label's frame to be at least its intrinsic
+    width (`CompareWindowTests`). With the old priority it fails in English too.
 
 ### Finding untranslated strings
 
@@ -4353,6 +4676,33 @@ The project deliberately shells out to system tools instead of taking library de
 in the **app**; pure parsing lives in the **core**, behind an injected transport so it tests
 against a fake.
 
+- **A child of a Dock-launched app gets launchd's `PATH`, and `/etc/paths.d` reaches only a login
+  shell.** `launchctl getenv PATH` is empty, so the app has `/usr/bin:/bin:/usr/sbin:/sbin`, and
+  `path_helper`, which reads `/etc/paths` and `/etc/paths.d`, runs only from `/etc/profile` and
+  `/etc/zprofile`. An installer that registers there and links nothing into `/usr/local/bin` is
+  invisible to a child until something reads those files; on this Mac that was the .NET SDK and Mono
+  (measured 2026-10-21). `ToolSearchPath` is the one reader. Two measured details: `path_helper`
+  leaves a `~` in a line literal (`~/.dotnet/tools`), and at lookup bash and `/bin/sh` expand a `~`
+  in a `PATH` entry while zsh does not.
+  - **What the user's startup files add is only learned by running them.** rustup, the python.org
+    installer, nvm, pyenv and `brew shellenv` all edit `PATH` there. A user script asks the user's
+    shell once per run, as `$SHELL -l -i -c` with `printenv PATH` sent to a file
+    (`ShellPathProbe`, `LoginShellPathReader`). Measured 2026-10-21: 4.0 ms median for
+    `bash -l -i -c` on this Mac, against 1.9 ms for `bash -c`; neither bash nor zsh rewrote its
+    history file; tcsh refuses `-l` beside other flags.
+  - **A Terminal.app identity makes an interactive zsh write Terminal.app's session files.** Given
+    `TERM_PROGRAM=Apple_Terminal` and a `TERM_SESSION_ID`, `zsh -l -i -c true` created
+    `~/.zsh_sessions/<id>.session` and `.history`, so any interactive shell Dirnex starts takes the
+    drawer's identity (`TerminalShell.environment`).
+  - **`Process` makes the child the leader of a process group of its own, and `terminate()` is not
+    enough for an interactive shell.** Measured with a startup file sleeping 30 s: after
+    `terminate()` nothing was left in the shell's group, but after `trap '' TERM` the shell was
+    still running 3 s later. `kill(pid, SIGKILL)` ended the shell and left its `sleep` behind.
+    `killpg(pid, SIGKILL)` left nothing. Even a `terminate()` that works only cuts the startup file
+    short, and the shell then runs its command with a partial environment. From Python's
+    `subprocess`, which leaves the child in the parent's group, the same `SIGTERM` was ignored
+    until the `sleep` ended, so a probe from Python does not predict what `Process` does.
+
 - **`Process.waitUntilExit()` is a poll, not a wait, and it taxes every one of them a flat ≈71 ms.**
   Measured 2026-08-16 while verifying M22's FTP walk: `/usr/bin/true` costs the same as a full FTP
   listing, and a child that has been **dead for 300 ms** still costs **71.3 ms** (8 runs,
@@ -4362,6 +4712,13 @@ against a fake.
   else. `ProcessWaiting.joinTermination(of:into:)` is the one home; `exitWaiter(for:)` is the same
   mechanism for a site with no group of its own. Both must be installed **before** `run()`, and
   neither may be waited on after a `run()` that threw.
+  - **In an app test on the main actor, that poll runs the main run loop, and other tests' work runs
+    inside it.** Seen 2026-10-27 on M34 Slice 5: a fixture built a scratch git repository with
+    thirteen `waitUntilExit` runs on the main actor, and two full runs each failed a different
+    timing test elsewhere, the WebDAV bin check's 100 ms deadline and a compare window's file watch.
+    With the fixture's runs waited for through `terminationHandler` and moved to `BlockingWork`, its
+    suites took 0.6 s instead of 5.4 s and the full run passed. Neither failure reproduced alone, so
+    the link is likely rather than proven.
   - **Its relative size is inversely proportional to how fast the child is, which is exactly why it
     hid for the life of the app.** On `git status` (≈320 ms, measured on this repo) it is a quarter
     of the cost and reads as git being slow; on a listing it is nearly all of it. Nothing surfaces
@@ -4688,6 +5045,64 @@ do not share a resolver, and neither half of that is obvious from either call si
   filesystem path.
 - **`-a` misreads the zip-family aliases `.jar` and `.cbz` as TAR** — force `--format zip` on
   create and repack. All other browsable suffixes infer correctly.
+- **Packing `-C dir .` names every member `./name`, beside a `./` entry for the root, and to any
+  other tool that is a different name.** Every archive rewrite packed this way from M4 to
+  2026-10-26, so a zip holding `inner.txt` came back holding `./inner.txt`. Dirnex browsed both the
+  same, which is why it was kept (▸ Design lessons, the two routes). `unzip -p pair.zip inner.txt`
+  and Python's `zipfile.getinfo("inner.txt")` both fail on it. Measured against bsdtar 3.5.3
+  (libarchive 3.7.4):
+  - **Keep `.` and strip with `-s`**: `-s '|^\./||S' -s '|^\.$||S'`. The first strips the prefix;
+    the second empties the root's name, and `bsdtar` leaves an entry with an empty name out. Bare
+    names came out in zip, jar, 7z, tar and every compressed tar, and an emptied tree still packed,
+    into an archive with no entries. `S` leaves a symlink's target as written (`./inner.txt` stays),
+    while a hard link's target is a member name and is rewritten with the members.
+  - **Naming the tree's entries instead is worse.** A top-level `@at.zip` on the argument list is
+    read as an archive to copy members from, and `-dash.txt` as an option. Either fails the whole
+    pack, and an emptied tree has no names to pass.
+  - **The `./` form is real and has to survive a rewrite too.** Of 160 archives on this Mac, 157 were
+    bare, Sparkle's own release tarball was `./` throughout, and none mixed the two. Two zips in
+    `~/Downloads` held the `./` root entry this repack leaves, likely earlier Dirnex rewrites.
+    `ArchiveNameForm` keeps the `./` form only when every name had it.
+- **`.tar.zst` needs an external `zstd` in both engines, and macOS has none.** Apple's bsdtar has no
+  built-in zstd: it runs `zstd --no-check -3` to write and `zstd -d -qq` to read. With
+  `PATH=/usr/bin:/bin`, the test host's, writing fails with *Can't launch external program*, and
+  listing with *unable to run program "zstd -d -qq"*. Measured 2026-10-26 against libarchive 3.7.4 on
+  macOS 26.7; `ZstdTool` is the fix.
+  - **In the app:** the Debug build launched with a Dock's environment (docs/LIVE-VERIFICATION.md ▸
+    `open` from a shell) answered *Couldn't read the archive* on Enter, the generic
+    `archiveUnreadable`. A `.tar.gz` beside it opened, and so did the `.tar.zst` once the same build
+    was relaunched with `/opt/homebrew/bin` on `PATH`. Quick View on the archive row is only an icon,
+    and F5 or F8 inside it cannot be reached when browsing in fails.
+  - **The in-process reader needs it too.** `archive_libzstd_version()` answers NULL, and both
+    `archive_read_support_filter_zstd` and `archive_write_add_filter_zstd` answer `ARCHIVE_WARN`,
+    *Using external zstd program*. Compression.framework and AppleArchive have no zstd either. That
+    reader runs `zstd` from Dirnex's own `PATH`, and every archive rewrite starts with its inspection,
+    so fixing only the `bsdtar` children's `PATH` would have left F8 and paste inside a `.tar.zst`
+    failing.
+  - **`archive_read_support_filter_program_signature` with an absolute path reaches it**, if it is
+    registered *before* `archive_read_support_filter_all`. Both bid 32 bits and the first registered
+    wins the tie. Registered after, the built-in filter wins and fails. libarchive's command parser
+    splits on spaces and honours double quotes: an unquoted path with a space ran its first word.
+  - **`pzstd` starts every archive with a skippable frame** (`50 2a 4d 18`), on which libarchive's own
+    filter bids too, so the reader registers a second filter for it. libarchive has 16 bidder slots,
+    `filter_all` takes 13, and only one is left after these two.
+  - **`bsdtar -c` without `-a` writes a plain tar under a `.tar.zst` name**, and a failed create
+    leaves a 0-byte archive behind. Both cost a fixture before anything else was measured.
+- **libarchive's external-program filters deadlock when two run at once.** It makes each child's
+  pipes with no `FD_CLOEXEC` and spawns with no `POSIX_SPAWN_CLOEXEC_DEFAULT`, so every child holds
+  both ends of every live sibling's pipes. A child holding a sibling's stdin keeps that sibling from
+  seeing end of input, and `archive_read_free` waits for it in `waitpid`. Measured 2026-10-26 with
+  `zstd -d -qq`: four threads reading a `.tar.zst` 25 times each completed **0 of 100**, as did two
+  threads, every run. With one reader at a time, 100 of 100. `ArchiveReadHandle`'s external-program
+  turn is that rule, held from open to free.
+  - **Foundation's `Process` does not leak this way.** Its child of a process holding a stray pipe had
+    only its own three descriptors, so a `bsdtar` or `sftp` child never holds a reader's `zstd` open.
+  - **The turn is not re-entrant**, so nothing may open a second reader while holding one.
+    `EncryptedArchiveReader.extract` frees its outer handle before it unwraps a hidden-names
+    archive's inner tar.
+  - **A test that deadlocks this way also holds `swift test` open.** The stuck children inherit the
+    runner's output pipe, so after the test process has exited, `swift test` waits until they are
+    killed.
 - **`-tvf`'s date column omits the year for recent files**, so a `MMM d HH:mm` parse yields year
   2000. Set `defaultDate` on year-less formats and roll the year back if the result is in
   the future — but set it to **now truncated to the minute**, not to a bare `Date()`. This entry
@@ -5061,6 +5476,32 @@ do not share a resolver, and neither half of that is obvious from either call si
     targets. The test that had pinned the old behaviour was pinning a fiction ("compatibility with a
     plain shell `ls -la`", output this parser is never handed), which is the tell worth keeping: a
     test named for a *hypothetical* caller is one to check against the real one before trusting it.
+- **A write-back's check cannot see a same-size write in the same minute over SFTP.** Its `stat` is
+  an `ls -la` row: a size and a minute, and no entity tag, so the upload is unconditional too. Seen
+  live 2026-10-27 (PLAN.md §M34 Slice 4): a server edit from "Goodbye" to "See you" in the minute of
+  Dirnex's own upload was overwritten by the next save with no question. The same edit at another
+  length was caught and offered Merge…. M21's doc comments already say an unchanged verdict over
+  SFTP or FTP is only an absence of evidence; this is the case that costs an edit.
+  - **What can read finer than the row, measured 2026-10-27** against the throwaway `sshd` (OpenSSH
+    10.3) and pyftpdlib, ~75 ms per connection on loopback:
+    - `get -a -p <remote> <stub>`, where the stub is an empty file of the remote's size, sends **no
+      bytes**, prints `File "…" was not modified`, exits 0, and sets the stub's mtime to the server's
+      exact **second**. The protocol's v3 times are seconds, so that is as fine as SFTP goes.
+    - Over the exec channel, `date -r <file> +%s` gives the second and POSIX `cksum <file>` gives a
+      CRC-32 and the size, echoing the path. Both cost a connection whatever the file's size (85 ms
+      at 10 MB), and neither works where the exec channel is refused.
+    - `ls -la` and `get` of 10 MB in **one** `sftp` batch took 125 ms against 75 ms for `ls -la`
+      alone, so a download that rides the stat's session costs only its bytes.
+    - FTP: `MLSD`'s `modify` and `MDTM` (`curl -I`) both give the second and caught a rewrite two
+      seconds later; `LIST` printed the same row for both.
+  - **The fix compares the server's bytes with the edit's base** instead (`WriteBackContentCheck`):
+    a second is still a window, and a match with the base is proof the upload loses nothing. Seen
+    live the same day: the Goodbye/See you write, stamped back to the upload's own second, raised the
+    changed question with Merge… (PLAN.md §M34 ▸ the content check).
+  - **A live test that needs "the same minute" should stamp both versions to one second** rather than
+    race the clock: `FileManager.setAttributes` on the server's own file for SFTP, `MFMT` through
+    `applyMetadata` for FTP. Then neither a minute nor a second can tell them apart, and the run
+    does not depend on where the minute boundary falls (`RemoteWriteBackContentLiveTests`).
 
 #### Writing a file: `put`, exclusive creates and offsets
 
@@ -5496,6 +5937,22 @@ off a man page.
     in pyftpdlib's log. So a batch adds `MLSD` sections only once a single listing on the connection
     has seen the verb answer (`FTPFactsSupport`), or a stale password would cost twice the failed
     logins a server with lockout counts.
+    - **Once it has seen the verb, it does cost twice, and a tree refresh paid it every round.**
+      Measured 2026-10-23 in the running app: a tree with the root and three folders open, the
+      server's password changed under it. The committed refresh spent **9 failed logins a round**,
+      two rounds running: 8 sections (`LIST` and `MLSD` for 4 folders) and one more from the
+      per-folder fallback. So 2n + 1 for n open folders on a server with `MLSD`, against an Account
+      Protection that locks after a few. The refresh now runs with `--fail-early`
+      (`FTPBatchRun`), and the same sequence spent **1 a round**, three rounds running.
+    - **`--fail-early` cannot be scoped to a login, because FTP has no refusal that is not a transfer
+      error.** WebDAV's guard (▸ curl (WebDAV): `fail` on the first section only) does not carry
+      over. Here `--fail-early` ends the run at the first refused *folder* too: a missing one exits
+      **9**, one that can be entered and not read **19** (`RETR response: 550`, which
+      `FTPTransportError.classify` leaves generic), and a refused login **67**. The run's exit code is
+      the stopping section's, and every section before it landed its file, so the first missing file
+      is where it stopped. A folder's refusal sends the folders after it again in a new run; a login
+      or a silence ends the round. The subtree walk keeps the run that does not stop, since there a
+      refused folder must be skipped with the rest still listed, and its first level is one section.
   - **A server can get `MLSD` wrong too, and nothing on the wire says so.** pyftpdlib started with
     `use_gmt_times = False` sends `modify` in its *local* time, against the RFC. With its default
     (`True`) both `LIST` and `MLSD` are UTC, which is why the live FTP suites met this Mac's +0300 in
@@ -5797,6 +6254,9 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   element; demote the exit code to the narrower question of whether anything was reached at all
   (6/7 unreachable, 28 timeout, 60 certificate). Borrowing FTP's rule here classifies every failure
   as success.
+  - **Narrower, not ignorable.** A nonzero exit *with* a status in hand is a transfer that stopped
+    after the server answered, and reading the status alone took a sixth of a file for a finished
+    download (▸ Downloads, 2026-10-23).
   - **403 covers two things that send the user to different places**, and only the `<Code>`
     separates them: `InvalidAccessKeyId`/`SignatureDoesNotMatch` is a credential they retype, while
     `AccessDenied` on a key that authenticated fine is a bucket policy they have to go and change.
@@ -6085,6 +6545,27 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     classifier that only answers the first leaves plausible garbage on disk. It cannot be caught by
     any test over the argument builder, and the file is the *right size for a document*, so nothing
     downstream complains either.
+- **A status is not a finished transfer. `curl` prints the 200 it saw before the body stopped, so the
+  exit code has to decide first.** Measured 2026-10-23 (`curl` 8.7.1, the shipped arguments,
+  `Tooling/fake-s3-endpoint.py`). A `GET` that ran out of `--max-time` printed `s3-status=200`,
+  exited **28**, and left 528 332 of 3 129 010 bytes under the destination's name. A connection
+  closed mid-body (the endpoint's `CUT_AFTER`) is 200 with exit **18**, and an unwritable destination
+  is 200 with exit **23** and no file at all. The runner read the status alone, so each one was a
+  finished copy: driven through the real `S3CurlTransport` and `S3Backend.copyFile`, the cut run
+  reported success over a 100 000-byte file. The rule is now the one WebDAV's reader was built on
+  (found there first, on the NAS): exit 0 is a response; 22 with a 4xx or 5xx is `--fail`'s
+  refusal and a response too; anything else is a transport failure, whatever status was seen
+  (`S3WriteOut.isAnswer(status:exitCode:)`, fixtures in `Fixtures/S3`).
+  - **A cut upload shows 100, not 200.** The only status it has seen is the `Expect: 100-continue`
+    go-ahead, so the status-only rule read a timeout as a refusal carrying a status no refusal has.
+  - **A parallel run's exit code belongs to no single section, and `%{exitcode}` gives each one its
+    own.** Two segments, one rate-limited: the run exited 28, and the sections reported `exit=0` and
+    `exit=28`, both at 206. Assembly's length check refused that short piece anyway. Parts had no
+    such net, and their cut one reported 100.
+  - **The verbs whose 200 carries the verdict had the same hole, unmeasured.** A
+    `CompleteMultipartUpload` or a `DeleteObjects` cut after its status line hands back a body
+    with no `<Error>` in it, which reads as done. No endpoint here holds a completion open long
+    enough to cut it, but the same rule closes it.
 - **An archived object is a normal-looking row that refuses only when its bytes are wanted, and the
   generic 403 mapping tells the user the worst possible thing.** Measured 2026-08-18 against real
   AWS: `PUT` with `x-amz-storage-class: GLACIER` answers 200, `HEAD` answers **200** carrying
@@ -6260,7 +6741,9 @@ what made the milestone affordable and the rest inverted rules borrowed from the
   asked for; make it say so.
 - **A server that ignores `Expect: 100-continue` costs a flat 1.02 s per upload** (measured against
   one that answers: ~0.01 s). Do not reach for `-H 'Expect:'` to remove it — `curl` only adds the
-  header above ~1 KiB, which already restricts the cost to files big enough that the alternative is
+  header above **1 MiB** (measured on 8.7.1, 2026-10-23: 1 048 576 bytes carried none, 1 048 577
+  did; this entry said ~1 KiB until then, from a 39-byte and a 3 MiB upload that could not tell the
+  two apart), which already restricts the cost to files big enough that the alternative is
   worse: without it, an upload to a bucket the key cannot write to sends the **whole file** before
   learning about the 403. The default already encodes the trade.
 
@@ -6440,7 +6923,7 @@ what made the milestone affordable and the rest inverted rules borrowed from the
     derived from it needs the qualifier until a real service has been asked.
   - **A doomed conditional PUT costs a round trip rather than the file**, which is what makes
     conditioning a *large* save-back free — and it is the second reason for a header this backend
-    already keeps for the 403 case. `curl` sends `Expect: 100-continue` above ~1 KiB, and a server
+    already keeps for the 403 case. `curl` sends `Expect: 100-continue` above 1 MiB, and a server
     answering the precondition there ends it before the body moves: measured, a **64 MiB** upload
     against a stale `If-Match` reported `size_upload=0` and returned in **0.0009 s**.
   - **A live test for a refused precondition needs no race, and the word "race" is what kept one
@@ -6645,6 +7128,145 @@ what made the milestone affordable and the rest inverted rules borrowed from the
         backend under `s3ap://` and pull the pane out from under the listing the user is standing in.
         The price is one failed handshake per bucket entered in that session, which happens below HTTP
         and is quick; the saved row is corrected, so the next connect from it costs nothing.
+
+### curl (WebDAV)
+
+M32's backend, over the same `curl` as FTP and S3. What the server itself does is in PLAN.md §M32
+(the NAS's Apache `mod_dav`, and macOS's own as the throwaway server); this section keeps what bites
+whoever drives `curl` over HTTP next. Most of them apply to the S3 backend as much as here.
+
+- **`%header{name}` prints only the *first* of several headers with that name; `%{header_json}`
+  prints all of them.** Measured 2026-10-23: the NAS sends two `DAV` headers (`1,2` and Apache's
+  `propset` URI), and an Apache location configured the way IIS commonly is sends `WWW-Authenticate:
+  Negotiate`, `NTLM` and `Basic realm=…` as three headers. `%header{www-authenticate}` gave
+  `Negotiate` alone, which reads a server Dirnex can log in to as one it cannot. `%{header_json}` is
+  an object of arrays, one array per lowercased name, and it runs over several lines, so it goes last
+  in the write-out and is read to the end of the stream (`WebDAVWriteOut`). With no response it is
+  `{` and `}` on two lines.
+- **A transfer cut short keeps the status it had already seen.** A GET that ran out of `--max-time`
+  part-way reported `http_code` 200 and exit **28**, and left 584 179 bytes of a 3 129 010-byte file
+  under the file's name. A reader that takes "any status" to mean "the server answered", as
+  `S3CurlRunner` does, calls that a finished copy. Decide by the exit code first: 0 is a response, 22
+  with a 4xx or 5xx is `--fail`'s refusal and a response too, and anything else is a transport
+  failure whatever the status says (`WebDAVWriteOut.response`).
+- **`curl` reads `~/.curlrc` before its own arguments unless `-q` is the very first one.** A
+  `.curlrc` holding `--head` turned a GET into a HEAD that downloaded nothing and still exited 0;
+  `-q` first stopped it, and anywhere else on the line it comes too late. Every FTP and S3 builder
+  passes it too (`ignoreCurlrc`, pinned by `CurlrcIsolationTests`). It is command-line only:
+  `disable` inside a `-K -` config did nothing, so a `-Z` run's sections cannot carry it and `argv`
+  must. Without it a two-section `-Z` run took the `.curlrc` into the **first section only**, a HEAD
+  beside a GET, which in a segmented download is one bad segment among good ones. Run through the
+  shipped FTP and S3 download builders (pyftpdlib and `Tooling/fake-s3-endpoint.py`, 2026-10-23),
+  the same argv minus `-q` **saved the HEAD's headers under the file's name** with exit 0: 90 bytes
+  of `Last-Modified:` over FTP, 111 of `HTTP/1.1 200 OK` over S3. With `-q` all four were byte-exact.
+- **A stdin config is read once.** `-K -` in two `--next` sections of one run gave the second section
+  no credentials (`207` then `401`, the server logging no user): the first `-K -` read stdin to its
+  end. A batch carries every section in one config file with `next` in it, as FTP's batched listing
+  does.
+- **Digest costs a round trip per `curl`, and a Basic header sent where Digest is wanted is not a
+  failed login.** `--digest` never goes first, since a new process has no nonce, so every invocation
+  is a 401 and then the request (two lines in Apache's log for each). A Basic `Authorization` sent to
+  a Digest location was logged with no user at all, the header ignored rather than weighed.
+  - **The body goes once.** A 5 MB PUT through `--digest` logged 136 bytes in on the 401 and
+    5 000 452 on the 201 (`mod_logio`'s `%I`, 2026-10-24): `curl` holds the body back until the
+    challenge is answered, so Digest doubles the requests of an upload and not its bytes.
+- **Apache answers a MOVE into a folder that does not exist with 500, not 409.** RFC 4918 says 409,
+  and Nextcloud sends it. The NAS (2026-10-24) and macOS's Apache (2026-10-23) both answered **500**
+  *"Could not rename resource"*, `rename(2)` failing on the server, and the source stayed where it
+  was. Read alone it is an I/O error, and anything waiting for "that folder is gone" (Put Back's
+  rebuild) never hears it, so `moveItem` stats the destination folder after a 500 and reports
+  `notFound` for it only when the server says it is missing.
+- **A server without COPY is one rewrite rule on the throwaway Apache.** `RewriteCond
+  %{REQUEST_METHOD} =COPY` and `RewriteRule ^/nocopy(/|$) - [R=501]` (with `mod_rewrite` loaded)
+  answer 501 at the server level, before authentication, and leave MOVE and every other verb alone.
+  An `R=` outside 300–399 drops the substitution, so the `-` is required.
+- **An entity tag read twice has to be compared weakly, and only a strong one may guard a write.**
+  Measured on macOS's Apache 2026-10-23 (M32 Slice 4): the tag is the size and the modification time
+  **truncated to the whole second** (six files written in one second carried one mtime, and the next
+  second's carried exactly 1 000 000 µs more), and it reads `W/"…"` while the request is within a
+  second of that truncated time. One untouched file therefore reads `W/"x"` and then `"x"`, so a
+  string comparison reports an edit nobody made (RFC 9110's weak comparison: the opaque parts match).
+  And in that second **no** `If-Match` passes, the tag as read or with its `W/` dropped: both 412,
+  while the strong tag 2.2 s later answered 204. So a save-back holding a weak tag sends no condition
+  (`RemoteFileRevision.preconditionTag`). Whether a read straight after a write is weak depends on
+  where in the second the write landed: a fixture capture got a strong tag at once in one run and
+  weak in the next, so a test that needs the weak one has to write until it sees it.
+- **`curl` 8.7.1 sends `Expect: 100-continue` only for a body above 1 MiB**, not ~1 KiB as this file
+  said for S3 until 2026-10-23. A guarded PUT of 1 048 576 bytes against an existing file sent every
+  byte before its 412; at 1 048 577 it sent none (▸ curl for S3, corrected the same day). A refused
+  small write costs its whole body, which is why a 3000-byte fixture reports `size_upload=3000` on a
+  412.
+- **`--data-binary ""` labels the request `Content-Type: application/x-www-form-urlencoded`, and
+  `-H 'Content-Type:'` removes it.** An empty file created with the first is stored by a server that
+  keeps the type under a form's type; Apache's log showed `-` for the header with the second. `-T
+  /dev/null` is not the way round it: `/dev/null` has no length, so the body goes chunked (5 bytes of
+  framing for an empty file).
+- **In a `next`-separated batch, a wrong password costs one failed login per section, and the guard
+  is `fail` on the first section only.** Measured 2026-10-23 on macOS's Apache with four `Depth: 1`
+  PROPFINDs in one `-K -` config: a wrong password gave four 401s in the log, which is what locks
+  the NAS account. `--fail-early` is global but only acts on a transfer that failed, and a 401 is not
+  a failure without `fail`; `fail` (or `--fail` before `-K -`, which lands in the first section) does
+  not survive `next`. So `fail` in section one plus `--fail-early` stops a refused login after one
+  request (exit 22), while a 404 further down is that section's own answer and the run goes on. A
+  404 *first* stops the run too, so the caller sends the rest again (`WebDAVBackend.listLevel`).
+  `--fail-early` also stops on a section that got no answer: a refused connection was one attempt
+  with it and four without. Read each section by its own `%{exitcode}` in a per-section
+  `write-out`, since the run's exit code is the last section's.
+- **One `curl` keeps the connection across sections, and reconnects by itself at the server's
+  keep-alive limit.** 250 PROPFINDs in one run made three connections, at sections 1, 102 and 203
+  (Apache's `MaxKeepAliveRequests 100`), all 207, in 0.04 s against 1.48 s as 250 runs on loopback.
+  In the app over pinned HTTPS, sizing a 250-folder tree took 4 TLS connections and 0.24 s, and the
+  walk it replaced 251 and 4.2 s. Digest stays on the one connection but still pays its 401 per
+  section, since `curl` keeps no nonce between transfers.
+- **In Apache's access log a failed login is a 401 that carries a user, and a Digest challenge is a
+  401 that does not.** Measured 2026-10-24 with `%u` in the log format: a wrong Basic password logged
+  `probe … 401`; a wrong Digest password logged `- … 401` (the challenge) and then `probe … 401`; a
+  right Digest password `-` 401 and then `probe` 207. So "how many failed logins did that cost" is the
+  401 lines with a user, which is how `WebDAVLiveIntegrationTests` counts them. Counting every 401
+  doubles Digest.
+- **To guard a parallel range download, use `If-Match`; a stale `If-Range` sends the whole file.**
+  Measured 2026-10-24 on macOS's Apache with a 100-byte range of a 40 MiB file: `If-Range` with the
+  current tag answered 206 and 100 bytes, and with a stale tag **200 and all 41 943 040 bytes**, which
+  is what RFC 9110 says it does, and in a four-range split it would be four whole copies. `If-Match`
+  with a stale tag answered 412 with nothing sent, and under `fail` no file was created. A weak tag
+  fails `If-Match` too (412), so only a strong one can guard (`WebDAVBackend+Segmented`). The GET's
+  `ETag` header and the PROPFIND's `getetag` are the same string, so a `Depth: 0` stat supplies it.
+- **A range that starts inside the file and ends past it is clipped, not refused.** Four 10 MiB
+  ranges cut for 40 MiB, asked of a 16 MiB file: 206 with 10 485 760 bytes, **206 with 6 291 456**,
+  then 416 and 416. So "every section answered 206" does not mean every piece is whole, and the
+  length check in `SegmentAssembly` is what catches the short one.
+- **N parallel sections with a wrong password are N failed logins, all at once.** Four ranges logged
+  four `probe … 401` together. The batched listing's guard (`fail` on the first section with
+  `--fail-early`) cannot help, since every section starts before any answers; the split proves the
+  login with one stat before it sends them.
+- **Nextcloud's sabre/dav differs from Apache where it matters to a client, and agrees on the
+  parse.** Measured 2026-10-24 against Nextcloud 34.0.5 in a container (PLAN.md §M32, the second
+  server family). The listing parser read it unchanged, and the traps are behavior:
+  - **A strong tag that cannot see a save in the same second.** Every write inside one second keeps
+    one strong `ETag`: a file rewritten 10 bytes then 22 within a second kept its tag, and `If-Match`
+    with the first reading passed over the second write (3 of 3). Apache marks that second's tag
+    weak, so a save-back there knowingly sends no condition and rests on the re-`stat`. Here the
+    condition goes out and cannot see the save. A test about a colleague's save has to land it in a
+    later second (`WebDAVLive.waitOutTheSecond`).
+  - **`X-OC-Mtime` on a PUT sets the date, and a value it refuses fails the request *after writing
+    the bytes*.** The answer carries `X-OC-MTime: accepted` when it took the date, so that header,
+    and never the status, says the date was kept. `0`, `-86400` and `86400` answered **500** ("must be
+    a valid positive unix timestamp greater than one day") with the new bytes stored, over an existing
+    file and as a new one; `86401` was accepted. A 500 from a PUT is therefore not "nothing changed",
+    and `WebDAVModificationTime` sends no time at or below one day. Fractions are cut to the second.
+    Apache ignores the header and says nothing.
+  - **A lock guards the file and not the folder around it.** PUT, DELETE and MOVE of a file locked by
+    another client answer 423 with a `<d:error>` body naming it by a relative href, but a DELETE of
+    the folder holding it answers **204 and deletes the locked file with it**, where Apache answers 424
+    and deletes nothing. Seen in two runs.
+  - **Names are stored composed.** A decomposed `cafe\u{301}` comes back as `café`, file or folder; a
+    stat by the decomposed spelling answers under the spelling it was asked by; and both spellings are
+    one name, so `If-None-Match: *` by the other spelling answers 412. Compare listings as the server
+    stores them, not as they were sent.
+  - **A PUT into a missing folder answers 404**, where Apache sends RFC 4918's 409. Both are about the
+    folder, since a PUT creates what it names (`WebDAVServiceError`).
+  - **`creationdate` is `1970-01-01T00:00:00+00:00` on every row** a client uploaded. Read as a date,
+    Get Info would show each file as made in 1970, so the epoch reads as no date.
 
 ### The Trash
 
@@ -7754,6 +8376,58 @@ against a second APFS volume from `hdiutil`.
   an equal key. `sorted(by:)` is not stable, so the result is a non-deterministic comparator: it
   failed about one full test run in three while passing alone every time. ▸ Design lessons for what
   replaced it.
+- **Only a write in place keeps everything a saved file carries; every replacing save drops
+  something.** Probed 2026-10-25 for M33's compare-window save, on one fixture per case, each with
+  mode 0640, a group the folder does not have (`admin` in a `wheel` folder), two Finder tags, a private
+  extended attribute, an ACL entry and a 2020 creation date:
+  - **TextEdit** (an `NSDocument` safe save) kept all of those and wrote through a symlink. It gave a
+    hard-linked file a **new inode**, so the other name kept the old bytes, and it could not save a
+    file whose ACL says `everyone deny delete` at all: AppleScript's `save` never returned (a 60 s
+    alarm ended it), and `denied.txt.sb-<random>` was left beside the file holding the new bytes. It also added
+    `com.apple.TextEncoding`, `com.apple.lastuseddate#PS` and a `kMDLabel_…` attribute.
+  - **`FileManager.replaceItemAt`** behaved the same: everything kept, the hard link broken, the
+    deny-delete file refused with Cocoa error 513. Given a symlink's own path it failed with "doesn't
+    exist", so a caller has to resolve the link first.
+  - **vim** (`backupcopy=auto`) wrote in place, keeping the inode, the link and the ACL, and **dropped
+    both tags and the private attribute**.
+  - **`open(O_WRONLY | O_TRUNC)` and `write`** kept all of it on all five cases, the inode included.
+  - So the compare window writes in place (`InPlaceFileWrite`) and gives up atomicity, which costs a
+    copy of the old bytes held for the write. A real full disk confirmed the fallback: on a 3 MB APFS
+    image, saving 17 MB failed with `ENOSPC` partway, and writing the old bytes back with their
+    modification time left the file byte-identical and its witness unchanged. Its ⌘Z writes in place
+    too, since a rename there would break the hard link the save kept.
+  - BBEdit was not on the Mac, so vim stood in as the second editor. Not probed, because nothing here
+    can make one: a file owned by another user. A write in place keeps the owner by construction,
+    where a replacing save would make the file the saver's.
+- **A write that goes around `NSFileCoordinator` never reaches a document an NSDocument app has
+  open.** Seen live 2026-10-26 (PLAN.md §M33 Slice 5): TextEdit had `right.txt` open and unedited,
+  the compare window saved it in place, and TextEdit went on showing the old text, through
+  reactivating Dirnex and then TextEdit. Its next save refused with "The file has been changed by
+  another application". The same in-place write made inside
+  `NSFileCoordinator(filePresenter: nil).coordinate(writingItemAt:)` refreshed TextEdit's window at
+  once. The open document is a file presenter, and presenters hear only coordinated writes. A shell
+  `printf >` over the file went unseen by TextEdit as well. So any write Dirnex makes to a
+  file the user may have open in an editor wants a coordinator, in-place or not.
+  - **Which coordination decides what happens to the editor's unsaved edit**, and the plain one
+    loses it. Measured 2026-10-26 against TextEdit with a line typed and not saved ("— Edited",
+    "Undo Typing"): with no options the write landed, TextEdit showed the new bytes, and the typed
+    line was gone from the window and from Undo. With `.forMerging` TextEdit saved its edit into the
+    file first (the accessor read it there), then showed the new bytes. Uncoordinated, TextEdit kept
+    the edit, and its next autosave asked "could not be autosaved, changed by another application".
+    So `CoordinatedFileWrite` merges, and the compare window's witness check runs *inside* the
+    accessor, where it finds the editor's save and asks before writing over it.
+  - The first probe of this measured an unedited document, because background typing is not an
+    edit to NSDocument (docs/LIVE-VERIFICATION.md).
+  - **TextEdit autosaves in place when it loses focus.** Typing in it and then clicking Dirnex put
+    the typed line on disk before Dirnex did anything, and the compare window read it in. So the
+    unsaved-edit case cannot be reached by switching to Dirnex: it needs the write to arrive while
+    the editor is still in front, as a script's does.
+  - **A presenter that never lets go holds a coordination forever, and `cancel()` ends it.**
+    Probed with a test-process presenter whose `relinquishPresentedItem(toWriter:)` never called
+    back: `NSFileCoordinator.cancel()` from another thread after 1 s returned the call with
+    `NSUserCancelledError` (3072) and never ran the accessor. The writer gives up after 10 s.
+  - **Coordination matches across `/var` and `/private/var`.** A presenter registered at the
+    `/var/folders/…` path heard a write coordinated on the `realpath` under `/private/var`.
 
 ### shasum, md5sum and the checksum-file formats
 
@@ -8592,6 +9266,24 @@ ships a third-party binary. All measured 2026-09-20 against two HERO7 files befo
   - The build needs `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` on CMake 4, which removed compatibility
     with the `cmake_minimum_required(VERSION 3.5)` upstream declares.
 
+### Xcode's tool shims in `/usr/bin`
+
+- **`/usr/bin/opendiff`, `/usr/bin/git`, `/usr/bin/xcodebuild` and their kin exist on every Mac,
+  as shims.** Each is a hard link to a small launcher that runs the real tool from the active
+  developer directory: `opendiff` shares an inode with `xcodebuild`, `ibtool`, `actool`, `xed` and
+  eleven more, and `git` has 78 links. So `isExecutableFile` on one says nothing about whether the
+  tool is installed. Measured 2026-10-22 with `DEVELOPER_DIR=/Library/Developer/CommandLineTools`:
+  `opendiff` exits 1 with *"tool 'opendiff' requires Xcode"*, because FileMerge ships only inside
+  Xcode. Until M31 Slice 4, `ExternalDiffTool.fileMerge` probed the shim, so it counted as installed
+  everywhere.
+- **Xcode's own `opendiff`, run directly, opens FileMerge whichever developer directory is selected.**
+  Measured 2026-10-22: `Xcode.app/Contents/Developer/usr/bin/opendiff a b`, run with
+  `DEVELOPER_DIR=/Library/Developer/CommandLineTools` and an otherwise empty environment, exited 0
+  and FileMerge opened with `-left a -right b`; the shim under the same setting exits 1. So
+  `ExternalDiffTool.fileMerge` asks LaunchServices for `com.apple.FileMerge`, which lives in
+  `Xcode.app/Contents/Applications`, and runs the `opendiff` two levels up in the same Xcode. It finds
+  an Xcode under any name or location and never runs a shim.
+
 ### git
 
 - **`git status --ignored=traditional` already collapses every ignored directory to one row**,
@@ -8601,6 +9293,74 @@ ships a third-party binary. All measured 2026-09-20 against two HERO7 files befo
   and a nested repository is a single `?? nested/` whose own rules are invisible to the outer
   snapshot.
 - `.ignored` does **not** roll up to ancestors but **is** inherited by descendants.
+- **As a diff oracle, call `git diff --no-index --diff-algorithm=minimal --numstat` with
+  `GIT_CONFIG_NOSYSTEM=1` and `GIT_CONFIG_GLOBAL=/dev/null`.** A user's `diff.algorithm` changes
+  the counts. git's line model, probed 2026-10-22 on git 2.54 for M31:
+  - It splits at `\n` only, so a classic Mac file (lone `\r`) is one line.
+  - It compares bytes, so a precomposed and a decomposed *é* differ.
+  - Its whitespace for `-w`, `-b` and `--ignore-space-at-eol` is a space or a tab. `\v`, `\f` and
+    a no-break space are content.
+  - Every one of those three flags, and `--ignore-cr-at-eol`, also ignores CRLF against LF **and**
+    a missing final newline.
+  - `--minimal` can be slow: 12.7 s against 0.19 s on two 100 000-line files over a ten-line
+    alphabet.
+- **In a `-U0` hunk header, a count of 0 moves the start back one line.** `@@ -4,0 +5,4 @@` inserts
+  after old line 4, so the empty range is at 0-based index 4. `@@ -3,4 +2,0 @@` removes old lines
+  3–6 (indices 2..<6), and the new side's empty range is at index 2. With a count above zero, the
+  start is the 1-based first line, and a missing `,count` means 1. M31 read git's block placement
+  out of `git log -p -U0` this way.
+- **When a diff disagrees with its oracle, compare inserted minus removed first.** That number is
+  the difference in line count, so if it differs, the two sides are reading different lines rather
+  than aligning the same lines differently. M31's corpus test met it on its first run: the test's
+  own edits had put text after a CRLF line's `\r`, making a lone CR that `TextLines` splits and git
+  does not. The engine was right.
+- **`git diff -U0` can place a block where a whole-file diff does not.** With no context lines,
+  `xdi_diff` first trims the two files' common tail in 1 KiB blocks (`trim_common_tail` in git's
+  `xdiff-interface.c`), so a block that could slide lower stops where the trimmed text ends.
+  Measured 2026-10-26 on two versions of `ArchiveTOC.swift`: `-U0` put an eight-line deletion at
+  lines 71–78, where `-U1` and `git merge-file` put it at 73–80. Both are minimal, so M31's counts
+  could not see it. It made 25 of 9 114 history triples read as merge bugs in M34's first run.
+  Read placement from a diff with context, `-U1`, and walk its hunk bodies.
+- **`git merge-file` slides blocks with git's indent heuristic off.** It never sets
+  `XDF_INDENT_HEURISTIC`, so a block with nothing opposite it sits at its lowest position, and
+  `git diff --no-indent-heuristic -U1 base side` gives the very comparisons it merges. Over
+  9 114 history triples, merging those two comparisons reproduced `merge-file`'s output byte for
+  byte in `--diff3` and `--zdiff3` alike (M34 Slice 1). `--no-indent-heuristic` does take effect
+  with `--no-index`; check it on a case where the lowest slot is not the readable one, since most
+  blocks have only one candidate either way.
+- **`--zdiff3` can print a conflict with nothing on either side.** When both sides end up with the
+  same lines in a conflict, say each deleted a different one of two equal lines, the trimming takes
+  every line and git still writes the markers around the base. Seen in 5 of 9 114 history triples.
+  `ThreeWayMerge` merges such a region instead (PLAN.md §M34).
+- **`--ours`, `--theirs` and `--union` settle every conflict instead of marking it, and `--union`
+  means "both, shared lines once" only beside `--zdiff3`.** With `--diff3` a union repeats the lines
+  both sides share at a conflict's edges, since nothing moved them out. A union also gives ours' last
+  line a line break when it has none and ends a conflict, even with nothing of theirs after it, and
+  that break is CRLF when `is_cr_needed` finds CRLF around the conflict. Probed 2026-10-26 for M34
+  Slice 2, whose result is held to all three.
+- **A path handed to `ls-files` is a pattern unless `--literal-pathspecs` says otherwise.** Probed
+  2026-10-27 on git 2.54 for M34 Slice 5: `ls-files -u -- 'a[1].txt'` listed `a1.txt` as well, and
+  `:colon.txt` listed nothing, because a leading colon starts pathspec magic. `--literal-pathspecs`
+  is a global option, before the subcommand. Filtering the records by path hides the first case and
+  not the second, which only a name starting with a colon shows.
+- **A conflicted file's versions, without touching the index.** `ls-files --unmerged -z
+  --format='%(objectmode) %(objectname) %(stage) %(objectsize)%x09%(path)'` gives each stage with
+  its size, so a version too large to read is refused first (`--format` needs git 2.38). Then
+  `cat-file --filters --path=<path> <object>` prints what a checkout would write. Under
+  `eol=crlf` the blob is LF and the working-tree file CRLF, so merging blobs would change every
+  line ending of the file saved. `--path` without `--filters` or `--textconv` exits 129.
+  - **Which stages exist says what kind of conflict it is.** 1-2-3 both modified, 2-3 both added,
+    1-3 deleted by us, 1-2 deleted by them. `ort` resolves a deletion on both sides by itself, so
+    1 alone, 2 alone and 3 alone come from a rename to two names: the old name, and each new one.
+    A link both sides changed lists a file at stage 1 and links (`120000`) at 2 and 3. A file
+    against a link renames one side `name~HEAD`.
+  - **The git directory names the operation.** `rebase-merge/` (and `rebase-apply/rebasing`) for a
+    rebase, `rebase-apply/applying` for `git am`, `MERGE_HEAD`, `CHERRY_PICK_HEAD`, `REVERT_HEAD`.
+    `git stash pop` leaves only `AUTO_MERGE`, which all of them write. A linked worktree keeps
+    these in `.git/worktrees/<name>`, which `rev-parse --absolute-git-dir` prints. In a rebase,
+    stage 2 is the branch being rebased onto and stage 3 the commit being replayed.
+  - **`ls-files`, `cat-file` and `rev-parse` write nothing with or without `--no-optional-locks`**,
+    since none refreshes the index. Removing the flag failed only the test that pins the argv.
 
 ## Release pipeline
 
@@ -9009,6 +9769,9 @@ overturned the obvious implementation.
   the right predicate and is also more honest about line *numbers*, since it counts CRLF as one
   separator rather than two. The same trap sits behind any hand-rolled scan that compares against
   `"\r"`; anything splitting text a user's other OS produced should use `isNewline` on principle.
+  - **So does `split(separator: "\n")` on a tool's output.** Met 2026-10-26 reading `git diff`'s
+    hunk headers: a header right after a CRLF content line stayed glued to it and was never read.
+    Split the output's bytes at `\n`, then decode each line.
 - **With Foundation imported, `text.lowercased().contains(needle)` is the standard library's
   `contains`, which compares whole characters, and not Foundation's `range(of:)`.** Measured
   2026-09-15 on the expression both Quick View filters used: half a flag is not found in a flag, nor 👨
@@ -9179,6 +9942,15 @@ overturned the obvious implementation.
   instead makes `inverse` a swap of two witnesses, one stored copy serves both directions, and there
   is no state in which only one version exists. Worth reaching for whenever an operation's undo is a
   whole-object replacement rather than a delta.
+- **`removeAllActions(withTarget:)` takes a target's actions out of their groups and leaves the
+  groups, under the name each was given.** So an undo that must drop one object's steps needs one
+  target per object *and* one object per group. Found 2026-10-25 when the compare window drops a
+  file's copies after reading it again: with `groupsByEvent` on, two copies made in a test with no
+  event between them shared one open group, and removing the right file's action left a group
+  holding the left file's under "Copy to Right". The app's key presses close a group each, so it
+  would have passed live and stayed wrong for any path that registers without an event. Group
+  explicitly (`groupsByEvent = false`, a `beginUndoGrouping` around each registration outside an
+  undo or a redo, which the manager groups itself).
 
 ### Transfers and batches
 
@@ -9838,10 +10610,12 @@ overturned the obvious implementation.
   - **libarchive's reader does not report a zip's cipher strength**, so an AES-128 archive made
     elsewhere comes back AES-256. Stated rather than guessed — the alternative is inferring a weaker
     cipher from no evidence.
-  - The two routes spell entry names differently and that is pre-existing: `bsdtar` packs `.`, so its
-    rewrites carry `./name`, while the libarchive route enumerates the top level and writes bare
-    names (what the pack sheet produces). Both browse identically. Enumerate **including dot-files**
-    or a rewrite silently drops the `.gitignore` somebody packed.
+  - The two routes spelled entry names differently until 2026-10-26: `bsdtar` packed `.`, so its
+    rewrites carried `./name`, while the libarchive route enumerates the top level and writes bare
+    names (what the pack sheet produces). It was kept because both browse identically, and that was
+    the wrong test: to `unzip -p` and Python's `zipfile` the rewrite had renamed every member. Ask
+    whether a difference is invisible to *other* tools, not to the app (▸ bsdtar). Enumerate
+    **including dot-files** or a rewrite silently drops the `.gitignore` somebody packed.
 - **A transparent unwrap is exactly wrong for the one caller that wants the container, and the pane
   is that caller.** `EncryptedArchiveReader.extract` undoes a hidden-names archive's wrapper and
   deletes it, which is right for everything that wants the *files* — and a browsed archive lists the
@@ -9920,6 +10694,13 @@ overturned the obvious implementation.
     quietly becoming "re-read every time" — proved by withdrawing *read* permission after the first
     mount, since `stat` still answers while `bsdtar` could not open the file, so a second listing
     that succeeds could only have come from the cache.
+  - **Key a record by what the question is about, which is not always what was fetched.** Fixed
+    2026-10-25 (PLAN.md §M33): `RemoteFileCache` kept a remote file's revision per path, which is
+    right for "is there a fresh copy to show", and the write-back's check read that revision to ask
+    "has the server changed since *this* copy". A preview that brought down a newer version beside
+    an open edit moved the path's record, so the older copy's save was checked against the newer
+    revision, found nothing, and uploaded over the change without a question. The test needs two
+    copies of one path, and nothing with one copy can fail.
 - **A poll spaced by its own wall-clock cost counts latency as expense, and over a real link latency
   is most of it.** `RemoteRefreshPolicy` holds an unattended pane to 5 % of its wall time, which was
   argued from S3's billed requests and a 50 000-object prefix. Measured 2026-10-19 on an FTPES server

@@ -62,13 +62,26 @@ public enum RemoteFetchPurpose: Sendable, Equatable, CaseIterable {
     /// own: the sentence is what makes the gesture honest, and lowering the *threshold* instead
     /// would quietly widen what the Settings preview limit governs (see the table below).
     case browseArchive
+    /// A save of an F4 edit, checking the server's bytes against the edit's base when the server's
+    /// size and time say nothing changed (``WriteBackContentCheck``).
+    ///
+    /// The second automatic purpose. The user pressed ⌘S to upload, not to download, so a file too
+    /// large for this row is not asked about: the check stands down and the save rests on the size
+    /// and time, as it did before this row existed.
+    case writeBackCheck
 
     /// Whether this fetch happens without anybody having pressed a key for the file in question.
     ///
-    /// Named rather than spelled `== .cursorPreview` at the one site that reads it, because what it
+    /// Named rather than spelled as a comparison at the one site that reads it, because what it
     /// decides is not "is this case special" but "is there someone to ask" — and a second automatic
-    /// gesture added later must inherit that answer rather than a comparison somebody has to find.
-    public var isAutomatic: Bool { self == .cursorPreview }
+    /// gesture, ``writeBackCheck``, inherited that answer here rather than at its call site.
+    public var isAutomatic: Bool {
+        switch self {
+        case .cursorPreview, .writeBackCheck: true
+        case .preview, .open, .edit, .handOff, .compare, .syncContents, .checksum, .userScript,
+             .pack, .browseArchive: false
+        }
+    }
 }
 
 /// Whether a fetch is small enough to just happen.
@@ -127,6 +140,10 @@ public enum RemoteFetchDecision: Sendable, Equatable {
 /// but what happens when it is too much, and that is the ``RemoteFetchDecision/decline`` row rather
 /// than a threshold.
 ///
+/// ``RemoteFetchPurpose/writeBackCheck`` takes the Settings limit too, for the same reason and with
+/// one difference: it ignores the session's ``RemotePreviewAllowance``, since agreeing to preview a
+/// large photograph says nothing about downloading it again on every save.
+///
 /// **The preview row is the one number here the user owns** (Settings ▸ Panels), because it is the
 /// only one whose right value is a fact about *their* files and *their* connection rather than about
 /// the gesture: somebody whose photographs run to 300 MB is asking a reasonable question of a
@@ -173,6 +190,9 @@ public enum RemoteFetchPolicy {
         // Zero outranks anything learned: it is "download nothing unasked", a statement about every
         // file, and an allowance only ever widens a limit that is on.
         case .cursorPreview, .preview: limit == 0 ? 0 : max(limit, sessionAllowance)
+        // The Settings limit alone: it is the user's answer to how much may come down unasked, and
+        // an allowance agreed for a preview is not an answer about saves.
+        case .writeBackCheck: limit
         // Never below the preview limit: a user who has said a 300 MB preview is fine has answered
         // the smaller question too, and confirming an *open* they would not be asked about for a
         // mere look is the ordering this table exists to keep straight.

@@ -16,12 +16,13 @@ import Foundation
 /// - **Both pipes are drained concurrently and the wait is bounded**, the two-pipe deadlock lesson
 ///   the `sftp` and FTP transports already carry (docs/NOTES.md). A bucket listing is easily large
 ///   enough to fill one.
-/// - **The exit code decides only whether a server was reached.** This is the inverse of FTP's rule
-///   and it is the whole reason S3 gets its own transport rather than a shared one: `curl` exits 0
-///   for a missing key, a denied bucket, a bad signature and a wrong region alike, so the *status*
-///   from the write-out is the classification and a nonzero exit is only consulted when there is no
-///   status at all. That rule also absorbs `--fail`'s exit 22 on a refused transfer for free — the
-///   response reached us, it just said no.
+/// - **The status is the classification, and the exit code says whether there is one.** This is
+///   the inverse of FTP's rule and it is the whole reason S3 gets its own transport rather than a
+///   shared one: `curl` exits 0 for a missing key, a denied bucket, a bad signature and a wrong
+///   region alike, so the *status* from the write-out classifies the answer. The exit code decides
+///   only whether the answer finished arriving: exit 0, or `--fail`'s 22 on a refused transfer, is
+///   a response, and anything else is a transport failure even with a 200 in hand — which is what a
+///   download cut short part-way reports (``S3CurlRunner``).
 struct S3CurlTransport: S3Transport {
     let location: S3Location
     /// The secret access key, resolved from the Keychain by the caller and held for the

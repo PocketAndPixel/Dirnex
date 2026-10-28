@@ -27,7 +27,9 @@ extension PanelViewController {
     /// `work` runs on the main actor and does its own detaching. It throws
     /// ``EncryptedArchiveError/incorrectPassphrase`` to re-raise the prompt; everything else reaches
     /// `onFailure`. Canceling the prompt calls neither closure — the user withdrew the request, and
-    /// an alert saying so would be the app arguing with them.
+    /// an alert saying so would be the app arguing with them. It calls `onCancel`, for a caller that
+    /// is waiting on an answer: until 2026-10-25 a write-back waited forever after a Cancel, and the
+    /// window's later saves queued behind it (PLAN.md §M33 Slice 4).
     ///
     /// The passphrase is remembered only once `work` has returned, so a wrong one is never filed for
     /// the next gesture to inherit.
@@ -35,10 +37,15 @@ extension PanelViewController {
         forArchiveAt archivePath: String,
         doing work: @escaping @MainActor (ArchivePassphrase?) async throws -> T,
         onSuccess: @escaping @MainActor (T) -> Void,
-        onFailure: @escaping @MainActor (Error) -> Void
+        onFailure: @escaping @MainActor (Error) -> Void,
+        onCancel: @escaping @MainActor () -> Void = {}
     ) {
         let attempt = ArchivePassphraseAttempt(
-            archivePath: archivePath, work: work, onSuccess: onSuccess, onFailure: onFailure
+            archivePath: archivePath,
+            work: work,
+            onSuccess: onSuccess,
+            onFailure: onFailure,
+            onCancel: onCancel
         )
         // The encryption question costs one header read — measured at 3–4 ms for a 600 MB archive
         // (see `ArchiveExtractor.needsPassphrase`), which is what lets every gesture ask it outright.
@@ -59,7 +66,7 @@ extension PanelViewController {
             retrying: retrying,
             over: view.window
         ) { [weak self] passphrase in
-            guard let self, let passphrase else { return }
+            guard let self, let passphrase else { return attempt.onCancel() }
             run(attempt, with: passphrase)
         }
     }
@@ -92,4 +99,5 @@ struct ArchivePassphraseAttempt<T> {
     let work: @MainActor (ArchivePassphrase?) async throws -> T
     let onSuccess: @MainActor (T) -> Void
     let onFailure: @MainActor (Error) -> Void
+    let onCancel: @MainActor () -> Void
 }

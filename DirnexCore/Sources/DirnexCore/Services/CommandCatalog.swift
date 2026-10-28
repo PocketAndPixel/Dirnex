@@ -86,6 +86,18 @@ public enum CommandCatalog {
             shortcut: CommandShortcut(key: "i", modifiers: .command)
         ),
         Command(
+            id: "file.contextMenu",
+            title: "Show Context Menu",
+            category: .file,
+            keywords: [
+                "context", "contextual", "right-click", "right click", "secondary click", "popup",
+                "shift+f10", "menu key"
+            ]
+            // No shortcut. The keyboard's way in is a lone tap of ⌥ (`OptionTapMenu`), which a
+            // `CommandShortcut` cannot describe, and Total Commander's ⇧F10 is left alone because
+            // the F-keys are kept for commands. A user who wants a chord can bind one.
+        ),
+        Command(
             id: "file.copy",
             title: "Copy to Other Panel",
             category: .file,
@@ -188,6 +200,14 @@ public enum CommandCatalog {
             // it *against* the other pane's. Free — F3 "View" and F4 "Edit" are *bare* keys, and a
             // bare key and a modified one are different key-equivalents.
             shortcut: CommandShortcut(key: "F3", modifiers: [.function, .option])
+        ),
+        Command(
+            id: "file.resolveConflict",
+            title: "Resolve Conflict…",
+            category: .file,
+            keywords: ["git", "merge", "conflict", "unmerged", "three-way", "rebase"]
+            // No shortcut: it applies only to a file git has badged U, and the right-click menu
+            // offers it first over exactly those rows (PLAN.md §M34 Slice 5).
         ),
         Command(
             id: "file.edit",

@@ -67,6 +67,20 @@ int archive_write_free(struct archive *);
 struct archive *archive_read_new(void);
 int archive_read_support_format_all(struct archive *);
 int archive_read_support_filter_all(struct archive *);
+
+// An external decompressor for archives that start with `signature`, run as `command` (parsed by
+// libarchive itself: split on spaces, with double quotes and backslashes honoured). How the reader
+// reaches `zstd` by absolute path (`ZstdTool`), since this libarchive has no zstd built in and its
+// own zstd filter looks the program up in this process's `PATH`. Measured 2026-10-26: registered
+// *before* `archive_read_support_filter_all`, it wins the tie with that filter's 32-bit bid;
+// registered after, it loses and the open fails. libarchive has 16 bidder slots and
+// `filter_all` takes 13, so after this reader's two only one is left.
+int archive_read_support_filter_program_signature(
+    struct archive *,
+    const char *command,
+    const void *signature,
+    size_t signatureLength
+);
 int archive_read_add_passphrase(struct archive *, const char *passphrase);
 
 // Read options, of which Dirnex sets exactly one: `hdrcharset=<code page>`, which tells the zip

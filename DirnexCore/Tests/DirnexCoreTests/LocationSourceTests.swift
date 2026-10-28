@@ -101,6 +101,7 @@ struct LocationSourceTests {
         let ftp = FTPLocation(host: "nas", username: "u")
         let bucket = S3Location(host: "h", bucket: "b", region: "r", accessKeyID: "k")
         let account = S3Account(host: "h", region: "r", accessKeyID: "k")
+        let dav = WebDAVLocation(host: "nas", port: 5006, username: "u")
         let cases: [(VFSPath, LocationSource)] = [
             (VFSPath(backend: .trash, path: "/"), .trash),
             (ICloudLocation.mergedPath, .iCloudDrive),
@@ -109,7 +110,8 @@ struct LocationSourceTests {
             (VFSPath(backend: .sftp(sftp), path: "/srv"), .sftp),
             (VFSPath(backend: ftp.backendID, path: "/share"), .ftp),
             (VFSPath(backend: .s3(bucket), path: "/photos"), .s3),
-            (VFSPath(backend: .s3Account(account), path: "/"), .s3)
+            (VFSPath(backend: .s3Account(account), path: "/"), .s3),
+            (VFSPath(backend: .webDAV(dav), path: "/home"), .webdav)
         ]
         for (path, expected) in cases {
             #expect(source(path) == expected, "\(path)")

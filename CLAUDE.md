@@ -10,7 +10,7 @@ for Settings and dialogs).
 - **[PLAN.md](PLAN.md) is the authoritative source of truth** — architecture rules (§2, locked
   unless proven wrong), the testing strategy, and the current milestone. Read the relevant
   section before starting work, and add a progress note when a slice lands.
-- **[docs/HISTORY.md](docs/HISTORY.md)** — the M0–M29 build log; each milestone is archived here as
+- **[docs/HISTORY.md](docs/HISTORY.md)** — the M0–M34 build log; each milestone is archived here as
   it closes. Source comments citing `PLAN.md §M5` and the like point here. Read it for the
   reasoning behind a shipped decision; it's archive, not instruction.
 - **[docs/NOTES.md](docs/NOTES.md)** — durable engineering gotchas: Swift 6 traps, AppKit
@@ -53,9 +53,9 @@ The sections, and when each one matters:
   read only the ones you touch.
 - **Localization**: adding or changing a user-visible string, one `###` per topic.
 - **Lint ceilings and file splitting**: adding to a large controller.
-- **External CLI tools**: a backend or a tool, one `###` each: `bsdtar`, sftp/ssh, curl for FTP
-  and for S3, SMB, the Trash, iCloud Drive, Google Drive, iCloud Photos, encryption, ACLs and
-  extended attributes, checksums, regex, `qlmanage`, `gpr_tools`, `git`. The big ones (sftp/ssh,
+- **External CLI tools**: a backend or a tool, one `###` each: `bsdtar`, sftp/ssh, curl for FTP,
+  for S3 and for WebDAV, SMB, the Trash, iCloud Drive, Google Drive, iCloud Photos, encryption, ACLs
+  and extended attributes, checksums, regex, `qlmanage`, `gpr_tools`, `git`. The big ones (sftp/ssh,
   S3, FTP, the Trash, Google Drive, encryption) split again into `####` topics.
 - **Release pipeline**: a release, the workflows, Sparkle.
 - **Distribution and licensing**: the license, `NOTICE`, license keys, bug reports.
@@ -104,17 +104,22 @@ swift test                 # DirnexCore
 xcodebuild test -project Dirnex.xcodeproj -scheme Dirnex   # app target
 ```
 
+CI pins SwiftFormat (`SWIFTFORMAT_VERSION` in [ci.yml](.github/workflows/ci.yml)), and its
+`indent` rule changes between patch releases, so a local lint only predicts CI's when
+`swiftformat --version` prints the same version.
+
 Both suites must stay green and both linters clean. SwiftLint's `file_length` 500 and
 `type_body_length` 250 are tight on the large AppKit controllers — see the file-splitting
 section of [docs/NOTES.md](docs/NOTES.md) before adding to one.
 
-**A green app run does not mean the live suites ran.** They are gated on a config file, and without
-it fourteen suites *skip* under a run summary that is byte-identical either way (measured: 979 tests
-executed with servers up against 922 without, both reported as `1018 tests in 169 suites passed`).
-Before trusting anything the remote backends are supposed to be holding up:
+**A green app run does not mean the live suites ran.** They are gated on config files, and without
+them eighteen suites *skip* under a run summary that is byte-identical either way (measured
+2026-10-24: 1811 tests executed with servers up against 1755 without, both reported as
+`1870 tests in 295 suites passed`). Before trusting anything the remote backends are supposed to be
+holding up:
 
 ```sh
-scripts/live_test_servers.sh up      # throwaway sshd + pyftpdlib, writes both configs
+scripts/live_test_servers.sh up      # throwaway sshd, pyftpdlib and httpd; writes the three configs
 xcodebuild test -project Dirnex.xcodeproj -scheme Dirnex
 scripts/live_test_servers.sh down    # stop, remove the configs, unpin the host key
 ```

@@ -64,6 +64,46 @@ struct ArchiveRewriteFormatTests {
     func emptyArchive() {
         #expect(ArchiveRewriteFormat.inferred(from: inspection([])) == .plain)
     }
+
+    // MARK: - How the names are spelled
+
+    @Test("bare names rewrite bare")
+    func bareNames() {
+        let format = ArchiveRewriteFormat.inferred(
+            from: inspection([("inner.txt", false), ("docs/", false), ("docs/x.md", false)])
+        )
+        #expect(format.nameForm == .bare)
+    }
+
+    @Test("names that all start with ./ rewrite with it, the root entry included")
+    func dotSlashNames() {
+        // The shape `tar -C dir .` writes, and Sparkle's own release tarball has. Its root entry
+        // is spelled both ways by different tools, so both count.
+        for root in ["./", "."] {
+            let format = ArchiveRewriteFormat.inferred(
+                from: inspection([(root, false), ("./inner.txt", false), ("./docs/x.md", false)])
+            )
+            #expect(format.nameForm == .dotSlash)
+        }
+        let rootless = ArchiveRewriteFormat.inferred(from: inspection([("./a.txt", false)]))
+        #expect(rootless.nameForm == .dotSlash)
+    }
+
+    @Test("one bare name among ./ names is enough to rewrite bare")
+    func mixedNames() {
+        let format = ArchiveRewriteFormat.inferred(
+            from: inspection([("./inner.txt", false), ("plain.txt", false)])
+        )
+        #expect(format.nameForm == .bare)
+    }
+
+    @Test("a name that only starts with a dot is not the ./ spelling")
+    func dotFilesAreBare() {
+        let format = ArchiveRewriteFormat.inferred(
+            from: inspection([(".hidden", false), ("..dots", false), (".git/config", false)])
+        )
+        #expect(format.nameForm == .bare)
+    }
 }
 
 /// The "did the user actually save?" decision, split out of the watcher so it can be exercised

@@ -153,7 +153,7 @@ extension SyncDirectoriesController {
     /// refused rather than guessed at, because the alternative is comparing a file against itself.
     /// `nonisolated` because it runs on the `BlockingWork` thread, which is the whole point of it:
     /// reading two files end to end is not the main actor's work.
-    private nonisolated static func compareContents(
+    nonisolated static func compareContents(
         _ left: VFSPath,
         _ right: VFSPath,
         through paths: MaterializedPaths,

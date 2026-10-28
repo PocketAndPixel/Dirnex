@@ -4,9 +4,24 @@ import DirnexCore
 /// The accessory view inside `ConflictDialog`: the incoming ("New") and existing items shown
 /// as two cards — thumbnail, name, size/kind, modification date — with the newer item's date
 /// tinted so the user can decide at a glance (PLAN.md §M2 "size/date, image thumbnails").
+///
+/// Two files on this disk also get a Compare button under the cards, M2's side-by-side text diff
+/// at last (PLAN.md §M31 Slice 4). It opens the comparison in a window of its own and leaves the
+/// dialog up, so the answer is still the user's to give.
 final class ConflictComparisonView: NSView {
-    init(context: ConflictContext, sourceThumbnail: NSImage, existingThumbnail: NSImage) {
-        super.init(frame: NSRect(x: 0, y: 0, width: 460, height: 176))
+    /// The Compare button, or `nil` when the two items cannot be compared here.
+    private(set) var compareButton: NSButton?
+    /// Run by the Compare button.
+    var onCompare: (() -> Void)?
+
+    init(
+        context: ConflictContext,
+        sourceThumbnail: NSImage,
+        existingThumbnail: NSImage,
+        compareTitle: String? = nil
+    ) {
+        let compares = compareTitle != nil && Self.canCompare(context)
+        super.init(frame: NSRect(x: 0, y: 0, width: 460, height: compares ? 208 : 176))
 
         let sourceNewer = context.source.modificationDate > context.existing.modificationDate
         let existingNewer = context.existing.modificationDate > context.source.modificationDate
@@ -35,12 +50,40 @@ final class ConflictComparisonView: NSView {
         addSubview(row)
         NSLayoutConstraint.activate([
             row.topAnchor.constraint(equalTo: topAnchor, constant: 4),
-            row.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -4),
+            row.bottomAnchor.constraint(
+                lessThanOrEqualTo: bottomAnchor,
+                constant: compares ? -36 : -4
+            ),
             row.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             row.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
             // The two cards share the leftover width equally, the arrow taking its own.
             source.widthAnchor.constraint(equalTo: existing.widthAnchor)
         ])
+        if compares, let compareTitle {
+            let button = NSButton(title: compareTitle, target: self, action: #selector(compare(_:)))
+            button.controlSize = .small
+            button.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+            button.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(button)
+            NSLayoutConstraint.activate([
+                button.centerXAnchor.constraint(equalTo: centerXAnchor),
+                button.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -6)
+            ])
+            compareButton = button
+        }
+    }
+
+    /// Whether the two items can be compared from the dialog: two files on this disk, each with its
+    /// bytes here. A server's or an archive's file would need a download the dialog has no place to
+    /// show, and reading an evicted cloud file would download it unseen.
+    static func canCompare(_ context: ConflictContext) -> Bool {
+        [context.source, context.existing].allSatisfy {
+            $0.kind == .file && $0.path.backend == .local && !$0.isDataless
+        }
+    }
+
+    @objc private func compare(_ sender: Any?) {
+        onCompare?()
     }
 
     @available(*, unavailable)

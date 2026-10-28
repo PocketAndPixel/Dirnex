@@ -3,13 +3,13 @@ import Testing
 
 @testable import Dirnex
 
-/// A tab chip's fill is a layer property, so it is a `CGColor` resolved under one appearance. Seen
-/// live in light mode: the inactive pane's tab was filled `#464646`, the dark-mode gray, beside a
-/// cursor row drawn in the light one (`#DCDCDC`), with black text on it.
+/// A tab chip's fill and outline are layer properties, so each is a `CGColor` resolved under one
+/// appearance. Seen live in light mode: the inactive pane's tab was filled `#464646`, the dark-mode
+/// gray, beside a cursor row drawn in the light one (`#DCDCDC`), with black text on it.
 @MainActor
-@Suite("A tab chip's fill follows the window's appearance", .serialized)
+@Suite("A tab chip's fill and outline follow the window's appearance", .serialized)
 struct TabChipAppearanceTests {
-    /// `color` as `appearance` draws it, in sRGB bytes.
+    /// `color` as `appearance` draws it, in sRGBA bytes.
     private static func bytes(of color: NSColor, in appearance: NSAppearance) -> [Int] {
         var resolved: [Int] = []
         appearance.performAsCurrentDrawingAppearance {
@@ -20,7 +20,7 @@ struct TabChipAppearanceTests {
 
     private static func bytes(of color: CGColor?) -> [Int] {
         guard let color, let srgb = NSColor(cgColor: color)?.usingColorSpace(.sRGB) else { return [] }
-        return [srgb.redComponent, srgb.greenComponent, srgb.blueComponent]
+        return [srgb.redComponent, srgb.greenComponent, srgb.blueComponent, srgb.alphaComponent]
             .map { Int(($0 * 255).rounded()) }
     }
 
@@ -62,6 +62,36 @@ struct TabChipAppearanceTests {
         for name in [NSAppearance.Name.aqua, .darkAqua] {
             Self.draw(strip, in: try #require(NSAppearance(named: name)))
             #expect(strip.bar.chips[1].layer?.backgroundColor?.alpha == 0, "\(name)")
+        }
+    }
+
+    @Test("a tab that isn't showing is outlined in each appearance's separator color, both ways")
+    func otherTabsAreOutlined() throws {
+        let light = try #require(NSAppearance(named: .aqua))
+        let dark = try #require(NSAppearance(named: .darkAqua))
+        let lightLine = Self.bytes(of: .separatorColor, in: light)
+        let darkLine = Self.bytes(of: .separatorColor, in: dark)
+        #expect(lightLine != darkLine, "the two appearances must draw the separator apart to tell")
+
+        let strip = TabStripFixture(TabStripFixture.folders(["one", "two"]), width: 600)
+        for (appearance, line) in [(dark, darkLine), (light, lightLine), (dark, darkLine)] {
+            Self.draw(strip, in: appearance)
+            let chip = strip.bar.chips[1]
+            #expect(Self.bytes(of: chip.layer?.borderColor) == line, "\(appearance.name)")
+            #expect(chip.layer?.borderWidth == 1)
+        }
+    }
+
+    @Test("the showing tab has no outline, whichever pane is active")
+    func showingTabIsNotOutlined() throws {
+        let strip = TabStripFixture(TabStripFixture.folders(["one", "two"]), width: 600)
+        for isActivePane in [false, true] {
+            strip.bar.isActivePane = isActivePane
+            for name in [NSAppearance.Name.aqua, .darkAqua] {
+                Self.draw(strip, in: try #require(NSAppearance(named: name)))
+                let line = strip.bar.chips[0].layer?.borderColor
+                #expect(line?.alpha == 0, "\(name), active pane: \(isActivePane)")
+            }
         }
     }
 }

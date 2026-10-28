@@ -5,7 +5,7 @@ import AppKit
 @MainActor
 final class BugReportPreviewController: NSViewController {
     let body: Data
-    let textView = NSTextView()
+    let textView = MultiLineTextView()
 
     init(body: Data) {
         self.body = body

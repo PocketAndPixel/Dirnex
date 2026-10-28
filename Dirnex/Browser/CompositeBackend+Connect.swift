@@ -7,7 +7,7 @@ import Foundation
 /// Split out of `CompositeBackend` when the endpoint memory arrived and left the file twelve lines
 /// under SwiftLint's ceiling — by concept rather than by line count, which is the seam this half
 /// already had: everything here is about *a connection existing*, and what is left there is about
-/// which backend a `VFSPath` belongs to. The four lookups come along because they are the one place
+/// which backend a `VFSPath` belongs to. The lookups come along because they are the one place
 /// a missing connection turns into `serverNotConnected`, and that is the answer this file owes the
 /// router rather than a fact about routing.
 ///
@@ -127,6 +127,51 @@ extension CompositeBackend {
         return backend
     }
 
+    /// Establish (or replace) a WebDAV connection for `location`, returning its backend. `password`
+    /// is the plaintext the transport feeds to `curl` on stdin, held only in memory for the
+    /// connection's lifetime; `authentication` is the scheme the connect probe settled, and
+    /// `trustedPublicKey` the certificate pin the user accepted — neither a secret, and both written
+    /// into the endpoint so a restored tab reconnects the way this one did.
+    @discardableResult
+    func connectWebDAV(
+        location: WebDAVLocation,
+        password: String = "",
+        authentication: WebDAVAuthScheme?,
+        trustedPublicKey: String? = nil
+    ) -> WebDAVBackend {
+        let transport = WebDAVCurlTransport(
+            location: location,
+            password: password,
+            trustedPublicKey: trustedPublicKey,
+            authentication: authentication
+        )
+        return register(
+            webDAV: WebDAVBackend(location: location, transport: transport),
+            authentication: authentication,
+            trustedPublicKey: trustedPublicKey
+        )
+    }
+
+    /// Install an already-built WebDAV backend under its own descriptor — `connectWebDAV` without
+    /// the `curl` transport, so the routing can be asserted over a fake (``register(s3:)`` gives
+    /// the reason). Nothing in the app calls it.
+    @discardableResult
+    func register(
+        webDAV backend: WebDAVBackend,
+        authentication: WebDAVAuthScheme?,
+        trustedPublicKey: String? = nil
+    ) -> WebDAVBackend {
+        lock.lock()
+        defer { lock.unlock() }
+        webDAVConnections[backend.location.descriptor] = backend
+        endpoints[backend.location.descriptor] = .webdav(
+            location: backend.location,
+            authentication: authentication,
+            trustedPublicKey: trustedPublicKey
+        )
+        return backend
+    }
+
     /// What the connection serving `backendID` was established with, or `nil` when nothing here is
     /// serving it. Never a secret — see ``endpoints``.
     func endpoint(for backendID: VFSBackendID) -> ServerEndpoint? {
@@ -179,6 +224,21 @@ extension CompositeBackend {
         lock.lock()
         defer { lock.unlock() }
         return s3Connections[backendID.rawValue]
+    }
+
+    func connectedWebDAV(for backendID: VFSBackendID) throws -> WebDAVBackend {
+        guard let backend = webDAVBackend(for: backendID) else {
+            throw VFSError.unsupported(.serverNotConnected(server: "\(backendID)"))
+        }
+        return backend
+    }
+
+    /// The connected WebDAV backend for `backendID`, or `nil` when there's no live connection — the
+    /// non-throwing lookup `capabilities(for:)` needs (it must never throw and must stay cheap).
+    func webDAVBackend(for backendID: VFSBackendID) -> WebDAVBackend? {
+        lock.lock()
+        defer { lock.unlock() }
+        return webDAVConnections[backendID.rawValue]
     }
 
     func connectedFTP(for backendID: VFSBackendID) throws -> FTPBackend {

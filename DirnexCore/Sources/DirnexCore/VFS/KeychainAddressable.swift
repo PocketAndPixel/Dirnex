@@ -19,14 +19,15 @@ public protocol KeychainAddressable {
 
     /// Whether this connection has no secret worth filing, so the store should skip it entirely.
     ///
-    /// True only for FTP's anonymous login, whose password is a convention rather than a secret. A
-    /// guest SMB mount has no `username` and never reaches the store at all, which is why it is not
-    /// expressed here.
+    /// True for FTP's anonymous login, whose password is a convention rather than a secret, and for
+    /// a WebDAV account with no user name. A guest SMB mount has no `username` and never reaches the
+    /// store at all, which is why it is not expressed here.
     var hasNoStoredSecret: Bool { get }
 }
 
 public extension KeychainAddressable {
-    /// Most connections hold a real secret; only FTP's anonymous login overrides this.
+    /// Most connections hold a real secret; FTP's anonymous login and a public WebDAV share override
+    /// this.
     var hasNoStoredSecret: Bool { false }
 }
 
@@ -51,4 +52,11 @@ extension S3Location: KeychainAddressable {}
 /// distinct is the account key's shape, which is why the two are defined next to each other.
 extension S3Account: KeychainAddressable {
     public static var keychainService: String { S3Location.keychainService }
+}
+
+/// A WebDAV password is filed under ``WebDAVLocation/keychainAccount``, which leaves out the root
+/// path, so two roots on one server share one item. An account with no user name is a public share
+/// and has nothing to file.
+extension WebDAVLocation: KeychainAddressable {
+    public var hasNoStoredSecret: Bool { !hasCredentials }
 }

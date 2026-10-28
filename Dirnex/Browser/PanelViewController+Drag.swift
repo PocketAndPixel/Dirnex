@@ -49,34 +49,22 @@ extension PanelViewController {
 
     /// When the grab starts on a marked file, drag the whole marked set (Total Commander
     /// semantics: operate on the selection); a grab on an unmarked file drags just that
-    /// file. The table is single-selection, so AppKit only ever offers the one cursor row
-    /// — we widen the pasteboard to every marked entry here.
+    /// file. The table is single-selection, so AppKit only ever offers the grabbed row, and the
+    /// table swaps in these writers before the session starts (`FileTableView+Drag` says why it
+    /// cannot be later).
     ///
-    /// The drag image still shows just the grabbed row; a stacked multi-file image would
-    /// require driving the whole session by hand, which isn't worth it for M1.
-    func tableView(
-        _ tableView: NSTableView,
-        draggingSession session: NSDraggingSession,
-        willBeginAt screenPoint: NSPoint,
-        forRowIndexes rowIndexes: IndexSet
-    ) {
-        guard panel.selectionCount > 1 else { return }
-        let grabbedMarkedFile = rowIndexes.contains { row in
-            guard let index = entryIndex(forRow: row),
-                  let entry = panel.displayedEntry(at: index) else { return false }
-            return panel.isMarked(entry)
-        }
-        guard grabbedMarkedFile else { return }
-        // Rebuilt, never re-used: `-[NSPasteboard writeObjects:]` **raises** if handed an item that
-        // has already been written to a board (probed fatally 2026-08-26), and AppKit has just
-        // written one per row through `pasteboardWriterForRow` above. `PanelPasteboard.writeDrag`
-        // mints fresh writers — promises included, so a marked *remote* row survives the widening
-        // rather than the multi-row drag quietly becoming local-only — and leaves the board alone
-        // when the marked set holds nothing it can carry.
-        PanelPasteboard.writeDrag(
-            panel.selectedEntries,
-            promisedTo: self,
-            to: session.draggingPasteboard
-        )
+    /// Fresh writers, never the row's own: `-[NSPasteboard writeObjects:]` **raises** if handed an
+    /// item that has already been written to a board (probed fatally 2026-08-26). `nil` when the
+    /// marked set holds nothing a drag can carry, which leaves the grabbed row to drag alone.
+    func fileTable(
+        _ tableView: FileTableView,
+        dragWritersFromRow row: Int
+    ) -> [any NSPasteboardWriting]? {
+        guard panel.selectionCount > 1,
+              let index = entryIndex(forRow: row),
+              let entry = panel.displayedEntry(at: index),
+              panel.isMarked(entry) else { return nil }
+        let writers = PanelPasteboard.dragWriters(for: panel.selectedEntries, promisedTo: self)
+        return writers.isEmpty ? nil : writers
     }
 }

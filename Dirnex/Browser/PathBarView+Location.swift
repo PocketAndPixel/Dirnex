@@ -186,6 +186,7 @@ extension PathBarView {
         if path.backend.isPhotos { return PhotosPresentation.symbolName }
         if path.backend.isSFTP { return SidebarPlacePresentation.serverSymbolName(for: .sftp) }
         if path.backend.isFTP { return SidebarPlacePresentation.serverSymbolName(for: .ftp) }
+        if path.backend.isWebDAV { return SidebarPlacePresentation.serverSymbolName(for: .webdav) }
         // An account and a bucket are one service, so they wear one glyph — the same one their
         // sidebar rows carry, which is what `ServerKind` collapsing the two is for.
         if path.backend.isS3 || path.backend.isS3Account {

@@ -28,8 +28,8 @@ public extension S3ProcessArguments {
     ///   at 0.000. A batch of N would otherwise cost two rounds rather than one, which reads as
     ///   "parallel uploads are only twice as fast as they should be" and nothing reports it.
     /// - **Every per-transfer option belongs in its own section.** The credential, the signature
-    ///   specifier and both timeouts are repeated per part; `argv` carries only `-Z`, the
-    ///   concurrency cap, and the silencing.
+    ///   specifier and both timeouts are repeated per part; `argv` carries only `-q` (which a
+    ///   config cannot carry, ``ignoreCurlrc``), `-Z`, the concurrency cap, and the silencing.
     /// - **The meter is off (`-sS`).** Progress comes from the indexed write-outs as each part
     ///   lands (``S3PartWriteOut``), which needs no reading of `curl`'s parallel table — and with
     ///   the meter on, a section finishing mid-row glues its first field to the end of that row.
@@ -56,6 +56,7 @@ public extension S3ProcessArguments {
         }
         return S3ParallelInvocation(
             arguments: [
+                ignoreCurlrc,
                 "-Z",
                 "--parallel-immediate",
                 "--parallel-max", String(max(1, parts.count)),

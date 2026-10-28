@@ -144,6 +144,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         browserWindowController != nil
     }
 
+    /// Ask about a compare window's unsaved edits before quitting (PLAN.md §M33 Slice 3), and a
+    /// merge window's unsaved choices (PLAN.md §M34 Slice 3), as closing either window does:
+    /// quitting would drop them without a word.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard CompareWindowController.anyUnsaved || MergeWindowController.anyUnsaved else {
+            return .terminateNow
+        }
+        Task { @MainActor in
+            var confirmed = await CompareWindowController.confirmQuit()
+            if confirmed { confirmed = await MergeWindowController.confirmQuit() }
+            sender.reply(toApplicationShouldTerminate: confirmed)
+        }
+        return .terminateLater
+    }
+
     /// Unmount only the SMB shares *we* mounted, leaving any Finder-mounted share as the user had it
     /// (PLAN.md §M5 "unmount only what we mounted on disconnect/quit"), and hang up the terminal
     /// drawer's shell (PLAN.md §M6) rather than leave it reparented to launchd.

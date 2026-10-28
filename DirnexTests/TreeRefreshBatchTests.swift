@@ -204,6 +204,33 @@ private final class RecordingFTPTransport: FTPTransport, @unchecked Sendable {
         }
     }
 
+    /// The tree refresh's batch, answered as a `--fail-early` run: a folder the table lacks stops
+    /// it there.
+    func listingsUntilFirstFailure(
+        of remotePaths: [String],
+        askingFacts _: Bool,
+        isCancelled _: () -> Bool
+    ) throws -> FTPBatchRun {
+        lock.withLock {
+            recordedBatches.append(remotePaths)
+            var answered: [FTPListing?] = []
+            for path in remotePaths {
+                guard let rows = table[path] else {
+                    let unsent = Array(
+                        repeating: FTPListing?.none,
+                        count: remotePaths.count - answered.count
+                    )
+                    return FTPBatchRun(
+                        listings: answered + unsent,
+                        stop: FTPBatchStop(index: answered.count, cause: .folder)
+                    )
+                }
+                answered.append(FTPListing(rows: rows))
+            }
+            return FTPBatchRun(listings: answered, stop: nil)
+        }
+    }
+
     func makeDirectory(_ remotePath: String) throws {}
     func createEmptyFile(_ remotePath: String) throws {}
     func rename(_ source: String, to destination: String) throws {}

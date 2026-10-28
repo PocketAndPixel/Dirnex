@@ -79,4 +79,60 @@ public enum GitCommand {
             "--ignored=traditional"
         ]
     }
+
+    // MARK: - A conflicted file's versions (PLAN.md §M34 Slice 5)
+
+    // Each of these reads and none writes. Measured 2026-10-27 on git 2.54, with a clean file's time
+    // made stale in the index: nothing in the git directory changed across all three, while a plain
+    // `git status` rewrote the index (`GitConflictReaderLiveTests`). None of the three refreshes the
+    // index, so that held without `--no-optional-locks` as well. It is passed as `status` passes it,
+    // so a git that did start refreshing here would still write nothing.
+
+    /// The arguments that list the versions git holds of `relativePath` while it is conflicted: one
+    /// NUL-terminated record per stage, in `GitStage.listingFormat`.
+    ///
+    /// `--literal-pathspecs` makes the path a name rather than a pattern. Without it `a[1].txt`
+    /// matched `a1.txt` as well, and `*.txt` every conflicted text file (probed). `--format` needs
+    /// git 2.38; it carries each version's size, so one too large to read is refused before it is.
+    public static func unmergedStages(repositoryRoot: String, relativePath: String) -> [String] {
+        [
+            "--no-optional-locks",
+            "--literal-pathspecs",
+            "-C", repositoryRoot,
+            "ls-files",
+            "--unmerged",
+            "-z",
+            "--format=\(GitStage.listingFormat)",
+            "--",
+            relativePath
+        ]
+    }
+
+    /// The arguments that print one version's bytes as a checkout of `relativePath` would write
+    /// them.
+    ///
+    /// `--filters` runs what the path's attributes ask for on the way out: line endings, a
+    /// `working-tree-encoding`, a smudge filter. Under `eol=crlf` the stored blob is LF while the
+    /// working-tree file is CRLF (probed), so a merge of the stored bytes would change every line
+    /// ending of the file it saves.
+    public static func stageContents(
+        repositoryRoot: String,
+        relativePath: String,
+        object: String
+    ) -> [String] {
+        [
+            "--no-optional-locks",
+            "-C", repositoryRoot,
+            "cat-file",
+            "--filters",
+            "--path=\(relativePath)",
+            object
+        ]
+    }
+
+    /// The arguments that print the repository's git directory as an absolute path: `.git` in a
+    /// plain clone, `.git/worktrees/<name>` in a linked worktree, whose `.git` is a file.
+    public static func gitDirectory(repositoryRoot: String) -> [String] {
+        ["--no-optional-locks", "-C", repositoryRoot, "rev-parse", "--absolute-git-dir"]
+    }
 }

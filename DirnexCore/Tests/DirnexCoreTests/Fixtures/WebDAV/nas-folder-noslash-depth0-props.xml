@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:" xmlns:ns0="DAV:">
+<D:response xmlns:lp1="DAV:" xmlns:lp2="http://apache.org/dav/props/" xmlns:g0="DAV:">
+<D:href>/home/dirnex-webdav-fixture/</D:href>
+<D:propstat>
+<D:prop>
+<lp1:resourcetype><D:collection/></lp1:resourcetype>
+<lp1:getlastmodified>Thu, 22 Oct 2026 20:48:28 GMT</lp1:getlastmodified>
+<lp1:creationdate>2026-10-22T20:48:27Z</lp1:creationdate>
+<lp1:getetag>"e0-65e73fc5abb3f"</lp1:getetag>
+<D:getcontenttype>httpd/unix-directory</D:getcontenttype>
+</D:prop>
+<D:status>HTTP/1.1 200 OK</D:status>
+</D:propstat>
+<D:propstat>
+<D:prop>
+<g0:getcontentlength/>
+</D:prop>
+<D:status>HTTP/1.1 404 Not Found</D:status>
+</D:propstat>
+</D:response>
+</D:multistatus>

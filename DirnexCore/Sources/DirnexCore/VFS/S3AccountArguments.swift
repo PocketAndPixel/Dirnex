@@ -57,7 +57,7 @@ public extension S3ProcessArguments {
     ///   definition of how a bucket is addressed, reused rather than rebuilt. Probed both ways: the
     ///   bucket lands under its own name either way, with no trailing slash in the name. That is
     ///   safe here specifically because `-T` is not involved (which would append a basename).
-    /// - **`Expect: 100-continue` can never appear**, since `curl` only adds it above ~1 KiB. So the
+    /// - **`Expect: 100-continue` can never appear**, since `curl` only adds it above 1 MiB. So the
     ///   flat 1.02 s an ignoring server costs (docs/NOTES.md ▸ curl) is unreachable on this verb.
     ///
     /// The region body is **omitted for `us-east-1`**, which is the one rule here taken from AWS's

@@ -91,4 +91,10 @@ protocol FileTableViewInput: AnyObject {
     /// The pointer moved onto `row`, or `-1` when it left the pane's rows. Only the tree's active
     /// indent guide reads it today; the cursor and the marks are deliberately untouched by hovering.
     func fileTable(_ tableView: FileTableView, didHoverRow row: Int)
+    /// A drag is starting on `row`: the writers it carries in place of that row's own, or `nil` to
+    /// drag the row alone. Asked before the drag session exists (`FileTableView+Drag`).
+    func fileTable(
+        _ tableView: FileTableView,
+        dragWritersFromRow row: Int
+    ) -> [any NSPasteboardWriting]?
 }

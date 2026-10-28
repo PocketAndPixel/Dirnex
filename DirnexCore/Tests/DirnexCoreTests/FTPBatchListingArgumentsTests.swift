@@ -63,7 +63,25 @@ struct FTPBatchListingArgumentsTests {
     @Test("the meter is off, the error text is kept, and there is no --fail")
     func invocationFlags() {
         let arguments = Self.invocation(["/a"]).arguments
-        #expect(arguments == ["-sS", "-K", "-"])
+        #expect(arguments == ["-q", "-sS", "-K", "-"])
+    }
+
+    /// The tree refresh's run: `--fail-early`, so a wrong password is one failed login rather than
+    /// one per section (four for four, measured 2026-10-23). Only argv can carry it: it is global,
+    /// and `next` would scope anything in the config to one section.
+    @Test("the stopping run adds --fail-early to argv and changes nothing else")
+    func stoppingRunFailsEarly() {
+        let requests = ["/a", "/b"].enumerated().map {
+            FTPListingRequest(remotePath: $1, outputPath: "/tmp/out/\($0)")
+        }
+        let stopping = FTPProcessArguments.listDirectories(
+            session: Self.session(),
+            requests: requests,
+            credentials: "user = \"u:secret\"\n",
+            stopsAtFirstFailure: true
+        )
+        #expect(stopping.arguments == ["-q", "-sS", "--fail-early", "-K", "-"])
+        #expect(stopping.configuration == Self.invocation(["/a", "/b"]).configuration)
     }
 
     // MARK: - The sections

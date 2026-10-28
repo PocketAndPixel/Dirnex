@@ -33,7 +33,7 @@ struct MultiLineFieldTests {
 
     /// A box in a window of its own, laid out at `size`.
     private func box(_ appearance: NSAppearance.Name = .aqua) -> (MultiLineField, NSWindow) {
-        let box = MultiLineField(NSTextView())
+        let box = MultiLineField(MultiLineTextView())
         let window = host(box, appearance)
         return (box, window)
     }
@@ -101,7 +101,7 @@ struct MultiLineFieldTests {
     func looksLikeAField(appearance: NSAppearance.Name, state: FieldState) throws {
         // Each is set before it is on screen: a field on screen animates the change, and a capture
         // taken during it differs (the read-only case did, in Light Mode).
-        let box = MultiLineField(NSTextView())
+        let box = MultiLineField(MultiLineTextView())
         state.apply(to: box)
         let boxWindow = host(box, appearance)
         let field = NSTextField.singleLine()
@@ -163,7 +163,7 @@ struct MultiLineFieldTests {
     /// hugs its one-line height, and would hold the box to it if it were let.
     @Test("a box a stack view stretches takes the room it is given")
     func stretches() throws {
-        let box = MultiLineField(NSTextView())
+        let box = MultiLineField(MultiLineTextView())
         box.setContentHuggingPriority(.defaultLow, for: .vertical)
         box.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
         let label = NSTextField(labelWithString: "Command")
@@ -246,6 +246,38 @@ struct MultiLineFieldTests {
             #expect(box.hitTest(point) === box.textView)
         }
         #expect(box.hitTest(NSPoint(x: frame.minX - 1, y: frame.midY)) == nil)
+    }
+
+    /// A window that has only been ordered front isn't key, so its first press takes the path a click
+    /// from another app takes (only the first: `BugReportDialogFocusTests` says why). The window hands
+    /// it on only to a view that accepts first mouse (docs/NOTES.md ▸ Testing). Negative control: with
+    /// `MultiLineTextView` answering `false`, the focus stays where it was.
+    @Test("one click from another app puts the focus in the box")
+    func clickFromAnotherApp() throws {
+        let (box, window) = box()
+        window.orderFront(nil)
+        defer {
+            window.close()
+            NSApp.discardEvents(matching: .leftMouseUp, before: nil)
+        }
+        try #require(!window.isKeyWindow)
+        // Ordering the window front makes the box, its one key view, the first responder.
+        window.makeFirstResponder(nil)
+        try #require(window.firstResponder === window)
+        try Self.click(box, in: window)
+        #expect(window.firstResponder === box.textView)
+    }
+
+    /// A press at the middle of `view`, or of the scroll view it sits in, sent the way a window gets
+    /// one, with the release queued for the tracking loop the press starts. A press the window keeps
+    /// for itself leaves its release queued, so a caller discards what is left.
+    static func click(_ view: NSView, in window: NSWindow) throws {
+        let target = view.enclosingScrollView ?? view
+        let point = target.convert(NSPoint(x: target.bounds.midX, y: target.bounds.midY), to: nil)
+        let press = try QuickViewHeaderStyleTests.mouseEvent(.leftMouseDown, at: point, in: window)
+        let release = try QuickViewHeaderStyleTests.mouseEvent(.leftMouseUp, at: point, in: window)
+        NSApp.postEvent(release, atStart: true)
+        window.sendEvent(press)
     }
 
     /// The text view itself is never asked for a ring inside a scroll view, so the scroll view has

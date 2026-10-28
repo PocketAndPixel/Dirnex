@@ -32,20 +32,42 @@ public enum ArchiveMutation {
     }
 
     /// The `bsdtar` argv that repacks the whole `workingDirectory` tree into a new archive at
-    /// `newArchiveOnDiskPath`. Packs `.` (not an enumerated name list) so an archive left with no
-    /// members after a delete still repacks — into a valid, empty archive — rather than failing on
-    /// an empty argument list. `-a` infers the format from the new archive's suffix, plus an
-    /// explicit `--format` for the suffixes `-a` misreads (see `formatOverrideArguments`); the
-    /// new archive carries the *same* suffix as the original, so the format is preserved.
+    /// `newArchiveOnDiskPath`, with its members' names spelled in `nameForm`, the original's.
+    /// `-a` infers the format from the new archive's suffix, plus an explicit `--format` for the
+    /// suffixes `-a` misreads (see `formatOverrideArguments`); the new archive carries the *same*
+    /// suffix as the original, so the format is preserved.
+    ///
+    /// **It packs `.`, never the tree's names**, measured against bsdtar 3.5.3 (libarchive 3.7.4).
+    /// A top-level `@at.zip` on the argument list is read as an archive to copy members *from*, and
+    /// `-dash.txt` as an option, and either fails the whole pack. An archive left empty by a delete
+    /// would have no names at all to pass. `.` has none of these problems, and dot-files come with
+    /// it. What `.` costs is the spelling: every member comes out `./name`, behind a `./` entry for
+    /// the root, which is right only for an archive that was spelled that way.
     public static func repackAllArguments(
         newArchiveOnDiskPath: String,
-        from workingDirectory: String
+        from workingDirectory: String,
+        nameForm: ArchiveNameForm
     ) -> [String] {
         ["-a", "-c"]
             + formatOverrideArguments(
                 forArchiveNamed: (newArchiveOnDiskPath as NSString).lastPathComponent
             )
+            + nameFormArguments(nameForm)
             + ["-f", newArchiveOnDiskPath, "-C", workingDirectory, "."]
+    }
+
+    /// The `-s` substitutions that turn `.`'s spelling into `nameForm`.
+    ///
+    /// For bare names, two, measured on the same bsdtar across zip, 7z, tar and every compressed tar
+    /// suffix: `|^\./||` strips the prefix, and `|^\.$||` empties the root's name, which makes
+    /// `bsdtar` leave that entry out. An emptied tree still repacks, into an archive with no entries.
+    /// The `S` flag keeps a symlink's target as it was written (`link -> ./inner.txt` stays so), while
+    /// a hard link's target is a member name and is rewritten with the members.
+    static func nameFormArguments(_ nameForm: ArchiveNameForm) -> [String] {
+        switch nameForm {
+        case .bare: ["-s", "|^\\./||S", "-s", "|^\\.$||S"]
+        case .dotSlash: []
+        }
     }
 
     /// Where an inner member sits inside the extracted working tree — the *exact* on-disk path the

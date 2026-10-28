@@ -79,6 +79,18 @@ struct CommandCatalogTests {
         #expect(KeyBindings().conflicts(for: "file.moveKeepingFolders").isEmpty)
     }
 
+    /// The keyboard reaches it by a lone tap of ⌥, which is the app's and not a binding, and the
+    /// F-keys stay for commands, so the registry gives it no key.
+    @Test("Show Context Menu is a shortcut-free File command a Total Commander user can find")
+    func coversShowContextMenu() throws {
+        let command = try #require(CommandCatalog.command(for: "file.contextMenu"))
+        #expect(command.category == .file)
+        #expect(command.shortcut == nil)
+        #expect(KeyBindings().conflicts(for: "file.contextMenu").isEmpty)
+        #expect(command.keywords.contains("right-click"))
+        #expect(command.keywords.contains("shift+f10"))
+    }
+
     @Test("the M5 synchronize-directories tool is a shortcut-free File command")
     func coversSyncDirectories() {
         let byID = Dictionary(uniqueKeysWithValues: CommandCatalog.all.map { ($0.id, $0) })

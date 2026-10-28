@@ -73,9 +73,10 @@ enum MainMenuBuilder {
             .command("file.newTab"), .command("file.closeTab"), .command("file.reopenClosedTab"),
             .separator,
             // Get Info sits with Open With and Share: all three are about the item under the
-            // cursor rather than about moving bytes around.
+            // cursor rather than about moving bytes around. Show Context Menu ends the group, being
+            // the menu that offers them over that item.
             .command("file.openWith"), .command("file.share"), .command("file.attributes"),
-            .command("file.showInFinder"), .separator,
+            .command("file.showInFinder"), .command("file.contextMenu"), .separator,
             // The cloud pair gets a group of its own: it is about where an item's bytes are, which
             // is neither the item itself nor moving it anywhere.
             .command("file.downloadNow"), .command("file.removeDownload"), .separator,
@@ -87,8 +88,11 @@ enum MainMenuBuilder {
             // (PLAN.md §M27) — somebody who merely wants to read the names had none.
             .command("file.archiveNameEncoding"),
             .command("file.syncDirectories"), .command("file.compareByContents"),
-            // The checksum pair sits with Compare By Contents: all three answer "are these bytes
-            // the ones I expect", differing only in what they are compared against.
+            // Resolve Conflict… follows Compare By Contents, since its window is the compare
+            // window with a third side (PLAN.md §M34).
+            .command("file.resolveConflict"),
+            // The checksum pair sits with the compare: both answer "are these bytes the ones I
+            // expect", differing only in what they are compared against.
             .command("file.checksumVerify"), .command("file.checksumCreate"), .separator,
             .command("file.edit"), .command("file.editNew"), .separator,
             .command("file.tags"), .command("file.manageScripts"), .separator,

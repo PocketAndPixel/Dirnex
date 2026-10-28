@@ -42,6 +42,7 @@ struct FTPBatchedListingTests {
         _ = try backend.listDirectories(at: paths(folders), isCancelled: { false })
         #expect(transport.batches == [folders])
         #expect(transport.singleAttempts.isEmpty)
+        #expect(transport.signIns == 1)
     }
 
     @Test("answers what listing each folder would have answered")
@@ -69,9 +70,10 @@ struct FTPBatchedListingTests {
     }
 
     /// A folder the server will not list — a permission gap, or one deleted since it was opened —
-    /// is an answer about that folder from a session that worked, so it costs no further login and
-    /// does not cost the others their rows.
-    @Test("a refused folder answers nil and the rest still land, without another login")
+    /// ends a run that stops at its first failure, as `--fail-early` does on FTP (exit 9, or 19 for
+    /// one that can be entered and not read). It is an answer about that folder from a session that
+    /// worked, so the folders after it go out in one more run rather than one each.
+    @Test("a refused folder answers nil and the folders after it go out in one more run")
     func refusedFolderAnswersNil() throws {
         let (backend, transport) = makeBackend()
         transport.refused = ["/SYNERGIE"]
@@ -79,7 +81,19 @@ struct FTPBatchedListingTests {
         #expect(answers[0]?.count == 1)
         #expect(answers[1] == nil)
         #expect(answers[2]?.count == 2)
+        #expect(transport.batches == [folders, ["/SYNERGIE/AGENCE"]])
         #expect(transport.singleAttempts.isEmpty)
+    }
+
+    @Test("a refused first folder sends all the rest again")
+    func refusedFirstFolderSendsTheRest() throws {
+        let (backend, transport) = makeBackend()
+        transport.refused = ["/"]
+        let answers = try backend.listDirectories(at: paths(folders), isCancelled: { false })
+        #expect(answers[0] == nil)
+        #expect(answers[1]?.count == 2)
+        #expect(answers[2]?.count == 2)
+        #expect(transport.batches == [folders, Array(folders.dropFirst())])
     }
 
     /// The distinction the tree keeps rows by: `nil` keeps a folder's last good rows, an empty list
@@ -93,38 +107,78 @@ struct FTPBatchedListingTests {
         #expect(answers[2] == [])
     }
 
-    /// The batch itself failing — `curl` with several URLs on a server that dislikes it, or the data
-    /// channel needing the retry only the single listing has. The folders are still listed, one
-    /// at a time.
-    @Test("a batch that lands nothing falls back to one listing per folder")
-    func emptyBatchFallsBackToSingleListings() throws {
+    /// The finding this guards (measured 2026-10-23 against pyftpdlib): a batch that does not stop
+    /// signs in again for every section after a refused login, four sections being four failed
+    /// logins, and the fallback then asked once more. A refresh runs on a timer, so a password
+    /// changed on the server spent that every round, against an Account Protection that locks the
+    /// account after a few.
+    @Test("a refused login is one failed login a round, whatever the number of folders")
+    func refusedLoginIsOneFailedLogin() throws {
         let (backend, transport) = makeBackend()
-        transport.batchLandsNothing = true
+        transport.loginRefused = true
+        let answers = try backend.listDirectories(at: paths(folders), isCancelled: { false })
+        #expect(answers == [nil, nil, nil])
+        #expect(transport.signIns == 1)
+        #expect(transport.singleAttempts.isEmpty)
+    }
+
+    /// A run that got no answer — the data channel needing the TLS-1.2 retry only the single
+    /// listing has, say — is the batch's failure as much as the server's. The folders are still
+    /// listed, one at a time.
+    @Test("a run with no answer falls back to one listing per folder")
+    func noAnswerFallsBackToSingleListings() throws {
+        let (backend, transport) = makeBackend()
+        transport.noAnswerAt = 0
         let answers = try backend.listDirectories(at: paths(folders), isCancelled: { false })
         #expect(answers.allSatisfy { $0 != nil })
         #expect(transport.singleAttempts == folders)
     }
 
-    @Test("a batch that throws falls back the same way")
-    func throwingBatchFallsBackToSingleListings() throws {
+    @Test("a run that loses its answer part-way keeps what landed and lists the rest singly")
+    func noAnswerPartWay() throws {
         let (backend, transport) = makeBackend()
-        transport.batchThrows = true
+        transport.noAnswerAt = 1
         let answers = try backend.listDirectories(at: paths(folders), isCancelled: { false })
         #expect(answers.allSatisfy { $0 != nil })
-        #expect(transport.singleAttempts == folders)
+        #expect(transport.singleAttempts == Array(folders.dropFirst()))
     }
 
-    /// The guard on the fallback, and the half that matters on a server counting failed logins: a
-    /// server refusing us *altogether* empties the batch too, and must then be asked once more —
-    /// not once per folder, every round.
-    @Test("a server refusing the login is asked once more, not once per folder")
+    @Test("a run that throws, or answers the wrong number, falls back the same way")
+    func brokenRunFallsBackToSingleListings() throws {
+        for breakRun in [
+            { (transport: ScriptedFTPTransport) in transport.batchThrows = true },
+            { (transport: ScriptedFTPTransport) in transport.batchMiscounts = true }
+        ] {
+            let (backend, transport) = makeBackend()
+            breakRun(transport)
+            let answers = try backend.listDirectories(at: paths(folders), isCancelled: { false })
+            #expect(answers.allSatisfy { $0 != nil })
+            #expect(transport.singleAttempts == folders)
+        }
+    }
+
+    /// The fallback's own guard: a server refusing us altogether, met there rather than by the run,
+    /// is asked once more and not once per folder.
+    @Test("a server refusing the login on the fallback is asked once, not once per folder")
     func refusingServerIsAskedOnce() throws {
         let (backend, transport) = makeBackend()
-        transport.batchLandsNothing = true
-        transport.refused = Set(folders)
+        transport.batchThrows = true
+        transport.loginRefused = true
         let answers = try backend.listDirectories(at: paths(folders), isCancelled: { false })
         #expect(answers == [nil, nil, nil])
         #expect(transport.singleAttempts == ["/"])
+    }
+
+    /// A run that stopped on a folder's `MLSD`, after its `LIST` landed: the rows are that folder's
+    /// answer, and the folders after it are sent again.
+    @Test("a stop after a folder's rows landed keeps them, and sends the rest again")
+    func stopAfterRowsKeepsThem() throws {
+        let (backend, transport) = makeBackend()
+        transport.stopsAfterRowsOf = "/SYNERGIE"
+        let answers = try backend.listDirectories(at: paths(folders), isCancelled: { false })
+        #expect(answers[1]?.count == 2)
+        #expect(answers[2]?.count == 2)
+        #expect(transport.batches == [folders, ["/SYNERGIE/AGENCE"]])
     }
 
     @Test("a folder on another connection is refused before anything reaches the wire")
@@ -185,31 +239,78 @@ struct ForwardedBatchedListingTests {
 
 // MARK: - Double
 
-/// A transport whose batch and single listing can fail independently — which no shared flag on
-/// `FakeFTPTransport` can express — and which records **every attempt**, refused ones included, so
-/// a test can count the logins a failing server was asked for.
+/// A transport whose runs and single listings can fail independently — which no shared flag on
+/// `FakeFTPTransport` can express — and which counts **sign-ins** the way the server's log counted
+/// them: a run that does not stop signs in again for every section after a refused login, a run that
+/// stops at its first failure signs in once, and a single listing once.
 private final class ScriptedFTPTransport: FTPTransport, @unchecked Sendable {
     var listings: [String: String] = [:]
-    /// Folders the server refuses, in a batch and singly alike.
+    /// Folders the server refuses, in a run and singly alike.
     var refused: Set<String> = []
-    /// A batch run in which nothing landed — the shape `FTPCurlTransport` gives a failed run.
-    var batchLandsNothing = false
+    /// The server refuses the login.
+    var loginRefused = false
+    /// The section of a stopping run that gets no answer, while single listings work.
+    var noAnswerAt: Int?
+    /// The folder whose rows land before the run stops on its facts.
+    var stopsAfterRowsOf: String?
     var batchThrows = false
+    var batchMiscounts = false
     private(set) var batches: [[String]] = []
     private(set) var singleAttempts: [String] = []
+    private(set) var signIns = 0
 
     func listDirectory(_ remotePath: String) throws -> String {
         singleAttempts.append(remotePath)
+        signIns += 1
+        if loginRefused { throw FTPTransportError.loginDenied }
         if refused.contains(remotePath) { throw FTPTransportError.permissionDenied }
         return listings[remotePath] ?? ""
     }
 
+    /// The run that does not stop, which the subtree walk keeps.
     func listDirectories(_ remotePaths: [String], isCancelled: () -> Bool) throws -> [String?] {
         guard !isCancelled() else { throw CancellationError() }
         batches.append(remotePaths)
         if batchThrows { throw FTPTransportError.failure("batch") }
-        if batchLandsNothing { return remotePaths.map { _ in nil } }
+        signIns += loginRefused ? remotePaths.count : 1
+        if loginRefused { return remotePaths.map { _ in nil } }
         return remotePaths.map { refused.contains($0) ? nil : listings[$0] ?? "" }
+    }
+
+    func listingsUntilFirstFailure(
+        of remotePaths: [String],
+        askingFacts _: Bool,
+        isCancelled: () -> Bool
+    ) throws -> FTPBatchRun {
+        guard !isCancelled() else { throw CancellationError() }
+        batches.append(remotePaths)
+        if batchThrows { throw FTPTransportError.failure("batch") }
+        signIns += 1
+        if batchMiscounts { return FTPBatchRun(listings: [], stop: nil) }
+        var answered: [FTPListing?] = []
+        func stopped(_ cause: FTPBatchStop.Cause) -> FTPBatchRun {
+            let unsent = Array(
+                repeating: FTPListing?.none,
+                count: remotePaths.count - answered.count
+            )
+            return FTPBatchRun(
+                listings: answered + unsent,
+                stop: FTPBatchStop(index: answered.count, cause: cause)
+            )
+        }
+        if loginRefused { return stopped(.login) }
+        for (index, path) in remotePaths.enumerated() {
+            if index == noAnswerAt { return stopped(.connection) }
+            if refused.contains(path) { return stopped(.folder) }
+            if path == stopsAfterRowsOf {
+                let run = stopped(.folder)
+                var withRows = run.listings
+                withRows[index] = FTPListing(rows: listings[path] ?? "", facts: .unavailable)
+                return FTPBatchRun(listings: withRows, stop: run.stop)
+            }
+            answered.append(FTPListing(rows: listings[path] ?? ""))
+        }
+        return FTPBatchRun(listings: answered, stop: nil)
     }
 
     func makeDirectory(_ remotePath: String) throws {}
