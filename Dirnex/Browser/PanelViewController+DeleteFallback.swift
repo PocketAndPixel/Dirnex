@@ -66,22 +66,25 @@ extension PanelViewController {
     /// strong wording goes up and a late answer is dropped. On the NAS's LAN the request is tens
     /// of milliseconds. Every doubt — a refusal, a timeout, a file where the folder should be —
     /// answers `false`, the strong warning.
+    /// Returns the server task so a caller can wait until a late reply has been handled,
+    /// or `nil` when the answer is given without a request.
+    @discardableResult
     func askWhetherARecycleBinGoverns(
         _ paths: [VFSPath],
         within budget: Duration = recycleBinCheckBudget,
         answer: @escaping (Bool) -> Void
-    ) {
+    ) -> Task<Void, Never>? {
         if shareRecycleBinGoverning(paths) != nil {
             answer(true)
-            return
+            return nil
         }
         guard let bin = ShareRecycleBin.webDAVBin(catching: paths) else {
             answer(false)
-            return
+            return nil
         }
         let backend = backend
         let once = AnswerOnce(answer)
-        Task {
+        let check = Task {
             let isFolder = await BlockingWork.run { (try? backend.stat(at: bin))?.isDirectory == true }
             once.give(isFolder)
         }
@@ -89,6 +92,7 @@ extension PanelViewController {
             try? await Task.sleep(for: budget)
             once.give(false)
         }
+        return check
     }
 
     /// How long the delete sheet waits for a server to say whether its share keeps a recycle bin.
