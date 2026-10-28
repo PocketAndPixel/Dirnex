@@ -7,9 +7,14 @@ import Testing
 /// recording what the coordinator told it.
 final class EditorStandIn: NSObject, NSFilePresenter, @unchecked Sendable {
     let presentedItemURL: URL?
+    /// On a serial queue of its own, as a real editor answers from its own process. A plain
+    /// operation queue runs the coordinator's messages on a global user-initiated thread of this
+    /// process, which GCD did not start while those were all busy: on CI every editor heard nothing
+    /// and each save gave up after its patience (docs/NOTES.md ▸ Testing).
     let presentedItemOperationQueue: OperationQueue = {
         let queue = OperationQueue()
         queue.maxConcurrentOperationCount = 1
+        queue.underlyingQueue = DispatchQueue(label: "com.dirnex.tests.editor-stand-in")
         return queue
     }()
 

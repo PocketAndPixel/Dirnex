@@ -277,6 +277,23 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     three threads free, those tests took all of them, one computing and two waiting in
     `dispatch_once`. No worker was admitted, so one thread ran every merge itself, about 30 s here.
     It ends, so nothing was changed.
+  - **With the two fixed, the next CI run finished in 7 minutes and failed the presenter tests
+    instead.** On 2026-10-28, five of `CoordinatedFileWriteTests`' six tests failed with
+    `fileHeldByAnotherApp` after the 10 s patience. The stand-in editor heard nothing, not even
+    "save". A save made before an editor was registered went through, so coordination itself
+    worked there. Only the stuck-editor test passed, and it would pass whether or not any message
+    arrived.
+  - **A presenter's messages run at user-initiated QoS, so holding the default-QoS pool never
+    starved them.** The stand-in's `relinquishPresentedItem` ran on its `OperationQueue` at QoS 25.
+    With all 16 cooperative threads held by tasks at `.medium`, a save with an answering editor
+    took 0.01 s. With them held at `.userInitiated`, the same save failed exactly as on CI: 10.5 s,
+    `fileHeldByAnotherApp`, the editor told nothing until the hold ended. Held *global*
+    user-initiated threads starved it only at the kernel's cap (80 here; 64 still worked). With the
+    queue's `underlyingQueue` a private serial queue, the editor was told in 0.01 s under both
+    holds. What held CI's user-initiated threads is not known.
+  - **This one is the stand-in's, not the app's.** The app registers no presenter. A real editor
+    answers from its own process and its own threads, which the stand-in now models with a serial
+    queue of its own.
 - **The CI runner's display is 1x, so a pixel test that passes on a Retina Mac can fail there.**
   `bitmapImageRepForCachingDisplay` captures at the window's screen scale. Measured 2026-10-15 on
   `FieldBorderTests.darkensTheRingOnly`: CI found 24 changed pixels outside the allowed band in Light
