@@ -165,6 +165,11 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Swift Testing and `xcodebuild`
 
+- **Xcode's relaunch flag did not give Swift Testing a fresh host per repetition.** Measured
+  2026-10-28 on Xcode 27.1 with `-test-iterations 3 -test-repetition-relaunch-enabled YES`: the
+  same host started repetition 2 of fast tests while slow tests were still on their first run.
+  Several unrelated waits failed, and the run was stopped. Repeat full app runs with separate
+  `xcodebuild test` invocations, waiting for each to finish.
 - **`#expect(x as AnyObject === y)` crashes the compiler, not the test.** Seen 2026-10-24 on Xcode
   26: SILGen aborted with *"Found an invalid conformance in SILGen"* in a reabstraction thunk the
   macro's expansion builds, and the run reported only the file in *build commands failed*, with the
@@ -618,6 +623,18 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
         `RemoteFetchPromptTests`. The committed tree failed the same way, which is what cleared the
         change under test. At 60 s they passed at 40–56 s. Read the duration of a *passing* test
         against its budget: a margin of 3 s in a quiet run is the next evening's failure.
+      - **The unreadable-file sheet still had the old 30 s (2026-10-28).**
+        `CompareWatchTests.unreadableAgain` waits for a sheet, so it did not use the suite's 60 s
+        `shows` helper. A full-run trace after the `TreeTransferTests` cleanup fix saw FSEvents
+        deliver in 11 ms, its main-actor handler run at 12.2 s, the reread start at 25.5 s, and the
+        alert begin at 33.9 s. The host was the right window. That run passed: its next poll saw
+        the sheet at 34.2 s, and `settleUntil` checks readiness before the deadline. A poll just
+        before presentation can fail instead. `CompareSaveRig.sheet(within:)` now lets this one
+        first wait use 60 s too; other sheet waits keep 30 s. The real stream, invalid bytes,
+        alert text and unchanged-document assertions stay in place. With alert reporting removed,
+        the test still failed at 60.1 s. After restoring it, three separate full app runs passed
+        (2062 tests reported per run; live-server suites skipped), as did all 4653 core tests and
+        both linters. All 71 saved defaults keys were unchanged.
     - **A `sample` names whose code is on the main thread, not what makes the queue long.** The
       stall's profile put 40% of samples in `MultiLineFieldTests`' per-pixel `colorAt` loop. Skipped,
       the same wait landed at 30.1–30.5 s behind a 12.8 s stall: the other suites filled the time.

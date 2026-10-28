@@ -137,8 +137,8 @@ struct CompareSaveRig {
     }
 
     /// The sheet on the window once it is up.
-    func sheet() async throws -> NSWindow {
-        try await settleUntil { controller.window?.attachedSheet != nil }
+    func sheet(within: Duration = .seconds(30)) async throws -> NSWindow {
+        try await settleUntil(within: within) { controller.window?.attachedSheet != nil }
         return try #require(controller.window?.attachedSheet)
     }
 
