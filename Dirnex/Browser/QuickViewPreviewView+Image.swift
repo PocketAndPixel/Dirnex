@@ -124,10 +124,9 @@ extension QuickViewPreviewView {
         // `NSImage(data:)` for it: a GPR carries no embedded preview at all, so the bytes would be
         // read only to produce the same nothing, having downloaded a cloud file to do it.
         if isGoProRAW {
-            guard let converted = await BlockingWork.run(
-                { GPRConverter.shared.decodableCopy(of: url) }
-            ),
-                let decoded = await BlockingWork.run({ RAWImageDecoder.decode(converted) })
+            let converted = await BlockingWork.run { GPRConverter.shared.decodableCopy(of: url) }
+            guard let converted,
+                  let decoded = await BlockingWork.run({ RAWImageDecoder.decode(converted) })
             else { return nil }
             return NSImage(
                 cgImage: decoded,

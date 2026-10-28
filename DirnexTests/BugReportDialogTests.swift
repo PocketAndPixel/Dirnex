@@ -89,12 +89,12 @@ struct BugReportDialogTests {
         language: "de"
     )
 
-    private struct Dialog {
+    struct Dialog {
         let controller: BugReportController
         let window: NSWindow
     }
 
-    private func dialog(
+    static func dialog(
         form: BugReportForm = BugReportForm(),
         licensed: Bool? = true,
         crashReport: CrashReportFile? = nil
@@ -150,7 +150,7 @@ struct BugReportDialogTests {
 
     @Test("Send waits for a description, and each box's title shows what it sends")
     func opening() {
-        let dialog = dialog()
+        let dialog = Self.dialog()
         let controller = dialog.controller
         #expect(!controller.sendButton.isEnabled)
         #expect(controller.versionBox.title.contains("1.4.0 (512)"))
@@ -165,7 +165,7 @@ struct BugReportDialogTests {
 
     @Test("an unticked box leaves its field out of the body, and a ticked one puts it in")
     func boxes() throws {
-        let controller = dialog().controller
+        let controller = Self.dialog().controller
         type("The pane froze.", into: controller.descriptionView)
         #expect(try keys(of: controller.body()) == [
             "v", "description", "appVersion", "appBuild", "macOS", "macModel", "language",
@@ -186,7 +186,7 @@ struct BugReportDialogTests {
 
     @Test("a build that shows nothing about licenses offers no license box and sends no such field")
     func noLicensing() throws {
-        let controller = dialog(licensed: nil).controller
+        let controller = Self.dialog(licensed: nil).controller
         type("The pane froze.", into: controller.descriptionView)
         #expect(controller.licenseBox.isHidden)
         #expect(try !keys(of: controller.body()).contains("licensed"))
@@ -194,7 +194,7 @@ struct BugReportDialogTests {
 
     @Test("the home folder becomes ~ in what is typed")
     func redaction() throws {
-        let controller = dialog().controller
+        let controller = Self.dialog().controller
         type("Copying /Users/jane/Movies fails.", into: controller.descriptionView)
         let body = try #require(String(bytes: controller.body(), encoding: .utf8))
         #expect(body.contains("Copying ~/Movies fails."))
@@ -203,7 +203,7 @@ struct BugReportDialogTests {
 
     @Test("an incomplete email holds Send back and says why")
     func invalidEmail() {
-        let controller = dialog().controller
+        let controller = Self.dialog().controller
         type("The pane froze.", into: controller.descriptionView)
         controller.emailField.stringValue = "jane@"
         controller.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification))
@@ -222,7 +222,7 @@ struct BugReportDialogTests {
     @Test("Send sends exactly the bytes the preview shows, with headers that name nothing")
     func sendsWhatThePreviewShows() async throws {
         BugReportStubProtocol.reset()
-        let controller = dialog().controller
+        let controller = Self.dialog().controller
         type("The pane froze.", into: controller.descriptionView)
         controller.languageBox.performClick(nil)
         let preview = BugReportPreviewController(body: try controller.body())
@@ -249,7 +249,7 @@ struct BugReportDialogTests {
     ])
     func failure(reply: BugReportStubProtocol.Reply) async throws {
         BugReportStubProtocol.reset(reply)
-        let controller = dialog().controller
+        let controller = Self.dialog().controller
         type("The pane froze.", into: controller.descriptionView)
         controller.send(nil)
         await controller.sending?.value
@@ -276,7 +276,7 @@ struct BugReportDialogTests {
 
     @Test("the preview shows the body to select and copy, and can't be typed in")
     func previewIsReadOnly() throws {
-        let controller = dialog().controller
+        let controller = Self.dialog().controller
         type("The pane froze.", into: controller.descriptionView)
         let preview = BugReportPreviewController(body: try controller.body())
         preview.loadView()
@@ -289,7 +289,7 @@ struct BugReportDialogTests {
 
     @Test("Copy Report puts the exact body on the clipboard")
     func copyReport() throws {
-        let controller = dialog().controller
+        let controller = Self.dialog().controller
         type("The pane froze.", into: controller.descriptionView)
         let saved = NSPasteboard.general.string(forType: .string)
         defer {
@@ -311,7 +311,7 @@ struct BugReportDialogTests {
     @Test("Return starts a new line in the description, and ⌘Return sends")
     func returnAndCommandReturn() async throws {
         BugReportStubProtocol.reset()
-        let dialog = dialog()
+        let dialog = Self.dialog()
         let controller = dialog.controller
         type("The pane froze.", into: controller.descriptionView)
         #expect(controller.sendButton.keyEquivalent == "\r")
@@ -332,21 +332,6 @@ struct BugReportDialogTests {
         #expect(controller.sending != nil)
         await controller.sending?.value
         #expect(BugReportStubProtocol.received.count == 1)
-    }
-
-    @Test("Escape is Cancel's, and Tab leaves the description instead of typing a tab")
-    func escapeAndTab() throws {
-        let dialog = dialog()
-        let controller = dialog.controller
-        #expect(controller.cancelButton.keyEquivalent == "\u{1b}")
-        dialog.window.orderFront(nil)
-        defer { dialog.window.close() }
-        #expect(dialog.window.firstResponder === controller.descriptionView)
-        controller.descriptionView.insertTab(nil)
-        #expect(dialog.window.firstResponder === controller.stepsView)
-        #expect(controller.descriptionView.string.isEmpty)
-        controller.stepsView.insertBacktab(nil)
-        #expect(dialog.window.firstResponder === controller.descriptionView)
     }
 
     // MARK: - Keeping it

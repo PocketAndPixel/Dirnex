@@ -9,11 +9,12 @@ import Foundation
 /// wrong region alike (measured against real AWS 2026-08-12 — 404, 403, 403 and 301, all exit 0).
 /// The classification lives in the HTTP status and the `<Code>` element of the error document.
 ///
-/// The exit status is still read, but for a narrower question: whether the request reached a server
-/// at all.
+/// The exit status is still read, but for a narrower question: whether a whole answer arrived — a
+/// server reached, and the transfer not stopped part-way after its status line
+/// (``S3WriteOut/isAnswer(status:exitCode:)``).
 public enum S3ResponseError: Error, Sendable, Equatable {
-    /// The request never got an answer — `curl`'s own failure, classified by its exit code the way
-    /// the FTP backend does.
+    /// The request never got a whole answer — `curl`'s own failure, classified by its exit code the
+    /// way the FTP backend does, whether nothing answered or the transfer stopped part-way.
     case transport(S3TransportFailure)
     /// The server answered, and said no.
     case service(S3ServiceError)

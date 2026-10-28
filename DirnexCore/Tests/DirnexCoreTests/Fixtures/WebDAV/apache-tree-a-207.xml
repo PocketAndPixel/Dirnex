@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:" xmlns:ns0="DAV:">
+<D:response xmlns:lp1="DAV:" xmlns:lp2="http://apache.org/dav/props/" xmlns:g0="DAV:">
+<D:href>/basic/tree/a/</D:href>
+<D:propstat>
+<D:prop>
+<lp1:resourcetype><D:collection/></lp1:resourcetype>
+<lp1:getlastmodified>Fri, 23 Oct 2026 19:21:32 GMT</lp1:getlastmodified>
+<lp1:creationdate>2026-10-23T19:21:32Z</lp1:creationdate>
+<lp1:getetag>"a0-65e86e3476700"</lp1:getetag>
+<D:getcontenttype>httpd/unix-directory</D:getcontenttype>
+</D:prop>
+<D:status>HTTP/1.1 200 OK</D:status>
+</D:propstat>
+<D:propstat>
+<D:prop>
+<g0:getcontentlength/>
+</D:prop>
+<D:status>HTTP/1.1 404 Not Found</D:status>
+</D:propstat>
+</D:response>
+<D:response xmlns:lp1="DAV:" xmlns:lp2="http://apache.org/dav/props/" xmlns:g0="DAV:">
+<D:href>/basic/tree/a/a2/</D:href>
+<D:propstat>
+<D:prop>
+<lp1:resourcetype><D:collection/></lp1:resourcetype>
+<lp1:getlastmodified>Fri, 23 Oct 2026 19:21:32 GMT</lp1:getlastmodified>
+<lp1:creationdate>2026-10-23T19:21:32Z</lp1:creationdate>
+<lp1:getetag>"40-65e86e3476700"</lp1:getetag>
+<D:getcontenttype>httpd/unix-directory</D:getcontenttype>
+</D:prop>
+<D:status>HTTP/1.1 200 OK</D:status>
+</D:propstat>
+<D:propstat>
+<D:prop>
+<g0:getcontentlength/>
+</D:prop>
+<D:status>HTTP/1.1 404 Not Found</D:status>
+</D:propstat>
+</D:response>
+<D:response xmlns:lp1="DAV:" xmlns:lp2="http://apache.org/dav/props/" xmlns:g0="DAV:">
+<D:href>/basic/tree/a/f100</D:href>
+<D:propstat>
+<D:prop>
+<lp1:resourcetype/>
+<lp1:getcontentlength>100</lp1:getcontentlength>
+<lp1:getlastmodified>Fri, 23 Oct 2026 19:21:32 GMT</lp1:getlastmodified>
+<lp1:creationdate>2026-10-23T19:21:32Z</lp1:creationdate>
+<lp1:getetag>"64-65e86e3476700"</lp1:getetag>
+</D:prop>
+<D:status>HTTP/1.1 200 OK</D:status>
+</D:propstat>
+<D:propstat>
+<D:prop>
+<g0:getcontenttype/>
+</D:prop>
+<D:status>HTTP/1.1 404 Not Found</D:status>
+</D:propstat>
+</D:response>
+<D:response xmlns:lp1="DAV:" xmlns:lp2="http://apache.org/dav/props/" xmlns:g0="DAV:">
+<D:href>/basic/tree/a/a1/</D:href>
+<D:propstat>
+<D:prop>
+<lp1:resourcetype><D:collection/></lp1:resourcetype>
+<lp1:getlastmodified>Fri, 23 Oct 2026 19:21:32 GMT</lp1:getlastmodified>
+<lp1:creationdate>2026-10-23T19:21:32Z</lp1:creationdate>
+<lp1:getetag>"60-65e86e3476700"</lp1:getetag>
+<D:getcontenttype>httpd/unix-directory</D:getcontenttype>
+</D:prop>
+<D:status>HTTP/1.1 200 OK</D:status>
+</D:propstat>
+<D:propstat>
+<D:prop>
+<g0:getcontentlength/>
+</D:prop>
+<D:status>HTTP/1.1 404 Not Found</D:status>
+</D:propstat>
+</D:response>
+</D:multistatus>

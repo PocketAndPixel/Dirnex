@@ -223,7 +223,7 @@ final class BugReportController: NSViewController {
 /// The two multi-line fields. Tab and Shift-Tab move to the next control rather than typing a tab,
 /// since a tab character in a bug report is never what was meant and the keyboard must be able to
 /// leave the field.
-final class BugReportTextView: NSTextView {
+final class BugReportTextView: MultiLineTextView {
     /// Told after every edit.
     var onChange: (() -> Void)?
 

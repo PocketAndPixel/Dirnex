@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<d:error xmlns:d="DAV:" xmlns:s="http://sabredav.org/ns">
+  <s:exception>Sabre\DAV\Exception\Locked</s:exception>
+  <s:message/>
+  <d:lock-token-submitted>
+    <d:href>files/probe/dirnex-webdav-fixture/w/held.txt</d:href>
+  </d:lock-token-submitted>
+</d:error>

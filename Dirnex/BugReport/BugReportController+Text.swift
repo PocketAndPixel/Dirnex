@@ -183,9 +183,15 @@ extension BugReportController {
         localized: "The report is on the clipboard.",
         comment: "Report a Bug dialog: status after Copy Report."
     )
+    /// Says what should happen, not what did: the mail app taking the link is all Dirnex learns.
+    /// Measured 2026-10-24: Mail with no account showed Add Account instead of an email, and quit on
+    /// Cancel, while `NSWorkspace.open` answered `true`.
     static let mailOpenedMessage = String(
-        localized: "The report is in a new email in your mail app.",
-        comment: "Report a Bug dialog: status after Email Instead."
+        localized: "Your mail app should open a new email with the report. If it doesn't, copy the report instead.",
+        comment: """
+        Report a Bug dialog: status after Email Instead handed the report to the mail app. \
+        It may not open an email: Mail with no account shows its account setup instead.
+        """
     )
     static let noMailAppMessage = String(
         localized: "No mail app opened. Copy the report instead.",

@@ -72,8 +72,9 @@ public enum S3SegmentedDownload: Sendable {
 /// natively. Tests supply a fake fed the bytes real buckets sent, so the backend is exercised
 /// end-to-end with no network and no credentials.
 ///
-/// A method throws only when the request never got an answer — ``S3ResponseError/transport(_:)``,
-/// classified from `curl`'s exit code. **A refusal by the server is a returned value, not a
+/// A method throws only when the request never got a whole answer — ``S3ResponseError/transport(_:)``,
+/// classified from `curl`'s exit code, for nothing answering and for a transfer that stopped after
+/// its status alike (``S3WriteOut/isAnswer(status:exitCode:)``). **A refusal by the server is a returned value, not a
 /// throw**, and that split is the whole point: `curl` exits 0 for a missing key, a denied bucket,
 /// a bad signature and a wrong region alike, so a transport that threw on "failure" would have
 /// nothing to throw on and every S3 error would read as success.

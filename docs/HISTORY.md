@@ -1,4 +1,4 @@
-# Dirnex — build history (M0 → M30)
+# Dirnex — build history (M0 → M34)
 
 The shipped record of Dirnex's milestones: the milestone checklists as they were completed,
 plus the per-pass progress log — what was probed, what was decided, what was rejected and why.
@@ -22,7 +22,11 @@ whose own measurement rewrote its last slice. **M29** (a license, and the remind
 was planned 09-29 and closed 10-01, the app's share of selling Dirnex. It closed on a real beta,
 which found two bugs every test had passed over. **M30** (Report a Bug, and a Help menu to hold it)
 was planned 09-29 and closed 10-07, once the store's server took reports, on a report from a real
-beta. **After M19** carries the thirty-one dated
+beta. **M31** (a compare window of our own) was planned and closed 10-22, in five slices on one day.
+**M32** (WebDAV) was planned 10-22 and closed 10-24, its last pass running the live suite against
+Nextcloud in a container as well as Apache. **M33** (copying a change across, and saving) and
+**M34** (a three-way merge) were planned together on 10-25, M33 first because M34's result pane,
+undo and save are its; M33 closed 10-26 and M34 10-27. **After M19** carries the thirty-one dated
 passes from 2026-08-07 → 08-25 that landed outside a milestone of their own — it sits at the end
 rather than in date order, because it is the file's catch-all rather than a numeric slot. Two
 sections frame them, both handed over by the plan on 2026-09-01 once it had nothing left to say
@@ -13370,7 +13374,9 @@ was never sent live, since it opens a draft in the mail app; core tests pin its 
 **rate-limit and refusal messages** are pinned by app tests, and the server's answers by its own.
 **Escape** can't be tried live (LIVE-VERIFICATION.md). And one thing was seen once and is open: in
 a computer-use run, a click in the email field left the focus in Steps, so the address was typed
-there; whether a real click does the same isn't known.
+there; whether a real click does the same isn't known. **Closed 2026-10-24** (the last entry of
+§M32's log): it was the tool, and real clicks found the opposite case, now fixed; the messages and
+Escape were seen live the same day.
 
 Left deliberately undone: **anything the user didn't type or tick** — no logs, no screenshots, no
 file names or paths, and one crash report at most, the newest from the last 7 days, without the
@@ -15322,6 +15328,3181 @@ fraction of a second that the facts parser keeps.
   expectation; with the fix, it passes.
 - Core green (4078 tests). App green (1802 tests in 287 suites, only the expected
   `GestureWaitTests` issue; live-server suites skipped). Both linters clean. Changes left uncommitted.
+
+**2026-10-21: a user script finds what `/etc/paths.d` names, so `dotnet` resolves by name.** Asked
+for by Oleg, after asking whether `dotnet build` and `npm run build` work as scripts. A script's
+`PATH` was the app's own plus a fixed list of Homebrew and `/usr/local` prefixes, and an app
+launched from the Dock or Finder inherits launchd's `/usr/bin:/bin:/usr/sbin:/sbin`. The .NET SDK
+registers `/usr/local/share/dotnet` in `/etc/paths.d` and links nothing into `/usr/local/bin`, so
+`dotnet` was *command not found* while `npm`, which is in `/usr/local/bin`, worked.
+
+- **`ToolSearchPath` (core) reads what `path_helper` reads**: `/etc/paths`, then `/etc/paths.d` by
+  file name in byte order (`10-pmk-global` before `100-rvictl`, measured). A core test runs
+  `/usr/libexec/path_helper -s` with an empty `PATH` and compares its list with ours, on whatever
+  Mac runs the test.
+- **Appended, never reordered.** The inherited `PATH` comes first, then the fixed list, then the
+  system list, each directory only if it is missing. `path_helper` puts its list ahead of the
+  inherited one. Doing that here would change which copy of a tool wins for scripts that already
+  worked.
+- **Two deliberate differences from `path_helper`.** It emits `~/.dotnet/tools` literally
+  (measured). With a probe tool in a `~/bin` entry, bash and `/bin/sh` found it and zsh did not, so
+  the tilde is expanded here. A relative line, or one holding a `:`, is skipped, because a relative
+  `PATH` entry resolves against the script's working directory, which can be an unpacked download.
+- **Still not read: `~/.zprofile`, `~/.bash_profile` and the rc files.** A directory that only
+  those add, such as nvm's, stays off a script's `PATH`. A login shell per invocation would read
+  them, at the cost of the user's whole startup per file of a per-file script. Not taken here; the
+  next entry asks the shell once per run instead.
+- **Verified live, against the old wiring in the same session.** Both builds were launched with
+  `env -i … PATH=/usr/bin:/bin:/usr/sbin:/sbin open`, the environment a Dock launch gets, and the
+  app's `PATH` was read back with `ps eww`. A probe script run through
+  `run operation "userScript.PATH Probe"` printed `dotnet: command not found` with the system list
+  cut, and `/usr/local/share/dotnet/dotnet` and `10.0.300` with it in. The defaults domain was backed
+  up first and restored afterwards, and `check_defaults_unchanged.py` reported all 68 keys unchanged.
+  Cutting the call also fails the new app test (a tool reachable only through a fixture `paths.d`),
+  and only that test. Swapping the byte-order sort for `localizedStandardCompare` fails only the
+  core order test.
+- **Why nobody had seen it:** `open` from a shell hands the app the shell's environment (open(1)
+  says so). Oleg's running Debug build was a LaunchServices child of `launchd` and still carried a
+  VS Code terminal's `PATH`, which already held `/usr/local/share/dotnet`. Recorded in
+  LIVE-VERIFICATION.md.
+- Core green (4088 tests, +10). App green (1803 tests in 287 suites, only the expected
+  `GestureWaitTests` issue; live-server suites skipped). Both linters clean. Changes left uncommitted.
+
+**2026-10-21: a user script runs with the `PATH` the user's terminal has.** Asked for by Oleg the
+same evening, after asking whether Python, Rust and the other common toolchains would work. With
+only the entry above, a Dock-launched script found no `cargo`, because rustup adds `~/.cargo/bin` from
+`~/.bash_profile`. `python3` was Apple's 3.9.6 rather than the 3.13.5 in his terminal: python.org's
+`/usr/local/bin/python3` was there, but behind launchd's `/usr/bin`, since appending never reorders.
+`~/.local/bin` was missing as well. Every version manager that edits `PATH` in a startup file has
+the same problem.
+
+- **The shell is asked once per run.** `ShellPathProbe` (core) and `LoginShellPathReader` (app)
+  start `$SHELL -l -i -c '/usr/bin/printenv PATH > "$DIRNEX_SHELL_PATH_FILE"'` in the script's
+  folder. Its `PATH` is then widened by `ToolSearchPath` as before, which is also the fallback.
+  `bash -l -i -c` costs 4.0 ms median here against 1.9 ms for `bash -c`, paid once rather than per
+  file of a per-file script.
+- **The answer goes to a file, and stdout and stderr to `/dev/null`.** A startup file can print
+  anything, and a background job it starts would hold a stdout pipe open after the shell exits.
+- **The probe takes the drawer's terminal identity.** With Terminal.app's `TERM_PROGRAM` and
+  `TERM_SESSION_ID`, an interactive zsh wrote `~/.zsh_sessions/<id>.session` and `.history`
+  (measured), the trap `TerminalShell` already documents.
+- **A timeout of 5 s, then `killpg(pid, SIGKILL)`.** The first version killed the pid with
+  `SIGKILL`, on the strength of a Python probe in which interactive bash and zsh ignored `SIGTERM`.
+  The negative control with `terminate()` then passed, which is how it came out that `Process`
+  makes the child a process-group leader and `terminate()` reaches the whole group. A startup file
+  that runs `trap '' TERM` defeats `terminate()`, and a kill of the pid alone leaves its `sleep`
+  behind (both measured). The test now has a startup file that ignores TERM and starts a subshell,
+  and it fails under both wrong kills. NOTES.md ▸ External CLI tools has the table.
+- **Verified live, with the shell's answer ignored as the control.** Both builds were launched with
+  launchd's bare `PATH` (LIVE-VERIFICATION.md's `env -i … open`) and ran one probe script. Fixed:
+  `cargo 1.95.0`, Python 3.13.5 from the framework, `~/.local/bin/claude` and `dotnet`, with the
+  login shell's `PATH` first and `/opt/homebrew/sbin` and `/usr/local/sbin` appended. Control:
+  `cargo: command not found`, `/usr/bin/python3` at 3.9.6, no `claude`. The defaults domain was
+  restored from a backup, and all 68 keys matched it.
+- **Negative controls in the tests.** Ignoring the shell's answer fails the runner test where the
+  login shell's copy of a tool must beat a `paths.d` decoy. Handing the probe the inherited
+  environment fails the Terminal.app session test. `terminate()` and a pid-only kill each fail the
+  timeout test. The rest of those suites stayed green each time.
+- **Not carried: anything but `PATH`.** `JAVA_HOME`, `GOPATH`, `CARGO_HOME` and the like set in a
+  startup file do not reach the script. Both fallbacks are silent. A shell that cannot take
+  `-l -i -c` (tcsh, measured) falls back at once. A startup file slower than the timeout falls back
+  only after the full 5 s, on every run.
+- Core green (4093 tests, +5). App green (1809 tests in 288 suites, +6, only the expected
+  `GestureWaitTests` issue; live-server suites skipped). Both linters clean. Changes left uncommitted.
+
+**2026-10-23: an S3 transfer cut short is a failure, not a finished copy.** Found by the M32 session
+while it built WebDAV's `curl` reader: on the NAS, a download that ran out of time reported 200 and
+exit 28 with a sixth of the file on disk, and S3's runner reads a run the same way. It did.
+
+- **The hole.** `S3CurlRunner.perform` threw only on status 0, so any run that had a status was a
+  response, whatever `curl` exited. Measured through the shipped builders against
+  `Tooling/fake-s3-endpoint.py`: a `GET` cut by `--max-time` gave 200 and exit 28 with 528 332 of
+  3 129 010 bytes. A connection closed mid-body (the endpoint's new `CUT_AFTER`) gave 200 and exit
+  18. An unwritable destination gave 200 and exit 23, and no file. A scratch package compiled the
+  app's real `S3CurlRunner`, `S3CurlTransport` and their helpers over the core, and drove
+  `S3Backend.copyFile`. Against the cutting endpoint, the unfixed runner reported a **successful
+  copy** of a 100 000-byte file, and the fixed one threw `io(EIO)`. Against the plain endpoint, both
+  copied the object byte-identical.
+- **The rule moved into the core**, in the form WebDAV's reader uses: exit 0 is a response; 22 with
+  a 4xx or 5xx is `--fail`'s refusal and a response; anything else is a transport failure
+  (`S3WriteOut.isAnswer(status:exitCode:)`, `S3WriteOut.response(…)`). The runner hands it the exit
+  code. `S3WriteOut.Direction` replaces the runner's own enum, which is now a typealias, so no call
+  site changed.
+- **Parallel runs are read per section.** One process has one exit code for every transfer in it,
+  so both indexed write-outs gained `exit=%{exitcode}`, and `response(forSegment:…)` and
+  `response(forPart:…)` apply the rule to each. Measured: a cut segment reports 206 with exit 28
+  beside a finished one at exit 0, and a cut part reports **100** (the `Expect` go-ahead) with exit
+  28. Neither was a silent success before: assembly's length check refused the short segment, and
+  100 is not 2xx. So for these two this is a reclassification, and all three paths now share one
+  rule. A section that prints no exit code falls back to the process's.
+- **The same line closes an unmeasured case**: the verbs whose 200 carries the verdict in its body
+  (`CompleteMultipartUpload`, `DeleteObjects`, a listing page). Cut after the status line, a
+  truncated body held no `<Error>` and read as done.
+- **Tests:** `S3CutTransferTests`, 14, over eight real stderr captures in `Fixtures/S3`. Negative
+  control: with `isAnswer` reverted to `status != 0`, 8 of the 14 fail. The six that still pass
+  are the cases that must pass either way: a finished copy, the refusals, no answer, a section
+  that never ran, and the formats.
+- Core green (4313 tests, +14). App green (1834 tests in 290 suites, only the expected
+  `GestureWaitTests` issue; live-server suites skipped, so the S3 live suites did not run). Both
+  linters clean. Changes left uncommitted.
+
+### M31 — A compare window of our own (M)
+
+**Closed 2026-10-22**, the day it was planned. ⌥F3 opens Dirnex's own read-only, two-way,
+side-by-side window, offered as **Dirnex** first in Settings and chosen by Automatic when no external
+tool is installed. The engine is Myers in linear space with a cost limit, and over this repository's
+whole history (5 223 pairs of file versions) it never disagreed with `git diff --minimal`. The
+window keeps the panes level by row, colors each row with its own layout fragment, and names
+whatever no row can show: an encoding, a byte-order mark, line endings or whitespace the options
+overlooked. The Synchronize sheet and the conflict dialog open it too. FileMerge counts as installed
+only when an Xcode holds it, and runs through that Xcode's own `opendiff`, so it opens even with the
+Command Line Tools selected, where the `/usr/bin` shim failed without a word. Three findings are
+worth not re-deriving. Under TextKit 2 two panes can only be kept level by row, never by scroll
+offset (docs/NOTES.md ▸ Text fields and text views). A window opened from an app-modal one needs
+`worksWhenModal` and the modal window's level, or it opens behind it and takes no click
+(docs/NOTES.md ▸ Windows). And a label under the window-size priority is the first thing a longer
+translation erases (docs/NOTES.md ▸ Layout under a longer translation).
+
+Some paths were not exercised by the close, and are recorded rather than argued. **A Mac with no
+external diff tool** was a probe that hid FileMerge from LaunchServices, not a Mac without Xcode.
+**An external tool from the conflict dialog** (Kaleidoscope, BBEdit) was never launched live, only
+Dirnex's window. **Escape** can't be tried live (LIVE-VERIFICATION.md), and the keys are pinned by
+tests. **FTP and S3 pairs** were not run; they reach the same download funnel as SFTP.
+
+Left deliberately undone: **editing, copying a block across and saving** (Total Commander's compare
+tool), a later milestone's decision once this one has been used; **a three-way merge**, not planned;
+**a file over 64 MiB** in the window, which is refused by name and stays the external tools' job; and
+**a binary comparison**, which `ByteComparator` answers as "differ" and the window refuses by name.
+
+The section as the plan carried it through the milestone:
+
+**Planned 2026-10-22.** ⌥F3 Compare By Contents hands two files to FileMerge, Kaleidoscope or
+BBEdit, and most people who buy Dirnex have none of them. FileMerge ships only inside Xcode, and it
+is worse than absent without it: `/usr/bin/opendiff` is a shim on every Mac (it shares an inode
+with `xcodebuild` and `ibtool`), so `ExternalDiffTool` always finds it. Measured 2026-10-22 with the
+Command Line Tools as the developer directory, it exits 1 with *"tool 'opendiff' requires Xcode"*,
+and the launcher discards its stderr, so ⌥F3 most likely says "Opening in FileMerge…" and nothing
+opens. This milestone gives Dirnex its own read-only, two-way, side-by-side compare window, offered
+as **Dirnex** in the diff-tool picker. The external tools stay.
+
+Decided before Slice 1:
+
+- **Read-only and two-way.** Editing, copying a block across and saving (Total Commander's compare
+  tool) are a later milestone, decided after this one has been used. A three-way merge is not
+  planned.
+- **Lines are compared as bytes of the decoded text, the way git compares them.** Swift `String`s
+  compare by canonical equivalence, so *é* written precomposed and decomposed are equal strings and
+  different bytes. `ByteComparator` has already said these files differ, and a window that then
+  shows them as equal is wrong in the quiet direction.
+- **A line ends at `\n`, `\r\n` or a lone `\r`.** git splits at `\n` only, so a classic Mac file is
+  one line to it. Quick View shows such a file as lines, and so does this.
+- **Myers' algorithm in linear space, with a cost cap.** Measured on git 2.54 (2026-10-22): two
+  100 000-line files drawn from a ten-line alphabet take **12.7 s** with `--minimal` and **0.19 s**
+  with git's cap, for 1.1 % more changed lines. Below the cap the result is the minimum. Lines found
+  on only one side are set aside before the search, since they can never match; that is why two
+  unrelated documents of 20 000 and 10 000 lines take 0.01 s either way.
+- **The options are git's, so git can be the oracle.** Ignore whitespace at line end
+  (`--ignore-space-at-eol`), changes in its amount (`-b`) or all of it (`-w`); ignore line endings
+  (`--ignore-cr-at-eol`); and ignore case, which git lacks. Probed: git's whitespace is a space or a
+  tab, never `\v`, `\f` or a no-break space, and every one of those options also ignores CRLF
+  against LF and a missing final newline.
+- **The oracle is `git diff --no-index --minimal --numstat`.** CI checks out one commit, so the
+  checked-in corpus is this repo's own files with seeded edits, compared by git at test time. Small
+  cases are checked against a quadratic LCS table. A one-time run over the repo's whole history is
+  recorded in the slice note.
+- **When nothing visible differs, the window says what does.** An encoding, a byte-order mark, or
+  line endings under an ignore option can make two files differ with no changed line to show. A
+  blank comparison of files ⌥F3 called different would read as a bug.
+- **Two text views with blank filler lines**, not a table of aligned line pairs. Asked before
+  Slice 3 and answered by Oleg (2026-10-22): selection, find and a later editor come with text
+  views, and copying has to leave the fillers out.
+
+#### Slices
+
+1. **The diff engine** (core, additive). `TextLines` (splitting, terminators), `LineDiffOptions`,
+   `LineDiff` (the changed blocks), and Myers with the cap. Tests against the LCS table and the git
+   corpus, negative controls, and a timing on the pathological pair.
+2. **What the window shows** (core). Sliding each changed block to its most readable position (the
+   count stays the same), aligned rows with fillers and the original line numbers, differences
+   inside a changed line, next and previous change, the summary when nothing visible differs, and
+   reading both files without `TextPreview`'s 4 MiB limit, or with a limit the window states.
+3. **The window** (app). Two panes that scroll together, line-number gutters, the band between
+   them, an overview strip, keyboard navigation, the options, M17's syntax colors and Quick View's
+   find.
+4. **Wiring** (app). **Dirnex** first in Settings' diff-tool picker, and the default when no other
+   tool is installed; ⌥F3 and the Synchronize sheet's "Compare with"; FileMerge counted as
+   installed only when Xcode is; M2's leftover side-by-side text in the conflict dialog if it fits.
+   All 14 languages.
+5. **Live.** On this Mac, and with the developer directory pointed at the Command Line Tools.
+
+**Done when:**
+- ⌥F3 on a Mac with no external diff tool opens the window, for local, remote and archive files;
+- every corpus pair agrees with git's `--minimal` counts;
+- the pathological 100 000-line pair opens without a beachball;
+- two files that differ only in encoding or line endings say so rather than showing nothing.
+
+#### Progress
+
+**2026-10-22: Slice 1 landed** (core only; the app is untouched).
+
+- **Core:** `TextLines` (lines and how each ended), `LineDiffOptions` (git's options, and the
+  bytes a line is compared by), `LineDiff` (the changed blocks, and the two counts `--numstat`
+  reports) and `MyersDiff` (the search, on interned line identities, with its work list on the
+  heap rather than the call stack). Lines found on one side only are set aside before the search.
+- **Tests:** 23 in four new suites, and one release budget. `TextLinesTests` and `LineDiffTests` pin the line model and every
+  option, each whitespace row probed against git first. `LineDiffPropertyTests` checks 3 000
+  random pairs against a quadratic LCS table, and checks that a search cut short is still valid.
+  `LineDiffGitCorpusTests` edits 35 of this repo's files and compares each under all five option
+  sets with `git diff --no-index --diff-algorithm=minimal`. A release budget in
+  `PerformanceBudgetTests` covers the dense pair.
+- **Measured:**
+  - **This repository's whole history** (a throwaway harness, not checked in): 5 223 pairs of
+    file versions, 36.9 million lines, **no disagreement with git's minimal counts** under any of
+    the five option sets, and 221 under a deliberately wrong one.
+  - **The dense 100 000-line pair:** 0.40–0.48 s in release with the limit, for 53 825 changed
+    lines on each side against a minimum of 52 591 (2.3 % more; git's own limit gives 1.2 %).
+    Without the limit it takes 28 s, where git takes 12.7 s. Two unrelated documents of 20 000 and
+    10 000 lines take 0.04 s.
+- **Decided in the slice:**
+  - **The cost limit is the square root of the line count, never under 256.** It counts the steps
+    each of the two searches takes, so a pair with up to about 512 changed lines is always solved
+    exactly.
+  - **When the limit is hit, the box splits where either search got furthest.** That is a point on
+    a valid path, so the answer is still correct, only no longer the shortest. Below the limit the
+    answer is minimal, which is what the history run checked.
+- **Found on the way:** the corpus test's first run disagreed with git on 4 of 35 files, and the
+  engine was right. The test's own edits appended text after a CRLF line's CR, leaving a lone CR
+  in mid-line, which `TextLines` splits and git does not. The tell was in the counts: inserted
+  minus removed differed, so the two were reading different lines, not aligning the same lines
+  differently (docs/NOTES.md ▸ git).
+- **Negative controls:** with git's `-w` mapped to the default options, 34 of 35 corpus files
+  disagree. The property test asserts that the limit really cut more than 100 searches short. The
+  precomposed/decomposed test first asserts that Swift calls the two strings equal.
+- `SeededGenerator` moved from `PerformanceBudgetTests` to `Tests/…/Support`, now that three suites
+  use it.
+
+**2026-10-22: Slice 2 landed** (core only; the app is untouched).
+
+- **Core:**
+  - `ChangeSliding` moves each changed block to its most readable position.
+  - `AlignedRow` and `RowAlignment` lay out the rows, with gaps.
+  - `LineFingerprint` decides which lines of a block share a row.
+  - `InlineDiff` and `InlineDifference` mark the words that differ inside a row.
+  - `ComparedText` reads a whole file, keeping its encoding and byte-order mark.
+  - `TextComparison` holds the rows, the change list, navigation, and what the rows cannot show.
+  - `TextPreview`'s decoder now also reports the encoding it settled on, so Quick View and the
+    window decode the same way.
+- **Tests:** 34 in five new suites. Fourteen placement cases are git's own answers, probed first.
+  Random texts check that sliding keeps every count minimal and every pairing valid, and that
+  every line lands in exactly one row, in order.
+- **Measured:**
+  - **Block placement against git's `-U0` hunks over this repository's history**
+    (`--diff-algorithm=minimal --indent-heuristic`, a throwaway harness):
+
+    | | Files matching git exactly | Blocks matching |
+    |---|---|---|
+    | No sliding | 82.3 % | 78.3 % |
+    | First scoring | 93.7 % | 83.1 % |
+    | **Shipped** | **98.3 %** (5 136 of 5 226) | 83.7 % |
+    | Shipped, without `.xcstrings` | 98.4 % | **98.9 %** (15 576 of 15 756) |
+
+    Three rewrites of `Localizable.xcstrings` hold 7 422 of the 7 606 unmatched blocks. Most of
+    the rest are the two searches pairing different copies of a repeated line, with the same
+    counts. In some of them Dirnex reads better than git: removing a method from `VaultMounts.swift`,
+    git's block starts at the previous method's `}` and stops inside the body.
+  - **A whole comparison, in release:** 0.43 s for the dense 100 000-line pair, 0.52 s for two
+    unrelated 200 000-line files (one block, paired line for line), 0.17 s for two unrelated
+    documents, and 0.03 s for a 20 000-line document with 200 edits.
+- **Decided in the slice:**
+  - **Placement follows git's order:** first, a block that can sit opposite a block on the other
+    side goes there. Otherwise the cheapest boundaries win, and ties go to the lowest position.
+    The scoring is Dirnex's own, not a port of git's indent heuristic. A boundary costs 2 if the
+    line after it is blank, 2 if the line before it is not, and 2 for every four columns of the
+    deeper of the two lines around it. The first version looked only at the line after the
+    boundary. It cut into method bodies when a method was added at the end of a type, and that
+    case is the gap between the second and third rows of the table.
+  - **Pairing:** lines go on one row when their Dice coefficient over adjacent character pairs is
+    at least 0.5. The pairs are chosen for the best total, in order. Unpaired lines between two
+    pairs go side by side from the top, so a block costs as many rows as its longer side. Above
+    10 000 candidate pairs, lines pair from the top.
+  - **Inside a row, words are compared, not characters:** words, runs of whitespace, and single
+    other characters, with the same search. Two marked words with only whitespace between them
+    are one stretch. Offsets are UTF-16. A line over 10 000 units is left whole.
+  - **A file is read whole or refused, never truncated.** The limit is `ByteComparator`'s 64 MiB
+    pre-scan limit, past which ⌥F3 already asks first. Binary and undecodable files are refused
+    by name.
+  - **What the rows cannot show is named, even when other lines differ:** encoding, a byte-order
+    mark on one side only, and line endings, whitespace or case that the options overlooked.
+  - **Under the default options, a line whose only change is its ending is a changed row with
+    nothing marked inside.** Its `lineEndingsDiffer` is set, and Slice 3 has to draw something
+    for it.
+- **Negative controls:** with sliding off, 2 of the 14 placement cases fail. With the scoring
+  reduced to "lowest position", 1 fails: the repeated paragraph, where git chooses a higher
+  position.
+
+**2026-10-22: Slice 3 landed** (the window; nothing opens it yet, which is Slice 4).
+
+- **Core:** `ComparisonPaneText`, one pane as the text its view holds. It has a line per row and an
+  empty line per gap, each ending in `\n`. It also gives the row offsets, the widest row in columns
+  (a tab to the next stop of four, a wide character two), and copying back to the file's own text.
+- **App (`Dirnex/Compare/`):**
+  - `CompareWindowController`, with `+Keys` and `+Banner`.
+  - `ComparePaneView`: the header, the gutter, and the scroll view.
+  - `CompareTextView`, which copies the file's text and finds rows by layout fragment.
+  - `CompareRowFragment` and `CompareRowColoring`, which paint each row's color across the pane.
+  - `CompareLineNumbers`, `CompareScrollSync`, `CompareBandView`, `CompareOverviewView`,
+    `CompareToolbar`, `CompareTextStyle` and `CompareColors`.
+  - **Not yet in the string catalog:** `xcodebuild` does not add new strings to it, so the
+    catalog and the 14 languages are Slice 4's.
+- **Tests:** 7 in the core (`ComparisonPaneTextTests`) and 9 in the app (`CompareWindowTests`):
+  - TextKit 2 stays on, and each row's fragment carries its row's fill.
+  - No row wraps: every row is exactly one line tall.
+  - Copying leaves out the gaps.
+  - The two panes show the same row at the top at rows 3 000, 12 000 and 19 000 of a
+    20 000-row pair, and back at 500.
+  - The keys, the counter, the banner, and the overview's buckets.
+  - The delegate answers TextKit's fragment selector.
+- **Measured, and what it decided:**
+  - **Keeping the panes level by scroll offset does not work under TextKit 2.** With every row the
+    same fixed height and nothing wrapping, row 1 000 of 100 000 sat at 14 716 in one document and
+    15 609 in another, against 16 000 by arithmetic, and far rows moved after every scroll. So the
+    panes are kept level by row: the row at the top of one pane is found, and the other pane is
+    scrolled to its own copy of that row. That takes 0.2 ms and held for six turns. As a negative
+    control, the same test with the scroll offset copied put row 2 356 opposite row 3 000, and
+    row 401 opposite row 500.
+  - **A pane must not wrap, and must not size itself to its widest line.** A text view that resizes
+    itself to fit its text was still typesetting 100 000 rows after ten minutes. A fixed width, set
+    once the view is in its scroll view, shows them at once. Each row is one line of fixed height
+    that clips rather than wraps. The pane is 15 % wider than its widest row needs, so a wide
+    character that runs over is clipped, never wrapped.
+  - **A full layout is not an option:** 2.2 s for 5 000 rows and 34 s for 20 000.
+  - **Row colors are drawn by the rows' own layout fragments.** A row's position is known only
+    there, and a computed position drifts from the text. Under TextKit 2 an empty last line has no
+    fragment of its own, so every row ends in `\n`.
+  - **The gutter is a view beside the scroll view, not an `NSRulerView`.** Seen live: with the
+    ruler installed, the clip view still started under it, so the first five columns of every line
+    were hidden.
+  - **A scroll to a far row is checked and repeated, up to three times.** A jump back up from row
+    19 000 to row 500 otherwise landed on row 499.
+- **Decided in the slice:**
+  - **Keys:** a local monitor, as in `TabShortcuts`, because disabled main-menu items would
+    swallow ⌘F (Favorites) and ⌘G (Places) in this window.
+    - ⌥⌘↓ and ⌥⌘↑ go to the next and previous change; neither is bound in any preset.
+    - ⌘F, ⌘G and ⇧⌘G find with the system find bar, in the pane holding the keyboard.
+    - ⎋ closes the find bar, else the window.
+  - **Find is the system's `NSTextFinder` bar, not Quick View's.** Quick View's find is built into
+    `QuickViewTextView` and its filter bar; the system bar works on any text view.
+  - **The window opens on its first change.** Changing an option computes the comparison again
+    and keeps the same line of the left file at the top.
+  - **The band is a straight bar beside each change, not FileMerge's slanted band.** The gaps
+    already line the two sides up.
+  - **Colors are GitHub's split-diff tints:** red for what the left side had, green for what the
+    right side has, and gray for a gap. Both halves are authored.
+- **Seen live**, through a temporary probe that opened the window on a real pair from this repo's
+  history and captured it (since removed). Checked in both appearances:
+  - row colors, gaps and the marks inside a changed line;
+  - the gutter's ↵ and the banner;
+  - the band and the overview strip;
+  - the find bar, and both panes level at every step.
+
+  Running the Debug build changed four keys of the shared defaults domain: frecency, a tab's
+  cursor, Sparkle's last check, and the window's frame. They were put back, and the domain then
+  compared unchanged.
+
+**2026-10-22: Slice 4 landed** (wiring).
+
+- **Core:**
+  - `CompareTool` is what ⌥F3 opens: Dirnex's window, or an installed external tool. Settings lists
+    Dirnex first. Automatic is the first installed external tool, else Dirnex, so a user who has
+    Kaleidoscope, BBEdit or Xcode keeps the tool ⌥F3 opened before, and a Mac with none compares in
+    Dirnex instead of being told to install something. `ExternalDiffTool.preferred` became
+    `CompareTool.preferred`.
+  - `ExternalDiffTool.fileMerge(locateBundle:)` runs the `opendiff` inside the Xcode that holds
+    FileMerge.app, which LaunchServices finds, rather than the `/usr/bin` shim. So FileMerge counts as
+    installed exactly when an Xcode is, under any name or location.
+- **App:**
+  - `CompareOpener` reads both files whole off the main thread and opens the window, or names the file
+    it could not read and why: not text, no encoding reads it, unreadable, or over the limit.
+  - ⌥F3, the Synchronize sheet's Compare Contents… and the conflict dialog all open the window through
+    it. ⌥F3 and Synchronize share one path: the download, the pre-scan, then the window or the tool. A
+    pair over 64 MiB is refused for the window before anything is read, and the alert states the limit.
+  - Each pane's header names the file where it lives, as Copy Path writes it: a server's or an
+    archive's own path, never the temporary copy.
+  - `CompareWindow` overrides `worksWhenModal`, and opens at the modal window's level when one is up,
+    dropping back to normal once none is (`+Modal`). Both are for the Synchronize window, which is
+    app-modal at level 8.
+  - The conflict dialog has a Compare Contents… button when both items are local files with their
+    bytes here. It compares the file already there (left) with the incoming one (right), so red is
+    what Replace would lose. The dialog stays up.
+  - The main menu says "Compare By Contents…" for the window and "Compare with FileMerge…" for a tool.
+    The Synchronize row and the conflict button say "Compare Contents…" for the window.
+  - Settings' picker: "Automatic (FileMerge)", then Dirnex, then the installed tools, and a footer that
+    says what Automatic picks.
+  - **Strings:** the 19 that Slice 3 left out of the catalog and 5 new ones, in all 14 languages, with
+    the change count as a plural. The 4 sentences telling the user to install a diff tool are gone.
+- **Tests:** 8 in the core (`CompareTool`, and FileMerge found only through its Xcode) and 9 in the
+  app (`CompareWiringTests`): sides named by origin and colored by that name, each refusal naming its
+  file, the Synchronize row fetching a server's file first, where the conflict button appears, and the
+  window working while another is modal.
+- **Measured before writing it:**
+  - Xcode's own `opendiff`, run directly with `DEVELOPER_DIR` at the Command Line Tools, opened
+    FileMerge and exited 0. The shim exits 1 under the same setting (docs/NOTES.md ▸ Xcode's tool
+    shims).
+  - In a modal session a plain window's click was dropped and a `worksWhenModal` window's arrived.
+    With no session both arrived. That control failed twice first, because a synthetic click on a
+    window that is not key only makes it key (docs/NOTES.md ▸ Windows).
+- **Found on the way:**
+  - The Synchronize row handed a server pair's own paths to the diff tool. It now goes through the
+    download funnel.
+  - A compare alert raised from the Synchronize window hung on the browser window behind it. Compare
+    alerts now go to `alertHostWindow`.
+- **Negative controls:** FileMerge pointed back at the shim fails five core expectations, one of them
+  the shim-only Mac. With the Synchronize row wired to nothing, the fetch test fails.
+- **Seen live**, in the Debug build with the release copy quit, all saved tabs cleared and Dirnex
+  chosen in Settings:
+  - ⌥F3 on two marked local files opened the window on change 1 of 25.
+  - ⌥F3 on two members of a zip named them inside `texts.zip`, not the extraction.
+  - From the Synchronize row, the window opened behind the Synchronize window and took clicks there
+    (change 1 → 2 of 14). Measured with `CGWindowListCopyWindowInfo`: Synchronize at layer 8, the
+    compare window at 0. After the level fix the window opened at 8, in front, and was back at 0 as
+    soon as Synchronize closed.
+  - The conflict dialog's button opened the comparison and the dialog stayed up. Cancel left the
+    target untouched.
+  - The picker listed Automatic (FileMerge), Dirnex, FileMerge. The File menu, opened with Dirnex in
+    front, read "Compare with FileMerge…" under Automatic and "Compare By Contents…" under Dirnex.
+    With Settings in front instead, the item kept its old title both times, which proves nothing.
+  - Two binary files were refused with an alert naming `a.bin`.
+
+  The run changed six keys of the shared defaults domain: frecency, both saved tabs, the compare
+  tool, the compare window's frame and Sparkle's last check. The domain was cleared and the backup
+  imported, and all 68 keys then compared unchanged.
+- **Not seen live:** a server pair, the developer directory at the Command Line Tools, and a file over
+  the limit. All three are Slice 5's.
+
+**2026-10-22: Slice 5 landed** (live). Run in the Debug build with all saved tabs replaced by the
+run's own, the throwaway servers up (`scripts/live_test_servers.sh`) and the defaults domain backed
+up first.
+
+- **A Mac with no external diff tool**, made by a temporary probe that hid FileMerge from
+  LaunchServices (removed afterwards; the shipped file matches the Slice 4 commit). The compare tool
+  was Automatic, and Settings named it "Automatic (Dirnex)". ⌥F3 opened Dirnex's window on:
+  - two marked files on the SFTP throwaway, after 3 logins, with the copies in `DirnexRemote`;
+  - a server file against a local one by the two cursors, at 0 logins because the copy was cached;
+  - two members of a zip, named inside the zip.
+- **What no row shows, said:**
+  - Same text in UTF-8 and UTF-16: "No line differs. The left file is Unicode (UTF-8) and the right
+    file is Unicode (UTF-16LE). Only the right file starts with a byte-order mark." The accents and
+    the Cyrillic decoded the same on both sides.
+  - CRLF against LF: three changed rows marked ↵, "Lines marked ↵ end differently." With Ignore Line
+    Endings on: "No differences" and "Some lines shown as the same end differently."
+  - A byte-order mark on one side only: "No line differs. Only the right file starts with a
+    byte-order mark."
+- **The dense 100 000-line pair** (two files drawn from a ten-line alphabet) opened without a
+  beachball: 35 281 changes. A sampler timed an AppleEvent round trip every 50 ms, and the worst
+  over the whole open was **130 ms**, against the 2 s a beachball takes. A scroll from the top to row
+  100 000 cost at most 34 ms, and the two panes stayed level to the last line. The Debug build took
+  about 7 s to show the comparison.
+  - The sampler's first version measured nothing: AppleScript answers `name` of an application
+    itself, without asking the app. Its control was to freeze the app for a second with `SIGSTOP`,
+    which the first version did not notice and the second (on `run operation` with an unknown id)
+    reported as 1 027 ms (docs/LIVE-VERIFICATION.md).
+- **Over the limit:** two 68 MB files were refused before a byte was read: "These files are large
+  (68,2 MB). Dirnex compares files of up to 67,1 MB." That is 64 MiB in this Mac's decimal format.
+- **With the developer directory at the Command Line Tools** (`DEVELOPER_DIR` in the app's own
+  environment, Xcode still installed): Automatic was FileMerge, and ⌥F3 opened it with `-left` and
+  `-right` on the pair. The `/usr/bin` shim under the same setting still exits 1.
+- **In German**, the compare window and the Settings footer read correctly.
+- **Two bugs found and fixed:**
+  - **A server file's header named no server.** Copy Path writes a server file's bare path, so a
+    server file and a local one read as two local paths. The header now puts the path bar's name for
+    the server in front, `oleg@127.0.0.1:/private/tmp/…/Compare-new.swift` (`compareDetail(for:)`).
+  - **The change counter vanished at the window's minimum width in German**, and truncated in
+    English. It gave way first (compression resistance 250 against the option controls' 750). The
+    toolbar now reserves the width of the comparison's longest counter text at priority 740, which
+    the window has to respect, so the narrowest window is 949 pt in German and the counter is always
+    whole.
+- **Tests:** 2 in the app, one for each bug (the header names the server; at the window's minimum
+  width the counter shows "Change 30 of 30" in full). With the counter's old priority the second
+  fails on the width.
+- **Found on the way:** a Debug copy launched with arguments was still running through two test
+  runs, because `pgrep -f '…/Dirnex$'` does not match a command line that ends in its arguments. The
+  first German screenshot was of the old binary (docs/LIVE-VERIFICATION.md).
+
+  The run changed eight keys of the shared defaults domain, among them both saved tabs, the active
+  pane, the compare tool and the compare window's frame. The domain was cleared and the backup
+  imported, and all 68 keys then compared unchanged. The servers were stopped and their host key
+  unpinned, and the app removed its `DirnexRemote` copies on quit.
+
+**2026-10-22: Dirnex is the default compare tool, and its window opens over the app.** Asked for
+with two screenshots: Settings reading "Automatic (FileMerge)", and a compare window off to one side
+of the browser window. Automatic opened the first installed external tool, so any Mac with Xcode got
+FileMerge. A key that was never written now reads as `dirnex`. Automatic stays in the picker, and
+choosing it saves the empty string, so a user who picked it keeps it.
+
+The window now opens the way the dialogs do (`DialogWindowPlacement`): where it was last left,
+otherwise centered on the browser window rather than the screen. A remembered frame on a display
+the browser window is not on is ignored, and the window centers instead. The window is resizable, so
+its size comes back too. The autosave name moved from `Dirnex.CompareWindow` to
+`Dialog.CompareWindow`, so a frame saved before is forgotten once. Placement moved from `init` to
+`present`, so a window a test builds registers no autosave name.
+
+- `CompareWiringTests` (app): a fresh install's tool is Dirnex, and a saved empty string stays
+  Automatic. Full runs green (4163 core, 1830 app).
+- **Verified live** on the Debug build, launched by path with no other copy running. The compare
+  tool's key was deleted, and FileMerge is installed.
+  - ⌥F3's command on two marked files opened Dirnex's window, not FileMerge. Settings read "Compare
+    files with: Dirnex".
+  - The window's center matched the browser window's, (702, 568) in screen points. The screen's
+    center is at x = 864.
+  - A real drag by the title bar (full-screen control) saved the new frame. Closed and opened again,
+    the window came back at the same top. The drag had left it 12 pt past the screen's left edge,
+    and AppKit pulled it back to x = 0 on restore.
+  - A frame seeded at 900×600 came back at that size and place after a relaunch.
+  - Background computer-use could not move the window at all (docs/LIVE-VERIFICATION.md).
+  - The run changed five keys of the shared defaults domain: frecency, the compare tool, the left
+    tabs, the compare window's frame and `SULastCheckTime`. The domain was cleared and the backup
+    imported, and all 70 keys then compared unchanged.
+
+**2026-10-22: Automatic is gone from the compare picker.** Asked for straight after the entry above,
+with a screenshot of the picker reading "Automatic (FileMerge)" over Dirnex and FileMerge. With
+Dirnex the default, the row only repeated the rows under it, and all it added was switching tools by
+itself when another was installed. The picker now lists Dirnex, then each installed tool.
+
+- **A saved Automatic is Dirnex too** (`CompareTool.identifier(saved:)`), like nothing saved. It
+  was the default until the entry above, so an external tool is now used only when it was picked by
+  name. The first version turned a saved Automatic into the tool it opened (FileMerge on a Mac with
+  Xcode), which kept that user off Dirnex; Oleg asked for Dirnex by default, so it was dropped
+  before landing. Nothing is written back: the empty string reads as Dirnex every time.
+- **A chosen tool that is uninstalled now compares in Dirnex**, where it used to fall to the first
+  installed tool. The choice is kept, so reinstalling the tool brings it back. Settings shows the
+  Dirnex row meanwhile, which is what ⌥F3 opens, and showing it saves nothing.
+- The footer drops its sentence about Automatic and says the external tools appear once installed,
+  in all 14 languages. "Automatic" and "Automatic (%@)" stay in the catalog for the editor picker.
+- **Tests:** `CompareToolTests` (core) pin the fallback to Dirnex and the saved-value rule: nothing
+  saved and a saved Automatic are Dirnex, and a saved tool is kept even while uninstalled.
+  `CompareWiringTests` (app) pins that a fresh install and a saved Automatic both resolve to Dirnex
+  with FileMerge installed. Full runs green (4163 core, 1830 app), and `check_localization_keys.py`
+  found all 1146 extracted keys in the catalogs.
+- **Verified live** on the Debug build, launched by path with no other copy running:
+  - With a saved empty string and FileMerge installed, ⌥F3's command opened Dirnex's window and
+    FileMerge did not start. Settings showed Dirnex, and the empty string was still saved after
+    quitting.
+  - With `kaleidoscope` saved and Kaleidoscope not installed, ⌥F3's command opened Dirnex's window
+    and FileMerge did not start. Settings showed Dirnex, and `kaleidoscope` was still saved after
+    Settings had been opened and after quitting.
+  - The first version's picker, opened with full-screen control, listed Dirnex and FileMerge and no
+    Automatic. The rows are unchanged since.
+  - A Debug copy launched outside the session was running on the binary from before this change.
+    It was quit before the backup, so the restore kept the session it saved. Each run changed the
+    same five keys as above, and after each restore all 70 compared unchanged.
+
+**2026-10-22: the picker calls Dirnex's window "Built-in".** Asked for with a screenshot of
+"Compare files with: Dirnex": the other rows are apps, and Dirnex is the app the picker is in, not a
+compare tool. "Embedded" was the other name on the table. "Built-in" won because it is the word
+macOS already uses for a Mac's own parts ("Built-in Display") and reads as a choice beside app
+names; "(Dirnex)" after it says nothing inside Dirnex's own Settings.
+
+- **Only the label changed.** The saved identifier is still `dirnex`, so no setting moves. The name
+  left the core, where `CompareTool.displayName` returned "Dirnex" as a product name for every
+  language, because the core ships no translations; the app's `CompareTool.settingsTitle` names the
+  row now, next to `compareItemTitle`. Nothing else showed that name: "Opening in …" and "Compare
+  with …" only ever name an external tool.
+- **Translated in all 14 languages.** Russian, Ukrainian and Polish name a noun ("Встроенное
+  средство", "Вбудований засіб", "Wbudowane narzędzie"), since a bare adjective has no gender to take
+  after "Compare files with" there. The footer's middle sentence says "Built-in shows them side by
+  side in a Dirnex window", with the same word in each language.
+- **Tests:** `CompareWiringTests.settingsTitles` (app) pins that an external tool's row keeps its
+  name, that Dirnex's row is the catalog's "Built-in" in the running language, and, read through
+  each compiled `.lproj`, that all 13 other languages translate it. Full runs green (4163 core,
+  1831 app), and `check_localization_keys.py` found all 1147 extracted keys in the catalogs.
+- **Verified live** on the Debug build, launched by path after quitting a Debug copy started outside
+  the session on the previous binary. With `dirnex` saved, Settings read "Compare files with:
+  Built-in" under the new footer. Launched with `-AppleLanguages (de)`, it read "Dateien vergleichen
+  mit: Integriert", and the footer's three lines fit above "Dateien bearbeiten mit". The two launches
+  changed frecency and `SULastCheckTime`; after the restore all 70 keys compared unchanged.
+
+**2026-10-22: a marked pair opens older-first, and the window can swap its sides.** Asked about with
+two screenshots: `test copy.txt`, a copy of `test.txt` with one line added, sorted above it by name.
+⌥F3 on the two marked files opened the copy on the left, and the window drew the added line red, as
+removed. A marked pair went in display order, and the window's colors read left as before and right
+as after (`CompareColors`), so which side a file landed on depended on the sort column.
+
+- **A marked pair in one pane opens with the older file on the left** (`olderFirst`), by
+  modification date. Equal dates keep display order. The two panes' cursor files keep the physical
+  rule, left pane on the left: the user placed those panes, and Synchronize reads them the same way.
+- **Swap Sides** puts each file on the other side: ⌘U, or a ⇄ button at the head of the option
+  controls, drawn as a one-segment control like the change arrows. ⌘U follows Total Commander's
+  Ctrl+U, which swaps its panels, and no command is bound to it by default. The pair is compared
+  again rather than mirrored, so the window shows what opening it the other way round would; the
+  titles change when the new comparison is shown, together with the text, and the line at the top
+  stays at the top. "Swap Sides" is translated in all 14 languages.
+- Moving between changes went to `CompareWindowController+Changes`, since the swap took the
+  controller past `type_body_length`. `currentChange`'s setter widened to internal for it.
+- **Tests:** `CompareSelectionTests` pin the older-first order (an older file sorting below), its
+  control (dates already older-first keep display order) and the tie. `CompareWindowTests` pin ⌘U
+  and the button: names, text and each change's direction flip, and flip back. With the reorder or
+  the swap removed, those tests failed (2 and 6 issues). The swap test first waited two seconds and
+  timed out in the full run, where the comparison is queued behind other suites; it waits through
+  `settleUntil` now. Full runs green (4163 core, 1834 app), `check_localization_keys.py` clean.
+- **Verified live** on the Debug build, launched by path after quitting a Debug copy started before
+  the session. The left tab was seeded on a fixture shaped like the report, both files marked. Run
+  Compare By Contents opened `test.txt ↔ test copy.txt` with the added line green on the right. ⌘U
+  made it `test copy.txt ↔ test.txt` with the line red on the left, and the ⇄ button put it back.
+  The run changed frecency, the left tabs and `SULastCheckTime`; after the restore all 71 keys
+  compared unchanged. **Not run live:** the cursor pair, which this pass does not change.
+
+### M32 — WebDAV (M)
+
+**Closed 2026-10-24**, two days after it was planned. WebDAV is Dirnex's fifth remote protocol: a
+`WebDAVBackend` in the core over stock `curl`, behind the connect sheet, the saved servers and every
+gesture the other remotes have. It logs in with Basic or Digest, over HTTPS with a pinned
+certificate or plain HTTP with a note, and it ran live on three servers: the NAS over both ports,
+macOS's own Apache, and Nextcloud 34's sabre/dav in a container. That last one is the second server
+family the plan's risk row asked for, and the listing parser read it unchanged. A listing is one
+`Depth: 1` PROPFIND, and a subtree is batched a level at a time on one connection. A delete is one
+request. A create is guarded by `If-None-Match: *` and F4's save-back by the entity tag, and a lock
+held elsewhere is named in the alert. A download resumes, and past 8 MiB it splits into up to four
+ranges. An upload carries its date wherever the server says it took it, which is Nextcloud. The
+delete sheet asks a NAS whether the share keeps a `#recycle` before promising a permanent delete.
+Three findings are worth not re-deriving. Apache hands out a weak tag for a second after any write,
+and Nextcloud one strong tag for every write in a second, so neither can guard a save in that
+second (docs/NOTES.md ▸ curl (WebDAV)). In a batch, a wrong password costs one failed login per
+section unless the first section carries `fail` and the run `--fail-early` (also there). And
+a server installed in a container has a first login that a parallel live suite races over
+(docs/NOTES.md ▸ Live suites).
+
+Some paths were not exercised by the close, and are recorded rather than argued. **The
+changed-certificate branch** and **an edit saved through the sheet** were never run. **Digest, F2's
+inline rename and ⇧F2** were not tried in the app, though the live suite runs Digest through the
+app's transport. There was **no server without COPY**. **Dragging out to Finder** cannot be
+synthesized. **Open With, Share, ⌥F5 and user scripts** reach the same fetch the compare and
+checksum runs used. **Put Back in a `#recycle`** over WebDAV is unmeasured. **The delete sheet's bin
+check** was run against the throwaway Apache, not the NAS, whose earlier runs showed `#recycle` as an
+ordinary folder. **The bare name's timing** was measured through the test host, not the app.
+
+Left deliberately undone: **Depth infinity**, whose answer is one unbounded document; **locks of our
+own**, since the entity tag guards the write; **NTLM, Negotiate and OAuth**; **setting a time on
+Apache**, which has no way to take one (Nextcloud's `X-OC-Mtime` is used where it is answered);
+**Apache's offset PUT** as a segmented upload, which RFC 9110 forbids; **quota**, which the NAS does
+not report; **CalDAV, CardDAV, versioning and WebDAV ACLs**; **a Trash**, which the protocol does not
+have, so a NAS's `#recycle` softens the delete sheet instead; and **Nextcloud's own trash**, which is
+outside the files tree and leaves the sheet's strong wording there.
+
+The section as the plan carried it through the milestone:
+
+**Planned 2026-10-22.** WebDAV is the remote protocol that Nextcloud, ownCloud, Synology and QNAP
+NASes, and a long list of hosted storage services offer, and Dirnex speaks none of it. SFTP, FTP and
+S3 each got a backend of their own. This milestone adds the fifth protocol the same way: a
+`WebDAVBackend` in the core, reached through stock `curl`, behind the connect sheet, the saved
+servers and every gesture the other remotes already have. Oleg turned on the NAS's WebDAV Server for
+it, on HTTP 5005 and HTTPS 5006, with anonymous access and `DavDepthInfinity` off, for the
+`dirnex-test` account.
+
+Probed 2026-10-22 against that server before any Swift, with `curl` 8.7.1 and the credential on
+stdin:
+
+- **The NAS is Apache `mod_dav`** (`Server: Apache`, `DAV: 1,2` plus Apache's own
+  `propset/fs/1`, Basic realm `SYNO_WebDAV Storage`). **macOS ships the same server**:
+  `/usr/sbin/httpd` 2.4.67 with `mod_dav`, `mod_dav_fs`, `mod_auth_digest` and `mod_ssl` ran
+  unprivileged on `127.0.0.1:8088` from a twenty-line config and answered MKCOL 201, PROPFIND 207, a
+  wrong password 401 and Depth infinity 403. So the live suite gets a throwaway server with nothing
+  to install, and a wrong password can be tried there, never on the NAS (its Account Protection
+  locks the account after a few failures).
+- **That is one implementation family, not two.** A suite green against both proves agreement with
+  Apache, not with WebDAV (§6 has the row). Docker is on this Mac, so a Nextcloud container (sabre/dav,
+  a different codebase) can supply the second family, with Oleg's OK for the image download.
+- **`nas.local` costs 5.37 s a request without `-4` and 0.016 s with it.** That is the mDNS stall
+  NOTES.md ▸ Resolving a host name records, and `HostDialer` applies unchanged. The NAS's address
+  moved from .3 to .7 since September, so the bare name is the handle worth saving.
+- **The live properties arrive under the prefix `lp1`, bound to `DAV:` on each `response`**
+  (`<lp1:getlastmodified>`), while `href`, `prop` and `status` use `D:`. A parser that matches the
+  prefix `D:` reads every row and finds no size, date or type on any of them. Match by namespace URI.
+- **A collection is known by `<resourcetype><collection/>`, never by a trailing slash.** The account
+  root lists the shared folders as `/home`, `/share` and `/media` without one, while every href a
+  level down has it. GET on a collection answers 403, not an index.
+- **Hrefs come back percent-encoded in lowercase hex**, with `;`, `+`, `=` and `&` (as `&amp;`)
+  left literal, `[` and `]` encoded, and a decomposed é kept byte for byte (`cafe%cc%81`). So paths
+  are compared decoded, never as the string that was sent: the uppercase hex `curl` sent would miss
+  the self row. A `+` is a plus, and decoding it as a form would rename the file to one with a space.
+- **A PROPFIND with no `Depth` header is Depth infinity** (RFC 4918), so it gets the same 403 as an
+  explicit one. Every listing sends `Depth: 1`, and a subtree is a walk.
+- **The write verbs are richer than SFTP's and FTP's.** MKCOL answers 201, 405 when it exists and
+  409 when the parent is missing. PUT answers 201 new and 204 replaced. **DELETE of a whole tree is
+  one request**, the recursive delete `RemoteTransportBackend` walks for the other two. COPY and MOVE
+  run on the server, across shared folders too (home → share); `Overwrite: F` answers 412 and a MOVE
+  into itself 403.
+- **There is a create-if-absent.** PUT with `If-None-Match: *` answers 201 when new and 412 when
+  the file exists, bytes untouched. That is the guard `RemoteTransportBackend`'s doc comments say
+  neither other protocol has. `If-Match` with a stale ETag answers 412 too, so a write-back can check
+  the server's copy by its ETag, which `RemoteFileRevision` already carries for S3.
+- **`Destination` must be an absolute URL.** A path-absolute one, which RFC 4918 allows, gets a bare
+  400 "Bad Request" and nothing else. The server's IP spelling of itself was accepted.
+- **The modification time cannot be set, and one way of trying reports success.** PROPPATCH of
+  `getlastmodified` answers 409 "Property is read-only". `Win32LastModifiedTime`, which Windows'
+  client sends, answers **200 OK** and changes nothing; it is stored as a dead property. Nextcloud's
+  `X-OC-Mtime` header is ignored. A 200 from PROPPATCH is therefore never read as "time carried".
+- **A lock held elsewhere is its own outcome.** With a LOCK on a file, PUT answers 423. A DELETE of
+  the folder holding it answers **424 Failed Dependency**, deletes nothing, and names the locked
+  member in a multistatus body. As with S3's batch delete, the body is the outcome, and the status is
+  neither 204 nor 207.
+- **Resume works**: a Range GET answered 206 and left a byte-identical file (60 000 of 100 000
+  bytes moved), and onto a complete file 416, so the size is checked first, as for S3.
+- **Apache writes at an offset**: PUT with `Content-Range: bytes 2-3/6` answered 204 and changed
+  those two bytes. RFC 9110 says a server must refuse that, so it carries no feature until a second
+  server family proves it.
+- **No quota.** RFC 4331's `quota-available-bytes` comes back 404 in the propstat.
+- **HTTPS presents the same self-signed Synology certificate as FTPS on port 21**, with an identical
+  key pin. `curl` exits 60 without trust, 207 with `--pinnedpubkey`, and 90 on a wrong pin before any
+  data moves. `FTPCertificate` and the trust sheet carry over unchanged.
+- **A delete on this NAS lands in the share's `#recycle`**, which is an ordinary row in the listing
+  (the probe folder is sitting there now). The protocol itself has no Trash.
+- 32 MiB went up at 85 MB/s and came down at 95 MB/s, byte-identical, so one `curl` per transfer is
+  not the limit on a LAN.
+
+Decided before Slice 1:
+
+- **A backend of our own over stock `curl`**, as FTP and S3 have. The credential rides on stdin
+  (`-K -`), trust is `--pinnedpubkey` paired with `--insecure` through the existing enum, `-4` comes
+  from `HostDialer` per config section, and the status is read from a labelled write-out with the
+  exit code demoted, S3's inverted classifier, since this is HTTP. `URLSession` would rebuild the
+  pin, the progress meter, the dialer and the classifier this codebase already has for `curl`, and
+  would be the only in-process network stack among the remote backends. Its one real advantage,
+  keeping the connection between requests, is what FTP's batched invocations already buy: many
+  PROPFINDs in one `curl` run reuse one connection. Riding the OS mounter, as SMB does, is not this
+  milestone: a mount trusts a certificate system-wide, where Dirnex pins it per saved server.
+- **Basic authentication, and Digest when the server's challenge asks for it.** Basic goes out
+  preemptively, with no 401 round trip. The scheme is read once from the connect probe's 401 and kept
+  for the connection, instead of `--anyauth`, which pays the extra round trip on every request.
+  NTLM, Negotiate and OAuth tokens are out; Nextcloud's app passwords are Basic.
+- **HTTPS by default. Plain HTTP is a deliberate switch with a cleartext note**, as plain FTP is,
+  because Basic sends the password in every request. It cannot be refused: the NAS's default port is
+  plain HTTP.
+- **A location is a base URL plus a root path**: scheme, host as typed, port, the path the account
+  starts at (`/remote.php/dav/files/<user>/` on Nextcloud, `/` on the NAS) and the user name. The
+  root is part of the backend id. The Keychain item follows FTP's shape without it,
+  `<scheme>:<user>@<host>:<port>`, since two roots on one server share one password.
+- **The parser reads the RFC, not Apache's spelling**: `XMLParser` with namespaces on, elements
+  matched by URI, only `propstat`s whose status is 200, hrefs that may be absolute URLs (the RFC
+  allows them, other servers send them), decoded to bytes before any comparison.
+- **One request per verb, in its safe spelling.** Create uploads with `If-None-Match: *`, rename and
+  move are MOVE with `Overwrite: F`, copy within a server is COPY (`ServerSideCopySupport`), delete is
+  one DELETE whose body is read, and F4's write-back sends `If-Match` with the ETag it read.
+- **No time is carried and none is compared.** `copyMetadata` reports the time as not carried
+  through `RemoteMetadataPlan`, as for S3, and `DirectorySync` refuses comparing by timestamp: an
+  uploaded copy is stamped when it was written.
+- **No locks of our own.** Finder locks around a write; Dirnex relies on the ETag instead, and a 423
+  or 424 says that the file is locked by someone else, by name, rather than "permission denied".
+- **Never Depth infinity**, even on a server that allows it: the answer is one unbounded document,
+  parsed whole. Folder sizes and Find Files walk with `Depth: 1`, batched per level.
+
+#### Slices
+
+1. **Location, hrefs, the listing parser and errors** (core, additive). `WebDAVLocation`,
+   `WebDAVHref` (decoding, the strict encode set NOTES.md ▸ curl gives for FTP, decoded comparison),
+   `WebDAVMultistatusParser` and `WebDAVResponseError` (401, 403, 404, 405, 409, 412, 423, 424 and
+   507, and member errors inside a multistatus). The fixtures are bytes captured from the NAS and the
+   local Apache, not written from the RFC, with negative controls for each finding above: the `lp1`
+   prefix, lowercase hex, `+`, a decomposed name, a collection with no slash, a 404 propstat, a 424
+   body.
+2. **The read half** (core). `WebDAVProcessArguments` with its stdin config, `WebDAVTransport`,
+   `WebDAVBackend` (list, stat by `Depth: 0`, read with resume, `capabilities` `.read`) and the
+   connect probe (OPTIONS for the `DAV` header, the 401 for the scheme), against an injected fake fed
+   the captured bytes.
+3. **Connect and browse** (app). `WebDAVCurlTransport`, the connect sheet's fifth protocol
+   (`ConnectServerWebDAVFields`: host or URL, port, HTTPS or HTTP with the note, root path, user,
+   password), `PanelViewController+ConnectWebDAV`, routing and capabilities on `CompositeBackend`,
+   `ServerKind.webdav` and `ServerEndpoint.webdav` with the trusted pin, the sidebar glyph, the path
+   bar, Edit Server, reconnect and session restore, and the FTPS trust sheet for a self-signed
+   certificate. Live against the NAS: browse, trust the certificate, F5 a file out byte-exact.
+4. **The write half** (core, then app). MKCOL, upload by `-T` (never to a URL ending in `/`, which
+   appends the local name, NOTES.md ▸ curl for S3), the create-if-absent guard, MOVE, COPY, DELETE
+   with its body, the ETag-guarded write-back, `acceptsUploads`, and the metadata report.
+   `capabilities` becomes `[.read, .write]`.
+5. **Every gesture the other remotes have.** The batched subtree walk for folder sizes, ⌥F7 Find
+   Files (M22's fields), copy, paste and drag (M23), M24's hand-offs, Quick View and F4.
+6. **Live, and the record.** `WebDAVLiveIntegrationTests` against the throwaway Apache, over HTTP
+   and over HTTPS with a self-signed certificate, gated on the config `scripts/live_test_servers.sh`
+   writes; the NAS over both ports; the second server family if a container is approved; all 14
+   languages; and a WebDAV column in [LOCATION-SUPPORT.md](LOCATION-SUPPORT.md).
+
+**Done when:**
+- the NAS's `dirnex-test` account connects over HTTPS after trusting its certificate once, and over
+  HTTP with the cleartext note, and the bare name `nas` reaches it in well under a second;
+- browsing, F5 both ways, F6 rename and move (on the server), F7, F8 (one request), F4 with its
+  write-back, Quick View and folder sizes all work there, byte-exact;
+- a name with Cyrillic, a decomposed é, and `# % ; + ? & = [ ]` survives create, list, rename and
+  delete;
+- a write-back over a file changed on the server since it was read is refused by its ETag, not
+  overwritten, and a locked file says it is locked;
+- the live suite is green against the throwaway Apache, and its executed-test count shows it ran;
+- LOCATION-SUPPORT.md has a WebDAV column, every cell argued.
+
+Expected to be left undone, each for its own reason: **Depth infinity**; **locks of our own**;
+**NTLM, Negotiate and OAuth**; **setting the time**, unless a Nextcloud server makes `X-OC-Mtime`
+measurable as a per-server capability; **Apache's offset PUT** as a segmented upload; **quota**;
+**CalDAV, CardDAV, versioning and WebDAV ACLs**; and **a Trash**, which the protocol does not have.
+
+#### Progress
+
+**2026-10-23: Slice 1 landed** (core only; the app is untouched).
+
+- **Core:**
+  - `WebDAVLocation`: the descriptor `davs://` or `dav://` + `<user>@<host>:<port><root>`, the
+    root stored decoded in one normal form, the mapping between the pane's paths and the server's
+    (the root compared as bytes), request URLs, and the Keychain item `<scheme>:<user>@<host>:<port>`.
+  - `WebDAVHref`: an href decoded segment by segment into a server path, byte comparison of paths,
+    and the strict encoding for requests.
+  - `WebDAVMultistatusParser`: elements by namespace URI, values only from a 2xx `propstat`, an
+    href only directly under `<response>`, an outcome row reported once per href it lists, and
+    RFC 9110's three HTTP date forms beside RFC 3339.
+  - `WebDAVListing`: the folder found by decoded bytes, the rows directly inside it, and each row
+    as a `FileEntry`.
+  - `WebDAVResponseError`: `WebDAVMethod`, `curl`'s exit codes below HTTP, and a refusal
+    classified by status, method and the members a 207 or 424 body names.
+- **Tests:** 68 in five new suites. The fixtures are 13 real bodies under `Fixtures/WebDAV`: the
+  same folder made on the NAS and on macOS's Apache and listed both ways, the account root, a
+  listing that holds a locked file, and the refusals.
+- **Measured while capturing them:**
+  - **A tag read in the same second its file was written is weak, and `If-Match` with it answers
+    412** for a file nobody else touched. Two seconds later the unchanged file reads back
+    `"6-65e74002dd28e"` where it read `W/"6-65e74002dd28e"`, and `If-Match` with the `W/` dropped
+    answered 204. So Slice 4's write-back cannot send the tag as it was read, and two readings of
+    one file have to be compared without the `W/`. Which of the two fixes it takes, re-reading or
+    dropping the marker, is Slice 4's decision; the second leans on Apache's way of making tags.
+  - **A lock stops only writes.** With a LOCK held on a file, GET answered 200, PROPFIND 207, and a
+    COPY *from* it 201. A 423 therefore first arrives with the write half.
+  - The two servers return the same hrefs in different orders, and macOS's Apache sends no
+    `getcontenttype` for a collection where the NAS sends `httpd/unix-directory`. A MOVE of a folder
+    holding a locked file answers the same 424 body as a DELETE.
+- **Decided in the slice:**
+  - **The user name is split at the authority's last `@`, after the root is cut off at the first
+    `/`.** Hosted services log in with an e-mail address, and Nextcloud's root contains it again.
+  - **Four kinds of href are refused rather than repaired, and counted:** a segment that decodes
+    to contain `/`, a `.` or `..` segment (F5 would write into the parent folder), bytes that are not
+    UTF-8, and a relative href, which no server measured sends.
+  - **When no row is the folder that was asked for, the folder is the row every other row sits
+    in.** That is what a reverse proxy at a prefix the server does not know produces, and the
+    entries are rebuilt from the folder the pane asked for. Rows with no such folder are refused.
+  - **A lock maps to `EBUSY` until Slice 4.** Its own sentence needs a `VFSUnsupportedReason` and
+    14 translations, and only writes can meet it.
+  - An empty user name is a location without credentials, for a public share.
+- **Found on the way:** the test meant to pin the href rule passed with the rule removed. A row of
+  properties takes its first href, and the lock token comes after the file's own, so the fixture
+  could not tell. The rule decides only for an outcome row whose `<error>` carries an href (RFC 4918
+  §16), and a test of that shape now fails without it.
+- **Negative controls:** each of four deliberate breaks fails tests: accepting every `propstat`,
+  taking an href anywhere, comparing paths as `String`s, and decoding `+` as a space. In the tests
+  themselves, Swift's `==` and `hasPrefix` are first shown to call the two spellings of é equal,
+  S3's form decoder is shown to rename `d+e`, the fixture's text is checked to spell its properties
+  `lp1:`, and a 424 without its body is shown not to be a lock.
+
+**2026-10-23: Slice 2 landed** (core only; the app is untouched).
+
+- **Core:**
+  - `WebDAVProcessArguments`, with `WebDAVSession`, `WebDAVAuthScheme`, `WebDAVDepth` and
+    `WebDAVConfigFile`: `-q` first, the scheme spelled `--basic` or `--digest`, `-K -` only when
+    credentials go out, the pin through `FTPTrust`, PROPFIND with six named properties inline, a
+    download with `--fail` and `-C -`, and the certificate probe.
+  - `WebDAVWriteOut`: labelled lines plus `%{header_json}` on stderr, and the rule that turns one
+    `curl` run into a `WebDAVHTTPResponse` or a transport failure.
+  - `WebDAVTransport`: two verbs, `propfind` and `download`.
+  - `WebDAVBackend`: list by `Depth: 1`, stat by `Depth: 0`, download with resume, and
+    `capabilities` `.read`.
+  - `WebDAVConnectProbe` with `WebDAVChallenge` and `WebDAVConnectError`.
+- **Tests:** 68 in six new suites, 136 across WebDAV. 18 new fixtures, 14 of them `curl`'s own
+  stderr from real runs against the NAS and macOS's Apache. The exit code is in each name, and the
+  fake replays them through the shipped reader.
+- **Measured while building it:**
+  - **A download cut short by `--max-time` reported status 200 with exit 28**, and left 584 179 of
+    3 129 010 bytes under the file's name. So the exit code decides before the status. S3's runner
+    lets any status through, so a download that outruns its 3600 s budget would count as copied there
+    (NOTES.md ▸ curl (WebDAV)).
+  - **`%header{}` gives the first of several headers only.** The challenge `Negotiate`, `NTLM`,
+    `Basic` came back as `Negotiate`, so the headers ride `%{header_json}`.
+  - **`~/.curlrc` is read unless `-q` comes first.** A `--head` in it turned a GET into a HEAD that
+    exited 0. FTP and S3 do not pass `-q`.
+  - **Apache answers a PROPFIND for a file named as a collection (`photo.jpg/`) with a bare 400.**
+    A listing that gets 400, 404 or 409 therefore asks once more without the slash, and a file there
+    is `notADirectory`.
+  - Digest is two requests per `curl` (no nonce in a new process), and a Basic header sent to a
+    Digest location was logged with no user rather than as a failed login.
+- **Decided in the slice:**
+  - **The probe is two `Depth: 0` PROPFINDs of the root, not OPTIONS.** The NAS sends no `DAV` header
+    without credentials, and with them answers OPTIONS on a missing path with 200 and `DAV: 1,2`.
+    Nextcloud exempts OPTIONS from authentication. So OPTIONS proves neither the root nor the
+    password. The first PROPFIND goes without credentials and the 401 names the scheme. The second
+    goes with them, and its 207 proves the password, the root and WebDAV at once. A server without
+    WebDAV answers 405.
+  - **Both schemes offered: Basic over HTTPS, Digest over plain HTTP.** An account still logs in
+    where reads are public (Basic, then Digest once if that is all the 401 offers), because such a
+    server may want the account for writes.
+  - **Redirects are reported with their target, not followed**, so credentials never go to a place
+    nobody chose. The root is answered without a request, as FTP's and S3's are. Any transport
+    failure in the backend is `EIO`, as theirs is.
+- **Live, through the shipped argument builders and reader** (a throwaway package over the core,
+  which checked every run's argv for the password):
+  - **The NAS over HTTP 5005**, by the bare name `nas` dialed as `nas.local -4`: connected in 0.39 s
+    and listed `/` and `/home`. A file listed as a folder was `notADirectory`; a missing file was
+    `notFound` and left no file behind. A download from 100 000 bytes resumed with 3 029 010 reported,
+    and came out byte-identical (SHA-256) to a direct `curl`.
+  - **The NAS over HTTPS 5006:** exit 60 with no trust and 90 on a wrong pin; with the NAS's pin, the
+    same run passed in full.
+  - **macOS's Apache:** Digest picked and listed; Basic found behind Negotiate and NTLM; a wrong
+    password `credentialsRefused`; a public folder with no account; `credentialsRequired`,
+    `notWebDAV(405)`, `redirected` and `rootNotFound`. In the access log the first request of every
+    connect went with no user.
+- **Found on the way:** the first live run reported a root that is a file as a 400 refusal. The
+  probe asks for the root as a collection, which gets Apache's 400, and its unit test had been fed a
+  207 that Apache never sends for that request. The probe now applies the listing's rule, and a test
+  feeds it the real 400.
+- **Negative controls:** each of seven deliberate breaks fails tests: status deciding alone, the
+  first header value only, no file fallback in a listing, credentials sent before the challenge,
+  commas inside quotes splitting a challenge, backslash escapes ignored, and no `-q`. The probe's
+  file-root rule fails its test when removed. The quoted-comma control first passed: no test string
+  put `, Scheme ` inside quotes. A test now does.
+
+**2026-10-23: Slice 3 landed** (core and app). Read-only, as planned: `capabilities` stays `.read`
+and `acceptsUploads` leaves WebDAV out until Slice 4.
+
+- **Core:** `ServerKind.webdav`, and `ServerEndpoint.webdav(location:authentication:trustedPublicKey:)`
+  with `ServerConnections.settleWebDAV`. `WebDAVLocation.displayAddress` is the sidebar tooltip, the
+  root's URL rather than `davs://`. The location files its password like any other, and a public
+  share files none. `WebDAVAddress` splits what the Host field holds. `isRemoteConnection` and
+  `LocationSource` name WebDAV.
+- **App:**
+  - `WebDAVCurlTransport`, over `CurlProcess`, a runner with no protocol in it. FTP and S3 keep their
+    own copies for now.
+  - `CompositeBackend` registers, routes and reports capabilities.
+  - The connect sheet's fifth protocol (`ConnectServerWebDAVFields`): HTTPS by default, the HTTP note,
+    a Path row, and a blank user for a public share.
+  - `PanelViewController+ConnectWebDAV`: the core's probe, FTPS's trust alerts (which now take a host),
+    and a sentence for each `WebDAVConnectError`.
+  - Reconnect and session restore, Edit Server, the globe glyph, the path bar's root title, and 14 new
+    strings in all 14 languages.
+- **Tests:** 20 core tests in two new suites and 23 app tests in four. The new-tab, glyph and
+  trust-alert suites now include WebDAV. Core 4340 and app 1857 green; the live server suites skipped
+  for want of their config, and nothing under them changed.
+- **Decided in the slice:**
+  - **The scheme the probe settles is stored in the endpoint, as FTPS's pin is.** A restored tab
+    registers without asking the server anything, and guessing costs a refused login rather than a
+    round trip: the NAS offers Basic alone over HTTP and macOS's Apache Digest alone. A sidebar
+    connect probes again, and a changed scheme or pin is written back into the saved record.
+  - **The Host field takes a whole URL.** Leaving the field, or pressing Connect, spreads it over the
+    security, port, path and user fields, so the sheet shows what will be dialed. With a scheme the
+    path is percent-decoded under the href rules; without one it is literal, as the Path field is.
+  - **An edit carries the scheme and the pin while scheme, host and port are unchanged**, and drops
+    both otherwise. The user and the root may change without dropping them.
+  - **Removing a saved server keeps the password if another saved root on the same account uses
+    it**, since the Keychain item leaves out the root.
+  - Five FTP failure sentences became named accessors, so each sentence WebDAV shares keeps one key.
+- **Live, against a throwaway macOS Apache** (Basic over HTTPS with a self-signed certificate at
+  `/basic`, Digest over HTTP at `/digest`). A temporary probe gave the build the password from its
+  environment, so nothing touched the Keychain. It was removed afterwards and the build rebuilt.
+  - The sidebar connect raised the trust alert. Its fingerprint, and the pin it saved, matched
+    `openssl`'s for the served certificate. In the server log: a PROPFIND with no user drew the 401,
+    then the Depth 0 probe and the Depth 1 listing went with credentials. The saved record was
+    settled to `basic` and the pin.
+  - F5 brought `random.bin` (3 MB) out byte-identical in one GET. `café #%;+?&=[].txt`, with a
+    decomposed é, kept its name bytes exactly, and `Кириллица` listed.
+  - After a quit and relaunch, the restored tab reconnected with one PROPFIND: no probe, no prompt,
+    and the cursor back on its file.
+  - Digest connected with its 401/207 pairs and settled to `digest`.
+  - The sheet drew the WebDAV rows with the HTTP note. A Nextcloud URL pasted into Host spread to
+    HTTPS, 443, the decoded path and the e-mail login on Connect.
+  - The defaults domain was restored afterwards and compared unchanged.
+- **Live against the NAS**, the same day, with two saved servers for `dirnex-test` by the bare name
+  `nas`: HTTPS 5006 with no pin, and HTTP 5005. A second temporary probe had the app read the
+  existing SFTP Keychain item itself (one prompt, answered by Oleg) and keep the password in memory.
+  Nothing was written to the Keychain, the probe was removed, and the defaults domain was restored
+  and compared unchanged.
+  - HTTPS connected to the account root (`home`, `media`, `share`). The record settled to `basic`
+    and the pin `gkHDtx…`, which is `openssl`'s for the NAS certificate and the saved FTPS server's
+    pin. The trust alert was answered at the screen rather than by the run, so its contents were not
+    read this time; the Apache run above read them.
+  - F5 of `media/temp/_voices/female.wav` (1.7 MB) came out byte-identical to the same file read
+    through the SMB mount of that share (SHA-256 `7c74bb7a…`): two protocols, one file on disk.
+  - HTTP connected and settled to `basic` with no pin, since the NAS offers Basic alone there.
+  - After a relaunch, both panes came back on their NAS tabs, HTTPS in `_voices` and HTTP at the
+    root, with no trust prompt.
+- **Not run live yet:** the changed-certificate branch, a public share, an edit saved through the
+  sheet, and a timing of the bare name inside the app (Slice 2 measured 0.39 s through the core).
+- **Negative controls:** each of four deliberate breaks fails tests: WebDAV dropped from
+  `isRemoteConnection`, a schemeless path decoded, reconnect ignoring the stored scheme, and the edit
+  carry ignoring the port.
+
+**2026-10-23: Slice 4 landed** (core and app). `capabilities` is `[.read, .write, .rename]`, and
+`acceptsUploads` takes WebDAV in.
+
+- **Core:**
+  - `WebDAVProcessArguments+Write`: MKCOL with the slash, an upload by `-T` with the meter, an empty
+    PUT, MOVE and COPY with an absolute `Destination` and `Overwrite: F`, and DELETE. `WebDAVTransport`
+    gains the six verbs.
+  - `WebDAVBackend+Write`: `createDirectory`; `createFile` as one PUT with `If-None-Match: *`; `moveItem`
+    as one MOVE, a folder included; `removeItem` as one DELETE whose body is read; uploads; a COPY
+    tried for a duplicate inside the account (`mayAttemptInternalCopy`), latched on 501 or 405; the
+    ETag-guarded `writeBack`; and the date carried onto a download, as FTP and SFTP carry theirs.
+  - `HTTPEntityTag` and `RemoteFileRevision.preconditionTag`: two readings compare weakly, and only a
+    strong tag guards a write.
+  - `VFSUnsupportedReason.lockedOnServer(name:)`, which replaces Slice 1's `EBUSY`. The reasons'
+    sentences moved to `VFSUnsupportedReason+Sentence.swift`, since the file had reached 500 lines.
+- **App:** `WebDAVCurlTransport` gains the six verbs, with a 600 s budget for a request the server
+  carries out on its own disk. The save-back reads `preconditionTag`. The lock sentence is in all 14
+  languages. Routing needed nothing new: the composite already forwards every verb by path.
+- **Tests:** 40 core tests in five new suites, 197 across WebDAV, and 40 new fixture files: each
+  verb's answers captured from macOS's Apache through the shipped argument builders, including a
+  lock held from outside and one file's tag read weak and then strong. Core 4381 and app 1859 green.
+  The live server suites skipped for want of their config.
+- **Measured while building it** (macOS's Apache, 2026-10-23):
+  - **Apache's tag is the size and the modification time truncated to the whole second, and it is
+    weak while the request is within a second of that.** In that second, `If-Match` answered 412 with
+    the tag as read and with its `W/` dropped alike; 2.2 s later the strong tag answered 204. So
+    dropping the marker, one of Slice 1's two candidate fixes, cannot make the guard pass. Comparing
+    two readings is RFC 9110's weak comparison either way.
+  - **`curl` 8.7.1 adds `Expect: 100-continue` only above 1 MiB, not ~1 KiB** as NOTES.md and three
+    S3 doc comments said: 1 048 576 bytes were sent whole before a 412, 1 048 577 not at all. All six
+    places are corrected.
+  - **A cancelled PUT changes nothing.** Apache writes into a temporary file: a 64 MiB upload killed
+    part-way left no file, and one killed over an existing file left its bytes as they were.
+  - `If-None-Match: *` onto a folder answers **409**, which RFC 4918 also spends on a missing parent.
+    `If-Match` onto a deleted file answers **412**, the same as a changed one. MOVE into a missing
+    folder answers 500 and COPY 409.
+  - **COPY keeps the mode and not the date**: a 2020 file copied as today.
+  - A case-only MOVE on a case-insensitive disk is refused, 412 with `Overwrite: F` and 403 "Source
+    and Destination URIs are the same" with `T`, and the file stays as it was.
+  - Apache took a `Destination` naming another host, and answered 502 for another scheme.
+- **Decided in the slice:**
+  - **A weak tag sends no condition** (taken by Oleg 2026-10-23, over re-reading until the tag is
+    strong). Apache hands one out for about a second after any write, exactly when a quick second ⌘S
+    checks, and a guard refused every time is worse than none. Such a save rests on the re-`stat`, as
+    SFTP's and FTP's always do. A weak tag is still kept verbatim for Get Info.
+  - **An F5 upload is unconditional; only `createFile` carries `If-None-Match: *`.** The checksum
+    manifest and the pack delivery rely on an upload replacing (`ChecksumCreateRun`), and `CopyEngine`
+    makes the destination free before it copies.
+  - **A 409 from the create-if-absent PUT is followed by one stat**, since only the server can say
+    whether a folder is in the way or the parent is missing. A 412 against `If-Match` is followed by
+    one stat as well, to say changed or gone.
+  - **A 207 from a write is a refusal when a member refused, success when none did, and a failure
+    when its body cannot be read.**
+  - **COPY is attempted, not promised.** A 501 or 405 latches for the connection, and any refusal
+    sends the copy through this disk.
+  - **Only the date is counted as not kept**, on uploads, COPY and recreated folders. WebDAV has no
+    permissions anywhere, so a mode has nothing to be missing from: S3's reading.
+  - A lock names the member a 424 body names, since for a folder that is the file somebody has open.
+- **Live, against the throwaway Apache over HTTP with Basic.** A temporary probe gave the build the
+  password from its environment, so nothing touched the Keychain. The probe was removed and the build
+  rebuilt (the binary checked for it), and the defaults domain was restored and compared unchanged
+  (71 keys).
+  - The seeded tab reconnected with one PROPFIND. F5 sent three files as one PUT each, with no
+    condition, byte-identical, and the name `cafe\u{301} #%;+?&=[].txt` arrived byte for byte.
+  - F5 down was one GET per file, byte-identical, and both copies carried the server's 2020 date.
+  - F5 between two folders of the account was one COPY with the Cyrillic `Destination` encoded, and
+    the status line read "Copied — the modification time wasn't kept on 1 item". F6 of the odd name
+    was one MOVE.
+  - F7 through the sheet made `Новая [папка] #1 + é` with one MKCOL. ⇧F4 made `new = 1 & ;.txt` with
+    one PUT carrying `If-None-Match: *` and no content type.
+  - F8 of a folder whose file was locked from outside was one DELETE answered 424; nothing was
+    deleted, and the alert read "“held.txt” is locked on the server, usually because someone has it
+    open. Try again once they have closed it." After UNLOCK, one DELETE removed the folder.
+  - **F4's save-back, saves written into the edited copy from the shell:** the first save sent the
+    strong tag as `If-Match` (204). A second inside the weak second sent no condition (204), with no
+    question, where before this slice it would have sent `W/"…"` and been refused as somebody else's
+    edit. A third, two seconds later, read the strong tag against the weak one recorded after the
+    second save, asked nothing, and sent the strong tag (204). After another client wrote the file, the
+    next save raised "The file on the server has changed since you downloaded it", and Keep Editing
+    sent nothing.
+- **Live against the NAS the same evening**, `dirnex-test` over HTTPS 5006 and HTTP 5005 by the bare
+  name `nas`, dialed as `nas.local`. One temporary probe had the app read the account's SFTP Keychain
+  item (Oleg answered the prompt) and hold the password in memory; afterwards no `com.dirnex.webdav`
+  item existed. A second probe appended each `curl`'s method, URL, conditions and status to a
+  scratch file, since the NAS's own log is out of reach, and `NSLog` arrives in the unified log as
+  `<private>`. Both probes were removed and the build rebuilt (the binary checked for them), and the
+  defaults domain was restored and compared unchanged (71 keys). The HTTPS endpoint carried the pin
+  `gkHDtx…`, which `openssl` computed again for the served certificate.
+  - **HTTPS:** F7 made `dirnex-slice4 [live] #1 + é` with one MKCOL. F5 up of four files and the
+    folder `Папка` was one MKCOL and five unconditional PUTs, all 201. F5 down was five GETs, every
+    file byte-identical to its original, the decomposed é's bytes kept, and each copy carrying the
+    server's date. A copy inside the account was one COPY (201) with "Copied — the modification time
+    wasn't kept on 1 item". F6 of the odd name was one MOVE (201).
+  - **F4 over HTTPS:** the first save sent the strong tag (204), the second inside the weak second
+    sent none (204) and asked nothing, and the third sent the new strong tag (204). Dirnex's own F5
+    Replace then rewrote the file, as PUT to a hidden sibling, DELETE and MOVE with `Overwrite: F`.
+    The next save asked "The file on the server has changed…"; Keep Editing sent nothing, and
+    Upload All sent `If-Match` with the tag the check had found (204).
+  - **HTTP:** F7 made `dirnex-slice4-http Кириллица` with one MKCOL. F5 from the HTTPS account was
+    staged, a GET over HTTPS and a PUT over HTTP, and the relay's folder was empty afterwards. ⇧F4
+    was one PUT with `If-None-Match: *` (201). F4's three saves went as over HTTPS. F5 down brought
+    both files back byte-identical, the relayed 3 MiB file included.
+  - F8 removed each test folder with one DELETE (204), over HTTPS and over HTTP. Both landed in the
+    share's `#recycle` and were deleted there too (`%23recycle`, 204). The probe folders earlier
+    slices left in `#recycle` were left alone.
+  - **The NAS's tag carries the modification time to the microsecond** (`"1b-65e8692f53fde"`),
+    where macOS's Apache truncates it to the second, so a rewrite there always changes the tag. It
+    is still weak for the second after a write: the second save's check got no usable tag.
+- **Not run live yet:** a lock on the NAS (an outside client would need the password in a shell;
+  Slice 1's captured 423 and 424 bodies are in the unit tests, and the alert was seen on Apache),
+  Digest, F2's inline rename (background computer-use cannot commit a text field), a refused
+  `If-Match` read as changed or gone (the check catches the change first, so only the unit tests
+  reach it), and a server without COPY.
+- **Negative controls:** each of nine deliberate breaks fails tests: tags compared as strings, a weak
+  tag sent as a guard, a 207 read as success, no stat after a create's 409, every COPY refusal
+  latched, gone read as changed, a lock mapped to `EBUSY`, the mode counted as lost, and the form
+  content type left on.
+
+**2026-10-23: Slice 5 landed** (core and app). Only the walk needed new code. Every other gesture on
+the list already keys on `isRemoteConnection`, `acceptsUploads` or `RemoteFetchPolicy`, and was run
+live rather than written.
+
+- **Core:**
+  - `WebDAVProcessArguments+Batch`: `listings(session:requests:credentials:)` puts one `Depth: 1`
+    PROPFIND per folder in a single `-K -` config, each section whole and its body in its own file.
+    The first section alone carries `fail`, and the run `--fail-early`. `WebDAVBatchWriteOut` reads
+    each section by its own `%{exitcode}`. `WebDAVTransport` gains `propfindBatch`.
+  - `WebDAVBackend+Listings`: `subtreeListing` a level at a time, which the sizer, ⌥F7 and directory
+    sync all ask before walking, and `listDirectories` for a tree refresh. `subtreeRowLimit` is FTP's
+    50 000.
+- **App:** `WebDAVCurlTransport+Batch`, with FTP's `BatchScratch` given a label. Get Info's
+  permissions note named an object store and an IIS-style FTP listing as the reasons, which on a
+  WebDAV row reads as a mislabelled server. It now names them, WebDAV among them, as examples of
+  servers and protocols that send none, in all 14 languages.
+- **Tests:** 32 core tests in two new suites, 223 across WebDAV, and 16 new fixture files: real
+  batched runs through the shipped builder against macOS's Apache (a level with a missing folder, a
+  refused login, a missing first folder, Digest, a refused connection, a wrong pin), and every
+  folder of one tree. One new app test pins that the composite reaches both seams. Core 4413 and
+  app 1860 green; the live server suites skipped for want of their config.
+- **Measured while building it** (macOS's Apache, 2026-10-23; NOTES.md ▸ curl (WebDAV)):
+  - **A wrong password cost one failed login per section**: four sections gave four 401s. With
+    `fail` on the first section and `--fail-early`, one. `fail` does not survive `next`, and
+    `--fail-early` acts only on a transfer that failed, which a 401 is not without `fail`.
+  - **One run kept one connection, and reconnected by itself at Apache's keep-alive limit of 100**:
+    250 sections made three connections and took 0.04 s, against 1.48 s as 250 runs. Digest stayed
+    on the connection and paid its 401 per section.
+  - `--fail-early` stopped a refused connection after one attempt, where four sections without it
+    tried four times.
+- **Decided in the slice:**
+  - **A first folder refused on its own sends the rest of the level again; a 401 or a section with
+    no answer ends the level.** A 404 there is a folder deleted since it was listed, while a refused
+    login would be refused for every folder after it.
+  - **A level not wholly answered is no shortcut**, stricter than FTP: skipping a folder nobody
+    answered for would return a subtree short of a branch that still claimed to be complete, and
+    the sizer would show its total as the folder's. A folder the server *refused* is skipped, as the
+    walk skips it.
+  - Never Depth infinity, as decided before Slice 1. One open folder goes the ordinary way.
+- **Live, against the throwaway Apache**, over HTTP with Basic, then over HTTPS with a pinned
+  self-signed certificate. A temporary probe gave the build the password from its environment, so
+  nothing touched the Keychain; it was removed and the build rebuilt (the binary checked for it).
+  The defaults domain was restored and compared unchanged (71 keys). A Debug copy nobody in the
+  session had launched was running first, and was quit with Oleg's OK.
+  - **Space on a folder of 250 folders** (folder *i* holding *i* bytes): 251 PROPFINDs over 4
+    connections in 0.242 s, and the row read 31 KB for 31 375 bytes. Over HTTPS the same over 4 TLS
+    connections, 0.237 s. **The same build with `WebDAVBackend+Listings.swift` moved aside walked:
+    251 connections, 4.225 s.**
+  - ⌃B sized the other folder in one connection per level (1, 4, 3, 1) and took the first from the
+    total Space had just measured.
+  - **A tree refresh**, 15.2 s after a tab switch, re-listed the root and three open folders as four
+    requests on one connection. The first show of the tab lists each open folder separately, as it
+    did before; that is the tree's restore path.
+  - **⌥F7** offered name, kind, size and date. `r.b` found only `c d+é/r.bin`, 261 requests in six
+    runs, 0.27 s.
+  - ⌘C on that hit and ⌘V into a local pane: one GET, byte-identical, with the server's date. Quick
+    View from the results tab: one GET. In the tree the cursor passed `f100` without fetching it, and
+    `top.txt` drew its text.
+  - The compare window drew the WebDAV `top.txt` against a changed local copy, "Change 1 of 1",
+    from the copy Quick View had fetched. Synchronize Directories gathered its WebDAV side in the
+    same six runs and offered Size and Content, with no Date. Create Checksum stat'ed the free name
+    (404), fetched nothing, and wrote the manifest in one PUT; its digest matched `shasum`. Get Info
+    showed the size, the date and the entity tag.
+- **Found on the way:** the search's count was four over the walk's own, and the four were the tree
+  pane's refresh landing mid-search on a connection of its own. Read the requests, not the count
+  (LIVE-VERIFICATION ▸ a session count is not evidence while a background poll is running).
+- **Not run live yet:** the NAS, which is Slice 6's; dragging out to Finder, since a drag session
+  cannot be synthesized; Open With, Share, ⌥F5 and user scripts, which reach the same fetch the
+  compare and checksum runs did; Digest in the app; and a refused login or a first-folder 404 in the
+  middle of a walk, which the unit tests drive.
+- **Negative controls:** each of six deliberate breaks fails tests: `fail` on every section, a resend
+  after a 401, no resend after a folder's own refusal, a level not wholly answered taken as a
+  shortcut, the first line for a section winning, and the status read without the exit code.
+
+**2026-10-23: FTP's tree refresh stops at one failed login** (core and app). Slice 5's measurement
+that a wrong password costs one failed login per section held for FTP too, and NOTES.md already
+said so for 3 sections. What it cost had not been counted: a tree refresh runs on a timer, so a
+password changed on the server spent it every round.
+
+- **Measured first**, through the shipped builder against pyftpdlib: 4 sections, 4 failed logins
+  and 4 sessions, and the fallback then tried once more. In the running app, a tree with four
+  folders listed after the password changed spent **9 a round**, two rounds running, since the
+  batch carried `MLSD` beside each `LIST` by then.
+- **The fix, taken by Oleg over listing the first folder alone first:** the refresh's batch runs with
+  `--fail-early`. FTP refuses a folder with a transfer error, unlike HTTP's 404, so the run also
+  stops at the first refused folder, and `FTPBatchRun.reading` finds the stop by the first file that
+  did not land and its cause by the run's exit code. A folder's refusal (9, or 19 for a folder that
+  can be entered and not read) sends the rest again; a refused login ends the round; no answer
+  falls back to one listing per folder as before. A refresh is still one login.
+  - **Core:** `FTPBatchRun` and `FTPBatchStop`, `FTPTransport.listingsUntilFirstFailure` with a
+    default that lists one folder at a time and stops at the first failure, the builder's
+    `stopsAtFirstFailure`, and `FTPBackend.listDirectories`. The subtree walk keeps the run that
+    does not stop.
+  - **App:** `FTPCurlTransport+Batch` reads the run's exit for the stopping run only.
+- **Tests:** 14 new and 5 rewritten, across the batched-listing suite, its request suite and two new
+  ones for the reader and the protocol default. The batched-listing fake now counts sign-ins the way
+  the server's log did; the old one counted a batch as one attempt, which is why the cost never
+  showed. Core 4427 and app 1860 green; the live server suites skipped for want of their config.
+- **Live,** the same tree in the running app with the password changed under it: 1 failed login a
+  round, three rounds running, against the committed backend's 9. A temporary probe gave the build
+  the password from its environment; it was removed and the build rebuilt, and the defaults domain
+  was restored and compared unchanged (71 keys).
+- **Negative controls:** each of six breaks fails tests: the committed backend, a refused login sent
+  again, no `--fail-early`, a stop on `MLSD` ignored, 19 not read as a folder's refusal, and no
+  answer not retried.
+
+**2026-10-24: Slice 6, first half: the live suite and the record** (tests, a script and docs; no
+product code changed). The NAS run of the suite, the second server family and a live look at the
+sheet in other languages are still to come.
+
+- **`scripts/live_test_servers.sh` stands up macOS's own `httpd`** beside `sshd` and pyftpdlib, on
+  8088 and 8443, with nothing to install. It writes `/tmp/dirnex_webdav_live_test.json` naming four
+  endpoints: Basic, Digest and a public folder over HTTP, and Basic over HTTPS with a self-signed
+  certificate minted per `up`, whose pin goes into the config. `DavDepthInfinity Off`, as on the NAS.
+  The access log carries the user and the status of every request. `up | tail` no longer hangs:
+  pyftpdlib held the pipe open.
+- **`WebDAVLiveIntegrationTests`, ten tests run once per endpoint** (39 cases), through the real
+  `WebDAVCurlTransport`. A counting wrapper says what each verb cost in requests, which is the
+  client's claim and holds on any server. A raw `curl` is the other client, spelled by hand, for a
+  lock held elsewhere and a colleague's save. Covered: the connect settling each endpoint's scheme;
+  no user, a wrong password, a wrong pin and no pin refused by name; the done-when list's awkward name
+  through MKCOL, PUT, list, MOVE of the file, COPY and MOVE of the folder (one request each), download
+  and one DELETE, compared as bytes and also read off the served folder on disk; a taken name refused
+  with no `stat` before the PUT, the bytes there kept; the subtree shortcut against the walk; a
+  missing folder in a batch, in the middle and first; a save-back over a colleague's save refused by
+  its tag, then passing with the current tag, then refused as gone with nothing created; a lock
+  naming `held.txt` on a write and on a folder's DELETE, deleting nothing, reads passing; resume of a
+  partial copy and a restart onto a complete one; and a wrong password in a four-folder batch costing
+  **one** failed login in the server's own log.
+- Each endpoint's facts are written in the config, not inferred: the scheme it must settle on,
+  whether its certificate is self-signed, whether a wrong password may be sent (never on the NAS),
+  where its access log and its served folder are. A `keychain` entry stands in for `password`, so the
+  NAS can join a run without its password in `/tmp`. A `recycleFolder` lets the suite empty its own
+  folders out of the NAS's `#recycle`.
+- Assertions run outside `offCooperativePool`, so a failure is filed under its own test and
+  endpoint.
+- **Measured:** 1811 tests executed with the servers up against 1755 with them down, and 18 suites
+  ran that skip without them, under the same summary line both ways: `1870 tests in 295 suites
+  passed`. CLAUDE.md and the script's
+  hint carry the new numbers. Core 4427 and the app suite green; both linters clean.
+- **Negative controls, six breaks in one build:** the save-back's `If-Match` dropped, the create's
+  `If-None-Match` dropped, a 423 mapped to `EBUSY`, `fail` removed from the batch's first section,
+  `#`, `?` and `+` left unencoded, and resume switched off. Each failed its own test on every endpoint
+  it applies to. The literal `#` ended the URL, so the folder came back `notFound`. Without the
+  batch guard a wrong password cost **4** failed logins for 4 folders. The connect, refusal and
+  subtree tests stayed green, so no break leaked past its own test. Reverted with `git checkout`.
+- **[LOCATION-SUPPORT.md](LOCATION-SUPPORT.md) has a WebDAV column**, 92 cells, after FTP.
+  New notes: <sup>5</sup> (what was verified live, and that both servers are Apache), <sup>aai</sup>
+  (no server-side walk, by decision: Depth infinity), <sup>aaj</sup> (downloads resume, uploads
+  restart) and <sup>aak</sup> (no split download; no milestone owns it). Ten existing notes name
+  WebDAV where it differs: the date carried one way, COPY latched and costing the date, `If-Match`
+  only with a strong tag, and the tree refresh's one failed login.
+- **Found on the way:**
+  - **No split download for WebDAV.** SFTP, FTP and S3 each have one (`SegmentedDownloadPlan`), and
+    Range requests answer 206 on the NAS, so nothing prevents it. M32 never planned it. One stream
+    moved 95 MB/s on the LAN.
+  - **Over WebDAV the delete confirmation promises a permanent delete on a NAS that keeps a copy.**
+    The *may keep a copy in `#recycle`* wording is gated on `path.backend == .local`
+    (`PanelViewController+DeleteFallback`), and a WebDAV delete on the NAS lands in `#recycle`. Whether
+    the NAS's bin catches an SFTP or FTP delete has not been measured.
+  - A Debug build from 2026-10-23 23:34 is still running (pid 52041), launched by nobody in this
+    session; the test runs rebuilt the binary under it.
+
+**2026-10-24: A large WebDAV download splits over several connections** (core and app). Slice 6's
+first half found WebDAV the only remote without a segmented download; this closes that cell.
+
+- **Probed first**, against the throwaway Apache and a second scratch one holding every connection to
+  4 MiB/s with `mod_ratelimit`: four ranges in one `curl -Z` opened four connections at once and
+  joined SHA-256 identical; 40 MiB took **10.12 s in one stream, 5.08 s in two, 2.46 s in four and
+  1.25 s in eight** (two rounds alike), and the same over pinned HTTPS and Digest; with nothing
+  limiting a connection, four ranges of 16 MiB cost 4 ms over HTTP and 8 ms over HTTPS. A stale
+  `If-Range` answered 200 with the whole file, and a stale `If-Match` 412 with nothing sent, which
+  decided the guard. Three more findings went to NOTES.md ▸ curl (WebDAV).
+- **Core:**
+  - `SegmentedDownloadLimits.webdav`: 8 MiB, 4 MiB, at most 4 ranges. S3's threshold, since a range
+    costs one connection made in parallel; FTP's ceiling, since a NAS or a proxied server often caps
+    connections per client, and eight beat four only on the throttled link.
+  - `WebDAVProcessArguments.downloadSegments` and `WebDAVSegmentWriteOut`: one `-Z` run, each section
+    carrying `fail`, `If-Match` with the tag, its range, its own file, its own write-out line and the
+    connection's options (`-4`, scheme and credential, pin); `-q` first and `--parallel-immediate`
+    in `argv`. Each section is read by its own `%{exitcode}`. `WebDAVTaggedFile` carries the path and
+    the tag. The batch builder's connection lines and the exit-code rule (`WebDAVWriteOut.isAnswer`)
+    are shared now rather than written twice.
+  - `WebDAVTransport.downloadSegments`, whose default forwards to the plain download and says so.
+  - `WebDAVBackend+Segmented`: a file whose listing says it is over 8 MiB, with nothing on disk, is
+    stat'ed once for its current size and tag, then split. No strong tag, no split. All 206: joined.
+    A 412: the file changed, so one stream, no latch. A 200: the server ignores ranges, latched for
+    the connection. Some served and the rest refused or unanswered: latched, as a cap would be. Every
+    range refused: one stream, no latch. A short piece: one stream, latched. One tally spans the
+    split and its fallback, so no byte is reported twice. A stat the server refuses is thrown as the
+    file's answer.
+- **App:** `WebDAVCurlTransport+Segmented`, progress from the pieces growing and capped at the file's
+  size, and a backstop of the transfer budget, since `max-time` sits in the config.
+- **Tests:** 24 core tests in two new suites, 247 across WebDAV, and 12 new fixtures: ten runs
+  captured through the shipped builder (four ranges over HTTP, HTTPS and Digest, out of order; a stale
+  tag; a file shorter than the plan; a server ignoring `Range`; a wrong password; a refused
+  connection; a wrong pin; a cut) and two `Depth: 0` answers for a large file, strong and weak. Two
+  live tests on all four endpoints: F5's download of a 16 MiB file is one stat and four ranges,
+  byte-identical, with the same file fetched unhinted as the control that must go in one GET; and
+  ranges carrying a stale tag are refused, each one, writing nothing. The server's log agreed: four
+  206s and one 200 per run, and Digest one challenge per range. Core 4451 and app 1872 green, 1846
+  executed with the servers up; both linters clean.
+- **Negative controls:** each of seven breaks fails its own core test: `If-Match` dropped, a section's
+  exit code ignored, a weak tag allowed, the latch ignored, the 412 branch removed, the 200 branch
+  removed, and the fallback reporting bytes again. The first run put the 412 and 200 breaks beside the
+  latch break, which hid them; run alone, each failed. Live, dropping `If-Match` failed the guard
+  test on all four endpoints and switching the split off failed the split test on all four, with the
+  other ten tests green.
+- **Found on the way:** the first half's subtree test compared entity tags as strings and failed on
+  this run: the shortcut read `W/"40-…"` and the walk a moment later `"40-…"`, the weak second NOTES
+  already records. It compares weakly now.
+- **Not measured:** the NAS. One stream moved 95 MB/s there on the LAN, and whether its disks serve
+  four readers of one file faster or slower than one is unknown; measuring it needs the account's
+  password in a run.
+
+**2026-10-24: The split, live in the app and on the NAS.** Three temporary probes, all removed
+afterwards and the build rebuilt (the binary checked for them): a WebDAV password from the
+environment, or from the account's SFTP Keychain item read once (Oleg answered the one prompt); a
+log of each `curl` request with its timing; and a switch turning the split off, so the same build ran
+both paths. The defaults domain was restored and compared unchanged (71 keys). A Debug build left
+running since 2026-10-23 had exited by itself before the run.
+
+- **In the app, F5 off the throttled Apache** (4 MiB/s a connection), 40 MiB dated 2020, from a
+  seeded tab that reconnected with one PROPFIND: one `Depth: 0` stat, then four GETs on four
+  connections, each 206 with exactly its range and the stat's tag as `If-Match` (the server's log
+  read the `Range` and `If-Match` headers back). **2.81 s from F5 to a complete file; with the split
+  switched off, one GET (200) and 10.27 s.** Byte-identical both ways, the 2020 date carried, no
+  pieces left in the temp folder.
+- **The whole WebDAV live suite against the NAS, over HTTPS 5006 and HTTP 5005** (22 cases; the
+  wrong-password test has none there by design). It closes Slice 6's NAS item, two of Slice 4's
+  "not run live yet" — a lock held by another client on the NAS says it is locked by name and
+  deletes nothing, and a refused `If-Match` is read as changed or as gone — and Slice 3's timing of
+  the bare name, which connected within the one second the config claims (through the test host,
+  not the app). The awkward names, resume and the batched listing held there too. The split test came
+  down as one stat and four ranges, byte-identical, and stale-tagged ranges were refused writing
+  nothing. Its folders and their copies in `/home/#recycle` were removed by the suite's own cleanup,
+  which was not read back afterwards.
+- **On the NAS the split is slower.** 256 MiB over gigabit, three alternating rounds a port: one
+  stream 2.43–2.62 s (102–111 MB/s), four ranges 2.62–3.29 s, on average **0.43 s slower over HTTPS
+  and 0.29 s over HTTP**. Joining 256 MiB of pieces takes 0.05–0.16 s here; the rest is the NAS and
+  the wire serving four connections where one already filled the link. Recorded in
+  `SegmentedDownloadLimits.webdav` and LOCATION-SUPPORT.md <sup>aak</sup>. Whether to keep splitting
+  where that is the case is open.
+- **The live config's Keychain item is read once per run**, however many endpoints name it, so the
+  NAS's two ports cost one prompt rather than two (`WebDAVLiveEnvironment`).
+- **Seen once and not chased:** `Panes divider detent / a queued release from another window cannot
+  end the divider drag` failed in one app run (the current event's location read 1642 pt where it
+  expected 430) and passed on the rerun. Nothing in this change reaches it.
+
+**2026-10-24: Slice 6, second half: a second server family, the date on Nextcloud, the delete sheet
+over WebDAV, and the sheet in other languages** (core, app, the server script and docs). **Decided
+by Oleg the same day: the split stays as it is**, since on the NAS it costs 0.3–0.4 s per 256 MiB
+and on a throttled link it is four times faster.
+
+- **Nextcloud, with Oleg's OK for the image**: `nextcloud:stable-apache` (504 MB compressed for
+  arm64; Nextcloud 34.0.5) as one container with SQLite on `127.0.0.1:8089`, with `files_trashbin`,
+  `files_lock` and `files_versions` on. Docker Desktop's own disk was full (57 of 59 GB), and pruning
+  the build cache, also with his OK, made room. Probed with plain `curl` before any Swift. The
+  listing parser read sabre's `d:` prefix, with `oc:` and `nc:` declared beside it, unchanged. What
+  differs is behaviour (NOTES.md ▸ curl (WebDAV)):
+  - **Names are stored composed** (NFC), files and folders alike. A stat by the decomposed spelling
+    answers under that spelling, and both spellings are one name: `If-None-Match: *` by the other
+    one answered 412.
+  - **Tags are strong, and one per second.** A file rewritten 10 bytes then 22 inside one second kept
+    its tag, so `If-Match` with the first reading passed over the second save (3 of 3). Apache at
+    least marks that second's tag weak.
+  - **`X-OC-Mtime` on a PUT sets the date**, and the answer carries `X-OC-MTime: accepted`. COPY and
+    MOVE keep the date after. Whole seconds only. `0`, `-86400` and `86400` answered 500 with the
+    bytes written anyway, over an existing file and as a new one; `86401` was accepted. MKCOL ignores
+    it. Apache, captured through the same builder, ignored it and wrote the file with today's date.
+  - **A lock guards the file and not its folder.** PUT, DELETE and MOVE of the locked file answer
+    423 with a `<d:error>` body naming it by a relative href, which maps to the lock sentence by the
+    request's own name. A DELETE of the folder answers 204 and takes the locked file with it, where
+    Apache answers 424 and deletes nothing. Seen twice.
+  - **`creationdate` is the Unix epoch** on every row a client uploaded, and **a PUT into a missing
+    folder is 404**, where Apache sends 409.
+- **Core:**
+  - `WebDAVModificationTime`: the header's value as whole seconds, none at or below one day after
+    1970, and `wasKept(by:)` reading the answer. `WebDAVPutHeaders` carries the condition and the
+    date together, which keeps the transport's `upload` at SwiftLint's five parameters.
+  - F5's upload asks for the source's date and counts it as not kept unless the server says it kept
+    it. F4's save-back asks for none. COPY still reports the date as not kept everywhere, which
+    under-claims on Nextcloud, whose answer says nothing either way.
+  - A `creationdate` at the epoch reads as no date, so Get Info falls back to the modification date.
+  - A 404 to a PUT names the parent folder, as Apache's 409 does.
+  - `ShareRecycleBin.webDAVBin(catching:)`: the bin that would catch a delete of every path is
+    `/<share>/#recycle`, the share being the server path's first segment. None for a path not on
+    WebDAV, one already in a bin, the share or the account root, a bin above the location's root, or
+    a set spanning two bins. Nextcloud's root is several segments deep, so the rule names no bin
+    there, and its trash is outside the files tree anyway.
+- **App:**
+  - **The permanent-delete sheet asks the server before it words itself.** For a set the rule names a
+    bin for, one `Depth: 0` stat of the bin; a folder there gives the *may keep a copy* sentence,
+    already in all 14 languages. The sheet waits at most 1.5 s (`recycleBinCheckBudget`), then shows
+    the strong wording and drops a late answer (`AnswerOnce`). Any doubt — a refusal, a timeout, a file
+    by that name — keeps the strong wording. A mounted share still asks this disk, as before.
+  - `WebDAVCurlTransport` hands the headers to the builder.
+  - The WebDAV user field's hint was cut off in three languages. Every control in the connect form
+    is pinned to 364 pt (now `ConnectFormFactory.fieldWidth`), and a field truncates at the head, so
+    the hint lost "user name" first: measured as a value in the field, Brazilian Portuguese 405 pt,
+    Ukrainian 384, Russian 367. A sweep of every localized placeholder in the form, in every
+    language, found nothing else over 308. Those three are shortened (306, 324 and 313 pt), and the
+    catalog comment says why.
+- **`scripts/live_test_servers.sh`** starts Nextcloud when Docker runs and the image is already here,
+  and never pulls it. A fresh container per `up`, sample files off, one request alone before the
+  config is written (a parallel first login raced over the new account's home: four of thirteen
+  tests failed their first MKCOL with 500 or 503), and the endpoint's claims in the config:
+  `composesNames`, `lockGuardsFolder: false`, `keepsUploadDates`. `down` removes the container by
+  name, since the port's listener is `com.docker.backend`. The image was deleted after this pass, as
+  agreed, so until someone pulls it again `up` says Nextcloud was skipped and the suite runs on the
+  four Apache endpoints.
+- **Tests:** core: `WebDAVNextcloudTests` (12), `WebDAVModificationTimeTests` (4) and
+  `ShareRecycleBinWebDAVTests` (6), over 16 response bodies and 17 `curl` captures made through the
+  shipped builders, with the container's session cookies stripped. App: `WebDAVRecycleBinCheckTests`
+  (4), its slow server held at a gate rather than timed, since the first, clock-based version was
+  flaky under a full run; `ConnectPlaceholderWidthTests` (2, one over eight placeholders). Live:
+  `uploadAsksForItsDate` on every endpoint; the awkward-name test compares names as the endpoint
+  stores them; the lock test checks the file's own refusals everywhere and the folder's by the
+  endpoint's claim; a colleague's save waits out the second. Core 4473 and app 1879 green, 1853
+  executed with every server up, Nextcloud among them: the WebDAV live suite ran 13 tests as 63
+  cases over five endpoints, the wrong-password test on the three Apache ones whose log it reads.
+  Both linters clean.
+- **Live in the app,** the fresh Debug build over the throwaway Apache's public folder, from a seeded
+  tab, with `osascript … run operation "file.deletePermanently"` and the sheet read on screen:
+  - no `#recycle`: one `PROPFIND /public/%23recycle` answered 404, and the sheet said *This can't be
+    undone*;
+  - with the folder: one PROPFIND answered 207, and the sheet said the share has its own recycle bin
+    and the server may keep a copy;
+  - with the folder and `httpd` stopped by `SIGSTOP`: the strong wording, and after `SIGCONT` the
+    late 207 reached the log and nothing changed on screen, still one sheet;
+  - Delete pressed: one `DELETE /public/victim.txt`, 204.
+  The NAS itself was not asked, but its earlier runs listed `#recycle` as an ordinary row and deleted
+  `/home/%23recycle/…` with 204, so the stat has a folder to find there.
+- **The sheet in other languages**, live in Brazilian Portuguese, Spanish (the longest HTTP note,
+  which wraps to two lines whole) and Japanese, reached by a seeded WebDAV server with no Keychain
+  item, which opens the prefilled sheet without a prompt. Background computer-use cannot type into a
+  field inside a sheet, so the overrun hint was found by measuring rather than on screen. The defaults
+  domain was restored and compared unchanged (71 keys) after each run.
+- **Negative controls:** six core breaks, one at a time, each failing only its own tests: the epoch
+  read as a date, `accepted` ignored, the date always counted as kept, a time of a day or less sent,
+  a PUT's 404 naming the file, and the save-back asking for a date. Two app breaks: no deadline, and
+  any 207 taken as a folder; the first rerun against the gated test. Live, the builder sending no
+  header failed Nextcloud's date test alone, on its date and on its loss count. The placeholder
+  suite failed on the shipped catalog, naming exactly the three languages, and holds the old
+  Brazilian hint as its own control.
+- **Not measured:** whether Put Back in a `#recycle` works over WebDAV, which is path-based and may
+  already show for a row in the NAS's bin.
+- **With this, the done-when list is met**, and Slice 6's NAS run, second family and languages are
+  all in. What stays "not run live yet" is listed under Slices 3–5.
+
+**2026-10-24: Report a Bug's text boxes take the click that brings the dialog forward, and M30's
+open item is closed** (app, tests and docs). The item was a 2026-10-07 computer-use run in which a
+click in the email field left the focus in Steps. That was the tool. The run found the opposite case,
+and that one was real.
+
+- **The recorded symptom was computer-use's.** Its background click on a text element is not a mouse
+  event: it reports setting `AXSelectedTextRange` on the element, and the window's first responder
+  does not move. Reproduced in the Debug build: a "click" on Steps and one on the email field, each
+  followed by a letter typed at the focus, put both letters in the description (LIVE-VERIFICATION.md).
+- **Real clicks, with full-screen control and Finder active.** One click into the email field while
+  Steps had the focus focused it, and the letter landed there. One click into Steps while the email
+  field had the focus brought the dialog forward and left the focus where it was, so the letter went
+  onto the end of the address.
+- **Why:** a window that isn't key hands a click on only to a view that accepts first mouse.
+  `NSTextField` answers `true` and `NSTextView` `false`, measured with a throwaway app both by asking
+  and by clicking into an app that was never active (NOTES.md ▸ Text fields and text views). The two
+  boxes are text views, so they took a click only once the window was key, while the field below them
+  took it at once.
+- **Fix:** `MultiLineTextView`, the text view every `MultiLineField` now takes, answers `true`. That
+  covers Report a Bug's two boxes and its preview, and the scripts organizer's Command, whose Name and
+  Keywords fields already took the click. Live with real clicks from Finder in the fixed build, one
+  click into Steps and one into the description each put the next letter there, and the address was
+  untouched.
+- **Tests:** `MultiLineFieldTests.clickFromAnotherApp` and `BugReportDialogTests.clickFromAnotherApp`
+  send the press through `NSWindow.sendEvent`, which in the test host is a click into a window that
+  isn't key (NOTES.md ▸ Testing). With `false` put back, the box test failed and the dialog test
+  failed once per box, while the email field, its control, passed.
+- **The rest of M30's "seen only in tests", live** against `Tooling/fake-bug-report-endpoint.py`.
+  With `STATUS=429`, `400` and `500`, Send left the text in place and showed the rate-limit, refusal
+  (*malformed*) and server-problem sentences in red; the rate-limit one wraps to two lines inside the
+  room the status line keeps. **Escape**, pressed by Oleg on his own keyboard, closed the dialog, and
+  Report a Bug… brought the same text back.
+- **Email Instead opened Mail, which has no account on this Mac**, so Mail showed Add Account and no
+  draft, and quit on Cancel. The dialog still said *"The report is in a new email in your mail app."*
+  `NSWorkspace.open` answered `true`, since Mail did open. The draft's contents stay pinned by the
+  core tests only.
+- The defaults domain was restored and compared unchanged (71 keys).
+
+**2026-10-24: Email Instead says what should happen, not what did** (app, catalog, tests). Asked for
+by Oleg after the entry above. The status after Email Instead is now *"Your mail app should open a
+new email with the report. If it doesn't, copy the report instead."*, in all 14 languages, and the
+old sentence is gone from the catalog. The mail app taking the link is all Dirnex learns, so the
+sentence hedges the email and ends on the way out, as *No mail app opened* already did.
+
+- **Translations** reuse each language's own words from the neighbouring Report a Bug sentences
+  (*Mail-Programm*, *app de correo*, *почтовое приложение*, *郵件 App*), and the form of address those
+  sentences use: *Sie* in German, *vous* in French, *tu* in Spanish and Italian. Ukrainian takes ’,
+  as the rest of its catalog does.
+- **It fits.** The status line wraps at 496 pt and holds two lines. In the label's font the new
+  sentence measures 355 pt (Chinese) to 611 pt (Russian), two lines at most, and one in English,
+  Korean and Chinese. In every language it is shorter than the rate-limit sentence the line already
+  shows.
+- **`BugReportStatusWidthTests`** pins all eleven sentences the line can show, in every compiled
+  language, through the dialog's own label, with the widest refusal reason the server names
+  (`unsupportedVersion`) and a three-digit status filled in. It checks its instrument twice: a third
+  line has to measure taller, and the English rate-limit sentence has to wrap, as it did live.
+  Negative control: the German translation doubled failed on that sentence alone. It reads the
+  compiled `.strings` through `ConnectPlaceholderWidthTests.translations(of:)`, now shared.
+- `scripts/check_localization_keys.py`: 1161 extracted keys, all in the catalogs.
+- **Not seen live:** the new sentence on screen. Pressing Email Instead again would have opened
+  Mail's account setup a second time, and the dialog's choice of sentence did not change.
+
+**2026-10-24: M32's "not run live" list, run, and the three bugs it found** (core, app, tests and
+docs). Against the NAS (`dirnex-test`, DSM's Apache on 5006) and, for what the NAS cannot be, a
+throwaway Apache on loopback: a Digest location, and a folder whose COPY is refused. The Debug build
+carried two temporary probes, both removed: a log of every `curl` run's arguments, exit and status,
+and an in-memory secret store answering the account's password, so nothing reached the login
+Keychain (checked by attribute afterwards) and no prompt came up.
+
+- **Changed certificate.** A saved server seeded with a wrong pin failed its first PROPFIND with exit
+  90 before sending anything, fetched the certificate with a credential-free OPTIONS, and showed the
+  NAS's SHA-256 fingerprint, the one `openssl` reads. Cancel said the certificate trusted before is
+  still the one expected, and wrote and sent nothing more. Trust New Certificate & Connect pinned the
+  new key, authenticated, listed the share and wrote the pin into the record.
+- **An edit saved through the sheet.** Edit… opened the sheet prefilled. Root `/home` and a new name,
+  then Connect: the record was **replaced in place**, renamed, root `/home`, the learned pin and
+  `basic` kept, the other twelve servers untouched.
+- **Digest**, with the record seeded as `basic` on purpose: the credential-free PROPFIND drew the
+  Digest challenge, the probe settled on `--digest`, and the record was rewritten to `digest`.
+  Listings, stats, three uploads and two COPYs went through. Every request costs the server two round
+  trips, a 401 and then the answer, because each `curl` starts without a nonce. A 5 MB upload sent its
+  body once: 136 bytes on the unauthenticated PUT, 5 000 452 on the second (`mod_logio`).
+- **A server without COPY**, made with `RewriteCond %{REQUEST_METHOD} =COPY` and
+  `RewriteRule ^/nocopy(/|$) - [R=501]`, MOVE still working. Two marked files F5'd into a subfolder
+  of the same account: **one** COPY, answered 501, then GET and PUT for the first file and GET and
+  PUT for the second with no COPY tried. Both byte-identical. The control, the same gesture on the
+  Digest location, was two COPYs and no GET or PUT.
+- **F2 and ⇧F2.** F2 to `report #2 [x] é.md`: one stat of the new name, one MOVE with
+  `Overwrite: F`. ⇧F2 with the mask `Мульти [C]-[N]` over three files: three MOVEs, the Cyrillic
+  names intact on the NAS.
+- **Open With, Share and user scripts.** Drawing Open With's app menu fetched nothing, and choosing
+  TextEdit cost one GET and opened the copy under its real name. Share fetched before presenting, one
+  GET for a byte-identical copy, and the picker named the row. A script appending a line ran once per
+  marked file on fetched copies, and both rewrites went back as `If-Match` PUTs that the NAS kept.
+- **⌥F5 with a server folder in the set was broken, since 2026-08-30.** The folder was walked and
+  every file fetched, then the pack refused with *couldn't be prepared … changed on the server*, and
+  the staged tree stayed in the temp root until the next launch. `deliver` resolved every row through
+  the window's `RemoteFileCache`, which deliberately does not adopt a staged folder, so a marked
+  folder could never resolve. The shipped tests covered the runner, not the gesture. **Fix:**
+  `fetchRemotely` hands `deliver` the staged folders from the run's own report, and a set that still
+  comes up short sweeps what was staged through `RemoteFileCache.sweepStagedTrees`, which the queue's
+  pack sweep now calls too. Live: a folder with one level of nesting and a file packed into a zip
+  whose members matched the NAS byte for byte, and no staged tree left. `PackStagedFolderTests` (3):
+  without the lookup the hand-off test failed, and without the sweep the sweep test did.
+- **Put Back in `#recycle`, and the bin check against the NAS.** F8 read `/home/#recycle` once and the
+  sheet said the server may keep a copy; one DELETE put the file at
+  `#recycle/dirnex-m32-live/a.txt`, and Put Back brought it home with one stat and one MOVE. **Into a
+  folder deleted since, it failed** with *code 5*: the NAS answers a MOVE into a missing folder with
+  **500** "Could not rename resource" rather than RFC 4918's 409, so the rebuild Put Back runs on
+  `notFound` never ran. macOS's Apache answers the same. **Fix, in the core:** `moveItem` follows a
+  500 with one stat of the destination folder, and only the server saying it is gone becomes
+  `notFound` for that folder. The fixtures are the NAS's own answer, captured through the shipped
+  arguments. Live in the fixed build: the MOVE's 500, the folder rebuilt with MKCOL, the MOVE again,
+  and the emptied bin folders pruned up to `#recycle`. The old `moveItem` failed the new test; the
+  control, a 500 whose folder is still there, stays an I/O error on both.
+- **Dragging out, which M23 left for a human.** One row into Finder: one GET, and the file
+  byte-identical under a name with `#`, brackets and é. **A marked set dropped nothing**, three
+  times, while the same gesture on one unmarked row, and on two marked *local* files, dropped first
+  time. The marked set was widened by rewriting the session's board in `willBeginAt`, which carries
+  file URLs and loses promises: the board was read at both indexes and no promise was ever asked for.
+  **Fix:** `FileTableView.beginDraggingSession` asks the pane for the marked set's writers
+  (`fileTable(_:dragWritersFromRow:)`) and starts the session with one item each, the first with the
+  row's picture, so the drag looks as it did. `PanelPasteboard.writeDrag` is gone. Live in the fixed
+  build: two marked NAS rows, two GETs, two byte-identical files, and two marked local zips still
+  copied. `DragMarkedRowsTests` (4): with the marked check dropped the unmarked-grab test failed, and
+  with every item keeping the picture the item test did. This held for every remote backend, not
+  WebDAV alone.
+- **Left for Oleg:** a pane whose folder is removed under it keeps its old rows when the refresh
+  fails, on every backend (seen after Put Back pruned the bin folder the pane was in); the fetch
+  confirmation says *Download 2 files* for one file and one folder, because it counts marked rows;
+  and a single remote file packed by ⌥F5 carries its download time, where a staged folder's files
+  keep the server's.
+- The defaults domain was restored and compared unchanged (71 keys), and the NAS fixture went to the
+  share's bin.
+
+**2026-10-25: A pane whose folder is deleted under it moves up to the nearest folder that still
+exists** (core, app, tests and docs). Asked for by Oleg after the entry above, whose Put Back run
+left a pane listing a bin folder that had just been pruned. Every refresh read a failed listing as
+"keep the rows", through a `try?`: the watcher and the remote poll (`performListRefresh`), an
+operation's refresh, a tab switch, and the tree refresh.
+
+- **The core decides** (`FolderRefuge`), behind an injected `stat`. The folder itself is asked
+  first, and only "gone" (`meansPlaceIsGone`: not found, or a file where it was) starts the walk.
+  The first folder above that answers is where the pane goes, and any other error stops the walk.
+  A failed listing alone is not trusted, because FTP reads 550 as `notFound` for a folder the
+  account may no longer open as well as for one that is gone. 8 tests.
+- **The app** sends the four list refreshes through one `refreshedModel`, which hands a failure to
+  `leaveVanishedFolder`, and the tree refresh calls it when its root did not list. A listing error
+  that is not "gone" never starts a walk, and the move happens only if nothing has moved the pane
+  meanwhile. It is silent, as Total Commander and Finder are.
+- **Only a pane in a window moves.** The first build had no such rule, and the full app suite
+  stalled: orphaned test panes walked into the temp folder as their fixtures were deleted, a tree
+  there re-sorted tens of thousands of rows on the main actor at every write, one test took 351 s,
+  and unrelated suites failed waiting for their own listings. `sample` named the sort at once. The
+  rule is the remote poll's (`isRemoteRefreshWanted`), and a pane in the app is always in a window,
+  minimized or not (NOTES.md ▸ Fixtures and shared state).
+- **Tests:** `VanishedFolderTests` (6) on this disk, each pane in a window it never shows: an
+  operation's refresh, the watcher past two deleted levels, a tree, a tab switch, a folder that is
+  there but unreadable (stays), and a pane in no window (stays). Controls, one at a time: the helper
+  disabled failed the four moves; the core without its first `stat` failed six of its eight; an
+  unanswerable ancestor skipped rather than stopping failed its own test alone; the app's gone-only
+  check and the core's first `stat` both removed failed the unreadable-folder test; and the window
+  rule removed failed the no-window test.
+- **Live** in the Debug build. A local folder deleted from the shell moved its pane to the parent.
+  Over WebDAV, on a throwaway Apache's anonymous folder (so no Keychain), a folder deleted by `curl`
+  moved the pane at the next poll, in tree view and in list view: the server logged the listing's
+  404, a `stat` of the folder (404) and of its parent (207), and the new listing. With the server
+  stopped, the poll's failure reached the helper as `io` (code 5) and nothing moved, read from a
+  temporary log. The window rule came after these runs, and on the final build the local case was
+  run again and moved the same way.
+- **Seen once and not explained:** in the first stopped-server run an alert came up, *Can't open
+  "127.0.0.1"* (code 5), its title naming the connection's root, while the pane stayed on its
+  folder. Three reruns did not show it, two on this build and one with the walk disabled, and the log
+  showed the helper declining the dead server's failure each time. The only WebDAV navigation to a
+  root in the app is the one after a successful connect.
+- **Checks:** core 4483 tests in 445 suites, app 1896 in 302 with the 18 live suites running (72 s,
+  where the stalled run had passed 351 s on one test), both linters clean. The defaults domain was
+  restored to the pre-session backup and compared unchanged (71 keys), after the suite had moved
+  three keys of it (LIVE-VERIFICATION.md).
+
+**2026-10-25: The fetch confirmation counts a marked folder as a folder** (app, catalog, tests and
+docs). Asked for by Oleg, closing the second item the 2026-10-24 run left for him. One file and one
+folder marked on a server asked *"Download 2 files from the server?"*, because the title counted
+every pending row as a file. The archive title did the same, since every archive row is pending,
+folders included.
+
+- **What the title counts is decided apart from how it is said** (`titleCount(for:)`): one row by
+  its name, a set of files as files, of folders as folders, and a mixed set as both,
+  *"Download 1 file and 1 folder from the server?"*. A row already fetched counts for nothing, as
+  before. Files alone keep the titles they had.
+- **Four new titles in all 14 languages**: folders alone and files-and-folders, for the server and
+  for an archive. Each language's sentence is the one its files title already used, around the new
+  nouns. Russian and Ukrainian take the accusative ("1 папку"); Polish, Russian and Ukrainian keep
+  the four plural categories their files titles use. The two-count titles are the catalog's first
+  with two substitutions (NOTES.md ▸ Keys, literals and String Catalogs).
+  `scripts/check_localization_keys.py`: 1165 extracted keys, all in the catalogs.
+- **Tests:** `MaterializeTitleCountTests` (6). The counting is tested with no string at all, and
+  the four titles are read from the compiled stringsdict in every language and formatted with real
+  counts, so neither depends on the test host's language. Controls: counting every row as a file
+  failed the three counting tests, the set seen live among them; Russian removed from one title
+  failed that title's 14-language case and the two Russian plural checks.
+- **Live**, on a throwaway Apache's anonymous folder: a file and a folder marked, ⌥F5, Pack, and
+  the confirmation read *"Download 1 file and 1 folder from the server?"*. Cancel fetched nothing
+  and wrote nothing.
+- **Checks:** core 4483 tests, app 1902 in 303 suites, both linters clean. The defaults domain was
+  restored and compared unchanged (71 keys) after the live run and again after the suite.
+
+**2026-10-25: A tap of ⌥ opens the context menu over the cursor row, and a second tap closes it**
+(core, app, catalog, tests and docs). Asked for by Oleg, who wanted the right-click menu from the
+keyboard without giving up an F-key, so Total Commander's ⇧F10 was not taken. A hold was turned
+down at the design step. ⌥ starts ⌥F5, ⌥↓, ⌥-click, ⌥-drag and ⌥E (é in type-to-filter), and a
+menu that opened while a slow chord was still being finished would swallow the rest of it. A tap
+opens on the release, so nothing is left for the menu to take.
+
+- **The core decides what a tap is** (`ModifierTap`): ⌥ pressed with no other modifier held, let go
+  within `TabShortcuts.revealDelay` (0.4 s, the hold that shows a dialog's tab numbers), with no key,
+  click or scroll in between. A second modifier, both ⌥ keys, or a press seen only as its release
+  is not a tap. 10 tests. `PolledModifierTap` is the same rule read from samples, for inside a
+  menu; a count of keys and clicks that moves spoils it, even in the sample that ends it. 6 tests.
+- **The app** (`OptionTapMenu`) feeds the rule from a local monitor, as `CursorNamePeek` is fed. It
+  opens the menu a run-loop turn after the release, and only when a file list holds the focus, so
+  a rename field, a sheet or the sidebar opens nothing. The menu is the right-click one without the
+  retargeting: the keyboard chose no row, so the marks stay and the menu acts on what F5 would
+  (`keyboardContextMenu`). On `..` with no marks it is the parent's folder menu, and in an empty
+  folder the folder's own. `popUpOverCursorRow` now scrolls the cursor row into view first, which
+  Open With gets too.
+- **Closing needed a second mechanism.** An open menu runs its own event loop, which no local monitor
+  sees: in the live run, ↓ and Escape pressed in the menu never reached the monitor. So every
+  context menu, a right-click's included, has `OptionTapMenuCloser` as its delegate. While the menu
+  is open it samples `NSEvent.modifierFlags` from a `.common`-mode timer every 10 ms, along with
+  `CGEventSource.counterForEventType` for key presses, clicks and scrolls, and calls
+  `cancelTracking()` on a tap. The counters need no Input Monitoring permission (a run with some
+  15 menu opens made no permission request for them). The closer also resets the monitor's
+  recognizer from the keyboard. Found live: ⌥ held for a right-click was pressed where the monitor
+  saw it and let go inside the menu, where it did not, so the next tap opened nothing.
+- **File ▸ Show Context Menu** (`file.contextMenu`) is the palette's way in, with no default key: a
+  `CommandShortcut` cannot describe a lone modifier, and a user can bind a chord. It is in the File
+  menu because the menu bar is the only dispatch path for a bound chord, and it is held back from a
+  field editor like Open With. Title and keywords in all 14 languages; the keywords carry
+  "right-click" and "shift+f10" for the Total Commander user who searches for them.
+- **Tests:** `KeyboardContextMenuTests` (12) decide the tap from hand-built `NSEvent`s, check which
+  table answers, which menu the keyboard gets and what it acts on, the File menu's wiring, the
+  closer on every context menu, and the reset on close. Controls: the core without its
+  "from nothing held" rule failed the second-modifier and both-⌥-keys tests; `interrupt()` emptied
+  failed the interruption test; a tap allowed to end in a sample whose count moved failed that
+  test; the keyboard menu retargeted like a right-click failed three menu tests; the monitor
+  letting a key through failed the ⌥E test; the field-editor validation removed failed the wiring
+  test; the closer left off the menus, and the reset on close removed, each failed its own test.
+- **Live**, in the Debug build, Oleg pressing the keys and a temporary log (since removed) recording
+  every event the monitor and the closer saw. Left and right ⌥ (key codes 58 and 61) opened the
+  menu. Marks stayed marked and the menu said Copy Paths. A one-second hold, ⌥E, ⌥-click, ⌥F5 (the
+  log shows ⌥, fn, F5, then the sheet) and a tap in a rename field opened nothing. A second tap
+  closed the menu, from inside Tags as well. So did a tap over right-click and Control-click menus.
+  ⌥↓ and a long hold inside the menu left it open, and a menu opened with ⌥ held stayed open when ⌥
+  was let go. The stale-⌥ case was run again after the fix, and the tap opened the menu.
+- **Seen once:** a menu closed with ⌥ down and nothing counted, and the next tap opened nothing (its
+  focus check failed). At that moment the system log shows an accessibility request to Dirnex from
+  outside, with its TCC check, the only one in the run.
+- **Checks:** core 4500 tests in 447 suites, app 1916 in 304, both linters clean,
+  `check_localization_keys.py` 1165 keys present. The defaults domain was restored to the
+  backup taken after Oleg's Debug build quit and compared unchanged (71 keys). The run had moved
+  five keys, among them `Dirnex.undoJournal`, which had lost its 8 oldest entries
+  (LIVE-VERIFICATION.md).
+
+### M33 — Copy a change across, and save (M)
+
+**Closed 2026-10-26**, a day after it was planned. The compare window edits lines and stops short of
+typing. Copy to Right (⌥⌘→) and Copy to Left (⌥⌘←) move the current change across as a `LineEdit` on
+the core's `ComparedDocument`, the pair is compared again after each copy, and the window's own undo
+walks every copy back. ⌘S saves each edited side as it was read apart from the lines that changed,
+in the same encoding, byte-order mark and line endings, and a character the encoding cannot hold is
+refused with its line. A local save is checked against the file as read, written in place inside a
+merging coordinated write, kept in the undo store and journaled, so ⌘Z in a pane puts it back. A
+server file or an archive member is saved into its copy and carried by F4's write-back, with its
+check, question and precondition. Edit Left and Edit Right hand a side to the user's editor, and the
+window watches every side it can save and reads a change in. Three findings are worth not
+re-deriving. Only a write in place kept every attribute, a second hard link and a file whose ACL
+denies delete; TextEdit's save and `replaceItemAt` broke the link and could not save the last
+(docs/NOTES.md ▸ Keeping a file's previous bytes). An editor with the file open sees an
+uncoordinated write only at its next save, and a coordinated one without the merging option discards
+its unsaved edit (also there). And the write-back's check read the revision of the path's newest
+copy rather than of the copy being saved, so a preview's newer download let an older copy go up over
+it with no question, from M21 Slice 10 until 2026-10-25.
+
+Two passes after Slice 6 close the section, each a finding of its live run: archive rewrites had
+renamed every member to `./name` since M4, and a `.tar.zst` needs an external `zstd` that a Dock
+launch's `PATH` does not reach.
+
+Some paths were not exercised by the close, and are recorded rather than argued. **FTP and S3
+sides** were not saved live. **A Synchronize row compared again after a save** and **a side with
+nowhere to save** (a nested archive's member, an iCloud Photos original) are covered by tests only.
+**An editor's unsaved edit met by a save**, which the coordination saves first, was shown by the
+core tests and the probe; live, TextEdit autosaved before the save came. Russian was the only
+translation looked at.
+
+Left deliberately undone: **typing in a pane** and **find and replace**, M11's call; **copying every
+change at once**, which is F5; **a save that changes the encoding or the line endings**, since a
+save keeps both; and **editing in the conflict dialog's window**, whose right-hand file is a copy
+waiting on that dialog.
+
+The section as the plan carried it through the milestone:
+
+**Planned 2026-10-25.** Dirnex's compare window shows two files and changes neither. Total
+Commander's compare tool, the one M31 named, copies a block from one side to the other and saves
+the result, and that is what editing a comparison is mostly for: making one file agree with the
+other where it should. This milestone adds that and stops short of typing. M11's call stands: a
+built-in text editor is encoding detection, line-ending preservation, undo grouping and find and
+replace, a whole app, and every Mac already has the editor its user chose. So the window edits
+*lines*, through a model in the core, and an edit by hand goes to the user's own editor, which the
+window watches and compares again when it saves.
+
+Read before deciding (2026-10-25):
+
+- **A pane's text is not the file's text** (`ComparisonPaneText`). A gap is an empty line; U+2028,
+  U+2029, U+0085, a vertical tab and a form feed show as stand-ins; a line over 10 000 UTF-16 units
+  is cut at `…`; and every row ends in `\n`, whatever the file's line ended in. An editable pane
+  would have to map every keystroke, every marked-text composition and every `NSTextFinder` replace
+  back through all four, a keystroke landing in a gap included.
+- **The window already holds what a save needs.** `ComparedText` keeps the encoding and the
+  byte-order mark, and `TextLine` keeps each line's own ending, so the bytes can be written back
+  without a guess.
+- **Every place a side comes from already has a way back.** A local file is a path. A server file
+  or an archive member reaches the window as a temporary copy (`CompareFile.path` beside `origin`),
+  and F4's write-back already puts such a copy back, re-`stat`ing the server and conditioning the
+  upload on what the check read (`WriteBackJob`, §M21 Slice 10).
+- **Comparing again after every change is cheap enough.** M31 measured 0.03 s for a 20 000-line
+  file with 200 edits and 0.43 s for the dense 100 000-line pair, in release.
+- **⌥⌘← and ⌥⌘→ are free.** No catalog command is bound to either, and the window's own change
+  keys, ⌥⌘↑ and ⌥⌘↓, sit beside them (`CompareWindowController+Keys`).
+- **An archive rewrite is already undone by exchanging two files** (`ArchiveUndoStore.exchange`,
+  with `ArchiveUndoWitness` checked at ⌘Z): the self-inverse step NOTES.md ▸ Undo and redo
+  recommends for any whole-object replacement. A saved file is one.
+
+Decided before Slice 1:
+
+- **The panes stay `isEditable = false`.** An edit is a line operation on the core model, never a
+  keystroke in a text view. Hand edits go to the user's editor (Slice 5).
+- **Two verbs: Copy to Right (⌥⌘→) and Copy to Left (⌥⌘←).** Each acts on the current change, then
+  moves to the next one. Copying a side whose block is empty is how a block is deleted, so there is
+  no third verb. Buttons beside the change arrows carry the same two.
+- **Copied lines take the line ending most common in the file they land in**, and a copied line
+  that had none, being its file's last, gains one unless it lands last too. Otherwise a CRLF block
+  lands in an LF file unannounced, the one change nobody expects from "copy".
+- **A copy acts on what the comparison shows.** Under an ignore option, lines shown as the same are
+  not copied, and the banner goes on naming what still differs.
+- **Undo belongs to the window.** Every edit replaces some lines with others, and its inverse is an
+  edit of the same shape, so ⌘Z and ⇧⌘Z come free.
+- **A side is saved as it was read, apart from the lines that changed**: the same encoding, the
+  same byte-order mark, and every unchanged line with its own ending. A character the encoding
+  cannot hold is refused by name, with its line, never substituted. A side whose unedited bytes do
+  not come back identical from the model opens read-only, and the banner says why.
+- **⌘S saves every edited side.** The title bar shows unsaved changes, and closing the window asks
+  Save, Don't Save or Cancel.
+- **A local save is checked, kept and journaled.** Before writing, the file's size and modification
+  date are compared with what was read, and if either moved the window asks rather than writes. The
+  old bytes go to the undo store, and ⌘Z in a pane exchanges them back:
+  `ArchiveUndoStore.exchange`'s step, widened from archives to any file, with the same witness.
+- **A server file or an archive member is saved into its temporary copy and handed to the
+  write-back F4 uses**, re-`stat`, prompt and precondition included. There is no second upload path
+  (§6's M23 row), and the save is not journaled, as no remote write-back is.
+- **The window opened from the conflict dialog stays read-only.** Its right-hand file is the source
+  of a copy that is waiting on that dialog.
+
+#### Slices
+
+1. **The editable side** (core, additive). `ComparedDocument`: owned lines, the encoding and the
+   byte-order mark; `LineEdit` and its inverse; copying a change either way with the destination's
+   line ending; encoding back to bytes, with `unencodable(line:character:)`. Tests: edits and their
+   inverses as properties over random texts, every line-ending case, the round trip over M31's
+   checked-in corpus, and once over every version of every text file in this repository's history
+   (a throwaway harness, recorded in the slice note).
+2. **Copying across** (app). The two keys and buttons; comparing again after each copy, with the
+   current change kept; the window's undo manager under Edit ▸ Undo; the title bar's edited state;
+   Swap Sides carrying unsaved edits with their side; the conflict dialog's window read-only (moved
+   up from Slice 4).
+3. **Saving a local file** (core, then app). First a probe of what a save must keep, against
+   TextEdit's and BBEdit's own saves: mode, owner, Finder tags, other extended attributes, an ACL,
+   the creation date, a symlink (saved through to its target) and a file with a second hard link.
+   Then the writer, the witness check, the journal step, ⌘S, and the close prompt (moved from
+   Slice 2, which had no Save for it to offer).
+4. **Saving anywhere else** (app). Server and archive sides through the write-back; the Synchronize
+   row the window came from compared again after a save.
+5. **Edit in the user's editor** (app). Edit Left and Edit Right open that side the way F4 does, so
+   a server side's save is offered back exactly as F4's is. The window watches the file as
+   `EditedFileRegistry` does and compares again when it changes. With unsaved edits on that side, it
+   asks to save them first.
+6. **Live, and the record.** A local pair, a zip member, and the throwaway SFTP and WebDAV servers;
+   the 14 languages; the compare window's rows in
+   [LOCATION-SUPPORT.md](LOCATION-SUPPORT.md).
+
+**Done when:**
+- every version of every text file in this repository's history either comes back byte-identical
+  from an unedited side or opens read-only with the reason named;
+- after any sequence of copies the window shows what a fresh comparison of the two texts shows, and
+  ⌘Z walks every copy back;
+- a local save keeps what Slice 3's probe says it must, is undone by ⌘Z in a pane, and is never
+  written over a file that changed since it was read;
+- a server file and an archive member save through the existing write-back, byte-exact, and a server
+  file changed in the meantime gets the write-back's own prompt;
+- a save in the user's editor shows in the window without reopening it.
+
+Expected to be left undone, each for its own reason: **typing in a pane** and **find and replace**,
+M11's call; **copying every change at once**, which is F5; **a save that changes the encoding or the
+line endings**, since a save keeps both; and **editing in the conflict dialog's window**.
+
+#### Progress
+
+**2026-10-25: Slice 1 landed** (core only; the app is untouched).
+
+- **Core:**
+  - `ComparedDocument` holds a side's lines, encoding and byte-order mark. `read` and `decode` write
+    the unedited lines back once, and `isSavable` says whether that gave the file's own bytes. It
+    also has `commonLineEnding`, `isEdited` (by bytes, against the file as read), `apply(_:)`, which
+    returns the inverse edit, and `encoded()`, which throws `unencodable(line:character:)`.
+  - `LineEdit` replaces some lines with others. `LineEdit.copying(_:to:left:right:)` builds the copy
+    of one change, with the destination's line ending.
+  - `TextComparison` compares two documents as they stand.
+  - `LineTerminator.text` and `TextPreview.byteOrderMark(for:)` are now the only spelling of a line
+    ending and of a mark.
+- **Tests:** 18 in two new suites.
+  - `ComparedDocumentTests` pins each line-ending rule, both refusals, each encoding's round trip
+    and the not-savable cases.
+  - `ComparedDocumentPropertyTests` applies up to 8 random edits to each of 1 000 random documents,
+    then walks every one back by its inverse and forward again by theirs. It draws 2 000 random
+    pairs under four option sets and copies changes in random order and direction until the pair
+    agrees. Every pair agrees within as many copies as the first comparison had changed lines, and
+    undo restores both sides: 4 545 copies, 81 of them giving the line before a break of its own.
+  - The same suite takes M31's 35 corpus files and their seeded edits in UTF-8, UTF-8 with a mark,
+    UTF-16LE and UTF-16BE. Each comes back byte for byte, and copying every change of a file into
+    its edit gives the file back (205 copies).
+- **Measured** (throwaway harnesses, not checked in):
+  - **This repository's whole history:** 7 480 blob versions. 7 449 are text, and every one is
+    savable and comes back byte for byte; the other 31 are binary.
+  - **The development Mac:** 835 018 files under `~/Dev`, `/usr/share`, `/etc` and three
+    frameworks. 555 676 decode as text, in 25 encodings: 5 124 UTF-8 with a mark, 596 UTF-16LE and
+    280 legacy files in 23 encodings among them. Every one comes back byte for byte.
+  - **Two hand-made files do not**, and are not savable. One has a second UTF-8 mark, which
+    Foundation drops when decoding; the other is UTF-16 with an odd last byte, dropped too
+    (docs/NOTES.md ▸ Text fields and text views).
+  - **The check costs little at open**, in release: 0.35 → 0.48 s for 58 MiB of UTF-8, +0.08 s for
+    15 MiB of UTF-16 and +0.3 s for 7.7 MB of Windows-1251.
+- **Decided in the slice:**
+  - **Outside UTF-8, the writer encodes one line at a time**, so a refused character is found on
+    its own line. The check at open covers an encoding whose state would run across lines. The
+    character named is the last of the shortest prefix the encoding refuses, so a flag or a
+    decomposed letter is named whole.
+  - **`commonLineEnding` comes from the file as read and stays.** A tie goes to the ending met
+    first. A file with no line break takes the source's, and two such files get LF.
+  - **A copy that lands after a last line with no break gives that line one**, so the edit starts a
+    line early. Only an option that overlooks line endings can leave a change there; without the
+    break the two lines would join. `apply` traps on any edit that leaves a line without a break
+    ahead of another.
+  - **An undo, or a change copied back by hand, leaves a side unedited**, because `isEdited`
+    compares bytes with the file as read rather than counting edits.
+- **Negative controls:**
+  - Without the line-break step, its unit test and the copy property both trap in `apply`.
+  - With copied lines keeping their own ending, the CRLF-into-LF test fails. It is the only test
+    that does, since the property draws both sides from one ending under the default options.
+  - With a copied last line always gaining a break, three unit tests, the corpus copy and the
+    default-option property fail.
+  - Writing no mark fails five round trips and the not-savable test's controls.
+- **Found on the way:** M31's decoder takes 6 s to open a 7.7 MB Windows-1251 file, in
+  `NSString.stringEncoding(for:)`. The compare window has paid that since M31, and this slice adds
+  0.3 s to it.
+
+**2026-10-25: Slice 2 landed** (the window; nothing is saved yet, which is Slice 3).
+
+- **Core:** `ComparedDocument.text(ofFirstLines:)` and `SyntaxLanguage.contentsLineLimit`, so the
+  opener names a file's language from its first 500 lines without joining the whole file.
+- **App:**
+  - `CompareSource` holds a `ComparedDocument` and an `id`, and the opener reads one, so a file
+    that would not come back byte for byte is known when the window opens.
+  - `+Copy` adds Copy to Right (⌥⌘→) and Copy to Left (⌥⌘←), and two arrows right after the change
+    arrows. A copy is the core's `LineEdit`. The pair is then compared again, and the change below
+    the copied lines becomes the current one, or the last change when none is below.
+  - The window has its own `UndoManager`, handed to AppKit by `windowWillReturnUndoManager`. Edit ▸
+    Undo names the copy ("Undo Copy to Right"), and an undo makes the change it brought back the
+    current one.
+  - A side that differs from its file says "— Edited" in its header, and the close button carries
+    the edited dot. Both read `isEdited`, which is computed with the comparison, off the main thread.
+  - Swap Sides takes each file's copies with it. An undo finds its file by `id`, on whichever side
+    the file is.
+  - A side that is not savable takes no copy: its arrow is grayed and the banner says why. The
+    conflict dialog's window shows no arrows and ignores both keys.
+- **Tests:** 11 in `CompareCopyTests` and one in the core. The existing compare suites now build
+  their sides from documents.
+- **Probed before writing it:**
+  - **Edit ▸ Undo needs nothing from the window but an undo manager.** In a throwaway app, `undo:`
+    with a read-only text view first walked past it to `NSWindow`. The window asked its delegate's
+    `windowWillReturnUndoManager`, enabled the item and titled it "Undo Copy to Right", and ⌘Z
+    through `NSMenu.performKeyEquivalent` ran the handler.
+  - **A momentary `NSSegmentedControl` keeps no selection set from code**, so the button test
+    presses the segment through its accessibility element (docs/NOTES.md ▸ Windows).
+- **Decided in the slice:**
+  - **The close prompt moved to Slice 3**, since Save has nothing to do until a save exists. In this
+    slice, closing an edited window drops copies that nothing could have kept.
+  - **The conflict dialog's window became read-only here rather than in Slice 4.** The arrows
+    arrive in this slice, and that window's right-hand file is a copy waiting on the dialog.
+  - **A copy waits for a comparison of the sides as they stand.** `sidesRevision` counts every
+    copy, undo and swap. A copy is refused with a beep until a comparison of that revision has
+    landed, because a change's ranges name lines of the comparison it came from.
+  - **After a copy or a redo, the next change is current. After an undo, the restored one is.**
+- **Negative controls:**
+  - With an undo landing as a copy does, the window's undo test fails. At first only the unit test
+    failed: the window test copied the last change, where "the last one left" and "the one restored"
+    are the same change. The test now copies a middle one.
+  - Without the revision guard, the stale-comparison test fails.
+  - With an undo finding its file by side rather than by `id`, the Swap Sides test fails.
+  - Without `windowWillReturnUndoManager`, two tests fail.
+- **Seen live** in the Debug build, on a three-change pair opened with ⌥F3. The saved tabs were
+  cleared first, since a WebDAV tab would have asked the Keychain. A temporary probe (since removed)
+  logged both files' text, the current change, the edited marks, and the Edit menu's Undo and Redo
+  titles after each step:
+  - ⌥⌘→ and ⌥⌘← arrived as key events (keyCodes 124 and 123, with ⌥⌘) and copied each way. The
+    arrow button copied too.
+  - The Edit menu said "Undo Copy to Right". Choosing it made the restored change the current one,
+    and Redo then said "Redo Copy to Right". ⇧⌘Z and ⌘Z did the same by key.
+  - Undoing every copy cleared the "— Edited" mark and the close button's dot, and a copy put both
+    back.
+  - ⌘U took the left file's copy and its mark to the right, and ⌘Z then restored that file there.
+  - **The keys needed Dirnex in front** (full-screen control). Driven from the background, the
+    window is not key, so its key monitor is not installed (docs/LIVE-VERIFICATION.md).
+  - The defaults domain was put back afterwards and compared unchanged.
+- **Seen, and left as it was:** after Swap Sides no change is current, so both arrows stay grayed
+  until ⌥⌘↓. That is M31's swap, which compares again rather than mirroring the comparison.
+
+**2026-10-25: Slice 3 landed** (core, then app). A server file or an archive member is not saved
+yet, which is Slice 4.
+
+- **Probed first** (docs/NOTES.md ▸ Keeping a file's previous bytes): what TextEdit, vim,
+  `FileManager.replaceItemAt` and a write in place keep. The fixture had mode 0640, a group the
+  folder does not have, two Finder tags, a private extended attribute, an ACL entry and a 2020
+  creation date, and the cases were a plain file, a symlink, a second hard link and an ACL denying
+  delete.
+  - All four kept the mode, group, ACL and creation date. vim dropped the tags and the private
+    attribute.
+  - TextEdit and `replaceItemAt` gave the hard-linked file a new inode, so the other name kept the
+    old bytes. Neither could save the file whose ACL denies delete: TextEdit's save never returned
+    and left a temporary file beside it.
+  - Only the write in place kept everything in every case. BBEdit is not on this Mac, so vim stood
+    in. A file owned by another user could not be made here; a write in place keeps its owner by
+    construction.
+- **Core:**
+  - `InPlaceFileWrite` replaces a file's bytes through `open(O_TRUNC)`. Its writer is the one seam
+    a test can fail partway.
+  - `ComparedFileSave` encodes first, so an unencodable character is refused before anything is
+    touched. It then checks the file against the `Target` taken when it was read, captures the old
+    bytes into the undo store and writes in place. A write that fails is undone by writing the old
+    bytes back with their modification time.
+  - `UndoStep.restoreSavedFile` is the archive step with the same store, witness and both refusals.
+    It writes back in place too (`ArchiveUndoStore.exchangeInPlace`), labelled `.saveFile` ("Undo
+    Save", translated in all 14 languages, since the coverage test reads every label).
+  - `ComparedDocument.markSaved` makes the saved lines what `isEdited` compares with.
+- **App:**
+  - ⌘S saves every edited side and beeps when there is nothing to save. It is a key the window
+    takes, like ⌥⌘→, since the main menu has no Save item.
+  - A file changed since it was read asks "Save Anyway" or Cancel. A character the encoding cannot
+    hold is reported with its line and the encoding's name.
+  - Closing an edited window asks Save, Don't Save (⌘D) or Cancel. So does quitting, through
+    `applicationShouldTerminate`.
+  - ⌘W closes the window, through the same question. Since M31 it had done nothing there: the
+    menu's ⌘W is the browser's Close Tab, which is disabled in the compare window.
+  - The undo record goes to the browser window the comparison came from, or the front one if that
+    has closed. `CompareSaving` carries the store and the journal, with no default, as
+    `ArchiveWriter`'s request does.
+  - `CompareOpener.openWindow`'s `allowsCopies` became `saving: CompareSaving?`: a window with
+    nowhere to save takes no copies, which is the conflict dialog's.
+- **Tests:** 18 in the core, in `ComparedFileSaveTests` and `SavedFileUndoTests`, and 15 in the
+  app, in `CompareSaveTests` and `CompareCloseTests`. Full runs: 4 537 core and 1 940 app tests,
+  without the live server suites, which this slice does not touch.
+- **Decided in the slice:**
+  - **A save writes in place**, the only way that kept everything. It gives up atomicity, so the old
+    bytes are read first and put back if the write fails. Measured on a 3 MB APFS disk image: a
+    17 MB save failed with `ENOSPC`, and the file came back byte for byte with its witness
+    unchanged.
+  - **⌘Z writes in place as well.** The plan named `ArchiveUndoStore.exchange`'s rename, which would
+    break the hard link the save kept and fail on the ACL. The undo puts back the modification time
+    the file had before the save, as an archive's undo does, so the witness stays exact.
+  - **The witness is taken just before the read**, so a write during the read makes the save ask.
+    A symlink is resolved when saving, and the undo record names its target.
+  - **A server or archive side still takes copies and is not saved**, as in Slice 2. ⌘S and both
+    prompts pass over it until Slice 4.
+  - **The compare window is no longer deferred.** Probed: a deferred window takes no sheet until it
+    has been shown, so a test's window raised none (docs/NOTES.md ▸ Testing).
+  - The window's new sentences wait for Slice 6's translations, as Slice 2's do.
+- **Negative controls:**
+  - `replaceItemAt` in place of the write fails the hard-link, symlink, deny-delete and disk-full
+    tests.
+  - Without the put-back, the disk-full test fails. Without the witness check, both changed-file
+    tests fail.
+  - An undo by rename fails the hard-link and deny-delete undo tests.
+  - With a saved file's snapshot left out of `archiveSnapshotPaths`, three tests fail. Launch's
+    prune would otherwise delete the copy.
+  - In the app, a save without `markSaved`, without the journal call, without the ⌘S key or the ⌘W
+    key, or a close that never asks, each fails its test.
+- **Seen live** in the Debug build, on a pair whose right file carried tags, a private attribute, an
+  ACL, the `admin` group, a 2020 creation date and a second hard link. Computer-use pressed the keys;
+  a temporary probe (since removed) logged the window, and a sampler logged the file whenever it
+  changed:
+  - ⌥⌘→ then ⌘S wrote the line into the same inode. Both names showed it, every attribute stayed,
+    and the "— Edited" mark cleared.
+  - In the pane, Edit ▸ Undo said "Undo Save". It put the old bytes and the 2024 modification time
+    back, and ⇧⌘Z put the saved ones back, all in that inode.
+  - Closing with an edit asked; ⌘D answered Don't Save and left the file alone, and Return answered
+    Save and wrote it.
+  - With the file changed behind the window, ⌘S asked. Cancel kept the other write; Save Anyway
+    replaced it, and its undo copy held the other write.
+  - Quit asked the same question. Cancel kept the app running, and Don't Save quit it.
+  - In a second run, ⌘W closed an unedited window at once and left the browser's tab alone. With an
+    edit it asked; Cancel kept the window, and ⌘D closed it with the file untouched.
+  - The defaults domain was restored and compared unchanged, and the run's three undo copies were
+    deleted.
+
+**2026-10-25: Slice 4 landed** (app only). **Not yet run live**; the tests drive the window with a
+stand-in write-back.
+
+- **App:**
+  - A server file or an archive member is saved into the copy the window read, then handed to F4's
+    write-back: the re-`stat`, the question only when the check found something, the precondition
+    and the queued upload, or the archive's question and its rewrite.
+    `BrowserWindowController.writeBack(_:askingOver:)` runs the batch's two endings at once rather
+    than gathering, puts their sheets on the compare window, and answers whether the copy landed.
+  - **A side counts as saved only once it lands.** Keep Editing, a failed upload or a declined
+    rewrite leaves it edited, so the close prompt still asks and the next ⌘S carries it again. The
+    copy's witness moves with the window's own write, so that save does not ask whether the copy
+    changed.
+  - Where each copy goes back to is `editDestination(for:)`'s answer when ⌥F3 is pressed, as for F4.
+    A side with nowhere to go (a member of a nested archive or a self-extractor, an iCloud Photos
+    original) is read-only: its arrow is grayed and the banner says Dirnex can't save it back where
+    it came from. It took copies until now, which close dropped without asking.
+  - The window keeps no undo for these. An upload has none, and an archive's rewrite journals its
+    own, as it does for F4.
+  - **The Synchronize row is compared again.** A landed save posts `CompareWindowController.fileSaved`
+    with the file's origin. The Synchronize window re-`stat`s the row showing it and answers the row
+    under the comparison on screen (`SyncDirectoriesController+Saves`). The row leaves the list once
+    its two files agree. A row whose status did not move keeps its action and tick, and every other
+    row keeps them too. A notification rather than a handler passed down, so a compare window
+    opened before the sheet counts as well.
+  - `EditedFileRegistry.acknowledgeWrite(to:)`: F4 may have the same copy open, and its watch would
+    offer the window's write a second time.
+- **Fixed on the way:**
+  - Cancel at an encrypted archive's passphrase prompt called nothing back, so the archive
+    write-back waited forever and that window's later write-backs queued behind it.
+    `withArchivePassphrase` now has `onCancel`.
+  - The upload anyway after a refused precondition ran detached, where no caller could hear of it.
+    It is awaited now, and the next batch's sheet waits behind it.
+- **Found and not fixed:** the write-back's check reads the revision the cache holds for the
+  *path*, not for the copy being written back. If a preview downloads a newer version of the file
+  while an edit is open, F4's or the window's, the check compares the server with that newer
+  revision, finds nothing, and uploads the older copy over it without a question. It has been so
+  since M21 Slice 10, and the compare window makes it easier to reach.
+- **Tests:** 15 in three new suites. `CompareWriteBackTests` covers what the window hands over, when,
+  over which window, and what it does with the answer, plus the read-only side and the
+  announcement. `SyncCompareAgainTests` covers the row leaving, the other rows keeping their ticks,
+  and the four ways an answer lands in the list. `EditedFileRegistryTests` covers the acknowledged
+  write. Full runs: 4 537 core and 1 955 app tests, without the live server suites; the backends and
+  the runner are untouched.
+- **Negative controls:**
+  - Without the witness moving with the window's write, the not-landed test fails.
+  - A side saved whatever the write-back answered fails that test and the announcement test.
+  - Without the read-only reason, the nowhere-to-save test fails. Without the observer, the
+    Synchronize row test fails.
+  - Without the status-kept branch, its row test fails. Without the acknowledgement, the watch test
+    fails: its first control was a `return` above the line, which Swift ran anyway
+    (docs/NOTES.md ▸ Negative controls).
+- **Left for Slice 6:** the compare window's cells in [LOCATION-SUPPORT.md](LOCATION-SUPPORT.md),
+  the new sentences' translations, and the live runs over SFTP, WebDAV and a zip.
+
+**2026-10-25: the write-back check reads the copy's revision** (app only). Closes Slice 4's
+*found and not fixed*. **Not yet run live.**
+
+- **App:**
+  - `RemoteFileCache` keeps a revision **per copy**, by the copy's URL. Before this it kept one per
+    path, and `fetched[path]` still names the path's newest copy, which is what previews and opens
+    are handed. A copy keeps its record after the path stops handing it out, because the edit open
+    on it outlives the listing that superseded it.
+  - The check reads `revision(ofCopy:)` for the copy being saved, through
+    `BrowserWindowController.recordedRevision(of:in:)`. A copy with no record answers `nil`, never
+    another copy's revision, and the check then asks with the "no record" sentence.
+  - An upload re-baselines only its own copy. A failed re-`stat` or an unclaimed item forgets only
+    that copy's record (`forget(copy:)`), where it used to drop the whole path.
+  - **Chosen over** answering "no record" whenever the copy is not the path's newest. That also
+    closes the hole, but the user would read "can't tell" where "someone else has edited it" is
+    known. It would also lose the newer copy's record once the older one uploaded.
+  - `Entry` and `cached(for:)` are gone: the copy's URL was all their callers used, and without
+    them no path-keyed revision is left to reach for.
+- **Tests:** 5 new. `WriteBackBatchTests` has two: the older copy's save is checked against its own
+  download (and the newer copy's save stays quiet), and after one copy uploads, the other copy's save
+  is checked against its own revision. `RemoteFileCacheTests` has three, on two copies of one path:
+  each keeps its own revision, a re-baseline moves only its copy, and forgetting one leaves the
+  other. Full runs: 4 537 core and 1 960 app tests, without the live server suites. The S3 edit
+  suite now reads the per-copy accessor and still needs a real account to run.
+- **Negative controls:**
+  - The check reading the path's newest copy, as before, fails both batch tests. The concern comes
+    back `nil`, which is the silent overwrite.
+  - One record per path (a record dropped with its path, or replaced by the next copy) fails both
+    batch tests and two cache tests.
+  - A path-wide `forget` fails the forget test.
+- **Left for Slice 6's live runs over SFTP and WebDAV:** F4 a file, change it on the server, let a
+  preview bring the new version down, then save the old copy and see it ask. Once with F4's editor
+  and once with the compare window's ⌘S.
+
+**2026-10-25: Slice 5 landed** (app only). Run live on a local pair the same night; the server and
+archive runs are Slice 6's.
+
+- **Probed first** (a throwaway package over `DirnexCore`, not checked in):
+  - **A file-path FSEvents stream with file events fires for every way an editor saves.** Counted
+    `DirectoryWatcher(filePath:)` callbacks: a write in place gave 1, and a rename over the file, a
+    delete and create, `replaceItemAt` from the item replacement directory, `NSDocument.writeSafely`
+    (TextEdit's save) and vim's `:wq` gave 2 each. A sibling written five times gave 0. The
+    `/var/folders` spelling of a temporary copy fired, and so did a symlink's own path for a write
+    to its target.
+  - `NSDocument.writeSafely` to a symlink's own URL failed ("doesn't exist"), and to the resolved
+    URL it worked, so a document-based editor saves the target. The stream is given the resolved
+    path.
+  - `UndoManager.removeAllActions(withTarget:)` took one target's actions off both stacks and left
+    another's, with their titles and order.
+- **Decided with Oleg before writing it:** every savable side is watched from the moment the window
+  opens, not only after Edit; the pencils sit in the pane headers, with F4; a side with unsaved
+  copies asks Save and Edit or Cancel, with no Discard; and a change under unsaved copies asks Read
+  Again or Keep Copied Changes rather than keeping them in silence.
+- **App:**
+  - `+Watch` watches each side a save can write. A change is a file that no longer matches the
+    witness its side was read or last saved at, so the window's own save is not one. A look that
+    comes during a save, or during a read of the same file, waits until it ends.
+  - The file is read again off the main thread and replaces its side. The pair is compared again
+    with the other file's top line kept, and the first change at or below that line is current, so
+    the copy keys go on working.
+  - **The file's copies leave Edit ▸ Undo**, since their ranges name the old lines, and the other
+    file's stay. Each file registers its copies under its own `CompareUndoTarget`.
+  - **Each copy is its own undo group now** (`groupsByEvent = false`), found by the undo test. In
+    the test host two copies made with no event between them shared one open group, and removing
+    one file's action left the group holding the other's under the first one's name. In the app each
+    key press closes its group, but a step holding both files' copies is one a read again cannot
+    take apart.
+  - A side holding unsaved copies asks first. Read Again drops them. Keep Copied Changes leaves
+    them, and ⌘S then asks Save Anyway, as for any file changed since it was read. A state the user
+    kept, or one that could not be read as text, is not asked about again; a later change is.
+  - A file that can no longer be read as text gets "Couldn’t compare these files" with the opener's
+    reason, and the window goes on showing it as read.
+  - A local file's change posts `fileSaved`, so a Synchronize row showing it compares again. A
+    server copy's does not, since the server is unchanged until the copy's write-back lands.
+  - `+Edit` adds Edit Left and Edit Right: a pencil at the end of each pane's name, and F4 for the
+    pane holding the keyboard. The editor is handed what F4 would hand it: a local file itself, or
+    for a server file or an archive member the copy the window read, registered with the browser
+    window's `EditedFileRegistry`, so its save is offered back exactly as F4's is. A side with
+    nowhere to save has its pencil grayed. The conflict dialog's window shows none and beeps at F4.
+    No editor, or a launch that fails, gets F4's own alert, on the compare window.
+  - `CompareSaving` gained `openInEditor` and `watchCopy`, stand-ins in tests, so a test window
+    opens no editor.
+  - `buildContent` moved to `+Layout` when the controller passed the type-body ceiling.
+- **Tests:** 20 in two new suites: `CompareEditTests` (9) and `CompareWatchTests` (11), over real
+  FSEvents streams on the rig's files. Full runs: 4 537 core and 1 980 app tests, without the live
+  server suites, which this slice does not touch.
+- **Negative controls:**
+  - With no watch, 10 of the 11 watch tests fail (all but the pure change-picking one).
+  - Without the witness comparison, the window's own save is read back, and the own-save and undo
+    tests fail. Without the passed-over check, the kept state is asked about again.
+  - With every copy registered under the controller, as before, the undo test and Read Again's
+    fail. Grouping by event fails the undo test.
+  - Reading again without asking fails Keep and Read Again. Editing without saving first fails both
+    save-first tests.
+  - Without the copy watch, the server test fails; without the notice, the Synchronize test;
+    without F4, both F4 tests; without stopping at close, the close test.
+- **Seen live** (2026-10-26) in the Debug build on a local pair, with TextEdit as the editor. The
+  saved tabs were set aside so no WebDAV tab asked the Keychain. Computer-use drove it, in the
+  background and then with Dirnex in front for the window's keys, and a temporary probe (since
+  removed) logged every look at a file, question and save:
+  - Both pencils sat at the end of their name rows, enabled, titled "Edit Right in TextEdit (F4)".
+    The right pencil handed TextEdit `right.txt` itself and watched no copy. TextEdit merely opening
+    the file fired the stream, and the witness answered "unchanged".
+  - TextEdit's save (a new inode) fired twice. The first read the file again and showed the added
+    line, 3 changes and no edited mark. The second answered "unchanged".
+  - The pencil on an edited side asked Save and Edit. The save landed and was journaled, its own
+    stream event answered "unchanged", and TextEdit was handed the file.
+  - With a copy unsaved, TextEdit's save asked Read Again or Keep Copied Changes, and the save's
+    second event waited behind the question. Keep left the copy, and that event, looked at
+    afterwards, was passed over. ⌘S then asked Save Anyway, and Cancel left TextEdit's save on disk.
+    A later TextEdit save asked again, and Read Again showed it, unedited, with the right file's
+    copies gone from undo.
+  - F4 followed the keyboard: in the right pane it asked about `right.txt`, and Cancel opened
+    nothing. In the left pane it handed TextEdit `left.txt`.
+  - After ⌥⌘←, ⌥⌘→ and ⌘S, an outside write to the right file was read in silence, and Edit ▸ Undo
+    said "Undo Copy to Left". Choosing it put the left file's line back, with nothing left to undo.
+  - ⌘W asked about the unsaved left file, and Don't Save closed the window.
+  - The defaults domain was restored and compared unchanged, and the run's three undo copies were
+    deleted.
+- **Found live, and fixed in the entry below: an editor that already has the file open does not see
+  the window's save.** After Save and Edit, TextEdit, which had `right.txt` open from the first Edit, went on
+  showing the old text, even after Dirnex and then TextEdit were activated again. Its next save
+  refused with "The file has been changed by another application" (Save Anyway, Revert, Save As),
+  so nothing was lost in silence, but Save and Edit's promise, that the editor opens the file with
+  the copies in it, does not hold there. The window's save writes in place without
+  `NSFileCoordinator`. The same in-place write made through a coordinator refreshed TextEdit's
+  window at once. ⌘Z's write-back of a saved file (`exchangeInPlace`) is the same kind of write.
+- **Left for Slice 6:** the live runs over SFTP, WebDAV and a zip member, among them an editor's
+  save through Edit Right; this slice's sentences in the 14 languages; and the compare window's
+  cells in [LOCATION-SUPPORT.md](LOCATION-SUPPORT.md).
+
+**2026-10-26: the window's saves are coordinated** (core, then a live check). Closes Slice 5's
+finding above.
+
+- **Probed first** (docs/NOTES.md ▸ Keeping a file's previous bytes), with a test-process presenter
+  and with TextEdit, the three ways of writing:
+  - **Uncoordinated**, as before: a presenter heard nothing. TextEdit kept a stale document, and
+    kept an unsaved edit over the new bytes until its next autosave asked about it.
+  - **Coordinated with no options**: TextEdit refreshed an unedited document at once, but
+    **discarded an unsaved edit**, from the window and from Undo.
+  - **Coordinated for merging**: TextEdit saved its unsaved edit into the file first, then showed
+    the new bytes. An unedited document refreshed.
+  - A presenter's write while it let go was already in the file when the accessor ran. And
+    `cancel()` from another thread ended a coordination stuck on a presenter that never let go.
+- **Core:**
+  - `CoordinatedFileWrite.run` runs a block inside a merging coordinated write, and gives up after
+    10 s, answering `nil` without running it.
+  - `ComparedFileSave` runs its witness check, its read of the old bytes, the undo copy and the
+    write inside that block, so an editor's unsaved edit, saved by the coordination, is found by the
+    check and refused as changed since read. Saving anyway writes over it, and the undo copy holds
+    it.
+  - ⌘Z of a save (`restoreSavedFile`) runs its witness check and the in-place exchange inside one
+    coordinated write too. An archive's swap is unchanged.
+  - `VFSUnsupportedReason.fileHeldByAnotherApp(name:)` for a write no app let go of in time,
+    translated in all 14 languages, since the coverage test reads every reason.
+- **Tests:** 6 in `CoordinatedFileWriteTests`, with a file presenter standing in for the editor:
+  the save and ⌘Z are heard, an unsaved edit is saved first and kept, saving anyway leaves it in the
+  undo copy, ⌘Z refuses over it, and an editor that never lets go fails the save by name after its
+  patience. 10 of 10 runs green alone. Full runs: 4 543 core tests, and 1 980 app tests green in
+  two consecutive runs, without the live server suites.
+- **Negative controls:**
+  - With no coordination, all six fail. Coordinated without merging, the three unsaved-edit tests
+    fail and the other three pass, as TextEdit predicted.
+  - With the save's check before the coordination, the two save-side unsaved-edit tests fail. With
+    the undo's check before it, the undo one fails.
+  - With no watchdog, the stuck-editor test was still running when killed at 90 s.
+- **Seen live** in the Debug build, with TextEdit holding `right.txt` open and unedited from Edit
+  Right:
+  - A copy, then the pencil's Save and Edit: TextEdit showed the copied line without being touched,
+    the case that had stayed stale.
+  - Edit ▸ Undo Save in the browser window: TextEdit went back to the old line, and the compare
+    window read the file in.
+  - Typing in TextEdit and switching to Dirnex: TextEdit autosaved the line on losing focus, so the
+    window read it in silently. The unsaved-edit case is the core tests' and the probe's to show.
+  - The defaults domain was restored and compared unchanged, and the run's undo copy was deleted.
+- **Found on the way: five tests' first waits had outgrown 30 s.** The first full run of the night
+  took 56 s and the next five 81–87 s, on the same code, and the committed tree failed the same five
+  tests the same way (three in `CompareWatchTests`, the two archive-encoding member opens, and in
+  some runs `RemotePreviewFetchTests` and `RemoteFetchPromptTests`). Each sat in the main-actor stall
+  at a full run's start, at 22–27 s even in the green run. They now get 60 s and passed at 40–56 s
+  (docs/NOTES.md ▸ Testing).
+
+**2026-10-26: Slice 6 landed** (the catalog and the record; no code changed).
+
+- **Translations:** `scripts/check_localization_keys.py` named 26 strings from Slices 2–5 missing from
+  the catalog. They are now there in all 13 languages, with the comments the compiler extracted, and
+  the script reports all 1 191 keys present. Every new string sits in an alert, the wrapping banner,
+  a tooltip, or the pane's name label, which truncates in the middle and so keeps "— Edited" at its
+  end. No fixed-width control holds one.
+- **[LOCATION-SUPPORT.md](LOCATION-SUPPORT.md):** a row for copying, saving and editing in
+  the compare window, with footnote vvv on where each location's save lands.
+- **Seen live** in the Debug build against the throwaway servers. The panes were seeded with a
+  local folder, an SFTP tab with a key, a public WebDAV tab and a zip's folder, so nothing asked the
+  Keychain. Background computer-use drove it. ⌘S needs Dirnex in front, so each save went through
+  the close prompt's Save, which runs the same save:
+  - **SFTP:** copying `bravo` into a CRLF file landed on the server as `bravo\r\n`, with every other
+    byte as it was.
+  - **WebDAV:** Save and Edit uploaded first (one PUT). The byte-order mark stayed, and the editor
+    was handed the copy. A write to that copy, standing in for the editor's save, was uploaded by F4's
+    write-back, and the window read it in, unedited.
+  - **Zip member:** the archive's own question, then one repack. The member held the copied line and
+    the sibling's bytes were untouched. Edit ▸ Undo Change Archive put the archive back byte for
+    byte.
+  - **The stale copy, closed by the write-back fix above:** the window was open on a copy, the
+    server changed, and Quick View brought the newer version down as a second copy. The window's
+    save asked "someone else has edited it". Keep Editing left the server alone, and the close prompt
+    asked again. Upload All then wrote the window's lines. F4's own path asked the same, for an
+    edit saved 7 s after the newer copy had landed.
+  - **In Russian:** the copy and edit buttons, "— Изменено", the close prompt and Save and Edit's
+    question, all drawn whole.
+  - The defaults domain was restored and compared unchanged. The run's undo copy was deleted,
+    `known_hosts` was put back, and the servers were stopped.
+- **Found on the way (neither is M33's):**
+  - **Every archive rewrite renamed the archive's members.** `ArchiveMutation.repackAllArguments`
+    packed `-C <dir> .`, so `inner.txt` came back as `./inner.txt`, beside a new `./` entry. Dirnex
+    and `unzip -l` read it as before, but `unzip -p pair.zip inner.txt` no longer found the file, and
+    neither did Python's `zipfile.getinfo("inner.txt")`. It held for F8, paste, rename and F4's
+    save-back alike, from M4 on. Fixed in the entry below.
+  - **A write-back question about one file offers Upload All**, the batch's button
+    (`BrowserWindowController+WriteBackBatch`), under a title naming the one file. Fixed in M34
+    Slice 4.
+
+**2026-10-26: archive rewrites keep their members' names** (core, then app). Closes Slice 6's first
+finding above.
+
+- **Probed first** (docs/NOTES.md ▸ bsdtar), against bsdtar 3.5.3:
+  - `-s '|^\./||S' -s '|^\.$||S'` on the same `-C dir .` gave bare names in zip, jar, 7z, tar and
+    every compressed tar, dropped the root entry, left a symlink's `./` target alone, and rewrote a
+    hard link's target with its member. An emptied tree packed into an archive with no entries.
+  - Passing the tree's names instead fails on two of them: `@at.zip` is read as an archive to copy
+    from, and `-dash.txt` as an option.
+  - 160 archives on this Mac: 157 bare, one `./` throughout (Sparkle's release tarball), none mixed.
+    Two zips in `~/Downloads` carry the `./` root entry this repack left, likely earlier Dirnex
+    rewrites. They keep it, since a rewrite keeps whatever form it finds.
+- **Core:** `ArchiveNameForm` (`.bare`, `.dotSlash`) is a third property of `ArchiveRewriteFormat`,
+  read off the same header inspection as encryption and name privacy. It is `.dotSlash` only when
+  every name is spelled that way. `repackAllArguments` takes it and adds the two substitutions for
+  `.bare`. The encrypted route already wrote bare names, and still does whatever the form.
+- **Tests:** 5 new in the core (the `./` argv and four inference cases, beside the bare argv's
+  updated test) and a new app suite, `ArchiveRewriteNamesTests`, of 5 tests over 18 cases, against
+  archives `bsdtar` itself packs and reads back: bare names in
+  10 suffixes, the `./` form in zip, tar.gz and 7z, a hard link's target in two tars, `@` and `-`
+  names added, and an emptied archive. Four existing suites had pinned `./` as expected:
+  `ArchiveUndoReachTests`, `ArchiveMultiAddTests`, `ArchiveWriterEncryptedTests`, and
+  `ArchiveRenameTests`, whose helper stripped `./` before comparing and so could not see it. They now
+  assert the names as stored. Full runs: 4 548 core and 1 985 app tests, without the live server
+  suites, which this change does not touch.
+- **Negative controls:**
+  - With `.bare` given no substitutions, the old argv, every bare-name test failed across all
+    formats, and so did the four corrected suites. The `./` test still passed.
+  - With the form always inferred `.bare`, only the `./` test failed, in all three formats.
+- **Seen live** in the Debug build: a zip member saved back from the compare window left `pair.zip`
+  holding `inner.txt` and `sibling.txt` and nothing else. `unzip -p pair.zip inner.txt` printed the
+  copied line, and `zipfile` found the member. Edit ▸ Undo put the original back byte for byte. The
+  defaults domain was restored and compared unchanged, and the undo copy was deleted.
+- **Found: `.tar.zst` needs an external `zstd`.** Apple's bsdtar runs one to read and write, and
+  with the system `PATH` both fail, so the new suite left `.tar.zst` out. Fixed in the entry below.
+
+**2026-10-26: a `.tar.zst` opens from the Dock** (core, then app). Closes the finding above.
+
+- **Measured first**, in the Debug build launched with a Dock's environment (`PATH` read back as
+  `/usr/bin:/bin:/usr/sbin:/sbin`): Enter on a `.tar.zst` answered *Can't open “sample.tar.zst”*,
+  *Couldn't read the archive “sample.tar.zst”.*, the generic `archiveUnreadable`. Quick View on the
+  row showed an icon, as for any file it cannot preview, and F5 or F8 inside could not be reached. A
+  `.tar.gz` beside it opened, and so did the `.tar.zst` once the same build was relaunched with
+  `/opt/homebrew/bin` on `PATH`.
+- **Probed** (docs/NOTES.md ▸ bsdtar), against libarchive 3.7.4:
+  - The system libarchive has no zstd (`archive_libzstd_version()` is NULL, both zstd filters answer
+    *Using external zstd program*), and neither have Compression.framework or AppleArchive. So the
+    in-process option was out. The in-process reader needs `zstd` too, through Dirnex's own `PATH`,
+    and every rewrite starts with its inspection.
+  - An absolute-path `archive_read_support_filter_program_signature` registered before
+    `filter_all` wins the bid. A second one covers `pzstd`'s leading skippable frame.
+  - **libarchive's external-program filters deadlock when two run at once**: children inherit each
+    other's pipes. Four threads, and also two, completed 0 of 100 reads. One reader at a time
+    completed 100 of 100. This was already true of a build launched from a shell.
+- **Oleg chose the known-locations route** over the login shell's `PATH` and over refusing only.
+- **Core:** `ZstdTool` searches the inherited `PATH`, then `ToolSearchPath`'s directories, then
+  MacPorts' `/opt/local/bin`, and recognizes a Zstandard stream by its first four bytes.
+  `BsdtarEnvironment` is `ChildProcessLocale`'s environment with `zstd`'s directory appended to
+  `PATH`, so no argv changed. The reader registers the two program filters, and an
+  `ArchiveReadHandle` reading a Zstandard file holds one external-program turn from open to free.
+  `extract` frees its outer handle before unwrapping a hidden-names archive, since the turn is not
+  re-entrant. New refusal `archiveNeedsZstd`: *Opening “x” needs the zstd tool, which Dirnex couldn't
+  find on this Mac. You can install it with Homebrew (brew install zstd).*, in all 13 languages.
+- **App:** all four `bsdtar` runners take `BsdtarEnvironment`. The mounter and the extractor say
+  `archiveNeedsZstd` where they would have said unreadable, and the writer says it before anything
+  runs.
+- **Tests:** 19 in the core over two committed fixtures that `bsdtar` and `pzstd` wrote. A stand-in
+  `zstd` that records its runs shows the reader used the path it was given, and eight concurrent
+  reads must finish within 30 s. A new app suite, `ZstdArchiveTests`, has 5 tests over 7 cases: list,
+  extract and rewrite under the test host's launchd `PATH`, and the three refusals.
+  `ArchiveRewriteNamesTests` has `tar.zst` back in its suffixes. The CI image carries zstd 1.5.7.
+  Full runs: 4 567 core and 1 990 app tests, without the live server suites, which this change does
+  not touch.
+- **Negative controls:**
+  - With the reader's filters registered after `filter_all`, the three tests that read through the
+    stand-in failed. The first try at this control hung instead, which is how the deadlock above
+    was found.
+  - Without the turn, the concurrency test failed at its deadline.
+  - With the four runners back on `ChildProcessLocale`, exactly the five `zstd`-found cases failed as
+    `archiveUnreadable`, the rewrite suite's `tar.zst` among them. That also shows the test host's
+    `PATH` has no `zstd`.
+  - With `ZstdTool.refusal` never refusing, the three refusal tests failed. The rewrite's error was
+    then `EncryptedArchiveError.archiveUnreadable`, *This archive couldn't be read. It may be damaged
+    or incomplete.*
+- **Seen live** in the Debug build, launched again with a Dock's environment: Enter on the
+  `.tar.zst` listed `alpha.txt` and `beta.txt`. Quick View showed `alpha`, and F5 copied
+  `alpha.txt` out byte for byte. F8 on `beta.txt` rewrote the archive as a Zstandard stream holding
+  `alpha.txt` alone, under its bare name, and Edit ▸ Undo Change Archive put it back byte for byte.
+  - With a temporary probe that made the search find nothing, Enter showed the new sentence in
+    English and in Russian, each in full. The probe was then removed and the app rebuilt.
+  - The defaults domain was restored and compared unchanged, and the run's undo copy was deleted.
+
+### M34 — A three-way merge (M)
+
+**Closed 2026-10-27**, two days after it was planned. Dirnex merges in the two places where it
+already holds three versions of one file. When F4's save finds the server's copy changed, the
+question offers Merge… first: the server's version comes down, and the merge window opens on it, the
+edit, and the base kept when the edit began, which every upload replaces with the bytes it sent. The
+result is written into the editor's copy, coordinated so the editor refreshes, and carried up by
+that copy's ordinary write-back. A file git has badged U opens on the versions git holds of it, each
+read as a checkout would write it, and Save writes the working-tree file and nothing else. The
+engine is git's own walk (`xdl_do_merge`) over two `LineDiff`s, its regions `--diff3`'s and its
+trimming `--zdiff3`'s. Given git's comparisons it gave git's merge byte for byte on all 9 114
+triples from this repository's history, and given its own on all but 113 ties. The window shows
+Yours, Result and Theirs level by row, and the base on request. Each conflict takes Yours, Theirs or
+Both in either order, and Save waits until every conflict has a choice, so no conflict marker is
+ever written. Three findings are worth not re-deriving. At zero context `git diff` trims the files'
+common tail first, and so places blocks differently from `merge-file` (docs/NOTES.md ▸ git). An SFTP
+`stat` gave byte-identical rows for two same-size writes three seconds apart, so a save over SFTP or
+FTP now compares the server's bytes with the base when the size and time agree (docs/NOTES.md ▸
+sftp). And `ls-files` reads a path as a pattern unless `--literal-pathspecs` is given (docs/NOTES.md
+▸ git).
+
+Some paths were not exercised by the close, and are recorded rather than argued. **FTP** was not run
+in the app; its live test drives the real transport. **A batch's question**, which offers no Merge…
+by design, and **a file past the content check's limit** were not run live. **The take keys** are
+the tests', through `handleKey`, since a run from the background cannot reach the window's key
+monitor. **The light appearance** was not looked at, nor the shortened line under Result for a git
+conflict, which `MergeSubtitleWidthTests` pins on the real pane. Russian was the only translation
+looked at. Over SFTP and FTP the upload carries no condition, so a write between the check and the
+upload still goes unseen there.
+
+Left deliberately undone: **Synchronize as an entry point**, until a sync keeps a record of the last
+one; **three files picked by hand**, whose base would be a guess; **an archive member** changed
+behind an edit, for which no base is kept; **being git's merge tool**, which needs a command-line
+entry point Dirnex does not have; **conflict markers** in any form; **a merge that ignores
+whitespace**, which would drop a whitespace edit without a word; and **a binary file**.
+
+The section as the plan carried it through the milestone:
+
+**Planned 2026-10-25.** A file manager has no common ancestor to merge from, except in two places
+where Dirnex already holds three versions of one file. The first is its own. F4 on a server file
+downloads a copy, and when the user saves, the write-back can find that the server's copy changed
+in the meantime. The prompt then offers Upload Anyway or Cancel, so one of the two edits is lost.
+The second is git's: a file in a conflicted merge, which `GitStatus.conflicted` already badges U.
+This milestone merges the three in a window built on M33's, and saves only once every conflict has
+an answer.
+
+Probed 2026-10-25 with git 2.54, on small triples and in a scratch repository:
+
+- **`git merge-file -p --diff3 --diff-algorithm=minimal ours base theirs` is the oracle**, as
+  `git diff --minimal` was M31's. Its regions are what the engine has to reproduce:
+  - the same change on both sides merges cleanly;
+  - changes that touch, with no unchanged line of the base between them, conflict, and so do two
+    insertions at the same place and a deletion against an edit;
+  - one unchanged line between two changes is enough for both to merge.
+- **git's default style is not the one to match.** It joins two conflicts that are three or fewer
+  lines apart (four apart stay two), and it moves lines both sides share out of a conflict.
+  `--diff3` does neither, and `--zdiff3` does only the second.
+- **The exit status is the conflict count, capped at 127**: 200 conflicts answered 127. The oracle
+  counts markers rather than reading the status.
+- **A conflicted file's three versions read without writing the index.**
+  `git --no-optional-locks show :1:<path>`, `:2:` and `:3:` left `.git/index`'s modification time as
+  it was, and `git ls-files -u` lists which stages exist. A file both sides added (`AA`) has no
+  stage 1.
+- **Real merges are too few to be a corpus**: 10 of this repository's 799 commits. git does not care
+  whether a triple came from a merge, so the corpus is triples of versions of one file from the
+  history.
+
+Decided before Slice 1:
+
+- **The regions are `--diff3`'s, and a conflict's shared first and last lines move out of it as
+  `--zdiff3` moves them**, so Take Both does not repeat them. Each half is checked against its own
+  git style.
+- **No ignore options in a merge.** Under `-w` a whitespace edit on one side reads as no edit, and
+  the merge would drop it without a word.
+- **Two entry points**: the server write-back's prompt and a conflicted row. Not Synchronize, which
+  keeps no record of the last sync and so has no base; not three files picked by hand, whose base
+  would be a guess; and not an archive member.
+- **A server file's base is kept when F4 downloads it**: an APFS clone of the copy, outside the
+  directory the edit watch watches. The uploaded bytes replace it after every upload, and it goes
+  when the watch ends. An edit opened before this milestone has no base and keeps today's prompt.
+- **Merge… joins the prompt only when it can work**: a base is there and all three versions are
+  text. The server's current version comes down through the download funnel, and the upload's
+  precondition is read off that download's revision, the rule `writeCondition` already states. The
+  merged result is written into the copy the user's editor has open, then uploaded.
+- **git stays read-only.** The stages come through `GitCommand` with `--no-optional-locks`. Save
+  writes the working-tree file, and `git add` stays the user's, so the U badge stays until they
+  stage it. `AA` merges against an empty base, and a deletion on either side (`DU`, `UD`, `DD`) is
+  refused by name, since there is no one file to write.
+- **Three panes level by row: Yours, Result, Theirs**, with the base shown on request. Each conflict
+  takes Yours, Theirs, or Both in either order, and a region only one side changed is applied from
+  the start. A hand edit is Take Both, save, then the user's editor: once saved, the result is an
+  ordinary file.
+- **Save is refused while a conflict is open.** Conflict markers are never written, to a server or
+  to a working tree.
+
+#### Slices
+
+1. **The merge engine** (core, additive). `ThreeWayMerge`: two `LineDiff`s against the base, the
+   regions, and the trimming. Properties that need no git: merging a text with itself gives it
+   back, a side equal to the base yields the other side, and every change only one side made is in
+   the result. Then the oracle over the corpus, with and without M31's sliding, keeping whichever
+   agrees more. Triples where two minimal alignments tie are counted and named in the slice note.
+2. **What the merge window shows** (core). Rows level across the three versions and the result, a
+   resolution per conflict as M33's line edits, and the pane text generalized from two sides to N.
+3. **The window** (app). Three panes, `CompareScrollSync` over N of them, the band and overview for
+   conflicts, "Conflict 2 of 5", the take keys, Show Base, and Save held back while a conflict is
+   open.
+4. **The server entry** (app). Keeping and refreshing the base, Merge… in the prompt, fetching the
+   server's version, writing the result into the editor's copy, and the conditioned upload.
+5. **The git entry** (core, then app). The stage reads in `GitCommand`, their parse in the core
+   against a fake, Resolve Conflict… on a U row, `AA`, and the refusals.
+6. **Live, and the record.** F4 a file on the throwaway SFTP and WebDAV servers, change it on the
+   server, save, merge and upload; a real conflict in a scratch repository; the 14 languages.
+
+**Done when:**
+- every corpus triple gives git's text where git merges cleanly and git's regions where it does not,
+  apart from the ties Slice 1 names;
+- a server file changed under an F4 edit is merged and uploaded with both edits in it, over SFTP and
+  WebDAV, and a third write during the merge is caught by the precondition rather than overwritten;
+- a `UU` and an `AA` file resolve and save, a `DU` is refused by name, and no git command Dirnex
+  runs writes to the repository;
+- nothing is saved while a conflict is open.
+
+Expected to be left undone, each for its own reason: **Synchronize as an entry point**, until a sync
+keeps a record of the last one; **three files picked by hand**; **an archive member** changed behind
+an edit; **being git's merge tool**, which needs a command-line entry point Dirnex does not have;
+**conflict markers** in any form; a merge that ignores whitespace; and a binary file.
+
+#### Progress
+
+**2026-10-26: Slice 1 landed** (core only; the app is untouched).
+
+- **Core:**
+  - `ThreeWayMerge` holds regions that tile the base, yours and theirs in order, each `unchanged`,
+    `yours`, `theirs`, `same` or `conflict`, with `conflictCount`, `isClean`, and `mergedLines`,
+    which is `nil` while a conflict is open. `same` is one change made on both sides, or the lines
+    a conflict's two sides share at its edges.
+  - `ThreeWayMerge+Walk` is git's walk, `xdl_do_merge` and `xdl_append_merge`, with their
+    arithmetic kept as it is. A conflict's shared first and last lines then move out into `same`
+    regions with no base lines, and its base range stays whole.
+  - `ChangeSliding.Placement`: `readable` is M31's scoring, and `lowest` is git's with its indent
+    heuristic off. `LineDiff.compare` takes it internally; the compare window is unchanged.
+- **Tests:** 15 in three suites.
+  - `ThreeWayMergeTests` (10) pins the probed cases: touching, one line apart, two insertions at
+    one place, a deletion against an edit, joined and bridged changes, both kinds of trimming,
+    bytes over characters, and line endings.
+  - `ThreeWayMergePropertyTests` (3) runs without git. A text merged with itself, a side left as
+    the base and the same edit on both sides each come back, over 2 000 random texts. The regions
+    tile and each kind says what its lines show, over 3 000 triples. Every change only one side
+    made is in the result, whichever way the conflicts are taken, over 1 000 triples of unique
+    lines.
+  - `ThreeWayMergeGitTests` (2) asks `git merge-file` about 678 triples, eight at a time: the
+    corpus files edited twice, and 600 short random texts. Given git's own comparisons, every
+    merge is git's to the byte in both styles. Given its own, every one is too but 28, and each of
+    those is a tie: the same counts, aligned another way.
+  - Full run: 4 582 core tests. The app suite was not run, since the app is untouched.
+- **Measured** (a throwaway harness, not checked in): 9 114 triples from this repository's history,
+  7 578 text versions of 2 001 paths, each version taken as the base between its neighbours and as
+  the base of the next two.
+  - Given git's comparisons, all 9 114 came back byte for byte in `--diff3` and `--zdiff3`. 5 406
+    merged clean and 3 708 had conflicts, 18 714 of them; 3 287 moved shared lines out of one.
+  - Given its own, `lowest` agreed with git on 9 001. The other **113 are ties**, across 63 files:
+    11 in `Localizable.xcstrings`, and 5 each in `PathBarView.swift` and
+    `PanelViewController+ArchivePack.swift`. None disagreed for any other reason.
+  - M31's `readable` placement agreed on 8 982, with 132 ties, and no sliding at all on 7 979.
+  - In release, the default (cost-limited) merge of the largest triple, three versions of
+    `Localizable.xcstrings` at 25 380 / 30 594 / 30 594 lines with 272 conflicts, took 0.077 s.
+    `docs/HISTORY.md` at 21 000 lines took 0.038 s.
+- **Decided in the slice:**
+  - **`lowest` over M31's sliding**, since it agrees with git more often. `git merge-file` runs with
+    git's indent heuristic off (docs/NOTES.md ▸ git).
+  - **A conflict whose two sides are the same lines merges as `same`.** It comes from how the two
+    comparisons aligned one edit, such as each side's deleting a different one of two equal lines.
+    git's `--zdiff3` keeps it, with nothing on either side of the markers, and there is nothing to
+    choose. Seen in 5 history triples. The git suite renders those the way git does, so every
+    other byte is still compared.
+- **Negative controls:**
+  - Without the join, the unit tests failed and the run then trapped.
+  - With touching changes taken as one-sided, the property and git suites failed. The touching
+    unit test still passed: the join alone makes that case a conflict, as it does in git.
+  - With the same change taken as a conflict, both git tests failed; the unit and property tests
+    passed, since the trimming then empties it and the rule above merges it.
+  - With no trimming, the own-comparisons git test and the tiling property failed. With identical
+    sides left a conflict, the tiling property failed.
+- **Found on the way:**
+  - **`git diff -U0` places blocks differently from `merge-file`**: at zero context it trims the
+    files' common tail first. The first history run read 25 such triples as merge bugs. The oracle
+    reads `-U1` hunk bodies now (docs/NOTES.md ▸ git).
+  - **Many `Process` runs with pipes from several threads failed with `EBADF`**, so the oracle
+    writes git's output to a file (docs/NOTES.md ▸ Fixtures and shared state).
+- **Left for Slice 2:** Take Both can put a side's last line, one with no line break, ahead of the
+  other's. git adds a break there. Closed in Slice 2.
+
+**2026-10-26: Slice 2 landed** (core only; the app is untouched).
+
+- **Core:**
+  - `TextMerge` holds the three documents, the merge, the result, a choice for each conflict, and
+    rows level across all four. The result starts as yours' document with every region merged
+    and nothing where a conflict is. So it keeps yours' encoding, byte-order mark and line endings,
+    and `result.isEdited` says whether a save would change yours' file.
+  - `Choice` is yours, theirs, or both in either order. `apply(_:)` makes one choice, or opens a
+    conflict again, as a `LineEdit` on the result, and returns the step that undoes it. Also
+    `isResolved`, `openConflictCount`, and `conflict(after:)`, `conflict(before:)` and
+    `conflict(containing:)`, which pass over chosen conflicts on request.
+  - `MergeRow` is a line or a gap in each of four columns, yours, result, theirs and base, with the
+    region it belongs to. `MergeRowLayout` lays each region out once. A region one side changed
+    pairs that side's lines with the base's, as the compare window pairs them, and a conflict pairs
+    yours with theirs and puts the base from its first row down. Only the result column follows
+    the choices.
+  - `ComparisonPaneText(lines:rows:)` builds a pane for any column on shared rows. Its `side` is
+    now `nil` for such a pane; the app's two panes read it as before.
+- **Tests:** 11 in three suites.
+  - `TextMergeTests` (9) pins the layouts, the pairing, each choice's result and rows, undo, the
+    break taking both adds, the result as yours' document, moving between conflicts, and the panes.
+  - `TextMergePropertyTests` (1) makes up to 8 random choices on each of 2 000 random triples. After
+    every step, each column shows each of its lines once and in order, each result line sits on the
+    row of the line it came from, and the result is what the regions and choices call for, built
+    without `TextMerge`. Undoing every step gives back the merge as it opened.
+  - `TextMergeGitTests` (1) takes every conflict one way over Slice 1's 678 triples, from git's own
+    comparisons, and compares the encoded result with `git merge-file --zdiff3` and `--ours`,
+    `--theirs` or `--union`: 1 990 results, byte for byte. 44 unions are passed over, where the two
+    rules for a break differ (below).
+  - Full run: 4 593 core tests. The app was compiled into a separate DerivedData folder, since
+    `ComparisonPaneText.side` became optional; the app suite was not run.
+- **Measured** in release, on Slice 1's largest triple (`Localizable.xcstrings`, 33 582 rows, 272
+  conflicts): opening took 0.121 s, a choice 0.001 s, and the four panes' text 0.137 s.
+- **Decided in the slice:**
+  - **An open conflict has no lines in the result**, and its rows show gaps there. `isResolved` is
+    what holds Save back, so no marker is ever written.
+  - **Lines are taken as their side has them, endings included**, as git takes them, so a clean
+    region from a CRLF theirs brings CRLF lines. M33's copy rule is the window's, not the merge's.
+  - **Taking both gives the first side's last line a break only when it has none and the second
+    side has lines**, and the break is yours' common ending. git's `--union` adds one even with
+    nothing after it, and makes it CRLF from the lines around the conflict (docs/NOTES.md ▸ git).
+  - **Both sides taken: the second side's lines go on the rows after the first's last**, adding rows
+    below the conflict when they run out.
+- **Negative controls:**
+  - With no break when taking both, or with a region's result count left stale, the run trapped in
+    `ComparedDocument.apply`'s precondition rather than writing a joined or misplaced line.
+  - With a reopened conflict holding yours' lines, or a step returning itself instead of its
+    inverse, the undo test and the property failed.
+  - With both sides' lines starting on the conflict's first row, the choices test and the property
+    failed.
+- **Not in the model:** the words that differ inside a row's lines, which the compare window marks.
+  Nothing in Slice 3's list needs them.
+
+**2026-10-26: Slice 3 landed** (app only). Nothing opens the window yet; that is Slices 4 and 5.
+
+- **Decided with Oleg before writing it:** the take keys point the way the lines go, ⌥⌘→ Take Yours
+  and ⌥⌘← Take Theirs, as ⌥⌘→ copies to the right in the compare window, and ⇧ takes both sides with
+  the arrow's side first. Show Base adds the base as a fourth pane at the left edge.
+- **App:**
+  - `MergeWindowController` takes a `MergeInput` (the three versions, the file Save writes and where
+    the result goes) and a `MergeSaving` (the undo store and the journal). It merges off the main
+    thread, and prepares each state off it too (`MergePrepared`): each column's text, every row's
+    color, the syntax colors and the marks.
+  - Yours, Result and Theirs, with Show Base (⌥⌘B, a checkbox) putting Base at the left edge, a band
+    between each two panes and the overview strip. A change one side made is blue in that side, the
+    result and the base; an open conflict is orange in every column, the result's empty rows
+    included; a chosen one is green.
+  - "Conflict 2 of 5", ⌥⌘↓ and ⌥⌘↑ and the arrows, and a click in the overview makes the conflict
+    under it current. The four takes are keys and one segmented control. After a take the next open
+    conflict is current, going round to the start; after an undo, the conflict it changed. Edit ▸
+    Undo names the take ("Undo Take Both, Theirs First").
+  - Save (⌘S and a button) is disabled while a conflict is open. ⌘S then beeps and goes to the first
+    open one, and the banner says how many are open. The save is the compare window's
+    `ComparedFileSave`: checked against the file as read, kept in the undo store and journaled, and
+    written in place inside a coordinated write. A conflicted working-tree file is replaced whole,
+    markers and all.
+  - Closing with choices not saved asks Save, Cancel or Don't Save once every conflict has one, and
+    Cancel (the default) or Don't Save while one is open. Quitting asks the same, after the compare
+    window's question.
+  - Shared with the compare window: `ComparePaneView`, whose `side` is `nil` for a merge pane, which
+    has no Edit button; `CompareScrollSync`, now over any number of panes, passing hidden ones over
+    and bringing one level when it appears; and the save alerts. `CompareColors` gains three row
+    colors and two marks, and an open conflict wins a point of the overview.
+  - The three counted sentences have English plurals in the catalog. The 13 other languages wait for
+    Slice 6, as M33's did.
+- **Fixed on the way:** in a comparison shorter than its pane, the compare window's band marked
+  nothing below row 0, and the overview outlined a sliver at its top. `visibleRows()` read the missing
+  fragment below the last line as "only row 0 is visible" (docs/NOTES.md ▸ Text fields and text
+  views). It has been so since M31, and was found here because every fixture was short.
+- **Tests:** 25 in three new suites, `MergeWindowTests` (9), `MergeTakeTests` (8) and
+  `MergeSaveTests` (8), and one in `CompareWindowTests`. Full runs: 4 593 core and 2 016 app tests,
+  without the live server suites; the core is untouched.
+- **Negative controls:**
+  - A save not held back fails the open-conflict save test. An undo landing as a take does fails the
+    undo test. A sync following one pane fails the level test. The base never placed fails the Show
+    Base and level tests. The unchanged side marked fails the fills test. No English plural fails
+    the counter test. No going round fails its unit test. The visible-rows fallback off fails the
+    new compare test.
+  - Cancel and Don't Save swapped first passed: the test read the close count before the task that
+    asked had acted on Cancel (docs/NOTES.md ▸ Runs and assertions that prove nothing). Awaited now,
+    it fails.
+- **Seen live** in the Debug build, through a temporary probe (since removed) that opened the window
+  on three versions of a Swift file at launch. The saved tabs were set aside, and computer-use drove
+  it from the background:
+  - Dark appearance: rows level across the panes, with syntax colors. Yours' doc comment was blue in
+    Yours and Result, theirs' farewell blue in Theirs and Result, and both conflicts orange with the
+    result's rows empty.
+  - The first look showed no marks in the bands, which is the fix above. After it, each band marked
+    every region, the current conflict solid.
+  - Take Yours put the line in the result and turned the conflict green in every pane and band; the
+    counter said "Conflict 2 of 2" and the banner "1 conflict is still open". Show Base put the base
+    at the left edge, four equal panes, level. Take Both, Theirs First put theirs' line, then yours'
+    two on a row added below, and enabled Save. Edit ▸ Undo said "Undo Take Both, Theirs First".
+  - Save wrote exactly the chosen merge. Undo then opened the conflict again, and the close button
+    asked "Close the merge of “Greeter.swift” without saving?" with Cancel the default. Don't Save
+    closed the window, and the file kept what Save had written.
+  - The defaults domain was restored and compared unchanged.
+  - **Not seen live:** the keys, which the tests drive through `handleKey` (the monitor is the
+    compare window's, seen live in M33 Slice 2), and the light appearance.
+
+**2026-10-27: Slice 4 landed** (core, then app). A server file changed under an F4 edit can be
+merged instead of overwritten.
+
+- **Decided with Oleg before writing it:** Merge… is the prompt's first button, so Return takes it,
+  and Keep Editing stays last and takes ⎋. The merge window counts a server file saved once the result
+  is in the editor's copy. The upload is then that copy's ordinary write-back, with its own check,
+  question and report.
+- **Core:** `EditBaseStore` duplicates a file into a folder of its own under its root, an APFS clone
+  where it can, keeping the modification time, and removes only what it made.
+- **App:**
+  - **The base** (`RemoteFileCache+Bases`). For each copy the cache keeps the copy's own revision
+    when it last held the server's bytes, and a base. The base is taken when an edit's watch starts
+    on a copy nothing has written since its download: F4, ⏎, a user script, the compare window's
+    Edit. It lives in `DirnexRemote/Bases`, which the launch purge clears and no watch watches. An
+    archive member keeps none.
+  - **Every upload sends a duplicate taken as it is queued**, and once that lands it is the copy's
+    base, so the base is what the server holds to the byte whatever the editor wrote meanwhile. A
+    record forgotten after an upload of unknown outcome takes its base with it. A refused
+    precondition no longer forgets the record, since the server wrote nothing.
+  - **Merge… is offered** for a save of one file when the check found the server's copy changed, a
+    base is kept, the server's size is within the window's 64 MiB, and the base and the copy read as
+    text. It is offered again after a refused precondition on one changed file. Nothing is fetched to
+    decide.
+  - **Merge…** reads the file's size afresh and brings the server's version down through the
+    download funnel, unweighed, since the window's limit is the edit row's threshold. A held copy
+    something has written is passed over. The window reads a duplicate of the download. One merge
+    window per copy: one with choices not saved comes forward instead, and one already saved closes.
+  - **The window's save** writes the result into the editor's copy, coordinated so TextEdit
+    refreshes. The first save then makes the server's version the copy's base and its revision what
+    the next save is checked against, and every save carries the copy up through
+    `writeBack(_:askingOver:)`. A server unchanged since uploads, its precondition read off that
+    revision; a write since asks again, Merge… included. The window will not close while the upload
+    may still ask. `MergeSaving` gains `carry` and `closed`, and a window closed without a save
+    removes the server's version kept for it.
+- **Fixed on the way:** a write-back question about one file said Upload All (M33 Slice 6's finding).
+  It says Upload, a catalog key already translated with this meaning and unused since the batch.
+- **[LOCATION-SUPPORT.md](LOCATION-SUPPORT.md):** a row for the merge, with footnote www on
+  what limits it over SFTP and FTP.
+- **Tests:** 4 in the core (`EditBaseStoreTests`) and 17 in three app suites:
+  `RemoteWriteBackBaseTests` (6), `RemoteWriteBackMergeOfferTests` (8) and `MergeServerSaveTests`
+  (3). Full runs: 4 597 core and 2 033 app tests. One run before the last two tests were added had
+  the live server suites up, and they ran, the save-back batch and WebDAV ones included.
+- **Negative controls**, each failing its own test: a base kept from a written copy; an upload's
+  duplicate not made the base; a forgotten record keeping its base; a merge making the copy its
+  path's newest; Merge… offered with nothing changed; a written held copy read as the server's
+  version; the carry run before the window counts the save; the window closing while it carries. The
+  store discarding outside its root failed the core test.
+- **Seen live** in the Debug build against the throwaway SFTP server, on a seeded key tab, driven by
+  background computer-use. A shell write to the copy stood in for TextEdit's save.
+  - F4 kept the base beside the copy, byte for byte. A server edit and a copy edit raised the prompt
+    with Merge… first and Upload second. The window showed theirs' change merged and the two touching
+    edits as one conflict. Take Yours and Save put both edits on the server, the copy matched, and the
+    one base left was the uploaded bytes.
+  - A third write while a second merge was open: Save wrote the copy, the check found the server
+    changed and asked over the merge window, and Merge… closed the saved window and opened one with
+    the third write. Its save landed all three. TextEdit showed the final text, unedited.
+  - The defaults domain was restored and compared unchanged, and the servers were stopped.
+- **Found on the way:** a same-size server edit in the minute of Dirnex's own upload was overwritten
+  by the next save with no question. An SFTP `stat` is a minute-resolution `ls -la` row with no entity
+  tag (docs/NOTES.md ▸ sftp). It is M21's check, not the merge's. Not fixed. (Taken up the same day,
+  below.)
+- **Left for Slice 6:** WebDAV, whose precondition is an entity tag; the refused precondition's
+  Merge… live, which needs a write between the check and the PUT; and the 14 languages. A batch's
+  prompt offers no Merge…, by design.
+
+**2026-10-27: the content check, core** (app untouched). Closes Slice 4's *Found on the way* in the
+core. Over SFTP and FTP a write-back's re-`stat` is a size and a time, and when both agree the save
+now compares the server's bytes with the copy's base, which is the server's bytes at the revision
+the copy is checked against.
+
+- **Probed first**, against the throwaway servers (docs/NOTES.md ▸ sftp):
+  - `sftp`'s `ls -la` rows for "Goodbye" and "See you", three seconds apart, were byte-identical.
+  - `get -a -p` onto an empty file of the same size sets that file to the server's second and sends
+    no bytes. A second is still a window.
+  - Exec `cksum` reads the content of any size in one round trip (85 ms at 10 MB), but not on an
+    `internal-sftp` or non-admin NAS account.
+  - `ls -la` plus a 10 MB `get` in one `sftp` session took 125 ms against 75 ms for `ls -la` alone,
+    so a download costs its bytes.
+  - FTP's `MLSD` and `MDTM` give the second; `LIST` alone missed a rewrite two seconds later.
+- **Decided with Oleg:** the bytes, not a finer clock, since a match with the base is proof that the
+  upload loses nothing. Bounded by the Settings ▸ Panels limit, and run for each file of a batch.
+  Not taken: exec `cksum` for files over the limit, and folding the `stat` and the download into one
+  session.
+- **Core:**
+  - `RemoteFileRevision.matchesOnlyBySizeAndTime(_:)`: not superseded, with no entity tag on both
+    sides. That is the verdict only the bytes can settle.
+  - `RemoteFetchPurpose.writeBackCheck`, the table's second automatic row. It takes the Settings limit,
+    declines past it without asking, and ignores the session's preview allowance.
+  - `WriteBackContentCheck` brings the server's file down through `MaterializeRunner` into a scratch
+    folder, compares it with the base through `ByteComparator`, and removes it. Its verdict is
+    `notAsked`, `noBase`, `overLimit`, `same`, `different` or `unreadable`. Only `different` is a
+    change, so a fetch that fails leaves the save where the `stat` put it.
+- **Tests:** 10 in `WriteBackContentCheckTests`, over a fake server that lists every file at one
+  minute; 3 in `RemoteFileRevisionTests`; 2 in `RemoteFetchPolicyTests`. The automatic-purpose test
+  and two refusal helpers now name both automatic rows.
+- **Negative controls**, each failing only its own tests: the comparison ignored (the same-minute
+  rewrite passed), the download left in the scratch folder, the limit not applied, tags on both sides
+  ignored, the row reading the preview allowance, and the row not automatic.
+- **Next, the app:** `checkWriteBacks` runs the check per file after its `stat`, a `different` verdict
+  raises the changed question with Merge…, then a live run on the throwaway SFTP server and footnote
+  www.
+
+**2026-10-27: the content check, app.** Every save of an F4 edit over SFTP or FTP now has the server's
+bytes compared with the copy's base when the size and time agree, and a difference asks.
+
+- **App:**
+  - `readServer(at:recorded:bases:check:)` `stat`s each destination and runs the check against that
+    copy's own base, one file after another as the `stat`s always ran. It is `nonisolated static`,
+    so the wiring is testable with no window. The check downloads into `DirnexRemote/Checks`, within
+    `AppPreferences.quickViewFetchLimit`.
+  - `checkedWriteBacks(_:recorded:readings:sizes:mergeBase:)` turns readings into the prompt's items,
+    pure and `static` for the same reason. `writeBackConcern` and `mergeBase` take `contentChanged`,
+    so a `different` verdict gets the changed sentence and Merge…, as a size that moved does.
+  - Merge… fetches the server's version as before. Its carry goes through the same check against the
+    version merged, so a stale copy would cost a second question rather than an edit.
+- **[LOCATION-SUPPORT.md](LOCATION-SUPPORT.md):** footnotes www and mm say what the bytes
+  now catch, and what is still open: a file past the limit, a copy with no base, and a write between
+  the check and the unconditional upload.
+- **Tests:** 5 in `RemoteWriteBackContentTests` over a fake server listing every file at one minute,
+  and 2 live in `RemoteWriteBackContentLiveTests`. Over SFTP the server's own file and over FTP an
+  `MFMT` stamps both versions to one second, so the server's listing cannot tell them apart and the
+  bytes can. Full runs: 4 612 core and 2 040 app tests, 2 014 of them executed with the throwaway
+  servers up, the new live suites included.
+- **Negative controls**, each failing its own tests: the reader skipping the bytes (5 tests, both live
+  ones included), the items dropping the finding (2), the concern ignoring it (4), and the Merge…
+  offer ignoring it (1).
+- **Seen live** in the Debug build against the throwaway SFTP server, on a seeded key tab, driven by
+  background computer-use, with shell writes to the copy standing in for TextEdit's saves:
+  - The first save went up with nothing asked, the base became the bytes it sent, and `Checks` was
+    left empty.
+  - The server's "Goodbye" became "See you", the same 24 bytes, stamped back to the upload's own
+    second. The next save asked "The file on the server has changed since you downloaded it —
+    someone else has edited it" with Merge… first, and the server kept its edit.
+  - Merge… showed "See you" as Theirs. The two touching edits were one conflict. Take Both, Theirs
+    First and Save put both on the server, the copy matched, and the one base left was the uploaded
+    bytes. A third save went up with nothing asked.
+  - The defaults domain was restored and compared unchanged, the servers were stopped, and
+    `known_hosts` was put back (docs/LIVE-VERIFICATION.md, on `ssh-keyscan`'s comment lines).
+  - **Not seen live in the app:** FTP (its live test drives the real transport), a batch, and a file
+    past the limit.
+
+**2026-10-27: Slice 5 landed** (core, then app). A file git has badged U opens in the merge window
+on the versions git holds of it.
+
+- **Decided with Oleg before writing it:**
+  - Each version is read as a checkout would write it (`cat-file --filters`), so a file under
+    `eol=crlf` or a `working-tree-encoding` keeps its form when saved.
+  - Resolve Conflict… is a registry command: in the File menu after Compare By Contents, in ⌘K, by
+    `run operation`, and first in the right-click menu over a conflicted file, as Put Back leads in
+    a `#recycle`.
+  - Each pane says what its version is in the operation in progress, since in a rebase git's ours is
+    the branch being rebased onto and theirs the user's own commit.
+- **Probed first** on git 2.54, in scratch repositories (docs/NOTES.md ▸ git):
+  - `ls-files --unmerged --format` gives each stage's mode, object and size in one run (git 2.38 or
+    later), and a path given to it is a pattern: `a[1].txt` also listed `a1.txt`, and `:colon.txt`
+    listed nothing. `--literal-pathspecs` fixes both.
+  - Under `eol=crlf` the stored blob is LF and the working-tree file CRLF; `cat-file --filters`
+    gives the CRLF.
+  - Which stages exist names the conflict. A deletion on both sides is resolved by `ort` itself, so
+    stage 1, 2 or 3 alone comes from a rename to two names. A link both sides changed is a file at
+    stage 1 and links at 2 and 3.
+  - The git directory names the operation, a worktree's included (`rev-parse --absolute-git-dir`).
+  - With a clean file's time made stale, a plain `git status` rewrote the index, and the three reads
+    changed nothing in `.git`.
+- **Core:**
+  - `GitCommand` gains `unmergedStages`, `stageContents` and `gitDirectory`, each a read.
+  - `GitStage` parses the listing. `GitConflictStages.choose` takes both sides, with the base when
+    there is one, or refuses by name: `deletedByUs`, `deletedByThem`, `deletedByBoth`, `addedByUs`,
+    `addedByThem`, `notAFile`, `notConflicted`.
+  - `GitOperation.inProgress` reads the markers, a rebase first, since one stopped on a merge commit
+    writes `MERGE_HEAD` too.
+  - `GitConflictReader`, behind `GitTransport`: the listing decides before a byte is read, a version
+    over the window's 64 MiB refuses the read, and git's own words come back when it fails. With no
+    git directory to read, the versions still read and no operation is named.
+- **App:**
+  - `GitProcessTransport` runs the `git` the status provider runs, draining both pipes.
+  - `conflictTarget`: one file, not a folder, whose own badge is U. A folder's U is a roll-up.
+  - Resolve Conflict… takes the working-tree file's witness, reads off the main thread, and opens
+    the merge window, or brings forward one already open on the file. Save is the window's own, with
+    the undo store and this pane's journal as the compare window's, so ⌘Z puts the conflicted file
+    back.
+  - The refusals do not say which side deleted the file, for the rebase's reason above.
+  - The command's title and keywords are in all 14 languages, which the coverage test asks of every
+    command. The other new sentences are English and wait for Slice 6.
+- **Decided in the slice:**
+  - **A name only one side has is refused**, as the plan refuses a deletion: there is no second
+    version to merge it with. The plan named DU, UD and DD only.
+  - **What git holds decides, not the badge**, which a snapshot drew earlier: a file staged since is
+    refused as no longer conflicted.
+- **[LOCATION-SUPPORT.md](LOCATION-SUPPORT.md):** a row, with footnote xxx.
+- **Tests:** 28 in the core, in `GitConflictTests` (11), `GitConflictReaderTests` (8) over a
+  scripted git, and `GitConflictReaderLiveTests` (9) over real git in scratch repositories: each
+  kind of conflict, `eol=crlf`, a rebase and a cherry-pick, a name with pattern characters and one
+  starting with a colon, and nothing in `.git` changed by the reads where a plain `git status` does
+  change it. 9 in the app, in `ResolveConflictTests` (7) and `ResolveConflictReachTests` (2),
+  through the shipped transport: the save writes the working-tree file and git still lists `UU`, and
+  the right-click menu leads with the command. Full runs: 4 640 core and 2 049 app tests, without
+  the live server suites, whose code this slice does not touch.
+- **Negative controls**, each failing its own tests:
+  - In the core: no `--literal-pathspecs` (the colon name and the argv test), the raw blob for
+    `--filters` (the CRLF test), the two deletions swapped, no filter by path, no size check, a
+    merge marker asked before a rebase's, a link's mode taken as a file's, and the request's
+    spelling of a name in `--path` rather than git's.
+  - In the app: a folder taken as the target, the menu entry not offered, a rebase worded as a
+    merge, and the transport ignoring git's exit status. With the save's witness dropped, the save
+    test hung on the changed-since-read sheet instead of failing, and was stopped by hand.
+  - Two controls passed at first, and the tests were fixed. Without `--literal-pathspecs` the live
+    test still passed, since the reader keeps only its own path's records; the colon name fails it.
+    The `--path` test compared `String`s, which are equal across normalizations (docs/NOTES.md ▸
+    Runs and assertions that prove nothing).
+  - `--no-optional-locks` changes nothing measurable for these three commands and is kept as
+    `status` keeps it.
+- **Found on the way:** two full app runs each failed one timing test elsewhere, a 100 ms deadline
+  in the WebDAV bin check and a compare window's file watch, while the new fixture built
+  repositories with `waitUntilExit` on the main actor. Moved off it, the new suites took 0.6 s
+  instead of 5.4 s and the full run passed (docs/NOTES.md ▸ External CLI tools). The link is likely,
+  not proven.
+- **Seen live** in the Debug build on two scratch repositories, one stopped in a merge with a `UU`,
+  an `AA` and a `DU` file and one stopped in a rebase. The first look had the screen locked, so it
+  read only window sizes; the rest was driven by background computer-use, with full-screen control
+  for the right-click menu.
+  - File ▸ Resolve Conflict… on `Greeter.swift` opened "Merge of “Greeter.swift”": Yours "HEAD, the
+    branch you’re on", Theirs "The branch being merged in", yours' doc comment and theirs' farewell
+    already merged in blue, the two greetings one orange conflict, and Save held back.
+  - Take Theirs and Save wrote the merged file with no marker in it, and git still listed `UU
+    Greeter.swift`. The save left the index as it was: its time was the second of a plain `git
+    status` run by hand before the launch. Every read after that left both `.git` directories
+    exactly as they were, and the rebase repository's as it was built.
+  - On `gone.txt` (`DU`): "Couldn’t resolve the conflict in “gone.txt”" and the deletion sentence.
+    On `added.txt` (`AA`): Base "None: both sides added the file", empty, with one conflict. On the
+    rebase: Yours "HEAD, the branch being rebased onto" with upstream's line, and Theirs "The commit
+    being replayed" with the user's own.
+  - A right-click on the conflicted file led with Resolve Conflict… and a separator; on `keep.txt`
+    the menu began at Open.
+  - A saved window and one with no choice closed without asking.
+  - The defaults domain was restored and compared unchanged.
+- **Fixed after the live look:** the Result pane's subtitle named the file's full path, and a
+  working tree's path cut it mid-sentence ("…tage it with git add"), shorter still with the base
+  shown. It says "Saved to the working tree; git add marks it resolved" now, since the window's
+  title names the file, and it fits in four panes (seen live).
+- **Left for Slice 6:** the 13 languages for the new sentences, and the server entry's WebDAV run.
+
+**2026-10-27: Slice 6 landed** (the catalog, one test, and the record). Every item of *Done when* is
+met, and the milestone closed with it.
+
+- **Translations:** `scripts/check_localization_keys.py` named 45 strings from Slices 3–5 missing from
+  the catalog, and Slice 3's three counted sentences had English only. All 48 are now in the 13
+  languages, with the comments the compiler extracted, and the script reports all 1 240 keys present.
+  The words follow the compare window's (German "sichern", Russian «Сохранить»), and a pane's name,
+  a take's name and Merge… read the same in the prompt, the toolbar, the tooltips and Edit ▸ Undo.
+- **Measured** in each label's own font, from the compiled bundle (docs/NOTES.md ▸ Layout under a
+  longer translation):
+  - Four panes at the window's opening size leave each subtitle about 299 pt. "Saved to the working
+    tree; git add marks it resolved" is 270 pt in English and took 302–392 pt in nine languages. Those
+    nine were shortened to 227–274 pt; the Russian reads «В рабочее дерево; git add разрешит конфликт».
+  - Every other fixed subtitle measured 285 pt or less. The server's Result line names the server and
+    path, is cut in English already, and keeps its whole text in the tooltip.
+  - The widest toolbar label, Russian Show Base at 190 pt, leaves the controls inside the 860 pt
+    minimum.
+- **App:** `MergeWindowController.openingSize` names the 1 320 × 760 pt a window opens at, and
+  `ComparePaneView.pathLabel` is internal so a test can ask it. Nothing on screen changed.
+- **Tests:** `MergeSubtitleWidthTests` (2). Each of the 14 fixed subtitles, in every shipped language,
+  goes on the real Result pane of a four-pane window at its opening size, and
+  `expansionFrame(withFrame:in:)` says whether it is cut; the second test is the control, the English
+  fitting and the first Russian wording cut. Full runs: 4 640 core and 2 051 app tests, without the
+  live server suites, which were up for the live run only.
+- **Negative control:** with the first Russian wording back in the catalog, the subtitle test failed,
+  naming `ru` and nothing else.
+- **Seen live** in the Debug build in Russian against the throwaway WebDAV server's public share, on a
+  seeded tab, driven by background computer-use. Shell writes to the copy stood in for TextEdit's
+  saves, and writes into the served folder for another client.
+  - F4 kept the base beside the copy, byte for byte. A server edit and a touching edit to the copy
+    raised «Выгрузить «notes.txt» обратно на сервер?» with «Объединить…» first and the new sentence
+    whole.
+  - Merge… opened «Объединение «notes.txt»»: "Конфликт 1 из 1", the banner's singular, and the three
+    subtitles. Theirs' eggs and yours' Saturday line were merged in blue, and the two bread lines were
+    one conflict. Take Both, Yours First and Save: a PROPFIND, then a `PUT` answered 204. The server
+    held both edits, the copy matched it, and the one base left was the uploaded bytes.
+  - **The refused precondition.** A second server edit and a touching edit to the copy asked again,
+    and a third server write landed while the question was up. Upload's `PUT` carried the tag the
+    check had read and was answered 412, and the server kept the third write. The offer led with
+    Merge…, ahead of «Всё равно выгрузить».
+  - Merge… brought the third write down as Theirs. Show Base put the first round's upload at the left
+    edge, «Исходная версия вашей правки» under it and all four subtitles whole. Take Both, Theirs
+    First (Edit ▸ Undo read «Отменить Взять обе, сначала их») and Save: a `PUT` answered 204. Every
+    edit of both rounds and all three server writes were on the server, the copy matched it, and the
+    one base left was the uploaded bytes.
+  - **The git entry**, on a scratch repository stopped in a merge. Resolve Conflict… on the `UU` file
+    showed «HEAD, текущая ветка», «Вливаемая ветка» and «Общий предок». That build predated the
+    shortening, and with the base shown the Result line was cut to «Сохраняется в рабочем д…етит его
+    как разрешённый», the measurement above on screen. On the `DU` file the refusal and its deletion
+    sentence were whole. Nothing in `.git` was newer than the repository's own build.
+  - The defaults domain was restored and compared unchanged, `known_hosts` was unchanged, and the
+    servers were stopped.
+  - **Not seen live:** the shortened wording on screen, which the test pins on the real pane; the
+    other 12 languages; and the keys, as in Slice 3.
+- **Done when**, item by item:
+  - The corpus gives git's text and regions apart from the 113 ties Slice 1 names.
+  - A server file changed under an F4 edit merged and uploaded with both edits over SFTP (Slice 4) and
+    WebDAV (above), and over WebDAV a third write was caught by the precondition. Over SFTP and FTP the
+    upload carries no condition: a third write during the merge is caught by the check before the
+    upload (seen in Slice 4), and one between that check and the upload is not (footnote www).
+  - `UU` and `AA` files resolve and save, a `DU` is refused by name, and no git command Dirnex runs
+    writes to the repository (Slice 5, live and in `GitConflictReaderLiveTests`).
+  - Nothing is saved while a conflict is open (Slice 3).
+- **[LOCATION-SUPPORT.md](LOCATION-SUPPORT.md):** footnote www says WebDAV was seen live,
+  412 included.
+- **Left undone**, as planned: Synchronize as an entry point, three files picked by hand, an archive
+  member, being git's merge tool, conflict markers, a merge that ignores whitespace, and a binary file.
+
+**2026-10-27: Tab reaches the compare window's toolbar, and the pane F4 and Find act on is marked**
+(app only). Asked for with a screenshot of the window: "let's make tab navigation in the compare
+window", then "toolbar for sure", and a question back: what is a pane's focus for at all?
+
+- **Measured first**, in a throwaway test on the real window. Tab already went left pane ⇄ right pane
+  (M31 Slice 3 set the two text views' `nextKeyView`), but nothing on screen said which pane had the
+  keyboard. The toolbar's changes arrows, Swap, the whitespace popup and both checkboxes could hold
+  the keyboard (`KeyboardReachableControls` puts them on the loop in every window but the browser's),
+  yet no `nextKeyView` led to them, and once one had the keyboard, Tab left it there.
+- **What a pane's focus is for**, measured on a read-only `NSTextView` like the panes': ↑↓, Page
+  Up/Down and Home/End scroll it (the other pane follows), ⇧↓ and ⌘A select lines for ⌘C, and F4 and
+  ⌘F/⌘G act on that pane's file. The change keys, the copy keys, ⌘U, ⌘S, ⌘W and ⎋ are the window's
+  monitor's and act the same from anywhere. So both panes stay on the loop, as two stops.
+- **The loop** is left pane → right pane → changes → Copy → Swap → whitespace → Ignore Case → Ignore
+  Line Endings → left pane, and ⇧Tab backwards. The panes come first, because the keyboard spends
+  its time there. Copy is passed over while neither side takes a copy, since a segmented control
+  with every segment disabled refuses first responder, and so is a window that takes no copies,
+  where it is hidden. The pencils stay off the loop, since F4 does what they do.
+- **The mark:** the pane F4 and Find act on draws its file's name in the user's accent, as the
+  browser draws its active pane's folder, and follows the palette when it changes. While the toolbar
+  has the keyboard, the mark and F4 and Find stay with the pane that had it last. Before this, a
+  focus in the toolbar or the find bar's field sent F4 and Find to the left pane.
+- **Tests:** `CompareTabTests` (3) send a real Tab key-down through the window: the whole loop both
+  ways with Copy in it, Copy passed over when disabled, and the mark following Tab and a click but
+  not the toolbar. `CompareEditTests` pins F4 from the toolbar to the right file. With the old loop
+  wiring put back (`git stash` of `+Layout`), all three new tests failed (11 issues). Full runs green
+  (4 640 core, 2 054 app).
+- **Seen live** in the Debug build, launched by path. A two-file fixture was opened with `reveal`,
+  `select.all` and `file.compareByContents`, and a temporary probe, gated on an environment variable
+  and removed afterwards, logged each `makeFirstResponder` with the pane that held the mark. Eight Tabs
+  from background computer-use went right pane → Previous Change → Copy to Left → Swap Sides →
+  Compare Whitespace → Ignore Case → Ignore Line Endings → left pane. Eight ⇧Tabs went back through
+  the same stops in reverse. The mark moved with each pane and stayed on the last one through every
+  toolbar stop. The focus ring drew on a segment and on a checkbox, and Space ticked and unticked
+  Ignore Case. The defaults domain was restored and compared unchanged.
+- **Not seen live:** a physical keyboard, since these were computer-use's synthetic key-downs; F4
+  and Find from the toolbar, which the test pins; and a palette change while the window is open.
+
+**2026-10-28: the merge window gets the same Tab and the same mark** (app only). Asked for straight
+after the entry above.
+
+- **The loop** is the panes on screen, left to right, then the toolbar: Base (while shown) → Yours →
+  Result → Theirs → the conflict arrows → the takes → Show Base → Save → round again. `setBaseShown`
+  still rebuilds it, as it did for the panes alone. The takes are passed over with no conflict
+  current, and Save until it can save, both by AppKit's own refusal of a disabled control.
+- **The mark** is the compare window's (`ComparePaneView.holdsKeyboard`), on the pane Find acts on.
+  The window opens with it on Result, where the keyboard starts. Hiding the base moves a mark that
+  was on it to Result even when the keyboard is elsewhere, which is what Space on a focused Show Base
+  does. Before this, Find from the toolbar went to Result whatever pane had been in use.
+- **Tests:** `MergeTabTests` (4): the whole loop both ways with Save enabled, Save and a hidden base
+  passed over, the mark following Tab but not the toolbar, and the mark leaving a hidden base. The
+  existing Show Base test now expects the toolbar in the loop. The Tab key-down helper moved to a
+  shared `pressTab(in:backwards:)`. With `+Layout`'s change stashed, all five failed (19 issues).
+  Full runs green (4 640 core, 2 058 app).
+- **Seen live** in the Debug build, on a scratch repository stopped in a merge, through `reveal` and
+  `file.resolveConflict`, with the same temporary probe, since removed. Six Tabs from Result went
+  Theirs → Previous Conflict → Take Yours → Show Base → Yours → Result, Save disabled and passed over,
+  and six ⇧Tabs came back the same way. Space on Show Base showed the base, Tab went into it and
+  marked it, and ⇧Tab and Space hid it again: the keyboard stayed on the checkbox and Result's name
+  took the accent. The repository was left as it was, and the defaults domain was restored and
+  compared unchanged.
+- **Not seen live:** a physical keyboard, and Save as a stop, which the test pins.
+
+**2026-10-28: ⌘[ and ⌘] come back to where the pane was left in the folder** (core and app). Asked
+for: "let's restore a cursor position (including expanded tree) when traveling on history".
+
+- **What was there:** a walk along the trail listed its folder fresh, so it landed on the first row
+  of an all-collapsed tree, while walking up already landed on the folder just left. The relaunch
+  restore already re-anchored a tab's cursor and re-opened its tree folders by root-relative path,
+  lazily and by identity (`applyPendingRestore`, `restorePendingTreeExpansion`), so a walk reuses it.
+- **Core:** each trail entry keeps a `NavigationSpot`, the cursor's row (or `..`) and the open tree
+  folders, spelled root-relative like `PersistedTab`, in `NavigationHistory.spots`, index for index
+  with the entries. `remember(_:leaving:)` keeps it on the entry on screen, and `spot(landingOn:)`
+  hands it back only to the listing of a walk heading there. It stays with its entry through a branch
+  (the forward spots go), a gone folder (a fold keeps the later visit's spot), the capacity trim and
+  the stored trail, so ⌘[ after a relaunch lands on the row too. A spot list that does not pair up
+  with the entries is dropped whole, and an unreadable spot decodes as no place.
+- **App:** `navigate` remembers the departing folder's spot just before the new listing replaces it,
+  so a cursor moved while that listing was on its way counts. When a walk lands,
+  `preparePendingRestore` seeds the restore's pending cursor and expansions from the spot: ⌘[, ⌘] and
+  the ⌥↓ list alike. Any other listing clears whatever an earlier one left pending. Marks are not part
+  of a spot, since leaving a folder's marks is already an undo entry.
+- **A race closed on the way:** a restore window's tree listings reported in whatever the pane had
+  done since, so ⌘[ twice in a tree, with the first folder's expansions still listing, could close
+  the second window early and drop a cursor waiting inside it. A load now reports in only while its
+  token is current, and each landing starts the count at zero.
+- **Tests:** `NavigationHistorySpotTests` (13, core) and `HistorySpotTests` (4, app): back and
+  forward to the row, a row inside a re-opened tree, a fresh navigation starting at the top (the
+  control), and the spots surviving a write and a restore. With `navigate`'s two calls stashed, the
+  three walk tests failed (6 issues) and the control passed. Full runs green (4 653 core, 2 062 app).
+  A first full app run, made beside the core suite, lost a compare-window sheet and a WebDAV deadline
+  to the load; both passed alone and in a second full run.
+- **Seen live** in the Debug build, launched by path, through `reveal`, `go.back`, `go.forward` and
+  `view.treeView`, with arrow keys from background computer-use. ⌘[ came back to `two.txt`, ⌘] to
+  `b2.txt`, and ⌘[ again to `three.txt`, where an arrow key had moved the cursor in between. In Tree
+  View, with `sub` opened by → and the cursor on `sub/nested-2.txt`, a reveal in `beta` and then ⌘[
+  re-opened `sub` and landed on `nested-2.txt`. The saved trail held the same spots. The defaults
+  domain was restored and compared unchanged.
+- **Not seen live:** a physical keyboard; a server folder or an archive, whose walks run the same
+  code; and ⌘[ after a relaunch, which the test pins.
 
 ---
 

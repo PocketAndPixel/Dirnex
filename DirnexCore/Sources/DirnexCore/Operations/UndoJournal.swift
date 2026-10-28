@@ -120,6 +120,23 @@ public enum UndoStep: Sendable, Equatable, Codable {
         restored: ArchiveUndoWitness
     )
 
+    /// Undo/redo a text file saved from the compare window: exchange its bytes with the copy taken
+    /// before the save (PLAN.md §M33 Slice 3).
+    ///
+    /// ``restoreArchive(archive:snapshot:expected:restored:)`` widened from archives to any file,
+    /// with the same store, the same witness and the same refusals. The difference is how the bytes
+    /// go back. An archive rewrite already gave the archive a new inode, so its swap renames; a save
+    /// wrote in place to keep the file's inode, and so its undo does too
+    /// (``ArchiveUndoStore/exchangeInPlace(fileAt:snapshotAt:)``). A rename would break the hard
+    /// link the save kept, and fail on a file whose ACL denies delete. `file` is the path the save
+    /// wrote, with every symlink resolved.
+    case restoreSavedFile(
+        file: VFSPath,
+        snapshot: VFSPath,
+        expected: ArchiveUndoWitness,
+        restored: ArchiveUndoWitness
+    )
+
     /// The step that reverses this one — the heart of Redo (see `UndoRecord.inverted`).
     var inverse: UndoStep {
         switch self {
@@ -147,6 +164,13 @@ public enum UndoStep: Sendable, Equatable, Codable {
         case let .restoreArchive(archive, snapshot, expected, restored):
             return .restoreArchive(
                 archive: archive,
+                snapshot: snapshot,
+                expected: restored,
+                restored: expected
+            )
+        case let .restoreSavedFile(file, snapshot, expected, restored):
+            return .restoreSavedFile(
+                file: file,
                 snapshot: snapshot,
                 expected: restored,
                 restored: expected
@@ -329,7 +353,7 @@ public extension UndoRecord {
 }
 
 public extension UndoRecord {
-    /// Every archive snapshot this record's steps still point at.
+    /// Every snapshot this record's steps still point at, an archive's or a saved file's.
     ///
     /// The store prunes against the union of these over both stacks: a snapshot no record names is
     /// holding the user's disk for nobody (``ArchiveUndoStore/prune(live:)``). Paths rather than
@@ -337,8 +361,12 @@ public extension UndoRecord {
     /// the two drift.
     var archiveSnapshotPaths: Set<String> {
         Set(steps.compactMap { step in
-            guard case let .restoreArchive(_, snapshot, _, _) = step else { return nil }
-            return snapshot.path
+            switch step {
+            case let .restoreArchive(_, snapshot, _, _), let .restoreSavedFile(_, snapshot, _, _):
+                snapshot.path
+            default:
+                nil
+            }
         })
     }
 }

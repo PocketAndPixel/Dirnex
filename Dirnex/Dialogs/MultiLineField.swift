@@ -30,17 +30,18 @@ import AppKit
 ///   no inset of its own.
 ///
 /// The box takes its size from its caller, fixed or stretched, never from the field behind it, which
-/// would otherwise hug its one-line height.
+/// would otherwise hug its one-line height. Its text is a ``MultiLineTextView``, so it takes a click
+/// the way a field does too.
 @MainActor
 final class MultiLineField: NSView {
     /// The scroll view's distance from the bezel's edges.
     static let textInset = NSSize(width: 1, height: 3)
 
-    let textView: NSTextView
+    let textView: MultiLineTextView
     private let bezel = NSTextField.singleLine()
     let scrollView: NSScrollView = BezelRingScrollView()
 
-    init(_ textView: NSTextView) {
+    init(_ textView: MultiLineTextView) {
         self.textView = textView
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
@@ -126,6 +127,21 @@ final class MultiLineField: NSView {
     /// box in the tree, the field's private hosting view promoted into its place.
     override func accessibilityChildren() -> [Any]? {
         NSAccessibility.unignoredChildren(from: [scrollView])
+    }
+}
+
+/// The text inside a ``MultiLineField``. It takes the click that brings its window forward, as a text
+/// field does, so a click into the box from another app puts the caret where it landed.
+///
+/// A plain text view leaves that click to the window. Measured 2026-10-24 with real clicks into
+/// Report a Bug… while Finder was active: one click into Steps brought the dialog forward and left the
+/// focus in the email field, so the next keystroke went onto the end of the address. One click into
+/// the email field from Finder focused it. A window that isn't key hands a click on to the view under
+/// it only if that view accepts first mouse, and a text field answers `true` where a text view answers
+/// `false`.
+class MultiLineTextView: NSTextView {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
     }
 }
 

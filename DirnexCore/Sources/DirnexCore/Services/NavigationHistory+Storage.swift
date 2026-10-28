@@ -20,11 +20,21 @@ public struct StoredNavigationHistory: Sendable, Equatable, Codable {
     /// from a server to a local folder would come back with ⌘[ pointing at a server nothing could
     /// reconnect. `nil`, and absent from the JSON, for a trail that never left the Mac.
     public let endpoints: [StoredServerEndpoint]?
+    /// Where the tab was left in each entry, index for index with `entries`, so ⌘[ after a relaunch
+    /// still comes back to the row it left. `nil`, and absent from the JSON, when it was left nowhere;
+    /// read through ``entrySpots``, which drops a list that does not pair up with the entries.
+    public let spots: [NavigationSpot?]?
 
-    public init(entries: [VFSPath], currentIndex: Int, endpoints: [ServerEndpoint] = []) {
+    public init(
+        entries: [VFSPath],
+        currentIndex: Int,
+        endpoints: [ServerEndpoint] = [],
+        spots: [NavigationSpot?] = []
+    ) {
         self.entries = entries
         self.currentIndex = currentIndex
         self.endpoints = endpoints.isEmpty ? nil : endpoints.map(StoredServerEndpoint.init)
+        self.spots = spots.contains { $0 != nil } ? spots : nil
     }
 
     /// The endpoints this build can read; one it cannot is left out, and the entries on that
@@ -33,10 +43,18 @@ public struct StoredNavigationHistory: Sendable, Equatable, Codable {
         endpoints?.compactMap(\.endpoint) ?? []
     }
 
+    /// The spots as the entries' partners, or none at all when they do not pair up: a spot one place
+    /// off would put the cursor on a row of the wrong folder.
+    public var entrySpots: [NavigationSpot?] {
+        guard let spots, spots.count == entries.count else { return [] }
+        return spots
+    }
+
     private enum CodingKeys: String, CodingKey {
         case entries
         case currentIndex
         case endpoints
+        case spots
     }
 
     public init(from decoder: any Decoder) throws {
@@ -46,6 +64,7 @@ public struct StoredNavigationHistory: Sendable, Equatable, Codable {
         entries = (try? container?.decode([VFSPath].self, forKey: .entries)) ?? []
         currentIndex = (try? container?.decode(Int.self, forKey: .currentIndex)) ?? 0
         endpoints = try? container?.decodeIfPresent([StoredServerEndpoint].self, forKey: .endpoints)
+        spots = try? container?.decodeIfPresent([NavigationSpot?].self, forKey: .spots)
     }
 }
 
@@ -79,7 +98,8 @@ public extension NavigationHistory {
             if case let .connection(server) = answer { endpoints.append(server) }
             return answer
         }
-        guard let trail = Self.compacted(entries, current: landedIndex, keeping: { entry in
+        let all = Trail(entries: entries, spots: spots, current: landedIndex)
+        guard let trail = Self.compacted(all, keeping: { entry in
             !isExcluded(entry) && requirement(for: entry) != nil
         }), trail.entries.count > 1 else { return nil }
         // Only the servers an entry that was kept stands on; one whose entries were all excluded
@@ -88,7 +108,8 @@ public extension NavigationHistory {
         return StoredNavigationHistory(
             entries: trail.entries,
             currentIndex: trail.current,
-            endpoints: endpoints.filter { $0.backendID.map(used.contains) ?? false }
+            endpoints: endpoints.filter { $0.backendID.map(used.contains) ?? false },
+            spots: trail.spots
         )
     }
 
@@ -110,46 +131,72 @@ public extension NavigationHistory {
             self.init(initialPath: path, capacity: capacity)
             return
         }
-        self.init(entries: trail.entries, currentIndex: trail.current, capacity: capacity)
+        self.init(
+            entries: trail.entries,
+            currentIndex: trail.current,
+            capacity: capacity,
+            spots: trail.spots
+        )
     }
 
     private static func restorable(
         _ stored: StoredNavigationHistory,
         at path: VFSPath,
         capacity: Int
-    ) -> (entries: [VFSPath], current: Int)? {
+    ) -> Trail? {
         guard stored.entries.indices.contains(stored.currentIndex) else { return nil }
         let servers = Dictionary(
             stored.serverEndpoints.compactMap { server in server.backendID.map { ($0, server) } },
             uniquingKeysWith: { first, _ in first }
         )
-        guard var trail = compacted(stored.entries, current: stored.currentIndex, keeping: {
+        let written = Trail(
+            entries: stored.entries,
+            spots: stored.entrySpots,
+            current: stored.currentIndex
+        )
+        guard var trail = compacted(written, keeping: {
             TabRestorePolicy.requirement(for: $0, endpoint: servers[$0.backend]) != nil
         }), trail.entries[trail.current] == path else { return nil }
         let olderOverflow = min(trail.entries.count - capacity, trail.current)
         if olderOverflow > 0 {
             trail.entries.removeFirst(olderOverflow)
+            trail.spots.removeFirst(olderOverflow)
             trail.current -= olderOverflow
         }
         let newerOverflow = trail.entries.count - capacity
-        if newerOverflow > 0 { trail.entries.removeLast(newerOverflow) }
+        if newerOverflow > 0 {
+            trail.entries.removeLast(newerOverflow)
+            trail.spots.removeLast(newerOverflow)
+        }
         return trail
     }
 
-    /// `entries` with only what `keep` admits, the neighbours that then meet folded into one, and
-    /// `current` moved to the same place — or `nil` when `keep` refuses the entry at `current`.
-    private static func compacted(
-        _ entries: [VFSPath],
-        current: Int,
-        keeping keep: (VFSPath) -> Bool
-    ) -> (entries: [VFSPath], current: Int)? {
-        var kept: [VFSPath] = []
+    /// `trail` with only the entries `keep` admits, the neighbours that then meet folded into one, and
+    /// `current` moved to the same place — or `nil` when `keep` refuses the entry at `current`. A
+    /// folded pair keeps the later visit's spot, as ⌘[ folding one does (`removeEntry`).
+    private static func compacted(_ trail: Trail, keeping keep: (VFSPath) -> Bool) -> Trail? {
+        var kept = Trail(entries: [], spots: [], current: 0)
         var keptCurrent: Int?
-        for (index, entry) in entries.enumerated() where keep(entry) {
-            if kept.last != entry { kept.append(entry) }
-            if index == current { keptCurrent = kept.count - 1 }
+        for (index, entry) in trail.entries.enumerated() where keep(entry) {
+            let spot = trail.spots.indices.contains(index) ? trail.spots[index] : nil
+            if kept.entries.last != entry {
+                kept.entries.append(entry)
+                kept.spots.append(spot)
+            } else if let spot {
+                kept.spots[kept.spots.count - 1] = spot
+            }
+            if index == trail.current { keptCurrent = kept.entries.count - 1 }
         }
         guard let keptCurrent else { return nil }
-        return (kept, keptCurrent)
+        kept.current = keptCurrent
+        return kept
     }
+}
+
+/// A trail on its way to or from the store: its entries, where the pane was left in each, and which
+/// one it is on.
+private struct Trail {
+    var entries: [VFSPath]
+    var spots: [NavigationSpot?]
+    var current: Int
 }

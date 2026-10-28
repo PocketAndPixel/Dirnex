@@ -22,6 +22,10 @@ public extension SyntaxLanguage {
         return byName == .ini ? forContents(of: text) ?? .ini : byName
     }
 
+    /// The most lines of a file's text `forFile(named:text:)` reads, so a caller holding a file as
+    /// lines need join only these (`ComparedDocument.text(ofFirstLines:)`).
+    static let contentsLineLimit = SyntaxNginxScanner.lineLimit
+
     /// The language `text`'s contents name without help from a file name, or `nil`.
     ///
     /// Only the two shapes that are unambiguous when they are there. An XML declaration can open

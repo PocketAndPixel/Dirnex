@@ -16,8 +16,22 @@ struct CheckedWriteBack: Equatable {
     let concern: String?
     let condition: S3WriteCondition
     let byteSize: Int64
+    /// The base a merge would start from, when the prompt can offer Merge… for this item: the server
+    /// changed the file, a base is kept for the copy, and both read as text (PLAN.md §M34 Slice 4).
+    var mergeBase: URL?
+    /// The duplicate of the copy the upload sends, taken as it is queued. Once it lands it is the
+    /// copy's base, so what the server holds is known to the byte whatever the editor wrote since.
+    var sent: URL?
 
     var hasConcern: Bool { concern != nil }
+}
+
+/// What a save's check read from the server for one destination: the re-`stat`, and what the bytes
+/// said where the size and time could not (PLAN.md §M34 ▸ 2026-10-27, the content check).
+struct WriteBackServerReading: Sendable, Equatable {
+    /// The server's file, or `nil` when the re-`stat` could not reach it.
+    let entry: FileEntry?
+    let content: WriteBackContentVerdict
 }
 
 /// What the user is asked about a checked batch, and what each answer means.
@@ -36,6 +50,9 @@ enum WriteBackAnswer: Equatable {
     case clean
     /// Upload nothing.
     case none
+    /// Upload nothing, and merge the one file with the server's version instead (PLAN.md §M34
+    /// Slice 4).
+    case merge
 }
 
 /// Deciding what a batch of checked save-backs should do, with no window and no server
@@ -67,15 +84,15 @@ enum WriteBackBatchPlan {
         switch answer {
         case .all: checked
         case .clean: checked.filter { !$0.hasConcern }
-        case .none: []
+        case .none, .merge: []
         }
     }
 
-    /// The job those items become.
+    /// The job those items become. Each sends its duplicate where one was taken, else the copy.
     static func job(for items: [CheckedWriteBack]) -> WriteBackJob {
         WriteBackJob(items: items.map {
             RemoteWriteBackItem(
-                localPath: $0.edit.temporaryURL.path,
+                localPath: ($0.sent ?? $0.edit.temporaryURL).path,
                 destination: $0.destination,
                 condition: $0.condition,
                 byteSize: $0.byteSize,

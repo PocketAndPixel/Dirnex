@@ -337,37 +337,30 @@ struct ArchiveRenameTests {
         /// that produced it — so the two cannot agree with each other about something neither has
         /// right.
         ///
-        /// The **`./` prefix is normalized away**, and that is a fact about the repack rather than
-        /// something being hidden: the unencrypted route packs `.`, so every entry it writes comes
-        /// back `./name` where the libarchive route writes `name` (docs/NOTES.md ▸ Design lessons).
-        /// It is pre-existing and both spellings browse identically — but it is why the encrypted
-        /// test here passed while its plain twin did not, which read as a broken rename until the
-        /// two argvs were run side by side.
+        /// Names are compared **as stored**. Until 2026-10-26 this helper stripped a leading `./`,
+        /// because the unencrypted route packed `.` and wrote every name that way — and so it could
+        /// not see that the rewrite was renaming every member of a bare-named archive. Both routes
+        /// now give the fixture's bare names back (``ArchiveNameForm``).
         func members() throws -> [String] {
             try EncryptedArchiveReader.inspect(archiveAt: archive)
                 .entries
                 .map(\.archivePath)
-                .map { $0.hasPrefix("./") ? String($0.dropFirst(2)) : $0 }
-                .filter { !$0.isEmpty && !$0.hasSuffix("/") }
+                .filter { !$0.hasSuffix("/") }
                 .sorted()
         }
 
         /// Each member's recorded modification time, keyed the way ``members()`` keys its names.
         func modificationDates() throws -> [String: Date] {
             var dates: [String: Date] = [:]
-            for entry in try EncryptedArchiveReader.inspect(archiveAt: archive).entries {
-                let name = entry.archivePath.hasPrefix("./")
-                    ? String(entry.archivePath.dropFirst(2))
-                    : entry.archivePath
-                guard !name.isEmpty, !name.hasSuffix("/") else { continue }
-                dates[name] = entry.modificationDate
+            for entry in try EncryptedArchiveReader.inspect(archiveAt: archive).entries
+                where !entry.archivePath.hasSuffix("/") {
+                dates[entry.archivePath] = entry.modificationDate
             }
             return dates
         }
 
-        /// The member's bytes, extracted whole rather than by member filter — the filter matches the
-        /// name **as stored**, which the two repack routes spell differently, so filtering here
-        /// would make the reader route-dependent for no gain.
+        /// The member's bytes, extracted whole rather than by member filter, so reading them back
+        /// does not depend on how the rewrite spelled the name; ``members()`` checks that.
         func readBack(_ innerPath: String) throws -> String {
             let out = directory.appendingPathComponent("out-\(UUID().uuidString)", isDirectory: true)
             try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)

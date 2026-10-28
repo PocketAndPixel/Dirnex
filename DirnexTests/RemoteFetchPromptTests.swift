@@ -301,13 +301,15 @@ struct RemoteFetchPromptTests {
     /// 10 s was the next one and was still too near the measurement. In a full run the main actor
     /// is delayed **0.6–5.0 s at a time** by AppKit laying out the tables of panes other suites keep
     /// alive, so this loop gets roughly one sample a second and the 1200 ms sheet lands 2.9–6.3 s in
-    /// (measured 2026-08-27, ▸ ``CountingBackend.blockBackstop``). 30 s is about five times the
-    /// worst of that, and a green run still returns on the poll after the predicate holds.
+    /// (measured 2026-08-27, ▸ ``CountingBackend.blockBackstop``). 30 s was about five times the
+    /// worst of that. It became 60 on 2026-10-26, when this suite's first waits went past 30 in
+    /// slower full runs, inside the main-actor stall at the run's start (docs/NOTES.md ▸ Testing).
+    /// A green run still returns on the poll after the predicate holds.
     ///
     /// It is **not** how to wait a delay out — that is ``hold(until:)``, which is bounded because
     /// the length is the whole point of it.
     @discardableResult
-    private func settle(within seconds: Double = 30, until isDone: () -> Bool) async -> Bool {
+    private func settle(within seconds: Double = 60, until isDone: () -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(seconds)
         while Date() < deadline {
             if isDone() { return true }

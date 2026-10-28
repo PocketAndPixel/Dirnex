@@ -1,0 +1,10 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  8 3055k    0     0    8  256k      0   494k  0:00:06 --:--:--  0:00:06  494k 16 3055k    0     0   16  512k      0   510k  0:00:05  0:00:01  0:00:04  511k
+curl: (28) Operation timed out after 1001 milliseconds with 0 bytes received
+s3-status=100
+s3-region=
+s3-length=
+s3-size=0
+s3-up=524288
+s3-etag=

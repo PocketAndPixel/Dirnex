@@ -1,0 +1,28 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100     6    0     0  100     6      0     44 --:--:-- --:--:-- --:--:--    45
+dav-status=201
+dav-size=0
+dav-up=6
+dav-headers={"date":["Sat, 24 Oct 2026 16:56:18 GMT"],
+"server":["Apache/2.4.69 (Debian)"],
+"x-content-type-options":["nosniff"],
+"x-frame-options":["SAMEORIGIN"],
+"x-permitted-cross-domain-policies":["none"],
+"x-robots-tag":["noindex, nofollow"],
+"referrer-policy":["no-referrer"],
+"x-powered-by":["PHP/8.5.12"],
+"content-security-policy":["default-src 'none';"],
+"x-oc-mtime":["accepted"],
+"x-user-id":["probe"],
+"oc-fileid":["00000248oc59dnxcgfss"],
+"content-length":["0"],
+"etag":["\"75575f563dfd35bdba837e203ec08560\""],
+"x-request-id":["kaEBOhcxfvdVh5rFfMv5"],
+"oc-etag":["\"75575f563dfd35bdba837e203ec08560\""],
+"x-nc-ownerid":["probe"],
+"x-nc-permissions":["RGDNVW"],
+"content-type":["text/html; charset=UTF-8"]
+}

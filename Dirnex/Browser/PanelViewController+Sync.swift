@@ -110,7 +110,7 @@ extension PanelViewController {
             self?.confirmAndApplySync(decisions, leftDir: leftDir, rightDir: rightDir)
         }
         controller.onCompare = { [weak self] left, right in
-            self?.launchExternalDiff(comparing: left, with: right)
+            self?.compare(left, right)
         }
         controller.onPrepareContents = { [weak self] entries, answer in
             self?.prepareSyncContents(entries, then: answer)

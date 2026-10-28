@@ -45,10 +45,10 @@ struct CopyEngineSymlinkTests {
             guard !unresolved.isEmpty else { return entries }
             asked.record(unresolved.map(\.path.path))
             guard resolvable else { return entries }
+            let manager = FileManager.default
             return entries.map { entry in
                 guard entry.kind == .symlink, entry.symlinkDestination == nil,
-                      let target = try? FileManager.default
-                      .destinationOfSymbolicLink(atPath: entry.path.path)
+                      let target = try? manager.destinationOfSymbolicLink(atPath: entry.path.path)
                 else { return entry }
                 return entry.withSymlinkDestination(target)
             }

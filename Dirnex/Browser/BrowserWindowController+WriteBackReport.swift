@@ -10,16 +10,21 @@ import DirnexCore
 /// precondition, the user stopped it) and each says something different.
 extension BrowserWindowController {
     /// Say what the batch did, and re-offer whatever the server refused on a precondition.
+    /// Answers what that upload anyway landed, so a caller waiting on a save hears of it.
     ///
     /// **The routine half is a status line, never a dialog** — the rule the single save has followed
     /// since 2026-08-23, and it matters more in a batch: an upload that leaves no trace on screen is
     /// indistinguishable from one that never happened, and forty of them is forty chances to look
     /// like nothing happened. Failures keep an alert, which is the half a modal is right for.
+    ///
+    /// The offer is waited on rather than left running beside the next batch (2026-10-25), so the
+    /// compare window's save is told whether it landed, and the next batch's sheet waits behind it.
     func reportWriteBacks(
         _ chosen: [CheckedWriteBack],
         landed: Set<VFSPath>,
-        report: OperationReport
-    ) {
+        report: OperationReport,
+        over host: NSWindow?
+    ) async -> Set<VFSPath> {
         let uploaded = chosen.filter { landed.contains($0.destination) }
         if !uploaded.isEmpty {
             focusedPanel.showTransientStatus(
@@ -37,10 +42,10 @@ extension BrowserWindowController {
             }
         let broken = report.failures.filter { Self.writeBackConflict(from: $0.error) == nil }
         if !broken.isEmpty {
-            presentWriteBackFailures(broken)
+            presentWriteBackFailures(broken, over: host)
         }
-        guard !refused.isEmpty else { return }
-        Task { await offerUploadAnyway(refused) }
+        guard !refused.isEmpty else { return [] }
+        return await offerUploadAnyway(refused, over: host)
     }
 
     /// The status line after a batch — one sentence whichever size it was.
@@ -149,29 +154,38 @@ extension BrowserWindowController {
     /// re-conditioning would be a loop with a round trip in it, and the user has now been told
     /// twice.
     private func offerUploadAnyway(
-        _ refused: [(item: CheckedWriteBack, conflict: RemoteWriteBackConflict)]
-    ) async {
+        _ refused: [(item: CheckedWriteBack, conflict: RemoteWriteBackConflict)],
+        over host: NSWindow?
+    ) async -> Set<VFSPath> {
         let items = refused.map(\.item)
+        let kind = Self.conflictKind(of: refused)
+        let answers = Self.uploadAnywayAnswers(for: items, kind: kind)
         let alert = NSAlert()
         alert.messageText = Self.writeBackPromptTitle(contested: items, total: items.count)
-        alert.informativeText = Self.uploadAnywayBody(Self.conflictKind(of: refused))
-        alert.addButton(withTitle: String(
-            localized: "Upload Anyway",
-            comment: """
-            Button that uploads an edited file over the server's copy after the server refused the \
-            guarded upload.
-            """
-        ))
-        alert.addButton(withTitle: String(
-            localized: "Keep Editing",
-            comment: """
-            Button that declines uploading an edited file, leaving the editor open so the user can \
-            save again later.
-            """
-        ))
-        alert.enableEscapeToCancel(safe: .alertSecondButtonReturn)
-        let response = await alert.sheetAnswer(over: window, whenUnasked: .cancel)
-        guard response == .alertFirstButtonReturn else { return }
+        let body = Self.uploadAnywayBody(kind)
+        alert.informativeText = answers.contains(.merge) ? Self.mergeOfferBody(body) : body
+        for answer in answers {
+            alert.addButton(withTitle: answer == .all
+                ? String(
+                    localized: "Upload Anyway",
+                    comment: """
+                    Button that uploads an edited file over the server's copy after the server \
+                    refused the guarded upload.
+                    """
+                )
+                : Self.buttonTitle(for: answer, files: items.count))
+        }
+        alert.enableEscapeToCancel(safe: Self.response(for: .none, in: answers))
+        let response = await alert.sheetAnswer(over: host ?? window, whenUnasked: .cancel)
+        switch Self.answer(for: response, among: answers) {
+        case .merge:
+            await mergeWriteBack(items[0], over: host)
+            return []
+        case .all:
+            break
+        case .clean, .none:
+            return []
+        }
         // Unconditional, and through the ordinary batch path so it gets the same bar and Stop.
         let retry = items.map {
             CheckedWriteBack(
@@ -182,7 +196,18 @@ extension BrowserWindowController {
                 byteSize: $0.byteSize
             )
         }
-        await uploadWriteBacks(retry)
+        return await uploadWriteBacks(retry, over: host)
+    }
+
+    /// The offer's buttons in the order it draws them: Upload Anyway and Keep Editing, with Merge…
+    /// first for a refused save of one changed file whose base is still kept. The server wrote
+    /// nothing, so `finishWriteBacks` kept the copy's record and base (PLAN.md §M34 Slice 4).
+    static func uploadAnywayAnswers(
+        for items: [CheckedWriteBack],
+        kind: RemoteWriteBackConflict
+    ) -> [WriteBackAnswer] {
+        let offersMerge = items.count == 1 && kind == .changed && items[0].mergeBase != nil
+        return (offersMerge ? [.merge] : []) + [.all, .none]
     }
 
     /// Which refusal to word the offer for.
@@ -200,9 +225,9 @@ extension BrowserWindowController {
         return kinds.count == 1 ? (kinds.first ?? .changed) : .changed
     }
 
-    private func presentWriteBackFailures(_ failures: [OperationItemFailure]) {
+    private func presentWriteBackFailures(_ failures: [OperationItemFailure], over host: NSWindow?) {
         guard let first = failures.first else { return }
-        focusedPanel.presentOperationFailure(
+        presentWriteBackFailure(
             message: failures.count > 1
                 ? String(
                     localized: "Couldn’t upload \(failures.count) files",
@@ -215,7 +240,8 @@ extension BrowserWindowController {
                     file's name.
                     """
                 ),
-            detail: focusedPanel.describe(first.error)
+            detail: focusedPanel.describe(first.error),
+            over: host
         )
     }
 }

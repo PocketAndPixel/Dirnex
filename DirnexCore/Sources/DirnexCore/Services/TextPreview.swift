@@ -76,7 +76,7 @@ public struct TextPreview: Sendable, Equatable {
     }
 
     /// Whether `data` holds a NUL with no byte-order mark in front of it, which `decode` refuses.
-    private static func isBinary(_ data: Data) -> Bool {
+    static func isBinary(_ data: Data) -> Bool {
         !ByteOrderMark.all.contains { data.starts(with: $0.bytes) } && data.contains(0)
     }
 
@@ -97,19 +97,44 @@ public struct TextPreview: Sendable, Equatable {
     ///    (Windows)"), and there is nothing better available without shipping a charset detector;
     ///    a lossy answer is refused rather than shown as mojibake.
     public static func decode(_ data: Data, isTruncated: Bool) -> TextPreview? {
+        decodedText(data, isTruncated: isTruncated).map {
+            TextPreview(text: $0.text, isTruncated: isTruncated)
+        }
+    }
+
+    /// Decoded text, and how it was encoded: the encoding, and whether a byte-order mark named it.
+    struct DecodedText {
+        let text: String
+        let encoding: String.Encoding
+        let hasByteOrderMark: Bool
+    }
+
+    /// `decode`'s steps, keeping the encoding they settled on, which a comparison reports when two
+    /// files say the same thing in different bytes (`ComparedText`).
+    static func decodedText(_ data: Data, isTruncated: Bool) -> DecodedText? {
         if let unicode = decodeByByteOrderMark(data, isTruncated: isTruncated) {
-            return TextPreview(text: unicode, isTruncated: isTruncated)
+            return DecodedText(
+                text: unicode.text,
+                encoding: unicode.encoding,
+                hasByteOrderMark: true
+            )
         }
         guard !data.contains(0) else { return nil }
         let body = isTruncated ? trimmingPartialUTF8Sequence(data) : data
         if let utf8 = String(data: body, encoding: .utf8) {
-            return TextPreview(text: utf8, isTruncated: isTruncated)
+            return DecodedText(text: utf8, encoding: .utf8, hasByteOrderMark: false)
         }
         guard let detected = decodeByDetection(body) else { return nil }
-        return TextPreview(text: detected, isTruncated: isTruncated)
+        return DecodedText(text: detected.text, encoding: detected.encoding, hasByteOrderMark: false)
     }
 
     // MARK: - Encodings
+
+    /// The byte-order mark `decodedText` reads for `encoding`, which a save writes back in front of
+    /// the text (`ComparedDocument`). `nil` for an encoding no mark names.
+    static func byteOrderMark(for encoding: String.Encoding) -> [UInt8]? {
+        ByteOrderMark.all.first { $0.encoding == encoding }?.bytes
+    }
 
     /// One byte-order mark and what it says: which encoding follows, and how wide that encoding's
     /// code unit is (which is what a truncated read has to cut back to).
@@ -131,7 +156,10 @@ public struct TextPreview: Sendable, Equatable {
 
     /// Decode `data` when it opens with a byte-order mark, which names its encoding outright.
     /// `nil` when there is no BOM, or when the bytes it claims don't decode after all.
-    private static func decodeByByteOrderMark(_ data: Data, isTruncated: Bool) -> String? {
+    private static func decodeByByteOrderMark(
+        _ data: Data,
+        isTruncated: Bool
+    ) -> (text: String, encoding: String.Encoding)? {
         guard let mark = ByteOrderMark.all.first(where: { data.starts(with: $0.bytes) }) else {
             return nil
         }
@@ -144,7 +172,7 @@ public struct TextPreview: Sendable, Equatable {
                 ? body.prefix(body.count - body.count % mark.unit)
                 : trimmingPartialUTF8Sequence(body)
         }
-        return String(data: body, encoding: mark.encoding)
+        return String(data: body, encoding: mark.encoding).map { ($0, mark.encoding) }
     }
 
     /// Ask Foundation which encoding these bytes are, and take the answer only if it is confident.
@@ -152,7 +180,7 @@ public struct TextPreview: Sendable, Equatable {
     /// A *lossy* conversion is refused: probed on MacRoman, the detector answers "Japanese
     /// (Windows, DOS)" and hands back `Caf<?> na夫e` — text on screen that the file does not say,
     /// which is worse than falling back to Quick Look.
-    private static func decodeByDetection(_ data: Data) -> String? {
+    private static func decodeByDetection(_ data: Data) -> (text: String, encoding: String.Encoding)? {
         var converted: NSString?
         var lossy: ObjCBool = false
         let encoding = NSString.stringEncoding(
@@ -161,8 +189,8 @@ public struct TextPreview: Sendable, Equatable {
             convertedString: &converted,
             usedLossyConversion: &lossy
         )
-        guard encoding != 0, !lossy.boolValue else { return nil }
-        return converted as String?
+        guard encoding != 0, !lossy.boolValue, let converted else { return nil }
+        return (converted as String, String.Encoding(rawValue: encoding))
     }
 
     /// Drop a multi-byte UTF-8 sequence that a prefix read cut in half.

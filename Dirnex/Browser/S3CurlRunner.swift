@@ -16,11 +16,14 @@ import Foundation
 /// - **The secret access key never touches `argv` or the disk.** It goes to `curl`'s stdin as a
 ///   `-K -` config file, exactly as the FTP password does.
 /// - **Both pipes are drained concurrently and the wait is bounded.**
-/// - **The exit code decides only whether a server was reached.** The inverse of FTP's rule: `curl`
-///   exits 0 for a missing key, a denied bucket, a bad signature and a wrong region alike, so the
-///   *status* from the write-out is the classification and a nonzero exit is consulted only when
-///   there is no status at all. That absorbs `--fail`'s exit 22 on a refused transfer for free —
-///   the response arrived, it just said no.
+/// - **The exit code decides whether the transfer finished, and the status what it answered.**
+///   `curl` exits 0 for a missing key, a denied bucket, a bad signature and a wrong region alike,
+///   so the *status* from the write-out is the classification. But a status arrives with the
+///   response's first line, and a transfer cut after it still has one: a download that ran out of
+///   time reported 200 and exit 28 with a sixth of the file on disk (2026-10-23). So only exit 0,
+///   or `--fail`'s 22 with a 4xx or 5xx, is a response, and every other run is a transport failure.
+///   The rule is the core's (``S3WriteOut/isAnswer(status:exitCode:)``); the runner only hands it
+///   the exit code.
 struct S3CurlRunner: Sendable {
     /// The access key id — an identifier, and the config file's other half.
     let accessKeyID: String
@@ -30,19 +33,18 @@ struct S3CurlRunner: Sendable {
     /// The bound used when the arguments carry no `--max-time` of their own to derive one from.
     var fallbackTimeout: Int = 30
 
-    /// Which counter an invocation's `bytesTransferred` should come from.
-    ///
-    /// Named by the caller rather than inferred from whichever number is non-zero, because a
-    /// *refused* upload has both: the whole file went out, and the `<Error>` document came back.
-    enum Direction {
-        case download
-        case upload
-    }
+    /// Which counter an invocation's `bytesTransferred` should come from — the core's, since the
+    /// response is built there (``S3WriteOut/Direction``).
+    typealias Direction = S3WriteOut.Direction
 
     /// Run one invocation and turn it into the answer the caller classifies.
     ///
-    /// A status of 0 — `curl`'s own `000`, printed when nothing answered — is the only thing that
-    /// makes this a transport failure. Everything else is a response, including the refusals.
+    /// A response needs a status **and** a finished transfer: exit 0, or `--fail`'s 22 on a refusal.
+    /// Nothing answering (`000`) and a transfer that stopped part-way are both transport failures,
+    /// whatever status the second had seen
+    /// (``S3WriteOut/response(exitCode:standardOutput:standardError:measuring:)``). The refusals
+    /// are still responses.
+    ///
     /// `isCancelled` is polled while the process runs, so a caller's Stop reaches **inside** a
     /// transfer instead of being noticed after it. The default suits every metadata request: a
     /// listing or a `HEAD` is one round trip, over long before anyone could press anything.
@@ -59,17 +61,11 @@ struct S3CurlRunner: Sendable {
             progress: progress,
             isCancelled: isCancelled
         )
-        let fields = S3WriteOut.parse(stderr: result.standardError)
-        guard fields.status != 0 else {
-            throw S3ResponseError.transport(.classify(curlExit: result.exitCode))
-        }
-        return S3Response(
-            status: fields.status,
-            body: result.standardOutput,
-            bucketRegion: fields.bucketRegion,
-            contentLength: fields.contentLength,
-            bytesTransferred: direction == .upload ? fields.bytesUploaded : fields.bytesDownloaded,
-            etag: fields.etag
+        return try S3WriteOut.response(
+            exitCode: result.exitCode,
+            standardOutput: result.standardOutput,
+            standardError: result.standardError,
+            measuring: direction
         )
     }
 
@@ -84,8 +80,10 @@ struct S3CurlRunner: Sendable {
     ///
     /// A part with **no status at all** is a transport failure rather than a refusal: `curl` prints
     /// nothing for a section it never ran, which is what a bad argument or a terminated process
-    /// looks like. A part that ran and was refused has a status, and is classified by the caller
-    /// exactly as any other response is.
+    /// looks like. A part that stopped part-way is one too, read from its **own** exit code, since
+    /// the process's belongs to no single part (``S3PartWriteOut/response(forPart:processExitCode:body:)``).
+    /// A part that ran and was refused has a status, and is classified by the caller exactly as any
+    /// other response is.
     ///
     /// The body is the whole invocation's stdout, handed to every part. It is only ever read for a
     /// part that failed (`serviceError(from:)` ignores it on success), and an `UploadPart` that
@@ -110,14 +108,10 @@ struct S3CurlRunner: Sendable {
         )
         let reported = S3PartWriteOut.parse(stderr: result.standardError)
         return try parts.map { part in
-            guard let fields = reported.fields(forPart: part.number) else {
-                throw S3ResponseError.transport(.classify(curlExit: result.exitCode))
-            }
-            return S3Response(
-                status: fields.status,
-                body: result.standardOutput,
-                bytesTransferred: fields.bytesUploaded,
-                etag: fields.etag
+            try reported.response(
+                forPart: part.number,
+                processExitCode: result.exitCode,
+                body: result.standardOutput
             )
         }
     }
@@ -130,7 +124,8 @@ struct S3CurlRunner: Sendable {
     /// writing several files on this machine — so their combined size is the byte count, exact and
     /// arriving continuously rather than a segment at a time. Everything else is the same run: one
     /// process, both pipes drained, the wait bounded, one `terminate()` on cancel that stops every
-    /// section at once.
+    /// section at once. A segment that stopped part-way is a transport failure by its own exit code,
+    /// exactly as a part is (``S3SegmentWriteOut/response(forSegment:processExitCode:)``).
     ///
     /// The body — this invocation's stdout — is deliberately **not** handed to the responses. Every
     /// section writes its own bytes to its own file with `--fail`, so a refused section creates no
@@ -155,10 +150,7 @@ struct S3CurlRunner: Sendable {
         )
         let reported = S3SegmentWriteOut.parse(stderr: result.standardError)
         return try segments.map { segment in
-            guard let fields = reported.fields(forSegment: segment.number) else {
-                throw S3ResponseError.transport(.classify(curlExit: result.exitCode))
-            }
-            return S3Response(status: fields.status, bytesTransferred: fields.bytesDownloaded)
+            try reported.response(forSegment: segment.number, processExitCode: result.exitCode)
         }
     }
 

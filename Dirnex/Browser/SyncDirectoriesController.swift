@@ -33,9 +33,10 @@ final class SyncDirectoriesController: NSViewController {
     let directions: [SyncDirection]
     /// Handed the checked, actionable decisions when the user commits.
     var onApply: (([Decision]) -> Void)?
-    /// Invoked to open two files in an external diff tool (Compare Contents…). The controller is a
-    /// pure view; the panel owns process launching and error UI.
-    var onCompare: ((VFSPath, VFSPath) -> Void)?
+    /// Invoked to show how two files differ (Compare Contents…), in Dirnex's compare window or an
+    /// external diff tool. The controller is a pure view; the panel owns bringing a server's or an
+    /// archive's files down, opening the window or launching the tool, and error UI.
+    var onCompare: ((FileEntry, FileEntry) -> Void)?
     /// Invoked to bring a content comparison's candidate pairs down to real files on this disk, and
     /// answered with the map an engine reads them back through — or `nil` when nothing came down.
     ///
@@ -71,6 +72,8 @@ final class SyncDirectoriesController: NSViewController {
     /// Stop, for the sheet's own scan: set when the sheet goes away and polled by the walk and the
     /// byte reads, both of which run off the main actor.
     let scanControl = SyncScanControl()
+    /// Watches for a compare window saving a file a row shows (`+Saves`).
+    var compareSaveObserver: (any NSObjectProtocol)?
 
     /// One diff row: the comparison entry, its current action under the chosen direction, and
     /// whether the user has it checked for the run.
@@ -132,6 +135,7 @@ final class SyncDirectoriesController: NSViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        startObservingCompareSaves()
         startScan()
     }
 
@@ -181,12 +185,12 @@ final class SyncDirectoriesController: NSViewController {
         updateChrome()
     }
 
-    /// Open the clicked both-sides row's two files in an external diff tool. Only offered when both
-    /// sides are regular files (see `menuNeedsUpdate`), so both paths are present.
+    /// Compare the clicked both-sides row's two files. Only offered when both sides are regular
+    /// files (see `menuNeedsUpdate`), so both entries are present.
     @objc func compareContents(_ sender: NSMenuItem) {
         guard let data = row(at: sender.tag),
-              let left = data.entry.left?.path,
-              let right = data.entry.right?.path else { return }
+              let left = data.entry.left,
+              let right = data.entry.right else { return }
         onCompare?(left, right)
     }
 
@@ -195,6 +199,7 @@ final class SyncDirectoriesController: NSViewController {
     override func viewDidDisappear() {
         super.viewDidDisappear()
         scanControl.stop()
+        stopObservingCompareSaves()
     }
 
     @objc func cancel(_ sender: Any?) {
@@ -221,6 +226,10 @@ final class SyncDirectoriesController: NSViewController {
     // MARK: - Helpers
 
     func isActionable(_ action: SyncAction) -> Bool {
+        Self.isActionable(action)
+    }
+
+    static func isActionable(_ action: SyncAction) -> Bool {
         action != .none && action != .conflict
     }
 

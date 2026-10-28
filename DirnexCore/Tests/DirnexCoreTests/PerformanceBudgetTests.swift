@@ -141,19 +141,29 @@ struct PerformanceBudgetTests {
         // slower, hence the headroom.
         enforce(measured, budget: 1500, label: "100k model build (sort)")
     }
-}
 
-/// A deterministic PRNG so the synthetic corpus — and therefore the timings — are
-/// reproducible run to run. A plain SplitMix64; quality is irrelevant here, determinism
-/// is the point.
-private struct SeededGenerator: RandomNumberGenerator {
-    private var state: UInt64
-    init(seed: UInt64) { state = seed }
-    mutating func next() -> UInt64 {
-        state &+= 0x9E37_79B9_7F4A_7C15
-        var mixed = state
-        mixed = (mixed ^ (mixed >> 30)) &* 0xBF58_476D_1CE4_E5B9
-        mixed = (mixed ^ (mixed >> 27)) &* 0x94D0_49BB_1331_11EB
-        return mixed ^ (mixed >> 31)
+    @Test("comparing two dense 100k-line files stays under a ceiling, because the search is capped")
+    func denseLineDiffRegressionCeiling() {
+        // Myers' slow case: many repeated lines and many changes. Two 100k-line files over a
+        // ten-line alphabet took 0.4 s in release here (2026-10-22, PLAN.md §M31 Slice 1) and 28 s
+        // with the cost limit off. The ceiling is set against the second number: it trips when the
+        // limit stops engaging, not when a runner is slow.
+        var rng = SeededGenerator(seed: 0xD1FF_0031)
+        // A debug build only prints the number, and 100k lines cost it nearly 6 s.
+        #if DEBUG
+            let count = 10000
+        #else
+            let count = 100_000
+        #endif
+        func text() -> String {
+            (0..<count).map { _ in "line \(Int.random(in: 0..<10, using: &rng))\n" }.joined()
+        }
+        let left = text()
+        let right = text()
+        let start = DispatchTime.now().uptimeNanoseconds
+        let diff = LineDiff.compare(left, right)
+        let measured = Double(DispatchTime.now().uptimeNanoseconds - start) / 1_000_000
+        #expect(!diff.isIdentical)
+        enforce(measured, budget: 5000, label: "dense \(count)-line diff")
     }
 }

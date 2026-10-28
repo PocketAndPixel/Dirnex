@@ -16,11 +16,19 @@ jobs:
   core:
     name: DirnexCore (swift test)
     runs-on: macos-26
+    # Without a limit a stuck run sits for GitHub's six hours, as on 2026-10-28. The job takes 12 to
+    # 21 minutes, most of it the release build below.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
       - name: Swift version
         run: swift --version
       - name: Test DirnexCore
+        # 3 to 6 minutes when it passes. On 2026-10-27 and 28 three runs in a row stopped a second
+        # into the tests, with not one passing. A local run with three cooperative threads free,
+        # as here, stalled the same way on two tests waiting for work sent to a global queue,
+        # which starts nothing while those threads are all busy (docs/NOTES.md ▸ Testing).
+        timeout-minutes: 20
         run: swift test --package-path DirnexCore
       - name: Performance budgets (release)
         # The M1 hot-path budgets (PerformanceBudgetTests) only enforce in optimized
@@ -145,14 +153,29 @@ jobs:
     runs-on: macos-26
     env:
       HOMEBREW_NO_AUTO_UPDATE: 1
+      # SwiftFormat is pinned, because its `indent` rule changes between patch releases: on
+      # 2026-10-28, 0.64.0 (the runner image's) and 0.64.4 (Homebrew's) each rejected the other's
+      # layout of a guard condition with wrapped arguments. To move the pin, take the asset's
+      # digest from `gh api repos/nicklockwood/SwiftFormat/releases/tags/<version>`.
+      SWIFTFORMAT_VERSION: 0.64.4
+      SWIFTFORMAT_SHA256: bb42fbfb0b9d5f1b8b83db3147087220ea414916fce8c5cf71abaea5ad5a3175
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
         run: |
           brew untap aws/tap 2>/dev/null || true
-          brew install swiftformat swiftlint
+          brew install swiftlint
+          archive="$RUNNER_TEMP/swiftformat.zip"
+          curl -fsSL -o "$archive" \
+            "https://github.com/nicklockwood/SwiftFormat/releases/download/$SWIFTFORMAT_VERSION/swiftformat.zip"
+          echo "$SWIFTFORMAT_SHA256  $archive" | shasum -a 256 -c -
+          unzip -q "$archive" -d "$RUNNER_TEMP/swiftformat"
+          echo "$RUNNER_TEMP/swiftformat" >> "$GITHUB_PATH"
       - name: SwiftFormat (lint mode)
-        run: swiftformat --lint .
+        # The image ships its own swiftformat in /opt/homebrew/bin, so check which one runs.
+        run: |
+          test "$(swiftformat --version)" = "$SWIFTFORMAT_VERSION"
+          swiftformat --lint .
       - name: SwiftLint
         run: swiftlint --strict
       # A pure source scan, so it needs no build. `NSAlert` binds Escape by matching the byte

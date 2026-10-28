@@ -85,12 +85,11 @@ final class GitStatusProvider {
 /// is nothing but cache and scheduling, and this is nothing but I/O — the same division
 /// `SpotlightSearchRunner` draws around `mdfind`.
 private enum GitStatusReader {
-    /// The `git` to run, resolved once. A miss means no Git awareness at all (a Mac with neither
-    /// Homebrew nor the developer tools) and the column simply never appears — the same graceful
-    /// degradation as having no external diff tool installed. Resolved lazily and kept, so the
-    /// candidate probing does not repeat on every refresh.
-    private static let executablePath = GitCommand.executablePath {
-        FileManager.default.isExecutableFile(atPath: $0)
+    /// The `git` to run, resolved once and shared with the conflict reads. A miss means no Git
+    /// awareness at all (a Mac with neither Homebrew nor the developer tools) and the column simply
+    /// never appears — the same graceful degradation as having no external diff tool installed.
+    private static var executablePath: String? {
+        GitProcessTransport.executablePath
     }
 
     /// Read `repositoryRoot`'s full status, or `nil` when `git` is missing, fails, or the path is

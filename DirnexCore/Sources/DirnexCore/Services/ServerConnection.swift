@@ -1,13 +1,14 @@
 import Foundation
 
 /// Which remote protocol a saved server speaks — the sidebar picks an icon from it, and the
-/// connect flow branches on it (SFTP and FTP each route through a `VFSBackend`; SMB rides the OS
-/// mounter).
+/// connect flow branches on it (SFTP, FTP, WebDAV and S3 each route through a `VFSBackend`; SMB
+/// rides the OS mounter).
 public enum ServerKind: String, Sendable, Codable, CaseIterable {
     case sftp
     case ftp
     case smb
     case s3
+    case webdav
 }
 
 /// A saved server's coordinates and auth *method* — everything needed to reconnect, and nothing
@@ -56,6 +57,28 @@ public enum ServerEndpoint: Sendable, Hashable, Codable {
     /// ``S3Account/keychainAccount`` — which is a bucket key's without the trailing `/<bucket>`, so
     /// an account and every bucket in it keep separate items.
     case s3Account(S3Account)
+    /// One account on a WebDAV server, starting at its root path (PLAN.md §M32).
+    ///
+    /// The two values beside the location are what a connect *learned*, and both are carried here
+    /// for the reason FTP's pin is: a restored tab registers its connection without asking the
+    /// server anything (`TabRestorePolicy`), so whatever the probe settled has to come back with it.
+    ///
+    /// - `authentication` is the scheme the probe read from the server's challenge, or `nil` when no
+    ///   credentials go out — a public share, or a record that has never connected. It is kept
+    ///   rather than rediscovered because guessing costs a wrong answer, not a round trip: the NAS
+    ///   offers Basic alone over plain HTTP, macOS's Apache Digest alone, and sending one to the
+    ///   other is a refused login (PLAN.md §M32 Slice 2).
+    /// - `trustedPublicKey` is the certificate pin the user accepted, exactly as FTPS's is — the NAS
+    ///   presents one certificate on both ports, so the two pins are the same digest.
+    ///
+    /// Neither is a secret. The password stays in the Keychain under
+    /// ``WebDAVLocation/keychainAccount``, which leaves out the root so two roots on one server
+    /// share it.
+    case webdav(
+        location: WebDAVLocation,
+        authentication: WebDAVAuthScheme? = nil,
+        trustedPublicKey: String? = nil
+    )
 }
 
 /// A named, re-connectable remote server — the model behind the sidebar's **Servers** section
@@ -90,6 +113,7 @@ public struct ServerConnection: Sendable, Hashable, Identifiable, Codable {
         // every switch that asks "which service is this". What differs between them is the *place*,
         // which is the endpoint's business and not the kind's.
         case .s3, .s3Account: return .s3
+        case .webdav: return .webdav
         }
     }
 
@@ -119,6 +143,9 @@ public struct ServerConnection: Sendable, Hashable, Identifiable, Codable {
             // it opens name the place identically.
             return "\(location.bucket) — \(Self.s3Place(location.account))"
         case let .s3Account(account): return Self.s3Place(account)
+        // The URL a person would type, not the descriptor: `davs://` is GNOME's spelling and an
+        // account without a user would read `davs://@host`.
+        case let .webdav(location, _, _): return location.displayAddress
         }
     }
 
@@ -188,15 +215,42 @@ public struct ServerConnections: Sendable, Equatable, Codable {
     /// on every successful connect writes nothing on the ordinary path.
     @discardableResult
     public mutating func repinFTP(name: String, trustedPublicKey: String?) -> Bool {
-        guard let index = connections.firstIndex(where: { $0.name == name }),
-              case let .ftp(location, authentication, storedKey, serverTimeZone) = connections[index]
-              .endpoint,
+        guard let index = connections.firstIndex(where: { $0.name == name }) else { return false }
+        let endpoint = connections[index].endpoint
+        guard case let .ftp(location, authentication, storedKey, serverTimeZone) = endpoint,
               storedKey != trustedPublicKey else { return false }
         connections[index].endpoint = .ftp(
             location: location,
             authentication: authentication,
             trustedPublicKey: trustedPublicKey,
             serverTimeZone: serverTimeZone
+        )
+        return true
+    }
+
+    /// Replace what a connect settled for the WebDAV server named `name` — the scheme its challenge
+    /// named and the certificate pin the user accepted — keeping its location. Returns whether
+    /// anything changed; the caller persists only then.
+    ///
+    /// The twin of ``repinFTP(name:trustedPublicKey:)``, with the scheme beside the pin because
+    /// both are answers the server gave rather than fields the user typed: a record saved before
+    /// its server moved from Basic to Digest, or renewed its certificate, would otherwise ask the
+    /// same question on every click. As narrow as `repinFTP`: no record is created, no other kind
+    /// is touched, and an unchanged pair writes nothing.
+    @discardableResult
+    public mutating func settleWebDAV(
+        name: String,
+        authentication: WebDAVAuthScheme?,
+        trustedPublicKey: String?
+    ) -> Bool {
+        guard let index = connections.firstIndex(where: { $0.name == name }),
+              case let .webdav(location, storedScheme, storedKey) = connections[index].endpoint,
+              storedScheme != authentication || storedKey != trustedPublicKey
+        else { return false }
+        connections[index].endpoint = .webdav(
+            location: location,
+            authentication: authentication,
+            trustedPublicKey: trustedPublicKey
         )
         return true
     }
@@ -323,6 +377,7 @@ public extension ServerEndpoint {
         case let .ftp(location, _, _, _): return location.backendID
         case let .s3(location): return location.backendID
         case let .s3Account(account): return account.backendID
+        case let .webdav(location, _, _): return location.backendID
         case .smb: return nil
         }
     }

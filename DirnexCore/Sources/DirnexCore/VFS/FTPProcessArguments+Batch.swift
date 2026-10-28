@@ -107,10 +107,21 @@ public extension FTPProcessArguments {
     /// its `LIST`: the same folder, asked for `MLSD`, on the same connection. Each answer is still a
     /// file and nothing else, so a folder whose `MLSD` was refused simply has no facts file, and its
     /// rows keep their `LIST` stamps.
+    ///
+    /// ## Stopping at the first failure
+    ///
+    /// `stopsAtFirstFailure` adds `--fail-early`, for the tree refresh (``FTPBatchRun``). Without it a
+    /// wrong password is a failed login **per section**: measured 2026-10-23 against pyftpdlib, four
+    /// sections were four `failed login` lines and four sessions, because `curl` connects and signs
+    /// in again for each one after a refusal. With it, one. The subtree walk leaves it off: there a
+    /// refused folder is skipped and the rest must still land, and `--fail-early` would end the run
+    /// at the first one (exit 9 for a missing folder, 19 for one that cannot be read), while its
+    /// first level is a single section that a wrong password fails once.
     static func listDirectories(
         session: FTPSession,
         requests: [FTPListingRequest],
-        credentials: String
+        credentials: String,
+        stopsAtFirstFailure: Bool = false
     ) -> FTPParallelInvocation {
         let sections = requests.flatMap { request in
             var sections = [listingSection(
@@ -135,7 +146,10 @@ public extension FTPProcessArguments {
             // refusal says anything at all, and while nothing keys on it, it is what a diagnosis
             // reads. No `--fail`: a refused `LIST` writes nothing either way (measured), so the flag
             // would be cargo, the same reason the segmented download omits it.
-            arguments: ["-sS", "-K", "-"],
+            arguments: [ignoreCurlrc, "-sS"] + (stopsAtFirstFailure ? ["--fail-early"] : []) + [
+                "-K",
+                "-"
+            ],
             configuration: sections.joined(separator: "next\n")
         )
     }
@@ -181,7 +195,7 @@ public extension FTPProcessArguments {
             )
         ]
         return FTPParallelInvocation(
-            arguments: ["-sS", "--fail-early", "-K", "-"],
+            arguments: [ignoreCurlrc, "-sS", "--fail-early", "-K", "-"],
             configuration: sections.joined(separator: "next\n")
         )
     }

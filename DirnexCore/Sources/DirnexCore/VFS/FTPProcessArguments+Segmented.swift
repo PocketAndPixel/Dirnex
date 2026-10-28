@@ -75,6 +75,7 @@ public extension FTPProcessArguments {
         }
         return FTPParallelInvocation(
             arguments: [
+                ignoreCurlrc,
                 "-Z",
                 "--parallel-immediate",
                 "--parallel-max", String(max(1, segments.count)),

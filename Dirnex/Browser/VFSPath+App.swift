@@ -46,6 +46,12 @@ extension VFSPath {
         if let location = backend.ftpLocation {
             return "\(location.username)@\(location.host)"
         }
+        if let location = backend.webDAVLocation {
+            // The account, as FTP's is. The root stays out: Nextcloud's is
+            // `/remote.php/dav/files/<user>`, which would be most of the crumb and says nothing the
+            // user name has not, and the tooltip on the saved row carries it.
+            return location.hasCredentials ? "\(location.username)@\(location.host)" : location.host
+        }
         if let location = backend.s3Location {
             return "\(location.bucket) — \(location.host)"
         }

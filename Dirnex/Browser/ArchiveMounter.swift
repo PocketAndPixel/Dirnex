@@ -27,8 +27,9 @@ enum ArchiveMounter {
         // The names the pane draws come out of this listing, and `bsdtar` renders them through
         // `vis(3)`: with no locale set every non-ASCII byte arrives octal-escaped, so the row
         // reads `\320\237…` and every verb built from it addresses a member that is not there
-        // (``ChildProcessLocale``).
-        process.environment = ChildProcessLocale.inherited()
+        // (``ChildProcessLocale``). A `.tar.zst` also needs `zstd` on its `PATH`, which a
+        // Dock-launched Dirnex does not have (``ZstdTool``).
+        process.environment = BsdtarEnvironment.inherited()
         process.arguments = ["-tvf", archivePath]
         let pipe = Pipe()
         process.standardOutput = pipe
@@ -51,11 +52,18 @@ enum ArchiveMounter {
         // reported `archiveUnreadable` rather than listing the ninety-nine members that are fine
         // (``SubprocessText``).
         let text = SubprocessText.lossyUTF8(data)
-        guard process.terminationStatus == 0 else {
-            let name = (archivePath as NSString).lastPathComponent
-            throw VFSError.unsupported(.archiveUnreadable(archive: name))
-        }
+        guard process.terminationStatus == 0 else { throw unreadable(archivePath) }
         return ArchiveTOC(verboseListing: text)
+    }
+
+    /// Why the archive at `archivePath` could not be listed: `zstd` missing for a Zstandard archive,
+    /// which the user can fix and so is said by name (``ZstdTool``), and otherwise unreadable.
+    private static func unreadable(_ archivePath: String) -> VFSError {
+        let name = (archivePath as NSString).lastPathComponent
+        return .unsupported(
+            ZstdTool.refusal(forArchiveAt: archivePath, zstd: ZstdTool.locate())
+                ?? .archiveUnreadable(archive: name)
+        )
     }
 
     /// Read the table of contents in-process — for the two archives `bsdtar` cannot list.
@@ -74,7 +82,6 @@ enum ArchiveMounter {
         _ archivePath: String,
         nameEncoding: ArchiveNameEncoding?
     ) throws -> ArchiveTOC {
-        let name = (archivePath as NSString).lastPathComponent
         do {
             let inspection = try EncryptedArchiveReader.inspect(
                 archiveAt: archivePath,
@@ -86,7 +93,7 @@ enum ArchiveMounter {
             // makes libarchive answer NULL for the name, which surfaces as `entryNameNotUTF8`. The
             // archive is not damaged and the user can pick again, so it reports as unreadable rather
             // than as anything more alarming.
-            throw VFSError.unsupported(.archiveUnreadable(archive: name))
+            throw unreadable(archivePath)
         }
     }
 }

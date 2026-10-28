@@ -93,8 +93,8 @@ extension PanelViewController {
         let showHidden = panel.model.showHidden
         let sizes = panel.model.directorySizes
         Task {
-            guard let model = try? await DirectoryLoader.model(
-                backend, at: path, sort: sort, showHidden: showHidden, directorySizes: sizes
+            guard let model = await refreshedModel(
+                at: path, sort: sort, showHidden: showHidden, sizes: sizes, token: token
             ) else { return }
             guard token == loadToken, panel.path == path, activeTabIndex == index else { return }
             reconcileCursorFromTable()

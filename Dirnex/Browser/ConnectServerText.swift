@@ -9,7 +9,7 @@ import Foundation
 @MainActor
 enum ConnectText {
     static var proto: String {
-        String(localized: "Protocol:", comment: "Connect field label: SMB, SFTP, FTP or S3.")
+        String(localized: "Protocol:", comment: "Connect field label: SMB, SFTP, FTP, WebDAV or S3.")
     }
 
     // MARK: - S3
@@ -310,6 +310,53 @@ enum ConnectText {
         String(
             localized: "Optional — save in sidebar",
             comment: "Placeholder in the name field: naming the connection saves it to the sidebar."
+        )
+    }
+}
+
+/// The WebDAV rows' strings, in an extension of their own because the enum above reached
+/// SwiftLint's `type_body_length` when the fifth protocol arrived.
+extension ConnectText {
+    /// Shown under the picker only while plain HTTP is selected, as the FTP note is. It names the
+    /// password because Basic authentication — what most servers ask for — sends it with every
+    /// request.
+    static var plainHTTPNote: String {
+        String(
+            localized: "Plain HTTP sends your files unencrypted, and with most servers your password too.",
+            comment: "Note under the WebDAV security picker, shown only when plain HTTP is selected."
+        )
+    }
+
+    static var path: String {
+        String(
+            localized: "Path:",
+            comment: "Connect field label: the folder on a WebDAV server the account starts at."
+        )
+    }
+
+    /// The Path field's tooltip. Nextcloud is named because it is the one server whose account does
+    /// not start at `/`, and the path it wants is the thing users get wrong.
+    static var webDAVPathHelp: String {
+        String(
+            localized: """
+            The folder on the server this account starts at. Leave it as / for a NAS. On \
+            Nextcloud and ownCloud it is /remote.php/dav/files/ followed by your user name.
+            """,
+            comment: """
+            Tooltip on the WebDAV Path field in the Connect dialog. The path example is literal and \
+            must not be translated.
+            """
+        )
+    }
+
+    static var webDAVUserHint: String {
+        String(
+            localized: "username (blank for a public share)",
+            comment: """
+            Placeholder in the WebDAV user field: a blank user connects without an account. The field \
+            has a fixed width and cuts the start of a longer text, so keep it as short as the other \
+            user hints.
+            """
         )
     }
 }

@@ -246,7 +246,10 @@ struct RemotePreviewFetchTests {
     /// satisfied predicate returns on the next 25 ms poll and the budget only sets how much delay is
     /// absorbed before the code gets the blame. ``hold(until:)`` below is the opposite kind — its
     /// length *is* the claim — and must not follow it (docs/NOTES.md ▸ Testing).
-    private func settle(within seconds: Double = 30, until isDone: () -> Bool) async -> Bool {
+    ///
+    /// 60 s by default since 2026-10-26, when this suite's first waits went past 30 in slower full
+    /// runs, inside the main-actor stall at the run's start (docs/NOTES.md ▸ Testing).
+    private func settle(within seconds: Double = 60, until isDone: () -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(seconds)
         while Date() < deadline {
             if isDone() { return true }

@@ -150,14 +150,17 @@ extension PanelViewController: NSMenuItemValidation {
             // Both halves go through the lookup the *other* sites already use — the sheet's row
             // action for the named form, the registry for the generic one. Composing either as a
             // literal here draws English out of a translated catalog (docs/NOTES.md).
-            menuItem.title = ExternalDiffLauncher.preferredTool().map { tool in
-                String(
-                    localized: "Compare with \(tool.displayName)…",
-                    comment: "Menu item naming the diff tool that will open; %@ is the tool name."
-                )
-            } ?? LocalizedCatalog.command(for: "file.compareByContents")?.title ?? menuItem.title
+            // Dirnex's own window keeps the generic title: "Compare with Dirnex…" inside Dirnex
+            // names nothing the user does not already know.
+            let tool = ExternalDiffLauncher.preferredTool()
+            menuItem.title = tool == .dirnex
+                ? LocalizedCatalog.command(for: "file.compareByContents")?.title ?? menuItem.title
+                : tool.compareItemTitle
             // Two real local files: marked in this pane (exactly two), else one under each cursor.
             return canCompareByContents
+        case #selector(resolveConflict(_:)):
+            // One file git has badged U, its own badge rather than a folder's roll-up.
+            return conflictTarget != nil
         case #selector(showAttributes(_:)):
             // Needs a real item on disk under the cursor: a mode, a flags word and an ACL are
             // things an inode has, which an archive member and an SFTP listing are not.

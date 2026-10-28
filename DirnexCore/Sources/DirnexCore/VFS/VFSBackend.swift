@@ -415,7 +415,7 @@ public protocol VFSBackend: Sendable {
     /// asymmetry is the whole contract: a caller believing its write was guarded when it was not is
     /// strictly worse than one that knows, so the one outcome forbidden here is a silent
     /// unconditional write (``S3WriteConditionUnsupported``). Nothing reaches that throw today —
-    /// only S3 listings carry an entity tag, so only S3 destinations are ever asked — which makes
+    /// only S3 and WebDAV listings carry an entity tag, and both implement this verb — which makes
     /// it a guard against the next backend rather than a live path.
     ///
     /// - Returns: whether the precondition travelled with the request the file's contents hang on.

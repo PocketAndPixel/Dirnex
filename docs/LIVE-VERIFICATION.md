@@ -12,6 +12,21 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   `scripts/check_defaults_unchanged.py <before.plist> <after.plist>` compares every key by content,
   including JSON inside data values; a byte comparison can mistake JSON object key order for drift.
 
+- **A plain launch of the Debug build writes to the shared defaults domain, even when it is killed.**
+  Measured 2026-10-22 over five launches by path, each stopped with `kill`. The domain gained a window
+  frame. Frecency rose by one per launch for each folder the restored tabs opened, with new access
+  times. Sparkle's `SULastCheckTime` moved, and a restored tab lost its cursor. Export the domain
+  before, compare after with `scripts/check_defaults_unchanged.py`, then `defaults import` the
+  backup and `defaults delete` the keys it added. Importing alone leaves an added key in place. That
+  works with the release copy still running, as long as only the run's own keys moved.
+  - **So does the app test suite.** Seen 2026-10-24: after two full `xcodebuild test` runs and a few
+    single-suite ones, `SULastCheckTime`, `Dirnex.frecency` and `Dirnex.tabs.left` had all moved.
+    Restore after the suite, not only after the live run, or the next backup carries its drift.
+  - **Marking rows in a live run shortens the saved undo journal.** Seen 2026-10-25: mark changes
+    are undo entries that share the journal's 50 slots and are never saved, so a run with eight of
+    them saved the file operations eight entries shorter, and the defaults check named
+    `Dirnex.undoJournal`. Nothing was undone, and the import puts the entries back.
+
 - **A tab seeded with `defaults write -string` is silently not restored, because `TabPersistence`
   reads `data(forKey:)`.** The pane falls back to Home, the app looks perfectly healthy, and nothing
   logs — so the gesture under test runs against a *local* row and reports whatever a local row does.
@@ -23,6 +38,10 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   - Order matters as much as the encoding: **Dirnex rewrites its session on quit**, so a seed written
     while the app is still running, or before a quit that has not finished, is overwritten by the
     state being torn down. Quit, wait for the process to be gone, *then* seed, then launch.
+  - **The container needs its `activeIndex` too.** `Dirnex.tabs.<pane>` is `{"tabs": […],
+    "activeIndex": n}`, and `activeIndex` is a required `Int`. Seen 2026-10-22: a `-data` seed holding
+    only `tabs` failed to decode, the pane opened at Home in silence, and the app had overwritten the
+    key by the time it was read back. Copy the saved container and change the tab inside it.
 
 - **A measurement about a *TCC-shaped* behaviour needs its fixture chosen as carefully as its
   launch, and this Mac happens to carry the control already.** M26's whole subject is that
@@ -70,6 +89,31 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     after the last test run had finished), and `open -n` on the fresh build made two. Then
     `app_menu` and every AppleEvent by bundle id can reach either one. Run the `pgrep` *before*
     launching as well as after.
+  - **A copy launched with `--args` is invisible to `pgrep -f '…/Dirnex$'`.** Seen 2026-10-22: a
+    Debug build launched with `-AppleLanguages (de)` kept running through two `xcodebuild test` runs
+    that rebuilt the binary under it, and a later `open` only refocused it. The next screenshot was
+    of the old code. The `$` anchors on the executable, and that command line ends in its
+    arguments. `pgrep -lx Dirnex` matches the process name whatever follows it.
+  - **In a wait loop, `pgrep -f` also matches the shell running the loop.** Seen 2026-10-21: the
+    agent's shell runs each command as `bash -c '<command>'`, so the pattern is in that shell's own
+    command line. The loop waiting for the app to quit never saw it gone, and a `pkill -f` on the
+    same pattern aims at that shell as well. `pgrep -lx Dirnex` matches the process name only.
+- **To show a gesture causes no beachball, time an AppleEvent the app itself has to answer.** Cocoa
+  handles AppleEvents on the main thread, so a round trip every 50 ms during the gesture measures
+  how long the main thread was busy. Measured 2026-10-22 for M31's 100 000-line comparison. The
+  first sampler sent `get name`, and a one-second `kill -STOP` during sampling did not register,
+  because AppleScript answers an application's `name` itself without sending anything. `run
+  operation "probe.none"` reaches Dirnex, which refuses it at once, and the same freeze then read as
+  1 027 ms. Run the `SIGSTOP` control before trusting a quiet result; the sampler is a few lines of
+  `NSAppleScript` timed with `DispatchTime`.
+- **`open` from a shell hands the app the shell's environment, so a live check of anything shaped
+  by `PATH` or the locale passes whatever the code does.** open(1) says launched apps inherit the
+  caller's environment. Seen 2026-10-21: a Debug build whose parent was `launchd` still carried a
+  VS Code terminal's `PATH`, with `/usr/local/share/dotnet` in it, so its user scripts found
+  `dotnet` where a Dock launch's do not. For a Dock launch's environment, run
+  `env -i HOME="$HOME" USER="$USER" LOGNAME="$USER" SHELL="$SHELL" TMPDIR="$TMPDIR" PATH=/usr/bin:/bin:/usr/sbin:/sbin open <app>`,
+  then read the environment back with `ps eww -o command= -p <pid>`. TCC still sees a
+  LaunchServices launch either way, so the M26 note above is unchanged.
 - **computer-use's `=` and `-` are the *keypad* keys, so it cannot type ⇧⌘= as a keyboard does.**
   Logged 2026-09-15 with a temporary local key monitor while verifying the zoom keys: `cmd+=` arrived
   as keyCode **81** (keypad `=`) and `cmd+-` as **78** (keypad `-`), both with the numeric-pad flag.
@@ -199,6 +243,12 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     app reconnects at launch since session restore learned to (NOTES.md ▸ Design lessons). Back the domain up
     with `defaults export` first, and `ssh-keyscan` the throwaway host key into `known_hosts` or the
     connect raises a trust dialog that wedges a headless run; put both back afterwards.
+    - **`ssh-keyscan … >> ~/.ssh/known_hosts` also appends comment lines, and `down` leaves them.**
+      Seen 2026-10-27: it printed `# 127.0.0.1:2222 SSH-2.0-OpenSSH_10.3` on stdout five times
+      beside the key, `ssh-keygen -R` removed the key and kept the five, and two more from an earlier
+      run were already there. Copy the file aside first and put the copy back, or append only
+      `ssh-keyscan … | command grep -v '^#'`. A cleanup that deletes every such comment also deletes
+      the ones that were there before.
 
 - **A speedup measured in the running app needs the slow path run *beside* it, and for a remote
   backend the server's own config is the cheapest way to arrange one.** Adopting
@@ -220,6 +270,11 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   in the view's `draw(_:)` dumping frames and `convert(_:to:)`-ed rects, with the binary run
   straight from a shell
   (`.../Dirnex.app/Contents/MacOS/Dirnex > log 2>&1 &`) to capture stderr.
+- **An `NSLog` probe in a build launched with `open` arrives in `log show` as `<private>`.** Seen
+  2026-10-23 tracing M32's WebDAV requests: the lines were there, one per background refresh, and
+  every one read `(Foundation) <private>`. The relaunch to fix it cost Oleg a second Keychain prompt.
+  Have the probe append to a file named in its environment variable, or run the binary from a shell
+  with stderr redirected, as the entry below does.
 - **A flash shorter than a screenshot needs the app to sample its own window.** The white flash in
   dark Quick View (2026-10-18) lasted 25–120 ms, too short for a screenshot to catch reliably. What
   worked was a temporary probe in the app. It loads `CGWindowListCreateImage` through `dlsym`, since
@@ -278,6 +333,26 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   headers are keyboard stops, so count them or zoom on the sidebar after each key. And a vault row
   passed on the way opens if ⌘Return lands on it, which reads its passphrase from the Keychain. A
   plain Return proves nothing about ⌘, so run a case whose result only ⌘ can produce first.
+- **Background computer-use cannot move a window.** Seen 2026-10-22 checking that the compare window
+  remembers where it was dragged: an `app_drag` on the title bar reported success, and
+  `CGWindowListCopyWindowInfo` read back the same frame. Dirnex's dictionary has no window `bounds`,
+  and System Events needs assistive access the shell lacks. A display-scope `left_click_drag` moved
+  it, which needs full-screen control and Oleg's approval. To check only that a saved frame comes
+  back, quit the app and seed `NSWindow Frame <name>` with `defaults write` instead.
+- **A drag out to another app can be driven with full-screen control, one way.** Measured 2026-10-24
+  dragging rows from Dirnex into a Finder window: `left_click_drag` from a row to the target ran a
+  real drag session, and Finder took the drop and the promise was fulfilled. Pressing the button,
+  `mouse_move`, and releasing never started one (the table scrolled sideways instead), and a press
+  on Dirnex while another app was active only activated it. The drag raises the source window, so the
+  target has to sit **beside** it rather than under it: narrow the Dirnex window by its corner first.
+  The frame lands in the defaults domain, and the run's import puts it back. Each drag that worked
+  had clicked its row first.
+- **Two clicks on a row with only key presses between them make a double-click.** Seen 2026-10-24:
+  click, Space, Space, click on a zip, all inside the double-click interval, opened the archive. Wait
+  a second between clicks, or move the cursor with the arrow keys.
+- **`plutil -extract` cannot read a Dirnex key**, because its key path splits at the dot in
+  `Dirnex.serverConnections` and answers "No value at that key path". Read an export with Python's
+  `plistlib` instead.
 - **Background computer-use will not touch a password field at all.** Met 2026-10-17 on New Vault:
   typing by `element_index` and clicking the `NSSecureTextField` were both refused ("this is a
   password field"), while the plain name field beside it took text. Only full-screen control is
@@ -302,6 +377,17 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   accessibility hit test at those points answers its `AXTextArea` (pinned in `MultiLineFieldTests`).
   Typing by `element_index` and `app_click` by `element_index` both worked. Neither moved the window's
   first responder, though, so a focus ring that should follow the click can't be checked this way.
+- **A background `app_click` on a text field or text view is an accessibility write, not a click,
+  and leaves the keyboard focus where it was.** Measured 2026-10-24 in Report a Bug…: the tool
+  reported `set AXSelectedTextRange={loc:0,len:0}` on Steps, then on the email field, and a letter
+  typed at the focus after each went into the description both times. This was M30's "a click in the
+  email field left the focus in Steps". To learn where a click puts the focus, use full-screen
+  control, whose clicks are real, and type one letter after it.
+- **In a full-screen run, a click on the wallpaper slides every window off the screen.** That is
+  macOS's *Click wallpaper to reveal desktop*. Seen 2026-10-24 putting Finder in front of Dirnex for a
+  click from another app. A second click on the wallpaper brings the windows back and leaves Finder
+  active, which is a cheap way to make the app under test inactive with its window still in view.
+  Zoom on the menu bar to check which app is active before the click.
 - **A background `app_screenshot` taken right after an action can show the window as it was before
   it.** Seen on 2026-10-14 checking the search edit: after Find, the capture still drew the pane's
   old folder while the same call's accessibility summary already named the new results tab, and a
@@ -324,6 +410,37 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   as a failure each time, and a screenshot showed the preview sheet open. The press waits for an
   answer that a sheet presentation does not give in time. Take a screenshot before pressing again,
   or the second press lands on the sheet.
+  - **A segment of a momentary `NSSegmentedControl` answers the same way with no sheet at all.** Seen
+    2026-10-22 pressing the compare window's Swap Sides by element index: `AXError: failure`, and the
+    window had swapped exactly once. A second press would have swapped it back.
+  - **So does a button whose action awaits an upload.** Seen 2026-10-27 on the merge window's Save
+    for a server file: `AXError: failure` all three times, and each time the result was in the copy
+    and on the server. Read the file before pressing again.
+  - **An alert's button can be refused as "Nothing was done" after it was pressed.** Seen 2026-10-23
+    on the WebDAV trust alert: `app_click` by element index on Trust & Connect answered that the
+    element "no longer names what is at its position", and the pane was already connected. The
+    server's log held the pinned requests only that button sends. The alert had closed before the
+    tool's check ran. Read the server or the screen before pressing again.
+- **A key a window takes with a local key monitor cannot be sent from the background.** Seen
+  2026-10-25 on the compare window's ⌥⌘→: `app_key` reported the key delivered, and the probe in
+  `handleKey` logged nothing. The monitor is installed in `windowDidBecomeKey` and removed when the
+  window resigns key, and a window of an inactive app is not key. With Dirnex in front (full-screen
+  control) the same key arrived at once. The compare window and `TabShortcuts` both work this way.
+  The window's toolbar buttons still work from the background. Its Edit ▸ Undo does not: with the
+  window not key, the probe read the item as plain "Undo", disabled.
+- **computer-use will not send ⌘Q without a separate grant, and Dirnex ▸ Quit Dirnex does the same
+  thing.** Seen 2026-10-25 checking the compare window's quit prompt: ⌘Q came back "a system-level
+  shortcut" needing the `systemKeyCombos` grant. The menu item runs the same `terminate:`, so
+  `applicationShouldTerminate` asked exactly as the key would have.
+- **F-keys cannot be sent to a background app, and the function bar can be clicked instead.** `app_key
+  f5` was refused outright (2026-10-23), while the bar's "F5 Copy" button took an `AXPress` and ran
+  the shipped copy with no sheet. Put the cursor on the row with a click first.
+- **Text typed into a document app from the background is not an edit to its document.** Seen
+  2026-10-26 in TextEdit: `app_type` set the text through `AXSelectedText`, and the window showed it,
+  but the title had no "— Edited" and Edit ▸ Undo was empty. A coordinated write then reverted the
+  window, which read as TextEdit discarding an unsaved edit. The same line typed with full-screen
+  control's real keys gave "— Edited" and "Undo Typing". Read the title before believing a
+  dirty-document result.
 - **A transparent overlay from another app can gate every mouse click.** LanguageTool for
   Desktop did this for four passes; keyboard input still reached Dirnex, which masked it.
   Quitting the overlay app restored mouse verification.
