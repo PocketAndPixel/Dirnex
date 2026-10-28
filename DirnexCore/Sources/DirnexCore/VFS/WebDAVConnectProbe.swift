@@ -248,8 +248,8 @@ public enum WebDAVConnectProbe {
     /// Whether `response` says the root is a file.
     private static func isFile(_ response: WebDAVHTTPResponse, at location: WebDAVLocation) -> Bool {
         guard response.status == 207,
-              let listing = try? WebDAVMultistatusParser.parse(response.body)
-              .listing(of: location.serverPath(forBackendPath: "/"))
+              let multistatus = try? WebDAVMultistatusParser.parse(response.body),
+              let listing = try? multistatus.listing(of: location.serverPath(forBackendPath: "/"))
         else { return false }
         return !listing.folder.isCollection
     }

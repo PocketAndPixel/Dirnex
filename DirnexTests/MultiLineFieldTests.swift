@@ -248,10 +248,10 @@ struct MultiLineFieldTests {
         #expect(box.hitTest(NSPoint(x: frame.minX - 1, y: frame.midY)) == nil)
     }
 
-    /// The test host is never the active app, so its windows are never key, and a press sent to one
-    /// takes the path a click from another app takes: the window hands it on only to a view that
-    /// accepts first mouse (docs/NOTES.md ▸ Testing). Negative control: with `MultiLineTextView`
-    /// answering `false`, the focus stays where it was.
+    /// A window that has only been ordered front isn't key, so its first press takes the path a click
+    /// from another app takes (only the first: `BugReportDialogFocusTests` says why). The window hands
+    /// it on only to a view that accepts first mouse (docs/NOTES.md ▸ Testing). Negative control: with
+    /// `MultiLineTextView` answering `false`, the focus stays where it was.
     @Test("one click from another app puts the focus in the box")
     func clickFromAnotherApp() throws {
         let (box, window) = box()

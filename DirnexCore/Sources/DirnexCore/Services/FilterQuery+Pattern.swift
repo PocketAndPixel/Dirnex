@@ -55,19 +55,13 @@ extension FilterQuery {
             }
         }
         let utf8 = text.utf8
+        func index(at offset: Int) -> String.Index? {
+            let position = utf8.index(utf8.startIndex, offsetBy: offset, limitedBy: utf8.endIndex)
+            return position?.samePosition(in: text)
+        }
         return found.compactMap { range in
-            guard let lower = utf8.index(
-                utf8.startIndex,
-                offsetBy: range.lowerBound,
-                limitedBy: utf8.endIndex
-            ),
-                let upper = utf8.index(
-                    utf8.startIndex,
-                    offsetBy: range.upperBound,
-                    limitedBy: utf8.endIndex
-                ),
-                let lowerIndex = lower.samePosition(in: text),
-                let upperIndex = upper.samePosition(in: text)
+            guard let lowerIndex = index(at: range.lowerBound),
+                  let upperIndex = index(at: range.upperBound)
             else { return nil }
             return lowerIndex..<upperIndex
         }

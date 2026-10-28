@@ -392,6 +392,12 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     release a kept press leaves queued (`NSApp.discardEvents(matching: .leftMouseUp, before: nil)`).
     Ordering the window front made its only key view the first responder, so clear that first or the
     test proves nothing.
+    - **One press per window, because on CI the test host can be the active app.** Here it never is,
+      so its windows are never key, however often they are pressed. On CI (2026-10-28)
+      `BugReportDialogFocusTests.clickFromAnotherApp`, which pressed one window three times, found it
+      key before a press, while `MultiLineFieldTests`' single press passed in the same run. Activating
+      the host to reproduce it does not work here: `NSApp.activate(ignoringOtherApps:)` from a test
+      left `NSApp.isActive` false. Give each press a fresh window, and `#require` that it isn't key.
 
 - **A deferred window takes no sheet until it has been shown.** Measured 2026-10-25 in
   `CompareSaveTests`: the compare window was built with `defer: true`, and every `NSAlert`
@@ -1126,6 +1132,15 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   (`isRemoteRefreshWanted`), which is never true of a headless test pane. A test of such behavior
   hosts its pane in a window it never shows and detaches it before deleting the fixture
   (`VanishedFolderTests.Hosted`), and the no-window case gets a test of its own.
+  - **The window rule misses a pane that is in a window for another reason.** Measured
+    2026-10-28, after Oleg found the laptop lagging during test runs: `TreeTransferTests` keeps its
+    pane in a `RetainedWindows` window for the rest of the run, so two of them still climbed into
+    the temp folder (44 000 entries by then, nearly all left by earlier runs) and listed it 149
+    times. The test host held every core for half a minute, used 8 min 39 s of CPU, and a
+    user-interactive thread woke up to 331 ms late. With the pane taken out of its window before the
+    folder goes (`window.contentViewController = nil`): no listings of the temp folder, 1 min 8 s of
+    CPU, a worst stall of 17 ms. A temporary probe in `DirectoryLoader.model` logging any listing
+    over 5 000 entries named the path, and one in `leaveVanishedFolder` named the fixture.
 - **Reading a system attribute does not mean a test may write it.** Measured 2026-10-18 in the
   cloud-folder fixtures: `setxattr` on `com.apple.file-provider-domain-id` returned `EPERM`, even
   on a new owned directory outside `CloudStorage`. The same bytes under

@@ -27,12 +27,34 @@ struct BugReportDialogFocusTests {
     }
 
     /// What was measured live on 2026-10-24 with real clicks while Finder was active: one click into
-    /// Steps left the focus in the email field, and one into the email field focused it. The test
-    /// host's windows are never key, so these presses take that path (`MultiLineFieldTests`). The
-    /// email field is the control: it takes the click in AppKit's own code. Negative control: with
-    /// `MultiLineTextView` answering `false`, both boxes fail and the email field still passes.
+    /// Steps left the focus in the email field, and one into the email field focused it. A press into
+    /// a window that isn't key takes that path (`MultiLineFieldTests`), and the email field is the
+    /// control: it takes the click in AppKit's own code. Negative control: with `MultiLineTextView`
+    /// answering `false`, both boxes fail and the email field still passes.
+    ///
+    /// **Each press has a dialog of its own.** On CI the test host can be the active app, where a
+    /// window can be key after its first press: on 2026-10-28 one window pressed three times there
+    /// failed the check before a press. Here the host is never active, so its windows are never key.
     @Test("one click from another app focuses the box it lands in, as it does the email field")
     func clickFromAnotherApp() throws {
+        try press(\.stepsView, from: \.emailField) { controller, window in
+            #expect(window.firstResponder === controller.stepsView)
+        }
+        try press(\.descriptionView, from: \.emailField) { controller, window in
+            #expect(window.firstResponder === controller.descriptionView)
+        }
+        try press(\.emailField, from: \.stepsView) { controller, window in
+            let editor = try #require(controller.emailField.currentEditor())
+            #expect(window.firstResponder === editor)
+        }
+    }
+
+    /// One press into `target`, in a dialog of its own shown with the focus in `start`, then `check`.
+    private func press<Target: NSView, Start: NSResponder>(
+        _ target: KeyPath<BugReportController, Target>,
+        from start: KeyPath<BugReportController, Start>,
+        check: (BugReportController, NSWindow) throws -> Void
+    ) throws {
         let dialog = BugReportDialogTests.dialog()
         let controller = dialog.controller
         let window = dialog.window
@@ -41,15 +63,9 @@ struct BugReportDialogFocusTests {
             window.close()
             NSApp.discardEvents(matching: .leftMouseUp, before: nil)
         }
-        window.makeFirstResponder(controller.emailField)
-        for box in [controller.stepsView, controller.descriptionView] {
-            try #require(!window.isKeyWindow)
-            try MultiLineFieldTests.click(box, in: window)
-            #expect(window.firstResponder === box)
-        }
-        try #require(!window.isKeyWindow)
-        try MultiLineFieldTests.click(controller.emailField, in: window)
-        let editor = try #require(controller.emailField.currentEditor())
-        #expect(window.firstResponder === editor)
+        window.makeFirstResponder(controller[keyPath: start])
+        try #require(!window.isKeyWindow, "before the press into \(target)")
+        try MultiLineFieldTests.click(controller[keyPath: target], in: window)
+        try check(controller, window)
     }
 }

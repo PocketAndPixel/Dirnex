@@ -215,9 +215,9 @@ public struct ServerConnections: Sendable, Equatable, Codable {
     /// on every successful connect writes nothing on the ordinary path.
     @discardableResult
     public mutating func repinFTP(name: String, trustedPublicKey: String?) -> Bool {
-        guard let index = connections.firstIndex(where: { $0.name == name }),
-              case let .ftp(location, authentication, storedKey, serverTimeZone) = connections[index]
-              .endpoint,
+        guard let index = connections.firstIndex(where: { $0.name == name }) else { return false }
+        let endpoint = connections[index].endpoint
+        guard case let .ftp(location, authentication, storedKey, serverTimeZone) = endpoint,
               storedKey != trustedPublicKey else { return false }
         connections[index].endpoint = .ftp(
             location: location,

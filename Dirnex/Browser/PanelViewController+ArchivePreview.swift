@@ -45,12 +45,12 @@ extension PanelViewController {
               cache.cachedURL(for: member) == nil else { return }
         let passphrase = rememberedPassphrase(forArchiveAt: member.archivePath)
         Task {
-            guard (try? await cache.extractedURL(
+            let extracted = try? await cache.extractedURL(
                 for: member,
                 passphrase: passphrase,
                 nameEncoding: self.declaredNameEncoding(forArchiveAt: member.archivePath)
-            )) != nil,
-                previewableArchiveMember == member else { return }
+            )
+            guard extracted != nil, previewableArchiveMember == member else { return }
             onReady()
         }
     }

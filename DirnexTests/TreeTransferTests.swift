@@ -97,7 +97,13 @@ struct TreeTransferTests {
             source.pane.panel = panel
         }
 
+        /// The pane leaves its window before its folder goes. `RetainedWindows` keeps the window for
+        /// the rest of the run, and a pane in a window whose folder is deleted moves up to the nearest
+        /// one left (`leaveVanishedFolder`), here the temp folder. Seen 2026-10-28: two such panes
+        /// listed its 44 000 entries 149 times in one run, at every other test's write, and the test
+        /// host held every core for half a minute.
         func cleanUp() {
+            source.window.contentViewController = nil
             try? FileManager.default.removeItem(at: root)
         }
     }
