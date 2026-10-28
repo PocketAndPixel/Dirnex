@@ -211,7 +211,9 @@ struct CompareWatchTests {
         let rig = try watching(CompareSaveRig("a\nB\nc\n", "a\nb\nc\n"))
         defer { rig.cleanup() }
         try Data([0x61, 0, 0, 0x62, 0, 0xFF, 0]).write(to: URL(fileURLWithPath: rig.leftPath))
-        let sheet = try await rig.sheet()
+        // Like shows(), this first wait includes the full run's main-actor delays. Measured
+        // 2026-10-28: the event arrived in 11 ms, but the alert was not presented until 34 s.
+        let sheet = try await rig.sheet(within: .seconds(60))
         let texts = CompareSaveRig.texts(in: sheet.contentView)
         #expect(texts.contains("Couldn’t compare these files"))
         #expect(texts.contains("“left.txt” isn’t a text file. Dirnex compares text files only."))
