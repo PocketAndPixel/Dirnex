@@ -249,6 +249,34 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     at once), and the termination handler needing a cooperative thread.
     `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1` passed as `TEST_RUNNER_…` did not limit the test host's
     pool (two tests still ran side by side), so it can't stand in for a small runner.
+- **The core suite froze on CI the same way, and the work it waited for was a timer and a test's
+  own reads.** Seen 2026-10-27 and 28: three `swift test` runs in a row started all ~4,600 tests
+  in a second and then finished none. The core job had no timeout, so one sat for GitHub's six
+  hours. The last green run was 2026-10-21, and two waits for work on `DispatchQueue.global()` had
+  landed since: `CoordinatedFileWrite`'s give-up timer and `ZstdArchiveReaderTests`'
+  concurrent reads.
+  - **The timer, alone:** a probe held 15 of this Mac's 16 cooperative threads in a synchronous
+    wait, then saved over a file whose presenter never lets go. The save ignored its 10 s patience
+    and returned at the moment the probe let the threads go, 30.00 s in, both runs. With the timer
+    on a serial queue of its own it gave up on time (2.13 s against 2 s) in every run.
+  - **The suite:** with 13 of the 16 held, leaving CI's three, the whole suite stood still until the
+    zstd test's 30 s deadline ran out, and both tests failed. A `sample` during the stall named
+    three threads: the stuck save in `coordinate`, the zstd test in its semaphore wait, and
+    `TextMergeGitTests` computing. With the timer on a serial queue and the reads on `Thread`s, both
+    passed under the same hold. Why CI never recovered, where this Mac did at 30 s, is not known:
+    the core job has no watchdog to sample it.
+  - **Hold the threads before the first test, or the run is mostly over before the hold begins.**
+    A hog test that spawned its blockers from its body took them a few seconds in. One that does it
+    from a function in `@Test(arguments:)` holds them from the start, because arguments are
+    evaluated while the run is planned.
+  - `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1 swift test` passed all 4,653 tests in 39 s, so it does not
+    reproduce this either. The likely reason is that a narrower pool still leaves GCD 16 CPUs to
+    count.
+  - **A shared `static let` makes the same stall shorter.** `ThreeWayMergeGitTests.answers` runs
+    about 4,200 git merges through `concurrentPerform`, and three tests in two suites read it. With
+    three threads free, those tests took all of them, one computing and two waiting in
+    `dispatch_once`. No worker was admitted, so one thread ran every merge itself, about 30 s here.
+    It ends, so nothing was changed.
 - **The CI runner's display is 1x, so a pixel test that passes on a Retina Mac can fail there.**
   `bitmapImageRepForCachingDisplay` captures at the window's screen scale. Measured 2026-10-15 on
   `FieldBorderTests.darkensTheRingOnly`: CI found 24 changed pixels outside the allowed band in Light
