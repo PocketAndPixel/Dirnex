@@ -9492,6 +9492,12 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   earlier runs' crashes as its own. And a release that can't find `gh` read the missing tool as "no
   appcast yet" and would have published a feed holding one channel. A new step that writes outside
   `$RUNNER_TEMP` and the checkout needs the same question asked.
+  - **Its first run met the other half: what a brand-new macOS user doesn't have yet.** The CI app
+    build stopped at SwiftTerm's `Shaders.metal` with "missing Metal Toolchain", though the
+    toolchain is installed for the whole Mac and Oleg's user builds with it. GitHub's image had it,
+    so only `release.yml` downloaded it; CI now runs the same `-downloadComponent` step. And
+    `~/Library/Logs/DiagnosticReports` doesn't exist until the user's first crash, so the `find` in
+    *Crash reports* exited 1 and failed the job.
 
 ## Distribution and licensing
 
