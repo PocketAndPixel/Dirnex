@@ -15,7 +15,10 @@ concurrency:
 jobs:
   core:
     name: DirnexCore (swift test)
-    runs-on: macos-26
+    # One of GitHub's Macs, or the Mac runner when the repository variable DIRNEX_RUNNER is `mac`
+    # (docs/RELEASING.md ▸ The Mac runner), for all three jobs. On 2026-10-27 and 28 runs here
+    # waited hours for a GitHub Mac, then were cancelled.
+    runs-on: ${{ vars.DIRNEX_RUNNER == 'mac' && fromJSON('["self-hosted", "dirnex-mac"]') || 'macos-26' }}
     # Without a limit a stuck run sits for GitHub's six hours, as on 2026-10-28. The job takes 12 to
     # 21 minutes, most of it the release build below.
     timeout-minutes: 40
@@ -37,7 +40,7 @@ jobs:
 
   app:
     name: App (xcodebuild test)
-    runs-on: macos-26
+    runs-on: ${{ vars.DIRNEX_RUNNER == 'mac' && fromJSON('["self-hosted", "dirnex-mac"]') || 'macos-26' }}
     # The watchdog below stops a stuck run at 25 minutes; this is only the backstop. Without it a
     # stuck run sits for GitHub's six hours, as on 2026-09-30 and 2026-10-01.
     timeout-minutes: 40
@@ -56,6 +59,10 @@ jobs:
           TEST_RUNNER_DIRNEX_CI: "1"
         run: |
           set -o pipefail
+          # The Mac runner keeps its home between jobs, so the build goes in this job's own folder,
+          # emptied when the job ends: a .stringsdata left from a deleted file would fail the
+          # catalog check below. The marker lets Crash reports skip reports from earlier runs.
+          touch "$RUNNER_TEMP/tests-started"
           # The host shares the installed app's defaults domain. Compare outside the host so
           # writes before the first test or during shutdown cannot escape the check.
           defaults export com.dirnex.Dirnex TestDefaults-before.plist
@@ -76,6 +83,7 @@ jobs:
             -scheme Dirnex \
             -destination 'platform=macOS' \
             -parallel-testing-enabled NO \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             -resultBundlePath TestResults.xcresult &
           tests=$!
           deadline=$((SECONDS + 25 * 60))
@@ -84,7 +92,8 @@ jobs:
               echo "::error::The app tests ran past 25 minutes. Sampling the test host, then stopping them."
               mkdir -p hang
               screencapture -x hang/screen.png || echo "No screenshot (no Screen Recording permission?)."
-              for pid in $(pgrep -x Dirnex); do
+              # This user's copies only: on the Mac runner another user's Dirnex may be running.
+              for pid in $(pgrep -x -u "$(id -u)" Dirnex); do
                 sample "$pid" 10 -file "hang/sample-$pid.txt" || true
                 echo "::group::Main thread of Dirnex $pid"
                 awk '/^ +[0-9]+ Thread_/ { on = /com.apple.main-thread/ } /^Total number/ { on = 0 } on' \
@@ -101,7 +110,7 @@ jobs:
                 done
               done
               kill "$tests" || true
-              pkill -x Dirnex || true
+              pkill -x -u "$(id -u)" Dirnex || true
               exit 1
             fi
             sleep 20
@@ -111,7 +120,7 @@ jobs:
       # lint job. A key the compiler extracted but the catalog never received renders in English
       # inside every translated build, with no error and a perfect English screenshot.
       - name: Every extracted string is in the catalog
-        run: python3 scripts/check_localization_keys.py
+        run: python3 scripts/check_localization_keys.py --derived-data "$RUNNER_TEMP/DerivedData"
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v7
@@ -127,7 +136,13 @@ jobs:
         if: always()
         run: |
           mkdir -p crashes
-          find ~/Library/Logs/DiagnosticReports -maxdepth 2 -name 'Dirnex-*.ips' -exec cp {} crashes/ \;
+          if [ ! -f "$RUNNER_TEMP/tests-started" ]; then
+            echo "The tests never started."
+            exit 0
+          fi
+          # Newer than the tests' start: the Mac runner keeps every earlier run's reports too.
+          find ~/Library/Logs/DiagnosticReports -maxdepth 2 -name 'Dirnex-*.ips' \
+            -newer "$RUNNER_TEMP/tests-started" -exec cp {} crashes/ \;
           if ls crashes/*.ips > /dev/null 2>&1; then
             python3 scripts/print_crash_reports.py crashes/*.ips
           else
@@ -150,34 +165,46 @@ jobs:
 
   lint:
     name: Lint (SwiftFormat + SwiftLint)
-    runs-on: macos-26
+    runs-on: ${{ vars.DIRNEX_RUNNER == 'mac' && fromJSON('["self-hosted", "dirnex-mac"]') || 'macos-26' }}
     env:
-      HOMEBREW_NO_AUTO_UPDATE: 1
       # SwiftFormat is pinned, because its `indent` rule changes between patch releases: on
       # 2026-10-28, 0.64.0 (the runner image's) and 0.64.4 (Homebrew's) each rejected the other's
-      # layout of a guard condition with wrapped arguments. To move the pin, take the asset's
-      # digest from `gh api repos/nicklockwood/SwiftFormat/releases/tags/<version>`.
+      # layout of a guard condition with wrapped arguments. SwiftLint is pinned too, since the Mac
+      # runner can't `brew install` (Homebrew there belongs to another macOS user), and so a new
+      # release can't fail a pull request that changed nothing. To move a pin, take the asset's
+      # digest from `gh api repos/<owner>/<repo>/releases/tags/<version>`.
       SWIFTFORMAT_VERSION: 0.64.4
       SWIFTFORMAT_SHA256: bb42fbfb0b9d5f1b8b83db3147087220ea414916fce8c5cf71abaea5ad5a3175
+      SWIFTLINT_VERSION: 0.65.1
+      SWIFTLINT_SHA256: c1e429b0599cf1b516f369a2d9ec04eaf0e436f3c12b637df8851fa52ff694d0
     steps:
       - uses: actions/checkout@v5
       - name: Install tools
         run: |
-          brew untap aws/tap 2>/dev/null || true
-          brew install swiftlint
-          archive="$RUNNER_TEMP/swiftformat.zip"
-          curl -fsSL -o "$archive" \
-            "https://github.com/nicklockwood/SwiftFormat/releases/download/$SWIFTFORMAT_VERSION/swiftformat.zip"
-          echo "$SWIFTFORMAT_SHA256  $archive" | shasum -a 256 -c -
-          unzip -q "$archive" -d "$RUNNER_TEMP/swiftformat"
-          echo "$RUNNER_TEMP/swiftformat" >> "$GITHUB_PATH"
+          # Name, address, digest. Each lands in this job's own folder, ahead of anything on PATH.
+          install_tool() {
+            archive="$RUNNER_TEMP/$1.zip"
+            curl -fsSL -o "$archive" "$2"
+            echo "$3  $archive" | shasum -a 256 -c -
+            unzip -q "$archive" -d "$RUNNER_TEMP/$1"
+            echo "$RUNNER_TEMP/$1" >> "$GITHUB_PATH"
+          }
+          install_tool swiftformat \
+            "https://github.com/nicklockwood/SwiftFormat/releases/download/$SWIFTFORMAT_VERSION/swiftformat.zip" \
+            "$SWIFTFORMAT_SHA256"
+          install_tool swiftlint \
+            "https://github.com/realm/SwiftLint/releases/download/$SWIFTLINT_VERSION/portable_swiftlint.zip" \
+            "$SWIFTLINT_SHA256"
       - name: SwiftFormat (lint mode)
-        # The image ships its own swiftformat in /opt/homebrew/bin, so check which one runs.
+        # The image ships its own swiftformat in /opt/homebrew/bin, and so may the Mac runner, so
+        # check which one runs.
         run: |
           test "$(swiftformat --version)" = "$SWIFTFORMAT_VERSION"
           swiftformat --lint .
       - name: SwiftLint
-        run: swiftlint --strict
+        run: |
+          test "$(swiftlint version)" = "$SWIFTLINT_VERSION"
+          swiftlint --strict
       # A pure source scan, so it needs no build. `NSAlert` binds Escape by matching the byte
       # string "Cancel", so an alert that skips `enableEscapeToCancel()` is Escape-dead in every
       # language but English — invisible at build time and in any English screenshot.

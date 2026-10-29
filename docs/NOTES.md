@@ -9483,6 +9483,15 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   trigger fires.
 - Pick the next beta number with `sort -n` (`beta.10` → `beta.11`, not `beta.2`) and check out
   with `fetch-depth: 0`, or no tags are visible and every beta comes out `.1`.
+- **The Mac runner keeps what a job leaves behind, and GitHub's Macs never did** (RELEASING.md ▸ The
+  Mac runner, 2026-10-29). Every workflow was written for a machine thrown away after each job, and
+  three steps leaned on that. The signing step *replaced* the user's keychain search list with a
+  file in `$RUNNER_TEMP`, which would have left the next job's user with no login keychain. The
+  catalog check read the newest DerivedData, where a `.stringsdata` from a deleted file lives on.
+  *Crash reports* copied every `Dirnex-*.ips` in the folder, so each run would have shown the
+  earlier runs' crashes as its own. And a release that can't find `gh` read the missing tool as "no
+  appcast yet" and would have published a feed holding one channel. A new step that writes outside
+  `$RUNNER_TEMP` and the checkout needs the same question asked.
 
 ## Distribution and licensing
 

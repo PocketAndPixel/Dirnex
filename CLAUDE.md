@@ -106,7 +106,8 @@ xcodebuild test -project Dirnex.xcodeproj -scheme Dirnex   # app target
 
 CI pins SwiftFormat (`SWIFTFORMAT_VERSION` in [ci.yml](.github/workflows/ci.yml)), and its
 `indent` rule changes between patch releases, so a local lint only predicts CI's when
-`swiftformat --version` prints the same version.
+`swiftformat --version` prints the same version. SwiftLint is pinned the same way
+(`SWIFTLINT_VERSION`), so compare `swiftlint version` too.
 
 Both suites must stay green and both linters clean. SwiftLint's `file_length` 500 and
 `type_body_length` 250 are tight on the large AppKit controllers — see the file-splitting

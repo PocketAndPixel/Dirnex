@@ -53,7 +53,10 @@ permissions:
 
 jobs:
   release:
-    runs-on: macos-26
+    # One of GitHub's Macs, or the Mac runner when the repository variable DIRNEX_RUNNER is `mac`
+    # (docs/RELEASING.md ▸ The Mac runner). On 2026-10-28 GitHub had no arm64 Mac to give: both
+    # releases that day waited 15 minutes for one and failed without running a step.
+    runs-on: ${{ vars.DIRNEX_RUNNER == 'mac' && fromJSON('["self-hosted", "dirnex-mac"]') || 'macos-26' }}
 
     env:
       APP_NAME: Dirnex
@@ -204,6 +207,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # GitHub's Macs come with gh, and the Mac runner finds it only if its PATH has Homebrew's.
+          # Without this check a missing gh reads as "no appcast yet" below, and the run publishes a
+          # feed holding this release alone, the other channel's item dropped.
+          if ! command -v gh > /dev/null; then
+            echo "gh isn't on this runner's PATH (docs/RELEASING.md ▸ The Mac runner)." >&2
+            exit 1
+          fi
           mkdir -p existing
           if gh release download appcast --pattern appcast.xml --dir existing 2>/dev/null; then
             echo "Fetched the current appcast to merge into."
@@ -277,8 +287,23 @@ jobs:
             -s \
             -k "$KEYCHAIN_PASSWORD" \
             "$KEYCHAIN_PATH"
-          security list-keychains -d user -s "$KEYCHAIN_PATH"
-          security default-keychain -d user -s "$KEYCHAIN_PATH"
+
+          # Put this keychain first in the search list and keep the user's own after it. The Mac
+          # runner runs the next job, CI's too, in the same macOS user, and this file is gone once
+          # the job ends, so replacing the list (as GitHub's own guide does) would leave that user
+          # with no login keychain to search. The list is saved for the last step to put back, minus
+          # any entry whose file is gone, such as one a killed run left. The default keychain stays
+          # as it is: codesign and the export search the list, and a default naming a deleted file
+          # would break every Keychain write in the next job.
+          security list-keychains -d user | sed -e 's/^ *"//' -e 's/"$//' \
+            | while IFS= read -r keychain; do
+                if [ -f "$keychain" ] && [ "$keychain" != "$KEYCHAIN_PATH" ]; then
+                  printf '%s\n' "$keychain"
+                fi
+              done > "$RUNNER_TEMP/keychains-before"
+          set -- "$KEYCHAIN_PATH"
+          while IFS= read -r keychain; do set -- "$@" "$keychain"; done < "$RUNNER_TEMP/keychains-before"
+          security list-keychains -d user -s "$@"
           security find-identity -v -p codesigning "$KEYCHAIN_PATH"
 
           rm -f "$CERTIFICATE_PATH"
@@ -397,4 +422,20 @@ jobs:
               --notes "The persistent Sparkle update feed for Dirnex. Its appcast.xml asset is the SUFeedURL every installed app checks; the Release workflow keeps it holding the latest stable and beta items. Not a downloadable app release." \
               --target "$(git rev-parse HEAD)" \
               --latest=false
+          fi
+
+      - name: Remove the signing keychain
+        # Runs even when a step above failed. GitHub throws its Mac away after the job, but the Mac
+        # runner keeps its user, so the search list goes back to what it was before Install signing
+        # certificate.
+        if: always()
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          if [ -f "$KEYCHAIN_PATH" ]; then
+            security delete-keychain "$KEYCHAIN_PATH"
+          fi
+          if [ -s "$RUNNER_TEMP/keychains-before" ]; then
+            set --
+            while IFS= read -r keychain; do set -- "$@" "$keychain"; done < "$RUNNER_TEMP/keychains-before"
+            security list-keychains -d user -s "$@"
           fi
