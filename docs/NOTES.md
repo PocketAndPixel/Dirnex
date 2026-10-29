@@ -9498,6 +9498,11 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     so only `release.yml` downloaded it; CI now runs the same `-downloadComponent` step. And
     `~/Library/Logs/DiagnosticReports` doesn't exist until the user's first crash, so the `find` in
     *Crash reports* exited 1 and failed the job.
+  - **Tests overlap more there, so a check over a shared folder must look for a name only its own
+    test uses.** The first Beta failed in `PackRunnerTests`: six pack-to-server tests each built an
+    `out.zip` in `NSTemporaryDirectory()`, ran side by side for three seconds, and one test's "no
+    `out.zip` left" check found another's mid-upload. On Oleg's user each takes milliseconds and
+    the race never showed in 50 runs; a planted stray `out.zip` reproduced it at once.
 
 ## Distribution and licensing
 
