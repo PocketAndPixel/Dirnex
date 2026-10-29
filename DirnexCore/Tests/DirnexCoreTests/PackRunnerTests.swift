@@ -323,8 +323,9 @@ struct PackRunnerRemoteDestinationTests {
         defer { tree.cleanup() }
         try tree.writeFile("alpha.txt", contents: "alpha")
 
+        let name = Self.uniqueArchiveName()
         let store = FakeRemoteStore([:])
-        let destination = store.path("/backups/out.zip")
+        let destination = store.path("/backups/\(name)")
         let report = PackRunner.run(
             operation(tree, names: ["alpha.txt"], archive: destination),
             using: store
@@ -335,15 +336,15 @@ struct PackRunnerRemoteDestinationTests {
         // The summary names where the user asked for it, not where it was built — that path is what
         // the window re-lists and puts the cursor on.
         #expect(summary.archive == destination)
-        let uploaded = try #require(store.data(at: "/backups/out.zip"))
+        let uploaded = try #require(store.data(at: "/backups/\(name)"))
         #expect(uploaded.count == summary.byteSize)
         // Really an archive, not an empty file that landed under the right name: a zip's local file
         // header is the one thing a wrong answer here could not produce.
         #expect(uploaded.prefix(2) == Data("PK".utf8))
         // Nothing is left in the temp root, which is the half a user never looks at and would never
         // report — a cancelled or finished pack must not leave somebody's whole archive there.
-        #expect(!FileManager.default.fileExists(atPath: tree.path("out.zip")))
-        #expect(try stagedArchives(named: "out.zip").isEmpty)
+        #expect(!FileManager.default.fileExists(atPath: tree.path(name)))
+        #expect(try stagedArchives(named: name).isEmpty)
     }
 
     @Test("a refused upload reports the backend's own reason, not the pack vocabulary")
@@ -352,8 +353,9 @@ struct PackRunnerRemoteDestinationTests {
         defer { tree.cleanup() }
         try tree.writeFile("alpha.txt", contents: "alpha")
 
-        let store = FakeRemoteStore([:], refusingUploadsTo: ["/readonly/out.zip"])
-        let destination = store.path("/readonly/out.zip")
+        let name = Self.uniqueArchiveName()
+        let store = FakeRemoteStore([:], refusingUploadsTo: ["/readonly/\(name)"])
+        let destination = store.path("/readonly/\(name)")
         let report = PackRunner.run(
             operation(tree, names: ["alpha.txt"], archive: destination),
             using: store
@@ -367,7 +369,7 @@ struct PackRunnerRemoteDestinationTests {
         let failure = try #require(report.failures.first)
         #expect(failure.path == destination)
         #expect(failure.error == .permissionDenied(destination))
-        #expect(try stagedArchives(named: "out.zip").isEmpty)
+        #expect(try stagedArchives(named: name).isEmpty)
     }
 
     @Test("the bar keeps moving through the upload instead of parking full")
@@ -399,6 +401,14 @@ struct PackRunnerRemoteDestinationTests {
     }
 
     /// Anything called `name` left lying in the temp root — the staging sweep's own observable.
+    /// A name no other test stages. The pack tests that upload run side by side, each building its
+    /// archive in the shared temp directory, so a check for "out.zip" there can find another test's
+    /// archive mid-upload: on 2026-10-29 six of them overlapped for three seconds on the Mac runner
+    /// (docs/RELEASING.md ▸ The Mac runner), and one check failed.
+    private static func uniqueArchiveName() -> String {
+        "out-\(UUID().uuidString).zip"
+    }
+
     private func stagedArchives(named name: String) throws -> [String] {
         let root = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
         let holders = try FileManager.default.contentsOfDirectory(atPath: root.path)
