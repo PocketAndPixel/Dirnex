@@ -46,6 +46,11 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
+      # SwiftTerm compiles a Metal shader. GitHub's Macs have the toolchain, but the Mac runner's
+      # user didn't on 2026-10-29: its first build stopped at "missing Metal Toolchain". The same
+      # step as in release.yml, a no-op when the toolchain is there.
+      - name: Download Metal toolchain
+        run: xcodebuild -downloadComponent MetalToolchain || true
       - name: Build & test
         # A test that never returns stops the whole suite without failing anything: on 2026-09-30
         # every test went quiet 5 seconds in and nothing printed for four hours. The runner has
@@ -140,9 +145,12 @@ jobs:
             echo "The tests never started."
             exit 0
           fi
-          # Newer than the tests' start: the Mac runner keeps every earlier run's reports too.
-          find ~/Library/Logs/DiagnosticReports -maxdepth 2 -name 'Dirnex-*.ips' \
-            -newer "$RUNNER_TEMP/tests-started" -exec cp {} crashes/ \;
+          # Newer than the tests' start: the Mac runner keeps every earlier run's reports too. A
+          # user that has never crashed has no reports folder (the Mac runner's on 2026-10-29).
+          if [ -d ~/Library/Logs/DiagnosticReports ]; then
+            find ~/Library/Logs/DiagnosticReports -maxdepth 2 -name 'Dirnex-*.ips' \
+              -newer "$RUNNER_TEMP/tests-started" -exec cp {} crashes/ \;
+          fi
           if ls crashes/*.ips > /dev/null 2>&1; then
             python3 scripts/print_crash_reports.py crashes/*.ips
           else
