@@ -7,7 +7,8 @@ publishes the DMG to a GitHub release. A second workflow,
 [`beta.yml`](../.github/workflows/beta.yml), is a thin convenience caller that picks the next beta
 version and reuses that same pipeline. Users on an older build then see the update automatically,
 because the app's `SUFeedURL` points at the persistent appcast feed (see
-[Update channels](#update-channels-stable-and-beta) below).
+[Update channels](#update-channels-stable-and-beta) below). The run happens on one of GitHub's Macs,
+or on a runner on Oleg's Mac ([The Mac runner](#the-mac-runner)).
 
 ## Update channels: stable and beta
 
@@ -58,6 +59,85 @@ To export the private key from the login keychain (where `generate_keys` stored 
 # paste the contents of sparkle_private_key into the SPARKLE_PRIVATE_KEY secret, then delete it
 rm sparkle_private_key
 ```
+
+## The Mac runner
+
+GitHub can run out of arm64 Macs. On 2026-10-28 both releases waited 15 minutes for one and failed
+without running a step, and CI runs waited for hours before they were cancelled. So every macOS job
+(CI's three, Release, and Beta's build) can run on a self-hosted runner on Oleg's Mac instead. The
+repository **variable** `DIRNEX_RUNNER` (Settings → Secrets and variables → Actions →
+**Variables**) decides:
+
+| `DIRNEX_RUNNER` | Where the macOS jobs run |
+| --- | --- |
+| unset, or anything else | GitHub's `macos-26` |
+| `mac` | a self-hosted runner with the label `dirnex-mac` |
+
+Beta's first job, which picks the version, always runs on GitHub's Linux machines. Going back to
+GitHub's Macs is the variable alone: delete it, then re-run the jobs that are waiting. A job waits up
+to 24 hours for a self-hosted runner, then fails.
+
+### Setting it up, once per Mac
+
+1. **Add a macOS user only for the runner:** System Settings → Users & Groups → Add User, a
+   **Standard** user (for example "Dirnex CI"). The release puts a temporary keychain in its user's
+   search list, the app tests write the app's defaults domain (`com.dirnex.Dirnex`), and an approved
+   pull request runs its own code. In a user of its own, none of that reaches your keychain, your
+   settings or your files.
+2. **Log in as that user once** with Fast User Switching (System Settings → Control Center → Fast
+   User Switching puts its menu in the menu bar) and get through the setup assistant. Skip the Apple
+   Account.
+3. **In that user's Terminal, put Homebrew's tools on the PATH.** The runner keeps the PATH it was
+   registered with, and the release needs `gh` from Homebrew. Every step after this one runs in the
+   same Terminal window:
+
+   ```sh
+   export PATH="/opt/homebrew/bin:$PATH"
+   ```
+
+4. **Register the runner:** on GitHub, Settings → Actions → Runners → **New self-hosted runner**,
+   macOS, ARM64. Run its *Download* commands in that user's home, one at a time, without the `$` in
+   front of each and without the `# …` lines: zsh takes neither, so pasting the block as it is runs
+   nothing (2026-10-29). Then configure the runner with the label and install it as a service, in
+   place of the page's `./run.sh`. The token is the one that page shows, and it expires within an
+   hour:
+
+   ```sh
+   ./config.sh --url https://github.com/PocketAndPixel/Dirnex --token <token> --labels dirnex-mac --unattended
+   ./svc.sh install
+   ./svc.sh start
+   ```
+
+   `svc.sh` installs a LaunchAgent, so the runner runs whenever that user is logged in.
+5. **Switch back to your own user without logging that one out.** It stays logged in in the
+   background.
+6. **Set the variable** `DIRNEX_RUNNER` to `mac`.
+7. **Settings → Actions → General → Approval for running fork pull request workflows from
+   contributors → Require approval for all external contributors.** The repo is public, so without
+   this a pull request from a fork runs its code on the Mac as soon as it's opened. Read the diff of
+   such a pull request before you approve its run.
+
+A second Mac set up the same way shares the work: GitHub gives each job to whichever runner is free.
+
+### Living with it
+
+- **After every restart, log in as the runner's user again**, then switch back. FileVault is on, so
+  macOS can't log that user in by itself, and the app tests need a logged-in session: they launch
+  Dirnex.
+- **The Mac must be awake.** A job queued while the lid is closed starts when it opens. Closing the
+  lid during a job fails it; *Re-run jobs* starts it again.
+- **Jobs run one at a time.** CI's three jobs follow each other, and a release started during a CI
+  run waits for it to end.
+- **The runner builds with this Mac's Xcode**: 27.1 when it was set up, against Xcode 26 on GitHub's
+  `macos-26`. An Xcode update changes the release build too, so cut a beta after one, before the
+  next stable release.
+- **A run that stalls the first time** may be waiting for a macOS permission prompt in the runner's
+  session, where nobody sees it. Switch to that user and answer it.
+- **Unlike GitHub's Macs, this one keeps its state between jobs.** The release puts the user's
+  keychain list back at the end, the app tests build in the job's own folder (`$RUNNER_TEMP`, emptied
+  after each job), and *Crash reports* reads only the reports written during the run. Keep it that
+  way when adding a step: anything written outside `$RUNNER_TEMP` and the checkout is still there
+  for the next job.
 
 ## Cutting a release
 
