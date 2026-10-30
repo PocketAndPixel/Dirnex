@@ -54422,6 +54422,95 @@
         }
       }
     },
+    "File permissions don’t allow that for this account, and Full Disk Access can’t change them. The owner or an administrator can.": {
+      "comment": "Error sentence: a local refusal by the item's own owner, mode bits or ACL (EACCES), such as another user's Documents folder. Says Full Disk Access cannot help, because that grant only lifts macOS privacy refusals, never an item's permissions.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Dateiberechtigungen erlauben das für dieses Konto nicht, und Festplattenvollzugriff kann sie nicht ändern. Der Eigentümer oder ein Administrator kann sie ändern."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File permissions don’t allow that for this account, and Full Disk Access can’t change them. The owner or an administrator can."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los permisos del archivo no lo permiten para esta cuenta y el acceso total al disco no puede cambiarlos. El propietario o un administrador sí pueden."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les autorisations du fichier ne le permettent pas pour ce compte, et l’accès complet au disque ne peut pas les modifier. Le propriétaire ou un administrateur le peut."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I permessi del file non lo consentono a questo account e Accesso completo al disco non può modificarli. Il proprietario o un amministratore possono farlo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルのアクセス権により、このアカウントではその操作を実行できません。フルディスクアクセスでは変更できません。所有者または管理者が変更できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "파일 권한상 이 계정으로는 해당 작업을 할 수 없으며, 전체 디스크 접근 권한으로는 이를 변경할 수 없습니다. 소유자나 관리자가 변경할 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De bestandsrechten staan dit niet toe voor deze account, en Volledige schijftoegang kan ze niet wijzigen. De eigenaar of een beheerder kan dat wel."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uprawnienia pliku nie pozwalają na to temu kontu, a Pełny dostęp do dysku nie może ich zmienić. Może to zrobić właściciel lub administrator."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As permissões do arquivo não permitem isso para esta conta, e o Acesso Total ao Disco não pode alterá-las. O proprietário ou um administrador pode."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Права доступа не позволяют этой учётной записи выполнить операцию, и полный доступ к диску их не изменит. Изменить их может владелец или администратор."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Права доступу не дозволяють цьому обліковому запису виконати операцію, і Повний доступ до диска їх не змінить. Змінити їх може власник або адміністратор."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文件权限不允许此账户执行该操作，完全磁盘访问权限也无法更改这些权限。所有者或管理员可以更改。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "檔案權限不允許此帳戶執行該操作，「完全取用磁碟」也無法更改這些權限。擁有者或管理者可以更改。"
+          }
+        }
+      }
+    },
     "File type colors": {
       "localizations": {
         "de": {

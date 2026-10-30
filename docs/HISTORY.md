@@ -18504,6 +18504,46 @@ for: "let's restore a cursor position (including expanded tree) when traveling o
 - **Not seen live:** a physical keyboard; a server folder or an archive, whose walks run the same
   code; and ⌘[ after a relaunch, which the test pins.
 
+**2026-10-30: a folder another account owns no longer sends you to Full Disk Access** (core, then
+app). Reported with a screenshot: Dirnex refused `/Users/dirnexci/Documents` with *"Dirnex may need
+Full Disk Access in System Settings"*, and the question was why an administrator can't open it.
+
+- **What was there:** `VFSError.fromErrno` folded `EACCES` and `EPERM` into one `permissionDenied`,
+  so every local refusal that was not on a share or a sync client's mount named Full Disk Access.
+  The folder is `drwx------` and owned by another account, so plain `ls` from a shell refuses it
+  too. An administrator's processes run as their own uid, and no TCC grant changes a mode bit.
+- **Probed first:** a throwaway `.app` launched with `open`, so it was its own responsible process
+  and could not borrow the shell's grant. `opendir`, `open` and `access` on `~/Library/Mail`,
+  `~/Library/Safari`, `~/Library/Messages` and the TCC database all failed **`EPERM`**. The other
+  account's Documents failed **`EACCES`** there, and from the shell, which has the grant. So the
+  errno at the syscall tells the two apart, and `access` agrees with `open`.
+- **Core:** `permissionDenied` gained `refusedBy: PermissionRefusal = .unattributed`. Only a local
+  `EACCES` sets `.itemPermissions`; `EPERM` stays unattributed, since `chown` and `UF_IMMUTABLE`
+  raise it as well as TCC. The default keeps every server backend's construction and every
+  `if case .permissionDenied` check unchanged, so no behaviour site moved. Four tests built on a
+  real `EACCES` fixture now expect the tag, and one S3 test binds the new payload.
+- **App:** `VFSErrorText` checks the tag after the share and sync-client branches, whose `EACCES`
+  is a decision made elsewhere: *"File permissions don't allow that for this account, and Full Disk
+  Access can't change them. The owner or an administrator can."* It is translated into all 13
+  languages, with each catalog's own name for the grant. `FullDiskAccess`'s doc comment listed
+  "another user's folder" among the walls the grant removes; it no longer does.
+- **Tests:** `PermissionRefusalTests` (5, core): the two errnos, the default, a Cocoa refusal with
+  no errno, and a real `chmod 0` folder. `PermissionSentenceTests` gained 5, including the same
+  real folder carried all the way to the sentence. Negative control: with the branch disabled, 3
+  of the 5 failed. The other two are the narrowness tests (an unattributed refusal, a share and a
+  sync client), which pass either way by design. The first control run caught the real-folder test
+  passing with the branch off, because it compared against a sentence that went through the same
+  branch, so it now also has to differ from the Full Disk Access sentence. Full runs green (4 658
+  core, 2 067 app with the one known `GestureWaitTests` issue; live-server suites skipped).
+  `check_localization_keys.py` clean, both linters clean.
+- **Seen live** in the Debug build, launched by path, which has no Full Disk Access (`auth_value 0`
+  in the system TCC database). `reveal` of a path inside `/Users/dirnexci/Documents` raised *"Can't
+  open “Documents”"* with the new sentence. The same build's `reveal` inside `~/Library/Mail` still
+  raised the Full Disk Access sentence, which is the control. The defaults domain was restored and
+  compared unchanged.
+- **Not seen live:** a refusal on a write (a copy into a folder this account cannot write), which
+  takes the same `fromErrno` route, and a translated build.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

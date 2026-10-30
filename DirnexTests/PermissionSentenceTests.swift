@@ -11,7 +11,8 @@ import Testing
 /// grant. M21 split the remote case off, because that advice is about the wrong machine when the
 /// file is on a server. This suite pins the third case: a sync client's mount under
 /// `~/Library/CloudStorage`, which is on this Mac and is still not something System Settings can
-/// affect, because that directory is not TCC-gated.
+/// affect, because that directory is not TCC-gated. A fourth followed on 2026-10-30: a refusal by
+/// the item's own mode bits (`EACCES`), which no grant lifts, on another account's Documents.
 ///
 /// **The assertions are language-independent on purpose.** The app test target inherits whichever
 /// `AppleLanguages` the developer has Dirnex pinned to (docs/NOTES.md ▸ Localization), so what is
@@ -146,6 +147,74 @@ struct PermissionSentenceTests {
     func realCheckRefusesNonShares() {
         #expect(NetworkVolume.root(of: .local(Self.home)) == nil)
         #expect(NetworkVolume.root(of: Self.remote) == nil)
+    }
+
+    // MARK: - The item's own permissions
+
+    private func sentence(
+        _ path: VFSPath,
+        refusedBy refusal: PermissionRefusal,
+        onShare: Bool = false
+    ) -> String {
+        VFSErrorText.sentence(for: VFSError.permissionDenied(path, refusedBy: refusal)) { _ in onShare }
+    }
+
+    /// Another account's `drwx------` Documents, the reported case (2026-10-30).
+    private static let otherAccount = VFSPath.local("/Users/someone/Documents")
+
+    @Test("a refusal by the item's own permissions does not get the Full Disk Access sentence")
+    func itemPermissionsDifferFromOrdinary() {
+        #expect(sentence(Self.otherAccount, refusedBy: .itemPermissions) != sentence(Self.ordinary))
+        #expect(sentence(Self.otherAccount, refusedBy: .itemPermissions) != sentence(Self.remote))
+    }
+
+    /// The new sentence still names the grant, to say it cannot help, so the English check is that
+    /// it points somewhere else rather than that the words are absent.
+    @Test("in English it names the owner and an administrator")
+    func itemPermissionsWordingInEnglish() {
+        guard readsEnglish else { return }
+        let text = sentence(Self.otherAccount, refusedBy: .itemPermissions)
+        #expect(text.contains("owner"))
+        #expect(text.contains("administrator"))
+        #expect(!text.contains("may need Full Disk Access"))
+    }
+
+    /// TCC refuses with `EPERM`, which the core leaves unattributed, so the refusals the grant
+    /// does lift keep the sentence that names it.
+    @Test("an unattributed local refusal keeps the Full Disk Access sentence")
+    func unattributedKeepsTheGrantAdvice() {
+        #expect(sentence(Self.otherAccount, refusedBy: .unattributed) == sentence(Self.ordinary))
+    }
+
+    /// A share's and a sync client's `EACCES` are decisions made somewhere else, and their own
+    /// sentences already say so; the mode branch sits below both.
+    @Test("a share or a sync client keeps its own sentence for the same errno")
+    func moreSpecificPlacesWin() {
+        #expect(
+            sentence(Self.share, refusedBy: .itemPermissions, onShare: true) == sentence(Self.remote)
+        )
+        #expect(
+            sentence(Self.cloudStorage, refusedBy: .itemPermissions) == sentence(Self.cloudStorage)
+        )
+    }
+
+    /// The whole route on the real disk: a folder with every mode bit cleared refuses its listing
+    /// with the same `EACCES` another account's folder gives, and the sheet's sentence follows.
+    @Test("a real mode refusal reaches the new sentence")
+    func realModeRefusal() throws {
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dirnex-permission-\(UUID().uuidString)").path
+        try FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(atPath: folder) }
+        #expect(chmod(folder, 0) == 0)
+        defer { chmod(folder, 0o755) }
+
+        let error = #expect(throws: VFSError.self) {
+            try LocalBackend().listDirectory(at: .local(folder))
+        }
+        let text = error.map { VFSErrorText.sentence(for: $0) { _ in false } }
+        #expect(text == sentence(Self.otherAccount, refusedBy: .itemPermissions))
+        #expect(text != sentence(Self.ordinary))
     }
 
     // MARK: - Only permission failures

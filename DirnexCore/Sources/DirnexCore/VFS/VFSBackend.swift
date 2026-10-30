@@ -66,7 +66,9 @@ public enum DeleteStrategy: Sendable, Equatable {
 public enum VFSError: Error, Sendable, Equatable {
     case notFound(VFSPath)
     case notADirectory(VFSPath)
-    case permissionDenied(VFSPath)
+    /// A refusal. `refusedBy` says whether the item's own permissions did it, which decides whether
+    /// Full Disk Access is worth naming; only a local `EACCES` sets it (``PermissionRefusal``).
+    case permissionDenied(VFSPath, refusedBy: PermissionRefusal = .unattributed)
     /// The target already exists — a directory create or a move/rename onto an
     /// occupied path (the conflict engine in M2 decides what to do about it).
     case alreadyExists(VFSPath)
@@ -94,7 +96,8 @@ public enum VFSError: Error, Sendable, Equatable {
         switch code {
         case ENOENT: .notFound(path)
         case ENOTDIR: .notADirectory(path)
-        case EACCES, EPERM: .permissionDenied(path)
+        case EACCES: .permissionDenied(path, refusedBy: .itemPermissions)
+        case EPERM: .permissionDenied(path)
         case EEXIST, ENOTEMPTY: .alreadyExists(path)
         default: .io(path: path, code: code)
         }
