@@ -200,6 +200,7 @@ extension AttributesController {
         alert.informativeText = VFSErrorText.sentence(for: error)
         alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
+        alert.offerFullDiskAccessSettings()
         present(alert)
     }
 

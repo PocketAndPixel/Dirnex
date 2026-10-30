@@ -81,6 +81,7 @@ extension CompareWindowController {
         }
         alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
+        alert.offerFullDiskAccessSettings()
         Task { _ = await alert.sheetAnswer(over: window, whenUnasked: .alertFirstButtonReturn) }
     }
 }

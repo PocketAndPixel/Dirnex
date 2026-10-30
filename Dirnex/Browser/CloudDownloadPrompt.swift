@@ -241,6 +241,7 @@ final class CloudDownloadPrompt {
             withTitle: String(localized: "OK", comment: "Button that dismisses an alert.")
         )
         alert.enableEscapeToCancel()
+        alert.offerFullDiskAccessSettings()
         if let window {
             alert.beginSheetModal(for: window, completionHandler: nil)
         } else {

@@ -18544,6 +18544,51 @@ Full Disk Access in System Settings"*, and the question was why an administrator
 - **Not seen live:** a refusal on a write (a copy into a folder this account cannot write), which
   takes the same `fromErrno` route, and a translated build.
 
+
+**2026-10-30: an alert that says Dirnex may need Full Disk Access opens it** (app only). Asked for
+straight after the entry above: wherever that sentence is still shown, give it the onboarding's
+Open System Settings button.
+
+- **Where it still shows:** every local refusal the core leaves unattributed, which is an `EPERM`
+  (macOS privacy protection, but also a Finder-locked item) or a Cocoa refusal with no errno. It
+  reaches the screen through `presentOperationFailure` (62 callers), the listing failure, the queue
+  summary, undo and redo, Get Info, the compare and merge windows, write-back, iCloud downloads,
+  vaults, tag deletion and the copy's Retry / Skip / Abort dialog: fourteen presenters, each building
+  its own alert.
+- **Decided by the alert's text, not by the error:** `NSAlert.offerFullDiskAccessSettings()` adds the
+  button only when the informative text contains `VFSErrorText.fullDiskAccessAdvice`, now the one
+  named copy of the sentence. So whichever presenter built the alert, and whether the sentence stands
+  alone or ends an "N items couldn't be put back: …" line, the button follows the advice. Any other
+  alert is left exactly as it was. Each presenter gained one line.
+- **No completion handler changed:** the button's target is a zero-size view in the alert's content
+  view (`AlertKeyCatcher`'s idiom, since a control holds its target weakly). It opens the pane, then
+  hands the click to the alert's own action for that button, so a sheet or a modal closes as it
+  would for any button. Probed first in a throwaway app: both returned 1001 after the extra action
+  ran. The copy dialog passes `closesAlert: false`, since the copy is parked on its answer: the pane
+  opens and Retry, Skip and Abort stay up.
+- **Keys:** the button goes last, where an alert's focus lands and Escape goes by default, so the
+  method re-pins both to the button that was last before it (OK, or the copy dialog's Abort). On
+  screen, AppKit keeps the Escape button at the bottom of the vertical stack, so Abort stays under
+  Open System Settings. The tag-deletion alert had relied on `NSAlert`'s implicit OK, which exists
+  only once presented; it now adds OK itself.
+- **Tests:** `FullDiskAccessButtonTests` (6): the button after OK, Return, Escape and focus on OK,
+  the sentence inside a longer line, no button for the item-permissions, server and not-found
+  sentences, a click that opens the pane and is handed to the alert's own action, and the copy
+  dialog's shape staying up with Abort safe. Built, never presented, for the main-actor cost NOTES.md
+  records. Negative control: with the text check made to fail, 5 of 6 failed; the sixth is the
+  no-button case. Full runs green (4 658 core, 2 073 app with the known `GestureWaitTests` issue;
+  live-server suites skipped). No new strings: Open System Settings was already translated.
+- **Seen live** in the Debug build, launched by path. A listing inside `~/Library/Mail` raised
+  "Can't open “Mail”" with OK and Open System Settings; the button opened System Settings on Privacy
+  & Security ▸ Full Disk Access and closed the alert. An F5 copy into a `chflags uchg` folder raised
+  the copy dialog with the button between Skip and Abort and the focus on Abort; the button brought
+  System Settings to the front and left the dialog up, and Abort ended the copy with nothing written.
+  The defaults domain was restored and compared unchanged.
+- **Not seen live:** the other twelve presenters, which make the same call, and a translated build.
+  **Still wrong, and left for a decision:** a Finder-locked item's `EPERM` gets this sentence and now
+  this button, and the onboarding prompt still lists "other users' home folders" among the places
+  Full Disk Access opens.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

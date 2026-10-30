@@ -69,6 +69,7 @@ extension BrowserWindowController {
         alert.informativeText = detail
         alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
+        alert.offerFullDiskAccessSettings()
         alert.beginSheetIfVisible(over: host)
     }
 }

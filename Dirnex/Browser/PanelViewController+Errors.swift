@@ -21,6 +21,7 @@ extension PanelViewController {
         alert.alertStyle = .warning
         alert.addButton(withTitle: String(localized: "OK"))
         alert.enableEscapeToCancel()
+        alert.offerFullDiskAccessSettings()
         alert.beginSheetIfVisible(over: viewIfLoaded?.window)
     }
 
@@ -33,6 +34,14 @@ extension PanelViewController {
 /// by the pane's load/op error sheets, the queue's failure summary, and the per-file error
 /// dialog (`ErrorDialog`). Free of any view state so it can run on any actor.
 enum VFSErrorText {
+    /// The one sentence that sends the user to Full Disk Access. Named so the alerts can tell they
+    /// are giving that advice and offer the way there (``NSAlert/offerFullDiskAccessSettings(closesAlert:open:)``).
+    static var fullDiskAccessAdvice: String {
+        String(localized: """
+        You don’t have permission. Dirnex may need Full Disk Access in System Settings.
+        """)
+    }
+
     static func sentence(for error: Error) -> String {
         sentence(for: error) { NetworkVolume.root(of: $0) != nil }
     }
@@ -109,9 +118,7 @@ enum VFSErrorText {
                 them. The owner or an administrator can.
                 """)
             }
-            return String(localized: """
-            You don’t have permission. Dirnex may need Full Disk Access in System Settings.
-            """)
+            return fullDiskAccessAdvice
         case .notFound:
             return String(localized: "The item no longer exists.")
         case .notADirectory:

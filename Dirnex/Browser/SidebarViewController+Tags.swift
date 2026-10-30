@@ -274,7 +274,11 @@ extension SidebarViewController {
             """,
             comment: "Body of the partial tag-deletion failure; %1$lld removed of %2$lld, %3$@ is the error."
         )
-        alert.enableEscapeToCancel() // ⎋ → OK; the only button, so it dismisses either way.
+        // Added rather than left to `NSAlert`, which supplies OK only at presentation: the Full Disk
+        // Access button needs a button before it to keep Escape and the focus on.
+        alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
+        alert.offerFullDiskAccessSettings()
         Task { _ = await runTagAlert(alert) }
     }
 

@@ -483,6 +483,7 @@ extension PanelViewController {
         alert.informativeText = detail
         alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
+        alert.offerFullDiskAccessSettings()
         if let window = view.window {
             alert.beginSheetModal(for: window)
         } else {

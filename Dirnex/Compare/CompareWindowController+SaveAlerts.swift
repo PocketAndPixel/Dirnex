@@ -116,6 +116,7 @@ extension CompareWindowController {
         alert.informativeText = detail
         alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
+        alert.offerFullDiskAccessSettings()
         _ = await alert.sheetAnswer(over: window, whenUnasked: .alertFirstButtonReturn)
     }
 
