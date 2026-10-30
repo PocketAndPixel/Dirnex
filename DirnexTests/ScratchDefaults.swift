@@ -27,13 +27,13 @@ enum ScratchDefaults {
         return defaults
     }
 
-    /// `com.dirnex.tests.<file>.<function>[.<variant>]`, from `#fileID`
+    /// `app.dirnex.tests.<file>.<function>[.<variant>]`, from `#fileID`
     /// (`DirnexTests/RowDensityTests.swift`) and `#function` (`preferenceRoundTrips()`).
     static func suiteName(_ variant: String?, file: String, function: String) -> String {
         let fileStem = (file.split(separator: "/").last.map(String.init) ?? file)
             .replacingOccurrences(of: ".swift", with: "")
         let functionStem = function.split(separator: "(").first.map(String.init) ?? function
-        return (["com.dirnex.tests", fileStem, functionStem] + [variant].compactMap { $0 })
+        return (["app.dirnex.tests", fileStem, functionStem] + [variant].compactMap { $0 })
             .joined(separator: ".")
     }
 }

@@ -20,7 +20,7 @@ struct PanelPasteboardTests {
     private static let remoteID = VFSBackendID("sftp://user@host")
 
     private func board(_ name: String) -> NSPasteboard {
-        let board = NSPasteboard(name: NSPasteboard.Name("com.dirnex.tests.\(name)"))
+        let board = NSPasteboard(name: NSPasteboard.Name("app.dirnex.tests.\(name)"))
         board.clearContents()
         return board
     }

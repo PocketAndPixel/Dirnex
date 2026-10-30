@@ -46,7 +46,7 @@ final class TabBarView: NSView {
 
     /// The pasteboard type of a chip being dragged, carrying its index. Private to the app and
     /// offered to nothing outside it, so a tab dropped anywhere else is never read as a folder.
-    static let tabDragType = NSPasteboard.PasteboardType("com.dirnex.tab")
+    static let tabDragType = NSPasteboard.PasteboardType("app.dirnex.tab")
 
     /// Gap between chips; the insertion marker sits in the middle of it.
     static let chipSpacing: CGFloat = 3

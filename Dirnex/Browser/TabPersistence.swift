@@ -119,7 +119,7 @@ struct PersistedPane: Codable {
 /// Load/save per-pane tab state keyed by a stable pane identifier ("left"/"right").
 ///
 /// The domain is an argument with no default, so every caller says where a pane's tabs go. The app
-/// test target runs inside the app, where `.standard` is the developer's own `com.dirnex.Dirnex`,
+/// test target runs inside the app, where `.standard` is the developer's own `app.dirnex.Dirnex`,
 /// and a test that wrote there by default left a key behind on every run (docs/NOTES.md ▸ Testing).
 enum TabPersistence {
     private static let keyPrefix = "Dirnex.tabs."

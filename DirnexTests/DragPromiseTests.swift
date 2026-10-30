@@ -63,7 +63,7 @@ struct DragPromiseTests {
     }
 
     private func board(_ name: String) -> NSPasteboard {
-        let board = NSPasteboard(name: NSPasteboard.Name("com.dirnex.tests.promise.\(name)"))
+        let board = NSPasteboard(name: NSPasteboard.Name("app.dirnex.tests.promise.\(name)"))
         board.clearContents()
         return board
     }

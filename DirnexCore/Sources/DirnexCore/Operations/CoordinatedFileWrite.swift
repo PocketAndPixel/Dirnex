@@ -66,7 +66,7 @@ enum CoordinatedFileWrite {
     /// them was waiting. Probed 2026-10-28 on a 16-CPU Mac with 15 cooperative threads held: a
     /// give-up on a global queue had not run after 15 s, and one on a serial queue ran on time
     /// every run. CI's runner has three cooperative threads (docs/NOTES.md ▸ Testing).
-    private static let giveUpQueue = DispatchQueue(label: "com.dirnex.coordinated-write.give-up")
+    private static let giveUpQueue = DispatchQueue(label: "app.dirnex.coordinated-write.give-up")
 
     /// The coordinator, shared with the watchdog that cancels it. `cancel()` is documented as safe
     /// from any thread, and is the only call made off the coordinating one.

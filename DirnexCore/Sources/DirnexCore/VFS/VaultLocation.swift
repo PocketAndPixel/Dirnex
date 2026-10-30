@@ -152,7 +152,7 @@ public struct SavedVaults: Sendable, Equatable, Codable {
 
 extension VaultLocation: KeychainAddressable {
     /// One service for every vault, matching the one-per-protocol scheme the remote locations use.
-    public static var keychainService: String { "com.dirnex.Dirnex.vault" }
+    public static var keychainService: String { "app.dirnex.Dirnex.vault" }
 
     /// Keyed by the **resolved** image path.
     ///

@@ -79,7 +79,7 @@ swift test --package-path DirnexCore
 xcodebuild test -project Dirnex.xcodeproj -scheme Dirnex -destination 'platform=macOS'
 
 # Clean defaults
-defaults delete com.dirnex.Dirnex "NSWindow Frame MainWindow"
+defaults delete app.dirnex.Dirnex "NSWindow Frame MainWindow"
 
 # Run the app:
 open "$(xcodebuild -project Dirnex.xcodeproj -scheme Dirnex -showBuildSettings \

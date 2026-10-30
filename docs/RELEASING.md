@@ -81,7 +81,7 @@ to 24 hours for a self-hosted runner, then fails.
 
 1. **Add a macOS user only for the runner:** System Settings → Users & Groups → Add User, a
    **Standard** user (for example "Dirnex CI"). The release puts a temporary keychain in its user's
-   search list, the app tests write the app's defaults domain (`com.dirnex.Dirnex`), and an approved
+   search list, the app tests write the app's defaults domain (`app.dirnex.Dirnex`), and an approved
    pull request runs its own code. In a user of its own, none of that reaches your keychain, your
    settings or your files.
 2. **Log in as that user once** with Fast User Switching (System Settings → Control Center → Fast
@@ -235,7 +235,7 @@ section).
   with Dirnex quit:
 
   ```sh
-  defaults write com.dirnex.Dirnex Dirnex.pref.licenseGraceStart -date "2026-01-01 00:00:00 +0000"
+  defaults write app.dirnex.Dirnex Dirnex.pref.licenseGraceStart -date "2026-01-01 00:00:00 +0000"
   ```
 
   The next launch reminds. `Dirnex.pref.licenseReminderLastShown` holds the last time it appeared.

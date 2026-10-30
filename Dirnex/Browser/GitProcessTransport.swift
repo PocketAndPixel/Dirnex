@@ -39,7 +39,7 @@ struct GitProcessTransport: GitTransport {
         // error on a queue of its own, joined with the exit, and standard output on this thread.
         let message = CollectedOutput()
         group.enter()
-        ProcessWaiting.pipeQueue("com.dirnex.git.errors").async {
+        ProcessWaiting.pipeQueue("app.dirnex.git.errors").async {
             defer { group.leave() }
             message.set(errors.fileHandleForReading.readDataToEndOfFile())
         }
