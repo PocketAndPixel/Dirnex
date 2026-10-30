@@ -217,6 +217,43 @@ struct PermissionSentenceTests {
         #expect(text != sentence(Self.ordinary))
     }
 
+    // MARK: - A locked item
+
+    /// The lock can be on the folder rather than on the item an alert's title names, so the sentence
+    /// names whichever carries it.
+    @Test("a locked refusal names the locked item and is not the Full Disk Access sentence")
+    func lockedNamesTheItem() {
+        let folder = VFSPath.local("/Users/oleg/Projects/Frozen")
+        let text = sentence(Self.ordinary, refusedBy: .locked(folder))
+        #expect(text != sentence(Self.ordinary))
+        #expect(text != sentence(Self.ordinary, refusedBy: .itemPermissions))
+        #expect(text.contains("Frozen"))
+        if readsEnglish {
+            #expect(text.contains("Locked"))
+            #expect(!text.contains("Full Disk Access"))
+        }
+    }
+
+    /// The whole route on the real disk: a create inside a `chflags uchg` folder fails `EPERM`, the
+    /// same errno TCC gives, and the sentence still says which folder is locked.
+    @Test("a real create in a locked folder reaches the locked sentence")
+    func realLockedFolder() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dirnex-locked-\(UUID().uuidString)").path
+        let folder = root + "/Frozen"
+        try FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: root) }
+        #expect(chflags(folder, UInt32(UF_IMMUTABLE)) == 0)
+        defer { chflags(folder, 0) }
+
+        let error = #expect(throws: VFSError.self) {
+            try LocalBackend().createFile(at: .local(folder + "/new.txt"))
+        }
+        let text = error.map { VFSErrorText.sentence(for: $0) { _ in false } }
+        #expect(text == sentence(Self.ordinary, refusedBy: .locked(.local(folder))))
+        #expect(text != sentence(Self.ordinary))
+    }
+
     // MARK: - Only permission failures
 
     /// The branch reads the path, so it could in principle leak into other cases. Nothing else

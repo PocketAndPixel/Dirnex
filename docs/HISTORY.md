@@ -18589,6 +18589,44 @@ Open System Settings button.
   this button, and the onboarding prompt still lists "other users' home folders" among the places
   Full Disk Access opens.
 
+
+**2026-10-30: a locked item says it is locked, and the onboarding stops promising other accounts'
+folders** (core, then app). Closes the two the entry above left for a decision, both taken by Oleg.
+
+- **Probed first**, on `chflags uchg` fixtures: a create, a `mkdir`, a rename and an unlink inside
+  a locked folder, a rename, an unlink and a write of a locked file, a move *into* a locked folder
+  and a move out of one all failed **`EPERM`**, the errno TCC gives. `FileManager.trashItem` on a
+  locked file, or on a file in a locked folder, failed with Cocoa's **513** over OSStatus -5000 and
+  no errno. So the errno cannot tell a lock from TCC, and the item's flags can.
+- **Core:** `PermissionRefusal.locked(VFSPath)`, set by `notPermitted(at:flags:)`, which `lstat`s
+  each local path and its folder and answers `.locked` for the first one whose flags block
+  modification (Finder's `UF_IMMUTABLE` or the root-only `SF_IMMUTABLE`). `fromErrno` calls it for
+  `EPERM`, LocalBackend's Cocoa mapping for a write refusal (the Trash's shape), and `moveItem` with
+  both of its ends, since a move into a locked folder is refused by the destination's. A path on
+  another backend is never looked up. An `EPERM` with nothing locked stays unattributed.
+- **App:** *"“Frozen” is locked. Turn off Locked in Get Info, then try again."*, naming whichever
+  of the item and its folder carries the lock. It is translated into 13 languages, using each
+  catalog's own words for Get Info and the Locked checkbox. Because it is not the Full Disk Access
+  sentence, the button from the entry above stays off it with no code of its own.
+- **Onboarding:** the Full Disk Access prompt listed "other users' home folders" among the places
+  the grant opens. Their own mode bits refuse with `EACCES` (the first entry of the day), so the
+  phrase is gone in all 14 languages, each translation losing exactly that clause.
+- **Tests:** `PermissionRefusalTests` gained 6 (core): the item or its folder, the root-only flag,
+  both ends of a move, a server path never looked up, the real backend's create, move, delete and
+  Trash mapping on locked fixtures, and an unlocked `EPERM` staying unattributed. Negative control:
+  with the lookup disabled, the 4 positive tests failed and the 2 narrowness tests passed.
+  `PermissionSentenceTests` gained 2 and `FullDiskAccessButtonTests` one more case; with the app
+  branch disabled, all 3 failed. No existing test needed a change. Full runs green (4 664 core,
+  2 075 app with the known `GestureWaitTests` issue; live-server suites skipped).
+  `check_localization_keys.py` clean, both linters clean.
+- **Seen live** in the Debug build, launched by path. An F5 copy into a locked "Frozen" folder
+  raised the copy dialog with *"“Frozen” is locked…"*, Retry, Skip and Abort, and no Open System
+  Settings. F8 on a locked file raised *"Couldn't move “frozen.txt” to the Trash"* with the same
+  sentence naming the file, and OK only; the file stayed. Dirnex ▸ Full Disk Access… showed the
+  prompt without the phrase. The defaults domain was restored and compared unchanged.
+- **Not seen live:** a translated build, and a file whose folder is locked being *written* rather
+  than created, which the sentence would also call locked.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
