@@ -118,6 +118,18 @@ enum VFSErrorText {
                 them. The owner or an administrator can.
                 """)
             }
+            // **A locked item is the other `EPERM` this Mac's own disk gives**, and the same errno as
+            // TCC, so the core reads the flags at the failure (``PermissionRefusal/locked(_:)``).
+            // Named, because the lock may be on the folder rather than on the item in the title.
+            if case let .locked(item) = refusal {
+                return String(
+                    localized: "“\(item.displayName)” is locked. Turn off Locked in Get Info, then try again.",
+                    comment: """
+                    Error sentence: an item or its folder is locked (Finder's Locked, UF_IMMUTABLE); %@ is \
+                    the locked item's name. "Locked" and "Get Info" are the names Get Info uses.
+                    """
+                )
+            }
             return fullDiskAccessAdvice
         case .notFound:
             return String(localized: "The item no longer exists.")

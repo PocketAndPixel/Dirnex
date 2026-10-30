@@ -134,11 +134,13 @@ enum FullDiskAccessOnboarding {
     private static func showPrompt(over window: NSWindow?) {
         let alert = NSAlert()
         alert.messageText = String(localized: "Give Dirnex Full Disk Access")
+        // Other accounts' home folders are not in the list, though they once were: their own mode
+        // bits keep this account out with `EACCES`, which the grant does not lift (2026-10-30,
+        // ``PermissionRefusal``).
         alert.informativeText = String(localized: """
-        Dirnex can browse everywhere, but macOS keeps some folders private — other users' home \
-        folders, Mail and Messages, Time Machine backups, and anywhere it considers sensitive. \
-        Without Full Disk Access, opening one of those shows a permission wall; everywhere else \
-        works normally.
+        Dirnex can browse everywhere, but macOS keeps some folders private — Mail and Messages, \
+        Time Machine backups, and anywhere it considers sensitive. Without Full Disk Access, \
+        opening one of those shows a permission wall; everywhere else works normally.
 
         Click Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask \
         Dirnex to relaunch so the new access takes effect.

@@ -42735,91 +42735,91 @@
         }
       }
     },
-    "Dirnex can browse everywhere, but macOS keeps some folders private — other users' home folders, Mail and Messages, Time Machine backups, and anywhere it considers sensitive. Without Full Disk Access, opening one of those shows a permission wall; everywhere else works normally.\n\nClick Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask Dirnex to relaunch so the new access takes effect.": {
+    "Dirnex can browse everywhere, but macOS keeps some folders private — Mail and Messages, Time Machine backups, and anywhere it considers sensitive. Without Full Disk Access, opening one of those shows a permission wall; everywhere else works normally.\n\nClick Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask Dirnex to relaunch so the new access takes effect.": {
       "comment": "FDA (general) sheet body.",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dirnex kann alle Ordner durchsuchen, aber macOS schützt einige Orte: Benutzerordner anderer Personen, Mail und Nachrichten, Time Machine-Backups und andere sensible Orte. Ohne Festplattenvollzugriff zeigt Dirnex dort einen Hinweis zu fehlenden Rechten. Überall sonst funktioniert es normal.\n\nKlicken Sie auf „Systemeinstellungen öffnen“ und aktivieren Sie Dirnex unter „Festplattenvollzugriff“. macOS fordert dann einen Neustart von Dirnex an, damit der neue Zugriff wirksam wird."
+            "value": "Dirnex kann alle Ordner durchsuchen, aber macOS schützt einige Orte: Mail und Nachrichten, Time Machine-Backups und andere sensible Orte. Ohne Festplattenvollzugriff zeigt Dirnex dort einen Hinweis zu fehlenden Rechten. Überall sonst funktioniert es normal.\n\nKlicken Sie auf „Systemeinstellungen öffnen“ und aktivieren Sie Dirnex unter „Festplattenvollzugriff“. macOS fordert dann einen Neustart von Dirnex an, damit der neue Zugriff wirksam wird."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dirnex can browse everywhere, but macOS keeps some folders private — other users' home folders, Mail and Messages, Time Machine backups, and anywhere it considers sensitive. Without Full Disk Access, opening one of those shows a permission wall; everywhere else works normally.\n\nClick Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask Dirnex to relaunch so the new access takes effect."
+            "value": "Dirnex can browse everywhere, but macOS keeps some folders private — Mail and Messages, Time Machine backups, and anywhere it considers sensitive. Without Full Disk Access, opening one of those shows a permission wall; everywhere else works normally.\n\nClick Open System Settings, then switch on Dirnex under Full Disk Access. macOS will ask Dirnex to relaunch so the new access takes effect."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dirnex puede explorar todas partes, pero macOS mantiene privadas algunas carpetas: las carpetas de inicio de otros usuarios, Mail y Mensajes, las copias de Time Machine y cualquier lugar que considere sensible. Sin acceso total al disco, al abrir una de esas carpetas aparece un bloqueo de permisos; todo lo demás funciona con normalidad.\n\nHaz clic en Abrir Ajustes del Sistema y activa Dirnex en Acceso total al disco. macOS pedirá reiniciar Dirnex para que el nuevo acceso surta efecto."
+            "value": "Dirnex puede explorar todas partes, pero macOS mantiene privadas algunas carpetas: Mail y Mensajes, las copias de Time Machine y cualquier lugar que considere sensible. Sin acceso total al disco, al abrir una de esas carpetas aparece un bloqueo de permisos; todo lo demás funciona con normalidad.\n\nHaz clic en Abrir Ajustes del Sistema y activa Dirnex en Acceso total al disco. macOS pedirá reiniciar Dirnex para que el nuevo acceso surta efecto."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dirnex peut parcourir tous vos dossiers, mais macOS en protège certains : les dossiers de départ des autres utilisateurs, Mail et Messages, les sauvegardes Time Machine, ainsi que d’autres emplacements sensibles. Sans accès complet au disque, l’ouverture de l’un de ces dossiers affiche une alerte d’autorisation ; tout le reste fonctionne normalement.\n\nCliquez sur Ouvrir Réglages Système, puis activez Dirnex dans Accès complet au disque. macOS vous demandera de relancer Dirnex afin que l’autorisation prenne effet."
+            "value": "Dirnex peut parcourir tous vos dossiers, mais macOS en protège certains : Mail et Messages, les sauvegardes Time Machine, ainsi que d’autres emplacements sensibles. Sans accès complet au disque, l’ouverture de l’un de ces dossiers affiche une alerte d’autorisation ; tout le reste fonctionne normalement.\n\nCliquez sur Ouvrir Réglages Système, puis activez Dirnex dans Accès complet au disque. macOS vous demandera de relancer Dirnex afin que l’autorisation prenne effet."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dirnex può sfogliare quasi ovunque, ma macOS tiene private alcune cartelle: le cartelle Inizio di altri utenti, Mail e Messaggi, i backup di Time Machine e tutte le posizioni che considera sensibili. Senza Accesso completo al disco, quando apri una di queste cartelle viene mostrato un avviso di autorizzazione; tutto il resto funziona normalmente.\n\nFai clic su Apri Impostazioni di Sistema, poi attiva Dirnex in Accesso completo al disco. macOS chiederà a Dirnex di riavviarsi perché il nuovo accesso abbia effetto."
+            "value": "Dirnex può sfogliare quasi ovunque, ma macOS tiene private alcune cartelle: Mail e Messaggi, i backup di Time Machine e tutte le posizioni che considera sensibili. Senza Accesso completo al disco, quando apri una di queste cartelle viene mostrato un avviso di autorizzazione; tutto il resto funziona normalmente.\n\nFai clic su Apri Impostazioni di Sistema, poi attiva Dirnex in Accesso completo al disco. macOS chiederà a Dirnex di riavviarsi perché il nuovo accesso abbia effetto."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dirnexはどこでも閲覧できますが、macOSは一部のフォルダを非公開にしています。ほかのユーザのホームフォルダ、“メール”と“メッセージ”、Time Machineバックアップ、その他macOSが機密と見なす場所です。フルディスクアクセスがない状態でそれらを開くと権限の案内が表示されます。それ以外は通常どおり動作します。\n\n“システム設定を開く”をクリックして、“フルディスクアクセス”でDirnexをオンにしてください。新しいアクセス権を有効にするため、macOSからDirnexの再起動を求められます。"
+            "value": "Dirnexはどこでも閲覧できますが、macOSは一部のフォルダを非公開にしています。“メール”と“メッセージ”、Time Machineバックアップ、その他macOSが機密と見なす場所です。フルディスクアクセスがない状態でそれらを開くと権限の案内が表示されます。それ以外は通常どおり動作します。\n\n“システム設定を開く”をクリックして、“フルディスクアクセス”でDirnexをオンにしてください。新しいアクセス権を有効にするため、macOSからDirnexの再起動を求められます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dirnex는 대부분의 위치를 탐색할 수 있지만 macOS는 다른 사용자의 홈 폴더, Mail, 메시지, Time Machine 백업처럼 민감한 폴더를 비공개로 유지합니다. 전체 디스크 접근 권한이 없으면 해당 폴더를 열 때 권한 안내가 표시됩니다. 다른 위치는 계속 정상적으로 작동합니다.\n\n‘시스템 설정 열기’를 클릭한 다음, 전체 디스크 접근 권한에서 Dirnex를 켜십시오. macOS가 새 권한을 적용하기 위해 Dirnex를 다시 실행하라고 요청합니다."
+            "value": "Dirnex는 대부분의 위치를 탐색할 수 있지만 macOS는 Mail, 메시지, Time Machine 백업처럼 민감한 폴더를 비공개로 유지합니다. 전체 디스크 접근 권한이 없으면 해당 폴더를 열 때 권한 안내가 표시됩니다. 다른 위치는 계속 정상적으로 작동합니다.\n\n‘시스템 설정 열기’를 클릭한 다음, 전체 디스크 접근 권한에서 Dirnex를 켜십시오. macOS가 새 권한을 적용하기 위해 Dirnex를 다시 실행하라고 요청합니다."
           }
         },
         "nl": {
           "stringUnit": {
-            "value": "Dirnex kan overal bladeren, maar macOS houdt sommige mappen privé: thuismappen van andere gebruikers, Mail en Berichten, Time Machine-reservekopieën en andere gevoelige locaties. Zonder Volledige schijftoegang toont Dirnex daar een machtigingsmelding; de rest blijft normaal werken.\n\nKlik op Open Systeeminstellingen en schakel Dirnex in bij Volledige schijftoegang. macOS vraagt Dirnex opnieuw te starten zodat de nieuwe toegang actief wordt.",
+            "value": "Dirnex kan overal bladeren, maar macOS houdt sommige mappen privé: Mail en Berichten, Time Machine-reservekopieën en andere gevoelige locaties. Zonder Volledige schijftoegang toont Dirnex daar een machtigingsmelding; de rest blijft normaal werken.\n\nKlik op Open Systeeminstellingen en schakel Dirnex in bij Volledige schijftoegang. macOS vraagt Dirnex opnieuw te starten zodat de nieuwe toegang actief wordt.",
             "state": "translated"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dirnex może przeglądać wszystko, ale macOS trzyma niektóre foldery prywatnie — foldery domowe innych użytkowników, Mail i Wiadomości, kopie Time Machine oraz inne wrażliwe miejsca. Bez Pełnego dostępu do dysku otwarcie takiego miejsca pokaże blokadę uprawnień; wszędzie indziej wszystko działa normalnie.\n\nKliknij Otwórz Ustawienia systemowe, a potem włącz Dirnex w sekcji Pełny dostęp do dysku. macOS poprosi o ponowne uruchomienie Dirnex, aby nowy dostęp zaczął działać."
+            "value": "Dirnex może przeglądać wszystko, ale macOS trzyma niektóre foldery prywatnie — Mail i Wiadomości, kopie Time Machine oraz inne wrażliwe miejsca. Bez Pełnego dostępu do dysku otwarcie takiego miejsca pokaże blokadę uprawnień; wszędzie indziej wszystko działa normalnie.\n\nKliknij Otwórz Ustawienia systemowe, a potem włącz Dirnex w sekcji Pełny dostęp do dysku. macOS poprosi o ponowne uruchomienie Dirnex, aby nowy dostęp zaczął działać."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dirnex может просматривать всё, но macOS держит некоторые папки закрытыми — домашние папки других пользователей, Почту и Сообщения, резервные копии Time Machine и всё, что считается конфиденциальным. Без полного доступа к диску открытие одной из них покажет запрет доступа; всё остальное работает нормально.\n\nНажмите «Открыть Системные настройки», затем включите Dirnex в разделе «Полный доступ к диску». macOS попросит Dirnex перезапуститься, чтобы новый доступ вступил в силу."
+            "value": "Dirnex может просматривать всё, но macOS держит некоторые папки закрытыми — Почту и Сообщения, резервные копии Time Machine и всё, что считается конфиденциальным. Без полного доступа к диску открытие одной из них покажет запрет доступа; всё остальное работает нормально.\n\nНажмите «Открыть Системные настройки», затем включите Dirnex в разделе «Полный доступ к диску». macOS попросит Dirnex перезапуститься, чтобы новый доступ вступил в силу."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dirnex може переглядати все, але macOS тримає деякі папки приватними — домівки інших користувачів, Mail і Messages, резервні копії Time Machine та інші місця, які вона вважає чутливими. Без Повного доступу до диска під час відкриття такої папки з’явиться екран дозволів; усе інше працює як звично.\n\nНатисніть «Відкрити Системні параметри», а потім увімкніть Dirnex у розділі «Повний доступ до диска». macOS попросить перезапустити Dirnex, щоб новий доступ набув чинності."
+            "value": "Dirnex може переглядати все, але macOS тримає деякі папки приватними — Mail і Messages, резервні копії Time Machine та інші місця, які вона вважає чутливими. Без Повного доступу до диска під час відкриття такої папки з’явиться екран дозволів; усе інше працює як звично.\n\nНатисніть «Відкрити Системні параметри», а потім увімкніть Dirnex у розділі «Повний доступ до диска». macOS попросить перезапустити Dirnex, щоб новий доступ набув чинності."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O Dirnex pode navegar em todos os lugares, mas o macOS mantém algumas pastas privadas — pastas pessoais de outros usuários, Mail e Mensagens, backups do Time Machine e locais considerados sensíveis. Sem Acesso Total ao Disco, abrir uma delas mostra uma barreira de permissão; todo o resto funciona normalmente.\n\nClique em Abrir Ajustes do Sistema e ative o Dirnex em Acesso Total ao Disco. O macOS pedirá para o Dirnex reiniciar para que o novo acesso tenha efeito."
+            "value": "O Dirnex pode navegar em todos os lugares, mas o macOS mantém algumas pastas privadas — Mail e Mensagens, backups do Time Machine e locais considerados sensíveis. Sem Acesso Total ao Disco, abrir uma delas mostra uma barreira de permissão; todo o resto funciona normalmente.\n\nClique em Abrir Ajustes do Sistema e ative o Dirnex em Acesso Total ao Disco. O macOS pedirá para o Dirnex reiniciar para que o novo acesso tenha efeito."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dirnex 可以浏览各处，但 macOS 会保护一些文件夹，例如其他用户的个人文件夹、“邮件”和“信息”、Time Machine 备份，以及系统认为敏感的任何位置。没有完全磁盘访问权限时，打开这些位置会看到权限提示；其他位置会照常工作。\n\n点按“打开系统设置”，然后在“完全磁盘访问权限”中打开 Dirnex。macOS 会要求重新启动 Dirnex，让新的访问权限生效。"
+            "value": "Dirnex 可以浏览各处，但 macOS 会保护一些文件夹，例如“邮件”和“信息”、Time Machine 备份，以及系统认为敏感的任何位置。没有完全磁盘访问权限时，打开这些位置会看到权限提示；其他位置会照常工作。\n\n点按“打开系统设置”，然后在“完全磁盘访问权限”中打开 Dirnex。macOS 会要求重新启动 Dirnex，让新的访问权限生效。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dirnex 可以瀏覽各處，但 macOS 會保護一些檔案夾，例如其他使用者的個人檔案夾、「郵件」和「訊息」、Time Machine 備份，以及系統認為敏感的任何位置。沒有「完全取用磁碟」權限時，打開這些位置會看到權限提示；其他位置會照常工作。\n\n按一下「打開系統設定」，然後在「完全取用磁碟」中啟用 Dirnex。macOS 會要求重新啟動 Dirnex，讓新的取用權限生效。"
+            "value": "Dirnex 可以瀏覽各處，但 macOS 會保護一些檔案夾，例如「郵件」和「訊息」、Time Machine 備份，以及系統認為敏感的任何位置。沒有「完全取用磁碟」權限時，打開這些位置會看到權限提示；其他位置會照常工作。\n\n按一下「打開系統設定」，然後在「完全取用磁碟」中啟用 Dirnex。macOS 會要求重新啟動 Dirnex，讓新的取用權限生效。"
           }
         }
       }
@@ -162729,6 +162729,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "「%@」已加密"
+          }
+        }
+      }
+    },
+    "“%@” is locked. Turn off Locked in Get Info, then try again.": {
+      "comment": "Error sentence: an item or its folder is locked (Finder's Locked, UF_IMMUTABLE); %@ is the locked item's name. \"Locked\" and \"Get Info\" are the names Get Info uses.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ ist gesichert. Deaktivieren Sie „Gesichert“ unter „Informationen“ und versuchen Sie es erneut."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is locked. Turn off Locked in Get Info, then try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El ítem «%@» está bloqueado. Desactiva «Bloqueado» en Obtener información y vuelve a intentarlo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’élément «%@» est verrouillé. Décochez «Verrouillé» dans Lire les informations, puis réessayez."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’elemento “%@” è bloccato. Disattiva “Bloccato” in Ottieni informazioni, poi riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”はロックされています。“情報を見る”で“ロック”をオフにしてから、もう一度試してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”이(가) 잠겨 있습니다. 정보 가져오기에서 ‘잠김’을 끈 다음 다시 시도하십시오."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is beveiligd. Schakel ‘Beveiligd’ uit in Toon info en probeer het opnieuw."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Element „%@” jest zablokowany. Wyłącz opcję „Zablokowany” w oknie Pokaż informacje i spróbuj ponownie."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O item “%@” está bloqueado. Desative “Bloqueado” em Obter informações e tente novamente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Объект «%@» защищён. Снимите флажок «Защищённый» в окне «Свойства» и повторите попытку."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Об’єкт «%@» захищено. Зніміть позначку «Захищений» у вікні «Властивості» і повторіть спробу."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”已锁定。请在“显示简介”中关闭“已锁定”，然后重试。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」已鎖定。請在「顯示簡介」中關閉「已鎖定」，然後再試一次。"
           }
         }
       }

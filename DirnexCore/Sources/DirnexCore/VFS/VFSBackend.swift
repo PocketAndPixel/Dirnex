@@ -97,7 +97,7 @@ public enum VFSError: Error, Sendable, Equatable {
         case ENOENT: .notFound(path)
         case ENOTDIR: .notADirectory(path)
         case EACCES: .permissionDenied(path, refusedBy: .itemPermissions)
-        case EPERM: .permissionDenied(path)
+        case EPERM: .permissionDenied(path, refusedBy: .notPermitted(at: [path]))
         case EEXIST, ENOTEMPTY: .alreadyExists(path)
         default: .io(path: path, code: code)
         }

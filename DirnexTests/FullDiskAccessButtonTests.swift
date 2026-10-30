@@ -70,13 +70,14 @@ struct FullDiskAccessButtonTests {
 
     /// The refusals the grant cannot lift say so in sentences of their own, and must not be offered
     /// a switch that cannot help them.
-    @Test("other sentences, including the item-permissions one, get no button")
+    @Test("other sentences, including the item-permissions and locked ones, get no button")
     func otherTextIsLeftAlone() {
         let remote = VFSPath(
             backend: VFSBackendID.sftp(SFTPLocation(host: "srv", username: "oleg")), path: "/home/x"
         )
         let errors: [VFSError] = [
             .permissionDenied(Self.local, refusedBy: .itemPermissions),
+            .permissionDenied(Self.local, refusedBy: .locked(Self.local)),
             .permissionDenied(remote),
             .notFound(Self.local)
         ]
