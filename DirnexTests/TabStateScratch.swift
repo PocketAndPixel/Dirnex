@@ -1,7 +1,7 @@
 import Foundation
 
 /// The defaults domain a test hands a pane that has a `restorationKey`, so the tabs it persists
-/// never reach the developer's own `com.dirnex.Dirnex`.
+/// never reach the developer's own `app.dirnex.Dirnex`.
 ///
 /// The app test target runs inside the app, so `UserDefaults.standard` is the real domain
 /// (docs/NOTES.md ▸ Testing), and removing a key when the test ends is not enough: a pane that
@@ -15,7 +15,7 @@ import Foundation
 /// first time anything asks for it, which also takes whatever the previous run's late writes left.
 @MainActor
 enum TabStateScratch {
-    static let suiteName = "com.dirnex.tests.tabs"
+    static let suiteName = "app.dirnex.tests.tabs"
 
     static let defaults: UserDefaults = {
         let defaults = UserDefaults(suiteName: suiteName)!

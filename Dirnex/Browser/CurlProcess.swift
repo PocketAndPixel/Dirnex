@@ -87,8 +87,8 @@ enum CurlProcess {
         }
 
         let drained = Drained()
-        let outputQueue = ProcessWaiting.pipeQueue("com.dirnex.curl.output")
-        let errorQueue = ProcessWaiting.pipeQueue("com.dirnex.curl.errors")
+        let outputQueue = ProcessWaiting.pipeQueue("app.dirnex.curl.output")
+        let errorQueue = ProcessWaiting.pipeQueue("app.dirnex.curl.errors")
         group.enter()
         outputQueue.async {
             drained.standardOutput = output.fileHandleForReading.readDataToEndOfFile()

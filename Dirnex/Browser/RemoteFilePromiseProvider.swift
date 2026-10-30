@@ -12,11 +12,11 @@ import UniformTypeIdentifiers
 /// 4 GB object and dragging it to the desktop costs nothing until the mouse is let go.
 ///
 /// **It carries the payload too**, which is what keeps one drag from being two. Overriding the three
-/// `NSPasteboardWriting` members adds `com.dirnex.locations` to the promise's own types, so a drag
+/// `NSPasteboardWriting` members adds `app.dirnex.locations` to the promise's own types, so a drag
 /// *inside* Dirnex reads the same snapshot `PanelPasteboard.items` writes for a local row and routes
 /// through the same `submitTransfer` — rather than the pane accepting its own promise and
 /// round-tripping a server's file through this Mac. Measured 2026-08-26 on a real board: a mixed
-/// drag of one promise and one local row exposes `com.dirnex.locations` on **both** items, hands
+/// drag of one promise and one local row exposes `app.dirnex.locations` on **both** items, hands
 /// `readObjects` only the local URL, and still advertises `Apple files promise pasteboard type` at
 /// board level.
 final class RemoteFilePromiseProvider: NSFilePromiseProvider {

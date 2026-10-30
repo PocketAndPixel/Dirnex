@@ -175,7 +175,7 @@ struct TabMoveTests {
 
     /// A drag of chip `index` of `source`, with the pointer over `bar` at `x` in its coordinates.
     private func drag(_ index: Int, of source: TabBarView, over bar: TabBarView, atX x: CGFloat) -> TabDraggingInfo {
-        let board = NSPasteboard(name: NSPasteboard.Name("com.dirnex.tests.tab-drag"))
+        let board = NSPasteboard(name: NSPasteboard.Name("app.dirnex.tests.tab-drag"))
         board.clearContents()
         board.setString(String(index), forType: TabBarView.tabDragType)
         let location = bar.convert(NSPoint(x: x, y: bar.bounds.midY), to: nil)
@@ -250,7 +250,7 @@ struct TabMoveTests {
     func otherDragsAreRefused() async throws {
         let panes = try await makePanes()
         let bar = panes.left.pane.tabBar
-        let board = NSPasteboard(name: NSPasteboard.Name("com.dirnex.tests.tab-drag"))
+        let board = NSPasteboard(name: NSPasteboard.Name("app.dirnex.tests.tab-drag"))
         board.clearContents()
         board.setString("0", forType: TabBarView.tabDragType)
         // The right type, but from no strip: not a chip of this window.

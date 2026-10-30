@@ -135,8 +135,8 @@ extension FTPCurlTransport {
         // join them through a group so the wait can be bounded.
         let drained = Drained()
         // One serial queue per pipe, never a concurrent one: see `ProcessWaiting.pipeQueue`.
-        let outputQueue = ProcessWaiting.pipeQueue("com.dirnex.ftp.output")
-        let errorQueue = ProcessWaiting.pipeQueue("com.dirnex.ftp.errors")
+        let outputQueue = ProcessWaiting.pipeQueue("app.dirnex.ftp.output")
+        let errorQueue = ProcessWaiting.pipeQueue("app.dirnex.ftp.errors")
         group.enter()
         outputQueue.async {
             drained.standardOutput = output.fileHandleForReading.readDataToEndOfFile()

@@ -147,7 +147,7 @@ struct SMBLocationTests {
     func keychainAccount() {
         let location = SMBLocation(host: "nas.local", share: "media", username: "oleg")
         #expect(location.keychainAccount == "oleg@nas.local/media")
-        #expect(SMBLocation.keychainService == "com.dirnex.smb")
+        #expect(SMBLocation.keychainService == "app.dirnex.smb")
         // Two shares on the same host under the same user don't collide.
         let other = SMBLocation(host: "nas.local", share: "backup", username: "oleg")
         #expect(location.keychainAccount != other.keychainAccount)

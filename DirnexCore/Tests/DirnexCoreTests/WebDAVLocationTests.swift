@@ -166,6 +166,6 @@ struct WebDAVLocationTests {
         #expect(otherRoot.backendID != Self.nas.backendID)
         let plain = WebDAVLocation(host: "nas", port: 5006, username: "dirnex-test", usesTLS: false)
         #expect(plain.keychainAccount != Self.nas.keychainAccount)
-        #expect(WebDAVLocation.keychainService == "com.dirnex.webdav")
+        #expect(WebDAVLocation.keychainService == "app.dirnex.webdav")
     }
 }

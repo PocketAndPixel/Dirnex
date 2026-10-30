@@ -13,7 +13,7 @@ struct CrashReportTests {
 
     static let header = [
         #""app_name":"Dirnex","timestamp":"2026-09-29 23:44:58.00 +0300","app_version":"1.4.0""#,
-        #""build_version":"512","bundleID":"com.dirnex.Dirnex","os_version":"macOS 26.0.1 (25A362)""#,
+        #""build_version":"512","bundleID":"app.dirnex.Dirnex","os_version":"macOS 26.0.1 (25A362)""#,
         #""incident_id":"11111111-2222-3333-4444-555555555555""#
     ].joined(separator: ",")
 

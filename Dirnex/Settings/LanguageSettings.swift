@@ -47,7 +47,7 @@ final class LanguageSettings: ObservableObject {
 
     init(defaults: UserDefaults = .standard, domainName: String? = nil) {
         self.defaults = defaults
-        self.domainName = domainName ?? Bundle.main.bundleIdentifier ?? "com.dirnex.Dirnex"
+        self.domainName = domainName ?? Bundle.main.bundleIdentifier ?? "app.dirnex.Dirnex"
         activeLanguage = Self.activeLanguage(in: .main)
         preference = Self.storedPreference(in: defaults, domain: self.domainName)
     }

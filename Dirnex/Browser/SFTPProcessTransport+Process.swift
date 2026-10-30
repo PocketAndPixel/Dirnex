@@ -237,8 +237,8 @@ extension SFTPProcessTransport {
         var outputData = Data()
         var errorData = Data()
         // One serial queue per pipe, never a concurrent one: see `ProcessWaiting.pipeQueue`.
-        let outputQueue = ProcessWaiting.pipeQueue("com.dirnex.sftp.output")
-        let errorQueue = ProcessWaiting.pipeQueue("com.dirnex.sftp.errors")
+        let outputQueue = ProcessWaiting.pipeQueue("app.dirnex.sftp.output")
+        let errorQueue = ProcessWaiting.pipeQueue("app.dirnex.sftp.errors")
         group.enter()
         outputQueue.async {
             outputData = output.fileHandleForReading.readDataToEndOfFile()

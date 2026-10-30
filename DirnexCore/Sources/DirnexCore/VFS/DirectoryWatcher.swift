@@ -78,7 +78,7 @@ public final class DirectoryWatcher {
     public init(
         path: VFSPath,
         latency: TimeInterval = DirectoryWatcher.coalescingWindow,
-        queue: DispatchQueue = DispatchQueue(label: "com.dirnex.fsevents", qos: .utility),
+        queue: DispatchQueue = DispatchQueue(label: "app.dirnex.fsevents", qos: .utility),
         onChange: @escaping @Sendable () -> Void
     ) {
         delivery = Delivery(onChange)
@@ -100,7 +100,7 @@ public final class DirectoryWatcher {
     public init(
         paths: [VFSPath],
         latency: TimeInterval = DirectoryWatcher.coalescingWindow,
-        queue: DispatchQueue = DispatchQueue(label: "com.dirnex.fsevents", qos: .utility),
+        queue: DispatchQueue = DispatchQueue(label: "app.dirnex.fsevents", qos: .utility),
         onChange: @escaping @Sendable () -> Void
     ) {
         delivery = Delivery(onChange)
@@ -131,7 +131,7 @@ public final class DirectoryWatcher {
     public init(
         filePath: String,
         latency: TimeInterval = DirectoryWatcher.coalescingWindow,
-        queue: DispatchQueue = DispatchQueue(label: "com.dirnex.fsevents", qos: .utility),
+        queue: DispatchQueue = DispatchQueue(label: "app.dirnex.fsevents", qos: .utility),
         onChange: @escaping @Sendable () -> Void
     ) {
         delivery = Delivery(onChange)

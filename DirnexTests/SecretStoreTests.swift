@@ -8,7 +8,7 @@ import Testing
 /// instead of the user's login Keychain.
 ///
 /// Two things made that worth doing. Reading a real item raises **"Dirnex wants to use your
-/// confidential information stored in com.dirnex.s3"** on every run — the item's ACL is keyed to the
+/// confidential information stored in app.dirnex.s3"** on every run — the item's ACL is keyed to the
 /// binary that created it, and every rebuild is a new ad-hoc-signed one, so "Always Allow" lasts
 /// exactly one build — and `SecItemCopyMatching` *blocks* until somebody clicks, so the suite waits
 /// on a person. And the live S3 flows file a secret on every successful connect, keyed by the
@@ -84,12 +84,12 @@ struct SecretStoreTests {
     @Test("the service and the account are both part of the key")
     func keyIsThePair() {
         let store = InMemorySecretStore()
-        store.setSecret(Data("s3".utf8), service: "com.dirnex.s3", account: "a")
-        store.setSecret(Data("ftp".utf8), service: "com.dirnex.ftp", account: "a")
-        store.setSecret(Data("other".utf8), service: "com.dirnex.s3", account: "b")
-        #expect(store.secret(service: "com.dirnex.s3", account: "a") == Data("s3".utf8))
-        #expect(store.secret(service: "com.dirnex.ftp", account: "a") == Data("ftp".utf8))
-        #expect(store.secret(service: "com.dirnex.s3", account: "b") == Data("other".utf8))
+        store.setSecret(Data("s3".utf8), service: "app.dirnex.s3", account: "a")
+        store.setSecret(Data("ftp".utf8), service: "app.dirnex.ftp", account: "a")
+        store.setSecret(Data("other".utf8), service: "app.dirnex.s3", account: "b")
+        #expect(store.secret(service: "app.dirnex.s3", account: "a") == Data("s3".utf8))
+        #expect(store.secret(service: "app.dirnex.ftp", account: "a") == Data("ftp".utf8))
+        #expect(store.secret(service: "app.dirnex.s3", account: "b") == Data("other".utf8))
     }
 
     // MARK: - Through the generic layer

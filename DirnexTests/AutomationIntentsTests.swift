@@ -29,7 +29,7 @@ struct AutomationIntentsTests {
         let copy = try #require(operations.first { $0.id == "file.copy" })
         // Asserted against the localized registry rather than against the English literals it used
         // to name. `xcodebuild test` runs these in the *app*, which honors whatever
-        // `AppleLanguages` the developer's own `com.dirnex.Dirnex` domain carries — so pinning the
+        // `AppleLanguages` the developer's own `app.dirnex.Dirnex` domain carries — so pinning the
         // app to Russian to check a translation made this suite fail on display text that was never
         // what it was testing. What it is testing is that the Shortcuts entity draws its name and
         // subtitle from the registry at all.

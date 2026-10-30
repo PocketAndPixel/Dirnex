@@ -129,7 +129,7 @@ struct ServerConnectionWebDAVTests {
             username: "dirnex-test",
             rootPath: "/home"
         )
-        #expect(WebDAVLocation.keychainService == "com.dirnex.webdav")
+        #expect(WebDAVLocation.keychainService == "app.dirnex.webdav")
         #expect(home.keychainAccount == Self.nas.keychainAccount)
         #expect(!home.hasNoStoredSecret)
         #expect(WebDAVLocation(host: "nas", username: "").hasNoStoredSecret)

@@ -1289,7 +1289,7 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     duplicated trail — the suffix matched and every individual crumb was a real place — which is the
     shape of a wrong answer this project keeps meeting: plausible, ordered, and containing everything
     it should, plus something it should not.
-- **The app test target's `UserDefaults.standard` is the developer's own `com.dirnex.Dirnex`, so any
+- **The app test target's `UserDefaults.standard` is the developer's own `app.dirnex.Dirnex`, so any
   app-wide store a test can reach is the live one.** The Localization section records the *read*
   direction of this (a suite inherits whatever `AppleLanguages` Dirnex is pinned to); the write
   direction is worse and has no equivalent tell. Measured 2026-08-31 while adding M26 Slice 4's
@@ -7619,7 +7619,7 @@ whoever drives `curl` over HTTP next. Most of them apply to the S3 backend as mu
   running process keeps the old denial), and the **first** click after that relaunch can still fail
   while TCC settles; try twice before concluding anything. Read the live state with
   `sqlite3 /Library/Application\ Support/com.apple.TCC/TCC.db "select auth_value from access where
-  service='kTCCServiceSystemPolicyAllFiles' and client='com.dirnex.Dirnex'"` — `2` granted, `0` denied.
+  service='kTCCServiceSystemPolicyAllFiles' and client='app.dirnex.Dirnex'"` — `2` granted, `0` denied.
   - **Re-granting can *fail*, with the row reading as switched on the whole time — and `auth_value`
     is then the wrong thing to read.** A TCC record stores a **code requirement** alongside the
     authorization, and flipping the switch writes only the authorization: it does not re-derive the
@@ -7629,7 +7629,7 @@ whoever drives `curl` over HTTP next. Most of them apply to the S3 backend as mu
     times the toggle is flipped. Measured 2026-08-26: `tccutil` shows the grant on, the app reads
     `NSCocoaErrorDomain` 257, and the tell is in the log rather than the database —
     `log show --last 10m --predicate 'process == "tccd"' | grep -i dirnex` printing **`Failed to
-    match existing code requirement for subject com.dirnex.Dirnex and service
+    match existing code requirement for subject app.dirnex.Dirnex and service
     kTCCServiceSystemPolicyAllFiles`**, at *launch*, seconds after a `TCCDEvent: type=Modify` for
     that same service. Two consequences worth having before the next hunt. The **requirement it
     prints is cert-based and carries no cdhash** (`anchor apple generic and identifier "…" and …
@@ -7639,7 +7639,7 @@ whoever drives `curl` over HTTP next. Most of them apply to the S3 backend as mu
     `codesign --verify -R=<that requirement>` on the installed bundle answers **exit 0, "explicit
     requirement satisfied"**, which is what makes the state so confusing: the app qualifies, and the
     stored record is what is stale. The only fix is to delete the record so macOS mints a new one —
-    `tccutil reset SystemPolicyAllFiles com.dirnex.Dirnex`, then re-add the app with **+** rather
+    `tccutil reset SystemPolicyAllFiles app.dirnex.Dirnex`, then re-add the app with **+** rather
     than re-flipping a row that is still listed. Expect **several** stale records per bundle id
     (`SystemPolicyDocumentsFolder` was still failing here after `SystemPolicyAllFiles` was reset),
     so reset the service the failure actually names.
@@ -8077,7 +8077,8 @@ whoever drives `curl` over HTTP next. Most of them apply to the S3 backend as mu
     as an app and started with `open` answered `NSCocoaErrorDomain` 257 to both calls; run as a
     **child of the Dirnex Debug build** (a user script, so Dirnex is the TCC responsible process) it
     worked. The difference is `kTCCServiceFileProviderDomain`: the user's `TCC.db` holds one row per
-    domain, and `com.dirnex.Dirnex` is allowed for all six on this Mac. A probe that is not a child of
+    domain, and `com.dirnex.Dirnex` (the bundle id until 2026-10-30) was allowed for all six on this
+    Mac. A probe that is not a child of
     the app is measuring some other process's grant — the `trashItem` split (▸ The Trash) with the
     cause, this time, in plain sight.
   - **A folder is asymmetric.** `evictUbiquitousItem` on a folder evicts every file inside it
@@ -8876,13 +8877,13 @@ overturned the decision the milestone opened on.
     the ones a risk register writes down, and here all three were clean — while the app's own two
     were not, precisely because nobody thinks of a fuzzy-jump index as storage.
 - **Verifying "the app did not write that down" is headless, and needs a control token in the same
-  run.** `defaults export com.dirnex.Dirnex` plus a script that decodes each JSON blob answers "does
+  run.** `defaults export app.dirnex.Dirnex` plus a script that decodes each JSON blob answers "does
   any key mention this string" exactly; the AppleScript `reveal` verb drives a pane to a path with no
   screenshot and no accessibility grant. The half that makes it evidence rather than absence: browse a
   **control** folder carrying its own token in the same session, and require that one to *appear* —
   it goes through the identical `recordVisit` / `persistState` code, so a probe that cannot see it is
   blind rather than reassuring. To reach the app's own unlock path (not just an image mounted from a
-  shell), pre-file the passphrase with `security add-generic-password -A -s com.dirnex.Dirnex.vault
+  shell), pre-file the passphrase with `security add-generic-password -A -s app.dirnex.Dirnex.vault
   -a <resolved image path>`: `-A` is what stops the Keychain prompting an app that did not create the
   item, and `go.unlockVault` then attaches silently through `run operation`. Back the domain up with
   `defaults export` first and `defaults import` it afterwards — the probe overwrites the real
@@ -9403,7 +9404,7 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
   `didFindValidUpdate` ever fires, and the titlebar indicator stays dark through every release —
   while the feed, the channel opt-in and the indicator code are all provably correct. Found by
   reading the *installed* app's defaults
-  (`defaults read com.dirnex.Dirnex | command grep '^ *SU'`), which is the first thing to check
+  (`defaults read app.dirnex.Dirnex | command grep '^ *SU'`), which is the first thing to check
   when an update does not surface; `SULastCheckTime` there is the proof a check actually ran.
   Dirnex therefore does not depend on Sparkle's scheduler at all: `AppUpdater` runs its own
   `checkForUpdateInformation()` — the *probing* check, which fetches the real appcast through the
@@ -9610,6 +9611,32 @@ the same cases (`Fixtures/bug-report-vectors.json`, from the private repo's
   `Accept-Encoding: gzip, deflate` that says nothing. **A `URLProtocol` stub cannot check this**:
   it sees the request before the system adds its headers, so only a real server shows what leaves
   the Mac (`Tooling/fake-bug-report-endpoint.py`).
+
+### The bundle id
+
+- **The bundle id is `app.dirnex.Dirnex`, a domain we own; until 2026-10-30 it was
+  `com.dirnex.Dirnex`, and dirnex.com belongs to someone else.** Apple checks neither, but two apps
+  with one id on one Mac share a defaults domain, Caches and Saved Application State (Dirnex isn't
+  sandboxed), and LaunchServices, AppleEvents and Shortcuts can reach either. Nothing outside Oleg's
+  own Mac had the old id: all 154 DMG downloads by then were his.
+- **Every `com.dirnex.` name moved to `app.dirnex.` with it**, since nobody but Oleg had
+  saved anything under them yet and after launch the Keychain ones could never move: the defaults
+  domain, the test bundle (`app.dirnex.DirnexTests`), the license URL type's name, the Keychain
+  services (`app.dirnex.ftp`, `.sftp`, `.s3`, `.webdav`, `.smb`, `app.dirnex.Dirnex.vault`),
+  pasteboard types (`app.dirnex.locations` and the drag types), queue labels, the
+  `app.dirnex.tests.*` scratch suites and pasteboards, and every command in these docs that names
+  one. Older entries that report a measurement still say `com.dirnex.`, which was right when they
+  were measured.
+- **A secret saved under an old service is no longer found**, because the service is part of a
+  Keychain item's address: every server password and vault passphrase is asked for once more. The
+  old items stay in the login Keychain until deleted there.
+- **A Sparkle update across the change is accepted by Sparkle 2.9.4's own rules**, read from its
+  source rather than measured. `SUUpdateValidator` takes an update when *either* the EdDSA
+  signature or the code signature matches. The old app's designated requirement names its old id,
+  so the code-signature match fails, and the unchanged EdDSA key passes. `SUInstaller` finds the new
+  app by file name (`Dirnex.app`) and falls back to the bundle id only for a renamed app.
+- **The new id starts with nothing the old one had:** empty settings, and Full Disk Access, Photos
+  and Automation to grant again.
 
 ## macOS system gates
 

@@ -82,7 +82,7 @@ struct DropReachTests {
         mask: NSDragOperation = [.copy, .move],
         board name: String = "drop"
     ) -> StubDraggingInfo {
-        let board = NSPasteboard(name: NSPasteboard.Name("com.dirnex.tests.\(name)"))
+        let board = NSPasteboard(name: NSPasteboard.Name("app.dirnex.tests.\(name)"))
         board.clearContents()
         _ = PanelPasteboard.write(entries, to: board)
         return StubDraggingInfo(board: board, mask: mask)
@@ -169,7 +169,7 @@ struct DropReachTests {
     @Test("a drag from another app offers copy only, and copies")
     func externalDragCopies() throws {
         let pane = pane(at: VFSPath(backend: Self.bucketID, path: "/prefix"))
-        let board = NSPasteboard(name: NSPasteboard.Name("com.dirnex.tests.external"))
+        let board = NSPasteboard(name: NSPasteboard.Name("app.dirnex.tests.external"))
         board.clearContents()
         #expect(board.writeObjects([URL(fileURLWithPath: "/tmp/finder.txt") as NSURL]))
 
@@ -232,7 +232,7 @@ struct DropReachTests {
     @Test("an empty board is not a drop")
     func refusesAnEmptyBoard() {
         let pane = pane(at: .local("/tmp"))
-        let board = NSPasteboard(name: NSPasteboard.Name("com.dirnex.tests.emptydrop"))
+        let board = NSPasteboard(name: NSPasteboard.Name("app.dirnex.tests.emptydrop"))
         board.clearContents()
         #expect(pane.dropPlan(
             StubDraggingInfo(board: board, mask: [.copy, .move]), row: -1, dropOperation: .above

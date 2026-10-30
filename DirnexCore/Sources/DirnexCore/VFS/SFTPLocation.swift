@@ -63,7 +63,7 @@ public extension SFTPLocation {
     }
 
     /// The Keychain service every SFTP password is filed under (a generic-password item's service).
-    static let keychainService = "com.dirnex.sftp"
+    static let keychainService = "app.dirnex.sftp"
 
     /// The Keychain account key for this location's stored password: `user@host:port`. Stable and
     /// unique per account (the descriptor without the `sftp://` scheme), so re-connecting to the

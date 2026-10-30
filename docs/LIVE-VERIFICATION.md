@@ -5,10 +5,10 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
 [NOTES.md](NOTES.md), which is read by area. Moved out of NOTES.md on 2026-10-01.
 
 - **`defaults import` does not remove keys absent from the imported plist.** Measured 2026-10-21:
-  importing an empty plist into `com.dirnex.Dirnex` left all 68 keys in place. A backup import alone
+  importing an empty plist into `app.dirnex.Dirnex` left all 68 keys in place. A backup import alone
   therefore cannot remove keys an experiment added. With every Dirnex quit and a verified backup
-  saved, clear the domain with `defaults delete com.dirnex.Dirnex`, then restore it with
-  `defaults import com.dirnex.Dirnex <backup.plist>`. Export again to check the restoration.
+  saved, clear the domain with `defaults delete app.dirnex.Dirnex`, then restore it with
+  `defaults import app.dirnex.Dirnex <backup.plist>`. Export again to check the restoration.
   `scripts/check_defaults_unchanged.py <before.plist> <after.plist>` compares every key by content,
   including JSON inside data values; a byte comparison can mistake JSON object key order for drift.
 
@@ -79,7 +79,7 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   and read the path back rather than trusting that a quit-and-relaunch settled which binary is up.
   - **An AppleEvent addressed by bundle id will *launch* that copy if the Debug build has died,
     and the event itself does not say so.** Measured 2026-09-14: the Debug build crashed while
-    showing a preview, the next `tell application id "com.dirnex.Dirnex" to reveal …` timed out
+    showing a preview, the next `tell application id "app.dirnex.Dirnex" to reveal …` timed out
     (`-1712`) and left `/Applications/Dirnex.app` running in its place, and a screenshot taken
     afterwards was of the release build. A timed-out event, or a window that looks like the
     pre-change app, is the moment to run the `pgrep` above and to check
@@ -171,7 +171,7 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   and copies it in the running app, and the gesture is unreachable headlessly twice over: session
   restore is `.local`-only (`PanelViewController+Restore` — a tab cannot come back inside an
   archive), and nothing in the `.sdef` or `CommandBinding` *enters* one. What is reachable is the
-  pasteboard: a 10-line `swift` script writes the byte-identical `com.dirnex.locations` payload
+  pasteboard: a 10-line `swift` script writes the byte-identical `app.dirnex.locations` payload
   naming an archive member onto the real general board, and
   `osascript … run operation "edit.paste"` then runs the whole shipped path — the split, the
   passphrase check, `bsdtar`, the `stat` back into local entries, the queue. It landed `one.txt`

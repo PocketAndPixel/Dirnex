@@ -169,7 +169,7 @@ public extension WebDAVLocation {
     }
 
     /// The Keychain service every WebDAV password is filed under.
-    static var keychainService: String { "com.dirnex.webdav" }
+    static var keychainService: String { "app.dirnex.webdav" }
 
     /// The Keychain account key for this account's password: `<scheme>:<user>@<host>:<port>`.
     ///

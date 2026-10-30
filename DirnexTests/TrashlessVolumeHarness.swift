@@ -72,7 +72,7 @@ enum TrashlessProbe {
     /// Point ``TrashOriginStore/shared`` at a scratch domain for the life of the test host.
     ///
     /// The app test target runs **inside the app**, so its `UserDefaults.standard` is the
-    /// developer's own `com.dirnex.Dirnex` — and every pane built here can reach `runDelete`, which
+    /// developer's own `app.dirnex.Dirnex` — and every pane built here can reach `runDelete`, which
     /// files a put-back record. Without this, running the suite writes fake origins naming
     /// `/Volumes/Photos` into the store a real Put Back reads from. Same shape as the S3 live
     /// suites' Keychain capture (docs/NOTES.md): a store keyed by what it describes cannot tell who
@@ -82,7 +82,7 @@ enum TrashlessProbe {
     /// it runs once however many tests race into it. A test that wants to *watch* the writes swaps
     /// in its own store afterwards.
     private static let scratchPutBackStore: Void = {
-        guard let suite = UserDefaults(suiteName: "com.dirnex.tests.putback.host") else { return }
+        guard let suite = UserDefaults(suiteName: "app.dirnex.tests.putback.host") else { return }
         TrashOriginStore.shared = TrashOriginStore(defaults: suite, isInVault: { _ in false })
     }()
 
