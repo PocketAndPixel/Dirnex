@@ -295,7 +295,7 @@ public extension S3Location {
     var signatureSpecifier: String { "aws:amz:\(S3Region.signing(region)):s3" }
 
     /// The Keychain service every S3 secret key is filed under.
-    static var keychainService: String { "com.dirnex.s3" }
+    static var keychainService: String { "app.dirnex.s3" }
 
     /// The Keychain account key for this connection's secret access key.
     ///

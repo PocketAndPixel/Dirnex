@@ -17,7 +17,7 @@ import DirnexCore
 /// cleared match set, since every `filterChanged` guards on an empty query.
 ///
 /// **The domain is a required argument, with no `.standard` default anywhere below ``standard``.**
-/// The app test target's `UserDefaults.standard` *is* the developer's own `com.dirnex.Dirnex`
+/// The app test target's `UserDefaults.standard` *is* the developer's own `app.dirnex.Dirnex`
 /// (docs/NOTES.md ▸ Testing), and this store is read as well as written: a test asserting that the
 /// options start off would otherwise be asserting something about whoever ran it, and would fail on
 /// the machine of anyone who had turned Case Sensitive on in the real app.

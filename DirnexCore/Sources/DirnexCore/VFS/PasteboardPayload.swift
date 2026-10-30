@@ -40,7 +40,7 @@ public struct PasteboardPayload: Sendable, Hashable, Codable {
 
     /// The type name the app registers with `NSPasteboard`. It lives here, beside the encoding it
     /// describes, so the writer and the reader cannot name two different strings.
-    public static let typeIdentifier = "com.dirnex.locations"
+    public static let typeIdentifier = "app.dirnex.locations"
 
     public let version: Int
     public let path: VFSPath

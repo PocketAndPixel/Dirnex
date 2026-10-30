@@ -202,6 +202,6 @@ struct PasteboardPayloadTests {
 
     @Test("the type identifier is one string, shared by whoever writes and whoever reads")
     func namesOneType() {
-        #expect(PasteboardPayload.typeIdentifier == "com.dirnex.locations")
+        #expect(PasteboardPayload.typeIdentifier == "app.dirnex.locations")
     }
 }

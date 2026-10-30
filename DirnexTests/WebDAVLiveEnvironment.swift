@@ -20,7 +20,7 @@ import Testing
 ///     "name": "NAS, HTTPS",
 ///     "host": "nas", "port": 5006, "tls": true, "root": "",
 ///     "user": "dirnex-test",
-///     "keychain": { "service": "com.dirnex.sftp", "account": "dirnex-test@nas:22" },
+///     "keychain": { "service": "app.dirnex.sftp", "account": "dirnex-test@nas:22" },
 ///     "scheme": "basic", "trustedPublicKey": "…", "selfSigned": true,
 ///     "remotePath": "/home", "connectWithinSeconds": 1
 /// } ] }

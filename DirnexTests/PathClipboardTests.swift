@@ -30,7 +30,7 @@ struct PathClipboardTests {
 
     @Test("copy writes the joined text onto the given pasteboard, replacing what was there")
     func copyReplacesContents() {
-        let pasteboard = NSPasteboard(name: NSPasteboard.Name("com.dirnex.tests.copypath"))
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name("app.dirnex.tests.copypath"))
         pasteboard.clearContents()
         pasteboard.setString("stale", forType: .string)
 

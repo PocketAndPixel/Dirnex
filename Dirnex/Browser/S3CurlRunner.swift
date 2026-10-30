@@ -219,8 +219,8 @@ struct S3CurlRunner: Sendable {
         // join them through a group so the wait can be bounded.
         let drained = Drained()
         // One serial queue per pipe, never a concurrent one: see `ProcessWaiting.pipeQueue`.
-        let outputQueue = ProcessWaiting.pipeQueue("com.dirnex.s3.output")
-        let errorQueue = ProcessWaiting.pipeQueue("com.dirnex.s3.errors")
+        let outputQueue = ProcessWaiting.pipeQueue("app.dirnex.s3.output")
+        let errorQueue = ProcessWaiting.pipeQueue("app.dirnex.s3.errors")
         group.enter()
         outputQueue.async {
             drained.standardOutput = output.fileHandleForReading.readDataToEndOfFile()

@@ -152,7 +152,7 @@ public extension FTPLocation {
     }
 
     /// The Keychain service every FTP password is filed under (a generic-password item's service).
-    static let keychainService = "com.dirnex.ftp"
+    static let keychainService = "app.dirnex.ftp"
 
     /// The Keychain account key for this location's stored password: `user@host:port` prefixed by
     /// the security mode, so the same account reached over plain FTP and over FTPS keeps separate

@@ -23,7 +23,7 @@ final class WorkspaceOrganizerController: NSViewController {
     private let removeButton = NSButton()
 
     /// Private drag type for internal row reordering.
-    private static let rowType = NSPasteboard.PasteboardType("com.dirnex.workspace.row")
+    private static let rowType = NSPasteboard.PasteboardType("app.dirnex.workspace.row")
 
     init() {
         super.init(nibName: nil, bundle: nil)
