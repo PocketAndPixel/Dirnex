@@ -14,7 +14,7 @@ final class EditorStandIn: NSObject, NSFilePresenter, @unchecked Sendable {
     let presentedItemOperationQueue: OperationQueue = {
         let queue = OperationQueue()
         queue.maxConcurrentOperationCount = 1
-        queue.underlyingQueue = DispatchQueue(label: "com.dirnex.tests.editor-stand-in")
+        queue.underlyingQueue = DispatchQueue(label: "app.dirnex.tests.editor-stand-in")
         return queue
     }()
 

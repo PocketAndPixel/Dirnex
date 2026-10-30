@@ -143,7 +143,7 @@ final class QuickViewWebView: NSView {
     ]
     """
 
-    private static let ruleListIdentifier = "com.dirnex.quickview.block-remote"
+    private static let ruleListIdentifier = "app.dirnex.quickview.block-remote"
 
     /// The compiled rule list, kept for the life of the process: compiling is asynchronous and the
     /// preview is re-driven on every cursor step, so paying it once is the difference between a

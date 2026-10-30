@@ -70,10 +70,10 @@ jobs:
           touch "$RUNNER_TEMP/tests-started"
           # The host shares the installed app's defaults domain. Compare outside the host so
           # writes before the first test or during shutdown cannot escape the check.
-          defaults export com.dirnex.Dirnex TestDefaults-before.plist
+          defaults export app.dirnex.Dirnex TestDefaults-before.plist
           check_defaults() {
             test_status=$?
-            defaults export com.dirnex.Dirnex TestDefaults-after.plist || exit 1
+            defaults export app.dirnex.Dirnex TestDefaults-after.plist || exit 1
             python3 scripts/check_defaults_unchanged.py TestDefaults-before.plist TestDefaults-after.plist || exit 1
             exit "$test_status"
           }

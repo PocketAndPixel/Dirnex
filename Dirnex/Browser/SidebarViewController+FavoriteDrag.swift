@@ -28,7 +28,7 @@ extension SidebarViewController {
     /// Checking for this type is more reliable than comparing dragging-source identity, which a
     /// synthetic drag doesn't preserve (the lesson the favorites organizer's reorder already
     /// encodes).
-    static let reorderRowType = NSPasteboard.PasteboardType("com.dirnex.sidebar.reorder-row")
+    static let reorderRowType = NSPasteboard.PasteboardType("app.dirnex.sidebar.reorder-row")
 
     /// Called from `loadView`. Accepts our own rows (reorder) and file URLs (a folder dragged into
     /// Favorites from a pane, or from Finder).

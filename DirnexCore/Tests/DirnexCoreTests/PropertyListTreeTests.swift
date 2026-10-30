@@ -29,7 +29,7 @@ struct PropertyListTreeTests {
     \t<array>
     \t\t<dict>
     \t\t\t<key>UTTypeIdentifier</key>
-    \t\t\t<string>com.dirnex.locations</string>
+    \t\t\t<string>app.dirnex.locations</string>
     \t\t</dict>
     \t\t<string>Fish &amp; Chips</string>
     \t</array>
@@ -65,7 +65,7 @@ struct PropertyListTreeTests {
             "Icon <48656c6c 6f2c2057 6f726c64>",
             "Types [2]",
             "[0] {1}",
-            #"UTTypeIdentifier "com.dirnex.locations""#,
+            #"UTTypeIdentifier "app.dirnex.locations""#,
             #"[1] "Fish & Chips""#,
             "\"\" false"
         ])
@@ -94,14 +94,14 @@ struct PropertyListTreeTests {
         let identifier = parsed.child(0, of: parsed.child(0, of: types))
         #expect(parsed.path(of: identifier) == ":Types:0:UTTypeIdentifier")
         #expect(parsed.path(of: parsed.child(1, of: types)) == ":Types:1")
-        #expect(parsed.copiedText(of: identifier) == "com.dirnex.locations")
+        #expect(parsed.copiedText(of: identifier) == "app.dirnex.locations")
         #expect(parsed.copiedText(of: parsed.child(0, of: types)) == """
         <dict>
         \t<key>UTTypeIdentifier</key>
-        \t<string>com.dirnex.locations</string>
+        \t<string>app.dirnex.locations</string>
         </dict>
         """)
-        #expect(parsed.stripText(of: identifier, byteLimit: 3) == "com…")
+        #expect(parsed.stripText(of: identifier, byteLimit: 3) == "app…")
     }
 
     @Test("a root that is a scalar, or an empty container, is the one row")

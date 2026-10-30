@@ -28,7 +28,7 @@ struct RemoteTabPersistenceTests {
 
     /// A pane keyed under a name of its own, writing into ``TabStateScratch`` rather than the
     /// developer's own domain. The app test target runs *inside the app*, so `.standard` is the real
-    /// `com.dirnex.Dirnex` (docs/NOTES.md ▸ Testing), and the workspace tests persist again after
+    /// `app.dirnex.Dirnex` (docs/NOTES.md ▸ Testing), and the workspace tests persist again after
     /// their listing lands, later than any cleanup a test could run.
     private static func pane(at path: VFSPath) -> (PanelViewController, String) {
         let key = "reconnect-test-\(UUID().uuidString)"

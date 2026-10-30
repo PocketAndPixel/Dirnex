@@ -140,7 +140,7 @@ public extension SMBLocation {
     }
 
     /// The Keychain service every SMB password is filed under (a generic-password item's service).
-    static let keychainService = "com.dirnex.smb"
+    static let keychainService = "app.dirnex.smb"
 
     /// The Keychain account key for this location's stored password: the scheme-less URL
     /// (`[user@]host[:port][/share]`). Stable and unique per share, so re-mounting the same share

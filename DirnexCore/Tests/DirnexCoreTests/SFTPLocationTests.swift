@@ -77,6 +77,6 @@ struct SFTPLocationTests {
         #expect(location.keychainAccount == "oleg@example.com:2222")
         // The default port is spelled out too, so two accounts differing only by port don't collide.
         #expect(SFTPLocation(host: "h", username: "u").keychainAccount == "u@h:22")
-        #expect(SFTPLocation.keychainService == "com.dirnex.sftp")
+        #expect(SFTPLocation.keychainService == "app.dirnex.sftp")
     }
 }

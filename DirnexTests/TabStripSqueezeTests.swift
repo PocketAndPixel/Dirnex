@@ -150,7 +150,7 @@ struct TabStripSqueezeTests {
 extension TabBarView {
     /// The slot a tab dragged from this strip and held over it at `x` would drop into.
     func dropSlot(atX x: CGFloat) -> Int {
-        let board = NSPasteboard(name: NSPasteboard.Name("com.dirnex.tests.tab-strip-drag"))
+        let board = NSPasteboard(name: NSPasteboard.Name("app.dirnex.tests.tab-strip-drag"))
         board.clearContents()
         board.setString("0", forType: Self.tabDragType)
         let location = convert(NSPoint(x: x, y: bounds.midY), to: nil)

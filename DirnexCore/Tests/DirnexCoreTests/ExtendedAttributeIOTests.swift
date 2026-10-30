@@ -29,13 +29,13 @@ struct ExtendedAttributeIOTests {
     func listsAll() throws {
         try withTree { tree in
             let path = VFSPath.local(try tree.writeFile("f.txt", contents: "hi"))
-            try ExtendedAttributeIO.set("com.dirnex.a", to: Data("one".utf8), at: path)
-            try ExtendedAttributeIO.set("com.dirnex.b", to: Data("two".utf8), at: path)
+            try ExtendedAttributeIO.set("app.dirnex.a", to: Data("one".utf8), at: path)
+            try ExtendedAttributeIO.set("app.dirnex.b", to: Data("two".utf8), at: path)
 
             let all = try ExtendedAttributeIO.all(at: path)
-            let mine = all.filter { $0.name.hasPrefix("com.dirnex.") }
+            let mine = all.filter { $0.name.hasPrefix("app.dirnex.") }
                 .sorted { $0.name < $1.name }
-            #expect(mine.map(\.name) == ["com.dirnex.a", "com.dirnex.b"])
+            #expect(mine.map(\.name) == ["app.dirnex.a", "app.dirnex.b"])
             #expect(mine.map { String(bytes: $0.data, encoding: .utf8) } == ["one", "two"])
         }
     }
@@ -44,7 +44,7 @@ struct ExtendedAttributeIOTests {
     func absentValueIsNil() throws {
         try withTree { tree in
             let path = VFSPath.local(try tree.writeFile("f.txt", contents: "hi"))
-            #expect(try ExtendedAttributeIO.value(of: "com.dirnex.absent", at: path) == nil)
+            #expect(try ExtendedAttributeIO.value(of: "app.dirnex.absent", at: path) == nil)
         }
     }
 
@@ -56,19 +56,19 @@ struct ExtendedAttributeIOTests {
             let target = try tree.writeFile("target.txt", contents: "hi")
             try tree.symlink("link", to: target)
             try ExtendedAttributeIO.set(
-                "com.dirnex.target", to: Data("t".utf8), at: .local(target)
+                "app.dirnex.target", to: Data("t".utf8), at: .local(target)
             )
             try ExtendedAttributeIO.set(
-                "com.dirnex.link", to: Data("l".utf8), at: .local(tree.path("link"))
+                "app.dirnex.link", to: Data("l".utf8), at: .local(tree.path("link"))
             )
 
             let linkNames = try ExtendedAttributeIO.names(at: .local(tree.path("link")))
-            #expect(linkNames.contains("com.dirnex.link"))
-            #expect(!linkNames.contains("com.dirnex.target"))
+            #expect(linkNames.contains("app.dirnex.link"))
+            #expect(!linkNames.contains("app.dirnex.target"))
 
             let targetNames = try ExtendedAttributeIO.names(at: .local(target))
-            #expect(targetNames.contains("com.dirnex.target"))
-            #expect(!targetNames.contains("com.dirnex.link"))
+            #expect(targetNames.contains("app.dirnex.target"))
+            #expect(!targetNames.contains("app.dirnex.link"))
         }
     }
 
@@ -79,12 +79,12 @@ struct ExtendedAttributeIOTests {
 
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/bin/xattr")
-            process.arguments = ["-w", "com.dirnex.probe", "hello", file]
+            process.arguments = ["-w", "app.dirnex.probe", "hello", file]
             try process.run()
             process.waitUntilExit()
             #expect(process.terminationStatus == 0)
 
-            #expect(try ExtendedAttributeIO.value(of: "com.dirnex.probe", at: .local(file))
+            #expect(try ExtendedAttributeIO.value(of: "app.dirnex.probe", at: .local(file))
                 == Data("hello".utf8))
         }
     }
@@ -93,8 +93,8 @@ struct ExtendedAttributeIOTests {
     func worksOnDirectories() throws {
         try withTree { tree in
             let dir = VFSPath.local(try tree.makeDir("folder"))
-            try ExtendedAttributeIO.set("com.dirnex.probe", to: Data("d".utf8), at: dir)
-            #expect(try ExtendedAttributeIO.value(of: "com.dirnex.probe", at: dir)
+            try ExtendedAttributeIO.set("app.dirnex.probe", to: Data("d".utf8), at: dir)
+            #expect(try ExtendedAttributeIO.value(of: "app.dirnex.probe", at: dir)
                 == Data("d".utf8))
         }
     }

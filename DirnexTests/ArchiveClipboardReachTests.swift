@@ -140,7 +140,7 @@ struct ArchiveClipboardReachTests {
 
     @Test("the board carries the member's location and no file URL, which it has none of")
     func boardCarriesTheMember() throws {
-        let board = NSPasteboard(name: NSPasteboard.Name("com.dirnex.tests.archive-member"))
+        let board = NSPasteboard(name: NSPasteboard.Name("app.dirnex.tests.archive-member"))
         board.clearContents()
         #expect(PanelPasteboard.write([member("/docs/x.md")], to: board))
 
@@ -161,7 +161,7 @@ struct ArchiveClipboardReachTests {
     func memberDropsIntoALocalFolder() throws {
         // Before this slice the *board* was empty — `PanelPasteboard.write` refused the row — so
         // `dropPlan` answered `nil` and the pane showed "no drop" with nothing to say why.
-        let board = NSPasteboard(name: NSPasteboard.Name("com.dirnex.tests.archive-drop"))
+        let board = NSPasteboard(name: NSPasteboard.Name("app.dirnex.tests.archive-drop"))
         board.clearContents()
         #expect(PanelPasteboard.write([member("/docs/x.md")], to: board))
 
@@ -186,7 +186,7 @@ struct ArchiveClipboardReachTests {
         // could not reach until `dropPlan` took its modifiers: every *unmodified* archive drop is
         // already a backend crossing, so it copies whether or not the rule is there. What the badge
         // says is what the user is promised — `validateDrop` returns `plan.operation`.
-        let board = NSPasteboard(name: NSPasteboard.Name("com.dirnex.tests.archive-forced"))
+        let board = NSPasteboard(name: NSPasteboard.Name("app.dirnex.tests.archive-forced"))
         board.clearContents()
         #expect(PanelPasteboard.write([member("/docs/x.md")], to: board))
 
@@ -203,7 +203,7 @@ struct ArchiveClipboardReachTests {
 
     @Test("holding ⌘ over an ordinary local row still moves — the rule stays narrow")
     func forcedMoveOverALocalRowStillMoves() throws {
-        let board = NSPasteboard(name: NSPasteboard.Name("com.dirnex.tests.local-forced"))
+        let board = NSPasteboard(name: NSPasteboard.Name("app.dirnex.tests.local-forced"))
         board.clearContents()
         #expect(PanelPasteboard.write([entry(.local("/tmp/src/a.txt"))], to: board))
 
