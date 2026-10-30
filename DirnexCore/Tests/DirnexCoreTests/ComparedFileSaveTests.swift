@@ -200,7 +200,9 @@ struct ComparedFileSaveTests {
         let path = try tree.writeFile("a.txt", contents: Self.text)
         #expect(chmod(path, 0o444) == 0)
 
-        #expect(throws: ComparedFileSave.Failure.failed(.permissionDenied(.local(path)))) {
+        #expect(throws: ComparedFileSave.Failure.failed(
+            .permissionDenied(.local(path), refusedBy: .itemPermissions)
+        )) {
             try Self.save(try Fixture.edited(Self.text, lastLine: "x"), to: path)
         }
         #expect(Fixture.read(path) == Self.text)

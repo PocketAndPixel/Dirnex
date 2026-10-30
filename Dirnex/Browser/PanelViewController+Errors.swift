@@ -49,7 +49,7 @@ enum VFSErrorText {
         }
         guard let vfsError = error as? VFSError else { return error.localizedDescription }
         switch vfsError {
-        case let .permissionDenied(path):
+        case let .permissionDenied(path, refusal):
             // **Full Disk Access is a macOS grant, and on a server it is advice about the wrong
             // machine.** This sentence had no idea which backend it was describing, so every remote
             // refusal — an S3 bucket policy, an SFTP mode, an FTP account — sent the user to a
@@ -96,6 +96,17 @@ enum VFSErrorText {
             if isOnNetworkShare(path) {
                 return String(localized: """
                 The server refused that. This account may not have permission for it.
+                """)
+            }
+            // **And an `EACCES` on this Mac's own disk is the item's mode bits, which no grant
+            // lifts.** Reported 2026-10-30 on another account's `drwx------` Documents: the sheet
+            // sent an administrator to Full Disk Access, which TCC refusals need and this one cannot
+            // use, since they arrive as `EPERM` (``PermissionRefusal``). It comes after the share
+            // test because a share's `EACCES` is the server's decision, not a mode on this Mac.
+            if refusal == .itemPermissions {
+                return String(localized: """
+                File permissions don’t allow that for this account, and Full Disk Access can’t change \
+                them. The owner or an administrator can.
                 """)
             }
             return String(localized: """

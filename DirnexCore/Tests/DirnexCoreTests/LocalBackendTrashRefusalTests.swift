@@ -81,7 +81,7 @@ struct LocalBackendTrashRefusalTests {
             cocoa(NSFileWriteUnknownError, underlying: underlying),
             path: path
         )
-        #expect(mapped == .permissionDenied(path))
+        #expect(mapped == .permissionDenied(path, refusedBy: .itemPermissions))
     }
 
     /// 3328 is a *verdict about the volume*, not about the item, so it must not be confused with
