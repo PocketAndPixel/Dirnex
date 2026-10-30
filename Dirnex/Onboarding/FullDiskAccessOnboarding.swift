@@ -182,8 +182,9 @@ enum FullDiskAccessOnboarding {
     // MARK: - Plumbing
 
     /// Open Privacy & Security ▸ Full Disk Access with the pane already selected. The URL is the
-    /// core's pinned constant; `NSWorkspace.open` brings System Settings forward.
-    private static func openSystemSettings() {
+    /// core's pinned constant; `NSWorkspace.open` brings System Settings forward. Internal for the
+    /// error alerts' button, which goes to the same pane (``NSAlert/offerFullDiskAccessSettings(closesAlert:open:)``).
+    static func openSystemSettings() {
         guard let url = URL(string: FullDiskAccess.systemSettingsURLString) else { return }
         NSWorkspace.shared.open(url)
     }
