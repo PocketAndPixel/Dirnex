@@ -9504,6 +9504,13 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     `out.zip` in `NSTemporaryDirectory()`, ran side by side for three seconds, and one test's "no
     `out.zip` left" check found another's mid-upload. On Oleg's user each takes milliseconds and
     the race never showed in 50 runs; a planted stray `out.zip` reproduced it at once.
+  - **A late FSEvents callback shows there that never shows here.** The next Beta (2026-10-30)
+    failed "a file watcher stays silent for its siblings": one callback after the quiesce, and the
+    count stayed 1 through all three sibling writes, so no sibling caused it. 15 full suite runs and
+    30 runs of the test under CPU load and file churn never showed it on Oleg's user. The test now
+    writes five siblings and allows one fire, and three controls pin that: a stream on the parent
+    fires 5 times and fails, one injected stray passes, two fail. A test that counts what must
+    *not* happen needs a margin for one event it can't attribute.
 
 ## Distribution and licensing
 
