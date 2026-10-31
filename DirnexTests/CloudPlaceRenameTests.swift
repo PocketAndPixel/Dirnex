@@ -349,9 +349,13 @@ private final class CloudOpenRecorder: SidebarViewControllerDelegate {
         didActivateFavorite entry: FavoriteEntry,
         inNewTab: Bool
     ) {}
-    func sidebar(_ sidebar: SidebarViewController, didActivateSavedSearch savedSearch: SavedSearch) {}
-    func sidebarDidActivateRecents(_ sidebar: SidebarViewController) {}
-    func sidebarDidActivateTrash(_ sidebar: SidebarViewController) {}
+    func sidebar(
+        _ sidebar: SidebarViewController,
+        didActivateSavedSearch savedSearch: SavedSearch,
+        inNewTab: Bool
+    ) {}
+    func sidebarDidActivateRecents(_ sidebar: SidebarViewController, inNewTab: Bool) {}
+    func sidebarDidActivateTrash(_ sidebar: SidebarViewController, inNewTab: Bool) {}
     func sidebarDidRequestEmptyTrash(_ sidebar: SidebarViewController) {}
     func sidebar(
         _ sidebar: SidebarViewController,
@@ -366,6 +370,6 @@ private final class CloudOpenRecorder: SidebarViewControllerDelegate {
     ) {}
     func sidebar(_ sidebar: SidebarViewController, didRequestLockOf vault: VaultLocation) {}
     func sidebar(_ sidebar: SidebarViewController, didRequestRenameOf vault: VaultLocation) {}
-    func sidebar(_ sidebar: SidebarViewController, didActivateTag tag: FinderTag) {}
+    func sidebar(_ sidebar: SidebarViewController, didActivateTag tag: FinderTag, inNewTab: Bool) {}
     func sidebarDidClickEmptyArea(_ sidebar: SidebarViewController) {}
 }

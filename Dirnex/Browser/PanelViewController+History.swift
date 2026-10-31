@@ -15,16 +15,27 @@ import DirnexCore
 extension PanelViewController {
     // MARK: - Trail state (drives the titlebar Back/Forward buttons' enabled state)
 
-    /// Whether ⌘[ / the Back button can step this tab's trail back.
-    var canGoBack: Bool { tabs[activeTabIndex].history.canGoBack }
+    /// Whether ⌘[ / the Back button can step this tab's trail back — or leave a results listing for
+    /// the folder it replaced, which is a step back with nothing older on the trail.
+    var canGoBack: Bool { trailIndexUnderResults != nil || tabs[activeTabIndex].history.canGoBack }
     /// Whether ⌘] / the Forward button can step this tab's trail forward.
     var canGoForward: Bool { tabs[activeTabIndex].history.canGoForward }
 
     // MARK: - Commands (dispatched to the focused pane via the responder chain)
 
     /// ⌘[ — step back to the previously visited directory in this tab's trail.
+    ///
+    /// Off a results listing shown in place of a folder, back is that folder: a jump to the entry the
+    /// trail is still on (`trailIndexUnderResults`), so the pane lands on the row it was left at.
+    /// Once that walk is under way, a second ⌘[ steps on past the folder as usual.
     @objc func goBack(_ sender: Any?) {
-        guard let path = tabs[activeTabIndex].history.back() else { return }
+        let history = tabs[activeTabIndex].history
+        let path = if history.walk == nil, let index = trailIndexUnderResults {
+            tabs[activeTabIndex].history.jump(to: index)
+        } else {
+            tabs[activeTabIndex].history.back()
+        }
+        guard let path else { return }
         navigate(to: path, recordHistory: false)
     }
 
@@ -41,6 +52,30 @@ extension PanelViewController {
         // Drop the menu from the path bar's bottom edge, matching the favorites popup.
         let origin = NSPoint(x: 8, y: pathBar.isFlipped ? pathBar.bounds.maxY : 0)
         menu.popUp(positioning: nil, at: origin, in: pathBar)
+    }
+
+    // MARK: - A results listing over a folder
+
+    /// Whether a trail can hold `path`: a place that lists again by path, which a search's or a
+    /// merged listing's synthetic path does not, nor a browsed archive's (`navigate`).
+    static func trailCanHold(_ path: VFSPath) -> Bool {
+        path.backend == .local || path.backend.isRemoteConnection
+    }
+
+    /// The trail entry a results listing shown in place of a folder stands over, or `nil` when the
+    /// pane is showing anything else.
+    ///
+    /// A results listing never enters the trail, so when one replaces a folder (`installResults`) the
+    /// trail is still on that folder. That is where ⌘[ goes, rather than one further back, and what
+    /// leaving the listing any other way steps on from (`navigate`). A tab that *opened* on results,
+    /// with ⌘, holds only their synthetic path and has no folder under them.
+    var trailIndexUnderResults: Int? {
+        let history = tabs[activeTabIndex].history
+        let underneath = history.entries[history.landedIndex]
+        guard isResultsListing, underneath != panel.path, Self.trailCanHold(underneath) else {
+            return nil
+        }
+        return history.landedIndex
     }
 
     // MARK: - Where the pane was in each folder

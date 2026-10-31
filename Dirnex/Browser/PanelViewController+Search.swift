@@ -122,24 +122,19 @@ extension PanelViewController {
     /// (`/2026`, `/docs`) answers **zero** instead. Both are the quiet direction and the first is
     /// the worse one: an empty pane at least looks like an answer about nothing, where a full one
     /// looks like an answer about the thing you asked for.
-    func runSavedSearch(_ savedSearch: SavedSearch) {
+    ///
+    /// The hits replace the active tab's listing, or with ⌘ (`inNewTab`) open in a new tab.
+    func runSavedSearch(_ savedSearch: SavedSearch, inNewTab: Bool = false) {
+        // A saved search carries a friendly name — label its results tab with it, not the query.
+        let landing = SearchLanding(title: savedSearch.name, over: resultsTarget(inNewTab: inNewTab))
         switch SearchRoute.forSavedSearch(savedSearch) {
         case .spotlight:
-            // A saved search carries a friendly name — label its results tab with it, not the query.
             // A `nil` scope routes here and stays `nil`: that is Spotlight's "everywhere".
-            performSearch(
-                savedSearch.query,
-                scope: savedSearch.scope,
-                landing: SearchLanding(title: savedSearch.name)
-            )
+            performSearch(savedSearch.query, scope: savedSearch.scope, landing: landing)
         case .walk:
             // Non-`nil` by construction — only a scope can route here, since a walk needs a root.
             guard let scope = savedSearch.scope else { return }
-            performWalkSearch(
-                savedSearch.query,
-                under: scope,
-                landing: SearchLanding(title: savedSearch.name)
-            )
+            performWalkSearch(savedSearch.query, under: scope, landing: landing)
         case .unavailable:
             guard let scope = savedSearch.scope else { return }
             presentUnsearchableScope(at: scope)
@@ -155,11 +150,13 @@ extension PanelViewController {
     ///
     /// Matched by name only, because a name is all Spotlight indexes (`FileQuery.tags`) — which
     /// costs nothing here, since a tag *is* its name to macOS and the color is only how it is drawn.
-    func runTagSearch(_ tag: FinderTag) {
+    ///
+    /// The hits replace the active tab's listing, or with ⌘ (`inNewTab`) open in a new tab.
+    func runTagSearch(_ tag: FinderTag, inNewTab: Bool = false) {
         performSearch(
             FileQuery(tags: [tag.name]),
             scope: nil,
-            landing: SearchLanding(title: tag.name)
+            landing: SearchLanding(title: tag.name, over: resultsTarget(inNewTab: inNewTab))
         )
     }
 
@@ -181,18 +178,20 @@ extension PanelViewController {
 
     // MARK: - Recents
 
-    /// Show Finder's **Recents** — recently-used files, everywhere — in a virtual results tab
+    /// Show Finder's **Recents** — recently-used files, everywhere — in a virtual results listing
     /// (PLAN.md §M8 "Recents row … reuses machinery instead of adding some"). Reached from the
     /// sidebar's first row; runs off the main thread like a search and lands in the same virtual
     /// results panel, sorted by `RecentsQuery.resultSort` (newest first) rather than the pane's sort.
+    /// It replaces the active tab's listing, or with ⌘ (`inNewTab`) opens in a new tab.
     ///
     /// `searchQuery` is left `nil`, so "Save Search…" stays disabled: Recents is a fixed system
     /// listing, not a query a user composed and might want to keep.
-    func showRecents() {
+    func showRecents(inNewTab: Bool = false) {
         let backend = backend
+        let target = resultsTarget(inNewTab: inNewTab)
         Task {
             let results = await SpotlightSearchRunner.runRecents(RecentsQuery(), backend: backend)
-            openResults(
+            landResults(
                 results.entries,
                 truncated: results.truncated,
                 as: ResultsPresentation(
@@ -207,7 +206,8 @@ extension PanelViewController {
                         localized: "Recents",
                         comment: "Tab title for the Recents listing."
                     )
-                )
+                ),
+                over: target
             )
         }
     }

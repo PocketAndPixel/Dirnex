@@ -280,23 +280,23 @@ final class SidebarViewController: NSViewController {
     /// where to go, which a path cannot express.
     ///
     /// `inNewTab` (⌘-click, ⌘Return) opens the place in a new tab of the active pane instead of
-    /// replacing what that tab shows. Only the places that *replace* a listing take it: Recents, the
-    /// Trash, a saved search and a tag already open their results in a tab of their own on every
-    /// click, so for them ⌘ has nothing left to change.
+    /// replacing what that tab shows. Every place takes it: Recents, the Trash, a saved search and a
+    /// tag replace the tab's listing with their results as a folder does, and used to be the
+    /// exception that opened a tab of their own on every click.
     func activate(_ place: SidebarPlace, inNewTab: Bool = false) {
         switch place {
         case .recents:
-            delegate?.sidebarDidActivateRecents(self)
+            delegate?.sidebarDidActivateRecents(self, inNewTab: inNewTab)
         case .trash:
-            delegate?.sidebarDidActivateTrash(self)
+            delegate?.sidebarDidActivateTrash(self, inNewTab: inNewTab)
         case let .savedSearch(savedSearch):
-            delegate?.sidebar(self, didActivateSavedSearch: savedSearch)
+            delegate?.sidebar(self, didActivateSavedSearch: savedSearch, inNewTab: inNewTab)
         case let .server(server):
             delegate?.sidebar(self, didActivateServer: server, inNewTab: inNewTab)
         case let .vault(vault):
             delegate?.sidebar(self, didActivateVault: vault, inNewTab: inNewTab)
         case let .tag(tag):
-            delegate?.sidebar(self, didActivateTag: tag)
+            delegate?.sidebar(self, didActivateTag: tag, inNewTab: inNewTab)
         case .iCloudDrive:
             // Dispatched rather than navigated even though the place *has* a path: what it opens is
             // the merge of that container with the app libraries beside it, which is a listing to

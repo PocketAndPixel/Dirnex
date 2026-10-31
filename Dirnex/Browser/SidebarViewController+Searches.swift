@@ -91,7 +91,7 @@ extension SidebarViewController {
     @objc private func runSavedSearchItem(_ sender: NSMenuItem) {
         guard let name = sender.representedObject as? String,
               let search = SavedSearchStore.load().search(named: name) else { return }
-        delegate?.sidebar(self, didActivateSavedSearch: search)
+        delegate?.sidebar(self, didActivateSavedSearch: search, inNewTab: false)
     }
 
     @objc private func renameSavedSearchItem(_ sender: NSMenuItem) {
