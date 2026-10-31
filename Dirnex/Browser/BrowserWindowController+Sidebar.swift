@@ -63,34 +63,40 @@ extension BrowserWindowController: SidebarViewControllerDelegate {
         (activePanel ?? leftPanel).jumpToFavorite(entry, inNewTab: inNewTab)
     }
 
-    /// A saved search re-runs its query in the active pane, opening the hits in a virtual
-    /// results tab, then hands focus back so browsing the results continues without a mouse.
-    func sidebar(_ sidebar: SidebarViewController, didActivateSavedSearch savedSearch: SavedSearch) {
+    /// A saved search re-runs its query in the active pane, its hits replacing what the active tab
+    /// shows (or, with ⌘, in a new tab), then hands focus back so browsing the results continues
+    /// without a mouse.
+    func sidebar(
+        _ sidebar: SidebarViewController,
+        didActivateSavedSearch savedSearch: SavedSearch,
+        inNewTab: Bool
+    ) {
         let target = activePanel ?? leftPanel
-        target.runSavedSearch(savedSearch)
+        target.runSavedSearch(savedSearch, inNewTab: inNewTab)
         target.focusTable()
     }
 
-    /// Recents opens the recently-used files as a virtual results tab in the active pane, the way a
-    /// saved search does (PLAN.md §M8), then hands focus back for keyboard browsing of the results.
-    func sidebarDidActivateRecents(_ sidebar: SidebarViewController) {
+    /// Recents shows the recently-used files as a virtual results listing in the active pane, the
+    /// way a saved search does (PLAN.md §M8), then hands focus back for keyboard browsing of the
+    /// results.
+    func sidebarDidActivateRecents(_ sidebar: SidebarViewController, inNewTab: Bool) {
         let target = activePanel ?? leftPanel
-        target.showRecents()
+        target.showRecents(inNewTab: inNewTab)
         target.focusTable()
     }
 
     /// The Trash opens as a merged listing of every volume's trash in the active pane (PLAN.md §M8),
     /// then hands focus back so it can be walked — and emptied — from the keyboard.
-    func sidebarDidActivateTrash(_ sidebar: SidebarViewController) {
+    func sidebarDidActivateTrash(_ sidebar: SidebarViewController, inNewTab: Bool) {
         let target = activePanel ?? leftPanel
-        target.showTrash()
+        target.showTrash(inNewTab: inNewTab)
         target.focusTable()
     }
 
     /// iCloud Drive opens in the active pane as the merge Finder shows — the CloudDocs container's
     /// loose files plus each app's own document folder (PLAN.md §M9) — then hands focus back for
-    /// keyboard browsing. Unlike the Trash it replaces the pane's listing rather than opening a tab
-    /// beside it: it is a place people browse repeatedly, and a tab per click would stack up.
+    /// keyboard browsing. Like every place it replaces the pane's listing, and opens a tab beside it
+    /// only with ⌘.
     func sidebarDidActivateICloud(_ sidebar: SidebarViewController, inNewTab: Bool) {
         let target = activePanel ?? leftPanel
         target.showICloudDrive(inNewTab: inNewTab)
@@ -131,9 +137,9 @@ extension BrowserWindowController: SidebarViewControllerDelegate {
 
     /// A tag row searches for the files carrying it and shows them in the active pane, the way a
     /// saved search does — a tag is a query, not a place.
-    func sidebar(_ sidebar: SidebarViewController, didActivateTag tag: FinderTag) {
+    func sidebar(_ sidebar: SidebarViewController, didActivateTag tag: FinderTag, inNewTab: Bool) {
         let target = activePanel ?? leftPanel
-        target.runTagSearch(tag)
+        target.runTagSearch(tag, inNewTab: inNewTab)
         target.focusTable()
     }
 

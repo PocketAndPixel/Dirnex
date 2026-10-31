@@ -75,6 +75,49 @@ extension PanelViewController {
         if truncated { presentTruncationNotice() }
     }
 
+    /// The tab a place's results are to replace, and the listing it was showing when the place was
+    /// picked — so results that take a while to gather can tell whether it still is.
+    struct ResultsTarget {
+        let tab: PanelTab
+        let path: VFSPath
+    }
+
+    /// Where a place picked from the sidebar or ⌘G puts its results: over the active tab's listing,
+    /// as picking a folder replaces it, or with ⌘ (`inNewTab`) in a new tab beside it (`nil`).
+    func resultsTarget(inNewTab: Bool) -> ResultsTarget? {
+        inNewTab ? nil : ResultsTarget(tab: tabs[activeTabIndex], path: panel.path)
+    }
+
+    /// Land a place's results where `target` says: in place of the listing the active tab was
+    /// showing when the place was picked, or in a new tab beside it when `target` is `nil`.
+    ///
+    /// A search can take seconds, and the user may have moved on meanwhile — to another tab, or into
+    /// a folder. Replacing the listing then would yank them out of where they went, so the results
+    /// open a tab of their own instead: the rule an edited search's hits follow (`landSearchResults`),
+    /// and what these places did on every click before they replaced the listing.
+    ///
+    /// `sources` are the directories a merged listing (the Trash) was gathered from, which the tab it
+    /// lands in has to watch, recorded in the order each way in needs (`showICloudDrive`'s).
+    func landResults(
+        _ entries: [FileEntry],
+        truncated: Bool = false,
+        as presentation: ResultsPresentation,
+        over target: ResultsTarget?,
+        mergedFrom sources: [VFSPath] = []
+    ) {
+        guard let target, tabs[activeTabIndex] === target.tab, panel.path == target.path else {
+            openResults(entries, truncated: truncated, as: presentation)
+            if !sources.isEmpty { watchMergedListing(sources: sources, force: true) }
+            return
+        }
+        // Before the install, so the watcher it starts is the merged one; and emptied for a listing
+        // that is not merged, so a Trash it replaces stops being watched.
+        mergedSources = sources
+        installResults(entries, as: presentation)
+        focusTable()
+        if truncated { presentTruncationNotice() }
+    }
+
     /// Mark `tab` as holding the listing `presentation` describes: loaded, so nothing tries to
     /// re-list the synthetic path, and carrying what produced it — the query and scope "Save
     /// Search…" persists and an edit re-opens (nil for Recents and the Trash), and the chip label a
@@ -108,10 +151,15 @@ extension PanelViewController {
     /// Install gathered entries into the tab **already active**, the way navigating to a directory
     /// replaces its listing — for a virtual listing that names a place rather than a query.
     ///
-    /// iCloud Drive is one caller: a user clicks it repeatedly while browsing, and `openResults`'
-    /// tab-per-click is right for a search or the Trash but stacks up for a destination. An edited
-    /// search is the other, for the same reason one step removed — changing a condition is still the
-    /// same question, and a tab per change would stack up just as fast (`+SearchEdit`). Everything
+    /// Every place picked without ⌘ lands here (`landResults`), since a tab per click stacks up: iCloud
+    /// Drive was the first, and Recents, the Trash, saved searches and tags followed it. An edited
+    /// search is the other caller, for the same reason one step removed — changing a condition is
+    /// still the same question, and a tab per change would stack up just as fast (`+SearchEdit`).
+    ///
+    /// The folder a listing replaces stays the trail's entry on screen, since a results listing never
+    /// enters the trail: where the cursor was in it is noted there, so ⌘[ comes back to that row
+    /// (`trailIndexUnderResults`), and so is the sort it was listed in, since Recents brings its own
+    /// (`PanelTab.sortUnderResults`). A listing replacing another listing leaves both alone. Everything
     /// a `navigate` does for the pane's chrome happens here too, minus the parts that only mean
     /// something for a real directory — the load is already done, the synthetic path is not
     /// watchable, and it never enters the back/forward trail (it can't be re-listed by path, so
@@ -120,6 +168,10 @@ extension PanelViewController {
         // Any directory load still in flight would land after this and overwrite the merge.
         loadToken += 1
         let departed = panel.path
+        if !isResultsListing {
+            rememberSpot(leaving: departed, inTab: activeTabIndex)
+            tabs[activeTabIndex].sortUnderResults = panel.model.sort
+        }
         panel.setModel(resultsModel(entries, as: presentation))
         // The same line `navigate` runs here, and for the same reason: `setModel` *keeps* a tree
         // across a navigation (re-rooted, all collapsed), so a pane that was a tree when the user

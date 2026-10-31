@@ -14,9 +14,11 @@ import DirnexCore
 /// union installs as an `.icloud` listing. Three things differ from the Trash, all because iCloud
 /// Drive is a place people *put* things rather than a bin they empty:
 ///
-/// - **It navigates in place**, like clicking a Favorite, rather than opening a tab beside the
-///   current one. The Trash and Recents are results a user visits once; iCloud Drive is browsed
-///   repeatedly, and a tab per click stacks up.
+/// - **Its folders open in place**: stepping into one walks this pane there, where a folder in the
+///   Trash or a search opens in the other pane so the listing survives. iCloud Drive was also the
+///   first virtual listing to replace the tab's own rather than open a tab beside it, since it is
+///   browsed repeatedly and a tab per click stacks up; the Trash, Recents and searches followed on
+///   2026-10-31 (`landResults`).
 /// - **The root is writable**, through `writeDirectory`: New Folder, paste and drop land in the
 ///   CloudDocs container underneath. A merged listing has no directory of its own, but this one has
 ///   an obvious real home, and refusing a drag onto iCloud Drive would be a worse lie than the
@@ -45,8 +47,8 @@ extension PanelViewController {
     /// folders the listing stands in front of, which is what `selecting` is for: the cursor lands on
     /// the row just left, exactly as walking up out of any folder does.
     ///
-    /// `inNewTab` (the row picked with ⌘) lands the merge in a tab of its own, the way the Trash
-    /// always opens, and leaves the active tab showing what it was.
+    /// `inNewTab` (the row picked with ⌘) lands the merge in a tab of its own, and leaves the active
+    /// tab showing what it was.
     func showICloudDrive(selecting target: VFSPath? = nil, inNewTab: Bool = false) {
         gatherICloudDrive { [weak self] entries, sources in
             guard let self else { return }

@@ -80,9 +80,9 @@ extension PanelViewController: NSMenuItemValidation {
             // fall back to.
             return canFindFiles
         case #selector(goBack(_:)):
-            return tabs[activeTabIndex].history.canGoBack
+            return canGoBack
         case #selector(goForward(_:)):
-            return tabs[activeTabIndex].history.canGoForward
+            return canGoForward
         case #selector(showHistory(_:)):
             // Let ⌥↓ reach a field editor while a name/path field is being edited instead of
             // stealing it to open the history popup.

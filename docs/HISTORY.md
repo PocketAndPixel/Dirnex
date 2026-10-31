@@ -18680,6 +18680,51 @@ its sidebar row.
   the first listing waited on macOS's access prompt for the differently signed Debug build, which Oleg
   answered. The defaults domain was restored and compared unchanged.
 
+**2026-10-31: Recents, the Trash, saved searches and tags replace the tab's listing** (app only).
+Asked for by Oleg once ⌘ opened every place in a new tab: these four opened a results tab on every
+click, so a plain click and a ⌘-click did the same. Now a click, Return, or picking one from ⌘G or
+Go ▸ Places replaces what the active tab shows, as a folder does, and ⌘ opens a new tab. Tags were not
+named in the request and were included, being the same kind of place; ⌥F7 still opens a tab.
+
+- **App:** the four sidebar verbs carry `inNewTab`, so `SidebarViewController.activate(_:inNewTab:)`
+  passes ⌘ to every place. The context menus' Open, Run Search and Find Tagged Files act as a plain
+  click. Each opener takes a `ResultsTarget`, the tab and the listing it showed at the click, and
+  `landResults` installs in place through `installResults`, iCloud Drive's path. If that tab is no
+  longer in front or has moved to another folder while Spotlight ran, the results open in a new tab,
+  the rule an edited search already followed. A Trash landing records its sources on whichever tab it
+  lands in.
+- **Two things replacing a folder broke, found reading the trail code before writing.** A results
+  listing never enters the trail, so ⌘[ from one stepped back *past* the folder it replaced, and
+  leaving it reset the trail to one entry (iCloud Drive had done both since M9). Now
+  `trailIndexUnderResults` names the folder under a listing. ⌘[ jumps to it, which restores the row
+  the cursor was on (`installResults` now remembers that spot), and Back is enabled there even with
+  nothing older on the trail. `navigate` steps on from that folder instead of starting a fresh trail.
+  The other break was Recents' own sort (newest first, folders mixed in), which a tab carries into
+  the next folder. `PanelTab.sortUnderResults` keeps the folder's sort, and leaving lists in it.
+- **Tests:** `ResultsInPlaceTests` (8): in place versus ⌘, a tab that moved on or was left getting a
+  tab of its own, a saved search's name and query, a Trash's sources dropped by the next listing, ⌘[
+  landing on the row and the sort, ⌘[ over a tab's first folder, leaving keeping the trail, and a tab
+  opened with ⌘ having nothing under its results. `SidebarNewTabTests` now asserts all ten places
+  carry the flag. Negative control, five reverts in one build: Back ignoring the folder, the trail
+  reset, the results' sort kept, no staleness check, and Recents dropping the flag each failed their
+  own tests. Full runs green (4 664 core, 2 089 app with the known `GestureWaitTests` issue;
+  live-server suites skipped). One full run failed `VanishedFolderTests.operationRefresh`, which then
+  passed alone three times and in two further full runs. Both linters clean.
+- **A test raised the Trash's Full Disk Access alert on Oleg's screen, every run.** The first Trash
+  test landed on a pane whose view was never loaded. `landResults` ends in `focusTable()`, which loaded
+  it, and `viewDidLoad` re-listed the tab in front, by then the Trash: the real `~/.Trash`, refused to
+  the test host, whose alert falls back to `runModal()` with no window. A temporary probe logging the
+  caller of `gatherTrash` named the test. The fixture now loads the view first, as
+  `VanishedFolderTests` does, and a full run with the probe still in never reached `gatherTrash`.
+- **Seen live** in the Debug build, launched by path. Return on Recents (sidebar focused from the
+  keyboard) replaced the left pane's third tab, and Go ▸ Back put it back on `/Volumes/media`, tree
+  open and the cursor on the row it had left, sorted by name. ⌘Return on PDFs added a fourth tab and
+  left `media` alone, and Return on Htmls then replaced the PDFs results in that tab. The saved tabs
+  read back each step. A background click on a row only selects it, and Go ▸ Places ▸ Recents could
+  not be pressed from the background, since that submenu rebuilds its items as it opens. **Not run
+  live:** the Trash, which this Debug build cannot list without Full Disk Access, and tags. The
+  defaults domain was restored and compared unchanged.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
