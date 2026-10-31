@@ -40,6 +40,11 @@ struct PlacesMenuTests {
         menu.items.first { $0.title == LocalizedCatalog.title(for: section) }?.submenu
     }
 
+    /// The items a menu draws while ⌘ is up, without each destination's ⌘ alternate.
+    private func drawn(_ menu: NSMenu) -> [NSMenuItem] {
+        menu.items.filter { !$0.isAlternate }
+    }
+
     // MARK: - Shape
 
     @Test("the headerless places render bare and the sections as submenus")
@@ -54,7 +59,7 @@ struct PlacesMenuTests {
         #expect(titles.contains(SidebarPlacePresentation.title(for: .trash)))
         // The volume is one level in, not beside them.
         #expect(!titles.contains(volume.name))
-        #expect(submenu(menu, .volumes)?.items.map(\.title) == [volume.name])
+        #expect(submenu(menu, .volumes).map(drawn)?.map(\.title) == [volume.name])
     }
 
     @Test("the Trash is set off from the sections above it, and nothing dangles at the top")
@@ -121,18 +126,20 @@ struct PlacesMenuTests {
 
     // MARK: - The 1–9 jump keys
 
-    /// Every key equivalent in the tree, which is the form the interesting claim takes: AppKit's
-    /// search recurses into submenus and fires the *first* match in menu order, so a digit that
-    /// appears twice is a digit whose meaning depends on where it happens to sit.
+    /// Every key chord in the tree, which is the form the interesting claim takes: AppKit's search
+    /// recurses into submenus and fires the *first* match in menu order, so a chord that appears
+    /// twice is one whose meaning depends on where it happens to sit. A ⌘ alternate's digit is
+    /// written with its ⌘, since it is a different chord from the bare digit it shares.
     private func digitsInTree(_ menu: NSMenu) -> [String] {
         menu.items.flatMap { item -> [String] in
-            let own = item.keyEquivalent.isEmpty ? [] : [item.keyEquivalent]
+            let command = item.keyEquivalentModifierMask.contains(.command) ? "⌘" : ""
+            let own = item.keyEquivalent.isEmpty ? [] : [command + item.keyEquivalent]
             return own + (item.submenu.map { digitsInTree($0) } ?? [])
         }
     }
 
     private func places(_ menu: NSMenu, _ section: SidebarSection) -> [(String, String)] {
-        (submenu(menu, section)?.items ?? []).map { ($0.title, $0.keyEquivalent) }
+        submenu(menu, section).map(drawn)?.map { ($0.title, $0.keyEquivalent) } ?? []
     }
 
     private var threeSections: [SidebarPlaceGroup] {
@@ -148,7 +155,7 @@ struct PlacesMenuTests {
     func topLevelNumbering() {
         let menu = render(threeSections)
         PlacesDigits.hand(to: menu, root: menu)
-        let numbered = menu.items.filter { !$0.keyEquivalent.isEmpty }.map { (
+        let numbered = drawn(menu).filter { !$0.keyEquivalent.isEmpty }.map { (
             $0.title,
             $0.keyEquivalent
         ) }
@@ -172,7 +179,8 @@ struct PlacesMenuTests {
         let menu = render(threeSections)
         PlacesDigits.hand(to: menu, root: menu)
         let recents = menu.items.first { !$0.keyEquivalent.isEmpty }
-        // ⌘1 would be a chord competing with the app's own; this is a key typed while the menu is up.
+        // A key typed while the menu is up, not a chord. ⌘ and the digit is the ⌘ alternate's, and
+        // opens the place in a new tab (`PlacesMenuNewTabTests`).
         #expect(recents?.keyEquivalentModifierMask == [])
     }
 
@@ -189,7 +197,7 @@ struct PlacesMenuTests {
         // precedence, so leaving "1" on Recents means Recents wins from inside Volumes.
         #expect(menu.items.allSatisfy { $0.keyEquivalent.isEmpty })
         let all = digitsInTree(menu)
-        #expect(all == ["1"])
+        #expect(all == ["1", "⌘1"])
         #expect(Set(all).count == all.count)
     }
 
@@ -205,9 +213,7 @@ struct PlacesMenuTests {
         // The restore is deferred a turn, so an open landing in the same pass can win it instead.
         try await Task.sleep(for: .milliseconds(50))
 
-        #expect(
-            menu.items.compactMap { $0.keyEquivalent.isEmpty ? nil : $0.keyEquivalent } == ["1", "2"]
-        )
+        #expect(drawn(menu).map(\.keyEquivalent).filter { !$0.isEmpty } == ["1", "2"])
         #expect(places(menu, .volumes).map(\.1) == [""])
     }
 
@@ -250,7 +256,7 @@ struct PlacesMenuTests {
         guard let vaults = submenu(menu, .vaults) else { Issue.record("no Vaults"); return }
         PlacesDigits.hand(to: vaults, root: menu)
         #expect(
-            vaults.items.map(\.keyEquivalent) == [
+            drawn(vaults).map(\.keyEquivalent) == [
                 "1",
                 "2",
                 "3",

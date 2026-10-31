@@ -30,6 +30,14 @@ extension BrowserWindowController {
         guard let box = (sender as? NSMenuItem)?.representedObject as? PlaceBox else { return }
         sidebar.activate(box.place)
     }
+
+    /// The same, picked with ⌘ (a ⌘-click, ⌘Return, or ⌘ and its digit): open the place in a new tab
+    /// of the active pane, as a ⌘-click on its sidebar row does. Its own selector because AppKit
+    /// dispatches the ⌘ alternate item, not the modifier (`PlacesMenu`).
+    @objc func openPlaceInNewTab(_ sender: Any?) {
+        guard let box = (sender as? NSMenuItem)?.representedObject as? PlaceBox else { return }
+        sidebar.activate(box.place, inNewTab: true)
+    }
 }
 
 // MARK: - SidebarViewControllerDelegate
