@@ -17,13 +17,17 @@ extension PanelViewController {
     ///
     /// The endpoint is the one field here that is not a view nicety: without it a workspace saved on
     /// a server opens somewhere else. It rides through the same `reconnectEndpoint(for:)` session
-    /// restore uses, so the two cannot disagree about what a live connection was made with.
+    /// restore uses, so the two cannot disagree about what a live connection was made with. A tab
+    /// showing results in place of a folder is saved as that folder, as session restore writes it
+    /// down (`folderUnderResults`), since the results cannot be opened again.
     func workspaceSnapshot() -> WorkspacePane {
-        let snapshotTabs = tabs.map {
-            WorkspaceTab(
-                path: $0.panel.path,
-                sort: $0.panel.model.sort,
-                endpoint: reconnectEndpoint(for: $0)
+        let snapshotTabs = tabs.map { tab in
+            let folder = folderUnderResults(in: tab)
+            let sort = folder == nil ? tab.panel.model.sort : tab.sortUnderResults ?? tab.panel.model.sort
+            return WorkspaceTab(
+                path: folder ?? tab.panel.path,
+                sort: sort,
+                endpoint: reconnectEndpoint(for: tab, at: folder)
             )
         }
         return WorkspacePane(tabs: snapshotTabs, activeTabIndex: activeTabIndex)

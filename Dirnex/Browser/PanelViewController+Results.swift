@@ -19,7 +19,13 @@ extension PanelViewController {
     /// `isSearchResults` means specifically "these are Spotlight hits" and gates search-only things
     /// like "Save Search…".
     var isResultsListing: Bool {
-        panel.path.backend == .search || panel.path.backend == .trash || panel.path.backend == .icloud
+        Self.isResultsListing(panel.path)
+    }
+
+    /// Whether `path` is a virtual results listing's synthetic path, for a tab that may not be the
+    /// one in front.
+    static func isResultsListing(_ path: VFSPath) -> Bool {
+        path.backend == .search || path.backend == .trash || path.backend == .icloud
     }
 
     /// How a virtual results tab presents its hits — everything that differs between an ⌥F7/saved

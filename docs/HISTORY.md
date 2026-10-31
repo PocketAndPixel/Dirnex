@@ -18724,6 +18724,24 @@ named in the request and were included, being the same kind of place; ⌥F7 stil
   not be pressed from the background, since that submenu rebuilds its items as it opens. **Not run
   live:** the Trash, which this Debug build cannot list without Full Disk Access, and tags. The
   defaults domain was restored and compared unchanged.
+- **Then a tab of results over a folder comes back as that folder** (asked for by Oleg). Results
+  cannot be restored (`TabRestorePolicy`), so a tab showing them in place was dropped at the next
+  launch, as an iCloud Drive tab already was. `persistState` now writes such a tab down at
+  `folderUnderResults(in:)`, in `sortUnderResults`, with the cursor and open folders taken from the
+  spot the trail kept for that folder, and its trail stored at that folder. `isWorthPersisting` asks
+  the same folder, so one in a vault is still withheld. `workspaceSnapshot` saves the folder too,
+  through the same `reconnectEndpoint(for:at:)`. A tab opened on results with ⌘ has no folder under
+  it and is still left out. LOCATION-SUPPORT.md's reopen row has a footnote for it (<sup>aal</sup>).
+  Tests: 2 more in `ResultsInPlaceTests`, the tab written down and read back at the folder on its row
+  and sort with its trail, and a ⌘ results tab still left out. Negative controls, one build each:
+  without the branch in `persistState` five assertions failed, and without the workspace change its
+  two. Full runs green (4 664 core, 2 091 app with the known `GestureWaitTests` issue). Both linters
+  clean. **Seen live** in the rebuilt Debug build, launched by path after Oleg's own running copy was
+  quit with his go-ahead. Return on Recents over `/Volumes/media` (a tree, two folders open) already
+  saved that tab as the folder, where the previous build had saved `search:/Recents`. Quit with
+  Recents on screen and relaunched, the tab came back as `media`, both folders open, the cursor on the
+  row it had left, sorted by name. The defaults domain was restored and compared unchanged; only
+  frecency and Sparkle's check time had moved.
 
 ---
 
