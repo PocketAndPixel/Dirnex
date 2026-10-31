@@ -265,7 +265,7 @@ struct ResultsInPlaceTests {
         try await fixture.settled(on: fixture.folderB)
     }
 
-    /// The negative control for the three tests above: a tab that opened on results holds only their
+    /// The negative control for the way-back tests: a tab that opened on results holds only their
     /// synthetic path, so it has no folder under them, and leaving starts a fresh trail as before.
     @Test("a tab that opened on results has nothing under them")
     func newResultsTabHasNoFolderUnder() async throws {
@@ -280,5 +280,58 @@ struct ResultsInPlaceTests {
 
         try await fixture.go(to: fixture.sub)
         #expect(pane.tabs[1].history.entries == [fixture.sub])
+    }
+
+    // MARK: - After a relaunch
+
+    /// The results cannot come back after a relaunch (`TabRestorePolicy`), and the tab went with them
+    /// until it was written down as the folder under them.
+    @Test("a tab of results over a folder comes back as that folder, on its row and in its sort")
+    func comesBackAsTheFolder() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let pane = fixture.pane
+        let key = "results-in-place-\(UUID().uuidString)"
+        pane.restorationKey = key
+        pane.tabStateDefaults = TabStateScratch.defaults
+        try await fixture.browseToB()
+        let sort = pane.panel.model.sort
+
+        fixture.landRecents(over: pane.resultsTarget(inNewTab: false))
+
+        let saved = try #require(TabPersistence.load(paneKey: key, from: TabStateScratch.defaults))
+        let written = try #require(saved.tabs.first)
+        #expect(saved.tabs.count == 1)
+        #expect(written.vfsPath == fixture.folderB)
+        #expect(written.sortKey == sort.key.rawValue)
+        #expect(written.sortAscending == sort.ascending)
+        #expect(written.cursorPath == "b2.txt")
+        #expect(written.markedPaths == nil)
+        // A saved workspace takes the same folder, for the same reason.
+        #expect(pane.workspaceSnapshot().tabs.map(\.path) == [fixture.folderB])
+        #expect(pane.workspaceSnapshot().tabs.first?.sort == sort)
+
+        let restored = try #require(PanelViewController.restoredTabs(from: saved).first)
+        #expect(restored.panel.path == fixture.folderB)
+        #expect(restored.pendingCursorPath == "b2.txt")
+        #expect(restored.history.entries == [fixture.folderA, fixture.folderB])
+    }
+
+    /// The narrowness half of the test above.
+    @Test("a tab that opened on results with ⌘ still does not come back")
+    func newResultsTabStaysGone() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let pane = fixture.pane
+        let key = "results-in-place-\(UUID().uuidString)"
+        pane.restorationKey = key
+        pane.tabStateDefaults = TabStateScratch.defaults
+        try await fixture.browseToB()
+
+        fixture.landRecents(over: nil)
+
+        let saved = try #require(TabPersistence.load(paneKey: key, from: TabStateScratch.defaults))
+        #expect(saved.tabs.map(\.vfsPath.backend) == [.local, .search])
+        #expect(PanelViewController.restoredTabs(from: saved).map(\.panel.path) == [fixture.folderB])
     }
 }

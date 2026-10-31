@@ -28,7 +28,8 @@ extension PanelViewController {
             ? kept.firstIndex(where: { $0 === tabs[activeTabIndex] }) ?? 0
             : 0
         let persisted = kept.map { tab in
-            PersistedTab(
+            if let folder = folderUnderResults(in: tab) { return persisted(tab, at: folder) }
+            return PersistedTab(
                 path: tab.panel.path,
                 sort: tab.panel.model.sort,
                 columns: tab.columnLayout,
@@ -52,6 +53,26 @@ extension PanelViewController {
         )
     }
 
+    /// A tab showing results in place of a folder, written down as that folder. The results cannot
+    /// come back themselves (`TabRestorePolicy`), and the tab used to go with them; this way it comes
+    /// back where ⌘[ would have taken it (`folderUnderResults`), in the folder's own sort and on the
+    /// row and open folders the trail remembered there. The folder's marks went when the results
+    /// replaced it, so there are none to write.
+    private func persisted(_ tab: PanelTab, at folder: VFSPath) -> PersistedTab {
+        let spot = tab.history.spots[tab.history.landedIndex]
+        return PersistedTab(
+            path: folder,
+            sort: tab.sortUnderResults ?? tab.panel.model.sort,
+            columns: tab.columnLayout,
+            viewMode: tab.viewMode,
+            expandedPaths: spot.flatMap { $0.expanded.isEmpty ? nil : $0.expanded },
+            cursorPath: spot?.cursor,
+            cursorOnParent: spot?.cursorOnParent ?? false,
+            endpoint: reconnectEndpoint(for: tab, at: folder),
+            history: persistedHistory(for: tab, at: folder)
+        )
+    }
+
     /// Whether this tab is one to write down at all.
     ///
     /// Two exclusions, and they are exclusions for opposite reasons. A tab standing in an **unlocked
@@ -68,7 +89,7 @@ extension PanelViewController {
     /// out. Refused here rather than at the restore, where the only evidence left is a path under
     /// `NSTemporaryDirectory()` — which is a guess, not a fact.
     private func isWorthPersisting(_ tab: PanelTab) -> Bool {
-        isWorthPersisting(tab.panel.path)
+        isWorthPersisting(folderUnderResults(in: tab) ?? tab.panel.path)
     }
 
     /// The same two exclusions for one place, which is what a tab's trail asks of each entry: a
@@ -85,10 +106,14 @@ extension PanelViewController {
     /// facts only the app has: which places it must not keep, and how to reconnect each server the
     /// trail visits — the live connection first, as for the tab itself, then whatever the tab's
     /// restored trail carried, so a trail that came back and was never walked is written back whole.
-    private func persistedHistory(for tab: PanelTab) -> StoredNavigationHistory? {
+    /// `path` is where the tab is written down, when that is not the listing it shows.
+    private func persistedHistory(
+        for tab: PanelTab,
+        at path: VFSPath? = nil
+    ) -> StoredNavigationHistory? {
         let composite = backend as? CompositeBackend
         return tab.history.stored(
-            at: tab.panel.path,
+            at: path ?? tab.panel.path,
             endpoint: { composite?.endpoint(for: $0) ?? tab.endpoint(for: $0) },
             isExcluded: { !isWorthPersisting($0) }
         )
@@ -101,10 +126,12 @@ extension PanelViewController {
     /// The fallback to the tab's own pending endpoint is what keeps an inactive restored tab from
     /// being lost on the second quit: it has never been activated, so nothing has registered a
     /// connection for it, and reading only the composite would write it back down with no way home.
-    func reconnectEndpoint(for tab: PanelTab) -> ServerEndpoint? {
-        guard tab.panel.path.backend.isRemoteConnection else { return nil }
-        let live = (backend as? CompositeBackend)?.endpoint(for: tab.panel.path.backend)
-        return live ?? tab.endpoint(for: tab.panel.path.backend)
+    /// `path` is where the tab is written down, when that is not the listing it shows.
+    func reconnectEndpoint(for tab: PanelTab, at path: VFSPath? = nil) -> ServerEndpoint? {
+        let backendID = (path ?? tab.panel.path).backend
+        guard backendID.isRemoteConnection else { return nil }
+        let live = (backend as? CompositeBackend)?.endpoint(for: backendID)
+        return live ?? tab.endpoint(for: backendID)
     }
 
     /// How one entry is named on disk: its path relative to the tab's root — a bare leaf name for a

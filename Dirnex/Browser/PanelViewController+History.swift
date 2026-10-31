@@ -62,20 +62,26 @@ extension PanelViewController {
         path.backend == .local || path.backend.isRemoteConnection
     }
 
-    /// The trail entry a results listing shown in place of a folder stands over, or `nil` when the
-    /// pane is showing anything else.
+    /// The folder a results listing shown in place of it stands over in `tab`, or `nil` when the tab
+    /// is showing anything else.
     ///
     /// A results listing never enters the trail, so when one replaces a folder (`installResults`) the
-    /// trail is still on that folder. That is where ⌘[ goes, rather than one further back, and what
-    /// leaving the listing any other way steps on from (`navigate`). A tab that *opened* on results,
-    /// with ⌘, holds only their synthetic path and has no folder under them.
-    var trailIndexUnderResults: Int? {
-        let history = tabs[activeTabIndex].history
+    /// trail is still on that folder. That is where ⌘[ goes, rather than one further back, what
+    /// leaving the listing any other way steps on from (`navigate`), and where the tab is written
+    /// down to come back after a relaunch (`persistState`). A tab that *opened* on results, with ⌘,
+    /// holds only their synthetic path and has no folder under them.
+    func folderUnderResults(in tab: PanelTab) -> VFSPath? {
+        let history = tab.history
         let underneath = history.entries[history.landedIndex]
-        guard isResultsListing, underneath != panel.path, Self.trailCanHold(underneath) else {
-            return nil
-        }
-        return history.landedIndex
+        guard Self.isResultsListing(tab.panel.path), underneath != tab.panel.path,
+              Self.trailCanHold(underneath) else { return nil }
+        return underneath
+    }
+
+    /// The trail entry of the folder under the active tab's results (`folderUnderResults`).
+    var trailIndexUnderResults: Int? {
+        let tab = tabs[activeTabIndex]
+        return folderUnderResults(in: tab) == nil ? nil : tab.history.landedIndex
     }
 
     // MARK: - Where the pane was in each folder
