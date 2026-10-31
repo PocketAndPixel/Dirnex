@@ -18657,9 +18657,28 @@ and Go ▸ Places.
   added a tab beside the active one, and the tab it was picked from kept its folder. A plain Return
   replaced the active tab and added none. The saved tabs read back the same seven paths. The
   defaults domain was restored and compared unchanged.
-- **Not seen live:** what the menu draws while ⌘ is held. A screenshot cannot be taken with a key
-  down, and the alternates' titles match their items', so only the digits would change, from 1 to
-  ⌘1. ⌘F's favorites popup does not have the gesture yet.
+- **What ⌘ draws** was seen by Oleg, since a screenshot cannot be taken with a key down: with ⌘
+  held in ⌘G ▸ Searches, the items keep their titles and the digits read ⌘1 and ⌘2.
+
+**2026-10-31: the ⌘F favorites popup gets the same gesture** (app only). Asked for by Oleg once ⌘G's
+had been tried. A pin picked with a ⌘-click, ⌘Return or ⌘ and its digit opens in a new tab, as from
+its sidebar row.
+
+- **App:** the popup builds each pin as its jump item and a ⌘ alternate sending
+  `jumpToFavoriteEntryInNewTab:`, which calls `jumpToFavorite(_:inNewTab: true)`, the funnel the
+  sidebar row already used, so a pin on a server reconnects in the new tab. The alternate takes the
+  pin's digit. The builder now takes the list (`favoritesMenu(for:)`) instead of reading
+  `FavoritesStore`, so a test can render it without the developer's own pins.
+- **Tests:** `FavoritesPopupNewTabTests` (4): the pairs and their digits, a tenth pin pairing with
+  no digit, no alternate beside the empty placeholder, and `performKeyEquivalent` firing the
+  alternate for ⌘2 and the pin's own item for a bare 1. Negative control: with the pin's mask left at
+  its default, 3 failed and the placeholder test passed. Full runs green (4 664 core, 2 082 app with
+  the known `GestureWaitTests` issue). Both linters clean.
+- **Seen live** in the Debug build, launched by path: a ⌘-click on Downloads, ⌘Return on Dev and ⌘2
+  (Home) each added a tab and left the one picked from as it was, and a plain Return on Dev replaced
+  the active tab. The saved tabs read back the same six paths. Downloads is a protected folder, so
+  the first listing waited on macOS's access prompt for the differently signed Debug build, which Oleg
+  answered. The defaults domain was restored and compared unchanged.
 
 ---
 
