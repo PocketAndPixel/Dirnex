@@ -20,6 +20,13 @@ import DirnexCore
 /// is called, or what opening it does. Two differences from the sidebar are deliberate, and both are
 /// about a *table* rather than about the places: a section the user folded shut is still listed
 /// here, and Tags lists every tag rather than the stock seven behind an "All Tags…" row.
+///
+/// **⌘ opens a place in a new tab**, as a ⌘-click or ⌘Return on a sidebar row does. Each destination
+/// is followed by an *alternate* item carrying ⌘, which AppKit shows in its place while ⌘ is held, so
+/// the menu itself decides which of the two was picked. Reading the modifier in the action instead
+/// would lose ⌘Return: measured 2026-10-31 in a probe menu, a ⌘-click's action still saw ⌘ on
+/// `NSApp.currentEvent`, while ⌘Return's saw ⌘'s own key-up and no ⌘ at all. The alternate was
+/// picked for a ⌘-click, for ⌘Return at the top level and inside a submenu, and for ⌘ and a digit.
 @MainActor
 final class PlacesMenu: NSObject {
     /// The one instance, shared by all three faces (PLAN.md §M20 Slice 3).
@@ -72,7 +79,7 @@ final class PlacesMenu: NSObject {
                 // each set off from the sections between them.
                 menu.addItem(.separator())
                 for place in group.places {
-                    menu.addItem(item(for: place, unlockedVaults: unlockedVaults))
+                    items(for: place, unlockedVaults: unlockedVaults).forEach(menu.addItem)
                 }
                 continue
             }
@@ -106,7 +113,7 @@ final class PlacesMenu: NSObject {
             submenu.addItem(empty)
         }
         for place in places {
-            submenu.addItem(item(for: place, unlockedVaults: unlockedVaults))
+            items(for: place, unlockedVaults: unlockedVaults).forEach(submenu.addItem)
         }
         // Its digits are handed out when it opens and taken back when it closes; see `PlacesDigits`.
         submenu.delegate = sectionDelegate
@@ -114,21 +121,39 @@ final class PlacesMenu: NSObject {
         return header
     }
 
-    /// One destination. The place rides in `representedObject` so a store changing while the menu is
-    /// open cannot send the user somewhere else — the same reason the favorites popup carries its
-    /// path rather than an index.
+    /// One destination, as two items: the one drawn, and its ⌘ alternate that opens the place in a
+    /// new tab. The place rides in `representedObject` so a store changing while the menu is open
+    /// cannot send the user somewhere else — the same reason the favorites popup carries its path
+    /// rather than an index.
     ///
     /// `target` stays nil so the action travels the responder chain to the front window's
     /// `BrowserWindowController`: the menu bar is one object shared by every window, and the place
     /// has to open in whichever one the user is looking at.
-    private func item(for place: SidebarPlace, unlockedVaults: Set<String>) -> NSMenuItem {
+    ///
+    /// AppKit pairs an alternate with the item above it by key equivalent, and tells them apart by
+    /// modifier mask alone. So the plain item's mask is set to none here, because an item's default
+    /// is ⌘ and the two would then be identical. The digits `PlacesDigits` hands out go on both.
+    private func items(for place: SidebarPlace, unlockedVaults: Set<String>) -> [NSMenuItem] {
+        let opens = item(for: place, action: #selector(BrowserWindowController.openPlace(_:)))
+        opens.keyEquivalentModifierMask = []
+        opens.image = image(for: place, unlockedVaults: unlockedVaults)
+        let opensInNewTab = item(
+            for: place,
+            action: #selector(BrowserWindowController.openPlaceInNewTab(_:))
+        )
+        opensInNewTab.keyEquivalentModifierMask = .command
+        opensInNewTab.isAlternate = true
+        opensInNewTab.image = opens.image
+        return [opens, opensInNewTab]
+    }
+
+    private func item(for place: SidebarPlace, action: Selector) -> NSMenuItem {
         let item = NSMenuItem(
             title: SidebarPlacePresentation.title(for: place),
-            action: #selector(BrowserWindowController.openPlace(_:)),
+            action: action,
             keyEquivalent: ""
         )
         item.representedObject = PlaceBox(place)
-        item.image = image(for: place, unlockedVaults: unlockedVaults)
         item.toolTip = place.path?.path
         return item
     }
@@ -221,21 +246,25 @@ extension PlacesMenu: NSMenuDelegate {
 /// would swallow — leaving the Trash, the last row, permanently unreachable. Handing them to the
 /// front menu instead keeps every list numbered from 1, which is what makes it read like the
 /// favorites popup rather than like an arbitrary run of numbers.
+///
+/// A destination's ⌘ alternate takes the same digit, so ⌘ and the digit opens that place in a new
+/// tab. The digit is bare on the item drawn, since it is typed while the menu is open rather than as
+/// a chord, and the ⌘ is the alternate's own mask (`PlacesMenu.items(for:)`).
 enum PlacesDigits {
     /// Give `menu` the digits and take them away from everything else under `root`.
     static func hand(to menu: NSMenu, root: NSMenu) {
         strip(from: root)
-        var next = 1
+        var digit = 0
         for item in menu.items where isDestination(item) {
-            guard next <= 9 else { return }
-            item.keyEquivalent = String(next)
-            // Bare, with no ⌘: the digit is typed while the menu is open, not as a chord.
-            item.keyEquivalentModifierMask = []
-            next += 1
+            // An alternate follows its item, and AppKit pairs the two by key equivalent.
+            if !item.isAlternate { digit += 1 }
+            guard digit <= 9 else { return }
+            item.keyEquivalent = String(digit)
         }
     }
 
-    /// Take the digits off `menu` and every menu below it.
+    /// Take the digits off `menu` and every menu below it. The masks stay, which is what keeps an
+    /// alternate paired with its item while neither carries a digit.
     static func strip(from menu: NSMenu) {
         for item in menu.items {
             item.keyEquivalent = ""

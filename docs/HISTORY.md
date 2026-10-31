@@ -18627,6 +18627,40 @@ folders** (core, then app). Closes the two the entry above left for a decision, 
 - **Not seen live:** a translated build, and a file whose folder is locked being *written* rather
   than created, which the sentence would also call locked.
 
+**2026-10-31: a place picked from ⌘G with ⌘ opens in a new tab** (app only). Asked for by Oleg: a
+⌘-click or ⌘Return on a Places item now does what the same gesture does on its sidebar row. So does
+⌘ with the item's digit. It holds for all three faces of the one menu, ⌘G, the path bar's glyph
+and Go ▸ Places.
+
+- **Probed first**, in a throwaway AppKit app driven with real keys and clicks. The obvious design,
+  reading ⌘ inside the action, half works. A ⌘-click's action sees ⌘ on `NSApp.currentEvent`, but
+  ⌘Return's sees ⌘'s own key-up and no ⌘ at all, and `NSEvent.modifierFlags` was already clear in
+  both. What works is an **alternate item** carrying ⌘ after each destination. The menu picked the
+  alternate for a ⌘-click, for ⌘Return at the top level and inside a submenu, and for ⌘2. In a
+  menu with no alternates, ⌘2 matched nothing and the menu stayed open.
+- **App:** `PlacesMenu` builds each destination as two items, the one drawn and its ⌘ alternate
+  with the same title, which sends `openPlaceInNewTab:`. The window's action hands the place to
+  the sidebar's `activate(_:inNewTab: true)`, the funnel a ⌘-click on a row already used, so the
+  places that always open a results tab (Recents, the Trash, searches, tags) behave as they do
+  there. `PlacesDigits` gives an alternate its item's digit. The drawn item's mask is set to none
+  when it is built, since an item's default is ⌘ and AppKit tells the pair apart by mask alone.
+- **Tests:** `PlacesMenuNewTabTests` (3): the pairs, the digits following both into a submenu, and
+  `performKeyEquivalent` firing the alternate for ⌘2 and the drawn item for a bare 1.
+  `PlacesMenuTests` now reads the items drawn and counts a ⌘ digit as its own chord. Negative
+  control: with the drawn item's mask left at its default, 5 tests failed, including the bare 1
+  firing nothing. Full runs green (4 664 core, 2 078 app with the known `GestureWaitTests`
+  issue; live-server suites skipped). Both linters clean. The app build first needed Xcode 27.2's
+  Metal toolchain (27B47), which this time really was missing, unlike NOTES.md's cached-lookup
+  case, and was downloaded with `xcodebuild -downloadComponent MetalToolchain`.
+- **Seen live** in the Debug build, launched by path. ⌘G ▸ Volumes ▸ Macintosh HD with ⌘Return,
+  media with a ⌘-click, ⌘1 in Volumes, and Go ▸ Places ▸ Volumes ▸ Macintosh HD with a ⌘-click each
+  added a tab beside the active one, and the tab it was picked from kept its folder. A plain Return
+  replaced the active tab and added none. The saved tabs read back the same seven paths. The
+  defaults domain was restored and compared unchanged.
+- **Not seen live:** what the menu draws while ⌘ is held. A screenshot cannot be taken with a key
+  down, and the alternates' titles match their items', so only the digits would change, from 1 to
+  ⌘1. ⌘F's favorites popup does not have the gesture yet.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
