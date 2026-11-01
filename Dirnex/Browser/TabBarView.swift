@@ -277,6 +277,12 @@ final class TabChipView: NSView {
     private let icon = NSImageView()
     private let label = NSTextField(labelWithString: "")
     private let closeButton = NSButton()
+    /// A button that is never pressed, there to keep a drag on the chip from moving the window. In the
+    /// title bar's row the window server takes any drag outside the areas AppKit tells it to leave
+    /// alone, and a plain view is not among them, whatever it answers to `mouseDownCanMoveWindow`.
+    /// A button is, disabled or not. `hitTest` sends every press to the chip, so this one sees none
+    /// (docs/NOTES.md ▸ Windows).
+    let windowDragShield = NSButton()
     private lazy var closeGap = closeButton.leadingAnchor.constraint(
         equalTo: label.trailingAnchor,
         constant: Gap.label
@@ -360,6 +366,16 @@ final class TabChipView: NSView {
             comment: "Tooltip on a tab chip's close (×) button; ⌘W is the keyboard shortcut."
         )
 
+        windowDragShield.title = ""
+        windowDragShield.isBordered = false
+        windowDragShield.isEnabled = false
+        // A button's accessibility element is its cell.
+        windowDragShield.cell?.setAccessibilityElement(false)
+        // Sized by mask: under constraints an empty button hugs a width of nothing, and at its default
+        // priority that cuts the label short.
+        windowDragShield.autoresizingMask = [.width, .height]
+
+        addSubview(windowDragShield)
         addSubview(icon)
         addSubview(label)
         addSubview(closeButton)
@@ -448,8 +464,8 @@ final class TabChipView: NSView {
         return hit === closeButton ? closeButton : self
     }
 
-    /// A press on a chip is a click or the start of a tab drag. A plain view answers `true` here,
-    /// and in the title bar's row that would make the press move the window.
+    /// A press on a chip is a click or the start of a tab drag. A plain view answers `true` here. This
+    /// alone does not keep a drag from moving the window: see `windowDragShield`.
     override var mouseDownCanMoveWindow: Bool { false }
 
     override func mouseDown(with event: NSEvent) {

@@ -10,9 +10,10 @@ import DirnexCore
 /// drop target does not shrink.
 ///
 /// **It leaves room to drag the window by.** Everything on the strip that is not a chip or a button
-/// moves the window, because a plain view answers `mouseDownCanMoveWindow` with `true`. With both
-/// strips full and the sidebar closed nothing would be left, so each keeps a little at its end
-/// however many tabs it holds. A tab that no longer fits for it goes behind the ».
+/// moves the window, because a drag in this row is the window server's unless a control is in the way
+/// (`TabChipView.windowDragShield`). With both strips full and the sidebar closed nothing would be
+/// left, so each keeps a little at its end however many tabs it holds. A tab that no longer fits for
+/// it goes behind the ».
 extension TabBarView {
     /// What the strip keeps free at its end to grab the window by.
     static let windowGrabWidth: CGFloat = 40
