@@ -1727,13 +1727,33 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   traffic light, and a titlebar accessory, which sits on top and needs clearing by hand
   (`TitlebarClearance`). So no accessory has to hold the content. The traffic lights' middle is 16 pt
   down in Dirnex's 32 pt bar, which a 24 pt strip inset by 4 shares.
-  - **What decides whether a press there moves the window is `mouseDownCanMoveWindow`, and a custom
-    control answers wrongly by default.** Read on macOS 26: `true` for a plain `NSView`, a
-    layer-backed one, `NSStackView` and a label `NSTextField`; `false` for `NSButton` and
-    `NSImageView`. A hand-drawn tab chip is a plain view, so it needs the override or a drag on it
-    moves the window instead of the tab, and the blank strip around it needs nothing to act as the
-    title bar did. A synthetic event cannot test this, because the drag region belongs to the window
-    server: pin the property, and have a person drag.
+  - **`mouseDownCanMoveWindow` does not decide whether a press there moves the window. The drag
+    region does, and a plain view is in it whatever it answers.** Measured 2026-11-02, after a tab
+    chip answering `false`, with a test pinning that, moved the window on every real drag. AppKit
+    hands the window server a region built from each view's private
+    `_opaqueRectForWindowMoveWhenInTitlebar`, and `_lastDragRegionDataDescription` on the window
+    prints its rectangles, which is the instrument. A plain view reports an empty rect, layer-backed
+    or opaque alike, and so does `NSImageView`. `NSButton` reports its bounds, even disabled or
+    refusing first responder. A bare `NSControl` reports its bounds only while it accepts first
+    responder, so the override that stops a press taking the focus takes the hole away too. Hence
+    `TabChipView.windowDragShield`: a blank disabled button behind the chip's contents, with the
+    chip's `hitTest` keeping every press for itself. The blank strip reports nothing and moves the
+    window as the title bar did. A synthetic event cannot test this, because the region belongs to
+    the window server: read what the view reports, and have a person drag.
+    - **The region did not follow a bare `frame` change or a `removeFromSuperview`** in a throwaway
+      window, until something next hid a view or ran a layout pass. A strip's chips only ever move in
+      a layout pass, and on the real window all six layouts tried (a tab moved, added and closed, the
+      sidebar hidden and shown) left 0% of every chip in the region. A control moved by hand would
+      need the same check.
+    - **Three costs of that button, each measured on the way.** Pinned by constraints, an empty button
+      hugs a width of nothing, which at its default 250 outbids a label's 230: every chip came out
+      about 49 pt wide. An autoresizing mask has no such constraint. `setAccessibilityElement(false)`
+      on the button left an unnamed `AXButton` per chip, because a button's element is its cell. And
+      that `AXButton`'s frame was 1 pt larger on every side than the button's own, so an accessibility
+      frame is no measure of a view's.
+  - **What `mouseDownCanMoveWindow` answers**, read on macOS 26: `true` for a plain `NSView`, a
+    layer-backed one, `NSStackView` and a label `NSTextField`; `false` for `NSButton`, `NSImageView`
+    and a bare `NSControl`.
   - **A synthetic double-click on the row does not zoom**, through a plain view or one that swallows
     `mouseDown`, so it says nothing about what a real one does.
   - **Trailing accessories line up from the window's corner in the order they are added**: the first

@@ -94,6 +94,9 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     that rebuilt the binary under it, and a later `open` only refocused it. The next screenshot was
     of the old code. The `$` anchors on the executable, and that command line ends in its
     arguments. `pgrep -lx Dirnex` matches the process name whatever follows it.
+  - **computer-use's `request_access` for "Dirnex" can grant the old id.** Seen 2026-11-02: the name
+    resolved to `com.dirnex.Dirnex`, which is still registered and was not running, while the build
+    up was `app.dirnex.Dirnex`. Ask for the bundle id, and `list_apps` says which one is running.
   - **In a wait loop, `pgrep -f` also matches the shell running the loop.** Seen 2026-10-21: the
     agent's shell runs each command as `bash -c '<command>'`, so the pattern is in that shell's own
     command line. The loop waiting for the app to quit never saw it gone, and a `pkill -f` on the
@@ -347,6 +350,13 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   target has to sit **beside** it rather than under it: narrow the Dirnex window by its corner first.
   The frame lands in the defaults domain, and the run's import puts it back. Each drag that worked
   had clicked its row first.
+- **A background `app_drag` starts a drag session it cannot finish.** Logged 2026-11-02 on a tab chip:
+  `mouseDown`, `beginDraggingSession`, then the session's end with operation 0 and no
+  `draggingEntered` anywhere, because the whole path is delivered in well under a second. So it shows
+  that a press reached the view and a session began, and nothing about the drop. On the build where
+  the press never reached the chip's drag code, the saved session afterwards had the dragged tab
+  showing. Read what the call left behind, and have a person do the drop with an environment-gated
+  log to read back.
 - **Two clicks on a row with only key presses between them make a double-click.** Seen 2026-10-24:
   click, Space, Space, click on a zip, all inside the double-click interval, opened the archive. Wait
   a second between clicks, or move the cursor with the arrow keys.

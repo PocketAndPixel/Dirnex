@@ -9,7 +9,8 @@ import Testing
 ///
 /// The strip's measuring is driven through its `titlebarControls`. That the controls report where they
 /// really are, and that a real press moves the window or the tab, are for a person with a mouse: a
-/// synthetic event does not reach the window server's drag region.
+/// synthetic event does not reach the window server's drag region. What AppKit tells the window server
+/// about each view is read here, which is what the bug turned on.
 @MainActor
 @Suite("The tab strip in the title bar's row", .serialized)
 struct TabStripTitlebarTests {
@@ -91,18 +92,66 @@ struct TabStripTitlebarTests {
         #expect(strip.frame(of: first).minX < 0.5)
     }
 
-    /// `mouseDownCanMoveWindow` is what the title bar's row asks of whatever is under a press. A plain
-    /// view answers `true` (the blank strip, which should), and so would a chip without its override.
+    /// What AppKit tells the window server to leave alone in the title bar's row for `view`, in
+    /// `view`'s coordinates. The question is private, and the shipped code does not ask it. A macOS that
+    /// renames it fails here, which is the moment for a person to drag a tab again.
+    private static func rectLeftAlone(by view: NSView) throws -> NSRect {
+        let selector = NSSelectorFromString("_opaqueRectForWindowMoveWhenInTitlebar")
+        try #require(view.responds(to: selector))
+        typealias Question = @convention(c) (NSView, Selector) -> NSRect
+        return unsafeBitCast(view.method(for: selector), to: Question.self)(view, selector)
+    }
+
+    /// `mouseDownCanMoveWindow` alone passed while every drag on a chip moved the window: a plain view
+    /// reports no rect whatever it answers there. So the chip's own answer and an empty rect are both
+    /// pinned, the second as the reason for the button inside it.
     @Test(
-        "a press on a chip or a button stays on it, and a press on the blank strip moves the window"
+        "the whole of every chip stays out of what the window is dragged by, the blank strip in it"
     )
     func whatMovesTheWindow() throws {
         let strip = strip(three)
-        let chip = try #require(strip.bar.chips.first)
-        #expect(!chip.mouseDownCanMoveWindow)
+        for chip in strip.bar.chips {
+            #expect(!chip.mouseDownCanMoveWindow)
+            #expect(try Self.rectLeftAlone(by: chip) == .zero)
+            let shield = chip.windowDragShield
+            let left = chip.convert(try Self.rectLeftAlone(by: shield), from: shield)
+            #expect(left.insetBy(dx: -0.5, dy: -0.5).contains(chip.bounds), "\(chip.title): \(left)")
+            #expect(chip.bounds.insetBy(dx: -0.5, dy: -0.5).contains(left), "\(chip.title): \(left)")
+        }
         #expect(!strip.bar.newButton.mouseDownCanMoveWindow)
         #expect(!strip.bar.overflowButton.mouseDownCanMoveWindow)
         #expect(strip.bar.mouseDownCanMoveWindow)
+        #expect(try Self.rectLeftAlone(by: strip.bar) == .zero)
+    }
+
+    @Test("the button behind a chip sees no press, takes no focus and is not read out")
+    func shieldIsOnlyInTheWay() throws {
+        let strip = strip(three)
+        let chip = try #require(strip.bar.chips.first)
+        for x in [1, chip.labelFrame.midX] {
+            let point = chip.convert(NSPoint(x: x, y: chip.bounds.midY), to: chip.superview)
+            #expect(chip.hitTest(point) === chip)
+        }
+        #expect(!chip.windowDragShield.acceptsFirstResponder)
+        let read = NSAccessibility.unignoredChildren(from: chip.accessibilityChildren() ?? [])
+        let roles = read.compactMap { ($0 as AnyObject).accessibilityRole?() }
+        #expect(
+            roles.filter { $0 == NSAccessibility.Role.button }.count == 1,
+            "only the ×: \(roles)"
+        )
+    }
+
+    /// Pinned by constraints, an empty button hugs a width of nothing, which at its default priority
+    /// outbid the labels and drew every chip about 50 pt wide. `TabStripSqueezeTests` compares chips
+    /// with chips, so all of them coming down together passes there.
+    @Test("the button behind a chip does not cut its label short")
+    func shieldLeavesTheLabelWhole() {
+        let strip = strip(three)
+        for chip in strip.bar.chips {
+            let whole = NSTextField(labelWithString: chip.title)
+            whole.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+            #expect(chip.labelFrame.width >= whole.intrinsicContentSize.width - 0.5, "\(chip.title)")
+        }
     }
 
     @Test("a pane's only tab has no ×, and the label takes the room")

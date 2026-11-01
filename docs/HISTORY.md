@@ -18784,6 +18784,39 @@ the update button to the right, and remove the Back and Forward chevrons. Each p
   both showing (`-DirnexDebugLicenseDaysAhead 31 -DirnexDebugLicenseBuildDate 2028-01-01`), the right
   strip's tabs going behind the » before they reach the label.
 
+**2026-11-02: a drag on a tab moves the tab** (app). Asked for by Oleg right after the strip moved up:
+dragging a chip moved the whole window, while ⌥⌘[ and ⌥⌘] worked. The drag code had been there since the
+session-based strip, whose entry left one physical drag for a person. The entry above pinned
+`mouseDownCanMoveWindow` and left its real drag for a person too. So nothing had recorded a drag with a
+mouse, and the strip had just moved into the 32 pt that `_draggableFrame` covers.
+
+- **The property was the wrong question.** A drag in that row is the window server's unless AppKit's
+  region says otherwise, and that region is built from a private per-view rect that a plain view leaves
+  empty whatever it answers. `_lastDragRegionDataDescription` printed it: holes for the × and the +, and
+  about 90% of every chip still draggable. NOTES.md ▸ Windows has the table.
+- **`NSControl` was tried first and is a trap.** It reports its bounds only while it accepts first
+  responder, so the override that keeps a press from taking the file list's focus took the hole away
+  again. It took the real window to show that: the throwaway had measured a bare control.
+- **What landed:** a blank disabled `NSButton` behind each chip's contents
+  (`TabChipView.windowDragShield`), which reports its bounds and sees no press, since the chip's `hitTest`
+  keeps them all. No private API in the shipped code, and the chip stays a plain view. The first build's
+  chips came out about 49 pt wide, and an unnamed `AXButton` appeared on each, both fixed and both in
+  the note. Comments that said constraints would make the frame larger were wrong, read off an
+  accessibility frame, and went once `frame` was measured.
+- **Tests:** `TabStripTitlebarTests` reads the rect itself, through a private selector the shipped code
+  does not use, so a macOS that renames it fails there and sends a person back to the mouse. Negative
+  controls, one build each: no shield, the button enabled, the cell left in the accessibility tree, no
+  mask, and constraints in place of the mask, each failed the test named for it. Full runs green (4 670
+  core, 2 102 app with the known `GestureWaitTests` issue), with both linters clean, SwiftLint at 0.65.0
+  locally against CI's 0.65.1.
+- **Seen live**, on the build with the mask and a hugging line since removed as dead, after Oleg's
+  running copy was quit with his go-ahead. Oleg dragged with the mouse: along a strip, onto the other
+  pane's, and back onto its own place. A chip double-clicked did not zoom, the blank strip moved the
+  window, the chip's menu opened, and the arrow keys still drove the file list after a drag. A temporary
+  log read 13 drops, 11 along a strip and 2 across, each ending in `.move`, and on all six layouts it
+  sampled (a tab moved, added and closed, the sidebar hidden and shown) 0% of every chip was in the
+  region. The final build was only looked at, with the chips at their full widths.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
