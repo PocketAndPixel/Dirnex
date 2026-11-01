@@ -18743,6 +18743,47 @@ named in the request and were included, being the same kind of place; ⌥F7 stil
   row it had left, sorted by name. The defaults domain was restored and compared unchanged; only
   frecency and Sparkle's check time had moved.
 
+**2026-11-01: the tabs move up into the title bar's row** (core and app). Asked for by Oleg, who
+disliked the empty row across the top of the window: put the tabs there, move the license label and
+the update button to the right, and remove the Back and Forward chevrons. Each pane's file list gains
+34 pt, the path bar moving from 66 pt below the window's top to 32.
+
+- **No toolbar and no accessory holds the tabs.** A strip belongs to its pane, so the pane's stack
+  simply rises, pinned to the container's top instead of the safe area, with a 4 pt inset that centers
+  the 24 pt strip on the traffic lights. The probe that made this the plan is in NOTES.md ▸ Windows: a
+  view under the transparent title bar gets the click, except in the top 3 pt.
+- **Core:** `TitlebarClearance` works out how far a strip stays in from each end from where the strip
+  is and how far the controls reach from the window's edges, so half way through the sidebar's
+  animation it clears only what is still covered. Six tests.
+- **App:** `TabBarView+Titlebar` measures at every layout, before `TabOverflow` decides what fits, and
+  moves only the stack inside the strip, so the drop target keeps the pane's whole width and the
+  measuring cannot feed back into itself. The pane column's `viewDidLayout` asks both strips again,
+  since the sidebar can carry the left pane along at one size. The license label became a `.trailing`
+  accessory and the update indicator got one of its own, in the corner. In M7 Oleg had moved the
+  indicator away from the right because it read as a fourth navigation glyph, and that reason left
+  with the chevrons. `BrowserWindowController+Navigation` is gone; ⌘[, ⌘] and the Go menu stay, and the
+  catalog lost "Forward", which nothing else used.
+- **The strip shows for a single tab now.** Hidden, two one-tab panes would have brought the empty row
+  back, and a pane with one tab already drew its list 28 pt out of line with a pane holding three.
+  With the strip always there, `isRevealedForDrag` and the `tabDragIsInFlight` callback had no job and
+  went. A pane's last chip has no × and starts no drag, which the chip's menu already said by
+  disabling both.
+- **What the title bar did by being empty, the strip does on purpose.** A chip answers
+  `mouseDownCanMoveWindow` with `false`, or a drag on it would move the window. Each strip keeps 40 pt
+  free at its end, so two full strips with the sidebar closed still leave somewhere to grab.
+- **A test moved under it.** `ThreeWayMergeGitTests` capped ties at 30 across random texts and a corpus
+  of every seventh file in `Services/`, and adding `TitlebarClearance.swift` there moved the sample
+  onto `UserScripts.swift`, for 31. Moving the file out of the folder gave a pass, which is what
+  identified it. The merge had not changed: the 27 random ties are the number it had when written. So
+  the cap now holds the seeded texts to 30 alone, which is what can show a change in the search, and
+  gives the corpus its own 10.
+- **Seen live** in the Debug build, launched by path: the row and alignment at full width, the sidebar
+  closed and reopened, Quick View in a pane (its header under the strip) and full window (the row stays
+  empty above it, its header on the safe area, as planned), a pane closed down to one tab, and at the
+  minimum 640 pt with the sidebar closed from launch, the Renew License label and the update button
+  both showing (`-DirnexDebugLicenseDaysAhead 31 -DirnexDebugLicenseBuildDate 2028-01-01`), the right
+  strip's tabs going behind the » before they reach the label.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

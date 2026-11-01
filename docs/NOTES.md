@@ -1718,6 +1718,28 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   "Button", in the titlebar of a licensed copy. Hide the accessory's *content* and collapse the
   accessory's view to zero width (`LicenseTitlebarLabel.update`). Test what is drawn (the button's
   `isHidden` and the view's width), not the accessory's flag.
+- **A view under a transparent title bar gets the click, so a tab strip can simply live there.** The
+  title bar is above the content view, and that reads as if it should take the mouse. Probed
+  2026-11-01 with a throwaway window (`.fullSizeContentView`, `titlebarAppearsTransparent`): the
+  theme frame's `hitTest` answered the content view's own views all over the row, and `mouseDown`
+  reached them through `sendEvent`, as it did for a view below the title bar. Only three things kept
+  a point: `NSThemeFrame` itself over the top **3 pt** (its resize border, swept a point at a time), a
+  traffic light, and a titlebar accessory, which sits on top and needs clearing by hand
+  (`TitlebarClearance`). So no accessory has to hold the content. The traffic lights' middle is 16 pt
+  down in Dirnex's 32 pt bar, which a 24 pt strip inset by 4 shares.
+  - **What decides whether a press there moves the window is `mouseDownCanMoveWindow`, and a custom
+    control answers wrongly by default.** Read on macOS 26: `true` for a plain `NSView`, a
+    layer-backed one, `NSStackView` and a label `NSTextField`; `false` for `NSButton` and
+    `NSImageView`. A hand-drawn tab chip is a plain view, so it needs the override or a drag on it
+    moves the window instead of the tab, and the blank strip around it needs nothing to act as the
+    title bar did. A synthetic event cannot test this, because the drag region belongs to the window
+    server: pin the property, and have a person drag.
+  - **A synthetic double-click on the row does not zoom**, through a plain view or one that swallows
+    `mouseDown`, so it says nothing about what a real one does.
+  - **Trailing accessories line up from the window's corner in the order they are added**: the first
+    added is rightmost. `setFrameSize` to zero width on one reflows the row, and its frame then reads
+    back at the edge, so the row's reach is the sum of their widths whatever is showing. Measured the
+    same day.
 - **In full screen, a `.fullSizeContentView` window is told nothing when its title bar drops over
   the content.** Probed 2026-10-15 with a throwaway app on a 16-inch MacBook Pro: in the space, the
   content view's `safeAreaInsets.top` is 0, `contentLayoutRect` is the whole window, and the title

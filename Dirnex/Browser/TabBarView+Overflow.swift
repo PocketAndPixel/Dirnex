@@ -36,8 +36,12 @@ extension TabBarView {
         let strip = TabOverflow.Strip(
             minimumWidths: chips.map { Double($0.minimumWidth) },
             spacing: Double(Self.chipSpacing),
-            // The new-tab button, and the gaps before it and after it, are spent whatever fits.
-            width: Double(bounds.width - newButton.intrinsicContentSize.width - 2 * Self.chipSpacing),
+            // What the title bar's row keeps, the new-tab button, and the gaps before it and after
+            // it are spent whatever fits.
+            width: Double(
+                bounds.width - reservedWidth - newButton.intrinsicContentSize.width
+                    - 2 * Self.chipSpacing
+            ),
             overflowControlWidth: Double(overflowButton.intrinsicContentSize.width)
         )
         let range = TabOverflow.visibleRange(

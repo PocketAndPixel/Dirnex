@@ -13,7 +13,7 @@ import DirnexCore
 /// folder that is gone is forgotten and ⌘[ / ⌘] carry on past it, and anything else puts the trail
 /// back on the folder still on screen.
 extension PanelViewController {
-    // MARK: - Trail state (drives the titlebar Back/Forward buttons' enabled state)
+    // MARK: - Trail state (drives the Back and Forward menu items' enabled state)
 
     /// Whether ⌘[ / the Back button can step this tab's trail back — or leave a results listing for
     /// the folder it replaced, which is a step back with nothing older on the trail.
