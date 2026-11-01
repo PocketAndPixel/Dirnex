@@ -10,6 +10,9 @@ protocol PanelHost: ClosedTabHost {
     /// The opposite pane — the default destination for a copy/move (F5/F6), whose
     /// current directory receives the operation. `nil` if there is no counterpart.
     func panelCounterpart(of panel: PanelViewController) -> PanelViewController?
+    /// The pane on the side of `panel` that `offset` points to, −1 for left and +1 for right, or
+    /// `nil` when `panel` is already the outermost that way.
+    func panel(beside panel: PanelViewController, by offset: Int) -> PanelViewController?
     /// Enqueue a byte-moving operation (copy/move) on the window's shared background
     /// queue (PLAN.md §M2 `FileOperationQueue`). Fire-and-forget from the pane's view:
     /// the window's queue bar shows progress and both panes re-list as jobs finish.

@@ -1,10 +1,11 @@
 import AppKit
 import DirnexCore
 
-/// Moving tabs: along a pane's strip from the keyboard (⌥⌘[ and ⌥⌘]), and to the other pane by
-/// keyboard (⇧⌘M), from a chip's menu, or by dropping a chip on the other pane's strip. Where a tab
-/// lands and which one shows afterwards is `TabList`'s; what lives here is handing a tab from one
-/// pane to the other and keeping both panes' chrome, watchers and saved tabs in step.
+/// Moving tabs: along a pane's strip and on across to the next pane from the keyboard (⌥⌘[ and ⌥⌘]),
+/// and straight to the other pane by keyboard (⇧⌘M), from a chip's menu, or by dropping a chip on the
+/// other pane's strip. Where a tab lands and which one shows afterwards is `TabList`'s; what lives here
+/// is handing a tab from one pane to the other and keeping both panes' chrome, watchers and saved tabs
+/// in step.
 ///
 /// A tab takes everything that is its own, because it is the same `PanelTab` object in its new pane:
 /// the directory, cursor, marks, history, columns, shape, and a search's question. Both panes list
@@ -31,16 +32,16 @@ extension PanelViewController {
     }
 
     /// Whether each of the three applies to this pane now, or `nil` for any other item. A step needs
-    /// a neighbour on that side; sending needs a tab to leave behind and a pane to receive it.
+    /// somewhere to go on that side; sending needs a tab to leave behind and a pane to receive it.
     func validateTabMoveItem(_ menuItem: NSMenuItem) -> Bool? {
-        let list = TabList(tabs: tabs, activeIndex: activeTabIndex)
         switch menuItem.action {
         case #selector(moveTabLeft(_:)):
-            return list.canMoveActive(by: -1)
+            return activeTabStep(by: -1) != .stays
         case #selector(moveTabRight(_:)):
-            return list.canMoveActive(by: 1)
+            return activeTabStep(by: 1) != .stays
         case #selector(moveTabToOtherPanel(_:)):
-            return list.canRemove && host?.panelCounterpart(of: self) != nil
+            return TabList(tabs: tabs, activeIndex: activeTabIndex).canRemove
+                && host?.panelCounterpart(of: self) != nil
         default:
             return nil
         }
@@ -48,11 +49,29 @@ extension PanelViewController {
 
     // MARK: - Along the strip
 
-    /// Step the showing tab `offset` places along this pane's strip. Nothing happens at either end.
+    /// Step the showing tab `offset` places: along this pane's strip, or off its end into the pane on
+    /// that side, where the focus follows it so the next step carries on from there. Nothing happens
+    /// at the far end of the far pane, or for a pane's last tab.
     func moveActiveTab(by offset: Int) {
-        guard updateTabList({ $0.moveActive(by: offset) }) else { return }
-        refreshTabBar()
-        persistState()
+        switch activeTabStep(by: offset) {
+        case .along:
+            guard updateTabList({ $0.moveActive(by: offset) }) else { return }
+            refreshTabBar()
+            persistState()
+        case let .across(slot):
+            guard let beside = host?.panel(beside: self, by: offset) else { return }
+            handOverTab(at: activeTabIndex, to: beside, atSlot: slot)
+        case .stays:
+            break
+        }
+    }
+
+    /// What stepping the showing tab `offset` places would do now.
+    private func activeTabStep(by offset: Int) -> TabStep {
+        TabList(tabs: tabs, activeIndex: activeTabIndex).step(
+            by: offset,
+            besidePaneTabCount: host?.panel(beside: self, by: offset)?.tabs.count
+        )
     }
 
     // MARK: - To the other pane

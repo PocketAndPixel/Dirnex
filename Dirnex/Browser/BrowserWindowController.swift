@@ -432,6 +432,10 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
         counterpart(of: panel)
     }
 
+    func panel(beside panel: PanelViewController, by offset: Int) -> PanelViewController? {
+        panel === (offset > 0 ? leftPanel : rightPanel) ? counterpart(of: panel) : nil
+    }
+
     func panelDidNavigate(_ panel: PanelViewController) {
         // The drawer follows the *active* pane; the other one moving (a background refresh, a
         // completed copy re-listing it) is none of the shell's business.
