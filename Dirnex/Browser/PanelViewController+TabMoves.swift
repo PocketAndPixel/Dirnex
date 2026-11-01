@@ -104,14 +104,4 @@ extension PanelViewController {
         activateTab()
         persistState()
     }
-
-    // MARK: - Dragging
-
-    /// Show the other pane's strip while one of this pane's chips is being dragged, even when it has
-    /// a single tab and would hide it, so there is somewhere to drop; `false` puts it back.
-    func revealCounterpartTabBar(_ reveal: Bool) {
-        guard let other = host?.panelCounterpart(of: self) else { return }
-        other.tabBar.isRevealedForDrag = reveal
-        other.refreshTabBar()
-    }
 }

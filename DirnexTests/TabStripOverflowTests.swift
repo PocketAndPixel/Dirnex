@@ -77,7 +77,7 @@ struct TabStripOverflowTests {
     @Test("widening the strip brings the hidden tabs back, and the » goes")
     func resizeBringsTabsBack() {
         let strip = TabStripFixture(nine, width: 600)
-        strip.window.setContentSize(NSSize(width: 900, height: 40))
+        strip.window.setContentSize(NSSize(width: 900 + TabBarView.windowGrabWidth, height: 40))
         strip.window.layoutIfNeeded()
         #expect(strip.bar.visibleRange == 0..<9)
         #expect(strip.bar.overflowButton.isHidden)
@@ -184,6 +184,5 @@ private final class SelectionRecorder: TabBarViewDelegate {
         atSlot slot: Int
     ) {}
     func tabBar(_ bar: TabBarView, didRequestOtherPanelForTabAt index: Int) {}
-    func tabBar(_ bar: TabBarView, tabDragIsInFlight inFlight: Bool) {}
     func tabBarDidRequestNewTab(_ bar: TabBarView) {}
 }

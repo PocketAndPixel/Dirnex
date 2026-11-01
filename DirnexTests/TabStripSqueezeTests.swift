@@ -107,9 +107,10 @@ struct TabStripSqueezeTests {
     @Test("nine chips in a strip too narrow for their own widths come down to one width")
     func evenSqueeze() {
         let items = TabStripFixture.folders(TabStripFixture.titles)
-        expectFairShare(items, width: 900)
+        let width = 900 + TabBarView.windowGrabWidth
+        expectFairShare(items, width: width)
         // Every label keeps the readable floor or its whole self, where the old squeeze left seven at 4 pt.
-        TabStripFixture(items, width: 900).expectReadableLabels()
+        TabStripFixture(items, width: width).expectReadableLabels()
     }
 
     @Test("a chip narrower than the shared width keeps its whole label")
@@ -138,7 +139,10 @@ struct TabStripSqueezeTests {
 
     @Test("a drop on a squeezed strip still lands in the gap beside the chip under the pointer")
     func dropSlotsFollowTheSqueeze() {
-        let strip = TabStripFixture(TabStripFixture.folders(TabStripFixture.titles), width: 900)
+        let strip = TabStripFixture(
+            TabStripFixture.folders(TabStripFixture.titles),
+            width: 900 + TabBarView.windowGrabWidth
+        )
         for (index, chip) in strip.bar.chips.enumerated() {
             let frame = strip.frame(of: chip)
             #expect(strip.bar.dropSlot(atX: frame.minX + 2) == index, "\(chip.title)")

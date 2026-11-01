@@ -212,38 +212,36 @@ struct TabMoveTests {
         #expect(panes.leftPaths == [Self.alpha, Self.beta, Self.gamma])
     }
 
-    @Test("dragging a chip shows the other pane's one-tab strip, and a drop there moves the tab")
+    @Test("a chip dropped on the other pane's strip moves there, even onto a single tab")
     func dropOnTheOtherStrip() async throws {
         let panes = try await makePanes()
         let (source, target) = (panes.left.pane.tabBar, panes.right.pane.tabBar)
-        #expect(target.isHidden)
-
-        panes.left.pane.tabBar(source, tabDragIsInFlight: true)
-        #expect(!target.isHidden)
-        panes.right.window.layoutIfNeeded()
         // Past the middle of the only chip: the gap after it.
         let info = drag(0, of: source, over: target, atX: chipFrame(0, in: target).maxX + 2)
         #expect(target.dropOperation(for: info) == .move)
         #expect(target.performDragOperation(info))
-        panes.left.pane.tabBar(source, tabDragIsInFlight: false)
 
         #expect(panes.rightPaths == [Self.other, Self.alpha])
         #expect(panes.right.pane.panel.path == Self.alpha)
         #expect(panes.leftPaths == [Self.beta, Self.gamma])
         #expect(panes.left.pane.panel.path == Self.gamma)
-        #expect(!target.isHidden)
         #expect(panes.right.window.firstResponder === panes.right.pane.tableView)
     }
 
-    @Test("a drag that ends without a drop hides the one-tab strip again")
-    func revealIsUndone() async throws {
+    /// The row is the title bar's whether or not a strip fills it, so a pane with one tab costs the
+    /// file list nothing and the two lists start level. The strip's middle, 16 from the top, is where
+    /// the traffic lights' is in the window's 32 pt title bar (measured 2026-11-01).
+    @Test("a pane shows its strip for one tab as for three, and the path bars start level")
+    func stripsLineUp() async throws {
         let panes = try await makePanes()
-        let (source, target) = (panes.left.pane.tabBar, panes.right.pane.tabBar)
-        panes.left.pane.tabBar(source, tabDragIsInFlight: true)
-        #expect(!target.isHidden)
-        panes.left.pane.tabBar(source, tabDragIsInFlight: false)
-        #expect(target.isHidden)
-        #expect(panes.rightPaths == [Self.other])
+        for pane in [panes.left.pane, panes.right.pane] {
+            #expect(!pane.tabBar.isHidden)
+            let top = pane.view.bounds.height
+            let strip = pane.tabBar.convert(pane.tabBar.bounds, to: pane.view)
+            let path = pane.pathBar.convert(pane.pathBar.bounds, to: pane.view)
+            #expect(abs(top - strip.midY - 16) < 0.5, "\(strip) in \(top)")
+            #expect(abs(top - path.maxY - 32) < 0.5, "\(path) in \(top)")
+        }
     }
 
     @Test("anything that is not a tab chip is not accepted by a strip")
@@ -267,7 +265,6 @@ struct TabMoveTests {
     func draggingSourceSelectorsAreEmitted() {
         for name in [
             "draggingSession:sourceOperationMaskForDraggingContext:",
-            "draggingSession:willBeginAtPoint:",
             "draggingSession:endedAtPoint:operation:"
         ] {
             #expect(TabBarView.instancesRespond(to: Selector(name)), "\(name)")

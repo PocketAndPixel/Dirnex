@@ -1,21 +1,25 @@
 import AppKit
 import DirnexCore
 
-/// The leading titlebar indicator for a waiting update (PLAN.md §M7 "Sparkle 2 updates").
+/// The titlebar indicator for a waiting update (PLAN.md §M7 "Sparkle 2 updates").
 ///
 /// Sparkle's own dialog is the only thing that ever says "an update is available", and it is a
 /// one-shot: dismiss it and the update is invisible until the next scheduled check hours later. This
-/// is the ambient half — an accented download glyph that appears beside the sidebar toggle while
-/// `AppUpdater.availability` says something is pending, and clicking it re-opens Sparkle's flow
+/// is the ambient half — an accented download glyph that appears in the window's top right corner
+/// while `AppUpdater.availability` says something is pending, and clicking it re-opens Sparkle's flow
 /// (the same `app.checkForUpdates` command as the App menu item and the ⌘K palette).
 ///
 /// It is hidden, not disabled, when nothing is pending: an always-visible badge would train the eye
 /// to ignore it, which is exactly what an update indicator must not do.
 extension BrowserWindowController {
-    /// Prepare the indicator — behavior, tight glyph-sized footprint, and state observer. Like the
-    /// hidden-files eye it installs no accessory of its own: `installSidebarToggle` places it just
-    /// right of the sidebar button in the leading accessory, where a badge that comes and goes
-    /// extends the row rightwards into empty title bar instead of moving anything already there.
+    /// How far the glyph's cell stays in from the window's right edge, which clears the 7 pt of it
+    /// that `NSThemeFrame` keeps for its resize border. The license label ends as far from the edge
+    /// when it stands there alone.
+    private static let indicatorTrailingInset: CGFloat = 8
+    private static let indicatorWidth: CGFloat = 16
+
+    /// Install the indicator — behavior, tight glyph-sized footprint, state observer, and a trailing
+    /// accessory of its own, which takes no room while nothing is waiting (`updateUpdateIndicator`).
     func installUpdateIndicator() {
         updateIndicatorButton.bezelStyle = .toolbar
         updateIndicatorButton.isBordered = false
@@ -36,12 +40,20 @@ extension BrowserWindowController {
         updateIndicatorButton.target = self
         updateIndicatorButton.action = #selector(updateIndicatorPressed(_:))
         updateIndicatorButton.translatesAutoresizingMaskIntoConstraints = false
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 0, height: 28))
+        container.addSubview(updateIndicatorButton)
         NSLayoutConstraint.activate([
             updateIndicatorButton.heightAnchor.constraint(equalToConstant: 22),
-            // Tight to the glyph: this one is spaced by the leading stack's own 12pt gap, unlike
-            // the nav chevrons, whose cells are widened to touch and carry their spacing inside.
-            updateIndicatorButton.widthAnchor.constraint(equalToConstant: 16)
+            updateIndicatorButton.widthAnchor.constraint(equalToConstant: Self.indicatorWidth),
+            updateIndicatorButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            updateIndicatorButton.trailingAnchor.constraint(
+                equalTo: container.trailingAnchor,
+                constant: -Self.indicatorTrailingInset
+            )
         ])
+        updateIndicatorAccessory.view = container
+        updateIndicatorAccessory.layoutAttribute = .trailing
+        window?.addTitlebarAccessoryViewController(updateIndicatorAccessory)
 
         NotificationCenter.default.addObserver(
             self,
@@ -70,12 +82,16 @@ extension BrowserWindowController {
     }
 
     /// Show or hide the glyph against the current availability, and point its tooltip at the version
-    /// Sparkle found. Hiding is what collapses it out of the stack view (`NSStackView` detaches
-    /// hidden arranged subviews), so no gap is left behind.
+    /// Sparkle found. Hidden, it collapses its accessory to no width, so no gap is left behind and
+    /// the tab strip beside it gets the room back.
     private func updateUpdateIndicator() {
         let availability = (NSApp.delegate as? AppDelegate)?.updateAvailability ?? .none
         updateIndicatorButton.isHidden = !availability.isAvailable
         updateIndicatorButton.toolTip = Self.tooltip(for: availability)
+        let view = updateIndicatorAccessory.view
+        let width = availability.isAvailable ? Self.indicatorWidth + Self.indicatorTrailingInset : 0
+        view.setFrameSize(NSSize(width: width, height: view.frame.height))
+        tabStripsNeedLayout()
     }
 
     /// The indicator's tooltip. Names the version when the appcast gave one, since "1.3.0 is

@@ -180,10 +180,6 @@ extension TabBarView: NSDraggingSource {
         context == .withinApplication ? .move : []
     }
 
-    func draggingSession(_ session: NSDraggingSession, willBeginAt screenPoint: NSPoint) {
-        delegate?.tabBar(self, tabDragIsInFlight: true)
-    }
-
     func draggingSession(
         _ session: NSDraggingSession,
         endedAt screenPoint: NSPoint,
@@ -191,7 +187,6 @@ extension TabBarView: NSDraggingSource {
     ) {
         draggedIndex = nil
         for chip in chips { chip.alphaValue = 1 }
-        delegate?.tabBar(self, tabDragIsInFlight: false)
     }
 }
 
