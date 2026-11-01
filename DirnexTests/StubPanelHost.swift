@@ -45,6 +45,15 @@ final class StubPanelHost: PanelHost {
     var counterpart: PanelViewController?
 
     func panelCounterpart(of panel: PanelViewController) -> PanelViewController? { counterpart }
+    /// The panes on either side of this one, when a test needs them. Apart from `counterpart`, which
+    /// has no side, because a step off the strip's end is the first gesture that asks which way.
+    var paneOnTheLeft: PanelViewController?
+    var paneOnTheRight: PanelViewController?
+
+    func panel(beside panel: PanelViewController, by offset: Int) -> PanelViewController? {
+        offset > 0 ? paneOnTheRight : paneOnTheLeft
+    }
+
     /// Every operation a gesture handed over, in order.
     ///
     /// Recorded rather than shrugged at since M24 Slice 4, because a checksum over rows that are

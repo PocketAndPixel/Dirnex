@@ -247,9 +247,11 @@ so ⌘ changes nothing. A file opens as `⏎` opens it. Exercised live on local 
 <sup>aae</sup> A tab is the same object in its new place, carrying its own cursor, marks, history,
 columns, shape and a search's question. Both panes list through the window's one backend, so a tab on
 a server, inside an archive or in a vault moves as it is, without reconnecting or re-extracting. A
-pane's last tab stays. The keyboard moves were exercised live on local folders (2026-10-15). Dragging
-a chip is tested through the strips' drop methods only, because a drag session cannot be synthesized;
-the other columns follow from the shared backend and are not exercised live.
+pane's last tab stays. `⌥⌘[` and `⌥⌘]` run along the strip and on across into the pane on that side, stopping
+only at the far end of the far pane. The keyboard moves were exercised live on local folders
+(2026-10-15, crossing 2026-11-02), through the Window menu's items, and dragging a chip with a mouse
+(2026-11-02), along a strip and onto the other pane's. The other columns follow from the shared backend
+and are not exercised live.
 
 <sup>aaf</sup> A share, an external drive or a disk image, a vault, iCloud Drive and a cloud provider are all
 local paths, told apart by territory and then by the volume the kernel's mount table puts them on, so

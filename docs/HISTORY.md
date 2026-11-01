@@ -18817,6 +18817,37 @@ mouse, and the strip had just moved into the 32 pt that `_draggableFrame` covers
   sampled (a tab moved, added and closed, the sidebar hidden and shown) 0% of every chip was in the
   region. The final build was only looked at, with the chips at their full widths.
 
+**2026-11-02: ⌥⌘[ and ⌥⌘] carry a tab across the panes** (core and app). Asked for by Oleg, in those
+words. Read as one motion rather than as a second ⇧⌘M: a step along the strip stays what it was, and
+where it used to stop at the strip's end it goes on into the pane on that side.
+
+- **Core:** `TabList.step(by:besidePaneTabCount:)` answers `.along`, `.across(slot:)` or `.stays`. A tab
+  enters at the end nearest the pane it left, slot 0 going right and the last slot going left, so it keeps
+  going the way it was going and the opposite step puts it straight back. A pane's last tab stays.
+- **App:** `moveActiveTab(by:)` hands over through the funnel ⇧⌘M and a drop already use, so the tab
+  arrives as itself and the focus follows, which is who the menu asks for the next step. Which way a
+  pane lies is new for a host to answer: `panel(beside:by:)`, since `panelCounterpart` has no side. The
+  menu items now validate against the step, so they are disabled only at the outer ends and for a
+  pane's last tab.
+- **Left as it is:** a pane that loses its showing tab falls back to the neighbour, Close Tab's rule. So
+  a tab that crosses in and straight back leaves that pane on its first tab rather than the one it was
+  showing, as a ⇧⌘M there and back does.
+- **Tests:** five in the core and four in the app, with one reworded where the strip's right end no
+  longer stops. Negative controls, one build each: the hand-over removed, the menu validating the old
+  way, the two ends swapped, and the last tab allowed to leave, each failed the tests named for it.
+  `panel(beside:by:)` itself has no test, since a test host answers with a stub, and was checked live.
+  Those tests took `TabMoveTests` past SwiftLint's `type_body_length`, at 292 lines, so it split by
+  concept: `TabMoveKeyTests` for the keyboard, `TabMoveTests` for drops and the chip's menu, and
+  `TabMovePanes` as their fixture, with saved-tab keys per instance because local runs go side by side.
+  Full runs green (4 675 core, 2 106 app with the known `GestureWaitTests` issue), with both linters
+  clean, SwiftLint at 0.65.0 locally against CI's 0.65.1.
+- **Seen live** in the Debug build, launched by path after Oleg's running copy was quit with his
+  go-ahead, driven through the Window menu with the saved tabs read back after each step: `swtest copy`
+  stepped to the left pane's left end, where Move Tab Left was disabled, along to its right end, across
+  to the front of the right strip with the focus following, back to where it had been, across again
+  and on to the far end, where Move Tab Right was disabled. The chords themselves were not pressed
+  here. They are the same menu items as before.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

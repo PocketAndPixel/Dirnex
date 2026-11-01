@@ -137,6 +137,64 @@ struct TabListTests {
         #expect(!TabList(tabs: ["A"], activeIndex: 0).canMoveActive(by: 1))
     }
 
+    // MARK: - A step that may cross into the pane beside
+
+    @Test("a step with a neighbour on that side stays on the strip, whatever is beside the pane")
+    func stepPrefersTheStrip() {
+        #expect(list(active: 1).step(by: 1, besidePaneTabCount: 3) == .along)
+        #expect(list(active: 1).step(by: -1, besidePaneTabCount: 3) == .along)
+        #expect(list(active: 1).step(by: 1, besidePaneTabCount: nil) == .along)
+    }
+
+    /// Past the right end of a pane is the start of the one on its right, and past the left end of a
+    /// pane is the end of the one on its left, so `count` names the gap after that pane's last tab.
+    @Test("off the end of the strip a tab enters the pane beside at the end nearest it")
+    func stepCrossesAtTheNearEnd() {
+        #expect(list(active: 3).step(by: 1, besidePaneTabCount: 2) == .across(slot: 0))
+        #expect(list(active: 0).step(by: -1, besidePaneTabCount: 2) == .across(slot: 2))
+    }
+
+    @Test("with no pane on that side a step off the end goes nowhere")
+    func stepStopsAtTheOuterEnds() {
+        #expect(list(active: 3).step(by: 1, besidePaneTabCount: nil) == .stays)
+        #expect(list(active: 0).step(by: -1, besidePaneTabCount: nil) == .stays)
+    }
+
+    @Test("a pane's last tab stays, and so does a step of nothing")
+    func stepKeepsTheLastTab() {
+        let lone = TabList(tabs: ["A"], activeIndex: 0)
+        #expect(lone.step(by: 1, besidePaneTabCount: 2) == .stays)
+        #expect(lone.step(by: -1, besidePaneTabCount: 2) == .stays)
+        #expect(list(active: 0).step(by: 0, besidePaneTabCount: 2) == .stays)
+    }
+
+    /// The promise in the doc comment: the opposite step undoes a crossing, carried out here the way
+    /// the app does, by taking the tab out of one list and inserting it into the other.
+    @Test("a crossing and the opposite step put both lists back")
+    func stepAcrossAndBack() throws {
+        var left = TabList(tabs: ["A", "B", "C"], activeIndex: 2)
+        var right = TabList(tabs: ["X", "Y"], activeIndex: 1)
+        let before = (left, right)
+
+        guard case let .across(slot) = left.step(by: 1, besidePaneTabCount: right.tabs.count) else {
+            Issue.record("expected a crossing to the right")
+            return
+        }
+        let leaving = left.remove(at: left.activeIndex)
+        right.insert(try #require(leaving), atSlot: slot)
+        #expect(right.tabs == ["C", "X", "Y"])
+        #expect(right.activeIndex == 0)
+
+        guard case let .across(back) = right.step(by: -1, besidePaneTabCount: left.tabs.count) else {
+            Issue.record("expected a crossing back to the left")
+            return
+        }
+        let returning = right.remove(at: right.activeIndex)
+        left.insert(try #require(returning), atSlot: back)
+        #expect(left == before.0)
+        #expect(right.tabs == before.1.tabs)
+    }
+
     // MARK: - Leaving
 
     @Test("the last tab cannot leave")

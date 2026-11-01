@@ -56,6 +56,18 @@ public struct TabList<Tab> {
         return true
     }
 
+    /// What one step of the showing tab comes to: along the strip while it has a neighbour on that
+    /// side, then into the pane on that side, if there is one holding `besidePaneTabCount` tabs.
+    ///
+    /// A tab crossing over enters at the end nearest the pane it left, so it keeps going the way it
+    /// was going and the opposite step brings it straight back. A pane's last tab stays, since a pane
+    /// always shows one.
+    public func step(by offset: Int, besidePaneTabCount: Int?) -> TabStep {
+        if canMoveActive(by: offset) { return .along }
+        guard offset != 0, canRemove, let besidePaneTabCount else { return .stays }
+        return .across(slot: offset > 0 ? 0 : besidePaneTabCount)
+    }
+
     // MARK: - Leaving and arriving
 
     /// Whether a tab can leave this list at all. A pane always shows a tab, so its last one stays.
@@ -96,6 +108,16 @@ public struct TabList<Tab> {
 
 extension TabList: Equatable where Tab: Equatable {}
 extension TabList: Sendable where Tab: Sendable {}
+
+/// What one step of a pane's showing tab comes to (``TabList/step(by:besidePaneTabCount:)``).
+public enum TabStep: Equatable, Sendable {
+    /// Along its own strip, which ``TabList/moveActive(by:)`` does.
+    case along
+    /// Out of this pane and into this gap of the pane beside it.
+    case across(slot: Int)
+    /// Nowhere: the far end of the far pane, or a pane's last tab.
+    case stays
+}
 
 /// The gaps between a strip's tabs, which a drop names (see ``TabList``): 0 before the first tab and
 /// `count` after the last. Apart from `TabList` because it needs no tabs, only where their chips are.
