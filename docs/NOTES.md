@@ -5090,6 +5090,41 @@ do not share a resolver, and neither half of that is obvious from either call si
     sentence now asks `NetworkVolume.root(of:)` (`volumeIsLocal == false`) and gives the server's
     wording.
 
+- **An unmount waits for every process that asked to approve one, so a synchronous unmount can
+  hang the main thread for as long as the slowest one takes to answer.** Reported 2026-11-02 as
+  "quit sometimes takes 4–8 seconds, the window fades with a spinning cursor". The log put two
+  quits out of eighteen at **10.9 s**, and both had mounted the NAS's `media` share.
+  `SMBMounter.unmountOwnedMounts` called `NSWorkspace.unmountAndEjectDevice` inside
+  `applicationWillTerminate`. diskarbitrationd queued the unmount and waited 10.7 s for
+  `PhotosReliveWidget`, wedged since Oct 29, logging *not responding*. It then failed the unmount
+  with status `0x10` (`EBUSY`), because VLC was playing a film off the share.
+  - **The stall is not SMB's and not Dirnex's.** The same call on a throwaway disk image took
+    10 760 ms, and Finder's unmounts go through the same daemon. Only a caller that blocks a main
+    thread on the unmount shows the wait.
+  - **The wedged widget is not a repeatable fixture.** The next several unmounts went through in
+    tens of milliseconds, the app's own included, so a control run against it can pass whatever the
+    code does. A probe approver is repeatable: `DARegisterDiskUnmountApprovalCallback` with a
+    callback that sleeps 5 s and returns `nil`, filtered to the probe image's volume name. With it
+    up, the old call held Dirnex's quit for 5.26 s and the new one quit in 0.22 s. The image still
+    went 5 s later.
+  - **The sidebar's Eject made the same call on the main thread**, and needs its answer to report
+    a failure, so it keeps the call and runs it through `BlockingWork`. Probed first off the main
+    thread with the Main Thread Checker injected (`DYLD_INSERT_LIBRARIES`, and a positive control
+    that it reports an `NSView` touched off the main thread): no report, clean and busy alike. Live,
+    with the approver up, the main-thread sampler's longest round trip in the 5 s hold was 68 ms. A
+    busy image still raised *Couldn’t eject* after the hold, with the sampler's one long trip,
+    301 ms, at the alert's own presentation.
+  - **`DADiskUnmount` with no callback returns in about 1 ms, and the request outlives the
+    process that sent it.** Measured with a probe approver that held every unmount for 5 s. The
+    requester exited at once, the session unscheduled and released, and the volume still went at
+    +5 s. So quit asks and leaves. What the daemon does afterwards, an unmount or an `EBUSY`, is
+    what it did before, without Dirnex's window waiting on it.
+  - Two tells, if it comes back. `log show --predicate 'process == "Dirnex"'` shows AppKit's
+    *Termination commencing* and *Termination complete* with the gap between them. CarbonCore's
+    `FileIDTreeGetAndLockVolumeEntryFromIndex(1) returned -35` appeared only in the two slow quits.
+    In diskarbitrationd's log, each unmount reads *queued solicitation … kind = disk unmount*, then a
+    *not responding* line naming the approver that held it up.
+
 ### bsdtar
 
 - **Each extract member is a shell-glob pattern, not a literal** — a name containing `* ? [`
