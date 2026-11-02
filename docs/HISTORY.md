@@ -18880,6 +18880,38 @@ pane's edge and Date was out of sight, while the right pane resized as it should
   (266.5 at 554.5, 264 at 552, 204 at 492, 210 and 209.5 at 497.5), and the two tabs stored at 334.5
   and 268.5 opened at 266.5. A drag on Size's edge moved Date by the same amount and left Name alone.
 
+**2026-11-02: ⇧⌘[ and ⇧⌘] step through the tabs of both panes** (core and app). Asked for by Oleg:
+the switch went round one pane's strip only, and he wanted it to travel across both, as ⌥⌘[ and ⌥⌘]
+now carry a tab.
+
+- **Core:** `TabList.tabToShow(by:otherPaneTabCount:)` reads both strips as one ring, this pane's
+  tabs and then the other's, and answers `.here(index:)`, `.otherPane(index:)` or `.current`. Past a
+  strip's right end is the other pane's first tab and past its left end the other pane's last, which
+  is the slot rule the move already follows. A ring of two strips reads the same from either pane, so
+  it needs `panelCounterpart` and not the side-aware `panel(beside:by:)`.
+- **Decided without asking:** the far ends go round, the right pane's last tab to the left pane's
+  first and back. The move stops there because a tab that wrapped round would seem to vanish, and a
+  view that goes round loses nothing. The switch always went round within one strip, so keeping it
+  round changes the least. With no other pane, it still goes round its own strip.
+- **App:** `showTab(by:)` replaces `selectNextTab` and `selectPreviousTab`. A crossing selects the
+  other pane's tab and focuses that pane, so the next step goes on from there. The pane left behind
+  keeps showing its tab. Only the active tab and the focus change: no tab moves. A pane on its only
+  tab now hands the focus across, where it used to do nothing.
+- **Tests:** five in the core, including a walk round both rings each way, and five in the app
+  (`TabSwitchKeyTests`, on `TabMovePanes`). Negative control: the same build with the other pane's
+  count forced to 0, which is the old behavior. Four of the five app tests failed (15 issues). The one
+  that passed is the no-other-pane test, which is meant to pass both ways. Full runs green (4 680 core,
+  2 114 app with the known `GestureWaitTests` issue), both linters clean, SwiftLint at 0.65.0 locally
+  against CI's 0.65.1.
+- **Seen live** in the Debug build, launched by path with no other copy running, stepped through
+  `run operation "window.previousTab"` and `"window.nextTab"`, the selectors the two menu items send,
+  with both panes' saved tabs read back after each step. From left 1 of 3 and right 0 of 3, the steps
+  went left 0, across to right 2, right 1 and 0, across to left 2, across to right 0, right 1 and 2,
+  then round to left 0 and back round to right 2. Each step after a crossing ran in the pane it had
+  crossed to, so the focus went with it, and the app saved `right` as the active pane at quit. The
+  chords themselves were not pressed. The defaults domain was restored and compared afterwards, and
+  so was the drift from the test runs (`Dirnex.frecency`, `Dirnex.tabs.left`, `SULastCheckTime`).
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

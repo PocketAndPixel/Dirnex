@@ -223,6 +223,24 @@ extension PanelViewController {
         persistState()
     }
 
+    /// Show the tab `offset` places along (⇧⌘[ and ⇧⌘]), going on past either end of this strip into
+    /// the other pane, which takes the focus so the next step carries on from there. Both strips make
+    /// one ring (`TabList.tabToShow`), so stepping the same way visits every tab in the window.
+    func showTab(by offset: Int) {
+        let other = host?.panelCounterpart(of: self)
+        let list = TabList(tabs: tabs, activeIndex: activeTabIndex)
+        switch list.tabToShow(by: offset, otherPaneTabCount: other?.tabs.count ?? 0) {
+        case let .here(index):
+            selectTab(at: index)
+        case let .otherPane(index):
+            guard let other else { return }
+            other.selectTab(at: index)
+            other.focusTable()
+        case .current:
+            break
+        }
+    }
+
     // MARK: - Volume recovery
 
     /// A volume was unmounted (ejected from the sidebar, in Finder, or via `diskutil`). Any tab
@@ -268,16 +286,6 @@ extension PanelViewController {
         tab.hasLoaded = false
         tab.cursorOnParentRow = false
         tab.clearResultsIdentity()
-    }
-
-    func selectNextTab() {
-        guard tabs.count > 1 else { return }
-        selectTab(at: (activeTabIndex + 1) % tabs.count)
-    }
-
-    func selectPreviousTab() {
-        guard tabs.count > 1 else { return }
-        selectTab(at: (activeTabIndex - 1 + tabs.count) % tabs.count)
     }
 
     /// Close the tab at `index`. The last tab is never closed here (the caller closes the
@@ -337,11 +345,11 @@ extension PanelViewController {
     }
 
     @objc func showNextTab(_ sender: Any?) {
-        selectNextTab()
+        showTab(by: 1)
     }
 
     @objc func showPreviousTab(_ sender: Any?) {
-        selectPreviousTab()
+        showTab(by: -1)
     }
 }
 
