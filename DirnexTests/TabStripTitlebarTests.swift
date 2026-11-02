@@ -53,6 +53,19 @@ struct TabStripTitlebarTests {
         #expect(frame.height + 2 <= strip.bar.bounds.height)
     }
 
+    @Test("the path bar sits a wider gap below the strip than the list does below the path bar")
+    func gapBelowTheStrip() {
+        let hosted = windowedPane()
+        let pane = hosted.pane
+        pane.view.layoutSubtreeIfNeeded()
+
+        let bar = pane.tabBar.convert(pane.tabBar.bounds, to: nil)
+        let path = pane.pathBar.convert(pane.pathBar.bounds, to: nil)
+        let list = pane.scrollView.convert(pane.scrollView.bounds, to: nil)
+        #expect(bar.minY - path.maxY == PanelViewController.tabStripBottomGap)
+        #expect(path.minY - list.maxY == 4)
+    }
+
     @Test("with no controls in its way the first chip starts at the strip's end")
     func nothingToClear() throws {
         let strip = strip(three)
