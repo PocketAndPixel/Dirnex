@@ -216,6 +216,8 @@ final class PanelViewController: NSViewController {
     let tabBar = TabBarView()
     /// The gap above the 24 pt tab strip, which centers it in the window's 32 pt title bar.
     static let tabStripTopInset: CGFloat = 4
+    /// The gap below the strip. A chip ends a point inside the strip, so this leaves 8 pt under it.
+    static let tabStripBottomGap: CGFloat = 7
 
     /// Guards the cursor⇄table-selection mirror against feedback loops: when we push
     /// `panel.cursor` into the table, the resulting selection-changed callback must
@@ -376,6 +378,7 @@ final class PanelViewController: NSViewController {
         let stack = NSStackView(views: [tabBar, pathBar, scrollView, statusLabel])
         stack.orientation = .vertical
         stack.spacing = 4
+        stack.setCustomSpacing(Self.tabStripBottomGap, after: tabBar)
         stack.edgeInsets = NSEdgeInsets(top: Self.tabStripTopInset, left: 8, bottom: 6, right: 8)
         stack.setHuggingPriority(.defaultLow, for: .vertical)
         tabBar.setContentHuggingPriority(.required, for: .vertical)

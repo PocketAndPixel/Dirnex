@@ -79,17 +79,19 @@ struct TabMoveTests {
 
     /// The row is the title bar's whether or not a strip fills it, so a pane with one tab costs the
     /// file list nothing and the two lists start level. The strip's middle, 16 from the top, is where
-    /// the traffic lights' is in the window's 32 pt title bar (measured 2026-11-01).
+    /// the traffic lights' is in the window's 32 pt title bar (measured 2026-11-01). The path bar's top
+    /// is the strip's 24 pt inset by 4, then the gap below it.
     @Test("a pane shows its strip for one tab as for three, and the path bars start level")
     func stripsLineUp() async throws {
         let panes = try await Panes.make()
+        let pathTop = 28 + PanelViewController.tabStripBottomGap
         for pane in [panes.left.pane, panes.right.pane] {
             #expect(!pane.tabBar.isHidden)
             let top = pane.view.bounds.height
             let strip = pane.tabBar.convert(pane.tabBar.bounds, to: pane.view)
             let path = pane.pathBar.convert(pane.pathBar.bounds, to: pane.view)
             #expect(abs(top - strip.midY - 16) < 0.5, "\(strip) in \(top)")
-            #expect(abs(top - path.maxY - 32) < 0.5, "\(path) in \(top)")
+            #expect(abs(top - path.maxY - pathTop) < 0.5, "\(path) in \(top)")
         }
     }
 
