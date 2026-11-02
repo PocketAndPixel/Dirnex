@@ -39,8 +39,8 @@ public struct TabList<Tab> {
         return true
     }
 
-    /// Whether the showing tab can move `offset` places along the strip. Not past either end: a tab
-    /// that wrapped round to the far end would read as the tab vanishing.
+    /// Whether the showing tab can move `offset` places along the strip. Not past either end: what
+    /// lies beyond is the other pane, which is ``step(by:otherPaneTabCount:)``'s business.
     public func canMoveActive(by offset: Int) -> Bool {
         offset != 0 && tabs.indices.contains(activeIndex + offset)
     }
@@ -57,15 +57,17 @@ public struct TabList<Tab> {
     }
 
     /// What one step of the showing tab comes to: along the strip while it has a neighbour on that
-    /// side, then into the pane on that side, if there is one holding `besidePaneTabCount` tabs.
+    /// side, then into the other pane, if there is one holding `otherPaneTabCount` tabs.
     ///
-    /// A tab crossing over enters at the end nearest the pane it left, so it keeps going the way it
-    /// was going and the opposite step brings it straight back. A pane's last tab stays, since a pane
-    /// always shows one.
-    public func step(by offset: Int, besidePaneTabCount: Int?) -> TabStep {
+    /// The two strips read as one ring, as they do for ``tabToShow(by:otherPaneTabCount:)``: off this
+    /// strip's right end a tab enters the other pane at its start, and off its left end at its end, so
+    /// it keeps going the way it was going and the opposite step brings it straight back. Which side
+    /// the other pane is on makes no difference. A pane's last tab stays, since a pane always shows
+    /// one, and so does a tab at the end of a strip with no other pane.
+    public func step(by offset: Int, otherPaneTabCount: Int?) -> TabStep {
         if canMoveActive(by: offset) { return .along }
-        guard offset != 0, canRemove, let besidePaneTabCount else { return .stays }
-        return .across(slot: offset > 0 ? 0 : besidePaneTabCount)
+        guard offset != 0, canRemove, let otherPaneTabCount else { return .stays }
+        return .across(slot: offset > 0 ? 0 : otherPaneTabCount)
     }
 
     // MARK: - Showing another tab
@@ -76,8 +78,8 @@ public struct TabList<Tab> {
     /// The two strips read as one ring, this pane's tabs and then the other's: past this strip's right
     /// end is the other pane's first tab, past its left end the other pane's last, and round again from
     /// there. Which side the other pane is on makes no difference, because a ring of two strips reads
-    /// the same from either. Where a tab being moved stops at the outer ends, the view goes round, as it
-    /// always did within one strip: nothing vanishes when it does.
+    /// the same from either. A tab being moved goes round the same ring
+    /// (``step(by:otherPaneTabCount:)``).
     public func tabToShow(by offset: Int, otherPaneTabCount: Int) -> TabToShow {
         let ring = tabs.count + max(otherPaneTabCount, 0)
         guard ring > 0 else { return .current }
@@ -127,13 +129,13 @@ public struct TabList<Tab> {
 extension TabList: Equatable where Tab: Equatable {}
 extension TabList: Sendable where Tab: Sendable {}
 
-/// What one step of a pane's showing tab comes to (``TabList/step(by:besidePaneTabCount:)``).
+/// What one step of a pane's showing tab comes to (``TabList/step(by:otherPaneTabCount:)``).
 public enum TabStep: Equatable, Sendable {
     /// Along its own strip, which ``TabList/moveActive(by:)`` does.
     case along
-    /// Out of this pane and into this gap of the pane beside it.
+    /// Out of this pane and into this gap of the other one.
     case across(slot: Int)
-    /// Nowhere: the far end of the far pane, or a pane's last tab.
+    /// Nowhere: a pane's last tab, or the end of a strip with no other pane.
     case stays
 }
 

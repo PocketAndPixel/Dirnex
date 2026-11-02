@@ -32,8 +32,6 @@ struct TabMovePanes {
         let right = windowedPane(at: other, backend: backend)
         left.host.counterpart = right.pane
         right.host.counterpart = left.pane
-        left.host.paneOnTheRight = right.pane
-        right.host.paneOnTheLeft = left.pane
         let id = UUID().uuidString
         let leftKey = "tab-moves-left-\(id)"
         let rightKey = "tab-moves-right-\(id)"
