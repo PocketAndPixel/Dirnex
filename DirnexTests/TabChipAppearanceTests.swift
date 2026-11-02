@@ -65,18 +65,18 @@ struct TabChipAppearanceTests {
         }
     }
 
-    @Test("a tab that isn't showing is outlined in each appearance's separator color, both ways")
+    @Test("a tab that isn't showing is outlined in each appearance's tertiary label, both ways")
     func otherTabsAreOutlined() throws {
         let light = try #require(NSAppearance(named: .aqua))
         let dark = try #require(NSAppearance(named: .darkAqua))
-        let lightLine = Self.bytes(of: .separatorColor, in: light)
-        let darkLine = Self.bytes(of: .separatorColor, in: dark)
-        #expect(lightLine != darkLine, "the two appearances must draw the separator apart to tell")
+        let lightLine = Self.bytes(of: .tertiaryLabelColor, in: light)
+        let darkLine = Self.bytes(of: .tertiaryLabelColor, in: dark)
+        #expect(lightLine != darkLine, "the two appearances must draw the line apart to tell")
 
         let strip = TabStripFixture(TabStripFixture.folders(["one", "two"]), width: 600)
+        let chip = strip.bar.chips[1]
         for (appearance, line) in [(dark, darkLine), (light, lightLine), (dark, darkLine)] {
             Self.draw(strip, in: appearance)
-            let chip = strip.bar.chips[1]
             #expect(Self.bytes(of: chip.layer?.borderColor) == line, "\(appearance.name)")
             #expect(chip.layer?.borderWidth == 1)
         }

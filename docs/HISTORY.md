@@ -18504,6 +18504,475 @@ for: "let's restore a cursor position (including expanded tree) when traveling o
 - **Not seen live:** a physical keyboard; a server folder or an archive, whose walks run the same
   code; and ⌘[ after a relaunch, which the test pins.
 
+**2026-10-30: a folder another account owns no longer sends you to Full Disk Access** (core, then
+app). Reported with a screenshot: Dirnex refused `/Users/dirnexci/Documents` with *"Dirnex may need
+Full Disk Access in System Settings"*, and the question was why an administrator can't open it.
+
+- **What was there:** `VFSError.fromErrno` folded `EACCES` and `EPERM` into one `permissionDenied`,
+  so every local refusal that was not on a share or a sync client's mount named Full Disk Access.
+  The folder is `drwx------` and owned by another account, so plain `ls` from a shell refuses it
+  too. An administrator's processes run as their own uid, and no TCC grant changes a mode bit.
+- **Probed first:** a throwaway `.app` launched with `open`, so it was its own responsible process
+  and could not borrow the shell's grant. `opendir`, `open` and `access` on `~/Library/Mail`,
+  `~/Library/Safari`, `~/Library/Messages` and the TCC database all failed **`EPERM`**. The other
+  account's Documents failed **`EACCES`** there, and from the shell, which has the grant. So the
+  errno at the syscall tells the two apart, and `access` agrees with `open`.
+- **Core:** `permissionDenied` gained `refusedBy: PermissionRefusal = .unattributed`. Only a local
+  `EACCES` sets `.itemPermissions`; `EPERM` stays unattributed, since `chown` and `UF_IMMUTABLE`
+  raise it as well as TCC. The default keeps every server backend's construction and every
+  `if case .permissionDenied` check unchanged, so no behaviour site moved. Four tests built on a
+  real `EACCES` fixture now expect the tag, and one S3 test binds the new payload.
+- **App:** `VFSErrorText` checks the tag after the share and sync-client branches, whose `EACCES`
+  is a decision made elsewhere: *"File permissions don't allow that for this account, and Full Disk
+  Access can't change them. The owner or an administrator can."* It is translated into all 13
+  languages, with each catalog's own name for the grant. `FullDiskAccess`'s doc comment listed
+  "another user's folder" among the walls the grant removes; it no longer does.
+- **Tests:** `PermissionRefusalTests` (5, core): the two errnos, the default, a Cocoa refusal with
+  no errno, and a real `chmod 0` folder. `PermissionSentenceTests` gained 5, including the same
+  real folder carried all the way to the sentence. Negative control: with the branch disabled, 3
+  of the 5 failed. The other two are the narrowness tests (an unattributed refusal, a share and a
+  sync client), which pass either way by design. The first control run caught the real-folder test
+  passing with the branch off, because it compared against a sentence that went through the same
+  branch, so it now also has to differ from the Full Disk Access sentence. Full runs green (4 658
+  core, 2 067 app with the one known `GestureWaitTests` issue; live-server suites skipped).
+  `check_localization_keys.py` clean, both linters clean.
+- **Seen live** in the Debug build, launched by path, which has no Full Disk Access (`auth_value 0`
+  in the system TCC database). `reveal` of a path inside `/Users/dirnexci/Documents` raised *"Can't
+  open “Documents”"* with the new sentence. The same build's `reveal` inside `~/Library/Mail` still
+  raised the Full Disk Access sentence, which is the control. The defaults domain was restored and
+  compared unchanged.
+- **Not seen live:** a refusal on a write (a copy into a folder this account cannot write), which
+  takes the same `fromErrno` route, and a translated build.
+
+
+**2026-10-30: an alert that says Dirnex may need Full Disk Access opens it** (app only). Asked for
+straight after the entry above: wherever that sentence is still shown, give it the onboarding's
+Open System Settings button.
+
+- **Where it still shows:** every local refusal the core leaves unattributed, which is an `EPERM`
+  (macOS privacy protection, but also a Finder-locked item) or a Cocoa refusal with no errno. It
+  reaches the screen through `presentOperationFailure` (62 callers), the listing failure, the queue
+  summary, undo and redo, Get Info, the compare and merge windows, write-back, iCloud downloads,
+  vaults, tag deletion and the copy's Retry / Skip / Abort dialog: fourteen presenters, each building
+  its own alert.
+- **Decided by the alert's text, not by the error:** `NSAlert.offerFullDiskAccessSettings()` adds the
+  button only when the informative text contains `VFSErrorText.fullDiskAccessAdvice`, now the one
+  named copy of the sentence. So whichever presenter built the alert, and whether the sentence stands
+  alone or ends an "N items couldn't be put back: …" line, the button follows the advice. Any other
+  alert is left exactly as it was. Each presenter gained one line.
+- **No completion handler changed:** the button's target is a zero-size view in the alert's content
+  view (`AlertKeyCatcher`'s idiom, since a control holds its target weakly). It opens the pane, then
+  hands the click to the alert's own action for that button, so a sheet or a modal closes as it
+  would for any button. Probed first in a throwaway app: both returned 1001 after the extra action
+  ran. The copy dialog passes `closesAlert: false`, since the copy is parked on its answer: the pane
+  opens and Retry, Skip and Abort stay up.
+- **Keys:** the button goes last, where an alert's focus lands and Escape goes by default, so the
+  method re-pins both to the button that was last before it (OK, or the copy dialog's Abort). On
+  screen, AppKit keeps the Escape button at the bottom of the vertical stack, so Abort stays under
+  Open System Settings. The tag-deletion alert had relied on `NSAlert`'s implicit OK, which exists
+  only once presented; it now adds OK itself.
+- **Tests:** `FullDiskAccessButtonTests` (6): the button after OK, Return, Escape and focus on OK,
+  the sentence inside a longer line, no button for the item-permissions, server and not-found
+  sentences, a click that opens the pane and is handed to the alert's own action, and the copy
+  dialog's shape staying up with Abort safe. Built, never presented, for the main-actor cost NOTES.md
+  records. Negative control: with the text check made to fail, 5 of 6 failed; the sixth is the
+  no-button case. Full runs green (4 658 core, 2 073 app with the known `GestureWaitTests` issue;
+  live-server suites skipped). No new strings: Open System Settings was already translated.
+- **Seen live** in the Debug build, launched by path. A listing inside `~/Library/Mail` raised
+  "Can't open “Mail”" with OK and Open System Settings; the button opened System Settings on Privacy
+  & Security ▸ Full Disk Access and closed the alert. An F5 copy into a `chflags uchg` folder raised
+  the copy dialog with the button between Skip and Abort and the focus on Abort; the button brought
+  System Settings to the front and left the dialog up, and Abort ended the copy with nothing written.
+  The defaults domain was restored and compared unchanged.
+- **Not seen live:** the other twelve presenters, which make the same call, and a translated build.
+  **Still wrong, and left for a decision:** a Finder-locked item's `EPERM` gets this sentence and now
+  this button, and the onboarding prompt still lists "other users' home folders" among the places
+  Full Disk Access opens.
+
+
+**2026-10-30: a locked item says it is locked, and the onboarding stops promising other accounts'
+folders** (core, then app). Closes the two the entry above left for a decision, both taken by Oleg.
+
+- **Probed first**, on `chflags uchg` fixtures: a create, a `mkdir`, a rename and an unlink inside
+  a locked folder, a rename, an unlink and a write of a locked file, a move *into* a locked folder
+  and a move out of one all failed **`EPERM`**, the errno TCC gives. `FileManager.trashItem` on a
+  locked file, or on a file in a locked folder, failed with Cocoa's **513** over OSStatus -5000 and
+  no errno. So the errno cannot tell a lock from TCC, and the item's flags can.
+- **Core:** `PermissionRefusal.locked(VFSPath)`, set by `notPermitted(at:flags:)`, which `lstat`s
+  each local path and its folder and answers `.locked` for the first one whose flags block
+  modification (Finder's `UF_IMMUTABLE` or the root-only `SF_IMMUTABLE`). `fromErrno` calls it for
+  `EPERM`, LocalBackend's Cocoa mapping for a write refusal (the Trash's shape), and `moveItem` with
+  both of its ends, since a move into a locked folder is refused by the destination's. A path on
+  another backend is never looked up. An `EPERM` with nothing locked stays unattributed.
+- **App:** *"“Frozen” is locked. Turn off Locked in Get Info, then try again."*, naming whichever
+  of the item and its folder carries the lock. It is translated into 13 languages, using each
+  catalog's own words for Get Info and the Locked checkbox. Because it is not the Full Disk Access
+  sentence, the button from the entry above stays off it with no code of its own.
+- **Onboarding:** the Full Disk Access prompt listed "other users' home folders" among the places
+  the grant opens. Their own mode bits refuse with `EACCES` (the first entry of the day), so the
+  phrase is gone in all 14 languages, each translation losing exactly that clause.
+- **Tests:** `PermissionRefusalTests` gained 6 (core): the item or its folder, the root-only flag,
+  both ends of a move, a server path never looked up, the real backend's create, move, delete and
+  Trash mapping on locked fixtures, and an unlocked `EPERM` staying unattributed. Negative control:
+  with the lookup disabled, the 4 positive tests failed and the 2 narrowness tests passed.
+  `PermissionSentenceTests` gained 2 and `FullDiskAccessButtonTests` one more case; with the app
+  branch disabled, all 3 failed. No existing test needed a change. Full runs green (4 664 core,
+  2 075 app with the known `GestureWaitTests` issue; live-server suites skipped).
+  `check_localization_keys.py` clean, both linters clean.
+- **Seen live** in the Debug build, launched by path. An F5 copy into a locked "Frozen" folder
+  raised the copy dialog with *"“Frozen” is locked…"*, Retry, Skip and Abort, and no Open System
+  Settings. F8 on a locked file raised *"Couldn't move “frozen.txt” to the Trash"* with the same
+  sentence naming the file, and OK only; the file stayed. Dirnex ▸ Full Disk Access… showed the
+  prompt without the phrase. The defaults domain was restored and compared unchanged.
+- **Not seen live:** a translated build, and a file whose folder is locked being *written* rather
+  than created, which the sentence would also call locked.
+
+**2026-10-31: a place picked from ⌘G with ⌘ opens in a new tab** (app only). Asked for by Oleg: a
+⌘-click or ⌘Return on a Places item now does what the same gesture does on its sidebar row. So does
+⌘ with the item's digit. It holds for all three faces of the one menu, ⌘G, the path bar's glyph
+and Go ▸ Places.
+
+- **Probed first**, in a throwaway AppKit app driven with real keys and clicks. The obvious design,
+  reading ⌘ inside the action, half works. A ⌘-click's action sees ⌘ on `NSApp.currentEvent`, but
+  ⌘Return's sees ⌘'s own key-up and no ⌘ at all, and `NSEvent.modifierFlags` was already clear in
+  both. What works is an **alternate item** carrying ⌘ after each destination. The menu picked the
+  alternate for a ⌘-click, for ⌘Return at the top level and inside a submenu, and for ⌘2. In a
+  menu with no alternates, ⌘2 matched nothing and the menu stayed open.
+- **App:** `PlacesMenu` builds each destination as two items, the one drawn and its ⌘ alternate
+  with the same title, which sends `openPlaceInNewTab:`. The window's action hands the place to
+  the sidebar's `activate(_:inNewTab: true)`, the funnel a ⌘-click on a row already used, so the
+  places that always open a results tab (Recents, the Trash, searches, tags) behave as they do
+  there. `PlacesDigits` gives an alternate its item's digit. The drawn item's mask is set to none
+  when it is built, since an item's default is ⌘ and AppKit tells the pair apart by mask alone.
+- **Tests:** `PlacesMenuNewTabTests` (3): the pairs, the digits following both into a submenu, and
+  `performKeyEquivalent` firing the alternate for ⌘2 and the drawn item for a bare 1.
+  `PlacesMenuTests` now reads the items drawn and counts a ⌘ digit as its own chord. Negative
+  control: with the drawn item's mask left at its default, 5 tests failed, including the bare 1
+  firing nothing. Full runs green (4 664 core, 2 078 app with the known `GestureWaitTests`
+  issue; live-server suites skipped). Both linters clean. The app build first needed Xcode 27.2's
+  Metal toolchain (27B47), which this time really was missing, unlike NOTES.md's cached-lookup
+  case, and was downloaded with `xcodebuild -downloadComponent MetalToolchain`.
+- **Seen live** in the Debug build, launched by path. ⌘G ▸ Volumes ▸ Macintosh HD with ⌘Return,
+  media with a ⌘-click, ⌘1 in Volumes, and Go ▸ Places ▸ Volumes ▸ Macintosh HD with a ⌘-click each
+  added a tab beside the active one, and the tab it was picked from kept its folder. A plain Return
+  replaced the active tab and added none. The saved tabs read back the same seven paths. The
+  defaults domain was restored and compared unchanged.
+- **What ⌘ draws** was seen by Oleg, since a screenshot cannot be taken with a key down: with ⌘
+  held in ⌘G ▸ Searches, the items keep their titles and the digits read ⌘1 and ⌘2.
+
+**2026-10-31: the ⌘F favorites popup gets the same gesture** (app only). Asked for by Oleg once ⌘G's
+had been tried. A pin picked with a ⌘-click, ⌘Return or ⌘ and its digit opens in a new tab, as from
+its sidebar row.
+
+- **App:** the popup builds each pin as its jump item and a ⌘ alternate sending
+  `jumpToFavoriteEntryInNewTab:`, which calls `jumpToFavorite(_:inNewTab: true)`, the funnel the
+  sidebar row already used, so a pin on a server reconnects in the new tab. The alternate takes the
+  pin's digit. The builder now takes the list (`favoritesMenu(for:)`) instead of reading
+  `FavoritesStore`, so a test can render it without the developer's own pins.
+- **Tests:** `FavoritesPopupNewTabTests` (4): the pairs and their digits, a tenth pin pairing with
+  no digit, no alternate beside the empty placeholder, and `performKeyEquivalent` firing the
+  alternate for ⌘2 and the pin's own item for a bare 1. Negative control: with the pin's mask left at
+  its default, 3 failed and the placeholder test passed. Full runs green (4 664 core, 2 082 app with
+  the known `GestureWaitTests` issue). Both linters clean.
+- **Seen live** in the Debug build, launched by path: a ⌘-click on Downloads, ⌘Return on Dev and ⌘2
+  (Home) each added a tab and left the one picked from as it was, and a plain Return on Dev replaced
+  the active tab. The saved tabs read back the same six paths. Downloads is a protected folder, so
+  the first listing waited on macOS's access prompt for the differently signed Debug build, which Oleg
+  answered. The defaults domain was restored and compared unchanged.
+
+**2026-10-31: Recents, the Trash, saved searches and tags replace the tab's listing** (app only).
+Asked for by Oleg once ⌘ opened every place in a new tab: these four opened a results tab on every
+click, so a plain click and a ⌘-click did the same. Now a click, Return, or picking one from ⌘G or
+Go ▸ Places replaces what the active tab shows, as a folder does, and ⌘ opens a new tab. Tags were not
+named in the request and were included, being the same kind of place; ⌥F7 still opens a tab.
+
+- **App:** the four sidebar verbs carry `inNewTab`, so `SidebarViewController.activate(_:inNewTab:)`
+  passes ⌘ to every place. The context menus' Open, Run Search and Find Tagged Files act as a plain
+  click. Each opener takes a `ResultsTarget`, the tab and the listing it showed at the click, and
+  `landResults` installs in place through `installResults`, iCloud Drive's path. If that tab is no
+  longer in front or has moved to another folder while Spotlight ran, the results open in a new tab,
+  the rule an edited search already followed. A Trash landing records its sources on whichever tab it
+  lands in.
+- **Two things replacing a folder broke, found reading the trail code before writing.** A results
+  listing never enters the trail, so ⌘[ from one stepped back *past* the folder it replaced, and
+  leaving it reset the trail to one entry (iCloud Drive had done both since M9). Now
+  `trailIndexUnderResults` names the folder under a listing. ⌘[ jumps to it, which restores the row
+  the cursor was on (`installResults` now remembers that spot), and Back is enabled there even with
+  nothing older on the trail. `navigate` steps on from that folder instead of starting a fresh trail.
+  The other break was Recents' own sort (newest first, folders mixed in), which a tab carries into
+  the next folder. `PanelTab.sortUnderResults` keeps the folder's sort, and leaving lists in it.
+- **Tests:** `ResultsInPlaceTests` (8): in place versus ⌘, a tab that moved on or was left getting a
+  tab of its own, a saved search's name and query, a Trash's sources dropped by the next listing, ⌘[
+  landing on the row and the sort, ⌘[ over a tab's first folder, leaving keeping the trail, and a tab
+  opened with ⌘ having nothing under its results. `SidebarNewTabTests` now asserts all ten places
+  carry the flag. Negative control, five reverts in one build: Back ignoring the folder, the trail
+  reset, the results' sort kept, no staleness check, and Recents dropping the flag each failed their
+  own tests. Full runs green (4 664 core, 2 089 app with the known `GestureWaitTests` issue;
+  live-server suites skipped). One full run failed `VanishedFolderTests.operationRefresh`, which then
+  passed alone three times and in two further full runs. Both linters clean.
+- **A test raised the Trash's Full Disk Access alert on Oleg's screen, every run.** The first Trash
+  test landed on a pane whose view was never loaded. `landResults` ends in `focusTable()`, which loaded
+  it, and `viewDidLoad` re-listed the tab in front, by then the Trash: the real `~/.Trash`, refused to
+  the test host, whose alert falls back to `runModal()` with no window. A temporary probe logging the
+  caller of `gatherTrash` named the test. The fixture now loads the view first, as
+  `VanishedFolderTests` does, and a full run with the probe still in never reached `gatherTrash`.
+- **Seen live** in the Debug build, launched by path. Return on Recents (sidebar focused from the
+  keyboard) replaced the left pane's third tab, and Go ▸ Back put it back on `/Volumes/media`, tree
+  open and the cursor on the row it had left, sorted by name. ⌘Return on PDFs added a fourth tab and
+  left `media` alone, and Return on Htmls then replaced the PDFs results in that tab. The saved tabs
+  read back each step. A background click on a row only selects it, and Go ▸ Places ▸ Recents could
+  not be pressed from the background, since that submenu rebuilds its items as it opens. **Not run
+  live:** the Trash, which this Debug build cannot list without Full Disk Access, and tags. The
+  defaults domain was restored and compared unchanged.
+- **Then a tab of results over a folder comes back as that folder** (asked for by Oleg). Results
+  cannot be restored (`TabRestorePolicy`), so a tab showing them in place was dropped at the next
+  launch, as an iCloud Drive tab already was. `persistState` now writes such a tab down at
+  `folderUnderResults(in:)`, in `sortUnderResults`, with the cursor and open folders taken from the
+  spot the trail kept for that folder, and its trail stored at that folder. `isWorthPersisting` asks
+  the same folder, so one in a vault is still withheld. `workspaceSnapshot` saves the folder too,
+  through the same `reconnectEndpoint(for:at:)`. A tab opened on results with ⌘ has no folder under
+  it and is still left out. LOCATION-SUPPORT.md's reopen row has a footnote for it (<sup>aal</sup>).
+  Tests: 2 more in `ResultsInPlaceTests`, the tab written down and read back at the folder on its row
+  and sort with its trail, and a ⌘ results tab still left out. Negative controls, one build each:
+  without the branch in `persistState` five assertions failed, and without the workspace change its
+  two. Full runs green (4 664 core, 2 091 app with the known `GestureWaitTests` issue). Both linters
+  clean. **Seen live** in the rebuilt Debug build, launched by path after Oleg's own running copy was
+  quit with his go-ahead. Return on Recents over `/Volumes/media` (a tree, two folders open) already
+  saved that tab as the folder, where the previous build had saved `search:/Recents`. Quit with
+  Recents on screen and relaunched, the tab came back as `media`, both folders open, the cursor on the
+  row it had left, sorted by name. The defaults domain was restored and compared unchanged; only
+  frecency and Sparkle's check time had moved.
+
+**2026-11-01: the tabs move up into the title bar's row** (core and app). Asked for by Oleg, who
+disliked the empty row across the top of the window: put the tabs there, move the license label and
+the update button to the right, and remove the Back and Forward chevrons. Each pane's file list gains
+34 pt, the path bar moving from 66 pt below the window's top to 32.
+
+- **No toolbar and no accessory holds the tabs.** A strip belongs to its pane, so the pane's stack
+  simply rises, pinned to the container's top instead of the safe area, with a 4 pt inset that centers
+  the 24 pt strip on the traffic lights. The probe that made this the plan is in NOTES.md ▸ Windows: a
+  view under the transparent title bar gets the click, except in the top 3 pt.
+- **Core:** `TitlebarClearance` works out how far a strip stays in from each end from where the strip
+  is and how far the controls reach from the window's edges, so half way through the sidebar's
+  animation it clears only what is still covered. Six tests.
+- **App:** `TabBarView+Titlebar` measures at every layout, before `TabOverflow` decides what fits, and
+  moves only the stack inside the strip, so the drop target keeps the pane's whole width and the
+  measuring cannot feed back into itself. The pane column's `viewDidLayout` asks both strips again,
+  since the sidebar can carry the left pane along at one size. The license label became a `.trailing`
+  accessory and the update indicator got one of its own, in the corner. In M7 Oleg had moved the
+  indicator away from the right because it read as a fourth navigation glyph, and that reason left
+  with the chevrons. `BrowserWindowController+Navigation` is gone; ⌘[, ⌘] and the Go menu stay, and the
+  catalog lost "Forward", which nothing else used.
+- **The strip shows for a single tab now.** Hidden, two one-tab panes would have brought the empty row
+  back, and a pane with one tab already drew its list 28 pt out of line with a pane holding three.
+  With the strip always there, `isRevealedForDrag` and the `tabDragIsInFlight` callback had no job and
+  went. A pane's last chip has no × and starts no drag, which the chip's menu already said by
+  disabling both.
+- **What the title bar did by being empty, the strip does on purpose.** A chip answers
+  `mouseDownCanMoveWindow` with `false`, or a drag on it would move the window. Each strip keeps 40 pt
+  free at its end, so two full strips with the sidebar closed still leave somewhere to grab.
+- **A test moved under it.** `ThreeWayMergeGitTests` capped ties at 30 across random texts and a corpus
+  of every seventh file in `Services/`, and adding `TitlebarClearance.swift` there moved the sample
+  onto `UserScripts.swift`, for 31. Moving the file out of the folder gave a pass, which is what
+  identified it. The merge had not changed: the 27 random ties are the number it had when written. So
+  the cap now holds the seeded texts to 30 alone, which is what can show a change in the search, and
+  gives the corpus its own 10.
+- **Seen live** in the Debug build, launched by path: the row and alignment at full width, the sidebar
+  closed and reopened, Quick View in a pane (its header under the strip) and full window (the row stays
+  empty above it, its header on the safe area, as planned), a pane closed down to one tab, and at the
+  minimum 640 pt with the sidebar closed from launch, the Renew License label and the update button
+  both showing (`-DirnexDebugLicenseDaysAhead 31 -DirnexDebugLicenseBuildDate 2028-01-01`), the right
+  strip's tabs going behind the » before they reach the label.
+
+**2026-11-02: a drag on a tab moves the tab** (app). Asked for by Oleg right after the strip moved up:
+dragging a chip moved the whole window, while ⌥⌘[ and ⌥⌘] worked. The drag code had been there since the
+session-based strip, whose entry left one physical drag for a person. The entry above pinned
+`mouseDownCanMoveWindow` and left its real drag for a person too. So nothing had recorded a drag with a
+mouse, and the strip had just moved into the 32 pt that `_draggableFrame` covers.
+
+- **The property was the wrong question.** A drag in that row is the window server's unless AppKit's
+  region says otherwise, and that region is built from a private per-view rect that a plain view leaves
+  empty whatever it answers. `_lastDragRegionDataDescription` printed it: holes for the × and the +, and
+  about 90% of every chip still draggable. NOTES.md ▸ Windows has the table.
+- **`NSControl` was tried first and is a trap.** It reports its bounds only while it accepts first
+  responder, so the override that keeps a press from taking the file list's focus took the hole away
+  again. It took the real window to show that: the throwaway had measured a bare control.
+- **What landed:** a blank disabled `NSButton` behind each chip's contents
+  (`TabChipView.windowDragShield`), which reports its bounds and sees no press, since the chip's `hitTest`
+  keeps them all. No private API in the shipped code, and the chip stays a plain view. The first build's
+  chips came out about 49 pt wide, and an unnamed `AXButton` appeared on each, both fixed and both in
+  the note. Comments that said constraints would make the frame larger were wrong, read off an
+  accessibility frame, and went once `frame` was measured.
+- **Tests:** `TabStripTitlebarTests` reads the rect itself, through a private selector the shipped code
+  does not use, so a macOS that renames it fails there and sends a person back to the mouse. Negative
+  controls, one build each: no shield, the button enabled, the cell left in the accessibility tree, no
+  mask, and constraints in place of the mask, each failed the test named for it. Full runs green (4 670
+  core, 2 102 app with the known `GestureWaitTests` issue), with both linters clean, SwiftLint at 0.65.0
+  locally against CI's 0.65.1.
+- **Seen live**, on the build with the mask and a hugging line since removed as dead, after Oleg's
+  running copy was quit with his go-ahead. Oleg dragged with the mouse: along a strip, onto the other
+  pane's, and back onto its own place. A chip double-clicked did not zoom, the blank strip moved the
+  window, the chip's menu opened, and the arrow keys still drove the file list after a drag. A temporary
+  log read 13 drops, 11 along a strip and 2 across, each ending in `.move`, and on all six layouts it
+  sampled (a tab moved, added and closed, the sidebar hidden and shown) 0% of every chip was in the
+  region. The final build was only looked at, with the chips at their full widths.
+
+**2026-11-02: ⌥⌘[ and ⌥⌘] carry a tab across the panes** (core and app). Asked for by Oleg, in those
+words. Read as one motion rather than as a second ⇧⌘M: a step along the strip stays what it was, and
+where it used to stop at the strip's end it goes on into the pane on that side.
+
+- **Core:** `TabList.step(by:besidePaneTabCount:)` answers `.along`, `.across(slot:)` or `.stays`. A tab
+  enters at the end nearest the pane it left, slot 0 going right and the last slot going left, so it keeps
+  going the way it was going and the opposite step puts it straight back. A pane's last tab stays.
+- **App:** `moveActiveTab(by:)` hands over through the funnel ⇧⌘M and a drop already use, so the tab
+  arrives as itself and the focus follows, which is who the menu asks for the next step. Which way a
+  pane lies is new for a host to answer: `panel(beside:by:)`, since `panelCounterpart` has no side. The
+  menu items now validate against the step, so they are disabled only at the outer ends and for a
+  pane's last tab.
+- **Left as it is:** a pane that loses its showing tab falls back to the neighbour, Close Tab's rule. So
+  a tab that crosses in and straight back leaves that pane on its first tab rather than the one it was
+  showing, as a ⇧⌘M there and back does.
+- **Tests:** five in the core and four in the app, with one reworded where the strip's right end no
+  longer stops. Negative controls, one build each: the hand-over removed, the menu validating the old
+  way, the two ends swapped, and the last tab allowed to leave, each failed the tests named for it.
+  `panel(beside:by:)` itself has no test, since a test host answers with a stub, and was checked live.
+  Those tests took `TabMoveTests` past SwiftLint's `type_body_length`, at 292 lines, so it split by
+  concept: `TabMoveKeyTests` for the keyboard, `TabMoveTests` for drops and the chip's menu, and
+  `TabMovePanes` as their fixture, with saved-tab keys per instance because local runs go side by side.
+  Full runs green (4 675 core, 2 106 app with the known `GestureWaitTests` issue), with both linters
+  clean, SwiftLint at 0.65.0 locally against CI's 0.65.1.
+- **Seen live** in the Debug build, launched by path after Oleg's running copy was quit with his
+  go-ahead, driven through the Window menu with the saved tabs read back after each step: `swtest copy`
+  stepped to the left pane's left end, where Move Tab Left was disabled, along to its right end, across
+  to the front of the right strip with the focus following, back to where it had been, across again
+  and on to the far end, where Move Tab Right was disabled. The chords themselves were not pressed
+  here. They are the same menu items as before.
+
+**2026-11-02: the Name column follows the window again** (app). Reported by Oleg with a screenshot:
+after the window was narrowed, the left pane's Name column kept its width, Size was cut off at the
+pane's edge and Date was out of sight, while the right pane resized as it should.
+
+- **Cause:** through a live resize, `firstColumnOnlyAutoresizingStyle` leaves columns wider than the
+  pane as they are, during the drag and after it. The left pane's tab had stored Name at 300 pt in a
+  386 pt pane, which a stored layout does whenever it was saved at a wider pane: a tab switched to after
+  the window was narrowed, or a relaunch at a smaller size. The right pane's columns fit. A scratch
+  table stuck on 1 pt of overflow and refit on a programmatic resize (NOTES.md ▸ Tables).
+- **What landed:** `fitNameColumnToPane` sets Name to the clip view's width less the other columns and
+  their spacing, never below its `minWidth`. It runs on the clip view's `frameDidChangeNotification`,
+  after a tab's layout is applied, and after the size-bar column comes or goes. The last closes a leak
+  of the same kind: Name pays for the bar but stops at its floor, so removing the bar in a narrow pane
+  gave Name back more than it had paid.
+- **Tests:** `NameColumnFitTests`, three tests on a pane in a window that is never shown, resizing
+  between the table's own `viewWillStartLiveResize()` and `viewDidEndLiveResize()`. Without those calls
+  the old code refit the columns at the first resize and the tests caught only the layout step; with
+  them the old code failed all three, with 9 issues. A fourth test, on Name's floor, passed both ways
+  and was dropped. The panes list `/var/empty`, since on the temp folder they relisted whenever another
+  test wrote there. Core green (4 675). The full app run (2 109) had 10 issues besides the known
+  `GestureWaitTests` one, all timing waits in `VanishedFolderTests`, `QuickViewWebFadeInTests` and
+  `QuickViewScrollPageTests` while the host ran at about 1 400% CPU; those suites and the new one
+  passed alone, 18 of 18, and a full rerun was green (2 109, the known issue only, 81 s against the
+  first run's 272 s). Both linters clean, SwiftLint at 0.65.0 locally against CI's 0.65.1.
+- **Seen live** in the Debug build, launched by path after Oleg's running copy was quit with his
+  go-ahead. At launch the left pane's `media` tab came back from 300 pt to 120, Name's floor at that
+  width. Oleg then dragged the window wider and narrower, the divider both ways and Size's edge, and
+  switched the left pane's tabs. A recorder read the saved columns and the split view's frames: wherever
+  the frames had settled, each pane's Name was its width less 16 pt of insets less the other columns
+  (266.5 at 554.5, 264 at 552, 204 at 492, 210 and 209.5 at 497.5), and the two tabs stored at 334.5
+  and 268.5 opened at 266.5. A drag on Size's edge moved Date by the same amount and left Name alone.
+
+**2026-11-02: ⇧⌘[ and ⇧⌘] step through the tabs of both panes** (core and app). Asked for by Oleg:
+the switch went round one pane's strip only, and he wanted it to travel across both, as ⌥⌘[ and ⌥⌘]
+now carry a tab.
+
+- **Core:** `TabList.tabToShow(by:otherPaneTabCount:)` reads both strips as one ring, this pane's
+  tabs and then the other's, and answers `.here(index:)`, `.otherPane(index:)` or `.current`. Past a
+  strip's right end is the other pane's first tab and past its left end the other pane's last, which
+  is the slot rule the move already follows. A ring of two strips reads the same from either pane, so
+  it needs `panelCounterpart` and not the side-aware `panel(beside:by:)`.
+- **The far ends go round**, the right pane's last tab to the left pane's first and back. Decided
+  without asking, since the switch always went round within one strip, and confirmed by Oleg, who
+  then asked for ⌥⌘[ and ⌥⌘] to go round the same way (the next entry). With no other pane, the view
+  still goes round its own strip.
+- **App:** `showTab(by:)` replaces `selectNextTab` and `selectPreviousTab`. A crossing selects the
+  other pane's tab and focuses that pane, so the next step goes on from there. The pane left behind
+  keeps showing its tab. Only the active tab and the focus change: no tab moves. A pane on its only
+  tab now hands the focus across, where it used to do nothing.
+- **Tests:** five in the core, including a walk round both rings each way, and five in the app
+  (`TabSwitchKeyTests`, on `TabMovePanes`). Negative control: the same build with the other pane's
+  count forced to 0, which is the old behavior. Four of the five app tests failed (15 issues). The one
+  that passed is the no-other-pane test, which is meant to pass both ways. Full runs green (4 680 core,
+  2 114 app with the known `GestureWaitTests` issue), both linters clean, SwiftLint at 0.65.0 locally
+  against CI's 0.65.1.
+- **Seen live** in the Debug build, launched by path with no other copy running, stepped through
+  `run operation "window.previousTab"` and `"window.nextTab"`, the selectors the two menu items send,
+  with both panes' saved tabs read back after each step. From left 1 of 3 and right 0 of 3, the steps
+  went left 0, across to right 2, right 1 and 0, across to left 2, across to right 0, right 1 and 2,
+  then round to left 0 and back round to right 2. Each step after a crossing ran in the pane it had
+  crossed to, so the focus went with it, and the app saved `right` as the active pane at quit. The
+  chords themselves were not pressed. The defaults domain was restored and compared afterwards, and
+  so was the drift from the test runs (`Dirnex.frecency`, `Dirnex.tabs.left`, `SULastCheckTime`).
+
+**2026-11-02: ⌥⌘[ and ⌥⌘] go round both panes too** (core and app). Asked for by Oleg straight after
+the entry above: a tab moved from the keyboard should go round as the view does.
+
+- **What changed:** a tab stepped off either end of a strip now enters the *other* pane, at its
+  start going right and at its end going left. So the right pane's last tab goes on to the left
+  pane's first slot, and the left pane's first tab to the right pane's last. Read as a ring, that is
+  the slot rule the crossing already had, so `TabList.step` kept its arithmetic; its parameter is
+  now `otherPaneTabCount`. The app asks `panelCounterpart` where it asked `panel(beside:by:)`, which
+  had no other caller and is gone from `PanelHost`, the window and the stub host. Move Tab Left and
+  Right are now disabled only on a pane's last tab.
+- **Kept:** with no other pane, a step off the end still goes nowhere. The window always has one.
+- **Tests:** one new in the core, a tab walked round both panes each way until it is back where it
+  started. In the app, the two tests that stopped at the outer ends now go round, and a third covers
+  the left end. `TabListTests` reached 278 lines against `type_body_length`, so its two-pane sections
+  moved to `TabListRingTests`. Negative control: a one-line hack putting the old rule back, offering
+  the other pane only in the direction it lies, failed the three wrap tests (12 issues) and passed
+  the other six. Full runs green (4 681 core, 2 115 app with the known `GestureWaitTests` issue), both
+  linters clean.
+- **Seen live** in the Debug build, launched by path and driven through `run operation
+  "window.moveTabRight"` and `"window.moveTabLeft"`, with both panes' saved tabs read back after each
+  step. The right pane had the focus, on its last tab, `translations`. A step right put that tab first
+  in the left pane, and a step right then left moved it along there. A step left put it last in the
+  right pane, and a step left then right moved it along there. Each step after a wrap ran in the pane
+  the tab had wrapped into. The chords were not pressed. The defaults domain was restored and compared.
+
+**2026-11-03: a double-click on the title bar's free space zooms the window** (app). Asked for by Oleg:
+the free space on the header should grow the window to the full desktop, as in every other app. How
+long it had done nothing was not checked: the panes have run edge to edge under the title bar for longer
+than the strip has been in the row.
+
+- **The click was getting lost, not refused.** AppKit does all of this on mouse-up in the frame view
+  around the content view, and a content view's next responder is the window, which skips it. So a
+  click nothing wanted climbed to the top and stopped. NOTES.md ▸ Windows has what the disassembly
+  showed.
+- **What landed:** `BrowserContentView`, the window's content view, hands a mouse-up with a click count
+  of 2 to its superview. A hand-written `performZoom` would have ignored System Settings' choice of
+  Fill, Minimize or Do Nothing, and AppKit's own code path needs no private call. AppKit checks the
+  title bar's rect itself, so a double-click anywhere lower does nothing. Full screen is excluded, since
+  no title bar is there.
+- **Two things the row needed beyond that.** A × that closes the strip's last chip leaves free space
+  under the pointer, and AppKit counts the next press as a second click wherever it lands, so a quick
+  second press on a × would have zoomed the window: `chipDidClose` marks the next double-click as not
+  one. And Quick View's surface swallows every click and skips the panes in `nextResponder`, which at
+  full-window size would have left its empty row dead, so a double-click goes straight to the content
+  view from there.
+- **Tests:** `TitleBarDoubleClickTests` drives the real responder chain up to the real frame view and
+  counts `performZoom`. A plain content view stops it, which is what makes the zoom a measurement. The
+  tests that watch for the zoom run only while the system's setting is Zoom.
+- **Seen live** in the Debug build, launched by path, through raw double-clicks from background
+  computer-use with the window frame read back: the left strip, the band above the sidebar, the right
+  strip and the empty row over full-window Quick View each zoomed to `(0, 33, 1728, 1019)` from the top
+  left, the screen's visible frame above the Dock, and the next double-click put back `(0, 155, 1290,
+  888)` exactly. The path bar's row, the list, the active chip and the body of a Quick View preview left
+  the window alone. The defaults domain was restored and compared.
+- **The other settings ran in a throwaway window** on the same path, each set for that one process with
+  `-AppleActionOnDoubleClick <value>`, so the Mac's own setting stayed as it was. `Fill` and `Maximize`
+  landed on the visible frame, `Minimize` miniaturized and `None` left the frame alone.
+- **Checked by Oleg with a real mouse**, since the tool sends a × as one accessibility press: a
+  double-click on the × of a pane's rightmost tab closed the tab and left the window's size alone, and a
+  double-click on a strip's free space in full screen did nothing.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

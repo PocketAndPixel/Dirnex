@@ -101,8 +101,8 @@ protocol PanelHost: ClosedTabHost {
     /// is the active pane.
     func panelCursorDidChange(_ panel: PanelViewController)
 
-    /// A pane's directory (or active tab) changed, so its back/forward trail may have. Lets the
-    /// window re-validate the titlebar Back/Forward buttons against the active pane's history.
+    /// A pane's directory (or active tab) changed. Lets the window bring the terminal drawer along
+    /// when that pane is the active one.
     func panelDidNavigate(_ panel: PanelViewController)
 
     /// Record that a pane's listing of `path` landed, in the app-wide frecency index behind the path
@@ -214,6 +214,10 @@ final class PanelViewController: NSViewController {
     let statusLabel = NSTextField(labelWithString: "")
     // The tab strip above the path bar; hidden until the pane has more than one tab.
     let tabBar = TabBarView()
+    /// The gap above the 24 pt tab strip, which centers it in the window's 32 pt title bar.
+    static let tabStripTopInset: CGFloat = 4
+    /// The gap below the strip. A chip ends a point inside the strip, so this leaves 8 pt under it.
+    static let tabStripBottomGap: CGFloat = 7
 
     /// Guards the cursor⇄table-selection mirror against feedback loops: when we push
     /// `panel.cursor` into the table, the resulting selection-changed callback must
@@ -374,7 +378,8 @@ final class PanelViewController: NSViewController {
         let stack = NSStackView(views: [tabBar, pathBar, scrollView, statusLabel])
         stack.orientation = .vertical
         stack.spacing = 4
-        stack.edgeInsets = NSEdgeInsets(top: 6, left: 8, bottom: 6, right: 8)
+        stack.setCustomSpacing(Self.tabStripBottomGap, after: tabBar)
+        stack.edgeInsets = NSEdgeInsets(top: Self.tabStripTopInset, left: 8, bottom: 6, right: 8)
         stack.setHuggingPriority(.defaultLow, for: .vertical)
         tabBar.setContentHuggingPriority(.required, for: .vertical)
         pathBar.setContentHuggingPriority(.required, for: .vertical)
@@ -382,9 +387,9 @@ final class PanelViewController: NSViewController {
         scrollView.setContentHuggingPriority(.defaultLow, for: .vertical)
 
         // The pane fills the window to the top (the title bar is transparent and content
-        // runs edge-to-edge). Pin the chrome stack's top to the safe-area guide so the tab
-        // strip / path bar clear the traffic-light zone when the sidebar is collapsed and
-        // this pane slides under the buttons; the sides and bottom stay flush.
+        // runs edge-to-edge), and the tab strip is what fills the title bar's row: the top inset
+        // centers it there, level with the traffic lights, and the path bar starts just below. The
+        // strip keeps its own chips clear of the title bar's controls (`TabBarView+Titlebar`).
         let container = PanelContainerView()
         // A click in the pane's chrome gaps (insets, spacing) must refocus the file table so the
         // responder-chain file commands (F5/F6/F8) stay live — see `PanelContainerView`.
@@ -392,7 +397,7 @@ final class PanelViewController: NSViewController {
         stack.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(stack)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: container.safeAreaLayoutGuide.topAnchor),
+            stack.topAnchor.constraint(equalTo: container.topAnchor),
             stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             stack.bottomAnchor.constraint(equalTo: container.bottomAnchor)

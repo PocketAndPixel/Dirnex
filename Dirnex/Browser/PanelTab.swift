@@ -131,6 +131,13 @@ final class PanelTab {
     /// rather than the raw query (`"jmeter"`). `nil` for an ordinary tab. Session-scoped like
     /// `searchQuery` (search tabs aren't persisted).
     var customTitle: String?
+    /// The sort of the folder a results listing replaced in this tab, which leaving the listing for
+    /// a folder lists in again. `nil` for a tab not showing results in place of one.
+    ///
+    /// A tab carries its sort from folder to folder, and Recents brings its own, newest first with
+    /// folders mixed in (`RecentsQuery.resultSort`). Without this, ⌘[ from Recents shown over a folder
+    /// would list that folder by date, and every folder after it. Session-scoped like `mergedSources`.
+    var sortUnderResults: FileSort?
     /// The real directories a **merged** listing was assembled from — every trash for the Trash
     /// (PLAN.md §M8), the CloudDocs container plus each app library for iCloud Drive (§M9). Empty
     /// for every other kind of tab.
@@ -166,6 +173,7 @@ final class PanelTab {
         titleBeforeEdit = nil
         departedSearchHits = [:]
         mergedSources = []
+        sortUnderResults = nil
     }
 
     /// The account this **restored** tab has to reconnect before it can list, for a tab that came

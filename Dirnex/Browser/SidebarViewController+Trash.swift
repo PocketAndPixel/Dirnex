@@ -67,7 +67,7 @@ extension SidebarViewController {
     }
 
     @objc private func openTrashItem(_ sender: NSMenuItem) {
-        delegate?.sidebarDidActivateTrash(self)
+        delegate?.sidebarDidActivateTrash(self, inNewTab: false)
     }
 
     @objc private func emptyTrashItem(_ sender: NSMenuItem) {

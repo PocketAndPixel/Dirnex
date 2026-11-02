@@ -15,7 +15,7 @@ extension BrowserWindowController {
     /// bar to zero while idle, handing its height back to the panes.
     func makeContainerViewController() -> NSViewController {
         let container = NSViewController()
-        container.view = NSView()
+        container.view = BrowserContentView()
         container.addChild(splitViewController)
 
         let splitView = splitViewController.view
@@ -45,7 +45,8 @@ extension BrowserWindowController {
     /// *first* item and stays full height beside this whole column. The window controller owns
     /// `functionBarHeight` and collapses it to zero when the feature is off.
     func makePaneColumnController() -> NSViewController {
-        let column = NSViewController()
+        let column = PaneColumnController()
+        column.onLayout = { [weak self] in self?.tabStripsNeedLayout() }
         column.view = NSView()
         column.addChild(paneStackSplitViewController)
 
@@ -68,5 +69,16 @@ extension BrowserWindowController {
             functionBarHeight
         ])
         return column
+    }
+}
+
+/// The column under the sidebar split's second item. It moves whenever the sidebar does, which can
+/// carry the left pane along at the same size, and a strip is laid out again only for a new size.
+private final class PaneColumnController: NSViewController {
+    var onLayout: (() -> Void)?
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        onLayout?()
     }
 }

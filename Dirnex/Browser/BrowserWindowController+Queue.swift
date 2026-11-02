@@ -245,6 +245,7 @@ extension BrowserWindowController {
             comment: "Dismiss button on a file-operation failure alert."
         ))
         alert.enableEscapeToCancel()
+        alert.offerFullDiskAccessSettings()
         // A job that finished minutes after it was queued — see `beginSheetIfVisible`.
         alert.beginSheetIfVisible(over: window)
     }

@@ -35,6 +35,9 @@ enum ErrorDialog {
         alert.addButton(withTitle: String(localized: "Skip"))
         alert.addButton(withTitle: String(localized: "Abort"))
         alert.enableEscapeToCancel() // ⎋ → Abort (there is no "Cancel" button here)
+        // Opens the pane and leaves the dialog up: the copy is parked on this answer, and the
+        // choice of Retry, Skip or Abort stays the user's.
+        alert.offerFullDiskAccessSettings(closesAlert: false)
 
         let response = await runAlert(alert, in: window)
         let applyToAll = alert.suppressionButton?.state == .on

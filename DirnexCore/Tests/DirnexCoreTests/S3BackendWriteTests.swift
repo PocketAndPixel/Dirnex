@@ -188,7 +188,7 @@ struct S3BackendWriteTests {
         #expect {
             try backend(transport).removeItem(at: path("/docs"))
         } throws: { error in
-            guard case let VFSError.permissionDenied(target) = error else { return false }
+            guard case let VFSError.permissionDenied(target, _) = error else { return false }
             // Named on the key that was refused, not on the folder — pointing the user at the
             // folder would send them to check permissions on something that is fine.
             return target == path("/docs/sub/b.txt")

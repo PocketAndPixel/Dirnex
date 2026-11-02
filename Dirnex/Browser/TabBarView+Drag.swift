@@ -180,10 +180,6 @@ extension TabBarView: NSDraggingSource {
         context == .withinApplication ? .move : []
     }
 
-    func draggingSession(_ session: NSDraggingSession, willBeginAt screenPoint: NSPoint) {
-        delegate?.tabBar(self, tabDragIsInFlight: true)
-    }
-
     func draggingSession(
         _ session: NSDraggingSession,
         endedAt screenPoint: NSPoint,
@@ -191,7 +187,6 @@ extension TabBarView: NSDraggingSource {
     ) {
         draggedIndex = nil
         for chip in chips { chip.alphaValue = 1 }
-        delegate?.tabBar(self, tabDragIsInFlight: false)
     }
 }
 
@@ -200,7 +195,8 @@ extension TabBarView: NSDraggingSource {
 extension TabChipView {
     /// The chip as the pointer carries it: drawn rather than snapshotted, because its fill is a layer
     /// property a view snapshot does not reliably capture. An inactive chip has no fill of its own,
-    /// so it is given the control background and a hairline to stand out from what it passes over.
+    /// so it is given the control background to stand out from what it passes over, and keeps its
+    /// hairline. The showing chip has none, so it is given one.
     ///
     /// The glyph and the label are drawn where the live chip lays them out, so the image is the chip
     /// rather than a second layout of it. The glyph is colored by its configuration rather than
@@ -208,6 +204,7 @@ extension TabChipView {
     func dragImage() -> NSImage {
         let (background, text) = colors
         let fill = background.alphaComponent > 0 ? background : NSColor.controlBackgroundColor
+        let hairline = isActive ? NSColor.separatorColor : border
         let title = title
         let iconFrame = iconFrame
         let labelFrame = labelFrame
@@ -221,7 +218,7 @@ extension TabChipView {
             )
             fill.setFill()
             chip.fill()
-            NSColor.separatorColor.setStroke()
+            hairline.setStroke()
             chip.stroke()
             symbol?.draw(in: iconFrame)
             let attributes: [NSAttributedString.Key: Any] = [

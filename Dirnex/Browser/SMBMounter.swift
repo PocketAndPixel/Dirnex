@@ -1,5 +1,6 @@
 import AppKit
 import DirnexCore
+import DiskArbitration
 import Foundation
 import NetFS
 
@@ -53,10 +54,11 @@ final class SMBMounter {
     }
 
     /// Unmount every share this app mounted — called on quit so we don't leave our mounts behind,
-    /// while leaving any Finder-mounted share exactly as the user had it.
+    /// while leaving any Finder-mounted share exactly as the user had it. Each unmount is asked for
+    /// and not waited on (`requestUnmount`), so quitting never waits on another process.
     func unmountOwnedMounts() {
-        for path in ownedMountPoints where Self.unmount(URL(fileURLWithPath: path)) {
-            // Removal happens after the loop so we don't mutate the set mid-iteration.
+        for path in ownedMountPoints {
+            Self.requestUnmount(URL(fileURLWithPath: path))
         }
         ownedMountPoints.removeAll()
     }
@@ -171,16 +173,26 @@ final class SMBMounter {
         return Set(urls.map(\.path))
     }
 
-    /// Eject a network share (Finder's own disconnect gesture). Failures are swallowed — a busy
-    /// share that won't unmount on quit isn't worth blocking termination over.
-    @discardableResult
-    private nonisolated static func unmount(_ mountPoint: URL) -> Bool {
-        do {
-            try NSWorkspace.shared.unmountAndEjectDevice(at: mountPoint)
-            return true
-        } catch {
-            return false
-        }
+    /// Ask DiskArbitration to unmount a share, and return without waiting for the answer.
+    ///
+    /// An unmount first waits for every process that registered to approve one, and a process that
+    /// never answers holds it for DiskArbitration's whole timeout. Measured 2026-11-02: a wedged
+    /// `PhotosReliveWidget` held unmounts on this Mac for 10.7 s each, and the
+    /// `unmountAndEjectDevice` this used to call is synchronous, so quitting with a share mounted
+    /// kept the window up under a spinning cursor for 10.9 s. The request outlives the process that
+    /// made it (measured with an approver holding it for 5 s after the requester had exited), so
+    /// quit can leave at once and the daemon finishes the unmount, or fails it, on its own. A share
+    /// another app still has open stays mounted, as it did before: the unmount fails with `EBUSY`.
+    /// A mount point that is no longer a volume has no disk, and so nothing to unmount.
+    private nonisolated static func requestUnmount(_ mountPoint: URL) {
+        guard let session = DASessionCreate(kCFAllocatorDefault),
+              let disk = DADiskCreateFromVolumePath(
+                  kCFAllocatorDefault,
+                  session,
+                  mountPoint as CFURL
+              )
+        else { return }
+        DADiskUnmount(disk, DADiskUnmountOptions(kDADiskUnmountOptionDefault), nil, nil)
     }
 }
 

@@ -25,6 +25,9 @@ extension PanelViewController {
         var origin: VFSPath?
         /// The results tab an edit runs back into; `nil` opens a new one.
         var tab: PanelTab?
+        /// For a search picked from the sidebar or ⌘G, the listing its hits replace (`landResults`);
+        /// `nil` opens a new tab. Never set together with `tab`, which is an edit's.
+        var over: ResultsTarget?
     }
 
     /// Whether the active tab holds a search to edit: any tab of search hits, but not Recents,
@@ -79,8 +82,9 @@ extension PanelViewController {
         return controller
     }
 
-    /// Put a finished search's hits where `landing` says: back into the tab being edited, or into a
-    /// new results tab beside the current one.
+    /// Put a finished search's hits where `landing` says: back into the tab being edited, in place of
+    /// the listing a saved search or a tag was picked over, or into a new results tab beside the
+    /// current one.
     ///
     /// The edited tab is found by identity, not by index, and need not be the active one: a
     /// Spotlight search over file contents can take seconds, and the user may switch tabs meanwhile.
@@ -99,7 +103,7 @@ extension PanelViewController {
               tab.panel.path.backend == .search,
               tab.searchQuery != nil
         else {
-            openResults(
+            landResults(
                 entries,
                 truncated: truncated,
                 as: ResultsPresentation(
@@ -109,7 +113,8 @@ extension PanelViewController {
                     scope: scope,
                     title: landing.title,
                     origin: landing.origin
-                )
+                ),
+                over: landing.over
             )
             return
         }

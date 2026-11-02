@@ -463,6 +463,8 @@ extension PanelViewController {
         let wasApplyingLayout = isApplyingColumnLayout
         isApplyingColumnLayout = true
         defer { isApplyingColumnLayout = wasApplyingLayout }
+        // Name's charge is clamped at its `minWidth`, so the refund can overshoot the pane.
+        defer { fitNameColumnToPane() }
 
         guard installed else {
             tableView.removeTableColumn(tableView.tableColumns[existing])

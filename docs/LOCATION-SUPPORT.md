@@ -122,7 +122,7 @@ folder around a file another client has locked, it keeps the date an upload asks
 | Size visualization bars (`⌃B`) | yes | yes | yes | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>nn</sup> | yes<sup>hhh</sup> | n/a<sup>nn</sup> | n/a<sup>nn</sup> |
 | Git status column, `.gitignore`-aware sizes | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
 | Appears in Recents | yes | yes | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a<sup>oo</sup> | n/a | n/a |
-| Reopens at launch / in a saved workspace | yes | yes | yes | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes | n/a | n/a |
+| Reopens at launch / in a saved workspace | yes | yes | yes | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes, limited<sup>ww</sup> | yes | n/a<sup>aal</sup> | n/a<sup>aal</sup> |
 | Back / forward history survives a relaunch<sup>aag</sup> | yes | yes | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes, limited<sup>aag</sup> | yes | n/a | n/a |
 | Reopen a closed tab (`⇧⌘T`)<sup>aah</sup> | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
 
@@ -247,9 +247,12 @@ so ⌘ changes nothing. A file opens as `⏎` opens it. Exercised live on local 
 <sup>aae</sup> A tab is the same object in its new place, carrying its own cursor, marks, history,
 columns, shape and a search's question. Both panes list through the window's one backend, so a tab on
 a server, inside an archive or in a vault moves as it is, without reconnecting or re-extracting. A
-pane's last tab stays. The keyboard moves were exercised live on local folders (2026-10-15). Dragging
-a chip is tested through the strips' drop methods only, because a drag session cannot be synthesized;
-the other columns follow from the shared backend and are not exercised live.
+pane's last tab stays. `⌥⌘[` and `⌥⌘]` run along the strip and on round both panes: off either end a
+tab enters the other pane, at its start going right and at its end going left. The keyboard moves
+were exercised live on local folders (2026-10-15, crossing and going round 2026-11-02), through the
+Window menu's items and the `run operation` verb, and dragging a chip with a mouse (2026-11-02),
+along a strip and onto the other pane's. The other columns follow from the shared backend
+and are not exercised live.
 
 <sup>aaf</sup> A share, an external drive or a disk image, a vault, iCloud Drive and a cloud provider are all
 local paths, told apart by territory and then by the volume the kernel's mount table puts them on, so
@@ -273,6 +276,15 @@ the place it left. One list per window, newest first, 20 deep, for this run only
 volume that goes away (a vault locked, a disk ejected) is forgotten then. Exercised live on local
 folders (2026-10-19), from the File menu, `⇧⌘T` and the scripting verb; the other columns follow from
 the shared backend and are not exercised live.
+
+<sup>aal</sup> A search's hits and the merged Trash do not come back themselves: the hits answer a
+question asked once, and the Trash is gathered from directories rather than kept
+(`TabRestorePolicy`). A tab that shows them **in place of a folder**, which is what a plain click on
+Recents, the Trash, a saved search or a tag does, comes back as that folder, in its own sort and on
+the row and open folders it was left at, where `⌘[` would have taken it. A saved workspace takes the
+same folder. A tab that opened on them, with `⌘`, has no folder under it and is left out as before.
+Exercised live on a local volume over Recents (2026-10-31); workspaces and the server columns are
+pinned by tests and not exercised live.
 
 ## 2. File operations
 
