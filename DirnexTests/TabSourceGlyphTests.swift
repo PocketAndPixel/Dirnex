@@ -146,6 +146,31 @@ struct TabSourceGlyphTests {
         #expect(distance(densest, wanted) < 0.3, "\(densest) against \(wanted)")
     }
 
+    @Test("a dragged chip that isn't showing keeps the outline it has in the strip")
+    func dragImageOutline() throws {
+        let strip = TabStripFixture(TabStripFixture.folders(["one", "two"]), width: 600)
+        let chip = strip.bar.chips[1]
+        let pixels = try drawn(chip.dragImage())
+
+        // The middle of the top edge. The chip's path runs down the middle of this row, so the fill
+        // covers half of the pixel and the hairline, in its color's own alpha, all of it.
+        let fill = pixels.rgba(x: 4, y: pixels.height / 2)
+        let edge = pixels.rgba(x: pixels.width / 2, y: 0)
+        let line = try #require(chip.border.usingColorSpace(.deviceRGB))
+        let alpha = Double(line.alphaComponent)
+        let edgeAlpha = alpha + 0.5 * (1 - alpha)
+        func channel(_ ink: CGFloat, over under: Double) -> Double {
+            (Double(ink) * alpha + under * 0.5 * (1 - alpha)) / edgeAlpha
+        }
+        let wanted = SIMD4(
+            channel(line.redComponent, over: fill.x),
+            channel(line.greenComponent, over: fill.y),
+            channel(line.blueComponent, over: fill.z),
+            edgeAlpha
+        )
+        #expect(distance(edge, wanted) < 0.15, "\(edge) against \(wanted)")
+    }
+
     private func distance(_ lhs: SIMD4<Double>, _ rhs: SIMD4<Double>) -> Double {
         (0..<4).reduce(0) { $0 + abs(lhs[$1] - rhs[$1]) }
     }

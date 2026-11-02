@@ -429,9 +429,10 @@ final class TabChipView: NSView {
     }
 
     /// The hairline around the chip: every tab but the one showing has one, so where one ends and
-    /// the next begins reads without a fill. The showing tab's fill marks it out on its own.
+    /// the next begins reads without a fill. It sits a step below the chip's text, because a line in
+    /// the text's own color read too bright. The showing tab's fill marks it out on its own.
     var border: NSColor {
-        isActive ? .clear : .separatorColor
+        isActive ? .clear : .tertiaryLabelColor
     }
 
     private func applyStyle() {
