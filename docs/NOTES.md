@@ -1754,8 +1754,23 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - **What `mouseDownCanMoveWindow` answers**, read on macOS 26: `true` for a plain `NSView`, a
     layer-backed one, `NSStackView` and a label `NSTextField`; `false` for `NSButton`, `NSImageView`
     and a bare `NSControl`.
-  - **A synthetic double-click on the row does not zoom**, through a plain view or one that swallows
-    `mouseDown`, so it says nothing about what a real one does.
+  - **A double-click on a view in the row goes nowhere, because the content view's next responder is
+    the window.** Read from AppKit 2026-11-03 on macOS 26: the behaviour is in `-[NSTitledFrame mouseUp:]`
+    on the frame view, which the responder chain skips. `_handlePossibleDoubleClickForEvent:` takes a
+    `clickCount` of exactly 2 inside the title bar's rect without ⌃, then picks fill, zoom or minimize
+    from flags on `NSWindow` that follow System Settings. Zoom is `performZoom:`, and fill is the private
+    `_zoomFill:`, so handing the mouse-up to `contentView.superview` (`BrowserContentView`) gets all of
+    it with no private call, where a hand-written `performZoom` would miss two settings. A synthetic
+    event pair through `sendEvent` reached the strip and did nothing until then, and zoomed after.
+    - **Through that path the zoom lands where the zoom button's does and goes back on the next
+      double-click**: `(0, 65, 1728, 1019)`, the screen's `visibleFrame`, from three starting frames in
+      a throwaway window, each restored exactly. `-AppleActionOnDoubleClick Fill`, `Minimize` or `None`
+      on one process's command line flips those flags and tries a setting without touching the Mac's.
+    - **A strip in the row breaks the double-click's first half.** A × that closes the last chip leaves
+      free space under the pointer, and AppKit counts the next press as the second click wherever it
+      lands (`ignoresNextDoubleClick`).
+    - **Inserting `.fullScreen` into a window's `styleMask` directly crashes** (`EXC_BAD_ACCESS`, seen
+      in a test host), so a test overrides the getter instead.
   - **Trailing accessories line up from the window's corner in the order they are added**: the first
     added is rightmost. `setFrameSize` to zero width on one reflows the row, and its frame then reads
     back at the edge, so the row's reach is the sum of their widths whatever is showing. Measured the

@@ -357,6 +357,11 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   the press never reached the chip's drag code, the saved session afterwards had the dragged tab
   showing. Read what the call left behind, and have a person do the drop with an environment-gated
   log to read back.
+- **`app_click` with `count: 2` is two raw clicks on a blank view and one press on a button.** Measured
+  2026-11-03 on the title bar's row. On free space it came back "delivered via raw input", and AppKit's
+  double-click ran, so the window zoomed. On a tab's × it came back "AXPress", and the button fired
+  once. So it cannot produce a double-click that starts on a control and ends somewhere else. Read which
+  of the two the tool reports before counting the run as a test of the second click.
 - **Two clicks on a row with only key presses between them make a double-click.** Seen 2026-10-24:
   click, Space, Space, click on a zip, all inside the double-click interval, opened the archive. Wait
   a second between clicks, or move the cursor with the arrow keys.

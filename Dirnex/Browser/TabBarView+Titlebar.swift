@@ -41,6 +41,13 @@ extension TabBarView {
     var reservedWidth: CGFloat {
         stackLeading.constant - stackTrailing.constant
     }
+
+    /// A chip's × was clicked. A second click on the same spot is not a double-click on the title bar,
+    /// whatever is under the pointer by then (`BrowserContentView`).
+    func chipDidClose(_ chip: TabChipView) {
+        (window?.contentView as? BrowserContentView)?.ignoresNextDoubleClick = true
+        delegate?.tabBar(self, didCloseTabAt: chip.index)
+    }
 }
 
 extension BrowserWindowController {
