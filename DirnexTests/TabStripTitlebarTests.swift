@@ -40,6 +40,19 @@ struct TabStripTitlebarTests {
         #expect(abs(strip.bar.frame.width - 800) < 0.5)
     }
 
+    /// The strip's 24 pt inset by 4 is what shares the traffic lights' middle (docs/NOTES.md ▸ Windows),
+    /// and the insertion marker stands a point past a chip at each end.
+    @Test("a chip sits centered inside the strip, with room for the insertion marker")
+    func chipFitsTheStrip() throws {
+        let strip = strip(three)
+        let chip = try #require(strip.bar.chips.first)
+        let frame = strip.frame(of: chip)
+        #expect(frame.height == 22)
+        #expect(strip.bar.frame.height == 24)
+        #expect(abs(frame.midY - strip.bar.bounds.midY) < 0.5)
+        #expect(frame.height + 2 <= strip.bar.bounds.height)
+    }
+
     @Test("with no controls in its way the first chip starts at the strip's end")
     func nothingToClear() throws {
         let strip = strip(three)

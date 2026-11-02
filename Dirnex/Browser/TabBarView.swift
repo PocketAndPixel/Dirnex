@@ -380,7 +380,7 @@ final class TabChipView: NSView {
         addSubview(label)
         addSubview(closeButton)
         NSLayoutConstraint.activate([
-            heightAnchor.constraint(equalToConstant: 20),
+            heightAnchor.constraint(equalToConstant: 22),
             widthAnchor.constraint(lessThanOrEqualToConstant: Self.maximumWidth),
             icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Gap.leading),
             icon.centerYAnchor.constraint(equalTo: centerYAnchor),
