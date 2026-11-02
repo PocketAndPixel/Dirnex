@@ -15,7 +15,7 @@ extension BrowserWindowController {
     /// bar to zero while idle, handing its height back to the panes.
     func makeContainerViewController() -> NSViewController {
         let container = NSViewController()
-        container.view = NSView()
+        container.view = BrowserContentView()
         container.addChild(splitViewController)
 
         let splitView = splitViewController.view

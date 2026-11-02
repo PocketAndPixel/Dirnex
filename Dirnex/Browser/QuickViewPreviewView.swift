@@ -398,8 +398,15 @@ final class QuickViewPreviewView: NSView {
     // responder, and the point of taking it was that nobody else should act on it.
     override func mouseDown(with event: NSEvent) {}
     override func mouseDragged(with event: NSEvent) {}
-    override func mouseUp(with event: NSEvent) {}
     override func rightMouseDown(with event: NSEvent) {}
+
+    /// A double-click goes to the content view, which `nextResponder` skips: at full-window size this
+    /// surface holds the title bar's row with nothing in it, and only `BrowserContentView` acts on the
+    /// mouse-up, only inside that row.
+    override func mouseUp(with event: NSEvent) {
+        guard event.clickCount == 2 else { return }
+        window?.contentView?.mouseUp(with: event)
+    }
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()

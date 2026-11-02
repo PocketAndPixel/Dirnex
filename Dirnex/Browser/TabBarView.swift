@@ -229,10 +229,6 @@ final class TabBarView: NSView {
         delegate?.tabBar(self, didSelectTabAt: chip.index)
     }
 
-    func chipDidClose(_ chip: TabChipView) {
-        delegate?.tabBar(self, didCloseTabAt: chip.index)
-    }
-
     @objc private func newTabClicked() {
         delegate?.tabBarDidRequestNewTab(self)
     }

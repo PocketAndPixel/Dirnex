@@ -18937,6 +18937,42 @@ the entry above: a tab moved from the keyboard should go round as the view does.
   right pane, and a step left then right moved it along there. Each step after a wrap ran in the pane
   the tab had wrapped into. The chords were not pressed. The defaults domain was restored and compared.
 
+**2026-11-03: a double-click on the title bar's free space zooms the window** (app). Asked for by Oleg:
+the free space on the header should grow the window to the full desktop, as in every other app. How
+long it had done nothing was not checked: the panes have run edge to edge under the title bar for longer
+than the strip has been in the row.
+
+- **The click was getting lost, not refused.** AppKit does all of this on mouse-up in the frame view
+  around the content view, and a content view's next responder is the window, which skips it. So a
+  click nothing wanted climbed to the top and stopped. NOTES.md ▸ Windows has what the disassembly
+  showed.
+- **What landed:** `BrowserContentView`, the window's content view, hands a mouse-up with a click count
+  of 2 to its superview. A hand-written `performZoom` would have ignored System Settings' choice of
+  Fill, Minimize or Do Nothing, and AppKit's own code path needs no private call. AppKit checks the
+  title bar's rect itself, so a double-click anywhere lower does nothing. Full screen is excluded, since
+  no title bar is there.
+- **Two things the row needed beyond that.** A × that closes the strip's last chip leaves free space
+  under the pointer, and AppKit counts the next press as a second click wherever it lands, so a quick
+  second press on a × would have zoomed the window: `chipDidClose` marks the next double-click as not
+  one. And Quick View's surface swallows every click and skips the panes in `nextResponder`, which at
+  full-window size would have left its empty row dead, so a double-click goes straight to the content
+  view from there.
+- **Tests:** `TitleBarDoubleClickTests` drives the real responder chain up to the real frame view and
+  counts `performZoom`. A plain content view stops it, which is what makes the zoom a measurement. The
+  tests that watch for the zoom run only while the system's setting is Zoom.
+- **Seen live** in the Debug build, launched by path, through raw double-clicks from background
+  computer-use with the window frame read back: the left strip, the band above the sidebar, the right
+  strip and the empty row over full-window Quick View each zoomed to `(0, 33, 1728, 1019)` from the top
+  left, the screen's visible frame above the Dock, and the next double-click put back `(0, 155, 1290,
+  888)` exactly. The path bar's row, the list, the active chip and the body of a Quick View preview left
+  the window alone. The defaults domain was restored and compared.
+- **The other settings ran in a throwaway window** on the same path, each set for that one process with
+  `-AppleActionOnDoubleClick <value>`, so the Mac's own setting stayed as it was. `Fill` and `Maximize`
+  landed on the visible frame, `Minimize` miniaturized and `None` left the frame alone.
+- **Checked by Oleg with a real mouse**, since the tool sends a × as one accessibility press: a
+  double-click on the × of a pane's rightmost tab closed the tab and left the window's size alone, and a
+  double-click on a strip's free space in full screen did nothing.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
