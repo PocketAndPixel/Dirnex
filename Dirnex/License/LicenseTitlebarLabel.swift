@@ -5,19 +5,19 @@ import DirnexCore
 /// §M29 "A quiet label"). Clicking it opens Settings ▸ License.
 ///
 /// It shows exactly while the reminder is due: hidden during the thirty quiet days, whenever a key
-/// covers this build, and in every build that doesn't remind. It is its own leading accessory, placed
-/// after the sidebar toggle and the update indicator, rather than a view in their stack: that stack's
-/// container is clipped to a fixed width, while this one is sized to its title, and to nothing while
-/// hidden.
+/// covers this build, and in every build that doesn't remind. It is its own trailing accessory, to
+/// the left of the update indicator, sized to its title and to nothing while hidden.
 @MainActor
 final class LicenseTitlebarLabel: NSTitlebarAccessoryViewController {
     let button = NSButton()
+    /// Called when the label starts or stops taking room, which the tab strip beside it stays clear of.
+    var onSizeChange: (() -> Void)?
     private let reminders: LicenseReminderController
 
     init(reminders: LicenseReminderController = .shared) {
         self.reminders = reminders
         super.init(nibName: nil, bundle: nil)
-        layoutAttribute = .leading
+        layoutAttribute = .trailing
         button.bezelStyle = .inline
         button.controlSize = .small
         button.font = .systemFont(ofSize: NSFont.systemFontSize(for: .small))
@@ -71,10 +71,11 @@ final class LicenseTitlebarLabel: NSTitlebarAccessoryViewController {
     /// Show or hide the label against the reminder's state, and size the accessory to fit.
     ///
     /// It hides the **button** and collapses the accessory to no width. The accessory's own
-    /// `isHidden` is not used: on a leading titlebar accessory it hides nothing, at launch or later
-    /// (seen live; the property read back `true` while the label stayed on screen, and a label never
-    /// shown drew the button's default title, "Button").
+    /// `isHidden` is not used: on a leading titlebar accessory, where this label lived first, it hid
+    /// nothing, at launch or later (seen live; the property read back `true` while the label stayed
+    /// on screen, and a label never shown drew the button's default title, "Button").
     func update() {
+        defer { onSizeChange?() }
         guard let variant = reminders.dueVariant else {
             button.isHidden = true
             view.setFrameSize(NSSize(width: 0, height: view.frame.height))

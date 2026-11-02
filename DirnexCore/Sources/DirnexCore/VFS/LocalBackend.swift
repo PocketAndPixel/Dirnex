@@ -133,7 +133,12 @@ public struct LocalBackend: VFSBackend {
         guard rename(cSource, cDest) == 0 else {
             // rename(2) reports a same-name-onto-nonempty-dir as ENOTEMPTY and a
             // cross-device move as EXDEV; both are mapped for the caller.
-            throw VFSError.fromErrno(errno, path: source)
+            let code = errno
+            // A move into a locked folder is refused by the destination's end, not the source's.
+            guard code == EPERM else { throw VFSError.fromErrno(code, path: source) }
+            throw VFSError.permissionDenied(
+                source, refusedBy: .notPermitted(at: [source, destination])
+            )
         }
     }
 
@@ -224,7 +229,10 @@ public struct LocalBackend: VFSBackend {
         switch nsError.code {
         case NSFileNoSuchFileError, NSFileReadNoSuchFileError:
             return .notFound(path)
-        case NSFileWriteNoPermissionError, NSFileReadNoPermissionError:
+        case NSFileWriteNoPermissionError:
+            // `trashItem` on a locked item lands here, over an OSStatus rather than an errno.
+            return .permissionDenied(path, refusedBy: .notPermitted(at: [path]))
+        case NSFileReadNoPermissionError:
             return .permissionDenied(path)
         case NSFileWriteFileExistsError:
             return .alreadyExists(path)

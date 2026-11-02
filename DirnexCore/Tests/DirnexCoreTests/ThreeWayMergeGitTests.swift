@@ -151,10 +151,14 @@ struct ThreeWayMergeGitTests {
                 ties.append(triple.name)
             }
         }
-        // Ties are the price of two searches that each stop at the first minimal answer: 28 of the
-        // 678 triples when this was written, one of them a corpus file. A jump in their number
-        // means the search or the placement changed.
-        #expect(ties.count <= 30, "\(ties.count) ties: \(ties)")
+        // Ties are the price of two searches that each stop at the first minimal answer. The random
+        // texts are seeded, so their number holds still: 27 of 600 when this was written and on
+        // 2026-11-01, and a jump there means the search or the placement changed. The corpus's moves
+        // with the repository, being every seventh file of a folder plus documents that get edited:
+        // 1 when this was written, 4 once `TitlebarClearance.swift` moved the sample along by one.
+        let randomTies = ties.filter { $0.hasPrefix("random ") }
+        #expect(randomTies.count <= 30, "\(randomTies.count) ties: \(randomTies)")
+        #expect(ties.count - randomTies.count <= 10, "\(ties.count) ties: \(ties)")
     }
 
     // MARK: - The triples

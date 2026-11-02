@@ -9,9 +9,9 @@ import DirnexCore
 /// servers, vaults, tags — states its verbs here, and each is implemented in the matching
 /// `BrowserWindowController+…` extension.
 ///
-/// The six verbs whose place *replaces* the active tab's listing carry `inNewTab` — a ⌘-click's or
-/// ⌘Return's request to leave that tab alone and open the place in a new one beside it. The rest
-/// already open a results tab of their own on every activation, so they have nothing to carry.
+/// Every verb that opens a place carries `inNewTab` — a ⌘-click's or ⌘Return's request to leave the
+/// active tab alone and open the place in a new one beside it. Without it every place replaces what
+/// that tab shows, a results listing (Recents, the Trash, a saved search, a tag) as much as a folder.
 @MainActor
 protocol SidebarViewControllerDelegate: AnyObject {
     func sidebar(_ sidebar: SidebarViewController, didActivate path: VFSPath, inNewTab: Bool)
@@ -29,14 +29,18 @@ protocol SidebarViewControllerDelegate: AnyObject {
     )
     /// A saved-search row was picked — re-run its query in the active pane and show the hits in
     /// a virtual results panel (PLAN.md §M4 "Saved searches … in the places strip").
-    func sidebar(_ sidebar: SidebarViewController, didActivateSavedSearch savedSearch: SavedSearch)
+    func sidebar(
+        _ sidebar: SidebarViewController,
+        didActivateSavedSearch savedSearch: SavedSearch,
+        inNewTab: Bool
+    )
     /// The Recents row was picked — show recently-used files in a virtual results panel, the way a
     /// saved search does (PLAN.md §M8 "Recents row … Finder's is a saved search"). It carries no
     /// model, so it is a bare callback rather than a `didActivate…(_:)` with a payload.
-    func sidebarDidActivateRecents(_ sidebar: SidebarViewController)
+    func sidebarDidActivateRecents(_ sidebar: SidebarViewController, inNewTab: Bool)
     /// The Trash row was picked — show every volume's trash as one merged listing (PLAN.md §M8).
     /// Like Recents it carries no model: the Trash is not a single directory to navigate to.
-    func sidebarDidActivateTrash(_ sidebar: SidebarViewController)
+    func sidebarDidActivateTrash(_ sidebar: SidebarViewController, inNewTab: Bool)
     /// The iCloud Drive row was picked — show the CloudDocs container merged with every iCloud
     /// app's own document folder, the way Finder's iCloud Drive is assembled (PLAN.md §M9). It
     /// carries no payload for the same reason the Trash doesn't: what it opens is a merge, not the
@@ -74,7 +78,7 @@ protocol SidebarViewControllerDelegate: AnyObject {
     /// A tag row was picked — search for the files carrying it and show the hits in a virtual
     /// results panel (PLAN.md §M6 "Finder tags: … filter chips in search"), like Finder's own
     /// sidebar tags.
-    func sidebar(_ sidebar: SidebarViewController, didActivateTag tag: FinderTag)
+    func sidebar(_ sidebar: SidebarViewController, didActivateTag tag: FinderTag, inNewTab: Bool)
     /// A click landed on the sidebar's empty space or a non-selectable header. Keep keyboard
     /// focus on the active file pane rather than letting the source list steal it — the pane's
     /// file commands (F5/F6/F8) are dispatched through the responder chain and go dead the moment

@@ -1718,6 +1718,63 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   "Button", in the titlebar of a licensed copy. Hide the accessory's *content* and collapse the
   accessory's view to zero width (`LicenseTitlebarLabel.update`). Test what is drawn (the button's
   `isHidden` and the view's width), not the accessory's flag.
+- **A view under a transparent title bar gets the click, so a tab strip can simply live there.** The
+  title bar is above the content view, and that reads as if it should take the mouse. Probed
+  2026-11-01 with a throwaway window (`.fullSizeContentView`, `titlebarAppearsTransparent`): the
+  theme frame's `hitTest` answered the content view's own views all over the row, and `mouseDown`
+  reached them through `sendEvent`, as it did for a view below the title bar. Only three things kept
+  a point: `NSThemeFrame` itself over the top **3 pt** (its resize border, swept a point at a time), a
+  traffic light, and a titlebar accessory, which sits on top and needs clearing by hand
+  (`TitlebarClearance`). So no accessory has to hold the content. The traffic lights' middle is 16 pt
+  down in Dirnex's 32 pt bar, which a 24 pt strip inset by 4 shares.
+  - **`mouseDownCanMoveWindow` does not decide whether a press there moves the window. The drag
+    region does, and a plain view is in it whatever it answers.** Measured 2026-11-02, after a tab
+    chip answering `false`, with a test pinning that, moved the window on every real drag. AppKit
+    hands the window server a region built from each view's private
+    `_opaqueRectForWindowMoveWhenInTitlebar`, and `_lastDragRegionDataDescription` on the window
+    prints its rectangles, which is the instrument. A plain view reports an empty rect, layer-backed
+    or opaque alike, and so does `NSImageView`. `NSButton` reports its bounds, even disabled or
+    refusing first responder. A bare `NSControl` reports its bounds only while it accepts first
+    responder, so the override that stops a press taking the focus takes the hole away too. Hence
+    `TabChipView.windowDragShield`: a blank disabled button behind the chip's contents, with the
+    chip's `hitTest` keeping every press for itself. The blank strip reports nothing and moves the
+    window as the title bar did. A synthetic event cannot test this, because the region belongs to
+    the window server: read what the view reports, and have a person drag.
+    - **The region did not follow a bare `frame` change or a `removeFromSuperview`** in a throwaway
+      window, until something next hid a view or ran a layout pass. A strip's chips only ever move in
+      a layout pass, and on the real window all six layouts tried (a tab moved, added and closed, the
+      sidebar hidden and shown) left 0% of every chip in the region. A control moved by hand would
+      need the same check.
+    - **Three costs of that button, each measured on the way.** Pinned by constraints, an empty button
+      hugs a width of nothing, which at its default 250 outbids a label's 230: every chip came out
+      about 49 pt wide. An autoresizing mask has no such constraint. `setAccessibilityElement(false)`
+      on the button left an unnamed `AXButton` per chip, because a button's element is its cell. And
+      that `AXButton`'s frame was 1 pt larger on every side than the button's own, so an accessibility
+      frame is no measure of a view's.
+  - **What `mouseDownCanMoveWindow` answers**, read on macOS 26: `true` for a plain `NSView`, a
+    layer-backed one, `NSStackView` and a label `NSTextField`; `false` for `NSButton`, `NSImageView`
+    and a bare `NSControl`.
+  - **A double-click on a view in the row goes nowhere, because the content view's next responder is
+    the window.** Read from AppKit 2026-11-03 on macOS 26: the behaviour is in `-[NSTitledFrame mouseUp:]`
+    on the frame view, which the responder chain skips. `_handlePossibleDoubleClickForEvent:` takes a
+    `clickCount` of exactly 2 inside the title bar's rect without ⌃, then picks fill, zoom or minimize
+    from flags on `NSWindow` that follow System Settings. Zoom is `performZoom:`, and fill is the private
+    `_zoomFill:`, so handing the mouse-up to `contentView.superview` (`BrowserContentView`) gets all of
+    it with no private call, where a hand-written `performZoom` would miss two settings. A synthetic
+    event pair through `sendEvent` reached the strip and did nothing until then, and zoomed after.
+    - **Through that path the zoom lands where the zoom button's does and goes back on the next
+      double-click**: `(0, 65, 1728, 1019)`, the screen's `visibleFrame`, from three starting frames in
+      a throwaway window, each restored exactly. `-AppleActionOnDoubleClick Fill`, `Minimize` or `None`
+      on one process's command line flips those flags and tries a setting without touching the Mac's.
+    - **A strip in the row breaks the double-click's first half.** A × that closes the last chip leaves
+      free space under the pointer, and AppKit counts the next press as the second click wherever it
+      lands (`ignoresNextDoubleClick`).
+    - **Inserting `.fullScreen` into a window's `styleMask` directly crashes** (`EXC_BAD_ACCESS`, seen
+      in a test host), so a test overrides the getter instead.
+  - **Trailing accessories line up from the window's corner in the order they are added**: the first
+    added is rightmost. `setFrameSize` to zero width on one reflows the row, and its frame then reads
+    back at the edge, so the row's reach is the sum of their widths whatever is showing. Measured the
+    same day.
 - **In full screen, a `.fullSizeContentView` window is told nothing when its title bar drops over
   the content.** Probed 2026-10-15 with a throwaway app on a 16-inch MacBook Pro: in the space, the
   content view's `safeAreaInsets.top` is 0, `contentLayoutRect` is the whole window, and the title
@@ -2468,6 +2525,20 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   middle of the rebuild, against whatever model is set at that moment. Clear the descriptors first
   under a flag the handler ignores. A control that removes the clearing line cannot fail, since AppKit
   clears them anyway, so the flag is the part that matters.
+- **Through a live resize, `firstColumnOnlyAutoresizingStyle` leaves columns wider than the table's
+  clip view alone, and they stay that way after the resize ends.** Reported 2026-11-02: dragging the
+  window narrower left one pane's Name column as it was and cut Size off at the pane's edge, while the
+  other pane resized. The stuck pane's tab had stored Name at 300 pt in a 386 pt pane; the other's
+  columns fit its pane. In a scratch table, columns 1 pt wider than a 500 pt clip stayed put as a live
+  resize took it to 440, and a programmatic `setContentSize` refit them. A Name narrower than its share
+  was less consistent: the scratch table kept the gap through a live resize, and the app's pane refit it
+  on the first step. Any width set from outside (a stored layout, a column added or removed) can leave
+  either state behind. `PanelViewController.fitNameColumnToPane` sets Name to the clip's width less the
+  other columns and their spacing, on the clip view's `frameDidChangeNotification` and after each such
+  change, and that held through a live resize in both directions.
+  - **A test resizes inside `viewWillStartLiveResize()` and `viewDidEndLiveResize()` on the table**, or it
+    passes on the broken code: `NameColumnFitTests`' resize steps failed on the old code only once those
+    calls were added.
 
 #### Drawing rows and cells
 
@@ -5033,6 +5104,41 @@ do not share a resolver, and neither half of that is obvious from either call si
     The share is browsed by `LocalBackend`, so the remote test in `VFSErrorText` cannot see it; the
     sentence now asks `NetworkVolume.root(of:)` (`volumeIsLocal == false`) and gives the server's
     wording.
+
+- **An unmount waits for every process that asked to approve one, so a synchronous unmount can
+  hang the main thread for as long as the slowest one takes to answer.** Reported 2026-11-02 as
+  "quit sometimes takes 4–8 seconds, the window fades with a spinning cursor". The log put two
+  quits out of eighteen at **10.9 s**, and both had mounted the NAS's `media` share.
+  `SMBMounter.unmountOwnedMounts` called `NSWorkspace.unmountAndEjectDevice` inside
+  `applicationWillTerminate`. diskarbitrationd queued the unmount and waited 10.7 s for
+  `PhotosReliveWidget`, wedged since Oct 29, logging *not responding*. It then failed the unmount
+  with status `0x10` (`EBUSY`), because VLC was playing a film off the share.
+  - **The stall is not SMB's and not Dirnex's.** The same call on a throwaway disk image took
+    10 760 ms, and Finder's unmounts go through the same daemon. Only a caller that blocks a main
+    thread on the unmount shows the wait.
+  - **The wedged widget is not a repeatable fixture.** The next several unmounts went through in
+    tens of milliseconds, the app's own included, so a control run against it can pass whatever the
+    code does. A probe approver is repeatable: `DARegisterDiskUnmountApprovalCallback` with a
+    callback that sleeps 5 s and returns `nil`, filtered to the probe image's volume name. With it
+    up, the old call held Dirnex's quit for 5.26 s and the new one quit in 0.22 s. The image still
+    went 5 s later.
+  - **The sidebar's Eject made the same call on the main thread**, and needs its answer to report
+    a failure, so it keeps the call and runs it through `BlockingWork`. Probed first off the main
+    thread with the Main Thread Checker injected (`DYLD_INSERT_LIBRARIES`, and a positive control
+    that it reports an `NSView` touched off the main thread): no report, clean and busy alike. Live,
+    with the approver up, the main-thread sampler's longest round trip in the 5 s hold was 68 ms. A
+    busy image still raised *Couldn’t eject* after the hold, with the sampler's one long trip,
+    301 ms, at the alert's own presentation.
+  - **`DADiskUnmount` with no callback returns in about 1 ms, and the request outlives the
+    process that sent it.** Measured with a probe approver that held every unmount for 5 s. The
+    requester exited at once, the session unscheduled and released, and the volume still went at
+    +5 s. So quit asks and leaves. What the daemon does afterwards, an unmount or an `EBUSY`, is
+    what it did before, without Dirnex's window waiting on it.
+  - Two tells, if it comes back. `log show --predicate 'process == "Dirnex"'` shows AppKit's
+    *Termination commencing* and *Termination complete* with the gap between them. CarbonCore's
+    `FileIDTreeGetAndLockVolumeEntryFromIndex(1) returned -35` appeared only in the two slow quits.
+    In diskarbitrationd's log, each unmount reads *queued solicitation … kind = disk unmount*, then a
+    *not responding* line naming the approver that held it up.
 
 ### bsdtar
 
@@ -9504,6 +9610,13 @@ See [RELEASING.md](RELEASING.md) for the procedure. The traps:
     `out.zip` in `NSTemporaryDirectory()`, ran side by side for three seconds, and one test's "no
     `out.zip` left" check found another's mid-upload. On Oleg's user each takes milliseconds and
     the race never showed in 50 runs; a planted stray `out.zip` reproduced it at once.
+  - **A late FSEvents callback shows there that never shows here.** The next Beta (2026-10-30)
+    failed "a file watcher stays silent for its siblings": one callback after the quiesce, and the
+    count stayed 1 through all three sibling writes, so no sibling caused it. 15 full suite runs and
+    30 runs of the test under CPU load and file churn never showed it on Oleg's user. The test now
+    writes five siblings and allows one fire, and three controls pin that: a stream on the parent
+    fires 5 times and fails, one injected stray passes, two fail. A test that counts what must
+    *not* happen needs a margin for one event it can't attribute.
 
 ## Distribution and licensing
 

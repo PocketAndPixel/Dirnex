@@ -43,8 +43,8 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
     weak var activePanel: PanelViewController?
     /// The tabs closed in this window, for ⇧⌘T (`BrowserWindowController+ClosedTabs`).
     var closedTabs = ClosedTabs<PanelTab>()
-    /// The pane commands and the titlebar Back/Forward buttons act on: the focused one, falling
-    /// back to the left pane before either has taken focus.
+    /// The pane commands act on: the focused one, falling back to the left pane before either has
+    /// taken focus.
     var focusedPanel: PanelViewController { activePanel ?? leftPanel }
 
     /// What size Quick View is showing at in this window — off, the inactive pane (⌃Q, PLAN.md
@@ -170,21 +170,20 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
     /// wins on subsequent launches.
     private var shouldCenterPanesDivider = false
 
-    /// The trailing titlebar back/forward controls — the ⌘[ / ⌘] history commands (View ▸ Go) as
-    /// two borderless chevron buttons, no bezel behind them. Held so a navigation, tab switch, or
-    /// focus change can re-validate each button's enabled state against the active pane's trail
-    /// (`updateNavigationButtons`).
-    let backButton = NSButton()
-    let forwardButton = NSButton()
+    /// The leading titlebar accessory beside the traffic lights, holding the sidebar toggle. Held
+    /// because where it ends is how far the title bar's controls reach (`titlebarControls`).
+    let sidebarToggleAccessory = NSTitlebarAccessoryViewController()
 
-    /// The leading titlebar button — right of the sidebar toggle — that appears only while a Sparkle
-    /// update is waiting: the ambient counterpart to Sparkle's one-shot dialog. Held so
+    /// The titlebar button in the window's top right corner that appears only while a Sparkle update
+    /// is waiting: the ambient counterpart to Sparkle's one-shot dialog. Held so
     /// `updateAvailabilityDidChange` can show, hide, and re-tooltip it
     /// (`BrowserWindowController+Updates`).
     let updateIndicatorButton = NSButton()
+    /// The trailing accessory holding `updateIndicatorButton`, collapsed while it is hidden.
+    let updateIndicatorAccessory = NSTitlebarAccessoryViewController()
 
     /// The **Unlicensed** / **Renew License** titlebar label (PLAN.md §M29), hidden unless the
-    /// license reminder is due.
+    /// license reminder is due. It stands to the left of the update indicator.
     let licenseLabel = LicenseTitlebarLabel()
 
     init() {
@@ -224,11 +223,12 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
 
         // Modern chrome (like Notes/Xcode/Claude): no visible title bar. The content —
         // the vibrant sidebar and the two panes — runs edge-to-edge to the top of the
-        // window, with the traffic lights floating over the sidebar. The title bar space
-        // becomes usable window height instead of a dead strip. A leading titlebar
+        // window, with the traffic lights floating over the sidebar. The title bar's row
+        // holds the panes' tab strips instead of being a dead strip. A leading titlebar
         // accessory (installed below) puts a sidebar show/hide button beside the traffic
-        // lights; pane and sidebar content inset themselves below this zone via the safe
-        // area, so nothing hides under the buttons.
+        // lights, and trailing ones hold the license label and the update indicator. The
+        // sidebar insets its content below this row via the safe area, and the strips keep
+        // their chips clear of those controls (`TabBarView+Titlebar`).
         window.styleMask.insert(.fullSizeContentView)
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
@@ -291,12 +291,7 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
         }
         window.setFrameAutosaveName("MainWindow")
 
-        // `installUpdateIndicator` only prepares its button; the two accessory installers below
-        // place it — into the leading accessory beside the sidebar toggle.
-        installUpdateIndicator()
-        installSidebarToggle()
-        window.addTitlebarAccessoryViewController(licenseLabel)
-        installNavigationButtons()
+        installTitlebarControls()
 
         queueBar.onPauseToggle = { [weak self] in self?.togglePause() }
         queueBar.onCancelAll = { [weak self] in self?.cancelAllJobs() }
@@ -310,15 +305,22 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
         editedFiles.onEdited = { [weak self] edit in self?.offerWriteBack(edit) }
     }
 
-    /// Put a sidebar show/hide button immediately to the right of the traffic lights, in
-    /// the otherwise-empty transparent title bar, and the update indicator immediately right of
-    /// *that*. A `.leading` titlebar accessory is the standard slot for both; the sidebar button
+    /// Put the sidebar toggle by the traffic lights and the status items in the far corner, and tell
+    /// the tab strips where they ended up. Trailing accessories line up from the window's corner in
+    /// the order they are added, so the indicator takes the corner and the label stands to its left.
+    private func installTitlebarControls() {
+        installSidebarToggle()
+        installUpdateIndicator()
+        window?.addTitlebarAccessoryViewController(licenseLabel)
+        licenseLabel.onSizeChange = { [weak self] in self?.tabStripsNeedLayout() }
+        for panel in [leftPanel, rightPanel] {
+            panel.tabBar.titlebarControls = { [weak self] in self?.titlebarControls ?? .none }
+        }
+    }
+
+    /// Put a sidebar show/hide button immediately to the right of the traffic lights, in the
+    /// transparent title bar. A `.leading` titlebar accessory is the standard slot for it; the button
     /// drives the split controller's `toggleSidebar`, the same action as View ▸ Show Sidebar (⌃⌘S).
-    ///
-    /// Assumes `installUpdateIndicator` has already prepared its button (behavior + size); this
-    /// only places it. The row is pinned at its *leading* edge so the sidebar toggle keeps its spot
-    /// beside the traffic lights whether or not an update is waiting, and the indicator — hidden at
-    /// rest, and `NSStackView` detaches hidden arranged subviews — leaves no gap behind it.
     private func installSidebarToggle() {
         let button = NSButton()
         button.bezelStyle = .toolbar
@@ -341,30 +343,20 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
         button.translatesAutoresizingMaskIntoConstraints = false
 
         let inset: CGFloat = 8
-        let spacing: CGFloat = 12
         let sidebarWidth: CGFloat = 24
-        let stack = NSStackView(views: [button, updateIndicatorButton])
-        stack.orientation = .horizontal
-        stack.spacing = spacing
-        stack.translatesAutoresizingMaskIntoConstraints = false
-
-        // The accessory clips to this frame, so it has to be wide enough for both buttons even
-        // while the indicator is hidden — a container sized for one alone would cut the badge off
-        // on the day it appears. `updateIndicatorButton` carries its own 16pt width.
-        let width = inset + sidebarWidth + spacing + 16 + inset
+        let width = inset + sidebarWidth + inset
         let container = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 28))
-        container.addSubview(stack)
+        container.addSubview(button)
         NSLayoutConstraint.activate([
             button.widthAnchor.constraint(equalToConstant: sidebarWidth),
             button.heightAnchor.constraint(equalToConstant: 22),
-            stack.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: inset)
+            button.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            button.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: inset)
         ])
 
-        let accessory = NSTitlebarAccessoryViewController()
-        accessory.view = container
-        accessory.layoutAttribute = .leading
-        window?.addTitlebarAccessoryViewController(accessory)
+        sidebarToggleAccessory.view = container
+        sidebarToggleAccessory.layoutAttribute = .leading
+        window?.addTitlebarAccessoryViewController(sidebarToggleAccessory)
     }
 
     deinit {
@@ -397,6 +389,9 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
 
     override func showWindow(_ sender: Any?) {
         super.showWindow(sender)
+        // The title bar places its accessories with the window on screen, and a strip laid out
+        // before that measured them where they were not.
+        tabStripsNeedLayout()
         if shouldCenterPanesDivider {
             shouldCenterPanesDivider = false
             centerPanesDivider()
@@ -438,7 +433,6 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
     }
 
     func panelDidNavigate(_ panel: PanelViewController) {
-        updateNavigationButtons()
         // The drawer follows the *active* pane; the other one moving (a background refresh, a
         // completed copy re-listing it) is none of the shell's business.
         if panel === focusedPanel { syncTerminalToActivePanel() }
@@ -470,8 +464,6 @@ final class BrowserWindowController: NSWindowController, PanelHost, PaneKeyWindo
         activePanel?.isActivePanel = false
         panel.isActivePanel = true
         activePanel = panel
-        // The titlebar Back/Forward buttons follow whichever pane is focused (⌘[ / ⌘] do too).
-        updateNavigationButtons()
         // Tab-ing to the other pane moves the shell too: the drawer tracks the active pane, not
         // the pane it happened to be spawned from.
         syncTerminalToActivePanel()

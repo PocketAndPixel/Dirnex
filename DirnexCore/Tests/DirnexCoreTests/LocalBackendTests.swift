@@ -189,7 +189,7 @@ struct LocalBackendTests {
         let dir = tree.vfsPath()
 
         var reads = 0
-        #expect(throws: VFSError.permissionDenied(dir)) {
+        #expect(throws: VFSError.permissionDenied(dir, refusedBy: .itemPermissions)) {
             try backend.listDirectory(at: dir) { dirp in
                 guard reads < readsBeforeRefusal else {
                     errno = EACCES

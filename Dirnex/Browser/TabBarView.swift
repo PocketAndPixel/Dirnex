@@ -1,4 +1,5 @@
 import AppKit
+import DirnexCore
 
 /// Owner of a `TabBarView` — the file pane. The bar only reports intent; the pane
 /// owns the tab list and every navigation decision (PLAN.md §2 "UI is a thin client").
@@ -17,8 +18,6 @@ protocol TabBarViewDelegate: AnyObject {
     )
     /// A chip's menu asked for its tab to move to the other pane.
     func tabBar(_ bar: TabBarView, didRequestOtherPanelForTabAt index: Int)
-    /// A drag of one of this bar's chips started (`true`) or ended, however it ended.
-    func tabBar(_ bar: TabBarView, tabDragIsInFlight inFlight: Bool)
     func tabBarDidRequestNewTab(_ bar: TabBarView)
 }
 
@@ -26,8 +25,10 @@ protocol TabBarViewDelegate: AnyObject {
 /// chip is filled (accent when the pane is active, muted otherwise) and the others are
 /// outlined; chips carry a close button and a menu, and can be dragged along the strip or onto the other pane's
 /// (`TabBarView+Drag`). Tabs that do not fit at a readable width wait behind a » before the `+`
-/// (`TabBarView+Overflow`). Hidden when a pane has a single tab so the browser looks unchanged
-/// until you actually open a second one.
+/// (`TabBarView+Overflow`). It runs in the window's title bar row, clear of the title bar's own
+/// controls and with room left to drag the window by (`TabBarView+Titlebar`), and it shows even for
+/// a single tab: the row is there either way, so a strip costs no height, and a pane's file list
+/// starts at the same height as the other pane's whatever either has open.
 @MainActor
 final class TabBarView: NSView {
     weak var delegate: TabBarViewDelegate?
@@ -40,10 +41,6 @@ final class TabBarView: NSView {
         }
     }
 
-    /// Set by the pane while a chip from the *other* pane's strip is being dragged: the strip shows
-    /// even at a single tab, because it is the drop target and a hidden view receives no drops.
-    var isRevealedForDrag = false
-
     /// The pasteboard type of a chip being dragged, carrying its index. Private to the app and
     /// offered to nothing outside it, so a tab dropped anywhere else is never read as a folder.
     static let tabDragType = NSPasteboard.PasteboardType("app.dirnex.tab")
@@ -51,7 +48,17 @@ final class TabBarView: NSView {
     /// Gap between chips; the insertion marker sits in the middle of it.
     static let chipSpacing: CGFloat = 3
 
+    /// Where the title bar's controls are, asked at every layout (`TabBarView+Titlebar`). `nil` for
+    /// a strip outside the browser window, which has nothing to clear.
+    var titlebarControls: (() -> TitlebarClearance.Controls)?
+
     private let stack = NSStackView()
+    /// The chips' two ends within the strip, moved in by `updateTitlebarClearance`.
+    private(set) lazy var stackLeading = stack.leadingAnchor.constraint(equalTo: leadingAnchor)
+    private(set) lazy var stackTrailing = stack.trailingAnchor.constraint(
+        equalTo: trailingAnchor,
+        constant: -Self.windowGrabWidth
+    )
     let newButton = NSButton()
     /// The » after the last chip when some tabs do not fit, listing them (`TabBarView+Overflow`).
     let overflowButton = NSButton()
@@ -101,9 +108,11 @@ final class TabBarView: NSView {
         NSSize(width: NSView.noIntrinsicMetric, height: 24)
     }
 
-    /// Which tabs fit is decided here, from the width the pane has just given the strip, before
-    /// the chips are placed. Hiding a chip detaches it from the stack.
+    /// Which tabs fit is decided here, from the width the pane has just given the strip, less what
+    /// the title bar's controls cover, before the chips are placed. Hiding a chip detaches it from
+    /// the stack.
     override func layout() {
+        updateTitlebarClearance()
         updateOverflow()
         super.layout()
     }
@@ -153,8 +162,8 @@ final class TabBarView: NSView {
         let smallestCap = chipCap.widthAnchor.constraint(equalToConstant: 0)
         smallestCap.priority = TabChipView.labelCompressionResistance - 1
         NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stackLeading,
+            stackTrailing,
             stack.centerYAnchor.constraint(equalTo: centerYAnchor),
             chipCap.leadingAnchor.constraint(equalTo: leadingAnchor),
             chipCap.topAnchor.constraint(equalTo: topAnchor),
@@ -189,6 +198,7 @@ final class TabBarView: NSView {
             chip.isActive = index == activeIndex
             chip.isPaneActive = isActivePane
             chip.alphaValue = index == draggedIndex ? TabChipView.draggedAlpha : 1
+            chip.canClose = items.count > 1
             return chip
         }
         for chip in chips {
@@ -217,10 +227,6 @@ final class TabBarView: NSView {
 
     func chipDidClick(_ chip: TabChipView) {
         delegate?.tabBar(self, didSelectTabAt: chip.index)
-    }
-
-    func chipDidClose(_ chip: TabChipView) {
-        delegate?.tabBar(self, didCloseTabAt: chip.index)
     }
 
     @objc private func newTabClicked() {
@@ -267,9 +273,29 @@ final class TabChipView: NSView {
     private let icon = NSImageView()
     private let label = NSTextField(labelWithString: "")
     private let closeButton = NSButton()
+    /// A button that is never pressed, there to keep a drag on the chip from moving the window. In the
+    /// title bar's row the window server takes any drag outside the areas AppKit tells it to leave
+    /// alone, and a plain view is not among them, whatever it answers to `mouseDownCanMoveWindow`.
+    /// A button is, disabled or not. `hitTest` sends every press to the chip, so this one sees none
+    /// (docs/NOTES.md ▸ Windows).
+    let windowDragShield = NSButton()
+    private lazy var closeGap = closeButton.leadingAnchor.constraint(
+        equalTo: label.trailingAnchor,
+        constant: Gap.label
+    )
+    private lazy var closeWidth = closeButton.widthAnchor.constraint(equalToConstant: Gap.close)
 
     var isActive = false { didSet { applyStyle() } }
     var isPaneActive = false { didSet { applyStyle() } }
+    /// Whether the chip offers its ×. A pane's last tab cannot close, so its chip has none and the
+    /// label takes the room.
+    var canClose = true {
+        didSet {
+            closeButton.isHidden = !canClose
+            closeGap.constant = canClose ? Gap.label : 0
+            closeWidth.constant = canClose ? Gap.close : 0
+        }
+    }
 
     private var pressOrigin: NSPoint = .zero
     /// Set once this press has turned into a drag, which then owns the gesture: the session runs its
@@ -336,20 +362,30 @@ final class TabChipView: NSView {
             comment: "Tooltip on a tab chip's close (×) button; ⌘W is the keyboard shortcut."
         )
 
+        windowDragShield.title = ""
+        windowDragShield.isBordered = false
+        windowDragShield.isEnabled = false
+        // A button's accessibility element is its cell.
+        windowDragShield.cell?.setAccessibilityElement(false)
+        // Sized by mask: under constraints an empty button hugs a width of nothing, and at its default
+        // priority that cuts the label short.
+        windowDragShield.autoresizingMask = [.width, .height]
+
+        addSubview(windowDragShield)
         addSubview(icon)
         addSubview(label)
         addSubview(closeButton)
         NSLayoutConstraint.activate([
-            heightAnchor.constraint(equalToConstant: 20),
+            heightAnchor.constraint(equalToConstant: 22),
             widthAnchor.constraint(lessThanOrEqualToConstant: Self.maximumWidth),
             icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Gap.leading),
             icon.centerYAnchor.constraint(equalTo: centerYAnchor),
             label.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: Gap.glyph),
             label.centerYAnchor.constraint(equalTo: centerYAnchor),
-            closeButton.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: Gap.label),
+            closeGap,
             closeButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Gap.trailing),
             closeButton.centerYAnchor.constraint(equalTo: centerYAnchor),
-            closeButton.widthAnchor.constraint(equalToConstant: Gap.close),
+            closeWidth,
             closeButton.heightAnchor.constraint(equalToConstant: Gap.close)
         ])
         applyStyle()
@@ -389,9 +425,10 @@ final class TabChipView: NSView {
     }
 
     /// The hairline around the chip: every tab but the one showing has one, so where one ends and
-    /// the next begins reads without a fill. The showing tab's fill marks it out on its own.
+    /// the next begins reads without a fill. It sits a step below the chip's text, because a line in
+    /// the text's own color read too bright. The showing tab's fill marks it out on its own.
     var border: NSColor {
-        isActive ? .clear : .separatorColor
+        isActive ? .clear : .tertiaryLabelColor
     }
 
     private func applyStyle() {
@@ -424,13 +461,18 @@ final class TabChipView: NSView {
         return hit === closeButton ? closeButton : self
     }
 
+    /// A press on a chip is a click or the start of a tab drag. A plain view answers `true` here. This
+    /// alone does not keep a drag from moving the window: see `windowDragShield`.
+    override var mouseDownCanMoveWindow: Bool { false }
+
     override func mouseDown(with event: NSEvent) {
         pressOrigin = event.locationInWindow
         didDrag = false
     }
 
+    /// A pane's last tab has nowhere to go: it cannot leave, and alone on its strip it cannot reorder.
     override func mouseDragged(with event: NSEvent) {
-        guard !didDrag, let bar else { return }
+        guard !didDrag, let bar, bar.chips.count > 1 else { return }
         let location = event.locationInWindow
         guard hypot(location.x - pressOrigin.x, location.y - pressOrigin.y) > Self.dragThreshold else {
             return

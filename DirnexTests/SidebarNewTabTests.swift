@@ -187,7 +187,7 @@ struct SidebarNewTabTests {
 
     // MARK: - The sidebar's funnel
 
-    @Test("every place that replaces a listing carries the new-tab request to the window")
+    @Test("every place carries the new-tab request to the window")
     func placesCarryTheRequest() {
         let (sidebar, recorder) = loadedSidebar()
         let server = ServerConnection(
@@ -198,32 +198,26 @@ struct SidebarNewTabTests {
             )
         )
         let vault = VaultLocation(imagePath: "/Users/u/Secret.sparsebundle", volumeName: "Secret")
+        let search = SavedSearch(name: "Invoices", query: FileQuery(nameContains: "invoice"))
+        // The four results places were the exception until 2026-10-31, opening a tab of their own
+        // on every click, so they had no flag to carry.
         let places: [SidebarPlace] = [
             .cloudMount(mount), .favorite(favorite), .iCloudDrive(.local("/Users/u/iCloud")),
-            .photos, .server(server), .vault(vault)
+            .photos, .server(server), .vault(vault), .recents, .trash, .savedSearch(search),
+            .tag(FinderTag(name: "Red", color: .red))
+        ]
+        let names = [
+            mount.path.path, "favorite", "icloud", "photos", "server", "vault", "recents", "trash",
+            "search", "tag"
         ]
 
         for place in places { sidebar.activate(place, inNewTab: true) }
-        #expect(recorder.events == [
-            "\(mount.path.path) new-tab", "favorite new-tab", "icloud new-tab", "photos new-tab",
-            "server new-tab", "vault new-tab"
-        ])
+        #expect(recorder.events == names.map { "\($0) new-tab" })
 
         // The narrowness half: without ⌘ every one of them stays in the tab it was picked in.
         recorder.events = []
         for place in places { sidebar.activate(place) }
-        #expect(
-            recorder.events == [mount.path.path, "favorite", "icloud", "photos", "server", "vault"]
-        )
-    }
-
-    /// Recents and the Trash open a results tab on every click, so ⌘ must still open them — once.
-    @Test("a place that always opens its own tab still opens under ⌘")
-    func resultsPlacesStillOpen() {
-        let (sidebar, recorder) = loadedSidebar()
-        sidebar.activate(.recents, inNewTab: true)
-        sidebar.activate(.trash, inNewTab: true)
-        #expect(recorder.events == ["recents", "trash"])
+        #expect(recorder.events == names)
     }
 
     // MARK: - The pane
@@ -321,14 +315,29 @@ private final class ActivationRecorder: SidebarViewControllerDelegate {
         record("vault", inNewTab)
     }
 
-    func sidebarDidActivateRecents(_ sidebar: SidebarViewController) { events.append("recents") }
-    func sidebarDidActivateTrash(_ sidebar: SidebarViewController) { events.append("trash") }
+    func sidebarDidActivateRecents(_ sidebar: SidebarViewController, inNewTab: Bool) {
+        record("recents", inNewTab)
+    }
 
-    func sidebar(_ sidebar: SidebarViewController, didActivateSavedSearch savedSearch: SavedSearch) {}
+    func sidebarDidActivateTrash(_ sidebar: SidebarViewController, inNewTab: Bool) {
+        record("trash", inNewTab)
+    }
+
+    func sidebar(
+        _ sidebar: SidebarViewController,
+        didActivateSavedSearch savedSearch: SavedSearch,
+        inNewTab: Bool
+    ) {
+        record("search", inNewTab)
+    }
+
+    func sidebar(_ sidebar: SidebarViewController, didActivateTag tag: FinderTag, inNewTab: Bool) {
+        record("tag", inNewTab)
+    }
+
     func sidebarDidRequestEmptyTrash(_ sidebar: SidebarViewController) {}
     func sidebar(_ sidebar: SidebarViewController, didEditServer server: ServerConnection) {}
     func sidebar(_ sidebar: SidebarViewController, didRequestLockOf vault: VaultLocation) {}
     func sidebar(_ sidebar: SidebarViewController, didRequestRenameOf vault: VaultLocation) {}
-    func sidebar(_ sidebar: SidebarViewController, didActivateTag tag: FinderTag) {}
     func sidebarDidClickEmptyArea(_ sidebar: SidebarViewController) {}
 }

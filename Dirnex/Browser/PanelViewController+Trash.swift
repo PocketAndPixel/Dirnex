@@ -28,14 +28,14 @@ extension PanelViewController {
         panel.path.backend == .trash
     }
 
-    /// Open the Trash in a new virtual results tab — the sidebar's Trash row.
-    func showTrash() {
+    /// Show the Trash in place of the active tab's listing, or with ⌘ (`inNewTab`) in a new tab —
+    /// the sidebar's Trash row. Watching the sources it was gathered from is what makes a file
+    /// trashed elsewhere (Finder, another app) appear here without re-clicking the row.
+    func showTrash(inNewTab: Bool = false) {
+        let target = resultsTarget(inNewTab: inNewTab)
         gatherTrash { [weak self] entries, sources in
             guard let self else { return }
-            openResults(entries, truncated: false, as: trashPresentation())
-            // The tab that just opened is the active one; watching its sources is what makes a file
-            // trashed elsewhere (Finder, another app) appear here without re-clicking the row.
-            watchMergedListing(sources: sources, force: true)
+            landResults(entries, as: trashPresentation(), over: target, mergedFrom: sources)
         }
     }
 

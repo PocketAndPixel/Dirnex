@@ -398,8 +398,15 @@ final class QuickViewPreviewView: NSView {
     // responder, and the point of taking it was that nobody else should act on it.
     override func mouseDown(with event: NSEvent) {}
     override func mouseDragged(with event: NSEvent) {}
-    override func mouseUp(with event: NSEvent) {}
     override func rightMouseDown(with event: NSEvent) {}
+
+    /// A double-click goes to the content view, which `nextResponder` skips: at full-window size this
+    /// surface holds the title bar's row with nothing in it, and only `BrowserContentView` acts on the
+    /// mouse-up, only inside that row.
+    override func mouseUp(with event: NSEvent) {
+        guard event.clickCount == 2 else { return }
+        window?.contentView?.mouseUp(with: event)
+    }
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
@@ -422,8 +429,9 @@ final class QuickViewPreviewView: NSView {
             headerView.leadingAnchor.constraint(equalTo: leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: trailingAnchor),
             // The safe area, not the raw top: the window runs its content under a transparent
-            // title bar, and a header pinned to the bare edge draws its position readout straight
-            // through the Back/Forward chevrons living up there. Caught only in a screenshot.
+            // title bar, and a header across the panes pinned to the bare edge would draw under the
+            // traffic lights and the title bar's other controls. A preview in one pane starts below
+            // that row already, under its tab strip, so there the guide adds nothing.
             headerView.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
             content.leadingAnchor.constraint(equalTo: leadingAnchor),
             content.trailingAnchor.constraint(equalTo: trailingAnchor),

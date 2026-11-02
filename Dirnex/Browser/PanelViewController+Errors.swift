@@ -21,6 +21,7 @@ extension PanelViewController {
         alert.alertStyle = .warning
         alert.addButton(withTitle: String(localized: "OK"))
         alert.enableEscapeToCancel()
+        alert.offerFullDiskAccessSettings()
         alert.beginSheetIfVisible(over: viewIfLoaded?.window)
     }
 
@@ -33,6 +34,14 @@ extension PanelViewController {
 /// by the pane's load/op error sheets, the queue's failure summary, and the per-file error
 /// dialog (`ErrorDialog`). Free of any view state so it can run on any actor.
 enum VFSErrorText {
+    /// The one sentence that sends the user to Full Disk Access. Named so the alerts can tell they
+    /// are giving that advice and offer the way there (``NSAlert/offerFullDiskAccessSettings(closesAlert:open:)``).
+    static var fullDiskAccessAdvice: String {
+        String(localized: """
+        You don’t have permission. Dirnex may need Full Disk Access in System Settings.
+        """)
+    }
+
     static func sentence(for error: Error) -> String {
         sentence(for: error) { NetworkVolume.root(of: $0) != nil }
     }
@@ -49,7 +58,7 @@ enum VFSErrorText {
         }
         guard let vfsError = error as? VFSError else { return error.localizedDescription }
         switch vfsError {
-        case let .permissionDenied(path):
+        case let .permissionDenied(path, refusal):
             // **Full Disk Access is a macOS grant, and on a server it is advice about the wrong
             // machine.** This sentence had no idea which backend it was describing, so every remote
             // refusal — an S3 bucket policy, an SFTP mode, an FTP account — sent the user to a
@@ -98,9 +107,30 @@ enum VFSErrorText {
                 The server refused that. This account may not have permission for it.
                 """)
             }
-            return String(localized: """
-            You don’t have permission. Dirnex may need Full Disk Access in System Settings.
-            """)
+            // **And an `EACCES` on this Mac's own disk is the item's mode bits, which no grant
+            // lifts.** Reported 2026-10-30 on another account's `drwx------` Documents: the sheet
+            // sent an administrator to Full Disk Access, which TCC refusals need and this one cannot
+            // use, since they arrive as `EPERM` (``PermissionRefusal``). It comes after the share
+            // test because a share's `EACCES` is the server's decision, not a mode on this Mac.
+            if refusal == .itemPermissions {
+                return String(localized: """
+                File permissions don’t allow that for this account, and Full Disk Access can’t change \
+                them. The owner or an administrator can.
+                """)
+            }
+            // **A locked item is the other `EPERM` this Mac's own disk gives**, and the same errno as
+            // TCC, so the core reads the flags at the failure (``PermissionRefusal/locked(_:)``).
+            // Named, because the lock may be on the folder rather than on the item in the title.
+            if case let .locked(item) = refusal {
+                return String(
+                    localized: "“\(item.displayName)” is locked. Turn off Locked in Get Info, then try again.",
+                    comment: """
+                    Error sentence: an item or its folder is locked (Finder's Locked, UF_IMMUTABLE); %@ is \
+                    the locked item's name. "Locked" and "Get Info" are the names Get Info uses.
+                    """
+                )
+            }
+            return fullDiskAccessAdvice
         case .notFound:
             return String(localized: "The item no longer exists.")
         case .notADirectory:

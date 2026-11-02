@@ -15,8 +15,12 @@ extension PanelViewController {
 
     /// ⌘F — drop the favorites just under the path bar: one item per pinned folder (jump on
     /// pick), then Add/Remove the current folder and Organize…
+    ///
+    /// A pin picked with ⌘ (a ⌘-click, ⌘Return, or ⌘ and its digit) opens in a new tab, as it does
+    /// from its sidebar row and from ⌘G. It works the way ⌘G's does, by a ⌘ alternate after each
+    /// pin, because an action reading the modifier itself would miss ⌘Return (`PlacesMenu`).
     @objc func showFavorites(_ sender: Any?) {
-        let menu = buildFavoritesMenu()
+        let menu = favoritesMenu(for: FavoritesStore.load())
         // Drop the menu from the path bar's bottom edge, regardless of its flip orientation.
         let origin = NSPoint(x: 8, y: pathBar.isFlipped ? pathBar.bounds.maxY : 0)
         menu.popUp(positioning: nil, at: origin, in: pathBar)
@@ -50,9 +54,11 @@ extension PanelViewController {
 
     // MARK: - Popup menu
 
-    private func buildFavoritesMenu() -> NSMenu {
+    /// The popup for `favorites`. It takes the list rather than reading it, so a test can render it
+    /// without reading `FavoritesStore`, which in this target is the developer's own pins
+    /// (docs/NOTES.md ▸ Testing).
+    func favoritesMenu(for favorites: Favorites) -> NSMenu {
         let menu = NSMenu()
-        let favorites = FavoritesStore.load()
 
         if favorites.entries.isEmpty {
             let empty = NSMenuItem(
@@ -67,7 +73,7 @@ extension PanelViewController {
             menu.addItem(empty)
         } else {
             for (index, entry) in favorites.entries.enumerated() {
-                menu.addItem(favoritesItem(for: entry, index: index))
+                favoritesItems(for: entry, index: index).forEach(menu.addItem)
             }
         }
 
@@ -93,23 +99,42 @@ extension PanelViewController {
         return menu
     }
 
-    /// One jump item, carrying its whole entry so a mid-open store change can't send the
-    /// pane to the wrong (index-shifted) folder — the entry rather than the bare path because a pin
-    /// on a server carries where to reconnect beside where to go. The first nine entries get a bare
-    /// 1–9 accelerator, usable while the menu is open (TC's number-key jump).
-    private func favoritesItem(for entry: FavoriteEntry, index: Int) -> NSMenuItem {
+    /// One jump item and its ⌘ alternate, which opens the pin in a new tab. Each carries the whole
+    /// entry so a mid-open store change can't send the pane to the wrong (index-shifted) folder —
+    /// the entry rather than the bare path because a pin on a server carries where to reconnect
+    /// beside where to go. The first nine entries get a bare 1–9 accelerator, usable while the menu
+    /// is open (TC's number-key jump), and the alternate the same digit with ⌘: AppKit pairs the
+    /// two by key equivalent and tells them apart by mask alone.
+    private func favoritesItems(for entry: FavoriteEntry, index: Int) -> [NSMenuItem] {
+        let jumps = favoritesItem(
+            for: entry,
+            index: index,
+            action: #selector(jumpToFavoriteEntry(_:))
+        )
+        jumps.keyEquivalentModifierMask = []
+        let icon = NSWorkspace.shared.icon(forFile: entry.path.path)
+        icon.size = NSSize(width: 16, height: 16)
+        jumps.image = icon
+        let jumpsInNewTab = favoritesItem(
+            for: entry,
+            index: index,
+            action: #selector(jumpToFavoriteEntryInNewTab(_:))
+        )
+        jumpsInNewTab.keyEquivalentModifierMask = .command
+        jumpsInNewTab.isAlternate = true
+        jumpsInNewTab.image = icon
+        return [jumps, jumpsInNewTab]
+    }
+
+    private func favoritesItem(for entry: FavoriteEntry, index: Int, action: Selector) -> NSMenuItem {
         let item = NSMenuItem(
             title: entry.name,
-            action: #selector(jumpToFavoriteEntry(_:)),
+            action: action,
             keyEquivalent: index < 9 ? String(index + 1) : ""
         )
-        item.keyEquivalentModifierMask = []
         item.target = self
         item.representedObject = entry
         item.toolTip = entry.path.path
-        let icon = NSWorkspace.shared.icon(forFile: entry.path.path)
-        icon.size = NSSize(width: 16, height: 16)
-        item.image = icon
         return item
     }
 
@@ -118,6 +143,11 @@ extension PanelViewController {
     @objc private func jumpToFavoriteEntry(_ sender: NSMenuItem) {
         guard let entry = sender.representedObject as? FavoriteEntry else { return }
         jumpToFavorite(entry)
+    }
+
+    @objc private func jumpToFavoriteEntryInNewTab(_ sender: NSMenuItem) {
+        guard let entry = sender.representedObject as? FavoriteEntry else { return }
+        jumpToFavorite(entry, inNewTab: true)
     }
 
     /// Open a pinned folder in this pane — the one definition of what picking a favorite *does*,
@@ -138,8 +168,8 @@ extension PanelViewController {
     /// direction. A remote pin written before the endpoint existed lands there too, and fails the
     /// way it always has: `serverNotConnected`, naming the account.
     ///
-    /// `inNewTab` (a sidebar row picked with ⌘) opens the pin in a new tab instead, and the endpoint
-    /// goes on *that* tab: the active one is being left as it is, connection and all.
+    /// `inNewTab` (a sidebar row or a popup item picked with ⌘) opens the pin in a new tab instead,
+    /// and the endpoint goes on *that* tab: the active one is being left as it is, connection and all.
     func jumpToFavorite(_ entry: FavoriteEntry, inNewTab: Bool = false) {
         // A pinned folder can outlive the directory it points at; catch that here rather than
         // dropping the user onto a load-failure sheet, and offer to unpin the dead entry.

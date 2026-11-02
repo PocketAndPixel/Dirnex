@@ -84,7 +84,10 @@ struct CopyEngineFailureTests {
         let report = CopyEngine.run(op, using: FaultBackend(blocksClone: true))
 
         #expect(!report.succeeded)
-        #expect(report.failures.first?.error == .permissionDenied(tree.vfsPath("secret.txt")))
+        #expect(
+            report.failures.first?.error
+                == .permissionDenied(tree.vfsPath("secret.txt"), refusedBy: .itemPermissions)
+        )
         #expect(!exists(tree, "dest/secret.txt"))
     }
 

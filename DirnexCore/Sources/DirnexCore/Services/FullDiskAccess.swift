@@ -4,8 +4,9 @@ import Foundation
 /// Access onboarding flow (detect, explain, deep-link to System Settings)").
 ///
 /// A file manager without the grant still browses the home directory perfectly well, but bumps
-/// into a permission wall the moment it reaches another user's folder, `~/Library/Mail`, a Time
-/// Machine backup, or anywhere else the system considers sensitive. The onboarding exists to catch
+/// into a permission wall the moment it reaches `~/Library/Mail`, a Time Machine backup, or anywhere
+/// else the system considers sensitive. Another account's folders are a different wall: they refuse
+/// with `EACCES` on their own mode bits, which no grant lifts (``PermissionRefusal``). The onboarding exists to catch
 /// that wall early and walk the user to the single switch that removes it, rather than let them
 /// meet it as a bare "you don't have permission" alert with no idea what to do about it.
 ///

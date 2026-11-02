@@ -246,6 +246,7 @@ extension BrowserWindowController {
         alert.informativeText = detail
         alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
+        alert.offerFullDiskAccessSettings()
         if let window { alert.beginSheetModal(for: window) } else { alert.runModal() }
     }
 }

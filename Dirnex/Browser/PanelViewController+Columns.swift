@@ -126,6 +126,42 @@ extension PanelViewController {
                 object: tableView
             )
         }
+        // The pane's own width is the other thing the columns follow (`fitNameColumnToPane`).
+        scrollView.contentView.postsFrameChangedNotifications = true
+        center.addObserver(
+            self,
+            selector: #selector(paneWidthChanged),
+            name: NSView.frameDidChangeNotification,
+            object: scrollView.contentView
+        )
+    }
+
+    @objc func paneWidthChanged(_ notification: Notification) {
+        fitNameColumnToPane()
+    }
+
+    /// Make Name exactly as wide as the pane leaves it, down to its own `minWidth`.
+    ///
+    /// `firstColumnOnlyAutoresizingStyle` cannot be left to do this alone. Through a live resize
+    /// (dragging the window's edge) AppKit leaves columns wider than the pane exactly as they are:
+    /// measured 2026-11-02, columns 1 pt wider than a 500 pt clip view stayed put as a live resize
+    /// took it to 440, where a programmatic resize refit them. A stored layout leaves the columns
+    /// wider than the pane whenever it was saved at a wider one — a tab switched to after the
+    /// window was narrowed, a relaunch at a smaller size — and then Size and Date stayed cut off at
+    /// the pane's edge however the window was dragged. Wherever AppKit's pass did work, this finds
+    /// Name already at the width it computes and changes nothing.
+    func fitNameColumnToPane() {
+        let paneWidth = scrollView.contentView.bounds.width
+        let index = tableView.column(
+            withIdentifier: NSUserInterfaceItemIdentifier(Column.name.rawValue)
+        )
+        // A pane not laid out yet has no width to fit; its first layout calls back here.
+        guard paneWidth > 0, index >= 0 else { return }
+        let name = tableView.tableColumns[index]
+        let spacing = tableView.intercellSpacing.width
+        let others = tableView.tableColumns.reduce(0) { $0 + $1.width + spacing } - name.width
+        let width = max(name.minWidth, paneWidth - others)
+        if name.width != width { name.width = width }
     }
 
     @objc func columnLayoutChanged(_ notification: Notification) {
@@ -190,6 +226,8 @@ extension PanelViewController {
             // they are absent from every stored layout, so the reordering below would otherwise
             // shuffle them to the far end of the table, one column at a time.
             updateSizeBarColumn()
+            // The widths below were stored at whatever width the pane had then.
+            fitNameColumnToPane()
         }
         setSizeBarColumnInstalled(false)
 

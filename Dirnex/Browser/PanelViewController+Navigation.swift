@@ -281,8 +281,10 @@ extension PanelViewController {
         // Captured before the async load: was this tab showing a *non-re-listable* virtual pane
         // when we left? A `.search` results listing (and a browsed archive) can't be re-entered
         // from a history trail, so leaving one starts fresh. A connected remote *is* re-listable,
-        // so it keeps a normal back/forward trail like a local directory.
-        let wasVirtual = panel.path.backend != .local && !panel.path.backend.isRemoteConnection
+        // so it keeps a normal back/forward trail like a local directory. A results listing shown in
+        // place of a folder never entered the trail, which is still on that folder, so leaving it
+        // steps on from there (`trailIndexUnderResults`).
+        let wasVirtual = !Self.trailCanHold(panel.path) && trailIndexUnderResults == nil
         // Captured alongside it: was this tab showing a *results* listing? Its chip label and the
         // query behind "Save Search…" describe the results, not a place, so arriving at a real
         // directory has to drop them — otherwise clicking Home out of the Trash lands in the home
@@ -293,6 +295,9 @@ extension PanelViewController {
         // folder — undo restores them on return; a same-directory reload keeps marks, so it no-ops.
         let departed = panel.path
         let departedMarks = panel.selection
+        // A tab carries its sort from folder to folder; leaving results shown in place of a folder,
+        // it is that folder's sort rather than the listing's own (`PanelTab.sortUnderResults`).
+        let sort = tabs[activeTabIndex].sortUnderResults ?? panel.model.sort
         Task {
             do {
                 // Sort the fresh listing off the main thread (PLAN.md §M7 perf pass): a 100k
@@ -306,7 +311,7 @@ extension PanelViewController {
                 let model = try await DirectoryLoader.model(
                     backend,
                     at: path,
-                    sort: panel.model.sort,
+                    sort: sort,
                     showHidden: AppPreferences.shared.showHidden
                 )
                 guard token == loadToken else { return }

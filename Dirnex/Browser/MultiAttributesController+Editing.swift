@@ -119,6 +119,7 @@ extension MultiAttributesController {
         )
         alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
         alert.enableEscapeToCancel()
+        alert.offerFullDiskAccessSettings()
         present(alert, dismissAfter: dismissAfter)
     }
 

@@ -8,7 +8,7 @@ import DirnexCore
 /// dispatch here.
 ///
 /// **A tag row is a search, not a place.** There is no directory of tagged files to navigate to, so
-/// a click runs the `FileQuery` that finds them and lands the hits in a virtual results tab —
+/// a click runs the `FileQuery` that finds them and lands the hits in a virtual results listing —
 /// the same machinery a saved search uses, which is why this needed no new panel code at all.
 ///
 /// **Why the section is gated on View ▸ Show Tags.** The preference already means "tags are part of
@@ -152,7 +152,7 @@ extension SidebarViewController {
 
     @objc private func findTaggedFilesItem(_ sender: NSMenuItem) {
         guard let tag = sender.representedObject as? FinderTag else { return }
-        delegate?.sidebar(self, didActivateTag: tag)
+        delegate?.sidebar(self, didActivateTag: tag, inNewTab: false)
     }
 
     @objc private func deleteTagItem(_ sender: NSMenuItem) {
@@ -274,7 +274,11 @@ extension SidebarViewController {
             """,
             comment: "Body of the partial tag-deletion failure; %1$lld removed of %2$lld, %3$@ is the error."
         )
-        alert.enableEscapeToCancel() // ⎋ → OK; the only button, so it dismisses either way.
+        // Added rather than left to `NSAlert`, which supplies OK only at presentation: the Full Disk
+        // Access button needs a button before it to keep Escape and the focus on.
+        alert.addButton(withTitle: String(localized: "OK", comment: "Dismiss button."))
+        alert.enableEscapeToCancel()
+        alert.offerFullDiskAccessSettings()
         Task { _ = await runTagAlert(alert) }
     }
 

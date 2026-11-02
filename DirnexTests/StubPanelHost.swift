@@ -45,6 +45,7 @@ final class StubPanelHost: PanelHost {
     var counterpart: PanelViewController?
 
     func panelCounterpart(of panel: PanelViewController) -> PanelViewController? { counterpart }
+
     /// Every operation a gesture handed over, in order.
     ///
     /// Recorded rather than shrugged at since M24 Slice 4, because a checksum over rows that are

@@ -265,14 +265,19 @@ struct DirectoryWatcherTests {
         onFile.reset()
         onDirectory.reset()
 
-        for round in 0..<3 {
+        // Five siblings, judged together. A stream that hears siblings fires for each of them, while
+        // one late callback for the setup's own writes can still land after any quiesce: on the Mac
+        // runner on 2026-10-30, during a full parallel run, the count read 1 in each of three rounds
+        // and never grew (docs/RELEASING.md ▸ The Mac runner). So one fire is allowed and two are not.
+        for round in 0..<5 {
             try tree.writeFile("other.txt", contents: "sibling \(round)")
             #expect(
                 await onDirectory.wait(timeout: timeout),
                 "the sibling's change reached FSEvents"
             )
-            #expect(onFile.total() == 0, "a sibling is not this file changing")
         }
+        await quiesce(onFile)
+        #expect(onFile.total() <= 1, "a sibling is not this file changing")
 
         // And the stream that stayed quiet is alive, not broken — the half that stops "never fire"
         // from passing.

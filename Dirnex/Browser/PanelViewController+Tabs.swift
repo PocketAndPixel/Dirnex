@@ -55,7 +55,7 @@ extension PanelViewController {
         // ends it, and nothing would poll again until the next navigation. Here instead, beside the
         // size-walk cancellation, because this is the one funnel every tab change goes through.
         updateRemoteRefreshSchedule()
-        // The switched-to tab owns its own back/forward trail — re-validate the titlebar buttons.
+        // The switched-to tab has a folder of its own, which the terminal drawer follows.
         host?.panelDidNavigate(self)
     }
 
@@ -104,11 +104,8 @@ extension PanelViewController {
         }
     }
 
-    /// Rebuild the tab strip from the current tab list; the strip hides itself when a
-    /// pane has a single tab so the browser looks unchanged until a second one is opened —
-    /// except while a tab from the other pane is being dragged, when it is the drop target.
+    /// Rebuild the tab strip from the current tab list.
     func refreshTabBar() {
-        tabBar.isHidden = tabs.count <= 1 && !tabBar.isRevealedForDrag
         // Read once for the whole strip. Both are answered without asking any file system, so a
         // share that has stopped answering cannot stall a tab switch (`LocationSource.of`).
         let mounts = MountTable.current()
@@ -226,6 +223,24 @@ extension PanelViewController {
         persistState()
     }
 
+    /// Show the tab `offset` places along (⇧⌘[ and ⇧⌘]), going on past either end of this strip into
+    /// the other pane, which takes the focus so the next step carries on from there. Both strips make
+    /// one ring (`TabList.tabToShow`), so stepping the same way visits every tab in the window.
+    func showTab(by offset: Int) {
+        let other = host?.panelCounterpart(of: self)
+        let list = TabList(tabs: tabs, activeIndex: activeTabIndex)
+        switch list.tabToShow(by: offset, otherPaneTabCount: other?.tabs.count ?? 0) {
+        case let .here(index):
+            selectTab(at: index)
+        case let .otherPane(index):
+            guard let other else { return }
+            other.selectTab(at: index)
+            other.focusTable()
+        case .current:
+            break
+        }
+    }
+
     // MARK: - Volume recovery
 
     /// A volume was unmounted (ejected from the sidebar, in Finder, or via `diskutil`). Any tab
@@ -271,16 +286,6 @@ extension PanelViewController {
         tab.hasLoaded = false
         tab.cursorOnParentRow = false
         tab.clearResultsIdentity()
-    }
-
-    func selectNextTab() {
-        guard tabs.count > 1 else { return }
-        selectTab(at: (activeTabIndex + 1) % tabs.count)
-    }
-
-    func selectPreviousTab() {
-        guard tabs.count > 1 else { return }
-        selectTab(at: (activeTabIndex - 1 + tabs.count) % tabs.count)
     }
 
     /// Close the tab at `index`. The last tab is never closed here (the caller closes the
@@ -340,11 +345,11 @@ extension PanelViewController {
     }
 
     @objc func showNextTab(_ sender: Any?) {
-        selectNextTab()
+        showTab(by: 1)
     }
 
     @objc func showPreviousTab(_ sender: Any?) {
-        selectPreviousTab()
+        showTab(by: -1)
     }
 }
 
@@ -377,10 +382,6 @@ extension PanelViewController: TabBarViewDelegate {
 
     func tabBar(_ bar: TabBarView, didRequestOtherPanelForTabAt index: Int) {
         moveTabToOtherPanel(at: index)
-    }
-
-    func tabBar(_ bar: TabBarView, tabDragIsInFlight inFlight: Bool) {
-        revealCounterpartTabBar(inFlight)
     }
 
     func tabBarDidRequestNewTab(_ bar: TabBarView) {
