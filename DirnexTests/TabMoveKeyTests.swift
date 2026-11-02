@@ -5,14 +5,14 @@ import Testing
 
 @testable import Dirnex
 
-/// Moving tabs from the keyboard: ⌥⌘[ and ⌥⌘] along a strip and across into the pane beside it, and
-/// ⇧⌘M straight to the other pane.
+/// Moving tabs from the keyboard: ⌥⌘[ and ⌥⌘] along a strip and on round both panes, and ⇧⌘M
+/// straight to the other pane.
 @MainActor
 @Suite("Moving tabs from the keyboard", .serialized)
 struct TabMoveKeyTests {
     private typealias Panes = TabMovePanes
 
-    @Test("⌥⌘[ and ⌥⌘] step the showing tab along the strip, stop at the outer end, and are saved")
+    @Test("⌥⌘[ and ⌥⌘] step the showing tab along the strip, and are saved")
     func stepAlongTheStrip() async throws {
         let panes = try await Panes.make()
         let pane = panes.left.pane
@@ -23,9 +23,10 @@ struct TabMoveKeyTests {
         pane.moveTabLeft(nil)
         #expect(panes.leftPaths == [Panes.beta, Panes.alpha, Panes.gamma])
         #expect(pane.panel.path == Panes.beta)
-        #expect(!pane.validateMenuItem(Panes.menuItem(left)))
-        pane.moveTabLeft(nil)
-        #expect(panes.leftPaths == [Panes.beta, Panes.alpha, Panes.gamma])
+        #expect(
+            pane.validateMenuItem(Panes.menuItem(left)),
+            "the next step goes round into the right pane"
+        )
 
         pane.moveTabRight(nil)
         pane.moveTabRight(nil)
@@ -88,8 +89,8 @@ struct TabMoveKeyTests {
     }
 
     /// The step after a crossing belongs to the pane it landed in, which is who the menu asks now.
-    @Test("steps carry on along the far strip and stop at its far end")
-    func stepOnToTheFarEnd() async throws {
+    @Test("steps carry on along the far strip and round into the left pane at its start")
+    func stepOnRoundToTheStart() async throws {
         let panes = try await Panes.make()
         let right = #selector(PanelViewController.moveTabRight(_:))
         panes.left.pane.moveTabRight(nil)
@@ -98,20 +99,48 @@ struct TabMoveKeyTests {
         panes.right.pane.moveTabRight(nil)
         #expect(panes.rightPaths == [Panes.other, Panes.gamma])
         #expect(panes.right.pane.activeTabIndex == 1)
-        #expect(!panes.right.pane.validateMenuItem(Panes.menuItem(right)))
+        #expect(
+            panes.right.pane.validateMenuItem(Panes.menuItem(right)),
+            "the next step goes round into the left pane"
+        )
 
         panes.right.pane.moveTabRight(nil)
-        #expect(panes.rightPaths == [Panes.other, Panes.gamma])
-        #expect(panes.leftPaths == [Panes.alpha, Panes.beta])
+        #expect(panes.rightPaths == [Panes.other])
+        #expect(panes.leftPaths == [Panes.gamma, Panes.alpha, Panes.beta])
+        #expect(panes.left.pane.activeTabIndex == 0)
+        #expect(panes.left.window.firstResponder === panes.left.pane.tableView)
     }
 
-    @Test("a pane's last tab stays when a step would take it across")
+    @Test("⌥⌘[ off the left pane's start goes round into the right pane at its end, and ⌥⌘] back")
+    func stepRoundToTheEnd() async throws {
+        let panes = try await Panes.make()
+        panes.left.pane.selectTab(at: 0)
+
+        panes.left.pane.moveTabLeft(nil)
+        #expect(panes.leftPaths == [Panes.beta, Panes.gamma])
+        #expect(panes.rightPaths == [Panes.other, Panes.alpha])
+        #expect(panes.right.pane.activeTabIndex == 1)
+        #expect(panes.right.window.firstResponder === panes.right.pane.tableView)
+        let right = try panes.savedRight()
+        #expect(right.tabs.map(\.path).map(VFSPath.local) == [Panes.other, Panes.alpha])
+        #expect(right.activeIndex == 1)
+
+        panes.right.pane.moveTabRight(nil)
+        #expect(panes.leftPaths == [Panes.alpha, Panes.beta, Panes.gamma])
+        #expect(panes.left.pane.activeTabIndex == 0)
+        #expect(panes.rightPaths == [Panes.other])
+    }
+
+    @Test("a pane's last tab stays when a step would take it across, either way")
     func stepKeepsTheLastTab() async throws {
         let panes = try await Panes.make()
         let left = #selector(PanelViewController.moveTabLeft(_:))
+        let right = #selector(PanelViewController.moveTabRight(_:))
         #expect(!panes.right.pane.validateMenuItem(Panes.menuItem(left)))
+        #expect(!panes.right.pane.validateMenuItem(Panes.menuItem(right)))
 
         panes.right.pane.moveTabLeft(nil)
+        panes.right.pane.moveTabRight(nil)
 
         #expect(panes.rightPaths == [Panes.other])
         #expect(panes.leftPaths == [Panes.alpha, Panes.beta, Panes.gamma])

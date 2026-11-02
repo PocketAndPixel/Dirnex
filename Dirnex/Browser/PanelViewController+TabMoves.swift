@@ -1,8 +1,8 @@
 import AppKit
 import DirnexCore
 
-/// Moving tabs: along a pane's strip and on across to the next pane from the keyboard (⌥⌘[ and ⌥⌘]),
-/// and straight to the other pane by keyboard (⇧⌘M), from a chip's menu, or by dropping a chip on the
+/// Moving tabs: along a pane's strip and on round both panes from the keyboard (⌥⌘[ and ⌥⌘]), and
+/// straight to the other pane by keyboard (⇧⌘M), from a chip's menu, or by dropping a chip on the
 /// other pane's strip. Where a tab lands and which one shows afterwards is `TabList`'s; what lives here
 /// is handing a tab from one pane to the other and keeping both panes' chrome, watchers and saved tabs
 /// in step.
@@ -31,8 +31,9 @@ extension PanelViewController {
         moveTabToOtherPanel(at: activeTabIndex)
     }
 
-    /// Whether each of the three applies to this pane now, or `nil` for any other item. A step needs
-    /// somewhere to go on that side; sending needs a tab to leave behind and a pane to receive it.
+    /// Whether each of the three applies to this pane now, or `nil` for any other item. A step needs a
+    /// neighbour on that side or, past the end, what sending needs: a tab to leave behind and a pane to
+    /// receive it.
     func validateTabMoveItem(_ menuItem: NSMenuItem) -> Bool? {
         switch menuItem.action {
         case #selector(moveTabLeft(_:)):
@@ -49,9 +50,10 @@ extension PanelViewController {
 
     // MARK: - Along the strip
 
-    /// Step the showing tab `offset` places: along this pane's strip, or off its end into the pane on
-    /// that side, where the focus follows it so the next step carries on from there. Nothing happens
-    /// at the far end of the far pane, or for a pane's last tab.
+    /// Step the showing tab `offset` places: along this pane's strip, or off either end into the other
+    /// pane, where the focus follows it so the next step carries on from there. Both strips make one
+    /// ring (`TabList.step`), the one ⇧⌘[ and ⇧⌘] walk the view round, so stepping the same way takes
+    /// the tab round the whole window. Nothing happens for a pane's last tab.
     func moveActiveTab(by offset: Int) {
         switch activeTabStep(by: offset) {
         case .along:
@@ -59,8 +61,8 @@ extension PanelViewController {
             refreshTabBar()
             persistState()
         case let .across(slot):
-            guard let beside = host?.panel(beside: self, by: offset) else { return }
-            handOverTab(at: activeTabIndex, to: beside, atSlot: slot)
+            guard let other = host?.panelCounterpart(of: self) else { return }
+            handOverTab(at: activeTabIndex, to: other, atSlot: slot)
         case .stays:
             break
         }
@@ -70,7 +72,7 @@ extension PanelViewController {
     private func activeTabStep(by offset: Int) -> TabStep {
         TabList(tabs: tabs, activeIndex: activeTabIndex).step(
             by: offset,
-            besidePaneTabCount: host?.panel(beside: self, by: offset)?.tabs.count
+            otherPaneTabCount: host?.panelCounterpart(of: self)?.tabs.count
         )
     }
 

@@ -18889,10 +18889,10 @@ now carry a tab.
   strip's right end is the other pane's first tab and past its left end the other pane's last, which
   is the slot rule the move already follows. A ring of two strips reads the same from either pane, so
   it needs `panelCounterpart` and not the side-aware `panel(beside:by:)`.
-- **Decided without asking:** the far ends go round, the right pane's last tab to the left pane's
-  first and back. The move stops there because a tab that wrapped round would seem to vanish, and a
-  view that goes round loses nothing. The switch always went round within one strip, so keeping it
-  round changes the least. With no other pane, it still goes round its own strip.
+- **The far ends go round**, the right pane's last tab to the left pane's first and back. Decided
+  without asking, since the switch always went round within one strip, and confirmed by Oleg, who
+  then asked for ⌥⌘[ and ⌥⌘] to go round the same way (the next entry). With no other pane, the view
+  still goes round its own strip.
 - **App:** `showTab(by:)` replaces `selectNextTab` and `selectPreviousTab`. A crossing selects the
   other pane's tab and focuses that pane, so the next step goes on from there. The pane left behind
   keeps showing its tab. Only the active tab and the focus change: no tab moves. A pane on its only
@@ -18911,6 +18911,31 @@ now carry a tab.
   crossed to, so the focus went with it, and the app saved `right` as the active pane at quit. The
   chords themselves were not pressed. The defaults domain was restored and compared afterwards, and
   so was the drift from the test runs (`Dirnex.frecency`, `Dirnex.tabs.left`, `SULastCheckTime`).
+
+**2026-11-02: ⌥⌘[ and ⌥⌘] go round both panes too** (core and app). Asked for by Oleg straight after
+the entry above: a tab moved from the keyboard should go round as the view does.
+
+- **What changed:** a tab stepped off either end of a strip now enters the *other* pane, at its
+  start going right and at its end going left. So the right pane's last tab goes on to the left
+  pane's first slot, and the left pane's first tab to the right pane's last. Read as a ring, that is
+  the slot rule the crossing already had, so `TabList.step` kept its arithmetic; its parameter is
+  now `otherPaneTabCount`. The app asks `panelCounterpart` where it asked `panel(beside:by:)`, which
+  had no other caller and is gone from `PanelHost`, the window and the stub host. Move Tab Left and
+  Right are now disabled only on a pane's last tab.
+- **Kept:** with no other pane, a step off the end still goes nowhere. The window always has one.
+- **Tests:** one new in the core, a tab walked round both panes each way until it is back where it
+  started. In the app, the two tests that stopped at the outer ends now go round, and a third covers
+  the left end. `TabListTests` reached 278 lines against `type_body_length`, so its two-pane sections
+  moved to `TabListRingTests`. Negative control: a one-line hack putting the old rule back, offering
+  the other pane only in the direction it lies, failed the three wrap tests (12 issues) and passed
+  the other six. Full runs green (4 681 core, 2 115 app with the known `GestureWaitTests` issue), both
+  linters clean.
+- **Seen live** in the Debug build, launched by path and driven through `run operation
+  "window.moveTabRight"` and `"window.moveTabLeft"`, with both panes' saved tabs read back after each
+  step. The right pane had the focus, on its last tab, `translations`. A step right put that tab first
+  in the left pane, and a step right then left moved it along there. A step left put it last in the
+  right pane, and a step left then right moved it along there. Each step after a wrap ran in the pane
+  the tab had wrapped into. The chords were not pressed. The defaults domain was restored and compared.
 
 ---
 
