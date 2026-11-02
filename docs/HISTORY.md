@@ -18848,6 +18848,38 @@ where it used to stop at the strip's end it goes on into the pane on that side.
   and on to the far end, where Move Tab Right was disabled. The chords themselves were not pressed
   here. They are the same menu items as before.
 
+**2026-11-02: the Name column follows the window again** (app). Reported by Oleg with a screenshot:
+after the window was narrowed, the left pane's Name column kept its width, Size was cut off at the
+pane's edge and Date was out of sight, while the right pane resized as it should.
+
+- **Cause:** through a live resize, `firstColumnOnlyAutoresizingStyle` leaves columns wider than the
+  pane as they are, during the drag and after it. The left pane's tab had stored Name at 300 pt in a
+  386 pt pane, which a stored layout does whenever it was saved at a wider pane: a tab switched to after
+  the window was narrowed, or a relaunch at a smaller size. The right pane's columns fit. A scratch
+  table stuck on 1 pt of overflow and refit on a programmatic resize (NOTES.md ▸ Tables).
+- **What landed:** `fitNameColumnToPane` sets Name to the clip view's width less the other columns and
+  their spacing, never below its `minWidth`. It runs on the clip view's `frameDidChangeNotification`,
+  after a tab's layout is applied, and after the size-bar column comes or goes. The last closes a leak
+  of the same kind: Name pays for the bar but stops at its floor, so removing the bar in a narrow pane
+  gave Name back more than it had paid.
+- **Tests:** `NameColumnFitTests`, three tests on a pane in a window that is never shown, resizing
+  between the table's own `viewWillStartLiveResize()` and `viewDidEndLiveResize()`. Without those calls
+  the old code refit the columns at the first resize and the tests caught only the layout step; with
+  them the old code failed all three, with 9 issues. A fourth test, on Name's floor, passed both ways
+  and was dropped. The panes list `/var/empty`, since on the temp folder they relisted whenever another
+  test wrote there. Core green (4 675). The full app run (2 109) had 10 issues besides the known
+  `GestureWaitTests` one, all timing waits in `VanishedFolderTests`, `QuickViewWebFadeInTests` and
+  `QuickViewScrollPageTests` while the host ran at about 1 400% CPU; those suites and the new one
+  passed alone, 18 of 18, and a full rerun was green (2 109, the known issue only, 81 s against the
+  first run's 272 s). Both linters clean, SwiftLint at 0.65.0 locally against CI's 0.65.1.
+- **Seen live** in the Debug build, launched by path after Oleg's running copy was quit with his
+  go-ahead. At launch the left pane's `media` tab came back from 300 pt to 120, Name's floor at that
+  width. Oleg then dragged the window wider and narrower, the divider both ways and Size's edge, and
+  switched the left pane's tabs. A recorder read the saved columns and the split view's frames: wherever
+  the frames had settled, each pane's Name was its width less 16 pt of insets less the other columns
+  (266.5 at 554.5, 264 at 552, 204 at 492, 210 and 209.5 at 497.5), and the two tabs stored at 334.5
+  and 268.5 opened at 266.5. A drag on Size's edge moved Date by the same amount and left Name alone.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

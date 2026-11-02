@@ -2510,6 +2510,20 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   middle of the rebuild, against whatever model is set at that moment. Clear the descriptors first
   under a flag the handler ignores. A control that removes the clearing line cannot fail, since AppKit
   clears them anyway, so the flag is the part that matters.
+- **Through a live resize, `firstColumnOnlyAutoresizingStyle` leaves columns wider than the table's
+  clip view alone, and they stay that way after the resize ends.** Reported 2026-11-02: dragging the
+  window narrower left one pane's Name column as it was and cut Size off at the pane's edge, while the
+  other pane resized. The stuck pane's tab had stored Name at 300 pt in a 386 pt pane; the other's
+  columns fit its pane. In a scratch table, columns 1 pt wider than a 500 pt clip stayed put as a live
+  resize took it to 440, and a programmatic `setContentSize` refit them. A Name narrower than its share
+  was less consistent: the scratch table kept the gap through a live resize, and the app's pane refit it
+  on the first step. Any width set from outside (a stored layout, a column added or removed) can leave
+  either state behind. `PanelViewController.fitNameColumnToPane` sets Name to the clip's width less the
+  other columns and their spacing, on the clip view's `frameDidChangeNotification` and after each such
+  change, and that held through a live resize in both directions.
+  - **A test resizes inside `viewWillStartLiveResize()` and `viewDidEndLiveResize()` on the table**, or it
+    passes on the broken code: `NameColumnFitTests`' resize steps failed on the old code only once those
+    calls were added.
 
 #### Drawing rows and cells
 
