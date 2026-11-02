@@ -1,7 +1,7 @@
 import Foundation
 
-/// A pane's tabs in order and which one is showing: the arithmetic behind reordering them, and
-/// behind moving one to the other pane.
+/// A pane's tabs in order and which one is showing: the arithmetic behind reordering them, behind
+/// moving one to the other pane, and behind stepping the view from tab to tab across both.
 ///
 /// Generic over the tab because the app's tab is a main-actor class full of view state the core has
 /// no business knowing. What lives here is the *positions*: where a dropped tab lands, which tab is
@@ -68,6 +68,24 @@ public struct TabList<Tab> {
         return .across(slot: offset > 0 ? 0 : besidePaneTabCount)
     }
 
+    // MARK: - Showing another tab
+
+    /// Which tab a step of the view `offset` places along shows, with `otherPaneTabCount` tabs in the
+    /// other pane, or 0 when there is none.
+    ///
+    /// The two strips read as one ring, this pane's tabs and then the other's: past this strip's right
+    /// end is the other pane's first tab, past its left end the other pane's last, and round again from
+    /// there. Which side the other pane is on makes no difference, because a ring of two strips reads
+    /// the same from either. Where a tab being moved stops at the outer ends, the view goes round, as it
+    /// always did within one strip: nothing vanishes when it does.
+    public func tabToShow(by offset: Int, otherPaneTabCount: Int) -> TabToShow {
+        let ring = tabs.count + max(otherPaneTabCount, 0)
+        guard ring > 0 else { return .current }
+        let target = ((activeIndex + offset % ring) % ring + ring) % ring
+        guard target < tabs.count else { return .otherPane(index: target - tabs.count) }
+        return target == activeIndex ? .current : .here(index: target)
+    }
+
     // MARK: - Leaving and arriving
 
     /// Whether a tab can leave this list at all. A pane always shows a tab, so its last one stays.
@@ -117,6 +135,16 @@ public enum TabStep: Equatable, Sendable {
     case across(slot: Int)
     /// Nowhere: the far end of the far pane, or a pane's last tab.
     case stays
+}
+
+/// Which tab a step of the view comes to (``TabList/tabToShow(by:otherPaneTabCount:)``).
+public enum TabToShow: Equatable, Sendable {
+    /// The tab at this index of the same pane.
+    case here(index: Int)
+    /// The tab at this index of the other pane, which takes the focus with it.
+    case otherPane(index: Int)
+    /// The one already showing, since there is no other tab in either pane.
+    case current
 }
 
 /// The gaps between a strip's tabs, which a drop names (see ``TabList``): 0 before the first tab and

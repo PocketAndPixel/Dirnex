@@ -5,9 +5,10 @@ import Testing
 
 @testable import Dirnex
 
-/// Two panes for the suites that move tabs between them, in windows of their own on a stub backend:
-/// the left on tabs alpha, beta and gamma, showing gamma, and the right on its one tab. Both save their
-/// tabs into the scratch domain, under keys of this instance's own, since suites run side by side.
+/// Two panes for the suites that move tabs between them or switch across them, in windows of their
+/// own on a stub backend: the left on tabs alpha, beta and gamma, showing gamma, and the right on its
+/// one tab. Both save their tabs into the scratch domain, under keys of this instance's own, since
+/// suites run side by side.
 @MainActor
 struct TabMovePanes {
     static let alpha = VFSPath.local("/tmp/dirnex-tab-moves/alpha")
