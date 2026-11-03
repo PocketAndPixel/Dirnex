@@ -167,8 +167,9 @@ three-second hold (1.65 s), one outlasting it and taken after leaving and coming
 that file, two marked rows, Finder by promise with nothing fetched until the drop, Finder after crossing
 another app, a drop back inside Dirnex after crossing Teams, and 70 MB let go early, which stopped and
 left nothing behind. Over anonymous FTP, throttled too: a small file and a slow one into Teams, and
-Finder by promise. S3 and WebDAV go through the same `MaterializeRunner` and were not dragged live.
-**Not measured:** Mail and the other apps that may take a promise, which are now offered the URL.
+Finder by promise. Oleg dragged a text file and a 3.1 MB JPEG out of a real S3 bucket into a Chromium
+drop page the same day, both read back at the right size, and a 36.1 MB RAW file from it into a Mail
+message. WebDAV goes through the same `MaterializeRunner` and was not dragged live.
 
 ### Still open
 
