@@ -336,13 +336,22 @@ encrypted archive would have to raise a passphrase sheet with nothing on screen 
 into one does not, `⌥⌘V` into one being unsupported either way.
 
 <sup>k</sup> What a drag can and cannot reach, in three parts. A row on a server is dragged **out**
-as an `NSFilePromiseProvider`: the board advertises the file and the bytes are fetched only if
-something accepts the drop, through the same funnel `⏎` and `F4` use — so a row already fetched for
+to Finder as an `NSFilePromiseProvider`: the board advertises the file and the bytes are fetched only
+if something accepts the drop, through the same funnel `⏎` and `F4` use — so a row already fetched for
 a preview drags out with no transfer at all. A marked set is one promise per row, and the drag
 session is started with all of them: widening it afterwards carried local files and dropped no
-remote ones at all (measured into Finder 2026-10-24, PLAN.md §M32). A **folder** is not promised (a promise is one file,
-and a recursive fetch behind a Finder drop has no progress surface and no way to stop it), so it
-travels inside Dirnex only. And a **virtual listing** — a results tab, the merged Trash — is a
+remote ones at all (measured into Finder 2026-10-24, PLAN.md §M32). **Every other app** gets a real
+file instead, because Teams, Slack, Chrome and the rest of Chromium refuse a promise outright
+(2026-11-03, `RemoteDragHandoff`): when the pointer enters another app's window the board becomes file
+URLs and the bytes start coming down. A file that arrives within three seconds drops as usual. One that
+takes longer shows its progress under the dragged row, and the app takes it once the pointer has left
+and come back. Letting go early refuses the drop and nothing is lost: a set up to the open/edit size
+finishes anyway so the next drag is immediate, and a larger one stops and leaves nothing behind. Two
+limits follow from a promise being gone once the board has been rewritten: a large file that crosses
+another app on its way to Finder has to arrive before Finder will take it, and an app that could have
+taken a promise (Mail has not been measured) is offered the file URL too. A **folder** is not promised
+or offered (a promise is one file, and a recursive fetch behind a drop has no progress surface and no
+way to stop it), so it travels inside Dirnex only. And a **virtual listing** — a results tab, the merged Trash — is a
 source and never a destination: its rows carry their real paths and copy or drag out per row, while
 nothing can be pasted or dropped *into* a listing that has no directory of its own. The merged
 iCloud row is the exception, landing in the CloudDocs container underneath.

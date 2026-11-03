@@ -350,6 +350,29 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   target has to sit **beside** it rather than under it: narrow the Dirnex window by its corner first.
   The frame lands in the defaults domain, and the run's import puts it back. Each drag that worked
   had clicked its row first.
+  - **Stepping a drag does work when the moves stay inside the source first.** Seen 2026-11-03:
+    `left_mouse_down`, three or four `mouse_move`s a few points apart, the jump to the target, a wait,
+    one more move, `left_mouse_up`. That is the way to hover: `left_click_drag` lets go about half a
+    second in, which is a different test. A move is what makes the target notice, so end on one.
+  - **A screenshot leaves out every app that is not granted, and they are still there.** Seen
+    2026-11-03: Finder windows placed by `osascript` sat under Claude's own floating panel (layer 3), so
+    three drops went into Claude, which took them, and the screenshot showed the drag over an empty
+    Finder window. It read as Finder delivering nothing. List the windows at every layer
+    (`CGWindowListCopyWindowInfo` for the owner, or walk `NSWindow.windowNumber(at:below…)`) before
+    believing a drop target.
+  - **Finder's preview column is not a drop target.** Seen 2026-11-03: Finder opens it in a narrow
+    window as soon as one file is selected, so the point that took the first drop refused the second
+    with operation 0. Release on the file list, and check it is still under the point.
+  - **Teams brings itself to the front a few seconds into a hover.** Seen 2026-11-03: so a point chosen
+    to be "outside Teams" may no longer be, and the pointer never left. Leave for the wallpaper.
+  - **`mouse_move` fails if the front app is not answering.** Seen 2026-11-03 during a held pasteboard
+    read: "Could not verify which document this window is editing", and the batch stops. Wait the hold
+    out before the next move. The check is on the front app, so a hung background app does not stop it.
+  - **The Teams drops upload.** A dropped file goes to the account's `Microsoft Teams Chat Files` as soon
+    as it attaches, and removing the draft leaves it there. Keep fixtures small and say so afterwards.
+  - **A throttled `sftp-server` only throttles the subsystem.** Seen 2026-11-03: 70 MB arrived in 0.68 s
+    through a `Subsystem sftp` wrapper at 30 KB/s, because a large download goes over the exec channel.
+    `ForceCommand` running the same wrapper catches both.
 - **A background `app_drag` starts a drag session it cannot finish.** Logged 2026-11-02 on a tab chip:
   `mouseDown`, `beginDraggingSession`, then the session's end with operation 0 and no
   `draggingEntered` anywhere, because the whole path is delivered in well under a second. So it shows

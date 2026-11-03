@@ -270,6 +270,8 @@ final class PanelViewController: NSViewController {
     /// with an alert. `nil` when the line is showing its normal contents. Driven entirely by
     /// `PanelViewController+Chrome`; a stored property cannot live in that extension.
     var transientStatus: String?
+    /// The drag this pane last started that holds a row on a server, for as long as a read may reach it.
+    var dragHandoff: RemoteDragHandoffController?
     /// Bumped by each `showTransientStatus`, so a later message's expiry can't clear an earlier
     /// one's — the same stale-callback guard as `loadToken`.
     var transientStatusToken = 0

@@ -69,6 +69,13 @@ public enum RemoteFetchPurpose: Sendable, Equatable, CaseIterable {
     /// large for this row is not asked about: the check stands down and the save rests on the size
     /// and time, as it did before this row existed.
     case writeBackCheck
+    /// A drag of remote rows let go somewhere that did not take it, with the bytes still coming down
+    /// (``RemoteDragHandoff``): whether the transfer may finish, so that a second try is immediate.
+    ///
+    /// The third automatic purpose. The drag is over and nobody is there to ask, so a set too large
+    /// for this row is not asked about: the transfer stops, and a file that has to be that large can
+    /// be waited for during the drag.
+    case dragOut
 
     /// Whether this fetch happens without anybody having pressed a key for the file in question.
     ///
@@ -77,7 +84,7 @@ public enum RemoteFetchPurpose: Sendable, Equatable, CaseIterable {
     /// gesture, ``writeBackCheck``, inherited that answer here rather than at its call site.
     public var isAutomatic: Bool {
         switch self {
-        case .cursorPreview, .writeBackCheck: true
+        case .cursorPreview, .writeBackCheck, .dragOut: true
         case .preview, .open, .edit, .handOff, .compare, .syncContents, .checksum, .userScript,
              .pack, .browseArchive: false
         }
@@ -197,7 +204,8 @@ public enum RemoteFetchPolicy {
         // the smaller question too, and confirming an *open* they would not be asked about for a
         // mere look is the ordering this table exists to keep straight.
         case .open, .edit,
-             .handOff, .compare, .syncContents, .checksum, .userScript, .pack, .browseArchive:
+             .handOff, .compare, .syncContents, .checksum, .userScript, .pack, .browseArchive,
+             .dragOut:
             max(64 * 1024 * 1024, limit)
         }
     }

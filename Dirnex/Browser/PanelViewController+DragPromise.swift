@@ -2,7 +2,7 @@ import AppKit
 import DirnexCore
 
 /// Fulfilling a promise another application accepted — the second half of dragging a file off a
-/// server into Finder, Mail or Teams (PLAN.md §M23 Slice 4).
+/// server into Finder (PLAN.md §M23 Slice 4). Other apps go through `RemoteDragHandoffController`.
 ///
 /// The pane is the delegate rather than an object of its own, for the reason the property is
 /// declared `weak`: whatever fulfils a promise has to outlive the drag, and a drag can be let go

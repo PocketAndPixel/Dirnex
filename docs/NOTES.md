@@ -4038,6 +4038,42 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     `-skip-testing:<Suite>/<oneTest>` over four runs, against a baseline of the unchanged tree, which
     is also what stops "it was green before" being read as evidence about the code rather than about
     the machine.
+- **Teams, Slack, Chrome and VS Code refuse a file promise, and a promise and a file URL cannot share
+  a drag.** Measured 2026-11-03 against real Teams (WebView2, so Chromium) and Finder with a throwaway
+  drag source, which is why M23's "Finder, Mail or Teams" comment had been wrong since it was written:
+  Teams refused every promised row with operation 0 and no callback. Chromium reads the board once, in
+  `draggingEntered:` (`PopulateDropDataFromPasteboard`), takes only `public.file-url`, and never looks
+  again until the pointer leaves and comes back. `RemoteDragHandoff` holds the design this forced, and
+  each of these ruled out a shorter one:
+  - **Finder prefers a URL over a promise on one item**, read 13 ms after the pointer arrives. So a
+    promise with a URL beside it never fulfils. Answered empty, Finder does not fall back: it refuses.
+  - **A promise wrapped in another `NSPasteboardWriting` is refused**, though every type forwards and
+    the board reads the same. That wrapper is otherwise the one documented way to make a promise's
+    extra type lazy, since subclassing `NSFilePromiseProvider` and returning `.promised` is simply
+    never asked: the class answers through its private `_dataProviderForType:` instead.
+  - **A promise cannot come back once the board has been rewritten.** Written back as its bytes, Finder
+    reports operation 1 and delivers nothing, the worst of the outcomes. Written back as the same object
+    it refuses with operation 0. So the rewrite is one way.
+  - **Rewriting the board mid-session works**, unlike a promise: an app that enters afterwards sees the
+    new contents, and the rewrite takes about 6 ms. `draggingSession(_:movedTo:)` arrives before the app
+    the pointer just entered reads the board, 6 ms ahead in Teams, so the rewrite wins that race.
+    `enumerateDraggingItems` still reaches the items afterwards, so the drag image can change too.
+  - **`NSPasteboardItem` with `setDataProvider` answers a lazy `public.file-url` to a sandboxed app**:
+    Teams read the file out of `$TMPDIR` through it without any sandbox extension of ours.
+  - **A lazy type is answered once, and "nothing" is an answer.** A second read returns the cached empty
+    without asking. Only replacing the board asks again.
+  - **Nothing times a lazy read out**, at least to 45 s. But holding one freezes both ends: the reader is
+    blocked, and the drag image stops following the pointer whether the provider blocks or spins the run
+    loop, because tracking does not run during the callback. A release during the hold comes out as
+    operation 0 once it ends.
+  - **Do not wait in a provider by spinning the run loop for something on the main actor.** A run loop
+    nested inside a main-queue job does not drain the main queue (`_dispatch_main_queue_callback_4CF`
+    guards against re-entry), so the wait can run out on work that has finished. Run the transfer off
+    the main actor, and have the wait poll something a lock protects.
+  - **`NSEvent.mouseLocation` and `NSWindow.windowNumber(at:belowWindowWithWindowNumber:)` stay live with
+    the main thread blocked**, which is what lets a held read notice the pointer leaving. The second
+    skips the drag image, and about 0.3 ms with `CGWindowListCopyWindowInfo` is cheap enough for every
+    move. The desktop answers as Finder's own window at a large negative layer.
 - **LaunchServices is keyed by *type* and `NSSharingServicePicker` by *items*, so only one of the two
   hand-off gestures can show its list before the files exist.** Open With's list is
   `urlsForApplications(toOpen: UTType)` — already measured to answer identically to the per-URL

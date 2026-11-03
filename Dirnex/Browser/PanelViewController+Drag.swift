@@ -10,9 +10,10 @@ import DirnexCore
 ///
 /// Since M23 every row is draggable **within Dirnex**, a server's included, because the board
 /// carries a `PasteboardPayload` beside the file URL — and since Slice 4 a row whose bytes are on a
-/// server drags *out* as well, as an `NSFilePromiseProvider` another app can accept. Which of the
-/// two writers a row gets is `PanelPasteboard.dragWriters`' decision, made per row, so a mixed
-/// selection is one drag rather than two.
+/// server drags *out* as well, as an `NSFilePromiseProvider` Finder can accept, and into any other
+/// app as a real file once `RemoteDragHandoffController` has brought it down. Which of the two
+/// writers a row gets is `PanelPasteboard.dragWriters`' decision, made per row, so a mixed selection
+/// is one drag rather than two.
 extension PanelViewController {
     /// Configure the pane as a drag source and register it to receive file-URL drops.
     ///
@@ -60,11 +61,88 @@ extension PanelViewController {
         _ tableView: FileTableView,
         dragWritersFromRow row: Int
     ) -> [any NSPasteboardWriting]? {
+        guard let entries = markedSetDragged(fromRow: row) else { return nil }
+        let writers = PanelPasteboard.dragWriters(for: entries, promisedTo: self)
+        return writers.isEmpty ? nil : writers
+    }
+
+    /// The marked set, when a grab on `row` drags all of it rather than the one row.
+    private func markedSetDragged(fromRow row: Int) -> [FileEntry]? {
         guard panel.selectionCount > 1,
               let index = entryIndex(forRow: row),
               let entry = panel.displayedEntry(at: index),
               panel.isMarked(entry) else { return nil }
-        let writers = PanelPasteboard.dragWriters(for: panel.selectedEntries, promisedTo: self)
-        return writers.isEmpty ? nil : writers
+        return panel.selectedEntries
+    }
+
+    // MARK: - A row on a server, on its way to another app
+
+    /// Watch a drag that holds a row on a server, because Finder's promise is no use to most apps.
+    func fileTable(_ tableView: FileTableView, didBegin session: NSDraggingSession, fromRow row: Int) {
+        dragHandoff = nil
+        guard let cache = host?.remoteFileCache, let entries = entriesDragged(fromRow: row),
+              entries.contains(where: RemoteFilePromiseProvider.canPromise) else { return }
+        let status = RemoteDragStatus(session: session)
+        dragHandoff = RemoteDragHandoffController(
+            board: session.draggingPasteboard,
+            entries: entries,
+            cache: cache,
+            backend: backend,
+            showStatus: { status.show($0) },
+            onLanded: { [weak self] in
+                guard let self, let cursor = remoteFileUnderCursor,
+                      entries.contains(where: { $0.path == cursor.path }) else { return }
+                host?.panelCursorDidChange(self)
+                refreshQuickLookIfVisible()
+            },
+            onFailure: { [weak self] error in
+                self?.presentOperationFailure(
+                    message: String(
+                        localized: "Couldn’t copy this item from the server",
+                        comment: """
+                        Alert title when a file dragged out of a server to another app can't be downloaded.
+                        """
+                    ),
+                    detail: self?.describe(error) ?? ""
+                )
+            }
+        )
+    }
+
+    func fileTableDraggingSessionMoved(_ tableView: FileTableView) {
+        dragHandoff?.pointerMoved()
+    }
+
+    /// What is still coming down may finish if a second try at the drop would have been free to ask
+    /// for it, and it stops otherwise. Either way nothing has to be said: a stopped transfer leaves
+    /// nothing behind, and one that finishes makes the next drag of the row immediate.
+    func tableView(
+        _ tableView: NSTableView,
+        draggingSession session: NSDraggingSession,
+        endedAt screenPoint: NSPoint,
+        operation: NSDragOperation
+    ) {
+        endDragHandoff()
+    }
+
+    func endDragHandoff() {
+        guard let dragHandoff else { return }
+        var mayFinish = false
+        if dragHandoff.isTransferring {
+            mayFinish = RemoteFetchPolicy.decision(
+                for: materializationPlan(for: dragHandoff.entries),
+                purpose: .dragOut,
+                previewLimit: AppPreferences.shared.quickViewFetchLimit
+            ) == .fetch
+        }
+        dragHandoff.dragEnded(mayFinish: mayFinish)
+    }
+
+    /// Every row a drag grabbed on `row` carries.
+    private func entriesDragged(fromRow row: Int) -> [FileEntry]? {
+        if let marked = markedSetDragged(fromRow: row) { return marked }
+        guard let index = entryIndex(forRow: row),
+              let entry = panel.displayedEntry(at: index) else { return nil }
+        return [entry]
     }
 }

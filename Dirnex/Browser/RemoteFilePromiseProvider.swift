@@ -2,14 +2,17 @@ import AppKit
 import DirnexCore
 import UniformTypeIdentifiers
 
-/// A dragged row whose bytes are not on this Mac — what Finder, Mail or Teams is handed so a file
-/// on a server can be dropped into them (PLAN.md §M23 Slice 4).
+/// A dragged row whose bytes are not on this Mac — what Finder is handed so a file on a server can
+/// be dropped into it (PLAN.md §M23 Slice 4).
 ///
-/// A **promise** is the only shape available: the receiving app wants a `file://` URL, and there is
-/// no such URL until somebody has spent a transfer. macOS's own answer to that is
-/// `NSFilePromiseProvider` — the board advertises "a file of this type, under this name, on demand",
-/// and the bytes are fetched when (and only when) something accepts the drop. So arrowing past a
-/// 4 GB object and dragging it to the desktop costs nothing until the mouse is let go.
+/// There is no `file://` URL for such a row until somebody has spent a transfer. macOS's own answer
+/// to that is `NSFilePromiseProvider` — the board advertises "a file of this type, under this name,
+/// on demand", and the bytes are fetched when (and only when) something accepts the drop. So arrowing
+/// past a 4 GB object and dragging it to the desktop costs nothing until the mouse is let go.
+///
+/// **Not every app can take one.** Teams and everything else built on Chromium refuse a promise
+/// outright, so the board stops being this the moment the pointer is over another app
+/// (`RemoteDragHandoff`, which also says why a promise and a file URL cannot share an item).
 ///
 /// **It carries the payload too**, which is what keeps one drag from being two. Overriding the three
 /// `NSPasteboardWriting` members adds `app.dirnex.locations` to the promise's own types, so a drag

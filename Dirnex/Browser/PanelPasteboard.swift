@@ -70,6 +70,37 @@ enum PanelPasteboard {
         }
     }
 
+    /// How a row whose bytes were on a server offers its file, once the drag has left the promise.
+    enum HandoffFile {
+        /// Declared now, and answered by this provider if anybody reads it.
+        case answeredWhenRead(any NSPasteboardItemDataProvider)
+        /// Here already.
+        case here(URL)
+    }
+
+    /// One item per entry for a drag's board once it has left its promises (`RemoteDragHandoff`).
+    ///
+    /// Every row keeps its payload, which is what a drop back inside Dirnex reads, so it reads no file
+    /// URL and costs no hold. A row `file` says nothing about keeps the shape a plain item has.
+    static func handoffItems(
+        for entries: [FileEntry],
+        file: (FileEntry) -> HandoffFile?
+    ) -> [NSPasteboardItem] {
+        entries.compactMap { entry in
+            guard let data = PasteboardPayload(entry).encoded() else { return nil }
+            guard let offered = file(entry) else { return item(for: entry, payload: data) }
+            let item = NSPasteboardItem()
+            item.setData(data, forType: locationsType)
+            switch offered {
+            case let .answeredWhenRead(provider):
+                item.setDataProvider(provider, forTypes: [.fileURL])
+            case let .here(url):
+                item.setString(url.absoluteString, forType: .fileURL)
+            }
+            return item
+        }
+    }
+
     /// The plain item for `entry`: the payload always, plus `public.file-url` for a row that has a
     /// real one. Built fresh on every call — see ``items(for:)``.
     private static func item(for entry: FileEntry, payload: Data) -> NSPasteboardItem {
