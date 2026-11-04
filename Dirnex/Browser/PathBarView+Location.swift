@@ -192,6 +192,7 @@ extension PathBarView {
         if path.backend.isS3 || path.backend.isS3Account {
             return SidebarPlacePresentation.serverSymbolName(for: .s3)
         }
+        if path.backend.isSMBServer { return SidebarPlacePresentation.serverSymbolName(for: .smb) }
         return MountedVolume.internalSymbolName
     }
 

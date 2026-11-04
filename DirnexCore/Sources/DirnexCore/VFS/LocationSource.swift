@@ -76,6 +76,9 @@ public extension LocationSource {
         if backend.isFTP { return .ftp }
         if backend.isS3 || backend.isS3Account { return .s3 }
         if backend.isWebDAV { return .webdav }
+        // The glyph the sidebar already draws for an SMB server and for a mounted share
+        // (`SidebarPlacePresentation`), so the list of shares and the share it opens look alike.
+        if backend.isSMBServer { return .networkVolume }
         return .folder
     }
 

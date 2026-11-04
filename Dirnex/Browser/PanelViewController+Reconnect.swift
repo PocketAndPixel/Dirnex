@@ -191,9 +191,12 @@ extension PanelViewController {
         case let .webdav(location, _, _):
             return !location.hasCredentials || SecretKeychain.password(for: location) != nil
         // An SMB share is a `/Volumes/…` tree, so a pane on one is `.local` and never reaches here;
-        // `TabRestorePolicy` refuses an SMB endpoint against a remote path before this can be asked.
-        case .smb:
-            return false
+        // `TabRestorePolicy` refuses a share's endpoint against a remote path before this is asked.
+        // A server's list is a remote place (PLAN.md §M35): a guest needs nothing, an account its
+        // password, filed under the server's key.
+        case let .smb(location):
+            guard location.share == nil else { return false }
+            return location.username == nil || SecretKeychain.password(for: location) != nil
         }
     }
 
@@ -232,8 +235,12 @@ extension PanelViewController {
                 authentication: authentication ?? (location.hasCredentials ? .basic : nil),
                 trustedPublicKey: trustedPublicKey
             )
-        case .smb:
-            return
+        case let .smb(location):
+            guard location.share == nil else { return }
+            composite.connectSMBServer(
+                server: location,
+                password: location.username == nil ? nil : SecretKeychain.password(for: location)
+            )
         }
     }
 }

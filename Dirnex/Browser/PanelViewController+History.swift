@@ -116,6 +116,7 @@ extension PanelViewController {
     func preparePendingRestore(landingOn path: VFSPath, inTab index: Int) {
         let tab = tabs[index]
         tab.pendingRestoreTreeLoads = 0
+        tab.pendingShareExpansions = [:]
         if let spot = tab.history.spot(landingOn: path) {
             tab.pendingCursorPath = spot.cursor
             tab.pendingCursorOnParent = spot.cursorOnParent

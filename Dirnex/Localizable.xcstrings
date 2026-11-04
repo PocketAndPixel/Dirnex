@@ -12390,6 +12390,95 @@
         }
       }
     },
+    "A guest connection doesn’t have permission to use “%@” on “%@”.": {
+      "comment": "SMB guest mount failure: the server lists the shared folder and refuses it to guests; %1$@ is the share name, %2$@ the host name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Gastverbindung hat keine Berechtigung, „%1$@“ auf „%2$@“ zu verwenden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A guest connection doesn’t have permission to use “%@” on “%@”."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una conexión de invitado no tiene permiso para usar «%1$@» en «%2$@»."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une connexion invité n’a pas l’autorisation d’utiliser «%1$@» sur «%2$@»."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una connessione ospite non ha il permesso di usare “%1$@” su “%2$@”."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ゲスト接続には“%2$@”上の“%1$@”を使用する権限がありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "게스트 연결에는 “%2$@”의 “%1$@”을(를) 사용할 권한이 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Een gastverbinding heeft geen toegang tot “%1$@” op “%2$@”."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Połączenie gościa nie ma uprawnień do używania „%1$@” na „%2$@”."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uma conexão de convidado não tem permissão para usar “%1$@” em “%2$@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У гостевого подключения нет прав на использование «%1$@» на «%2$@»."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Гостьове підключення не має прав на використання «%1$@» на «%2$@»."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "访客连接没有使用“%2$@”上的“%1$@”的权限。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "訪客連線沒有使用「%2$@」上的「%1$@」的權限。"
+          }
+        }
+      }
+    },
     "A listing from a server or an archive carries no access-control list, no extended attributes, and no created or last-opened date, so those are not shown at all.": {
       "comment": "Info panel note: what a non-local listing cannot report.",
       "localizations": {
@@ -162021,6 +162110,95 @@
         }
       }
     },
+    "“%@” can’t sign in to “%@” right now. The account may be disabled, or locked after too many failed attempts.": {
+      "comment": "SMB connect failure: the server refused the account itself, not its password; %1$@ is the account name, %2$@ the host name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%1$@“ kann sich gerade nicht bei „%2$@“ anmelden. Das Konto ist möglicherweise deaktiviert oder nach zu vielen Fehlversuchen gesperrt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” can’t sign in to “%@” right now. The account may be disabled, or locked after too many failed attempts."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» no puede iniciar sesión en «%2$@» ahora mismo. Puede que la cuenta esté desactivada o bloqueada tras demasiados intentos fallidos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» ne peut pas se connecter à «%2$@» pour le moment. Le compte est peut-être désactivé, ou verrouillé après trop de tentatives échouées."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@” non può accedere a “%2$@” in questo momento. L’account potrebbe essere disattivato o bloccato dopo troppi tentativi non riusciti."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”は現在“%2$@”にログインできません。アカウントが無効になっているか、失敗した試行が多すぎてロックされている可能性があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”은(는) 지금 “%2$@”에 로그인할 수 없습니다. 계정이 비활성화되었거나 실패한 시도가 너무 많아 잠겼을 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@” kan nu niet inloggen op “%2$@”. Het account is mogelijk uitgeschakeld of vergrendeld na te veel mislukte pogingen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%1$@” nie może teraz zalogować się do „%2$@”. Konto może być wyłączone lub zablokowane po zbyt wielu nieudanych próbach."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@” não pode entrar em “%2$@” agora. A conta pode estar desativada ou bloqueada após muitas tentativas malsucedidas."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» сейчас не может войти на «%2$@». Возможно, учётная запись отключена или заблокирована после слишком многих неудачных попыток."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» зараз не може увійти на «%2$@». Можливо, обліковий запис вимкнено або заблоковано після надто багатьох невдалих спроб."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”现在无法登录“%2$@”。该帐户可能已停用，或因失败尝试次数过多而被锁定。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%1$@」目前無法登入「%2$@」。該帳號可能已停用，或因失敗嘗試次數過多而被鎖定。"
+          }
+        }
+      }
+    },
     "“%@” carries a system flag that only an administrator can change, and Dirnex can’t ask for those privileges yet.": {
       "comment": "Attributes save alert body when a change is root-only; %@ is the item name.",
       "localizations": {
@@ -162373,6 +162551,273 @@
           "stringUnit": {
             "state": "translated",
             "value": "「%@」不允許訪客取用。請輸入使用者名稱和密碼。"
+          }
+        }
+      }
+    },
+    "“%@” doesn’t have permission to use “%@” on “%@”.": {
+      "comment": "SMB mount failure: the server lists the shared folder to this account and refuses it; %1$@ is the account name, %2$@ the share name, %3$@ the host name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%1$@“ hat keine Berechtigung, „%2$@“ auf „%3$@“ zu verwenden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” doesn’t have permission to use “%@” on “%@”."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» no tiene permiso para usar «%2$@» en «%3$@»."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» n’a pas l’autorisation d’utiliser «%2$@» sur «%3$@»."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@” non ha il permesso di usare “%2$@” su “%3$@”."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”には“%3$@”上の“%2$@”を使用する権限がありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”에는 “%3$@”의 “%2$@”을(를) 사용할 권한이 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@” heeft geen toegang tot “%2$@” op “%3$@”."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%1$@” nie ma uprawnień do używania „%2$@” na „%3$@”."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@” não tem permissão para usar “%2$@” em “%3$@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У «%1$@» нет прав на использование «%2$@» на «%3$@»."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» не має прав на використання «%2$@» на «%3$@»."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”没有使用“%3$@”上的“%2$@”的权限。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%1$@」沒有使用「%3$@」上的「%2$@」的權限。"
+          }
+        }
+      }
+    },
+    "“%@” doesn’t offer a shared folder named “%@” to guests.": {
+      "comment": "SMB guest mount failure: the server's list of shared folders has no such name; %1$@ is the host name, %2$@ the share name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%1$@“ bietet Gästen keine Freigabe namens „%2$@“ an."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” doesn’t offer a shared folder named “%@” to guests."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» no ofrece a los invitados ninguna carpeta compartida llamada «%2$@»."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» ne propose aux invités aucun dossier partagé nommé «%2$@»."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@” non offre agli ospiti nessuna cartella condivisa chiamata “%2$@”."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”はゲストに“%2$@”という名前の共有フォルダを提供していません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”은(는) 게스트에게 “%2$@”(이)라는 공유 폴더를 제공하지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@” biedt gasten geen gedeelde map met de naam “%2$@” aan."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%1$@” nie udostępnia gościom folderu o nazwie „%2$@”."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@” não oferece a convidados uma pasta compartilhada chamada “%2$@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» не предлагает гостям общую папку с именем «%2$@»."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» не пропонує гостям спільну папку з назвою «%2$@»."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”未向访客提供名为“%2$@”的共享文件夹。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%1$@」未向訪客提供名為「%2$@」的共享檔案夾。"
+          }
+        }
+      }
+    },
+    "“%@” doesn’t offer a shared folder named “%@” to “%@”.": {
+      "comment": "SMB mount failure: the server's list of shared folders for this account has no such name; %1$@ is the host name, %2$@ the share name, %3$@ the account name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%1$@“ bietet für „%3$@“ keine Freigabe namens „%2$@“ an."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” doesn’t offer a shared folder named “%@” to “%@”."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» no ofrece a «%3$@» ninguna carpeta compartida llamada «%2$@»."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» ne propose à «%3$@» aucun dossier partagé nommé «%2$@»."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@” non offre a “%3$@” nessuna cartella condivisa chiamata “%2$@”."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”は“%3$@”に“%2$@”という名前の共有フォルダを提供していません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”은(는) “%3$@”에게 “%2$@”(이)라는 공유 폴더를 제공하지 않습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@” biedt “%3$@” geen gedeelde map met de naam “%2$@” aan."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%1$@” nie udostępnia folderu o nazwie „%2$@” dla „%3$@”."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@” não oferece a “%3$@” uma pasta compartilhada chamada “%2$@”."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» не предлагает пользователю «%3$@» общую папку с именем «%2$@»."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%1$@» не пропонує користувачу «%3$@» спільну папку з назвою «%2$@»."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%1$@”未向“%3$@”提供名为“%2$@”的共享文件夹。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%1$@」未向「%3$@」提供名為「%2$@」的共享檔案夾。"
           }
         }
       }

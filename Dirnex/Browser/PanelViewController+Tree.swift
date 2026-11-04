@@ -289,8 +289,9 @@ extension PanelViewController {
 
     /// Re-render after a tree mutation (expand / collapse / a child load) without yanking the scroll
     /// position, and re-point the watcher at the new set of listed directories. Keeps the tree
-    /// refresh tail NOTES.md records — `reloadData` → `syncCursorToTable(scroll: false)`.
-    private func renderTreeChange() {
+    /// refresh tail NOTES.md records — `reloadData` → `syncCursorToTable(scroll: false)`. Internal for
+    /// a share's restored folders (`PanelViewController+SMBServer`).
+    func renderTreeChange() {
         renderRefresh()
         startWatchingTree()
     }
@@ -304,7 +305,8 @@ extension PanelViewController {
     /// are the ones a restored cursor or mark may be waiting on, so the landing re-runs
     /// `applyPendingRestore` (scrolling to the cursor when this is the level that carried it), and
     /// every exit path reports back so the restore window closes even when the folder never listed.
-    private func loadTreeChild(_ path: VFSPath, duringRestore: Bool = false) {
+    /// Internal for a share's restored folders (`PanelViewController+SMBServer`).
+    func loadTreeChild(_ path: VFSPath, duringRestore: Bool = false) {
         let plan = treeChildLoadPlan(for: path, duringRestore: duringRestore)
         Task { await performTreeChildLoad(plan) }
     }
@@ -336,12 +338,15 @@ extension PanelViewController {
         }
         let listing = await treeChildListing(at: plan.path)
         guard plan.token == loadToken, panel.isTree, panel.path == plan.root else { return .dropped }
-        switch listing {
-        case let .listed(entries):
-            return installTreeChild(entries, plan)
-        case let .failed(error):
-            return foldBackUnlistedTreeChild(plan, error: error)
+        let outcome = switch listing {
+        case let .listed(entries): installTreeChild(entries, plan)
+        case let .failed(error): foldBackUnlistedTreeChild(plan, error: error)
         }
+        // A restored share has mounted (or failed to): the folders waiting inside it can go now.
+        if plan.duringRestore, plan.path.isSMBShareRow {
+            restoreExpansionsInsideShare(plan.path, inTab: plan.tabIndex)
+        }
+        return outcome
     }
 
     private func installTreeChild(_ entries: [FileEntry], _ plan: TreeChildLoadPlan) -> TreeChildLoadOutcome {
@@ -396,6 +401,11 @@ extension PanelViewController {
             guard let entries = await s3BucketChildren(at: path) else { return .failed(nil) }
             return .listed(entries)
         }
+        // A share row the same way: its children are the mount point's (PLAN.md §M35).
+        if path.isSMBShareRow {
+            guard let entries = await smbShareChildren(at: path) else { return .failed(nil) }
+            return .listed(entries)
+        }
         do {
             return try await .listed(DirectoryLoader.list(backend, at: path).entries)
         } catch {
@@ -438,6 +448,11 @@ extension PanelViewController {
         let root = panel.path
         tab.pendingRestoreTreeLoads = relatives.count
         for relative in relatives {
+            // A folder inside an SMB share waits for the share to mount (PLAN.md §M35).
+            if let share = shareAwaitingMount(relative, under: root) {
+                tab.pendingShareExpansions[share, default: []].append(relative)
+                continue
+            }
             let path = resolveRootRelative(relative, under: root)
             panel.expand(path)
             loadTreeChild(path, duringRestore: true)
@@ -448,7 +463,13 @@ extension PanelViewController {
     /// `path` (a descendant of `root`) as a `/`-joined path relative to it, or `nil` if it is the
     /// root itself or not under it. Internal because the tab's persisted cursor and marks are spelled
     /// the same way (`PanelViewController+Restore`) — one anchoring for everything a tab restores.
+    ///
+    /// On an SMB server's list a place inside a mounted share is a local path, and is spelled through
+    /// the share instead (`SMBShareMounts`, PLAN.md §M35).
     func rootRelativePath(_ path: VFSPath, under root: VFSPath) -> String? {
+        if path.backend == .local, root.isRoot, let server = root.backend.smbServer {
+            return SMBMounter.shared.mounts(of: server).serverRelativePath(ofLocal: path.path)
+        }
         guard path != root, path.isSelfOrDescendant(of: root) else { return nil }
         let base = root.isRoot ? "" : root.path
         let relative = String(path.path.dropFirst(base.count)).trimmingCharacters(
@@ -460,7 +481,15 @@ extension PanelViewController {
     /// The inverse: resolve a stored relative path back to an absolute one under `root`, component by
     /// component so a leading slash or an empty segment can't confuse it. Internal for the same
     /// reason as `rootRelativePath`.
+    ///
+    /// A place inside a share mounted now resolves to its mount point. One inside a share that is not
+    /// mounted resolves to a path on the list that no row has, so a cursor or a mark waiting for it
+    /// stays pending.
     func resolveRootRelative(_ relative: String, under root: VFSPath) -> VFSPath {
-        relative.split(separator: "/").reduce(root) { $0.appending(String($1)) }
+        if root.isRoot, let server = root.backend.smbServer,
+           case let .local(path)? = SMBMounter.shared.mounts(of: server).resolve(relative) {
+            return path
+        }
+        return relative.split(separator: "/").reduce(root) { $0.appending(String($1)) }
     }
 }

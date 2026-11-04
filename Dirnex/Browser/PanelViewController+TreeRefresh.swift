@@ -222,7 +222,7 @@ extension PanelViewController {
     /// children are a *connection*, and listing `s3account:/<bucket>` throws `notFound` into a
     /// `try?`, so a rename inside one left the old row on screen (2026-08-22).
     func treeChildEntries(at directories: [VFSPath]) async -> [(VFSPath, [FileEntry])] {
-        let batched = directories.filter { !$0.isS3BucketRow }
+        let batched = directories.filter { !$0.isS3BucketRow && !$0.isSMBShareRow }
         let answers = await DirectoryLoader.list(backend, at: batched)
         var listed: [VFSPath: [FileEntry]] = [:]
         for (directory, entries) in zip(batched, answers) {
@@ -231,7 +231,9 @@ extension PanelViewController {
         var listings: [(VFSPath, [FileEntry])] = []
         for directory in directories {
             var entries = listed[directory]
-            if directory.isS3BucketRow { entries = await treeChildEntries(at: directory) }
+            if directory.isS3BucketRow || directory.isSMBShareRow {
+                entries = await treeChildEntries(at: directory)
+            }
             if let entries { listings.append((directory, entries)) }
         }
         return listings
