@@ -482,3 +482,23 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
 - **A transparent overlay from another app can gate every mouse click.** LanguageTool for
   Desktop did this for four passes; keyboard input still reached Dirnex, which masked it.
   Quitting the overlay app restored mouse verification.
+- **A Debug build from the default DerivedData folder cannot reach the LAN on this Mac, and the alert
+  blames the address.** Measured 2026-11-04 with the NAS up: one saved row, clicked in each build, gave
+  "The server couldn't be reached" from `Dirnex-hdhfpw…/Build/Products/Debug` and the server's "asks for
+  a user name and password" from `build/debug-dd`. A Debug executable is a thin launcher whose UUID
+  differs by build path and stayed the same across rebuilds, and
+  `/Library/Preferences/com.apple.networkextension.uuidcache.plist` still files this one (`2B31C782…`)
+  under `com.dirnex.Dirnex`, the id from before the 10-30 rename. On each attempt the log read
+  `found bundle id app.dirnex.Dirnex by PID`, then `found bundle id com.dirnex.Dirnex by UUID`.
+  Internet hosts still connected, and the shell reached the NAS, so nothing else looks wrong. The
+  README's commands now build into `build/debug-dd`. Not checked: `xcodebuild test`, whose host app
+  still builds in the default folder.
+  - **To test LAN access, click a saved WebDAV row whose `username` is `""`.** It reads no Keychain
+    item and sends no password, so it raises no prompt and risks no lockout, and the two alerts above
+    tell the results apart. Seed it with `-data` with the app quit, and `defaults import` the backup
+    afterwards. `WebDAVLocation.username` is required: a row without the key loses every saved server,
+    and the sidebar's Servers section vanishes with no error.
+  - **Don't test this with a probe launched under the real bundle id.** Seen 2026-11-03: a test app
+    using `app.dirnex.Dirnex` replaced that id's UUID list, and the list was empty once the app had
+    been deleted. The stable and Debug builds both connected with it empty, so an empty list is not
+    evidence of a block.
