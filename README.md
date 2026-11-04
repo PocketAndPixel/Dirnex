@@ -70,7 +70,7 @@ bytes, it lives in `DirnexCore` and has tests.
 
 ```bash
 # Build
-xcodebuild -project Dirnex.xcodeproj -scheme Dirnex -destination 'platform=macOS' build 2>&1 | tail -15
+xcodebuild -project Dirnex.xcodeproj -scheme Dirnex -destination 'platform=macOS' -derivedDataPath build/debug-dd build 2>&1 | tail -15
 
 # Core package (fast, headless):
 swift test --package-path DirnexCore
@@ -82,8 +82,7 @@ xcodebuild test -project Dirnex.xcodeproj -scheme Dirnex -destination 'platform=
 defaults delete app.dirnex.Dirnex "NSWindow Frame MainWindow"
 
 # Run the app:
-open "$(xcodebuild -project Dirnex.xcodeproj -scheme Dirnex -showBuildSettings \
-  -destination 'platform=macOS' 2>/dev/null | awk '/ BUILT_PRODUCTS_DIR /{d=$3} / FULL_PRODUCT_NAME /{p=$3} END{print d"/"p}')"
+open build/debug-dd/Build/Products/Debug/Dirnex.app
 ```
 
 ## Test fixtures
