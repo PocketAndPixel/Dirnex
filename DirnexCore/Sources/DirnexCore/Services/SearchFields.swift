@@ -95,7 +95,9 @@ public enum SearchRoute: Sendable, Equatable {
         if backend == .local { return .spotlight }
         // Ahead of `isRemoteConnection`, which an account is a member of — this is the one remote
         // backend that is browsable and not searchable, the same asymmetry `acceptsUploads` records.
-        if backend.isS3Account { return .unavailable }
+        // An SMB server's list of shares is the second: its rows are shares, reached by mounting
+        // them, so a walk from it has nowhere to go (PLAN.md §M35).
+        if backend.isS3Account || backend.isSMBServer { return .unavailable }
         if backend.isRemoteConnection || backend.isArchive { return .walk }
         return .unavailable
     }

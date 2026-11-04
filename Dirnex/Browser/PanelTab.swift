@@ -64,6 +64,10 @@ final class PanelTab {
     /// the shape `PersistedTab` stores. Consumed and cleared by `restorePendingTreeExpansion`; `nil`
     /// otherwise, or for a flat list, which makes the re-open a no-op.
     var pendingExpandedPaths: [String]?
+    /// Restored tree folders inside an SMB share that is not mounted yet, by share name, waiting for
+    /// that share's row to mount before they can be named (`SMBShareMounts`, PLAN.md §M35). Each one
+    /// is already counted in ``pendingRestoreTreeLoads``.
+    var pendingShareExpansions: [String: [String]] = [:]
     /// This tab's column widths/order, in display order (UI-only, like `cursorOnParentRow`;
     /// see `PanelViewController+Columns`). `nil` until the tab has been given an explicit
     /// layout — restored from disk or inherited from the tab it was spawned from — in which
@@ -217,6 +221,7 @@ final class PanelTab {
         pendingCursorPath = nil
         pendingCursorOnParent = false
         pendingMarkPaths = nil
+        pendingShareExpansions = [:]
     }
 
     init(panel: Panel) {

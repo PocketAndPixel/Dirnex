@@ -179,7 +179,7 @@ extension PanelViewController {
     static func canSync(_ pane: PanelViewController) -> Bool {
         let path = pane.panel.path
         guard path.backend == .local || path.backend.isRemoteConnection else { return false }
-        guard !path.backend.isS3Account else { return false }
+        guard !path.backend.isS3Account, !path.backend.isSMBServer else { return false }
         return pane.backend.capabilities(for: path).contains(.read)
     }
 

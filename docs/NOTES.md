@@ -5091,8 +5091,9 @@ do not share a resolver, and neither half of that is obvious from either call si
   simply lacked access went hunting for a typo (reported 2026-09-04). `SMBMountError` now names both
   readings and names the **account**, which is the half the reporter was missing.
   - **The picker flow cannot name the folder, and that is NetFS's doing rather than a shortcut.**
-    With the Share field blank, Dirnex lets NetFS's own UI through (`kNAUIOptionAllowUI` — macOS's
-    share picker is the only way to browse shares today), and a failed pick comes back as a status
+    *(Historical since M35, 2026-11-04: a blank Share field now lists the server itself and NetFS's UI
+    is never let through.)* With the Share field blank, Dirnex let NetFS's own UI through
+    (`kNAUIOptionAllowUI`, macOS's share picker), and a failed pick comes back as a status
     with **no share** in it: `mountpoints` is empty and the location still holds `share == nil`. So
     that sentence leaves the folder unnamed rather than naming it wrongly — and the user sees
     *two* dialogs, NetAuthAgent's generic "There was a problem connecting to the server" first and
@@ -5113,6 +5114,28 @@ do not share a resolver, and neither half of that is obvious from either call si
     it is `nil` and the first call traps. And `kNetFSGetAccessRightsKey` is **not honoured** by the
     SMB plugin — no `AccessRights` comes back for any share — so the rights cannot be read directly
     and the listing's own membership is the whole signal.
+  - **A listing runs as whoever the session is, and a session that failed to open still lists, as
+    somebody else.** Measured 2026-11-04 against the NAS, which has guest access off. A guest
+    `OpenSession` answered **-5999** (`ENETFSACCOUNTRESTRICTED`, although `GetServerInfo` had said
+    `SupportsGuest = 1`), and `EnumerateShares` on the same session then answered **0** with the
+    `home` share's comment reading *"Home directory of olegasd"*: an account nobody had named, most
+    likely one macOS had saved for that server. With no `OpenSession` at all it did the same. As
+    `dirnex-test` the session answered `MountedByUser = dirnex-test` and the comment named
+    `dirnex-test`. So `SMBShareEnumerator` throws on any `OpenSession` status but 0 and never asks
+    for the list after one. The guest refusal is the negative control: the shipped enumerator, run
+    from a scratch package, threw -5999 three times out of three where the probe had listed.
+  - **`CreateURL` builds the session URL from parts and escapes them.** `UserName` and `Password` in
+    the dictionary, with a password holding an `@`: the URL came back with `%40`, `CFURLCopyHostName`
+    read `nas`, and the password round-tripped. Check that with a dry run before the first login on
+    a lockout-prone account, since a mangled URL would spend an attempt. `AlternatePort` takes a
+    string (`"445"` listed the same three shares).
+  - **What a listing costs and carries.** One session each: about 2.3 s by the NetBIOS name `nas`
+    (`OpenSession` with its connect, then `EnumerateShares` at about 1 s), and over 8 s by
+    `nas.local`, which is the mDNS stall in *Resolving a host name* above. Each share is a dictionary
+    of `NetShareTypeStr` (`Disk`), `NetCommentStr` (an empty one is `""`), `AlreadyMounted` and
+    `HasPassword`. `IsHidden` and `PrinterShare` are in the header and did not appear, and no `IPC$`
+    came back. Release both references after a call, the instance's and the one `QueryInterface`
+    added (through the table's own `Release`): three sessions in one process ran clean.
   - **`smbutil` is not the way to do it in the product**, for the reason this file gives for
     `curl -u`: its only credential route is `//user:pass@host`, i.e. `argv`, readable by any `ps`.
     It is fine as a probe, where one more trap costs a wrong diagnosis: an **unescaped `@` in the

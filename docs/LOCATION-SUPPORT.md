@@ -27,7 +27,7 @@ closed simply reads differently — it is not explained here.
 
 | Column | What it covers |
 |---|---|
-| **Local** | Internal and external volumes, disk images, **mounted vaults**, and **SMB/NFS** shares — SMB rides the OS mounter, so a share is an ordinary `/Volumes/…` tree (PLAN.md §M5). |
+| **Local** | Internal and external volumes, disk images, **mounted vaults**, and **SMB/NFS** shares — SMB rides the OS mounter, so a share is an ordinary `/Volumes/…` tree (PLAN.md §M5). A server connected with no share named is a list of its shares (`smb://user@host`), depth 0 like an **S3 acct** pane but read-only, so nothing is created, deleted or copied there and it is not searched or synchronized: Return mounts a share and lands here, and `..` at that share's root goes back to the list (PLAN.md §M35). |
 | **Cloud mount** | iCloud Drive, Google Drive, OneDrive, Dropbox and Box under `~/Library/CloudStorage` / `~/Library/Mobile Documents`. These are **real local paths**, so they inherit the Local column except where noted.<sup>1</sup> |
 | **Archive** | A zip/tar/7z/… browsed as a folder tree (`archive:`), including nested archives.<sup>2</sup> |
 | **SFTP** | A connected SSH account. |

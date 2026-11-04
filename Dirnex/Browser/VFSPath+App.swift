@@ -69,6 +69,11 @@ extension VFSPath {
             // both the tooltip and the connect sheet show.
             return account.host
         }
+        if let server = backend.smbServer {
+            // The account, as SFTP's and FTP's are: the list is the account's, and a guest's is the
+            // host alone, as a public WebDAV share's is.
+            return server.username.map { "\($0)@\(server.host)" } ?? server.host
+        }
         return nil
     }
 
@@ -83,6 +88,17 @@ extension VFSPath {
     /// 2026-08-22: entering `test2` inside `amzn-s3-df` reported that the key may not list "test2").
     var isS3BucketRow: Bool {
         backend.isS3Account && !isRoot
+    }
+
+    /// Whether this path is a **share row**, an entry in an SMB server's own list (PLAN.md §M35).
+    /// Asked of the row for the bucket's reason: in a tree, the folders under an expanded share are
+    /// local paths and open as folders.
+    ///
+    /// One level below the root and no deeper: a stored path inside a share that has not mounted yet
+    /// is spelled on the list too (`SMBShareMounts`), and `media/Movies` is not a share called
+    /// `Movies`.
+    var isSMBShareRow: Bool {
+        backend.isSMBServer && parent?.isRoot == true
     }
 
     /// What to call this location when a sentence has to name it — the load-failure sheet's title,
