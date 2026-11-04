@@ -156,21 +156,6 @@ real. Before the store opens (the private repo's C12), the licensing switch goes
 two small changes are proposed: Help ▸ Release Notes opening the website's changelog, and a "Lost
 your key?" link in Settings ▸ License.
 
-**Dragging a row off a server into Teams and everything else built on Chromium** landed 2026-11-03,
-smaller than a milestone. M23's promise had only ever worked in Finder: Chromium refuses a promise, and
-"Finder, Mail or Teams" in the source had never been measured. A promise and a file URL cannot share a
-drag either, so the board starts as promises and becomes file URLs when the pointer enters another
-app, fetching as it goes (`RemoteDragHandoff` in the core, `RemoteDragHandoffController` in the app, the
-measurements in docs/NOTES.md ▸ Drag and drop). **Run live** against a throwaway SFTP server and a copy
-of it throttled to 30 KB/s, with real Teams and real Finder: a small file, a file landing inside the
-three-second hold (1.65 s), one outlasting it and taken after leaving and coming back, a second try at
-that file, two marked rows, Finder by promise with nothing fetched until the drop, Finder after crossing
-another app, a drop back inside Dirnex after crossing Teams, and 70 MB let go early, which stopped and
-left nothing behind. Over anonymous FTP, throttled too: a small file and a slow one into Teams, and
-Finder by promise. Oleg dragged a text file and a 3.1 MB JPEG out of a real S3 bucket into a Chromium
-drop page the same day, both read back at the right size, and a 36.1 MB RAW file from it into a Mail
-message. WebDAV goes through the same `MaterializeRunner` and was not dragged live.
-
 ### Still open
 
 Everything through M34 is shipped, and the record of it — the milestone checklists, the sixty

@@ -18973,6 +18973,52 @@ than the strip has been in the row.
   double-click on the × of a pane's rightmost tab closed the tab and left the window's size alone, and a
   double-click on a strip's free space in full screen did nothing.
 
+**2026-11-03: a row dragged off a server reaches Teams and everything else built on Chromium** (core,
+then app). Asked for by Oleg: dragging a file from FTP, SFTP and the rest into another app, with Teams
+the one named. M23's promise had only ever worked in Finder. "Finder, Mail or Teams" in its source
+comment had never been measured, and Teams refused every promised row with operation 0 and no callback.
+
+- **Why one board could not serve both.** Chromium reads the board once, on entry, and takes only
+  `public.file-url`. Finder reads a file URL ahead of a promise on the same item, and an empty answer
+  makes it refuse. A promise wrapped in another writer is refused, and one written back after a rewrite
+  reports a copy and delivers nothing. NOTES.md ▸ Drag and drop has each measurement.
+- **What landed.** The drag starts as promises, so Finder is unchanged and nothing is fetched until the
+  drop. When the pointer enters another regular app's window, the board is rewritten to lazy file URLs
+  and the fetch starts. The move arrives 6 ms ahead of Teams' read, so the rewrite wins, and it is one
+  way. A read holds for up to three seconds, so an ordinary file feels like an ordinary drag. A slower
+  file shows its progress on the drag image and is taken after the pointer leaves and comes back, since
+  Chromium does not read again until then. A different app gets its own wait after a refusal. Every row
+  of a set shares one answer, because a drop of three that attaches two reads as success.
+- **Letting go early** refuses the drop. A set up to the open/edit size (`RemoteFetchPurpose.dragOut`, at
+  least 64 MiB) finishes, so the next try is immediate. A larger one stops and leaves nothing behind.
+- **Where it lives.** `RemoteDragHandoff` in the core holds the rules as a pure state machine, since a
+  drag session cannot be synthesized. In the app, `RemoteDragHandoffController` runs them against the
+  session, `RemoteDragStatus` draws the line under the row, and `PanelPasteboard.handoffItems` writes the
+  board.
+- **The tests found a flaw in the first design.** A hold spinning the run loop for a fetch on the main
+  actor could never finish, because a run loop nested in a main-queue job does not drain the main queue.
+  The transfer moved off the main actor and leaves its result in a locked box, which the hold polls.
+- **Tests:** `RemoteDragHandoffTests` pins every rule in the core, and `RemoteDragHandoffControllerTests`
+  drives the controller against a gated backend and scripted surfaces. Full runs green (4 706 core, 2 145
+  app with the known `GestureWaitTests` issue, 2 119 of them executed with the live servers up), both
+  linters clean, with SwiftLint 0.65.0 here against CI's 0.65.1.
+- **Run live** with full-screen computer-use against a throwaway SFTP server and a copy of it throttled
+  to 30 KB/s, with real Teams and real Finder: a small file, a file landing inside the hold (1.65 s), one
+  outlasting it and taken after leaving and coming back, a second try at that file, two marked rows,
+  Finder by promise with nothing fetched until the drop, Finder after crossing another app, a drop back
+  inside Dirnex after crossing Teams, and 70 MB let go early, which stopped and left nothing behind. Over
+  anonymous FTP, throttled too: a small file and a slow one into Teams, and Finder by promise.
+- **Run by Oleg:** a text file and a 3.1 MB JPEG out of a real S3 bucket into a Chromium drop page, both
+  read back at the right size, and a 36.1 MB RAW file from it into a Mail message. On 2026-11-04, a 3.1
+  MB JPEG off the NAS over WebDAV into a Mail message. FTPS shares FTP's backend and was not dragged on
+  its own.
+- **Left as limits** (LOCATION-SUPPORT.md): hovering over any regular app starts the download, even on
+  the way somewhere else. A large file that crosses another app on its way to Finder has to arrive before
+  Finder takes it. A folder still does not drag out.
+- **The live runs' traps** are in LIVE-VERIFICATION.md. Three "Finder" drops had gone into Claude's
+  floating panel, which screenshots leave out, and read as Finder delivering nothing. A throttled
+  `sftp-server` missed the large download, which goes over the exec channel.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
