@@ -425,22 +425,28 @@ extension QueueBarView {
     }
 
     /// Point the chevron at the current state and hide the list when there's nothing to show.
+    /// The tooltip follows the chevron: `configure` sets it only once, at build time.
     func refreshDisclosure() {
         let symbol = isExpanded ? "chevron.down" : "chevron.right"
-        disclosureButton.image = NSImage(
-            systemSymbolName: symbol,
-            accessibilityDescription: isExpanded
-                ? String(
-                    localized: "Hide operation details",
-                    comment: "Queue-bar disclosure button: collapse the per-operation list."
-                )
-                : String(
-                    localized: "Show operation details",
-                    comment: "Queue-bar disclosure button: reveal the per-operation list."
-                )
-        )
+        let title = isExpanded
+            ? String(
+                localized: "Hide operation details",
+                comment: "Queue-bar disclosure button: collapse the per-operation list."
+            )
+            : String(
+                localized: "Show operation details",
+                comment: "Queue-bar disclosure button: reveal the per-operation list."
+            )
+        disclosureButton.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
+        disclosureButton.toolTip = title
         jobScroll.isHidden = !(isExpanded && !displayedJobIDs.isEmpty)
     }
+
+    /// The disclosure chevron's tooltip. The assertion surface for ``refreshDisclosure()``.
+    var disclosureToolTip: String? { disclosureButton.toolTip }
+
+    /// Click the disclosure chevron, as a test would.
+    func clickDisclosure() { disclosureButton.performClick(nil) }
 
     /// Match the internal list-height constraint to the current state and, if the total bar
     /// height changed, ask the window controller to resize the bar to fit.
