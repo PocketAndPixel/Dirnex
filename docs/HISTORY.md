@@ -19442,6 +19442,21 @@ because several read as a chain and refer to the entry below. Moved out of [PLAN
 stretch stayed there. The last six came out of **§5** on 2026-09-10 for the same reason — the
 plan keeps the testing *strategy*, which is a rule, and the history keeps what each pass *found*.
 
+The *Still open* list that stayed in the plan emptied in two steps. Before M35, everything that came
+off it came off in the eight days to **2026-09-01**, ending with three entries below: both of M25's
+own leftovers, *"A remote attribute change cannot be undone"* and *"Many remote write-backs do not
+coordinate"*, and the last parity cell, *"No multipart upload over SFTP or FTP"*, which closed by
+being **half built and half proved impossible**. SFTP splits a large upload into parts that go at
+once and are joined by the server (3.6× through the shipped path, 16.92 s → 4.73 s on 32 MiB over a
+2 MB/s-per-connection link). FTP cannot: it has no way to write at an offset into a file that does
+not already exist at full length, and no way to make one without sending the file twice, so the
+refusal went to [LOCATION-SUPPORT.md](LOCATION-SUPPORT.md)'s *"cannot be closed from here"* list.
+The gap a bug report opened on **2026-09-04**, Dirnex's own SMB share picker, closed as **M35** on
+2026-11-05, and §M35 quotes the item as the plan carried it. The same day, F7, ⇧F4 and ⇧F2 inside a
+browsed archive closed the three plain "no" cells in LOCATION-SUPPORT.md's archive column (§M35 ▸
+Progress). What the list still holds is M15's own cut. This summary moved out of the plan on
+2026-11-05.
+
 **2026-09-21 — A Windows self-extractor browses as an archive, and can never be rewritten.
 VERIFIED against the reported file, headlessly; the GUI pass is still owed.** Reported with a
 screenshot: an inner `…-Win10.zip` inside a zip failed with *"Couldn’t read the archive"*, where Total
