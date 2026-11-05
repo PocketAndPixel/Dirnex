@@ -10189,6 +10189,14 @@ overturned the obvious implementation.
   The batch record now lists its steps last rename first, and `inverted` reverses its steps, which
   for those other records changes nothing. `MultiRenameOrderTests` runs rename, undo, redo and undo
   again on disk, and each of the two halves alone fails it.
+- **A whole-object undo says nothing about what changed inside the object, so whatever has to
+  follow the change must be told in the record.** Found 2026-11-05 on archive renames: the undo is a
+  swap of two containers (`.restoreArchive`), which is exact and needs no diff, and so it gave a
+  results tab nothing to follow. The panes that browse the archive re-list, but a snapshot cannot.
+  The step now carries the member renames as an optional rider that plays no part in the swap: its
+  inverse reverses and flips them, a failed swap reports none, and a journal from before it decodes
+  with `nil`. The same holds for any operation that goes through a container swap: what the swap
+  changed has to be journaled beside it, because it cannot be read off the swap afterwards.
 
 ### Transfers and batches
 

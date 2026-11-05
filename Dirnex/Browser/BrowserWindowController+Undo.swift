@@ -121,7 +121,8 @@ extension BrowserWindowController {
     /// it. Keyed on the record's own `.restore` steps that stayed in their folder, minus the ones
     /// the report says failed (``SearchSnapshot/renames(appliedBy:report:)``); a journal of moves,
     /// copies or attribute changes names no rename and this does nothing. An undone *archive*
-    /// rename is a container swap with no rename in it, and is not followed.
+    /// rename is a container swap, which carries the member renames it reverses since 2026-11-05,
+    /// so a hit inside the archive is followed too.
     private func followSearchHitRenames(in record: UndoRecord, report: UndoReport) {
         let renames = SearchSnapshot.renames(appliedBy: record, report: report)
         leftPanel.applySearchHitRenames(renames, landing: nil)
@@ -140,7 +141,7 @@ extension BrowserWindowController {
     /// nothing at all.
     private func refreshPanesShowingRewrittenArchives(in record: UndoRecord) {
         for step in record.steps {
-            guard case let .restoreArchive(archive, _, _, _) = step else { continue }
+            guard case let .restoreArchive(archive, _, _, _, _) = step else { continue }
             refreshPanesShowingArchive(at: archive.path)
         }
     }

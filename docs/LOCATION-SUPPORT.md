@@ -378,8 +378,8 @@ a trashed or moved hit's row back with the file, for a hit on this Mac. A hit on
 followed — an undo that puts the file back leaves the row gone — because the check would cost a
 round trip per hit on every refresh. A rename, in place or as a job, renames the row in every
 results tab in either pane, and since 2026-11-05 a hit inside a renamed folder moves with it; ⌘Z
-and ⇧⌘Z of a rename follow it the same way, except inside an archive, whose undo swaps the whole
-container. Search hits and Recents only since 2026-10-14; the iCloud Drive row always could.
+and ⇧⌘Z of a rename follow it the same way, inside an archive too, where the undo record carries the
+member renames its container swap reverses. Search hits and Recents only since 2026-10-14; the iCloud Drive row always could.
 Verified live on local hits; a server's hits by tests only.
 
 <sup>o</sup> Two halves, and they meet on a cloud mount. **Put Back** works for anything Finder

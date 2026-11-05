@@ -14,18 +14,8 @@ import Foundation
 /// folder is renamed while the folder still has its old name, and the folder's rename then carries
 /// the file's new path along. Folding them in that order lands every hit where it really is.
 extension SearchSnapshot {
-    /// One rename the app carried out: an item that kept its folder and took a new name.
-    public struct Renamed: Sendable, Equatable {
-        /// Where the item was when the rename ran.
-        public let from: VFSPath
-        /// Where it is now.
-        public let to: VFSPath
-
-        public init(from: VFSPath, to: VFSPath) {
-            self.from = from
-            self.to = to
-        }
-    }
+    /// One rename the app carried out (``PathRename``), under the name this file reads best with.
+    public typealias Renamed = PathRename
 
     /// Where `path` is after `renames`, applied in the order they ran: renamed itself, carried along
     /// inside a renamed folder, or where it was.
@@ -48,20 +38,28 @@ extension SearchSnapshot {
     }
 
     /// The renames an undo or a redo has just carried out, in the order it carried them out: every
-    /// `.restore` step that kept its item in its own folder and did not fail.
+    /// `.restore` step that kept its item in its own folder and did not fail, and the member renames
+    /// an archive swap carries (``UndoStep/restoreArchive(archive:snapshot:expected:restored:renames:)``).
     ///
     /// Read from the record rather than worked out again from the disk, because a rename changes
     /// nothing a `stat` could tell from any other file, and the record already says what moved
     /// where. A step the report names as failed, by either end, did not happen; and a step that
     /// crossed folders is a move, whose hit has left (``applying(_:to:)``) and is followed back by
-    /// ``reconciled(_:departed:present:)`` instead.
+    /// ``reconciled(_:departed:present:)`` instead. An archive swap is all or nothing, so its renames
+    /// count exactly when the swap did (2026-11-05).
     public static func renames(appliedBy record: UndoRecord, report: UndoReport) -> [Renamed] {
         let failed = Set(report.failures.map(\.path))
-        return record.steps.compactMap { step in
-            guard case let .restore(from, to) = step, isRename(from, to),
-                  !failed.contains(from), !failed.contains(to)
-            else { return nil }
-            return Renamed(from: from, to: to)
+        return record.steps.flatMap { step -> [Renamed] in
+            switch step {
+            case let .restore(from, to):
+                guard isRename(from, to), !failed.contains(from), !failed.contains(to) else { return [
+                ] }
+                return [Renamed(from: from, to: to)]
+            case let .restoreArchive(archive, _, _, _, renames):
+                return failed.contains(archive) ? [] : renames ?? []
+            default:
+                return []
+            }
         }
     }
 
