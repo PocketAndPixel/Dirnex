@@ -1,4 +1,4 @@
-# Dirnex — build history (M0 → M34)
+# Dirnex — build history (M0 → M35)
 
 The shipped record of Dirnex's milestones: the milestone checklists as they were completed,
 plus the per-pass progress log — what was probed, what was decided, what was rejected and why.
@@ -26,11 +26,12 @@ beta. **M31** (a compare window of our own) was planned and closed 10-22, in fiv
 **M32** (WebDAV) was planned 10-22 and closed 10-24, its last pass running the live suite against
 Nextcloud in a container as well as Apache. **M33** (copying a change across, and saving) and
 **M34** (a three-way merge) were planned together on 10-25, M33 first because M34's result pane,
-undo and save are its; M33 closed 10-26 and M34 10-27. **After M19** carries the thirty-one dated
-passes from 2026-08-07 → 08-25 that landed outside a milestone of their own — it sits at the end
-rather than in date order, because it is the file's catch-all rather than a numeric slot. Two
-sections frame them, both handed over by the plan on 2026-09-01 once it had nothing left to say
-about them: **Scope decided against** sits ahead of M0, and **The questions the plan asked** closes
+undo and save are its; M33 closed 10-26 and M34 10-27. **M35** (an SMB server's shares, as a
+pane) was planned 11-04 and closed 11-05, its last live check waiting a day for the NAS.
+**After M19** carries the thirty-one dated passes from 2026-08-07 → 08-25 that landed outside a
+milestone of their own — it sits at the end rather than in date order, because it is the file's
+catch-all rather than a numeric slot. Two sections frame them, both handed over by the plan on
+2026-09-01 once it had nothing left to say about them: **Scope decided against** sits ahead of M0, and **The questions the plan asked** closes
 the file.
 
 This file is **archive, not instruction.** It moved out of [PLAN.md](../PLAN.md) once M7
@@ -19018,6 +19019,181 @@ comment had never been measured, and Teams refused every promised row with opera
 - **The live runs' traps** are in LIVE-VERIFICATION.md. Three "Finder" drops had gone into Claude's
   floating panel, which screenshots leave out, and read as Finder delivering nothing. A throttled
   `sftp-server` missed the large download, which goes over the exec channel.
+
+### M35 — An SMB server's shares, as a pane (M)
+
+**Closed 2026-11-05**, a day after it was planned. With the Share field blank, a connect now lists
+the server's shares itself, through `EnumerateShares` on the SMB plugin's `NetFSMountInterface_V1`,
+and NetFS's own picker and its dialog are gone. The pane shows the server's disk shares as folders,
+read-only and one level deep, the way an S3 account shows its buckets. Return mounts a share with
+the pane's own account and goes into it. ⌘Return opens it in the other pane, → in a tree mounts it
+and lists it beneath its row, and `..` at the root of a share Dirnex mounted goes back to the list
+with the cursor on that share. A refusal says which it is: a share this account may not use, a
+share the server does not offer to this account or to guests, or an account that cannot sign in
+right now. On Oleg's decision, a tree tab on the list comes back as it was left: the shares mounted
+again, the folders inside them open, and the cursor on the same row.
+
+Three findings are worth not re-deriving. A session whose `OpenSession` failed still lists, as an
+identity nobody asked for, so the list is asked for only after `OpenSession` answered 0
+(docs/NOTES.md ▸ SMB). Each listing costs a session: about 2.3 s by the bare name `nas`, and over
+8 s by `nas.local`, which is the mDNS stall again. And below an expanded share a tree's rows are
+local paths under the mount point, which is under no tab's root. So a tab writes them through the
+share (`media/Movies/…`) and, after a relaunch, resolves them against the mount point the share has
+then (`SMBShareMounts`).
+
+Some paths were not exercised by the close, and are recorded rather than argued. The plain
+permission sentence was not seen, since no share is listed to `dirnex-test` and refused. ⌘Return
+into the other pane, a saved sidebar row, and `..` from a share typed into the sheet while its
+server is not connected, which reads the Keychain, were not run live. Marks inside a share are
+written and restored the way the cursor is, and were not checked there.
+
+Left deliberately undone: **anything that writes to the list**, so no share is created, renamed or
+deleted, and nothing is copied onto it; **a comment column**; and **a way up from a share Finder
+mounted**, which keeps `..` → `/Volumes`.
+
+It began as an item on the plan's *Still open* list, opened by a bug report on 2026-09-04 and
+carried there until M35 took it:
+
+> **Dirnex's own SMB share picker.** With the Share field blank the app hands the mount to NetFS's
+> own UI (`kNAUIOptionAllowUI`), which is macOS's share picker — the only way today to browse a
+> server's shares. It costs two things the user sees. A failed pick raises **two** dialogs,
+> NetAuthAgent's generic *"There was a problem connecting to the server"* and Dirnex's after it; and
+> NetFS never reports back *which* share was picked, so the second one cannot name the folder that
+> failed. That is what makes it worth a slice rather than a nicety: a share the account may not use
+> and a share that is not there come back as **one** status (ENOENT), so only the *listing* tells
+> them apart — and the server names a refused share to the very account it refuses. The listing is
+> reachable in-process, measured 2026-09-04 against a real NAS: `EnumerateShares` on the SMB plugin's
+> `NetFSMountInterface_V1` (`<NetFS/NetFSPlugin.h>`), credentials in memory, no subprocess and
+> nothing in `argv` (docs/NOTES.md ▸ SMB). One enumeration therefore buys all three — the picker, the
+> exact refusal (*"“dirnex-test” doesn't have permission to use “Photos”"* rather than a sentence
+> that has to hedge), and the duplicate dialog going away. The hedging wording shipped 2026-09-04 as
+> the half that needed no new machinery.
+
+The section as the plan carried it through the milestone:
+
+**Planned 2026-11-04.** With the Share field blank, Dirnex hands the mount to NetFS's own UI
+(`kNAUIOptionAllowUI`), macOS's share picker. A failed pick raises two dialogs, NetAuthAgent's and
+then Dirnex's, and the second cannot name the share, because NetFS never says which one was picked.
+This milestone lists the shares itself, as rows in the pane, the way an S3 account lists its buckets
+(§M21 Slice 9) and the way Finder and Total Commander show a server. Oleg chose the pane over a list
+inside the Connect sheet on 2026-11-04.
+
+Probed 2026-11-04 against the NAS, through the SMB plugin's `NetFSMountInterface_V1` in a scratch
+package (`CreateSessionRef` → `CreateURL` → `OpenSession` → `EnumerateShares` → `CloseSession`):
+
+- **The listing runs as whoever the session is, and a session that failed to open still lists.** As
+  `dirnex-test`, `OpenSession` answered 0 with `MountedByUser = dirnex-test`, and `home` read *"Home
+  directory of dirnex-test"*. As a guest, `OpenSession` answered **-5999**
+  (`ENETFSACCOUNTRESTRICTED`; the NAS has guest off although `GetServerInfo` says `SupportsGuest =
+  1`), and `EnumerateShares` on the same session then answered 0 anyway, with `home` reading *"Home
+  directory of olegasd"*: an identity nobody asked for. With no `OpenSession` at all it did the same.
+  So **a listing is asked for only after `OpenSession` answered 0**, on that session.
+- **`CreateURL` with `UserName` and `Password` escapes the password**: a password with an `@` came
+  back as `%40`, the host parsed as `nas`, and the password round-tripped. The URL is a `CFURL` in
+  memory and never reaches `argv`.
+- **Each share is a dictionary**: `NetShareTypeStr` (`Disk`), `NetCommentStr`, `AlreadyMounted`,
+  `HasPassword`. `IsHidden` and `PrinterShare` are in the header and were absent here. No `IPC$`
+  came back. Three shares, the same for both identities: `home`, `media`, `share`.
+- **It costs a session per listing**: by the bare name `nas`, `GetServerInfo` 1.2 s, `OpenSession`
+  76 ms, `EnumerateShares` 1.0–1.3 s. By `nas.local`, 3.0 s and 5.2 s, which is NOTES.md ▸ *Resolving
+  a host name*'s mDNS stall again.
+
+Decided before Slice 1:
+
+- **A share-less `SMBLocation` is a server, and a server is a backend.** `VFSBackendID.smbServer`
+  is its URL without a share (`smb://dirnex-test@nas`), and `ServerEndpoint.smb` answers it as its
+  `backendID` when there is no share, so session restore, the path bar and the reach tests treat it
+  as they treat an S3 account. A share stays what it is today: a mount, browsed as `.local`.
+- **Read-only, depth 0.** The rows are the server's disk shares, as folders, and nothing below them:
+  a share is entered by mounting it. Hidden and printer shares are left out. Nothing creates,
+  renames or deletes a share, and nothing copies into the list.
+- **Return on a share mounts it** through `SMBMounter`, with no UI, with the server pane's own
+  credentials, and goes into the mount point. ⌘Return opens it in the other pane's new tab, as a
+  bucket does.
+- **The refusal says which it is.** A share that is listed and still answers `ENOENT` is a share
+  this account may not use, and the sentence says so with no hedge. A share typed into the sheet that
+  answers `ENOENT` is looked up the same way; one that is not listed gets *"“nas” doesn't offer a
+  shared folder named “X” to “dirnex-test”"*, which stays true on a server that hides refused shares.
+- **`..` at the root of a share Dirnex mounted goes up to the server**, with the cursor on that
+  share. Only for shares mounted through Dirnex in this session, from the pane, the sheet or a saved
+  row. A share Finder mounted keeps `..` → `/Volumes`.
+- **`kNAUIOptionAllowUI` goes.** No connect raises NetFS's own dialog again.
+- **→ on a share row in a tree mounts it** and lists the mount point beneath the row, as → on a
+  bucket row connects. A refresh finds the mount already there and asks the server nothing.
+- **Left undone**: a comment column, and a share Finder mounted gaining a way up.
+
+#### Slices
+
+1. **The server backend** (core, additive). `SMBShare` and its parse from the plugin's dictionary,
+   `SMBServerBackend` over an injected `SMBShareEnumerating`, `VFSBackendID.smbServer`, and the
+   endpoint's `backendID`. Tests over a fake enumerator.
+2. **The pane** (app). The NetFS plugin as the enumerator, the connect with a blank Share, Return
+   and ⌘Return on a share, `..` back to the server, restore, the sidebar row, the sentences, and every
+   reach test that lists the remote backends.
+3. **Live, on the NAS.** Connect, list, mount, go up, restore, a guest refusal, and a saved row.
+   LOCATION-SUPPORT.md and NOTES.md ▸ SMB updated.
+
+#### Progress
+
+- **Slice 1 landed 2026-11-04.** `SMBShare` and its parse (`shares(fromSharepoints:)`, pinned
+  against the NAS's real answer), `SMBShareEnumerating`, `SMBServerBackend`, `SMBShareAbsence`,
+  `VFSBackendID.smbServer`, and the four core sites that name a backend kind (`isRemoteConnection`,
+  the endpoint's `backendID`, `LocationSource` drawing `.networkVolume`, and `SearchRoute`
+  answering `.unavailable`). `SMBServerBackendTests`, 4 suites.
+- **Slice 2 landed 2026-11-04.** `SMBShareEnumerator` drives the plugin, and was
+  first run from a scratch package against the NAS: `dirnex-test` listed `home`, `media` and
+  `share` three times in one process, and a guest threw -5999 where the probe had listed as
+  `olegasd`. A blank Share connects the server (`PanelViewController+SMBServer`), Return and
+  ⌘Return mount a share row, `..` at the share's mount point goes back, → in a tree mounts, a
+  restored tab reconnects, and `SMBMounter` never lets NetFS's UI through. An `ENOENT` asks the
+  list once more and says which reading it is; -5999 has a sentence of its own. Five new sentences
+  in all 14 languages. `SMBServerPaneTests` and `SMBRefusalSentenceTests`.
+- **Slice 3, run live 2026-11-04** on the NAS as `dirnex-test`, Debug build from `build/debug-dd`,
+  launched by path. Nothing touched the login Keychain: a temporary probe made `SecretKeychain`
+  an `InMemorySecretStore` seeded from an environment variable and filled the sheet's password
+  field, which background computer-use will not type into. Both were removed afterwards and the
+  defaults domain was put back (71 keys unchanged by content).
+  - `smb://dirnex-test@nas` with the Share field blank: no NetFS dialog, and the pane became
+    *dirnex-test@nas* with `home`, `media` and `share` as folders, dashes for size and date, and no
+    `..` row.
+  - Return on `media` mounted `//dirnex-test@nas/media` at `/Volumes/media` and went in. Go ▸ Go Up
+    came back to the list with the cursor on `media`. → on `share` in the tree mounted it and drew
+    its `#recycle` and one file beneath the row.
+  - `smb://dirnex-test@nas/Photos` in the sheet: *"“nas” doesn’t offer a shared folder named
+    “Photos” to “dirnex-test”."*, inline. `smb://nas` as a guest: *"“nas” doesn’t allow guest
+    access. Enter a username and password."*, inline, with no NetAuthAgent dialog before it.
+  - Quit asked for both unmounts, and both went 10.7 s later, after the window had closed (the
+    approver wait NOTES.md ▸ SMB records). Relaunch restored the list tab, listed it, and **brought
+    the `share` expansion back, which mounted `share` again at launch**. That is the tree restoring
+    what it was left with, and only when restore may reach a server at all
+    (`RemoteRefreshPolicy`). **Oleg decided 2026-11-04 to keep it, and more: a tab comes back
+    exactly as it was left**, shares mounted, the folders inside them open, the cursor and the
+    marks where they were.
+  - **Not run live**: the plain permission sentence, since no share is listed to `dirnex-test` and
+    refused; ⌘Return into the other pane; a saved sidebar row; and `..` from a share typed into the
+    sheet when its server is not connected, which reads the Keychain.
+- **Restoring inside a share, 2026-11-04 (reported by Oleg).** A tab left with `media/Movies` open
+  and the cursor on a film came back with only `home` and `media` open and the cursor on `home`.
+  Everything a tab restores is written relative to its root, and below an expanded share the rows
+  are local paths under the mount point, which are under no root, so `rootRelativePath` dropped
+  them. They are now written through the share (`media/Movies/Crime.mkv`, `SMBShareMounts`), and on
+  the way back a folder inside a share waits in `pendingShareExpansions`, counted in the restore
+  window, until the share's own row has mounted it. It then resolves against the mount point the
+  share has this time, which need not be `/Volumes/media`. A share that does not mount gives up
+  what waited inside it and closes the window. `isSMBShareRow` is one level deep now, since
+  `media/Movies` on the list is not a share called `Movies`. `SMBTreeRestoreTests` runs the
+  persist and both restore paths against a temporary folder standing in for the mount, with real
+  listings off the disk. With the two changes switched off, the persist test and the deferral test
+  fail.
+  - **Live on the NAS, 2026-11-05.** Run as `dirnex-test@nas`, with a temporary probe that gave that
+    one account its password from the environment and kept every secret in memory, so there was no
+    Keychain prompt. The probe is now removed. The tab was opened by hand to `home`, `media`,
+    `media/Movies` and `media/Movies/The Hobbit`, with the cursor on a film inside `The Hobbit`. On
+    quit the app saved those four paths and the cursor as
+    `media/Movies/The Hobbit/<film>.mkv`. Both shares were unmounted about 6 s after the quit, so the
+    relaunch had to mount them again. It did, in about 8 s, and the tree came back exactly: all four
+    folders open and the cursor on the same film. A second quit saved the same state. The
+    defaults domain was restored, and all 71 keys are unchanged.
 
 ---
 
