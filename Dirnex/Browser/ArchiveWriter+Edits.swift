@@ -1,8 +1,9 @@
 import DirnexCore
 import Foundation
 
-/// The three edits a rewrite carries — delete a member, rename one, add items in — each one a few
-/// lines inside the closure `ArchiveWriter.rewrite` calls between the extract and the repack.
+/// The four edits a rewrite carries — delete a member, rename one, make a new one, add items in —
+/// each one a few lines inside the closure `ArchiveWriter.rewrite` calls between the extract and the
+/// repack.
 ///
 /// Split from the engine when `ArchiveWriter` reached SwiftLint's `type_body_length` ceiling, and
 /// split **by concept rather than by line count** (docs/NOTES.md ▸ Lint ceilings): what the app asks
@@ -105,6 +106,41 @@ extension ArchiveWriter {
                     )
                 )
             }
+        }
+    }
+
+    /// Make a new empty folder or file called `name` in the archive's inner directory
+    /// `innerDirectory` (`/` = the archive root), rewriting the archive at `archiveOnDiskPath` in
+    /// place: F7 and ⇧F4 inside a browsed archive. Throws, leaving the original untouched, when the
+    /// name is not one a member can take, when that name is already there (``VFSError/alreadyExists(_:)``,
+    /// naming the member), or when the archive can't be read, repacked or swapped. Blocks, so call it
+    /// off-main.
+    ///
+    /// Rename's twin: the name is refused before the archive is opened, and the staged create is
+    /// its own collision guard (``ArchiveMutation/stage(_:at:inWorkingDirectory:)``), so nothing
+    /// already in the archive is ever replaced by an empty one.
+    @discardableResult
+    static func create(
+        _ creation: ArchiveMutation.Creation,
+        named name: String,
+        inInnerDirectory innerDirectory: String,
+        ofArchiveAt archiveOnDiskPath: String,
+        passphrase: ArchivePassphrase? = nil,
+        undo: ArchiveUndoStorage.Request,
+        nameEncoding: ArchiveNameEncoding? = nil
+    ) throws -> ArchiveUndoSnapshot? {
+        guard let innerPath = ArchiveMutation.createdInnerPath(
+            named: name, inInnerDirectory: innerDirectory
+        ) else {
+            let archiveName = (archiveOnDiskPath as NSString).lastPathComponent
+            throw VFSError.unsupported(.archiveUpdateFailed(archive: archiveName))
+        }
+        let member = VFSPath(backend: .archive(forArchiveAt: archiveOnDiskPath), path: innerPath)
+        return try rewrite(
+            archiveOnDiskPath: archiveOnDiskPath, passphrase: passphrase, undo: undo,
+            nameEncoding: nameEncoding
+        ) { workingDirectory in
+            try ArchiveMutation.stage(creation, at: member, inWorkingDirectory: workingDirectory)
         }
     }
 

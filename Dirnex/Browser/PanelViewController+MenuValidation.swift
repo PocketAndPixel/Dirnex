@@ -105,7 +105,8 @@ extension PanelViewController: NSMenuItemValidation {
     private func validateMutatingItem(_ menuItem: NSMenuItem) -> Bool? {
         switch menuItem.action {
         case #selector(newFolder(_:)):
-            return canWriteHere
+            // Or inside a writable archive, where F7 is a rewrite rather than a `.write` primitive.
+            return canWriteHere || archiveCreationDirectory != nil
         case #selector(moveSelectionToTrash(_:)), #selector(deleteSelectionPermanently(_:)):
             // Inside a top-level archive, delete rewrites it to drop the members (no Trash, not
             // undoable) — enabled on a non-empty selection. Elsewhere it is the key's own answer,

@@ -173,7 +173,9 @@ assumption — it has no way to write at an offset into a file that does not alr
 length, and no way to make one without sending the file twice. The refusal moved to
 [docs/LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md)'s *"cannot be closed from here"* list with the
 numbers behind it. What remains here is M15's own cut. The gap a bug report opened on
-**2026-09-04**, Dirnex's own SMB share picker, closed as M35 on 2026-11-05.
+**2026-09-04**, Dirnex's own SMB share picker, closed as M35 on 2026-11-05. The same day, F7 and ⇧F4
+inside a browsed archive closed two plain "no" cells in LOCATION-SUPPORT.md's archive column, as a
+rewrite like F2's (HISTORY.md §M35 ▸ Progress).
 
 - **The thumbnail grid, brief view and the `PaneSurface` extraction** — M15's cut, and one unit
   rather than three items, argued in HISTORY.md §M15. Any future grid inherits two constraints from
