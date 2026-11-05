@@ -78,8 +78,9 @@ extension PanelViewController {
         }
     }
 
-    /// Put the cursor on the row a create has just made, when the re-list shows it.
-    private func moveCursor(onto member: VFSPath) {
+    /// Put the cursor on the row a create or a rename has just produced, when the re-list shows it.
+    /// Internal because ⇧F2's archive route lands its cursor the same way (`+ArchiveWrite`).
+    func moveCursor(onto member: VFSPath) {
         guard let index = panel.displayedIndex(ofID: member) else { return }
         panel.moveCursor(to: index)
         cursorOnParentRow = false

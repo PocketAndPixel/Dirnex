@@ -19247,6 +19247,79 @@ and the menu items were gray.
   rewrite works on the payload, so a folder made at its root is not among the rows. Paste has the same
   disagreement there (NOTES.md ▸ Archives and encryption).
 
+**2026-11-05: ⇧F2 renames a marked set inside an archive in one rewrite** (core, then app). Asked for by
+the user straight after F7 and ⇧F4. The third plain "no" in the archive column, left open since
+2026-09-10, when F2 learned to rewrite the container and the multi-rename tool did not: its apply
+loop renamed each target with `backend.moveItem`, which an archive refuses, so it stayed gray.
+
+- **Core:** `ArchiveMutation+Renaming`. `renameMoves(for:)` turns a batch into moves for one staged
+  tree, **deepest member first**, so a tree selection holding a folder and a file inside it works: the
+  file moves inside the folder's old name and the folder then carries it. A batch that only works in
+  one order (a swap or a chain), two members landing on one name in one folder, the same member twice,
+  or a name no member can have is refused before the archive is opened. The tool's planner already
+  reports swaps and chains as collisions; the writer refuses them again so it is safe whoever calls
+  it. `stage(_:ofArchiveAt:inWorkingDirectory:)` is F2's staged move, moved into the core, still its
+  own collision guard. `ArchiveMutationRenamingTests`. With the sort and the swap check removed as a
+  control, the four tests aimed at them failed.
+- **App:** `ArchiveWriter.rename(_:)` takes the batch, and F2's single rename is now the batch of one,
+  so the two cannot drift. `multiRenameRoute(for:)` answers for ⇧F2's whole marked set and is what its
+  menu item and `beginMultiRename` both read: every target a member of one writable archive goes to
+  that archive (F2's own route decides writability, so nested archives and self-extractors stay gray),
+  any other set holding an archive member is refused, and everything else keeps `canRenameHere`. The
+  refused mixes are new: a results tab whose marks spanned an archive and a folder used to be enabled
+  and then failed member by member. `renameArchiveMembers` is all or nothing, one undo record for the
+  batch, and the code-page question comes before the tool opens, with no resume, since answering it
+  clears the marks. No new strings.
+- **Tests:** `ArchiveMultiRenameTests` on real zip and AES-256 zip files with a scratch undo store:
+  three members in one rewrite (one undo copy), a folder with its child, a collision outside the batch
+  and a swap each leaving the archive byte-identical. `ArchiveMultiRenameReachTests` covers the route
+  and drives the apply through a pane to a refusal from the staged move, compared by its detail
+  sentence, because the backend loop would have answered "The other items were renamed."
+  `RenameReachTests`' archive row now expects ⇧F2 on. With the apply's archive branch and the
+  validator change removed as a control, exactly those three tests failed.
+- **Live**, Debug build from `build/debug-dd`, launched by path, background computer-use on a scratch
+  zip holding `readme.txt`, `notes.txt` and `docs/api.md`. With `docs` expanded in the tree and all
+  four rows marked, File ▸ Multi-Rename Tool… opened on the four, and the mask `[N]_v2` previewed
+  "4 of 4 will be renamed". Rename 4 Items left `docs_v2/`, `docs_v2/api_v2.md`, `notes_v2.txt` and
+  `readme_v2.txt` in the zip, each with its bytes, and one 692-byte undo copy, the original's size.
+  The cursor landed on `docs_v2`. One Edit ▸ Undo Change Archive put the zip back, matching the
+  checksum taken before the run. The defaults domain was restored, and all 71 keys are unchanged.
+  **Not run live**: a refusal, which the tool's planner stops before Rename can be pressed (the pane
+  test hands the apply a proposal it would have caught), an encrypted archive, and the code-page
+  question.
+- **Not handled here, and not new**: the backend loop a local ⇧F2 ran took the targets in the order
+  they came. Fixed in the entry below.
+
+**2026-11-05: ⇧F2 over a folder and a file inside it renames both, and undoes and redoes** (core, then
+app). Found while writing the entry above and taken by the user straight after. Two bugs, the second
+hidden behind the first.
+
+- **The rename.** A tree marks a folder before its children (`selectedEntries` filters
+  `displayedEntries`), and the backend loop renamed in that order, so the folder's rename left the
+  file's path naming nothing and the file was reported as failed. `MultiRenameOrderTests` shows it on
+  disk before anything else: `docs` → `guides`, then `docs/a.txt` → `docs/b.txt` throws. The loop now
+  runs `RenameOrder.deepestFirst`, the same rule the archive path's `renameMoves` uses, which now
+  calls it too. Stable within one depth, so a flat batch runs exactly as before.
+- **The undo, which deepest-first alone would have broken.** `UndoJournal.revert` applies a record's
+  steps in order, and `UndoRecord.inverted`, which redo runs, kept that order. So undo would have
+  looked for `docs/b.txt` before `guides` had become `docs` again, and redo would have renamed the
+  folder before the file. `multiRename(_:)` now lists its steps last rename first, and `inverted`
+  reverses its steps, as the inverse of any sequence does. Every other multi-step record is
+  order-independent (top-level moves and copies, one path's attributes), so nothing else moves. With
+  either half reverted as a control, the on-disk rename, undo, redo and undo test fails;
+  `MultiRenameTests`' record test now pins the reversed order.
+- **The cursor** lands on the first renamed item at the shallowest depth (`RenameOrder.shallowest`),
+  since a deeper item's renamed path may sit in a folder the batch renamed after it. In a flat batch
+  that is the first item, where it always landed. The archive path lands the same way.
+- **Live**, Debug build from `build/debug-dd`, launched by path, background computer-use on a scratch
+  folder holding `docs/a.txt` and `top.txt`. With `docs` expanded and all three rows marked, the
+  mask `[N]_v2` renamed them to `docs_v2/a_v2.txt` and `top_v2.txt` with no failure, and the cursor
+  landed on `docs_v2`. Edit ▸ Undo Rename put all three back, Redo Rename renamed all three again, and
+  a last Undo left the folder as it started, with the same bytes. The defaults domain was restored,
+  and all 71 keys are unchanged.
+- **Not changed**: a results tab still keeps the old parent path for a hit inside a folder the batch
+  renamed, as it already did after F2 on a folder hit.
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

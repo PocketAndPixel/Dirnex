@@ -235,7 +235,12 @@ struct ArchiveCreateTests {
         }
 
         func storeIsEmpty() -> Bool {
-            ((try? FileManager.default.contentsOfDirectory(atPath: storeRoot.path)) ?? []).isEmpty
+            storedCopies() == 0
+        }
+
+        /// How many undo copies the scratch store holds: one per rewrite that landed.
+        func storedCopies() -> Int {
+            ((try? FileManager.default.contentsOfDirectory(atPath: storeRoot.path)) ?? []).count
         }
 
         private func entries() throws -> [EncryptedArchiveReader.Entry] {

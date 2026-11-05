@@ -134,11 +134,10 @@ extension PanelViewController: NSMenuItemValidation {
             // Rename is single-item on the cursor (not the marked set) and never `..`.
             return canRenameCursorRow && !cursorOnParentRow && panel.currentEntry != nil
         case #selector(multiRenameSelection(_:)):
-            // The batch tool operates on the marked set (else the cursor entry), and deliberately
-            // keeps the narrower `canRenameHere`: it renames each target with `backend.moveItem`,
-            // which an archive refuses, so it is gray inside one until that loop becomes the single
-            // rewrite the container wants (see `renameRoute`).
-            return canRenameHere && !selectionTargets().isEmpty
+            // The batch tool operates on the marked set (else the cursor entry). Inside one
+            // writable archive the batch is a single rewrite; see `multiRenameRoute(for:)`.
+            let targets = selectionTargets()
+            return multiRenameRoute(for: targets) != .unavailable && !targets.isEmpty
         case #selector(synchronizeDirectories(_:)):
             // Compares the two panes' folders — needs two distinct real local directories.
             return canSynchronize
@@ -257,8 +256,9 @@ extension PanelViewController: NSMenuItemValidation {
     /// `com~apple~Pages` container underneath it. A gate that asked only the route would rename the
     /// wrong thing there; one that asked only the name would still refuse every archive member.
     ///
-    /// It is deliberately **wider** than `canRenameHere`, which ⇧F2 keeps — see `renameRoute(for:)`
-    /// for why the multi-rename tool is not simply pointed at this.
+    /// It is deliberately **wider** than `canRenameHere`: an archive member renames by rewriting the
+    /// container. ⇧F2 asks `multiRenameRoute(for:)`, which takes the same archive route for a
+    /// marked set inside one archive.
     var canRenameCursorRow: Bool {
         cursorRowCarriesItsOwnName && renameRoute(for: renameRow) != .unavailable
     }
