@@ -229,6 +229,44 @@ struct ArchiveMultiRenameReachTests {
         #expect(pane.multiRenameRoute(for: pane.selectionTargets()) == .backend)
     }
 
+    /// The record a rename inside an archive journals carries what the swap does to member names, so
+    /// ⌘Z and ⇧⌘Z can move search hits inside the archive (2026-11-05). Through the pane's own
+    /// funnel and a stub host that keeps the record; the archive is any readable file, since the
+    /// record only reads its size and date.
+    @Test("an archive rename journals its renames, reversed for undo")
+    func journalCarriesTheRenames() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ArchiveRenameJournal-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let archive = directory.appendingPathComponent("pkg.zip").path
+        try Data("zip".utf8).write(to: URL(fileURLWithPath: archive))
+        let host = StubPanelHost()
+        let root = VFSPath(backend: .archive(forArchiveAt: archive), path: "/")
+        let pane = Self.pane(at: root, entries: [], host: host)
+        let forward = [
+            PathRename(
+                from: root.appending("docs").appending("a.txt"),
+                to: root.appending("docs").appending("b.txt")
+            ),
+            PathRename(from: root.appending("docs"), to: root.appending("guides"))
+        ]
+
+        pane.journalArchiveRewrite(
+            ArchiveUndoSnapshot(
+                archive: archive,
+                snapshot: directory.appendingPathComponent("copy").path,
+                restored: ArchiveUndoWitness(byteSize: 1, modified: Date(timeIntervalSince1970: 0))
+            ),
+            renamed: forward
+        )
+
+        let record = try #require(host.recordedUndo.last)
+        // The undo direction; redo's inversion is the core's (`ArchiveUndoRenameTests`).
+        #expect(SearchSnapshot.renames(appliedBy: record, report: UndoReport(failures: []))
+            == PathRename.reversal(of: forward))
+    }
+
     /// The apply, through the pane, to an outcome only the archive's rewrite can produce.
     ///
     /// The proposal is built by hand with status `.rename` onto a name the archive already holds,

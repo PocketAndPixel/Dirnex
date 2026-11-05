@@ -149,14 +149,14 @@ extension PanelViewController {
             guard let self else { return }
             // The mounted TOC is now stale — drop it so the re-list re-reads the rewritten archive.
             (backend as? CompositeBackend)?.invalidateMountedArchive(at: archiveOnDiskPath)
-            journalArchiveRewrite(snapshot)
             // A search snapshot cannot re-list itself, so its rows are put where the rename left
             // them by hand — the same substitution the backend route makes, and the reason F2 works
-            // on a hit inside a `.zip` at all. Hits inside a renamed folder move with it.
+            // on a hit inside a `.zip` at all. Hits inside a renamed folder move with it, and the
+            // journal keeps the rename so ⌘Z can put them back.
             let destination = (source.parent ?? source).appending(newName)
-            noteSearchHitsRenamed(
-                [SearchSnapshot.Renamed(from: source, to: destination)], landing: destination
-            )
+            let renamed = [PathRename(from: source, to: destination)]
+            journalArchiveRewrite(snapshot, renamed: renamed)
+            noteSearchHitsRenamed(renamed, landing: destination)
             refreshArchiveDirectory()
             focusTable()
         } onFailure: { [weak self] error in
@@ -210,7 +210,15 @@ extension PanelViewController {
             guard let self else { return }
             // The mounted TOC is now stale — drop it so the re-list re-reads the rewritten archive.
             (backend as? CompositeBackend)?.invalidateMountedArchive(at: archiveOnDiskPath)
-            journalArchiveRewrite(snapshot)
+            // The renames in the order the writer ran them (deepest first): what the search hits
+            // follow now, and what the journal keeps so ⌘Z and ⇧⌘Z can follow the swap.
+            let applied = RenameOrder.deepestFirst(renamed, path: \.source.path).map {
+                PathRename(
+                    from: $0.source,
+                    to: ($0.source.parent ?? $0.source).appending($0.newName)
+                )
+            }
+            journalArchiveRewrite(snapshot, renamed: applied)
             panel.clearSelection()
             // The first of the shallowest, as the backend loop lands (`RenameOrder.shallowest`): a
             // deeper member's new path may sit in a folder the batch renamed after it.
@@ -218,15 +226,8 @@ extension PanelViewController {
                 ($0.source.parent ?? $0.source).appending($0.newName)
             }
             // A search snapshot cannot re-list itself, so its hits are put where the batch left them
-            // by hand, in the order the writer ran it (deepest first), as the backend loop does.
-            noteSearchHitsRenamed(
-                RenameOrder.deepestFirst(renamed, path: \.source.path).map {
-                    SearchSnapshot.Renamed(
-                        from: $0.source, to: ($0.source.parent ?? $0.source).appending($0.newName)
-                    )
-                },
-                landing: landing
-            )
+            // by hand, as the backend loop does.
+            noteSearchHitsRenamed(applied, landing: landing)
             if let landing {
                 refreshArchiveDirectory { [weak self] in self?.moveCursor(onto: landing) }
             } else {
@@ -255,9 +256,13 @@ extension PanelViewController {
     ///
     /// The record is built here rather than at capture time because half of it describes what the
     /// rewrite *produced*, which only exists once the swap has landed
-    /// (``ArchiveUndoSnapshot/record(date:)``).
-    func journalArchiveRewrite(_ snapshot: ArchiveUndoSnapshot?) {
-        guard let record = snapshot?.record() else { return }
+    /// (``ArchiveUndoSnapshot/record(date:renamed:)``).
+    ///
+    /// `renamed` is the member renames a rename rewrote the container for, in the order they ran,
+    /// so ⌘Z and ⇧⌘Z can put search hits inside the archive where the swap leaves them
+    /// (2026-11-05). Empty for every other rewrite.
+    func journalArchiveRewrite(_ snapshot: ArchiveUndoSnapshot?, renamed: [PathRename] = []) {
+        guard let record = snapshot?.record(renamed: renamed) else { return }
         host?.recordUndoableAction(record)
     }
 

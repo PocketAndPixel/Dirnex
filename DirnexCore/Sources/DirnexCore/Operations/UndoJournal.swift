@@ -113,11 +113,20 @@ public enum UndoStep: Sendable, Equatable, Codable {
     /// primitives — rather than the `VFSBackend`, for the reason ``restoreAttributes`` is: an
     /// archive being browsed is a real file on this disk whatever backend is showing its insides,
     /// and the swap needs an atomic same-directory rename no backend verb offers.
+    ///
+    /// `renames` is what the swap does to member names, in the order this direction carries them
+    /// out, for the listings that cannot re-list (``SearchSnapshot/renames(appliedBy:report:)``,
+    /// 2026-11-05). A swap of whole containers says nothing about what changed inside them, so a
+    /// rewrite that renamed members (F2 or ⇧F2 inside an archive) records them here, and undo then
+    /// puts a search hit back under its old name as it does for a rename on disk. It plays no part
+    /// in the swap. `nil` for every other rewrite, and for every step journaled before it existed,
+    /// which is why it is optional: a persisted journal without the key still decodes.
     case restoreArchive(
         archive: VFSPath,
         snapshot: VFSPath,
         expected: ArchiveUndoWitness,
-        restored: ArchiveUndoWitness
+        restored: ArchiveUndoWitness,
+        renames: [PathRename]? = nil
     )
 
     /// Undo/redo a text file saved from the compare window: exchange its bytes with the copy taken
@@ -161,12 +170,13 @@ public enum UndoStep: Sendable, Equatable, Codable {
             )
         case let .restoreRemoteAttributes(path, apply, reverse):
             return .restoreRemoteAttributes(path: path, apply: reverse, reverse: apply)
-        case let .restoreArchive(archive, snapshot, expected, restored):
+        case let .restoreArchive(archive, snapshot, expected, restored, renames):
             return .restoreArchive(
                 archive: archive,
                 snapshot: snapshot,
                 expected: restored,
-                restored: expected
+                restored: expected,
+                renames: renames.map(PathRename.reversal(of:))
             )
         case let .restoreSavedFile(file, snapshot, expected, restored):
             return .restoreSavedFile(
@@ -333,11 +343,16 @@ public extension UndoRecord {
     ///
     /// Built by ``ArchiveUndoSnapshot/record(date:)`` rather than called directly, because half of
     /// it — `expected` — can only be read once the rewrite has landed.
+    ///
+    /// `renamed` is the member renames the rewrite carried out, in the order it ran them, when it
+    /// was a rename (F2 or ⇧F2 inside an archive). The step holds their reversal, since this record
+    /// is the undo direction; its inverse turns them forward again for redo.
     static func archiveRewrite(
         archive: VFSPath,
         snapshot: VFSPath,
         expected: ArchiveUndoWitness,
         restored: ArchiveUndoWitness,
+        renamed: [PathRename] = [],
         date: Date = Date()
     ) -> UndoRecord {
         UndoRecord(
@@ -347,7 +362,8 @@ public extension UndoRecord {
                 archive: archive,
                 snapshot: snapshot,
                 expected: expected,
-                restored: restored
+                restored: restored,
+                renames: renamed.isEmpty ? nil : PathRename.reversal(of: renamed)
             )]
         )
     }
@@ -375,7 +391,7 @@ public extension UndoRecord {
     var archiveSnapshotPaths: Set<String> {
         Set(steps.compactMap { step in
             switch step {
-            case let .restoreArchive(_, snapshot, _, _), let .restoreSavedFile(_, snapshot, _, _):
+            case let .restoreArchive(_, snapshot, _, _, _), let .restoreSavedFile(_, snapshot, _, _):
                 snapshot.path
             default:
                 nil

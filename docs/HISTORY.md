@@ -19343,7 +19343,7 @@ undo re-lists both panes and a snapshot is the one listing that does not.
   and both archive routes) and reaches every results tab in both panes, as `noteSearchHitsDeleted`
   always has; the gesture's tab takes the landing, the others keep the cursor on their own row. Undo
   and redo call `applySearchHitRenames` on both panes (`followSearchHitRenames`). An undone *archive*
-  rename is a container swap with no rename step in it, and is not followed. `SearchHitRenameTests`
+  rename is a container swap with no rename step in it, and was not followed until the entry below. `SearchHitRenameTests`
   moved to the new call and gained the folder case and the every-tab case; with the update limited to
   the gesture's tab, the every-tab test fails.
 - **Live**, Debug build from `build/debug-dd`, launched by path, background computer-use, on a fixture
@@ -19357,6 +19357,34 @@ undo re-lists both panes and a snapshot is the one listing that does not.
   the background; it calls the same `noteSearchHitsRenamed`), redo, and a hit on a server.
 - **Not changed**: a hit inside a folder that was **moved** elsewhere keeps the old path. The folder's
   own row leaves the tab, as every moved hit does, and the hits under it are not followed.
+
+**2026-11-05: ⌘Z and ⇧⌘Z of a rename inside an archive move its search hits too** (core, then app).
+Asked for by the user from the entry above. A rewrite's undo is `.restoreArchive`, a swap of the
+archive with the copy taken before it, which is exact and needs no diff, and so it said nothing about
+what changed inside. The panes browsing the archive re-list after the swap; a results tab holding hits
+inside it cannot, and kept the names the rename had given them.
+
+- **Core:** `PathRename`, one rename from the path that was true when it ran, now shared by the
+  snapshot (`SearchSnapshot.Renamed` is a name for it) and the journal. `.restoreArchive` gained an
+  optional `renames`: what the swap does to member names in this direction. It plays no part in the
+  swap; its inverse reverses and flips the list for redo (`PathRename.reversal(of:)`), and
+  `SearchSnapshot.renames(appliedBy:report:)` reads it, unless the report says the swap failed.
+  `archiveRewrite(renamed:)` and `ArchiveUndoSnapshot.record(renamed:)` take the renames the
+  rewrite ran and store their reversal, since an undo record is the undo direction. Optional, so a
+  journal from before decodes with `nil`, and a delete, an add or a save back carries nothing.
+  `ArchiveUndoRenameTests`, including a step spelled by hand as an older build wrote it; with the
+  inverse passing the renames through unreversed, the two tests aimed at it fail.
+- **App:** F2 and ⇧F2 inside an archive pass the renames they ran to `journalArchiveRewrite`, the same
+  list their search hits follow at once. `ArchiveMultiRenameReachTests` checks the record the funnel
+  journals.
+- **Live**, Debug build from `build/debug-dd`, launched by path, background computer-use, on a scratch
+  zip holding `notes/notes-a.txt`, `notes2/notes-d.txt` and `top-notes.txt`, found through a saved
+  search scoped to the zip's root (which runs as a walk over the archive). The Multi-Rename Tool on
+  the `notes` hit made it `notes_v2`, and Get Info on the `notes-a.txt` hit read "Where: /notes_v2".
+  Edit ▸ Undo Change Archive put the zip back, matching the checksum taken before the run; the folder
+  hit read `notes` and `notes-a.txt` read "/notes". Redo Change Archive brought `notes_v2` and
+  "/notes_v2" back, and a last undo left the zip as it started. The defaults domain was restored;
+  all 71 keys are unchanged.
 
 ---
 

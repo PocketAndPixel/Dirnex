@@ -206,13 +206,17 @@ public struct ArchiveUndoSnapshot: Sendable, Equatable {
     /// description of what the rewrite produced: an undo may only proceed while the archive is
     /// still that file. `nil` when the archive cannot be read, which leaves the operation
     /// unjournalled rather than journalled with a guard nothing can satisfy.
-    public func record(date: Date = Date()) -> UndoRecord? {
+    ///
+    /// `renamed` is the member renames the rewrite carried out, for a rename (2026-11-05): the
+    /// swap cannot say what changed inside the container, and a results tab needs to.
+    public func record(date: Date = Date(), renamed: [PathRename] = []) -> UndoRecord? {
         guard let current = ArchiveUndoWitness.current(ofFileAt: archive) else { return nil }
         return .archiveRewrite(
             archive: .local(archive),
             snapshot: .local(snapshot),
             expected: current,
             restored: restored,
+            renamed: renamed,
             date: date
         )
     }
