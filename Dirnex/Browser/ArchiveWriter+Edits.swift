@@ -75,37 +75,43 @@ extension ArchiveWriter {
         undo: ArchiveUndoStorage.Request,
         nameEncoding: ArchiveNameEncoding? = nil
     ) throws -> ArchiveUndoSnapshot? {
-        let archiveName = (archiveOnDiskPath as NSString).lastPathComponent
+        try rename(
+            [ArchiveMutation.Rename(innerPath: innerPath, newName: newName)],
+            inArchiveAt: archiveOnDiskPath, passphrase: passphrase, undo: undo,
+            nameEncoding: nameEncoding
+        )
+    }
+
+    /// Rename several members in **one** rewrite: ⇧F2 inside a browsed archive (taken 2026-11-05),
+    /// and the single rename above as the batch of one. Throws, leaving the original untouched,
+    /// when the batch cannot be carried out as one pass (``ArchiveMutation/renameMoves(for:)``), when
+    /// a new name is held by a member outside the batch, or when the archive can't be read,
+    /// repacked or swapped. Blocks, so call it off-main.
+    ///
+    /// **All or nothing**, where the backend loop a local ⇧F2 runs is item by item: the container is
+    /// repacked once, so either every member has its new name or the archive is exactly as it was.
+    @discardableResult
+    static func rename(
+        _ renames: [ArchiveMutation.Rename],
+        inArchiveAt archiveOnDiskPath: String,
+        passphrase: ArchivePassphrase? = nil,
+        undo: ArchiveUndoStorage.Request,
+        nameEncoding: ArchiveNameEncoding? = nil
+    ) throws -> ArchiveUndoSnapshot? {
         // Refused before the archive is even opened: a name that would move the member rather than
         // rename it is the caller's mistake, and paying for an extract to discover it would leave
         // the user waiting on a whole rewrite to be told the name was never usable.
-        guard let renamedInnerPath = ArchiveMutation.renamedInnerPath(
-            ofInnerPath: innerPath, to: newName
-        ) else {
+        guard let moves = ArchiveMutation.renameMoves(for: renames) else {
+            let archiveName = (archiveOnDiskPath as NSString).lastPathComponent
             throw VFSError.unsupported(.archiveUpdateFailed(archive: archiveName))
         }
         return try rewrite(
             archiveOnDiskPath: archiveOnDiskPath, passphrase: passphrase, undo: undo,
             nameEncoding: nameEncoding
         ) { workingDirectory in
-            let source = ArchiveMutation.workingLocation(
-                ofInnerPath: innerPath, inWorkingDirectory: workingDirectory
+            try ArchiveMutation.stage(
+                moves, ofArchiveAt: archiveOnDiskPath, inWorkingDirectory: workingDirectory
             )
-            let destination = ArchiveMutation.workingLocation(
-                ofInnerPath: renamedInnerPath, inWorkingDirectory: workingDirectory
-            )
-            do {
-                try FileManager.default.moveItem(atPath: source, toPath: destination)
-            } catch let error as NSError where error.code == NSFileWriteFileExistsError {
-                // Named as the *member's* path rather than the staged copy's, so the sentence the
-                // app renders is about the archive the user is looking at.
-                throw VFSError.alreadyExists(
-                    VFSPath(
-                        backend: .archive(forArchiveAt: archiveOnDiskPath),
-                        path: renamedInnerPath
-                    )
-                )
-            }
         }
     }
 

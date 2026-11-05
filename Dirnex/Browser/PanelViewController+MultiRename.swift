@@ -26,10 +26,17 @@ extension PanelViewController {
         // Reconcile before reading the cursor, for the reason `beginRename` states: the gate's
         // directory — and with it the backend it asks — follows the cursor in a tree.
         reconcileCursorFromTable()
-        // `canRenameHere`, the same property ⇧F2's menu item grays itself off — see `beginRename`.
-        guard canRenameHere else { return }
         let targets = selectionTargets()
-        guard !targets.isEmpty else { return }
+        // The same answer ⇧F2's menu item grays itself off — see `beginRename`.
+        let route = multiRenameRoute(for: targets)
+        guard route != .unavailable, !targets.isEmpty else { return }
+        // Before the tool opens, for F2's reason: names nobody can read have no sensible template
+        // to start from, and the rewrite would refuse after the user had built one. No resume: the
+        // chooser clears the marks, since they were made against names that are about to change.
+        if case let .archiveMember(archiveOnDiskPath) = route,
+           offerNameEncodingBeforeTyping(forArchiveAt: archiveOnDiskPath) {
+            return
+        }
 
         // The names already in each directory the marked items live in (unfiltered, hidden
         // included) — the set the planner checks new names against so a rename never clobbers a
@@ -43,6 +50,30 @@ extension PanelViewController {
             self?.applyMultiRename(proposals, targets: targets)
         }
         presentAsMovableWindow(controller)
+    }
+
+    /// How ⇧F2 would rename `targets` — the one answer its menu validator and `beginMultiRename`
+    /// both read.
+    ///
+    /// **Every target a member of one writable archive** is the archive route: the whole batch
+    /// becomes a single rewrite of that container (taken 2026-11-05). F2's own route decides
+    /// whether the archive takes writes, so a nested archive and a self-extractor stay gray here
+    /// exactly as they do for F2.
+    ///
+    /// **Any other set holding an archive member is refused.** One rewrite covers one archive, and
+    /// the backend loop cannot rename a member at all, so a results tab whose marks span two
+    /// archives, or an archive and a folder, would have half failed. Until 2026-11-05 such a set was
+    /// enabled whenever the cursor stood on a row that could be renamed, and every member in it
+    /// then failed one by one.
+    ///
+    /// Everything else is unchanged: `canRenameHere`, asked of the cursor row's own directory.
+    func multiRenameRoute(for targets: [FileEntry]) -> RenameRoute {
+        let archives = Set(targets.compactMap(\.path.backend.archivePath))
+        guard !archives.isEmpty else { return canRenameHere ? .backend : .unavailable }
+        guard archives.count == 1, targets.allSatisfy(\.path.backend.isArchive),
+              let first = targets.first
+        else { return .unavailable }
+        return renameRoute(for: first.path)
     }
 
     /// The existing names in every directory the marked items live in, keyed by directory. In list
@@ -70,16 +101,32 @@ extension PanelViewController {
     /// `targets` is what the tool was opened on, carried through so an item the backend refuses to
     /// rename in place (`EXDEV` — an S3 prefix) can be handed to the queue as the `FileEntry` the
     /// pane already had, rather than re-`stat`ed over the network for a value nobody discarded.
-    private func applyMultiRename(_ proposals: [RenameProposal], targets: [FileEntry]) {
+    ///
+    /// Inside an archive the batch is one rewrite instead (`renameArchiveMembers`), all or nothing.
+    ///
+    /// Internal rather than private so `ArchiveMultiRenameTests` can hand it proposals: the tool
+    /// that would is an app-modal window, which a headless suite cannot drive (`RenameReachTests`).
+    func applyMultiRename(_ proposals: [RenameProposal], targets: [FileEntry]) {
+        if case let .archiveMember(archiveOnDiskPath) = multiRenameRoute(for: targets) {
+            renameArchiveMembers(proposals, inArchiveAt: archiveOnDiskPath)
+            return
+        }
         // Each item is renamed in its *own* directory, not the pane's. A tree selection spans
         // levels, so the destination has to come from each source's parent — `panel.path` (the
         // tree root) would rename in place *and* move every child item up to the root, the same
         // second-index-space trap inline rename hit (docs/NOTES.md).
-        let jobs: [(from: VFSPath, to: VFSPath)] = proposals.compactMap { proposal in
-            guard proposal.willRename else { return nil }
-            let directory = proposal.source.parent ?? panel.path
-            return (from: proposal.source, to: directory.appending(proposal.newName))
-        }
+        //
+        // And deepest first (`RenameOrder`): a tree marks a folder before the file inside it, and in
+        // that order the folder's rename left the file's path naming nothing, so its rename failed
+        // (fixed 2026-11-05). The undo record runs the other way round.
+        let jobs: [(from: VFSPath, to: VFSPath)] = RenameOrder.deepestFirst(
+            proposals.compactMap { proposal in
+                guard proposal.willRename else { return nil }
+                let directory = proposal.source.parent ?? panel.path
+                return (from: proposal.source, to: directory.appending(proposal.newName))
+            },
+            path: { $0.from.path }
+        )
         guard !jobs.isEmpty else { focusTable(); return }
 
         let entriesByPath = Dictionary(
@@ -116,8 +163,11 @@ extension PanelViewController {
             for pair in result.renamed {
                 substituteSearchHit(pair.original, renamedTo: pair.renamed.lastComponent)
             }
-            // Land the cursor on the first renamed item's new location.
-            refreshCurrentDirectory(selecting: result.renamed.first?.renamed)
+            // Land the cursor on the first renamed item at the shallowest depth, whose new path no
+            // later rename in the batch can have moved (`RenameOrder.shallowest`).
+            refreshCurrentDirectory(
+                selecting: RenameOrder.shallowest(result.renamed) { $0.renamed.path }?.renamed
+            )
             focusTable()
             if let record = UndoRecord.multiRename(result.renamed) {
                 host?.recordUndoableAction(record)

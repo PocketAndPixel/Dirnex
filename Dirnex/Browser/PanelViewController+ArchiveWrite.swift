@@ -175,6 +175,67 @@ extension PanelViewController {
         }
     }
 
+    // MARK: - Multi-rename (⇧F2)
+
+    /// Apply the multi-rename tool's batch to members of one archive, in **one** rewrite
+    /// (taken 2026-11-05): ⇧F2's `.archiveMember` route.
+    ///
+    /// All or nothing, unlike the backend loop: the container is repacked once, so a refusal (a name
+    /// held by a member outside the batch, or an archive that cannot be read) leaves every member
+    /// as it was, and the report says what stopped it instead of "the other items were renamed".
+    /// One undo record for the batch, the container as it was, as for every other rewrite.
+    func renameArchiveMembers(_ proposals: [RenameProposal], inArchiveAt archiveOnDiskPath: String) {
+        let renames = proposals.filter(\.willRename).map {
+            ArchiveMutation.Rename(innerPath: $0.source.path, newName: $0.newName)
+        }
+        guard !renames.isEmpty else { focusTable(); return }
+        let renamed = proposals.filter(\.willRename)
+        let encoding = declaredNameEncoding(forArchiveAt: archiveOnDiskPath)
+        withArchivePassphrase(forArchiveAt: archiveOnDiskPath) { passphrase in
+            try await BlockingWork.run {
+                Result {
+                    try ArchiveWriter.rename(
+                        renames,
+                        inArchiveAt: archiveOnDiskPath,
+                        passphrase: passphrase,
+                        undo: ArchiveUndoStorage.request(),
+                        nameEncoding: encoding
+                    )
+                }
+            }.get()
+        } onSuccess: { [weak self] snapshot in
+            guard let self else { return }
+            // The mounted TOC is now stale — drop it so the re-list re-reads the rewritten archive.
+            (backend as? CompositeBackend)?.invalidateMountedArchive(at: archiveOnDiskPath)
+            journalArchiveRewrite(snapshot)
+            panel.clearSelection()
+            // A search snapshot cannot re-list itself, so each hit is put back under its new name by
+            // hand, as F2's archive route and the backend loop both do.
+            for proposal in renamed {
+                substituteSearchHit(proposal.source, renamedTo: proposal.newName)
+            }
+            // The first of the shallowest, as the backend loop lands (`RenameOrder.shallowest`): a
+            // deeper member's new path may sit in a folder the batch renamed after it.
+            if let first = RenameOrder.shallowest(renamed, path: \.source.path),
+               let parent = first.source.parent {
+                let landing = parent.appending(first.newName)
+                refreshArchiveDirectory { [weak self] in self?.moveCursor(onto: landing) }
+            } else {
+                refreshArchiveDirectory()
+            }
+            focusTable()
+        } onFailure: { [weak self] error in
+            guard let self else { return }
+            guard !offerNameEncoding(after: error, forArchiveAt: archiveOnDiskPath) else { return }
+            presentOperationFailure(
+                message: renamed.count == 1
+                    ? String(localized: "Couldn’t rename “\(renamed[0].originalName)”")
+                    : String(localized: "Couldn’t rename \(renamed.count) items"),
+                detail: describe(error)
+            )
+        }
+    }
+
     /// Journal a finished archive rewrite so ⌘Z can swap the container back.
     ///
     /// One funnel for all three gestures that rewrite an archive — F8 delete, ⌘V/F5/F6 add, and an

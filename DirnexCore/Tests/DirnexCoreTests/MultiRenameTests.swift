@@ -258,7 +258,9 @@ struct MultiRenameTests {
 
     // MARK: - Undo record
 
-    @Test("a batch rename becomes one undo record of restore steps")
+    /// In reverse of the order the renames ran: in a tree batch the last one carried out is the
+    /// shallowest, and it has to come back first (`MultiRenameOrderTests` runs that on disk).
+    @Test("a batch rename becomes one undo record of restore steps, last rename first")
     func undoRecordRestoresEachItem() {
         let record = UndoRecord.multiRename([
             (original: .local("/dir/a.txt"), renamed: .local("/dir/doc_a.txt")),
@@ -266,8 +268,8 @@ struct MultiRenameTests {
         ])
         #expect(record?.label == .rename)
         #expect(record?.steps == [
-            .restore(from: .local("/dir/doc_a.txt"), to: .local("/dir/a.txt")),
-            .restore(from: .local("/dir/doc_b.txt"), to: .local("/dir/b.txt"))
+            .restore(from: .local("/dir/doc_b.txt"), to: .local("/dir/b.txt")),
+            .restore(from: .local("/dir/doc_a.txt"), to: .local("/dir/a.txt"))
         ])
     }
 

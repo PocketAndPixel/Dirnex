@@ -302,7 +302,7 @@ pinned by tests and not exercised live.
 | New Folder `F7` | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | yes, limited<sup>l</sup> | no<sup>jjj</sup> | no | no |
 | New / Edit File `⇧F4` | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | no | no |
 | Rename `F2` | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
-| Multi-rename `⇧F2` | yes | yes | no<sup>ccc</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
+| Multi-rename `⇧F2` | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
 | Delete `F8` → Trash | yes | yes, limited<sup>o</sup> | n/a | n/a | n/a | n/a | n/a | n/a | no<sup>jjj</sup> | yes<sup>aac</sup> | n/a |
 | Delete `F8` → permanent (confirmed) | yes | yes | yes, limited<sup>n</sup> | yes | yes | yes | yes | yes, limited<sup>l</sup> | n/a | yes<sup>aac</sup> | yes |
 | Put Back (restore from Trash, or a share's `#recycle`) | yes, limited<sup>iii</sup> | n/a | n/a | yes, limited<sup>iii</sup> | yes, limited<sup>iii</sup> | yes, limited<sup>iii</sup> | n/a | n/a | n/a | n/a | yes, limited<sup>o</sup> |
@@ -516,11 +516,16 @@ same member — by kind, size and folder, since a re-decode changes every name a
 listing — and re-opens the field there by itself, so F2 reads as one gesture that asked a question in
 the middle (▸ <sup>ddd</sup>).
 
-**⇧F2 is a plain no there, and deliberately so.** The multi-rename tool renames each target with the
-backend's own `moveItem`, which an archive answers `.unsupported` to — so it keeps the narrower gate
-rather than being pointed at F2's, which would have enabled it over a flow that fails once per item.
-Batching N renames into the one rewrite the container actually wants is its own slice; nothing about
-the rewrite is in the way of it (PLAN.md §4 ▸ *Still open*, 2026-09-10).
+**⇧F2 renames the whole marked set in one rewrite** (2026-11-05). Until then it was a plain no,
+because the multi-rename tool renamed each target with the backend's own `moveItem`, which an archive
+answers `.unsupported` to. Inside one writable archive the batch now goes to the container once:
+every member takes its new name or none does, a folder and a file inside it can both be in the set
+(the file moves first), and ⌘Z puts the container back. "Limited" for F2's reasons above, plus one of
+its own: a set that spans two archives, or an archive and a folder (a results tab can hold either),
+is refused, since one rewrite covers one archive and the backend loop cannot rename a member at all.
+A swap or a chain is refused by the tool's planner as anywhere else. The code-page question comes
+before the tool opens, as F2's does, and since answering it clears the marks the set is marked again
+afterwards.
 
 <sup>yyy</sup> F7 and ⇧F4 inside a browsed archive make the new member by F2's rewrite (2026-11-05):
 extract, make the folder or an empty file in the staged tree, repack, atomic swap. The staged `mkdir`

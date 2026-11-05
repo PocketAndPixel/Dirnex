@@ -216,11 +216,19 @@ extension UndoRecord {
     /// inverted. Undoing a record pushes its `inverted` onto the redo stack; redoing reverts
     /// that (re-applying the original operation) and pushes *its* inverted — the original
     /// record — back onto the undo stack. So one inversion drives both directions.
+    ///
+    /// **The steps run in reverse order**, as the inverse of any sequence does (2026-11-05). For
+    /// almost every record the order is immaterial — a move's or a copy's top-level items, one
+    /// path's attributes — and that is why forward order went unnoticed. A batch rename across a
+    /// tree is the record where it matters: its undo renames a folder back before the file inside
+    /// it, so its redo has to rename the file before the folder, or the file's path names a folder
+    /// that has not been renamed yet (``multiRename(_:date:)``). Reversing twice gives the original
+    /// order back, so a record that is undone and redone comes back exactly as it was.
     var inverted: UndoRecord {
         UndoRecord(
             label: label,
             date: date,
-            steps: steps.map(\.inverse),
+            steps: steps.reversed().map(\.inverse),
             nonReversibleCount: nonReversibleCount
         )
     }
@@ -305,11 +313,16 @@ public extension UndoRecord {
     /// batch"). Returns `nil` when nothing was renamed. Because the tool never applies a rename
     /// whose target equals another still-present name, every original is free at undo time and
     /// `.restore`'s clobber guard never trips on a batch of its own making.
+    ///
+    /// `items` is in the order the renames were **carried out**, deepest first (``RenameOrder``),
+    /// and the steps undo them in reverse (2026-11-05). In a tree batch that renamed `docs/a.txt`
+    /// and then `docs`, each pair's paths are the ones that were true when that rename ran, so
+    /// `docs` has to come back first for `docs/b.txt` to be where the next step looks for it.
     static func multiRename(
         _ items: [(original: VFSPath, renamed: VFSPath)],
         date: Date = Date()
     ) -> UndoRecord? {
-        let steps = items.map { UndoStep.restore(from: $0.renamed, to: $0.original) }
+        let steps = items.reversed().map { UndoStep.restore(from: $0.renamed, to: $0.original) }
         guard !steps.isEmpty else { return nil }
         return UndoRecord(label: .rename, date: date, steps: steps)
     }

@@ -35,12 +35,13 @@ import Testing
 /// The panes are otherwise headless — both predicates read only the model and the backend — with the
 /// one deliberate exception documented on `theKeyRefusesWhereTheItemIsGray`.
 ///
-/// **The two keys stopped answering the same question on 2026-09-10**, which is why `Case` carries
-/// two booleans. F2 gained a second route — a member of a writable archive renames by rewriting the
-/// container — while ⇧F2's apply loop still renames each target with `backend.moveItem`, which an
-/// archive answers `.unsupported` to. Pointing both at the wider gate would have enabled the batch
-/// tool over a flow that fails once per item, so the asymmetry is deliberate and is pinned here:
-/// this table is the only thing that would notice it being "tidied" back into one answer.
+/// **The two keys stopped answering the same question on 2026-09-10, and agree again since
+/// 2026-11-05**, which is why `Case` carries two booleans. F2 gained a second route — a member of a
+/// writable archive renames by rewriting the container — while ⇧F2's apply loop still renamed each
+/// target with `backend.moveItem`, which an archive answers `.unsupported` to, so ⇧F2 stayed gray
+/// there. It now sends a marked set inside one archive to the container as one rewrite
+/// (`multiRenameRoute(for:)`), and the archive row says so. The second boolean stays for the next
+/// place the two part ways.
 
 /// At file scope so the parameterized `arguments:` can read them: the suite is `@MainActor`, and a
 /// static on it is main-actor-isolated where the argument list is evaluated.
@@ -63,10 +64,9 @@ private struct Case {
     /// Whether **F2** can rename the cursor row — `canRenameCursorRow`, and the item File ▸ Rename…
     /// grays itself off.
     let canRename: Bool
-    /// Whether **⇧F2** can, which is no longer the same question: a member of a writable archive is
-    /// renamed by rewriting the container, and the batch tool still renames each target with
-    /// `backend.moveItem`, which an archive refuses. Defaults to `canRename`, so only the row where
-    /// the two genuinely differ has to say so.
+    /// Whether **⇧F2** can, which is a separate question with its own route
+    /// (`multiRenameRoute(for:)`) even where the answers agree. Defaults to `canRename`, so only a
+    /// row where the two genuinely differ has to say so.
     let canMultiRename: Bool
     /// Applied to the routing backend before the pane is built — `nil` for a location that needs no
     /// connection (local, virtual) or is deliberately left unconnected.
@@ -270,14 +270,12 @@ struct RenameReachTests {
             row: trashedFile
         ),
         // F2 renames a member by rewriting the container (`ArchiveWriter.rename`), which is why
-        // this row moved; ⇧F2 renames each target with `backend.moveItem`, which an archive
-        // refuses, so it stays gray. The one place the two answers differ, and it is deliberate —
-        // see `renameRoute(for:)`.
+        // this row moved; ⇧F2 was gray here until 2026-11-05, when a marked set inside one archive
+        // became one rewrite of it (`multiRenameRoute(for:)`).
         Case(
             "a browsed archive",
             VFSPath(backend: .archive(forArchiveAt: "/Users/tester/pkg.zip"), path: "/inner"),
-            canRename: true,
-            canMultiRename: false
+            canRename: true
         )
     ]
 
@@ -289,7 +287,9 @@ struct RenameReachTests {
             let pane = Self.pane(for: testCase)
             #expect(pane.canRenameCursorRow == testCase.canRename, "F2 in \(testCase.name)")
             #expect(
-                pane.canRenameHere == testCase.canMultiRename, "⇧F2 in \(testCase.name)"
+                (pane.multiRenameRoute(for: pane.selectionTargets()) != .unavailable)
+                    == testCase.canMultiRename,
+                "⇧F2 in \(testCase.name)"
             )
         }
     }

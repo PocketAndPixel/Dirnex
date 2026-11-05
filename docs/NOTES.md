@@ -988,6 +988,14 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     or more — three for the create sheet, whose accessory carries a popup — which is a structural
     discriminator and, unlike matching the title text, survives the app test target inheriting the
     developer's own `AppleLanguages` pin (▸ Localization). `sheetButtonCount(in:)` is the helper.
+  - **When the branch it falls through to is also a refusal, compare the detail sentence.** Met
+    2026-11-05 on ⇧F4 and ⇧F2 inside an archive: before the archive route existed, the same call
+    reached the archive backend, which refuses as unsupported, under the very same "Can't create" or
+    "Couldn't rename" title with one OK. One button and the name in the title were true of both. What
+    only the new route could say was its reason, so the test builds the expected detail with the
+    pane's own `describe(_:)` (language-independent for the same reason the count is) and looks for
+    it in `sheetText(in:)`. With the route switched off, that check failed. The count alone could not
+    have, since both branches show one OK; that was read from the code, not run.
   - The general shape is worth more than the sheet: **a control has to change the observable, not
     merely the code path**, and an observable shared by the branch under test and the branch it falls
     through to is not one. Ask what the *other* branch does before believing a negative wait or a
@@ -10170,6 +10178,17 @@ overturned the obvious implementation.
   would have passed live and stayed wrong for any path that registers without an event. Group
   explicitly (`groupsByEvent = false`, a `beginUndoGrouping` around each registration outside an
   undo or a redo, which the manager groups itself).
+- **The inverse of a sequence of steps runs them backwards, and a journal that runs them forwards
+  only shows it once one step's path depends on another's.** Found 2026-11-05 fixing ⇧F2 over a tree
+  selection holding a folder and a file inside it. Renaming them deepest first is the one order that
+  works, so the undo record holds the file's rename and then the folder's, each with the paths that
+  were true when it ran. `UndoJournal.revert` applies steps in order and `UndoRecord.inverted` (what
+  redo runs) kept their order, so undo looked for the file in a folder not yet renamed back, and redo
+  renamed the folder before the file. Every other multi-step record had been order-independent
+  (top-level moves and copies, one path's attributes), which is why forward order had held since M2.
+  The batch record now lists its steps last rename first, and `inverted` reverses its steps, which
+  for those other records changes nothing. `MultiRenameOrderTests` runs rename, undo, redo and undo
+  again on disk, and each of the two halves alone fails it.
 
 ### Transfers and batches
 
