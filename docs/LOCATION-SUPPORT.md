@@ -374,7 +374,8 @@ does (`DeleteRouting`), so a local hit goes to the Trash and a hit on a server i
 permanent delete. A set mixing the two is deleted for good, after the confirmation. A hit inside an
 archive is refused. A deleted or **moved** hit leaves every results tab showing it, in either
 pane — a move as soon as its job finishes, and only for the items that really moved — and ⌘Z puts
-a trashed or moved hit's row back with the file, for a hit on this Mac. A hit on a server is not
+a trashed or moved hit's row back with the file, for a hit on this Mac. Since 2026-11-05 the hits
+inside a deleted or moved folder leave and come back with it, whether or not the folder was a hit. A hit on a server is not
 followed — an undo that puts the file back leaves the row gone — because the check would cost a
 round trip per hit on every refresh. A rename, in place or as a job, renames the row in every
 results tab in either pane, and since 2026-11-05 a hit inside a renamed folder moves with it; ⌘Z
