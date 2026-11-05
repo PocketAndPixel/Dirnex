@@ -299,8 +299,8 @@ pinned by tests and not exercised live.
 | Drag and drop, inside Dirnex | yes | yes | yes, partially<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>jjj</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
 | Drag **out** to Finder and other apps | yes | yes | **no**<sup>j</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | no<sup>h</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes |
 | Drag **in** from Finder and other apps | yes | yes | **no**<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | no<sup>jjj</sup> | no<sup>k</sup> | no<sup>k</sup> |
-| New Folder `F7` | yes | yes | no | yes | yes | yes | yes | yes, limited<sup>l</sup> | no<sup>jjj</sup> | no | no |
-| New / Edit File `⇧F4` | yes | yes | no | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | no | no |
+| New Folder `F7` | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | yes, limited<sup>l</sup> | no<sup>jjj</sup> | no | no |
+| New / Edit File `⇧F4` | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | no | no |
 | Rename `F2` | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
 | Multi-rename `⇧F2` | yes | yes | no<sup>ccc</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
 | Delete `F8` → Trash | yes | yes, limited<sup>o</sup> | n/a | n/a | n/a | n/a | n/a | n/a | no<sup>jjj</sup> | yes<sup>aac</sup> | n/a |
@@ -521,6 +521,19 @@ backend's own `moveItem`, which an archive answers `.unsupported` to — so it k
 rather than being pointed at F2's, which would have enabled it over a flow that fails once per item.
 Batching N renames into the one rewrite the container actually wants is its own slice; nothing about
 the rewrite is in the way of it (PLAN.md §4 ▸ *Still open*, 2026-09-10).
+
+<sup>yyy</sup> F7 and ⇧F4 inside a browsed archive make the new member by F2's rewrite (2026-11-05):
+extract, make the folder or an empty file in the staged tree, repack, atomic swap. The staged `mkdir`
+and `O_EXCL` create refuse a name that is already there, a twin differing only in case included, so
+nothing in the archive is ever replaced by an empty one. Neither confirms, and ⌘Z puts the container
+back. ⇧F4 with a new name makes the empty member first and then opens it as F4 opens any member, so
+the row is under the cursor at once and the first save comes back through the write-back question,
+as a second rewrite. "Limited" for rename's reasons: each costs a full pass over the archive, a
+nested archive and a self-extractor gray both items out, and an archive in an undeclared code page
+offers the chooser, after which the key is pressed again (▸ <sup>ddd</sup>). An archive whose names
+are hidden shows only its wrapper, while every rewrite works on the payload, so a folder made at its
+root lands inside the payload and is not among the rows: the disagreement paste already has there
+(NOTES.md ▸ Archives and encryption).
 
 <sup>bbb</sup> A duplicate within one SFTP account is the **server's** work: OpenSSH's `copy-data`
 extension gives `sftp` a real `cp` — measured against a real `sshd`, 64 MiB in **0.09 s** for the

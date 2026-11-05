@@ -19195,6 +19195,58 @@ Decided before Slice 1:
     folders open and the cursor on the same film. A second quit saved the same state. The
     defaults domain was restored, and all 71 keys are unchanged.
 
+**2026-11-05: F7 and ⇧F4 work inside a browsed archive** (core, then app). Two plain "no" cells in
+LOCATION-SUPPORT.md's archive column, picked from what was still open once M35 closed. Both keys did
+nothing at all there: `creationDirectory` is `nil` in a browsed archive, so the dialogs never opened
+and the menu items were gray.
+
+- **Probed first.** Against bsdtar 3.5.3 (libarchive 3.7.4), an empty folder and an empty file staged
+  into an extracted zip, 7z, tar and tar.gz each came back as their own entries after the repack. The
+  encrypted route's walk records every directory, children or not.
+- **Core:** `ArchiveMutation+Creation`. `createdInnerPath(named:inInnerDirectory:)` takes rename's
+  name check, now shared as `isMemberName`. `stage(_:at:inWorkingDirectory:)` makes the member in the
+  staged tree with `mkdir` or `O_CREAT | O_EXCL`, so the create is its own collision check: a taken
+  name, a twin differing only in case and a symlink of that name are each refused as
+  `alreadyExists` naming the member, and nothing is replaced. `ArchiveMutationCreationTests`. With
+  `O_EXCL` removed as a control, the collision, case-twin and symlink tests failed, and the symlink was
+  followed out of the scratch tree.
+- **App:** `ArchiveWriter.create` is rename's twin over `rewrite`. `archiveCreationDirectory` answers
+  for a writable archive (not a nested one, not a self-extractor). It is kept apart from
+  `creationDirectory` because paste, drop and ⌥⌘V also read that one, and ⌥⌘V into an archive is
+  deliberately off. `createTarget` joins the two for F7, ⇧F4 and both validators.
+  `+ArchiveCreate` runs the rewrite, journals it, re-lists and puts the cursor on the new row. Neither
+  key confirms, for rename's reason. **⇧F4 with a new name makes the empty member first and then opens
+  it as F4 opens any member** (the user's call, over adding it on the first save), so the row is there
+  at once and the save comes back through the write-back question as a second rewrite. No new strings:
+  the failure titles are the local ones.
+- **Tests:** `ArchiveCreateTests` drives the writer on real zip, AES-256 zip and tar.gz files with a
+  scratch undo store. `ArchiveCreateReachTests` covers the gates and runs ⇧F4 through a pane to a
+  refusal from inside the archive. A successful create through a pane would file a copy into the
+  developer's own undo store, so the pane is driven only to the refusal. The ⇧F4 test compares the
+  detail sentence, because the old path also ended in a one-button "Can't create “TWO.TXT”" sheet (the
+  archive backend refuses `createFile` as unsupported). With the ⇧F4 branch and the validator change
+  removed as a control, exactly those two tests failed.
+- **Live**, Debug build from `build/debug-dd`, launched by path, background computer-use on a scratch
+  zip holding `readme.txt` and `docs/api.md`:
+  - File ▸ New Folder offered «Create a folder in “sample.zip”.». Create put `untitled folder/` in the
+    zip beside the untouched members, with the cursor on the new row, and saved a 518-byte undo copy,
+    the original's size.
+  - Edit ▸ Undo Change Archive put the zip back, matching the checksum taken before the run.
+  - ⇧F4 with `notes.txt` added a 0-byte member and opened its extracted copy in TextEdit. An atomic
+    write to that copy, standing in for the editor's save, raised «Save “notes.txt” back into
+    “sample.zip”?». Save Back left `notes.txt` at 28 bytes with the written text, and `readme.txt`
+    unchanged.
+  - F7 with `docs` answered «Can’t create “docs”: An item with that name already exists here.», and
+    the zip's checksum did not change.
+  - TextEdit, which the run had started, was quit. The defaults domain was restored, and all 71 keys
+    are unchanged.
+- **Not run live**: an encrypted archive (its passphrase sheet is a secure field background
+  computer-use will not type into), a nested archive's gray items, and the code-page chooser after a
+  refused create. The first is covered by `ArchiveCreateTests` and the other two by reasoning from the
+  shared gates. **Not handled**: an archive with hidden names lists only its wrapper while every
+  rewrite works on the payload, so a folder made at its root is not among the rows. Paste has the same
+  disagreement there (NOTES.md ▸ Archives and encryption).
+
 ---
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)

@@ -144,8 +144,13 @@ extension PanelViewController {
     /// and Paste in a Trash tab (docs/NOTES.md). This is the same guard `promptForNewFolder` uses,
     /// for the same reason. Safe in a menu validator, which does not reconcile the cursor first:
     /// *which* directory follows the cursor in a tree, but *whether there is one* never does.
+    ///
+    /// A writable browsed archive is the other place it can (`archiveCreationDirectory`): it carries
+    /// no `.write`, since its writes are rewrites rather than VFS primitives, and has no real
+    /// directory, so it is asked separately rather than through either half above.
     private var canCreateFileHere: Bool {
         backend.capabilities(for: panel.path).contains(.write) && creationDirectory != nil
+            || archiveCreationDirectory != nil
     }
 
     /// The entry F4 would act on: the cursor's, never the marked set, never the `..` row, and
@@ -238,7 +243,7 @@ extension PanelViewController {
         // The cursor decides the target in a tree, and the table's selection is the live cursor
         // (`PanelViewController+CreateTarget`).
         reconcileCursorFromTable()
-        guard let target = creationDirectory, canCreateFileHere else { return }
+        guard let target = createTarget, canCreateFileHere else { return }
         let alert = NSAlert()
         alert.messageText = String(
             localized: "Edit File",
@@ -312,7 +317,9 @@ extension PanelViewController {
     ///
     /// The create is deliberately **not** undoable, unlike New Folder's. The file is handed to an
     /// external editor in the same breath, so by the time ⌘Z could be reached another app owns it —
-    /// and a folder, which is what New Folder leaves behind, just sits there inert.
+    /// and a folder, which is what New Folder leaves behind, just sits there inert. Inside an archive
+    /// it *is* undoable, as a side effect rather than a choice: the create is a rewrite of the
+    /// container, and every rewrite journals the container as it was (`+ArchiveCreate`).
     ///
     /// Internal, not private: `EditFileRouteTests` drives it directly, because the dialog above it
     /// is an `NSAlert` and a test host that presents one waits for a human (docs/NOTES.md ▸ Testing).
@@ -356,6 +363,14 @@ extension PanelViewController {
                     return
                 }
                 openForEditing(existing)
+                return
+            }
+            // Inside an archive the empty member is made by a rewrite, then opened like any member,
+            // so its first save goes back through the archive's own write-back question.
+            if target.backend.isArchive {
+                createArchiveMember(.emptyFile, at: target) { [weak self] created in
+                    self?.openForEditing(created)
+                }
                 return
             }
             do {
