@@ -230,10 +230,12 @@ extension PanelViewController {
                         try backend.moveItem(at: source, to: destination)
                     }
                 }.get()
-                // A search snapshot cannot re-list itself, so the row it is still drawing has to be
-                // put back under the new name by hand; every other listing re-lists or re-gathers
-                // below.
-                substituteSearchHit(source, renamedTo: newName)
+                // A search snapshot cannot re-list itself, so its rows are put where the rename left
+                // them by hand, hits inside a renamed folder included; every other listing re-lists
+                // or re-gathers below.
+                noteSearchHitsRenamed(
+                    [SearchSnapshot.Renamed(from: source, to: destination)], landing: destination
+                )
                 refreshCurrentDirectory(selecting: destination)
                 focusTable()
                 host?.recordUndoableAction(.rename(from: source, to: destination))

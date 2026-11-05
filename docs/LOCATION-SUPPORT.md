@@ -376,9 +376,11 @@ archive is refused. A deleted or **moved** hit leaves every results tab showing 
 pane — a move as soon as its job finishes, and only for the items that really moved — and ⌘Z puts
 a trashed or moved hit's row back with the file, for a hit on this Mac. A hit on a server is not
 followed — an undo that puts the file back leaves the row gone — because the check would cost a
-round trip per hit on every refresh. A rename that
-had to run as a job renames the row. Search hits and Recents only since 2026-10-14; the iCloud
-Drive row always could. Verified live on local hits; a server's hits by tests only.
+round trip per hit on every refresh. A rename, in place or as a job, renames the row in every
+results tab in either pane, and since 2026-11-05 a hit inside a renamed folder moves with it; ⌘Z
+and ⇧⌘Z of a rename follow it the same way, except inside an archive, whose undo swaps the whole
+container. Search hits and Recents only since 2026-10-14; the iCloud Drive row always could.
+Verified live on local hits; a server's hits by tests only.
 
 <sup>o</sup> Two halves, and they meet on a cloud mount. **Put Back** works for anything Finder
 trashed to `~/.Trash`, a volume's `.Trashes`, or a Google Drive mount's `.Trash`, and — since M26

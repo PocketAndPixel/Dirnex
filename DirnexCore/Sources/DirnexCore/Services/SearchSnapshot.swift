@@ -4,8 +4,8 @@ import Foundation
 ///
 /// A search snapshot is the one listing that can neither re-list nor re-gather itself — it keeps the
 /// hits it was given, which is right for the world changing underneath it and wrong for a change the
-/// app made itself. So a delete or a move is applied to it by hand, the way an in-place rename is
-/// (`substituteSearchHit` in the app). Two halves:
+/// app made itself. So a delete or a move is applied to it by hand, the way a rename is
+/// (``renaming(_:after:)``). Two halves:
 ///
 /// - ``applying(_:to:)`` — the rows a delete or a move took away, and the ones a queued rename
 ///   renamed where they stand.
@@ -25,7 +25,8 @@ public enum SearchSnapshot {
         case removed(VFSPath)
         /// Moved, landing at the second path. A landing in the hit's own folder is a rename — the
         /// shape a queued rename takes (an S3 prefix, a rename across devices) — and the row stays
-        /// under its new name; anywhere else, the hit has left the place it was found.
+        /// under its new name, as does every hit inside it when it is a folder; anywhere else, the
+        /// hit has left the place it was found.
         case moved(VFSPath, to: VFSPath)
 
         var source: VFSPath {
@@ -51,14 +52,20 @@ public enum SearchSnapshot {
             changes.map { ($0.source, $0) },
             uniquingKeysWith: { _, last in last }
         )
+        // A queued rename of a folder carries the hits inside it, as an in-place one does
+        // (``renaming(_:after:)``, 2026-11-05).
+        let renames = changes.compactMap { change -> Renamed? in
+            guard case let .moved(source, landing) = change, isRename(source, landing) else { return nil }
+            return Renamed(from: source, to: landing)
+        }
         var shown: [FileEntry] = []
         var departed: [FileEntry] = []
         for entry in entries {
             switch bySource[entry.path] {
             case nil:
-                shown.append(entry)
-            case let .moved(source, to: landing)?
-                where landing.backend == source.backend && landing.parent == source.parent:
+                let landing = path(entry.path, after: renames)
+                shown.append(landing == entry.path ? entry : entry.relocated(to: landing))
+            case let .moved(source, to: landing)? where isRename(source, landing):
                 shown.append(entry.renamed(to: landing.lastComponent))
             case .removed?, .moved?:
                 departed.append(entry)
