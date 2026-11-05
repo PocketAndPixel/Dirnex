@@ -270,8 +270,9 @@ extension PanelViewController {
     /// Every results tab rather than the one the gesture started in, because the question is about
     /// the *file*. A move reaches the window only when its job finishes, with no tab attached, and a
     /// delete over a server takes long enough to switch tabs under; any tab showing the hit is
-    /// showing a file that is not there. Rows inside an expanded folder are not hits, and are left
-    /// to the tree's re-list of that folder.
+    /// showing a file that is not there. A hit inside a folder that was deleted or moved away leaves
+    /// with it, and is remembered the same way (2026-11-05). Rows inside an expanded folder are not
+    /// hits, and are left to the tree's re-list of that folder.
     ///
     /// A hit that can come back is remembered (`PanelTab.departedSearchHits`), so ⌘Z restores its
     /// row: when `canReturn` — a Trash pass or a move, never a permanent delete — and only on this

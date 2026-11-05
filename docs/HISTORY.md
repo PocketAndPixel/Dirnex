@@ -19355,8 +19355,9 @@ undo re-lists both panes and a snapshot is the one listing that does not.
   in `notes2`, read "…/notes2" throughout. The fixture was removed and the defaults domain restored;
   all 71 keys are unchanged. **Not run live**: F2 itself (its inline field cannot be committed from
   the background; it calls the same `noteSearchHitsRenamed`), redo, and a hit on a server.
-- **Not changed**: a hit inside a folder that was **moved** elsewhere keeps the old path. The folder's
-  own row leaves the tab, as every moved hit does, and the hits under it are not followed.
+- **Not changed here**: a hit inside a folder that was **moved** elsewhere keeps the old path. The
+  folder's own row leaves the tab, as every moved hit does, and the hits under it were not followed
+  until the second entry below.
 
 **2026-11-05: ⌘Z and ⇧⌘Z of a rename inside an archive move its search hits too** (core, then app).
 Asked for by the user from the entry above. A rewrite's undo is `.restoreArchive`, a swap of the
@@ -19385,6 +19386,47 @@ inside it cannot, and kept the names the rename had given them.
   hit read `notes` and `notes-a.txt` read "/notes". Redo Change Archive brought `notes_v2` and
   "/notes_v2" back, and a last undo left the zip as it started. The defaults domain was restored;
   all 71 keys are unchanged.
+
+**2026-11-05: a search hit inside a folder that was moved or deleted leaves with it, and ⌘Z brings it
+back** (core). Found by reading the code after the rename entries above. A results tab cannot re-list,
+so a delete or a move is applied to it by hand, and `SearchSnapshot.applying` matched only the exact
+path of each item that left. A hit inside a moved or deleted folder fell through as unchanged and went
+on naming the folder's old place, so opening, previewing, Get Info, F4 or F2 on it failed with "not
+found". The same held for a folder moved or deleted from a folder tab, which was never a hit itself,
+for any results tab holding hits inside it. ⌘Z made those rows right again only because the folder
+went back to where they thought it was.
+
+- **Rule:** such a hit **leaves** the tab with the folder, rather than being pointed at the new place.
+  The folder's own row leaves because it is no longer where the search found it, which is as true of
+  everything inside it, and a deleted folder has no new place. It goes into `departed` like any other
+  hit, so the app remembers it under the existing rule (a Trash pass or a move, a hit on this Mac) and
+  ⌘Z brings it back with the folder; ⇧F8 follows none of them.
+- **Core:** `applying(_:to:)` collects the sources of every delete and every move that left its
+  folder, and an entry not matched exactly departs when one of them is among its ancestors
+  (`isInside(_:anyOf:)`, a walk up the path's parents into a set, since a tab holds up to 5 000 hits
+  and a move of all of them reports as many folders). A move that stayed in its own folder is still a
+  queued rename and carries its hits, as before. `SearchSnapshotFolderTests`: the folder hit moved and
+  deleted, a folder that was not a hit, a folder and a hit inside it moved together, the queued rename
+  control, the narrowness controls (a sibling sharing the folder's prefix, the same path on a server),
+  and the whole chain against `CopyEngine` and `UndoJournal.revert` on a real tree. With the new case
+  disabled, the five tests aimed at it fail and the controls pass.
+- **App:** nothing new. Every delete reaches every results tab in both panes through
+  `noteSearchHitsDeleted`, and every finished move through `applySearchHitChanges`, whichever tab it
+  started in. `SearchHitFolderTests` drives both through the pane: a moved and a trashed folder hit
+  round-trip through ⌘Z, a permanently deleted one follows nothing, and a folder moved or trashed from
+  a folder tab empties a results tab behind it of the hits inside. With the core's new case disabled,
+  all four fail.
+- **Live**, Debug build from `build/debug-dd`, launched by path, background computer-use, on a fixture
+  in `build/live-folder-fixture` (`Work/notes/notes-a.txt`, `Work/notes/deep/notes-b.txt`,
+  `Work/other/notes-c.txt`, an empty `Archive`), with both panes seeded to local tabs so no server
+  tab reconnected, and a saved search for `notes` scoped to `Work`, which opened in two results tabs.
+  F8 on the `notes` hit, from the function bar, sent the folder to `~/.Trash` and left only
+  `notes-c.txt` in **both** tabs; Edit ▸ Undo Move to Trash put the folder back and all four rows
+  with it, in the background tab too. F6 on the same hit moved it into `Archive` (no sheet) with the
+  same result, and Undo Move brought all four back. From the `Work` folder tab, opened into `notes`,
+  F8 on `deep`, which was never a hit, took only `notes-b.txt` out of the results tab behind it, and
+  Undo put it back. The fixture was removed and the defaults domain restored; all 71 keys are
+  unchanged. **Not run live**: ⇧F8, a redo, and a hit on a server.
 
 ---
 
