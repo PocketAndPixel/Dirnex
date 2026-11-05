@@ -158,16 +158,17 @@ extension PanelViewController {
             }
 
             panel.clearSelection()
-            // A search snapshot re-lists nothing, so each row this batch renamed is put back under
-            // its new name by hand (`substituteSearchHit`); every other listing refreshes below.
-            for pair in result.renamed {
-                substituteSearchHit(pair.original, renamedTo: pair.renamed.lastComponent)
-            }
             // Land the cursor on the first renamed item at the shallowest depth, whose new path no
             // later rename in the batch can have moved (`RenameOrder.shallowest`).
-            refreshCurrentDirectory(
-                selecting: RenameOrder.shallowest(result.renamed) { $0.renamed.path }?.renamed
+            let landing = RenameOrder.shallowest(result.renamed) { $0.renamed.path }?.renamed
+            // A search snapshot re-lists nothing, so every hit this batch reached is put where it
+            // now is by hand, in the order the batch ran (`noteSearchHitsRenamed`); every other
+            // listing refreshes below.
+            noteSearchHitsRenamed(
+                result.renamed.map { SearchSnapshot.Renamed(from: $0.original, to: $0.renamed) },
+                landing: landing
             )
+            refreshCurrentDirectory(selecting: landing)
             focusTable()
             if let record = UndoRecord.multiRename(result.renamed) {
                 host?.recordUndoableAction(record)

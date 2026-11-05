@@ -19317,8 +19317,46 @@ hidden behind the first.
   landed on `docs_v2`. Edit ▸ Undo Rename put all three back, Redo Rename renamed all three again, and
   a last Undo left the folder as it started, with the same bytes. The defaults domain was restored,
   and all 71 keys are unchanged.
-- **Not changed**: a results tab still keeps the old parent path for a hit inside a folder the batch
-  renamed, as it already did after F2 on a folder hit.
+- **Not changed here**: a results tab kept the old parent path for a hit inside a folder the batch
+  renamed, as it already did after F2 on a folder hit. Fixed in the entry below.
+
+**2026-11-05: a search hit inside a renamed folder moves with it, in every results tab, and ⌘Z
+follows** (core, then app). Asked for by the user from the entry above. A results tab cannot re-list,
+so the app applies its own renames to it by hand, and `substituteSearchHit` did that for one row: the
+renamed item itself, and only in the tab the rename ran in. A hit inside a renamed folder went on
+showing the folder's old name in its path, which addresses nothing, so opening, previewing or
+renaming it failed. Two more gaps sat beside it: another results tab showing the same hits was not
+updated at all, and ⌘Z or ⇧⌘Z of a rename left the row on the name the rename had given it, since
+undo re-lists both panes and a snapshot is the one listing that does not.
+
+- **Core:** `SearchSnapshot+Renames`. `path(_:after:)` folds renames in the order they ran, so a hit
+  takes its new path whether it was renamed itself or sits inside a renamed folder; ⇧F2's
+  deepest-first order is what makes the fold land right. `renaming(_:after:)` applies it to the
+  rows, keeping order and each row's own name (`FileEntry.relocated(to:)`, which `renamed(to:)` now
+  calls). `renames(appliedBy:report:)` reads an undo's or redo's renames off its own `.restore` steps
+  that stayed in their folder, leaving out any the report names as failed. `applying(_:to:)`, the
+  queued-job path, now carries a folder's hits when the folder's rename ran as a job (an S3 prefix).
+  `SearchSnapshotRenameTests`; with the rename limited to the exact row, as before, five fail. The
+  round trip had passed that control at first, because it compared against paths the same function
+  produced; it now spells the renamed paths out.
+- **App:** `noteSearchHitsRenamed` replaces `substituteSearchHit` at all four rename sites (F2, ⇧F2,
+  and both archive routes) and reaches every results tab in both panes, as `noteSearchHitsDeleted`
+  always has; the gesture's tab takes the landing, the others keep the cursor on their own row. Undo
+  and redo call `applySearchHitRenames` on both panes (`followSearchHitRenames`). An undone *archive*
+  rename is a container swap with no rename step in it, and is not followed. `SearchHitRenameTests`
+  moved to the new call and gained the folder case and the every-tab case; with the update limited to
+  the gesture's tab, the every-tab test fails.
+- **Live**, Debug build from `build/debug-dd`, launched by path, background computer-use, on a fixture
+  in `build/live-search-fixture` (`notes/notes-a.txt`, `notes2/notes-d.txt`, `other/notes-c.txt`)
+  found through a seeded saved search, which opened in two results tabs. The Multi-Rename Tool on the
+  `notes` hit renamed the folder to `notes_v2`. Get Info on the `notes-a.txt` hit then read
+  "Where: …/build/live-search-fixture/notes_v2" in **both** tabs. Edit ▸ Undo Rename put the folder
+  back, the folder row read `notes` again, and Get Info on `notes-a.txt` read "…/notes". `notes-d.txt`,
+  in `notes2`, read "…/notes2" throughout. The fixture was removed and the defaults domain restored;
+  all 71 keys are unchanged. **Not run live**: F2 itself (its inline field cannot be committed from
+  the background; it calls the same `noteSearchHitsRenamed`), redo, and a hit on a server.
+- **Not changed**: a hit inside a folder that was **moved** elsewhere keeps the old path. The folder's
+  own row leaves the tab, as every moved hit does, and the hits under it are not followed.
 
 ---
 

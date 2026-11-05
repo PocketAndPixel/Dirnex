@@ -236,9 +236,19 @@ public struct FileEntry: Sendable, Hashable, Identifiable {
     /// refuses to re-list a results root). A hit the app has just renamed is still that hit, so the
     /// row is substituted rather than dropped or left showing a name that is no longer on disk.
     public func renamed(to newName: String) -> FileEntry {
+        relocated(to: (path.parent ?? path).appending(newName))
+    }
+
+    /// The same item at `newPath`, named after its last component — a hit inside a folder the app
+    /// has just renamed keeps its own name and moves with the folder (``SearchSnapshot``). The
+    /// general form of ``renamed(to:)``, for the same reason and with the same carried-over fields.
+    ///
+    /// A row whose last component did not change keeps the name it had, so the rare row that wears
+    /// a name other than its path's (``nameMatchesPath``) is not renamed by a move of its folder.
+    public func relocated(to newPath: VFSPath) -> FileEntry {
         FileEntry(
-            path: (path.parent ?? path).appending(newName),
-            name: newName,
+            path: newPath,
+            name: newPath.lastComponent == path.lastComponent ? name : newPath.lastComponent,
             kind: kind,
             byteSize: byteSize,
             modificationDate: modificationDate,

@@ -388,6 +388,17 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
 - **Two clicks on a row with only key presses between them make a double-click.** Seen 2026-10-24:
   click, Space, Space, click on a zip, all inside the double-click interval, opened the archive. Wait
   a second between clicks, or move the cursor with the arrow keys.
+- **Find Files on this Mac runs off the Spotlight index, so a fixture in a temp folder finds nothing.**
+  Seen 2026-11-05: a saved search scoped to the session scratchpad under `/private/tmp` opened an
+  empty results tab, because `SpotlightSearchRunner` asks `mdfind` and `/private/tmp` is not
+  indexed. The same files under the repository's git-ignored `build/` were found within a second.
+  Check with `mdfind -onlyin <folder> 'kMDItemFSName == "*name*"c'` before launching.
+  - **A saved search is opened from the background with a double-click on its sidebar row.** A single
+    `app_click` only selects the row, a Return goes to the file list (it opened the folder under the
+    cursor), and Go ▸ Places lists nothing until the menu is really opened. The double-click ran the
+    search twice and left two results tabs, which was handy for checking a change reaches every tab.
+    Open a new tab first, since the search replaces the active tab's listing. The seed is
+    `Dirnex.savedSearches`, `{"searches": […]}`, written with `-data` while the app is quit.
 - **`plutil -extract` cannot read a Dirnex key**, because its key path splits at the dot in
   `Dirnex.serverConnections` and answers "No value at that key path". Read an export with Python's
   `plistlib` instead.

@@ -150,10 +150,13 @@ extension PanelViewController {
             // The mounted TOC is now stale — drop it so the re-list re-reads the rewritten archive.
             (backend as? CompositeBackend)?.invalidateMountedArchive(at: archiveOnDiskPath)
             journalArchiveRewrite(snapshot)
-            // A search snapshot cannot re-list itself, so the row it is still drawing has to be put
-            // back under the new name by hand — the same substitution the backend route makes, and
-            // the reason F2 works on a hit inside a `.zip` at all.
-            substituteSearchHit(source, renamedTo: newName)
+            // A search snapshot cannot re-list itself, so its rows are put where the rename left
+            // them by hand — the same substitution the backend route makes, and the reason F2 works
+            // on a hit inside a `.zip` at all. Hits inside a renamed folder move with it.
+            let destination = (source.parent ?? source).appending(newName)
+            noteSearchHitsRenamed(
+                [SearchSnapshot.Renamed(from: source, to: destination)], landing: destination
+            )
             refreshArchiveDirectory()
             focusTable()
         } onFailure: { [weak self] error in
@@ -209,16 +212,22 @@ extension PanelViewController {
             (backend as? CompositeBackend)?.invalidateMountedArchive(at: archiveOnDiskPath)
             journalArchiveRewrite(snapshot)
             panel.clearSelection()
-            // A search snapshot cannot re-list itself, so each hit is put back under its new name by
-            // hand, as F2's archive route and the backend loop both do.
-            for proposal in renamed {
-                substituteSearchHit(proposal.source, renamedTo: proposal.newName)
-            }
             // The first of the shallowest, as the backend loop lands (`RenameOrder.shallowest`): a
             // deeper member's new path may sit in a folder the batch renamed after it.
-            if let first = RenameOrder.shallowest(renamed, path: \.source.path),
-               let parent = first.source.parent {
-                let landing = parent.appending(first.newName)
+            let landing = RenameOrder.shallowest(renamed, path: \.source.path).map {
+                ($0.source.parent ?? $0.source).appending($0.newName)
+            }
+            // A search snapshot cannot re-list itself, so its hits are put where the batch left them
+            // by hand, in the order the writer ran it (deepest first), as the backend loop does.
+            noteSearchHitsRenamed(
+                RenameOrder.deepestFirst(renamed, path: \.source.path).map {
+                    SearchSnapshot.Renamed(
+                        from: $0.source, to: ($0.source.parent ?? $0.source).appending($0.newName)
+                    )
+                },
+                landing: landing
+            )
+            if let landing {
                 refreshArchiveDirectory { [weak self] in self?.moveCursor(onto: landing) }
             } else {
                 refreshArchiveDirectory()
