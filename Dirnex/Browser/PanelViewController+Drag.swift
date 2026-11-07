@@ -35,17 +35,18 @@ extension PanelViewController {
     /// for a row with real bytes here and a **file promise** for one whose bytes are on a server.
     /// `nil` only for the synthetic `..` row, which has no backing entry.
     ///
-    /// An **archive member** drags on its payload alone since Slice 5 — a drop inside Dirnex reads
-    /// it and extracts, exactly as F5 copy-out does. It carries no promise, so another app is
-    /// offered nothing and shows "no drop": a promise is one file fetched behind somebody else's
-    /// drop, and an encrypted archive would raise a passphrase sheet there (PLAN.md §M23).
+    /// An **archive member** is promised too since PLAN.md §M36 Slice 2, and extracted where a
+    /// server's file is fetched — unless its archive is locked this session, when it drags on its
+    /// payload alone and another app is offered nothing (`DragOutRoute`, decision A).
     ///
     /// One definition shared with the clipboard rather than a second one here: ⌘C and a drag have to
     /// put the identical payload on the board, and this is where they would otherwise drift.
     func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> NSPasteboardWriting? {
         guard let index = entryIndex(forRow: row),
               let entry = panel.displayedEntry(at: index) else { return nil }
-        return PanelPasteboard.dragWriters(for: [entry], promisedTo: self).first
+        return PanelPasteboard.dragWriters(
+            for: [entry], routes: dragOutRoutes(for: [entry]), promisedTo: self
+        ).first
     }
 
     /// When the grab starts on a marked file, drag the whole marked set (Total Commander
@@ -62,7 +63,9 @@ extension PanelViewController {
         dragWritersFromRow row: Int
     ) -> [any NSPasteboardWriting]? {
         guard let entries = markedSetDragged(fromRow: row) else { return nil }
-        let writers = PanelPasteboard.dragWriters(for: entries, promisedTo: self)
+        let writers = PanelPasteboard.dragWriters(
+            for: entries, routes: dragOutRoutes(for: entries), promisedTo: self
+        )
         return writers.isEmpty ? nil : writers
     }
 
@@ -77,12 +80,18 @@ extension PanelViewController {
 
     // MARK: - A row on a server, on its way to another app
 
-    /// Watch a drag that holds a row on a server, because Finder's promise is no use to most apps.
+    /// Watch a drag that holds a row on a server or inside an archive, because Finder's promise is no
+    /// use to most apps — or a row of a locked archive, whose staying behind has to be explained.
     func fileTable(_ tableView: FileTableView, didBegin session: NSDraggingSession, fromRow row: Int) {
         dragHandoff = nil
-        guard let cache = host?.remoteFileCache, let entries = entriesDragged(fromRow: row),
-              entries.contains(where: RemoteFilePromiseProvider.canPromise) else { return }
+        guard let cache = host?.remoteFileCache, let entries = entriesDragged(fromRow: row) else { return }
+        let routes = dragOutRoutes(for: entries)
+        guard routes.values.contains(
+            where: { $0.isPromised || $0 == .insideDirnexOnly(.lockedArchive) }
+        )
+        else { return }
         let status = RemoteDragStatus(session: session)
+        let extractsOnly = !routes.values.contains(.download)
         dragHandoff = RemoteDragHandoffController(
             board: session.draggingPasteboard,
             entries: entries,
@@ -97,16 +106,44 @@ extension PanelViewController {
             },
             onFailure: { [weak self] error in
                 self?.presentOperationFailure(
-                    message: String(
-                        localized: "Couldn’t copy this item from the server",
-                        comment: """
-                        Alert title when a file dragged out of a server to another app can't be downloaded.
-                        """
-                    ),
+                    message: extractsOnly
+                        ? String(localized: "Couldn’t extract from the archive")
+                        : String(
+                            localized: "Couldn’t copy this item from the server",
+                            comment: """
+                            Alert title when a file dragged out of a server to another app can't be downloaded.
+                            """
+                        ),
                     detail: self?.describe(error) ?? ""
                 )
-            }
+            },
+            offer: DragOutOffer(
+                routes: routes,
+                extractions: dragOutExtractions(for: entries, routes: routes),
+                alreadyHere: { [weak self] in self?.materializedURL(for: $0) },
+                onLockedRowsLeaving: { [weak self] in
+                    self?.reportLockedDragRows(entries, routes: routes)
+                }
+            )
         )
+    }
+
+    /// Say why a member of a locked archive went nowhere: the first time the pointer was over another
+    /// app, which is the moment the row was left out. The way to unlock is the one every gesture
+    /// already has, opening or previewing a file in the archive, which asks once for the session.
+    private func reportLockedDragRows(_ entries: [FileEntry], routes: [VFSPath: DragOutRoute]) {
+        guard let archive = entries.first(where: {
+            routes[$0.path] == .insideDirnexOnly(.lockedArchive)
+        })?.path.backend.archivePath else { return }
+        let name = (archive as NSString).lastPathComponent
+        showTransientStatus(String(
+            localized: "Open a file in “\(name)” first to drag its files out",
+            comment: """
+            Status line when a file of an encrypted archive is dragged toward another app before its \
+            password was entered this session; %@ is the archive's name. Opening or previewing a file \
+            in it asks for the password once.
+            """
+        ))
     }
 
     func fileTableDraggingSessionMoved(_ tableView: FileTableView) {

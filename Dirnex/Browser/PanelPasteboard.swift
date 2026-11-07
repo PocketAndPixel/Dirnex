@@ -57,15 +57,25 @@ enum PanelPasteboard {
     ///
     /// `delegate` is held **weakly** by every promise AppKit builds here, so the caller has to be
     /// something that outlives the drag; a pane is, which is why it is the pane that conforms.
+    ///
+    /// `routes` says which rows are promised (`DragOutRoute.isPromised`): a file on a server, and
+    /// since M36 Slice 2 a file inside an archive this session can open. A row with no route, or a
+    /// route that promises nothing, gets the plain item, which another app takes only for a row on
+    /// this disk.
     static func dragWriters(
         for entries: [FileEntry],
+        routes: [VFSPath: DragOutRoute],
         promisedTo delegate: any NSFilePromiseProviderDelegate
     ) -> [any NSPasteboardWriting] {
         entries.compactMap { entry -> (any NSPasteboardWriting)? in
             guard let data = PasteboardPayload(entry).encoded() else { return nil }
-            if let promise = RemoteFilePromiseProvider.promise(
-                for: entry, payload: data, delegate: delegate
-            ) { return promise }
+            if routes[entry.path]?.isPromised == true {
+                return RemoteFilePromiseProvider.promise(
+                    for: entry,
+                    payload: data,
+                    delegate: delegate
+                )
+            }
             return item(for: entry, payload: data)
         }
     }

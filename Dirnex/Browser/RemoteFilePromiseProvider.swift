@@ -2,8 +2,13 @@ import AppKit
 import DirnexCore
 import UniformTypeIdentifiers
 
-/// A dragged row whose bytes are not on this Mac — what Finder is handed so a file on a server can
-/// be dropped into it (PLAN.md §M23 Slice 4).
+/// A dragged row whose bytes are not a file on this Mac yet — what Finder is handed so a file on a
+/// server can be dropped into it (PLAN.md §M23 Slice 4), and since M36 Slice 2 a file inside an
+/// archive, which the promise extracts where a server's file is downloaded.
+///
+/// Which rows get one is `DragOutRoute`'s decision, read by `PanelPasteboard.dragWriters`; this type
+/// only builds the promise it is asked for. The name predates the archive member and is kept, since
+/// the pane, the handoff and their tests all spell it.
 ///
 /// There is no `file://` URL for such a row until somebody has spent a transfer. macOS's own answer
 /// to that is `NSFilePromiseProvider` — the board advertises "a file of this type, under this name,
@@ -34,19 +39,7 @@ final class RemoteFilePromiseProvider: NSFilePromiseProvider {
     /// private type is simply not advertised and the promise is still a perfectly good promise.
     private var locations: Data?
 
-    /// Whether `entry` is a row a promise can stand for.
-    ///
-    /// Two conditions and each rules out a different thing. It must live on a **server**, because a
-    /// local row already has a real `file://` URL and needs nothing promised; and it must be a
-    /// **file**, because a promise is one file — a folder would mean a recursive fetch behind a
-    /// Finder drop, with no progress surface and no way to stop it, which PLAN.md §M23 puts out of
-    /// scope deliberately rather than by omission. A remote folder still drags *inside* Dirnex on
-    /// its payload alone, exactly as it did before this existed.
-    static func canPromise(_ entry: FileEntry) -> Bool {
-        entry.path.backend.isRemoteConnection && entry.kind == .file
-    }
-
-    /// The promise for `entry`, or `nil` when the row needs none (``canPromise(_:)``).
+    /// The promise for `entry`, which the caller has already routed to one (`DragOutRoute`).
     ///
     /// `payload` is passed in rather than encoded here so that the caller's one decision about what
     /// goes on the board — `PanelPasteboard` — stays the only place a payload is made.
@@ -54,8 +47,7 @@ final class RemoteFilePromiseProvider: NSFilePromiseProvider {
         for entry: FileEntry,
         payload: Data,
         delegate: any NSFilePromiseProviderDelegate
-    ) -> RemoteFilePromiseProvider? {
-        guard canPromise(entry) else { return nil }
+    ) -> RemoteFilePromiseProvider {
         let provider = RemoteFilePromiseProvider(
             fileType: fileType(for: entry.name), delegate: delegate
         )
