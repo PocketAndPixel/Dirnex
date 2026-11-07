@@ -378,6 +378,17 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   - **A throttled `sftp-server` only throttles the subsystem.** Seen 2026-11-03: 70 MB arrived in 0.68 s
     through a `Subsystem sftp` wrapper at 30 KB/s, because a large download goes over the exec channel.
     `ForceCommand` running the same wrapper catches both.
+- **A browser is no drop target for computer use, so a Chromium check needs another app.** Seen
+  2026-11-08: Chrome is granted only at the "read" tier, and the grant says to send it no input by any
+  means, which a drop is. Teams is Chromium but uploads what is dropped (above). TextEdit is a regular
+  app, so a drag over it takes `RemoteDragHandoff`'s path, and its document shows an attachment when a
+  file arrives. Cancel TextEdit's "Convert to RTFD?" question to leave the document unchanged. It does
+  not show whether the file came through the hand-off's lazy URL or through the promise, which Cocoa
+  can take; only Chromium refuses a promise.
+- **Screenshot coordinates are not screen points on a scaled display.** Seen 2026-11-08: the full-screen
+  frame was 1372×887 while `CGWindowListCopyWindowInfo` reported a 1728×1117 screen. Clicks go in the
+  screenshot's frame, and a window list's bounds are in points, so convert before matching a click
+  point against a window.
 - **A background `app_drag` starts a drag session it cannot finish.** Logged 2026-11-02 on a tab chip:
   `mouseDown`, `beginDraggingSession`, then the session's end with operation 0 and no
   `draggingEntered` anywhere, because the whole path is delivered in well under a second. So it shows

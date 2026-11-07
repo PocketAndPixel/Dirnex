@@ -99,4 +99,20 @@ final class RemoteDragStatus {
             comment: "Under a file being dragged out of a server, when it could not be downloaded."
         )
     }
+
+    /// Under a member being dragged out of an archive. No percentage: an extraction reports nothing
+    /// until a member is out, and the usual one is out before this could be drawn.
+    static var extracting: String {
+        String(
+            localized: "Extracting…",
+            comment: "Under a file being dragged out of an archive to another app, while it is extracted."
+        )
+    }
+
+    static var extractionFailed: String {
+        String(
+            localized: "Couldn’t extract",
+            comment: "Under a file being dragged out of an archive, when it could not be extracted."
+        )
+    }
 }

@@ -2,7 +2,9 @@ import AppKit
 import DirnexCore
 
 /// One drag of rows whose bytes are on a server, while it is under way: what lets such a row drop into
-/// Teams, Slack, Chrome and everything else that only takes a real file.
+/// Teams, Slack, Chrome and everything else that only takes a real file. Since M36 Slice 2 a file
+/// inside an archive is one of those rows too, **extracted** where a server's file is downloaded, and
+/// everything else here is the same for both.
 ///
 /// `RemoteDragHandoff` holds the rules and says why each is there. This object does what they ask:
 /// it watches which app is under the pointer, rewrites the drag's board, brings the bytes down and
@@ -36,6 +38,10 @@ final class RemoteDragHandoffController {
     private let showStatus: (String?) -> Void
     private let onLanded: () -> Void
     private let onFailure: (any Error) -> Void
+    /// What each row offers another app, and what extracting a member needs.
+    private let offer: DragOutOffer
+    /// Whether the drag has been over another app yet, so a locked row is mentioned once.
+    private var hasLeftDirnex = false
 
     /// The copies landed so far, by the row they are of.
     private var files: [VFSPath: URL] = [:]
@@ -54,9 +60,15 @@ final class RemoteDragHandoffController {
         handoff.transfer == .running
     }
 
-    /// The rows of `entries` this has to bring down.
+    /// The rows of `entries` this has to bring down or extract.
     private var remoteRows: [FileEntry] {
-        entries.filter(RemoteFilePromiseProvider.canPromise)
+        entries.filter { offer.routes[$0.path]?.isPromised == true }
+    }
+
+    /// Whether every row this brings over comes out of an archive, which is what the drag image says.
+    private var extractsOnly: Bool {
+        let rows = remoteRows
+        return !rows.isEmpty && rows.allSatisfy { offer.routes[$0.path] == .extract }
     }
 
     init(
@@ -68,8 +80,10 @@ final class RemoteDragHandoffController {
         surfaceUnderPointer: @escaping @MainActor () -> RemoteDragHandoff.Surface = RemoteDragPointer.surface,
         showStatus: @escaping (String?) -> Void,
         onLanded: @escaping () -> Void,
-        onFailure: @escaping (any Error) -> Void
+        onFailure: @escaping (any Error) -> Void,
+        offer: DragOutOffer? = nil
     ) {
+        self.offer = offer ?? .serverFilesOnly(entries, cache: cache)
         self.board = board
         self.entries = entries
         self.cache = cache
@@ -86,7 +100,12 @@ final class RemoteDragHandoffController {
     /// The pointer moved. Has to be cheap and has to be prompt: the app under it reads the board a few
     /// milliseconds after this returns.
     func pointerMoved() {
-        apply(handoff.pointerMoved(over: surfaceUnderPointer()))
+        let surface = surfaceUnderPointer()
+        if surface != .neutral, !hasLeftDirnex {
+            hasLeftDirnex = true
+            if offer.holdsLockedRows { offer.onLockedRowsLeaving() }
+        }
+        apply(handoff.pointerMoved(over: surface))
     }
 
     /// The drag is over, whichever way. `mayFinish` is whether a transfer still running may carry on
@@ -161,7 +180,7 @@ final class RemoteDragHandoffController {
     private func startTransfer() {
         let rows = remoteRows
         for row in rows {
-            if let held = cache.cachedURL(for: row) { files[row.path] = held }
+            if let held = offer.alreadyHere(row) { files[row.path] = held }
         }
         let missing = rows.filter { files[$0.path] == nil }
         guard !missing.isEmpty else {
@@ -175,30 +194,46 @@ final class RemoteDragHandoffController {
     }
 
     /// Bring `rows` down on a thread of their own, and come back to the main actor once they are done.
+    ///
+    /// A member is extracted rather than downloaded (`DragOutExtraction`), with what the main actor
+    /// knew about its archive gathered up front. Extraction reports no bytes as it goes, so the count
+    /// moves a whole member at a time.
     private func runTransfer(of rows: [FileEntry]) {
         let root = RemoteFileCache.temporaryRoot.path
         let backend = backend
         let moved = moved
         let cancellation = cancellation
         let outcome = outcome
+        let extractions = offer.extractions
         DispatchQueue.global(qos: .userInitiated).async {
             var landed: [MaterializedFile] = []
+            var extracted: [VFSPath: URL] = [:]
             var done: Int64 = 0
             do {
                 for row in rows {
                     let before = done
-                    try landed.append(MaterializeRunner.materialize(
-                        row,
-                        intoDirectory: root,
-                        using: backend,
-                        onBytes: { moved.value = before + $0 },
-                        isCancelled: { cancellation.isCancelled }
-                    ))
+                    if let extraction = extractions[row.path] {
+                        // An extraction cannot be stopped once it starts, so a drag already called
+                        // off starts none. A download is left to see the flag itself, as it always
+                        // has: checked here too, a stop that beat the first row would never reach
+                        // the server, which is the stop `RemoteDragHandoffEndingTests` watches for.
+                        if cancellation.isCancelled { throw CancellationError() }
+                        extracted[row.path] = try extraction.run()
+                    } else {
+                        try landed.append(MaterializeRunner.materialize(
+                            row,
+                            intoDirectory: root,
+                            using: backend,
+                            onBytes: { moved.value = before + $0 },
+                            isCancelled: { cancellation.isCancelled }
+                        ))
+                    }
                     done += max(row.byteSize, 0)
+                    moved.value = done
                 }
-                outcome.settle(landed: landed, error: nil)
+                outcome.settle(landed: landed, extracted: extracted, error: nil)
             } catch {
-                outcome.settle(landed: landed, error: error)
+                outcome.settle(landed: landed, extracted: extracted, error: error)
             }
             Task { @MainActor [self] in settleTransfer() }
         }
@@ -213,6 +248,7 @@ final class RemoteDragHandoffController {
         for file in settled.landed {
             files[file.source] = URL(fileURLWithPath: file.localPath)
         }
+        files.merge(settled.extracted) { _, extracted in extracted }
         statusTask?.cancel()
         guard let error = settled.error else {
             landed()
@@ -254,13 +290,17 @@ final class RemoteDragHandoffController {
         case .notStarted:
             showStatus(nil)
         case .running:
-            showStatus(RemoteDragStatus.downloading(moved: moved.value, of: total))
+            showStatus(
+                extractsOnly
+                    ? RemoteDragStatus.extracting
+                    : RemoteDragStatus.downloading(moved: moved.value, of: total)
+            )
         case .landed:
             // Worth saying only to an app that was already told there was nothing, because it will
             // not look again until the pointer leaves it and comes back.
             showStatus(handoff.board == .fileURLs ? RemoteDragStatus.ready : nil)
         case .failed:
-            showStatus(RemoteDragStatus.failed)
+            showStatus(extractsOnly ? RemoteDragStatus.extractionFailed : RemoteDragStatus.failed)
         }
     }
 }
@@ -271,6 +311,9 @@ final class RemoteDragHandoffController {
 private final class RemoteDragTransferOutcome: @unchecked Sendable {
     struct Settled {
         let landed: [MaterializedFile]
+        /// Members extracted out of an archive, which no cache adopts: `ArchivePreviewCache` keeps
+        /// what it extracted itself, and these sit in the extractor's temp root until next launch.
+        let extracted: [VFSPath: URL]
         let error: (any Error)?
     }
 
@@ -285,8 +328,45 @@ private final class RemoteDragTransferOutcome: @unchecked Sendable {
         settled != nil
     }
 
-    func settle(landed: [MaterializedFile], error: (any Error)?) {
-        lock.withLock { value = Settled(landed: landed, error: error) }
+    func settle(landed: [MaterializedFile], extracted: [VFSPath: URL], error: (any Error)?) {
+        lock.withLock { value = Settled(landed: landed, extracted: extracted, error: error) }
+    }
+}
+
+/// What one drag offers other apps, gathered on the main actor when it begins (PLAN.md §M36).
+///
+/// The controller used to work this out for itself from each row's backend, which knew only servers.
+/// The pane knows the rest: which archives are locked this session, what a member's extraction needs,
+/// and which copies its window already holds, in either cache.
+struct DragOutOffer {
+    /// The route each row takes, by path (`DragOutRoute`).
+    let routes: [VFSPath: DragOutRoute]
+    /// What extracting each `.extract` row needs, by path.
+    let extractions: [VFSPath: DragOutExtraction]
+    /// A copy of the row already on this disk, from a preview, an open or an earlier drag.
+    let alreadyHere: @MainActor (FileEntry) -> URL?
+    /// Called once, the first time the pointer is over another app, when a row is a member of a
+    /// locked archive (decision A): that row goes nowhere outside Dirnex, and the user is told why.
+    let onLockedRowsLeaving: @MainActor () -> Void
+
+    /// Whether any row stays behind because its archive is locked.
+    var holdsLockedRows: Bool {
+        routes.values.contains(.insideDirnexOnly(.lockedArchive))
+    }
+
+    /// What a drag offered before archive members could go out: every file on a server, from the
+    /// cache it would land in. The default for a caller that names no offer.
+    static func serverFilesOnly(_ entries: [FileEntry], cache: RemoteFileCache) -> DragOutOffer {
+        var routes: [VFSPath: DragOutRoute] = [:]
+        for entry in entries where entry.path.backend.archivePath == nil {
+            routes[entry.path] = DragOutRoute.route(for: entry) { _ in true }
+        }
+        return DragOutOffer(
+            routes: routes,
+            extractions: [:],
+            alreadyHere: { cache.cachedURL(for: $0) },
+            onLockedRowsLeaving: {}
+        )
     }
 }
 

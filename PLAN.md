@@ -198,29 +198,30 @@ Slices:
    `RemoteFetchPurpose.addToArchive`), rewrites from the staged files and removes the *originals* on a
    move. `TransferAdmission.recurses` learned that an archive lives inside its file. F5 from one archive
    into another is now the add ⌘V already was, rather than "Open a folder on disk".
-2. **An archive member dragged out to another app** (next). Needs the extraction to answer on every
-   ending (M23 Slice 4's contract), `RemoteDragHandoff` with an extraction as its transfer for
-   Chromium apps, and decision **A** below.
+2. **An archive member dragged out to another app** (landed 2026-11-08, core then app). The core's
+   `DragOutRoute` is now the one answer to what a dragged row offers another app, where three places
+   in the app each read the backend for themselves. A file in an archive is promised to Finder and
+   extracted for any other app, unless the archive is locked this session (decision **A**).
 3. **A folder dragged out of a server.** `MaterializeRunner` has staged a remote folder as a queue job
    with a bar and Stop since 2026-08-30, which is the progress surface M23 said was missing. Needs
-   probes **P1** and **P2** and decision **B**.
+   probes **P1** and **P2**; decision **B** is taken.
 
 Probes owed before Slices 2 and 3, each needing a real drag session (full-screen control or Oleg's
 hands): **P1**, Finder and an `NSFilePromiseProvider` whose type is `public.folder` — is it taken, what
 URL comes back when the name is already there, and does Finder draw or time out anything while it
-waits; **P2**, Teams, Chrome and Mail handed a lazy `public.file-url` that names a folder; **P3**, a
-member's promise fulfilled while a passphrase sheet is up on Dirnex's inactive window.
+waits; **P2**, Teams, Chrome and Mail handed a lazy `public.file-url` that names a folder. A third, a
+member's promise fulfilled while a passphrase sheet is up on Dirnex's inactive window, was dropped
+with decision A, which never raises one there.
 
-Decisions for Oleg, each with a recommendation:
+Decided by Oleg on 2026-11-08, both as recommended:
 
-- **A — a member of an encrypted archive.** Recommended: offer it to other apps only when the
-  archive's passphrase is already held this session (unlocked by a preview, ⏎ or F5), and otherwise
-  keep it a drag inside Dirnex, with the status line saying why. The alternative is a passphrase sheet
-  raised on an inactive window behind somebody else's drop.
-- **B — a server folder into Finder.** Recommended: F5's own job stages it in the temp root, then it is
-  moved to the URL Finder named and the promise answered, so Stop leaves nothing in Finder's folder.
-  Copying straight into Finder's folder would show progress there but leave a partial tree on Stop.
-  Other apps get no folder until P2 says one is taken.
+- **A — a member of an encrypted archive** is offered to other apps only when the archive's passphrase
+  is already held this session (unlocked by a preview, ⏎ or F5). Otherwise the row still drags inside
+  Dirnex, and the status line says to unlock the archive first. Nothing ever asks for a passphrase
+  behind somebody else's drop.
+- **B — a server folder into Finder** is fetched by F5's own queue job into the temp root, with its
+  bar and Stop in Dirnex, then moved to the URL Finder named before the promise is answered. Stop or a
+  failure leaves nothing in Finder's folder. Other apps get no folder until P2 shows one is taken.
 
 **Progress.**
 
@@ -248,6 +249,30 @@ Decisions for Oleg, each with a recommendation:
   F6 is unchanged; seen fixed on a rebuilt binary. **Not run live**: Edit ▸ Move Items Here being
   enabled (computer use will not press a menu item that touches the clipboard), F5 from the throwaway
   `sshd`, and a real drag, which needs a person.
+- *2026-11-08, Slice 2.* Core: `DragOutRoute` (+7 tests, 4 793 green), with three controls one at a
+  time: the lock ignored, a member folder extracted, the lock asked of every row. App: the route
+  decides the drag's writers and its handoff; `RemoteFilePromiseProvider.canPromise` is gone. Finder's
+  promise for a member is extracted through the window's `ArchivePreviewCache` with the passphrase the
+  session holds and never asks for one; the handoff extracts off the main actor where it downloads,
+  says "Extracting…" on the drag image, and a locked row is named on the status line the first time
+  the pointer is over another app. `ArchiveDragOutTests` (7) runs against real `bsdtar` and AES-256
+  zips, and `DragPromiseTests`' member test now pins the promise instead of its absence. Four controls,
+  each failing only its own tests: a promise answered without the bytes, the handoff not extracting,
+  the lock ignored, the notice removed. Three strings in all 14 languages. The first full parallel
+  run failed one handoff test: a "stopped?" check put before every row could stop a download before
+  it reached the server, which the test watches for, so the check now guards extractions only. Then
+  2 210 app tests passed, with the known `GestureWaitTests` issue, and the defaults domain was
+  unchanged.
+- *2026-11-08, Slice 2 live*, with full-screen control on a fresh Debug build, saved tabs cleared first
+  and the defaults domain imported back afterwards (71 keys unchanged by content). A file dragged out
+  of a plain zip into a Finder window landed with its bytes. The same file dropped into a TextEdit
+  document arrived as an attachment, reusing the copy Finder's promise had extracted, so nothing was
+  extracted twice. A file of a password-protected zip dragged toward Finder landed nothing and
+  extracted nothing, and the status line read "Open a file in “secret.zip” first to drag its files
+  out" while the pointer was over Finder. **Not run live**: a Chromium app. Chrome is granted to
+  computer use as read-only, so nothing may be dropped on it, and a drop into Teams uploads the file
+  to the account's chat files. TextEdit takes the same hand-off code, but from outside it cannot be
+  told whether TextEdit read the hand-off's file URL or took the promise itself.
 
 #### M37 — Compare and merge, past M31 and M34 (M–L)
 

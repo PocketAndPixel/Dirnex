@@ -297,7 +297,7 @@ pinned by tests and not exercised live.
 | Copy **inside one account**, without the bytes crossing this Mac | n/a | n/a | n/a | yes, limited<sup>bbb</sup> | **no**<sup>bbb</sup> | yes, limited<sup>bbb</sup> | yes | — | n/a | — | — |
 | Copy / paste `⌘C` `⌘V` | yes | yes | yes<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>jjj</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
 | Drag and drop, inside Dirnex | yes | yes | yes, limited<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>jjj</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
-| Drag **out** to Finder and other apps | yes | yes | **no**<sup>j</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | no<sup>h</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes |
+| Drag **out** to Finder and other apps | yes | yes | yes, partially<sup>j</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | no<sup>h</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes |
 | Drag **in** from Finder and other apps | yes | yes | yes, limited<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | no<sup>jjj</sup> | no<sup>k</sup> | no<sup>k</sup> |
 | New Folder `F7` | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | yes, limited<sup>l</sup> | no<sup>jjj</sup> | no | no |
 | New / Edit File `⇧F4` | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | no | no |
@@ -336,10 +336,14 @@ another app, and `F5`/`F6`. A row on a server is downloaded first, a folder as a
 and Stop, as `⌥F5`'s are; a member of another archive is extracted first. A move adds and then removes
 the originals, to the Trash on this Mac and after the permanent-delete question on a server, which keeps
 no Trash. The archive itself, or a folder holding it, is refused, and a nested archive takes nothing,
-its mount being a temp copy of a member. Dragging a member **out** to another app is the one gesture
-still missing (a promise is fulfilled behind somebody else's drop, where an encrypted archive would
-have to raise a passphrase sheet with nothing on screen to answer it on — `F5` is the route), and is
-planned as PLAN.md §M36.
+its mount being a temp copy of a member. A **file** inside an archive drags **out** to other apps
+since PLAN.md §M36 Slice 2 (2026-11-08), the way a server's file does: Finder is handed a promise and
+the member is extracted when it takes the drop, and any other app is handed the extracted file once
+the pointer is over it. A member of an encrypted archive goes out only once this session holds its
+passphrase, from a preview, ⏎ or `F5`; before that it drags inside Dirnex only and the status line
+says to open a file in the archive first, because asking would put a sheet behind somebody else's
+drop. A **folder** inside an archive does not drag out yet, waiting on the same probe as a server's
+folder (PLAN.md §M36 Slice 3).
 
 <sup>k</sup> What a drag can and cannot reach, in three parts. A row on a server is dragged **out**
 to Finder as an `NSFilePromiseProvider`: the board advertises the file and the bytes are fetched only
