@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M35 shipped**, **M36–M40 planned** (14 languages; M29's licensing is on in betas, off in stable until the
+Status: **M0–M35 shipped**, **M36 in progress**, **M37–M40 planned** (14 languages; M29's licensing is on in betas, off in stable until the
 store opens; M30's Report a Bug is in every release built while `DIRNEX_BUG_REPORT_URL` is set) ·
 Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
@@ -176,6 +176,78 @@ M35 (an SMB server's shares, as a pane) closed 2026-11-05, and is archived in
 Inherited from M23's risk row (§6): the payload carries locations, not policy, and every paste and
 drop ends in the path F5 takes. A drop into an archive is ⌘V's repack, never a second way in. A live
 check of a drag needs full-screen control or Oleg's hands (docs/LIVE-VERIFICATION.md).
+
+**Opened 2026-11-08.** Reading the add path before any Swift found it was not one path. ⌘V read file
+URLs only, so a ⌘C on a server or inside another archive enabled Paste over an archive and then did
+nothing. And two bugs sat on the route the drop and ⌥⌘V were about to join:
+
+- **F5/F6 from a server pane into an archive read this Mac's disk.** `addSelectionToArchive` handed
+  the rows to `ArchiveWriter.add`, which copies `URL(fileURLWithPath: entry.path.path)`: whatever
+  local file has the server's spelling, or a failure naming one. F6 then offered to delete the server
+  originals.
+- **F6 of the folder holding the archive trashed the archive.** An archive's contents carry the
+  backend `archive:<file>`, and `isSelfOrDescendant` stops at the backend compare, so nothing saw that
+  `proj` holds `proj/backup.zip`. The add put `proj` into the archive and the move then trashed `proj`,
+  archive and all. Reproduced as a failing core test before the fix.
+
+Slices:
+
+1. **One way into an archive** (landed 2026-11-08, core then app). ⌘V, ⌥⌘V, a drop and F5/F6 all
+   reach `beginArchiveAdd`, which admits through `TransferAdmission.pasteAdmits` (moved into the core
+   from the app), asks the Replace question, stages through `materialize` (⌥F5's funnel, under the new
+   `RemoteFetchPurpose.addToArchive`), rewrites from the staged files and removes the *originals* on a
+   move. `TransferAdmission.recurses` learned that an archive lives inside its file. F5 from one archive
+   into another is now the add ⌘V already was, rather than "Open a folder on disk".
+2. **An archive member dragged out to another app** (next). Needs the extraction to answer on every
+   ending (M23 Slice 4's contract), `RemoteDragHandoff` with an extraction as its transfer for
+   Chromium apps, and decision **A** below.
+3. **A folder dragged out of a server.** `MaterializeRunner` has staged a remote folder as a queue job
+   with a bar and Stop since 2026-08-30, which is the progress surface M23 said was missing. Needs
+   probes **P1** and **P2** and decision **B**.
+
+Probes owed before Slices 2 and 3, each needing a real drag session (full-screen control or Oleg's
+hands): **P1**, Finder and an `NSFilePromiseProvider` whose type is `public.folder` — is it taken, what
+URL comes back when the name is already there, and does Finder draw or time out anything while it
+waits; **P2**, Teams, Chrome and Mail handed a lazy `public.file-url` that names a folder; **P3**, a
+member's promise fulfilled while a passphrase sheet is up on Dirnex's inactive window.
+
+Decisions for Oleg, each with a recommendation:
+
+- **A — a member of an encrypted archive.** Recommended: offer it to other apps only when the
+  archive's passphrase is already held this session (unlocked by a preview, ⏎ or F5), and otherwise
+  keep it a drag inside Dirnex, with the status line saying why. The alternative is a passphrase sheet
+  raised on an inactive window behind somebody else's drop.
+- **B — a server folder into Finder.** Recommended: F5's own job stages it in the temp root, then it is
+  moved to the URL Finder named and the promise answered, so Stop leaves nothing in Finder's folder.
+  Copying straight into Finder's folder would show progress there but leave a partial tree on Stop.
+  Other apps get no folder until P2 says one is taken.
+
+**Progress.**
+
+- *2026-11-08, Slice 1.* Core: `TransferAdmission.recurses` (archive containment),
+  `TransferAdmission.pasteAdmits`, `RemoteFetchPurpose.addToArchive`; +8 tests, 4 786 green. Three
+  controls run one at a time, each failing only its own tests: containment (3 tests, 7 issues), the
+  archive same-folder copy (1), a member's move (1). App: `ArchiveAddReachTests` (10), over a real
+  `bsdtar` zip with a scratch undo store, since through a pane the default store is the developer's own
+  Application Support. Three controls: rewriting from the rows' paths instead of the staged files (the
+  server test then read *this Mac's bytes*), a drop gate without the archive (4 tests), and the
+  admission removed at both sites (1). Two strings in all 14 languages. The full app suite, run in
+  parallel: 2 202 tests passed with the known `GestureWaitTests` issue, the defaults domain unchanged
+  by content; the live suites were not up. **Two earlier full runs hung** on an app-modal alert in
+  front of the test host: the end-to-end adds were slower than their waits under the full suite's
+  load, and finished after their tests had freed the host. Fixed in the suite, not the app (NOTES.md ▸
+  Testing ▸ Waits).
+- *2026-11-08, Slice 1 live*, on a fresh Debug build with background computer use and the `.sdef`
+  verbs, saved tabs cleared first so no server tab could raise a Keychain prompt, and the defaults
+  domain imported back afterwards (71 keys unchanged by content). ⌘V of a file Dirnex had copied added
+  it to a real zip with its bytes, the original left alone. ⌥⌘V from the other pane added a file and
+  sent the original to the Trash, and the other pane's listing followed. F6 with the folder holding a
+  zip under the cursor raised "Can’t add to “holder.zip”", and the zip stayed byte-identical. **The run
+  found one bug**: after ⌥⌘V, focus had moved to the pane holding the originals, because their
+  removal focuses its own pane. It now takes focus only if that pane had it when the add finished, so
+  F6 is unchanged; seen fixed on a rebuilt binary. **Not run live**: Edit ▸ Move Items Here being
+  enabled (computer use will not press a menu item that touches the clipboard), F5 from the throwaway
+  `sshd`, and a real drag, which needs a person.
 
 #### M37 — Compare and merge, past M31 and M34 (M–L)
 

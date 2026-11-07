@@ -127,8 +127,9 @@ extension PanelViewController: NSMenuItemValidation {
             return (canReceiveFiles || isWritableArchive) && clipboardHasFiles()
         case #selector(pasteAndMoveFromClipboard(_:)):
             // ⌥⌘V has no standard selector, so it reaches the pane even mid text-edit — step it
-            // aside for a field editor, else gate it like Paste.
-            return canReceiveFiles && clipboardHasFiles()
+            // aside for a field editor, else gate it like Paste: since M36 that includes adding
+            // into a writable archive, which moves by adding and then removing the originals.
+            return (canReceiveFiles || isWritableArchive) && clipboardHasFiles()
                 && !(view.window?.firstResponder is NSText)
         case #selector(renameSelection(_:)):
             // Rename is single-item on the cursor (not the marked set) and never `..`.

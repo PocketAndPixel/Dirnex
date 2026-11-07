@@ -155,6 +155,20 @@ struct RemoteFetchPolicyTests {
         #expect(automatic == [.cursorPreview, .writeBackCheck, .dragOut])
     }
 
+    /// Bytes into an archive is one act whether ⌥F5 makes the archive or an add rewrites one, so the
+    /// two weigh a set the same and both ask rather than decline: somebody pressed the key, or let
+    /// go of the drag, over this archive (PLAN.md §M36).
+    @Test("an add into an archive weighs its sources the way a pack does")
+    func addToArchiveWeighsLikeAPack() {
+        for limit in Self.limits {
+            #expect(
+                RemoteFetchPolicy.threshold(for: .addToArchive, previewLimit: limit)
+                    == RemoteFetchPolicy.threshold(for: .pack, previewLimit: limit)
+            )
+        }
+        #expect(!RemoteFetchPurpose.addToArchive.isAutomatic)
+    }
+
     // MARK: - A save's content check
 
     /// The check's whole budget is the user's limit: up to it the bytes come down, past it the save

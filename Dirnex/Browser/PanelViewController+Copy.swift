@@ -46,11 +46,15 @@ extension PanelViewController {
         // in a results tab whose container is `search:` while every row is an archive member, and
         // routing on the pane sent those to the byte-copy queue, where the archive backend has no
         // `copyFile` to answer with.
-        if isArchive || extractionArchivePath(for: selectionTargets()) != nil {
-            beginArchiveExtraction()
-        } else if let destPane = archiveDestinationPane() {
-            // F5 into an archive is add-into: copy the marked local items into the archive pane.
+        //
+        // An add into an archive is asked first since M36, so F5 from one archive into another is
+        // the add ⌘V already was — the members are extracted on the way in — rather than a refusal
+        // telling the user to open a folder on disk.
+        if let destPane = archiveDestinationPane() {
+            // F5 into an archive is add-into: copy the marked items into the archive pane.
             addSelectionToArchive(destPane, kind: .copy)
+        } else if isArchive || extractionArchivePath(for: selectionTargets()) != nil {
+            beginArchiveExtraction()
         } else {
             beginTransfer(kind: .copy, keepingFolders: keepingFolders)
         }
@@ -69,11 +73,16 @@ extension PanelViewController {
     }
 
     /// The other pane when it's an archive ready to receive an add — the F5/F6 add-into target.
-    /// `nil` (the normal transfer path) unless this pane holds real local files and the counterpart
-    /// is a *writable* archive; a nested archive is read-only (`isWritableArchive`), so it isn't a
-    /// target and F5/F6 fall through to `beginTransfer`, which reports it can't copy there.
+    /// `nil` (the normal transfer path) unless the counterpart is a *writable* archive; a nested
+    /// archive is read-only (`isWritableArchive`), so it isn't a target and F5/F6 fall through to
+    /// `beginTransfer`, which reports it can't copy there.
+    ///
+    /// What this pane holds no longer matters (PLAN.md §M36). It used to have to be local, and was
+    /// not checked: F5 from a server handed the server's paths to `ArchiveWriter` as if they were
+    /// this Mac's. The add now stages whatever is not on this disk, and a member of another archive
+    /// is one of those.
     private func archiveDestinationPane() -> PanelViewController? {
-        guard !isArchive, let destPane = host?.panelCounterpart(of: self),
+        guard let destPane = host?.panelCounterpart(of: self),
               destPane.isWritableArchive else { return nil }
         return destPane
     }
@@ -81,10 +90,22 @@ extension PanelViewController {
     /// Hand this pane's marked/cursor items to the archive pane as an add, consuming the marks the
     /// moment the operation is queued (matching the local F5/F6 flow). For a copy the marks are
     /// cleared here; for a move the source rows stay until `removeArchiveMoveOriginals` trashes them.
+    ///
+    /// A source that **is** the archive, or holds it, is refused here with a sentence rather than
+    /// filtered out in silence the way a paste filters: F5 and F6 name their sources by marking them,
+    /// so quietly adding fewer than were marked would report a success nobody asked for. F6 of the
+    /// folder holding the archive used to add it and then trash it, archive and all.
     private func addSelectionToArchive(_ destPane: PanelViewController, kind: FileOperation.Kind) {
         let sources = selectionTargets()
         guard !sources.isEmpty else { return }
-        destPane.beginArchiveAdd(localSources: sources, kind: kind, from: self)
+        let destination = destPane.panel.path
+        guard !sources.contains(where: {
+            TransferAdmission.recurses(source: $0.path, into: destination)
+        }) else {
+            presentArchiveAddRecursion(into: destination)
+            return
+        }
+        destPane.beginArchiveAdd(sources, into: destination, kind: kind, originalsIn: self)
         if kind == .copy {
             panel.clearSelection()
             reloadEverything()

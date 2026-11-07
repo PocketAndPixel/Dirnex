@@ -296,9 +296,9 @@ pinned by tests and not exercised live.
 | Copy between two different accounts | yes | yes | — | yes | yes | yes | yes | — | yes | — | — |
 | Copy **inside one account**, without the bytes crossing this Mac | n/a | n/a | n/a | yes, limited<sup>bbb</sup> | **no**<sup>bbb</sup> | yes, limited<sup>bbb</sup> | yes | — | n/a | — | — |
 | Copy / paste `⌘C` `⌘V` | yes | yes | yes<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>jjj</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
-| Drag and drop, inside Dirnex | yes | yes | yes, partially<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>jjj</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
+| Drag and drop, inside Dirnex | yes | yes | yes, limited<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | yes, partially<sup>jjj</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> |
 | Drag **out** to Finder and other apps | yes | yes | **no**<sup>j</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | no<sup>h</sup> | yes, partially<sup>k</sup> | yes, partially<sup>k</sup> | yes |
-| Drag **in** from Finder and other apps | yes | yes | **no**<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | no<sup>jjj</sup> | no<sup>k</sup> | no<sup>k</sup> |
+| Drag **in** from Finder and other apps | yes | yes | yes, limited<sup>j</sup> | yes | yes | yes | yes | no<sup>h</sup> | no<sup>jjj</sup> | no<sup>k</sup> | no<sup>k</sup> |
 | New Folder `F7` | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | yes, limited<sup>l</sup> | no<sup>jjj</sup> | no | no |
 | New / Edit File `⇧F4` | yes | yes | yes, limited<sup>yyy</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | no | no |
 | Rename `F2` | yes | yes | yes, limited<sup>ccc</sup> | yes | yes | yes | yes, limited<sup>i</sup> | no | n/a<sup>kkk</sup> | yes | no<sup>m</sup> |
@@ -314,8 +314,9 @@ pinned by tests and not exercised live.
 | APFS clone fast path | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes | yes |
 
 <sup>g</sup> `F5` **out of** an archive extracts the marked members into the other pane (which
-must be a real folder); `F5`/`F6` **into** a top-level archive adds files to it by repacking.
-Move-*out* does not exist — there is nothing to remove from a read-only container.
+must be a real folder); `F5`/`F6` **into** a top-level archive adds files to it by repacking,
+whatever the other pane is showing — this Mac, a server or another archive (<sup>j</sup>, since PLAN.md
+§M36). Move-*out* does not exist — there is nothing to remove from a read-only container.
 
 <sup>h</sup> An account has no verb for "put this file in the account" — its rows are buckets.
 Deliberate (`VFSBackendID.acceptsUploads`), not a gap.
@@ -329,12 +330,16 @@ directory and copy the real file on, through the same funnel `F5` copy-out uses
 (`ArchiveTransferSources`), so a mixed selection of archive, local and remote rows travels as one
 gesture. It is always a **copy** — a read-only container has nothing to remove afterwards, so ⌥⌘V
 drops such a row and a ⌘-forced drag falls back to copying (`TransferAdmission.allowsMove`), the
-same rule that makes `F6` move-out not exist. Two asymmetries: dragging a member **out** to another
-app is the one gesture still missing (a promise is fulfilled behind somebody else's drop, where an
-encrypted archive would have to raise a passphrase sheet with nothing on screen to answer it on —
-`F5` is the route); and `⌘V` **into** a top-level archive adds files by repacking while a *drop*
-into one does not, `⌥⌘V` into one being unsupported either way. All three are planned as PLAN.md
-§M36.
+same rule that makes `F6` move-out not exist. **Into** a top-level archive every gesture adds by
+repacking through one funnel (PLAN.md §M36, 2026-11-08): `⌘V`, `⌥⌘V`, a drop from Dirnex or from
+another app, and `F5`/`F6`. A row on a server is downloaded first, a folder as a queue job with a bar
+and Stop, as `⌥F5`'s are; a member of another archive is extracted first. A move adds and then removes
+the originals, to the Trash on this Mac and after the permanent-delete question on a server, which keeps
+no Trash. The archive itself, or a folder holding it, is refused, and a nested archive takes nothing,
+its mount being a temp copy of a member. Dragging a member **out** to another app is the one gesture
+still missing (a promise is fulfilled behind somebody else's drop, where an encrypted archive would
+have to raise a passphrase sheet with nothing on screen to answer it on — `F5` is the route), and is
+planned as PLAN.md §M36.
 
 <sup>k</sup> What a drag can and cannot reach, in three parts. A row on a server is dragged **out**
 to Finder as an `NSFilePromiseProvider`: the board advertises the file and the bytes are fetched only
