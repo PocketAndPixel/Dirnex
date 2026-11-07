@@ -19,7 +19,7 @@ closed simply reads differently — it is not explained here.
 |---|---|
 | **yes** | Fully done. Behaves as it does on the local disk. |
 | **yes, limited** | Fully done for what the technology allows. The remaining difference **cannot** be closed from our side — the protocol, the service or macOS does not expose it. |
-| **yes, partially** | Done, and the gap **could** be narrowed to look more local. What is left of the parity backlog is the short list at PLAN.md §4 ▸ *Still open*. |
+| **yes, partially** | Done, and the gap **could** be narrowed to look more local. What is left of the parity backlog is planned as M36–M40 at PLAN.md §4 ▸ *Next*, plus the short list at §4 ▸ *Still open*. |
 | **no** | Not implemented, and nothing structural prevents it — so it is backlog too, and its footnote names the milestone. A "no" with no route to a yes is written **n/a** instead. |
 | **n/a** | The concept does not exist there (a Trash inside the Trash, a checksum of a bucket list). |
 
@@ -333,7 +333,8 @@ same rule that makes `F6` move-out not exist. Two asymmetries: dragging a member
 app is the one gesture still missing (a promise is fulfilled behind somebody else's drop, where an
 encrypted archive would have to raise a passphrase sheet with nothing on screen to answer it on —
 `F5` is the route); and `⌘V` **into** a top-level archive adds files by repacking while a *drop*
-into one does not, `⌥⌘V` into one being unsupported either way.
+into one does not, `⌥⌘V` into one being unsupported either way. All three are planned as PLAN.md
+§M36.
 
 <sup>k</sup> What a drag can and cannot reach, in three parts. A row on a server is dragged **out**
 to Finder as an `NSFilePromiseProvider`: the board advertises the file and the bytes are fetched only
@@ -351,7 +352,7 @@ limits follow from a promise being gone once the board has been rewritten: a lar
 another app on its way to Finder has to arrive before Finder will take it, and an app that could have
 taken a promise is offered the file URL too (Mail took a 36.1 MB file from S3 this way, 2026-11-03). A **folder** is not promised
 or offered (a promise is one file, and a recursive fetch behind a drop has no progress surface and no
-way to stop it), so it travels inside Dirnex only. And a **virtual listing** — a results tab, the merged Trash — is a
+way to stop it), so it travels inside Dirnex only; dragging one out is planned as PLAN.md §M36. And a **virtual listing** — a results tab, the merged Trash — is a
 source and never a destination: its rows carry their real paths and copy or drag out per row, while
 nothing can be pasted or dropped *into* a listing that has no directory of its own. The merged
 iCloud row is the exception, landing in the CloudDocs container underneath.
@@ -849,7 +850,8 @@ values, with the JSON tree's rules.
 | Edit the search's conditions and run it again in the same tab<sup>aab</sup> | yes | yes | yes | yes | yes | yes | yes | n/a | yes | yes | yes |
 
 <sup>z</sup> Deliberate: the rows are buckets, and "search every bucket" is a different and far
-more expensive question than the one ⌥F7 asks (PLAN.md §M22).
+more expensive question than the one ⌥F7 asks (PLAN.md §M22). Planned as PLAN.md §M38, with a
+bound the user sees before it starts.
 
 <sup>aa</sup> A virtual listing has no directory, so the scope falls back to **Home** — the hits
 are real files, but the pane you were looking at is not the scope. The exception is a tab of
@@ -894,7 +896,7 @@ level, in 0.27 s (PLAN.md §M32 Slice 5).
 
 <sup>nnn</sup> Not yet. One PhotoKit fetch could answer every capture date in the library at once,
 but names still cost ~1.1 ms an asset, so a search walks month by month like any backend without a
-shortcut (<sup>cc</sup>).
+shortcut (<sup>cc</sup>). Planned as PLAN.md §M38.
 
 ## 5. Metadata and macOS integration
 
@@ -950,7 +952,7 @@ so an evicted placeholder found that way is reported as "not downloaded" rather 
 down. A row whose transfer failed is reported the same way, never as a mismatch.
 
 <sup>gg</sup> A local shell cannot `cd` to a server. An `ssh` session to the SFTP account's own
-host is a different feature and is not built.
+host is a different feature and is not built yet: it is planned as PLAN.md §M38.
 
 <sup>hh</sup> Neither end has to be on this Mac (PLAN.md §M24 Slice 6). The **sources** are brought
 down first — the marked-set fetch note <sup>rr</sup> describes — and each one then names its own
@@ -974,7 +976,7 @@ account again from any of the four surfaces that can pick one: the ⌘F popup, a
 row's Open item, and Go ▸ Places. The credential rules are the restore's, because it is the restore's
 code: an account needing a password it no longer has comes back disconnected rather than prompting.
 What stays partial is the *gesture* — a remote folder is pinned from the menu, never by dragging it
-into the sidebar (PLAN.md §M8's deliberate omission) — and a pin made before the field existed, which
+into the sidebar (PLAN.md §M8's deliberate omission, planned as §M38) — and a pin made before the field existed, which
 carries no way back and fails as it always did, naming the account.
 
 <sup>tt</sup> Read-only since M24 Slice 7: a row that is not on this Mac opens
@@ -1175,8 +1177,8 @@ download ends within 1 ms of the cancel, without one it runs to the end (docs/NO
 The two milestones this list was written for have closed: **M24** (every local-only feature, on a
 file that is not local) on 2026-08-28 and **M25** (what a remote write carries, and what a remote
 delete costs) on 2026-08-29, both archived in [HISTORY.md](HISTORY.md). What is left of the **"no"**
-and **"yes, partially"** cells that are *ours* to close is the short list at [PLAN.md](../PLAN.md)
-§4 ▸ *Still open* — the cells that were too small to be a slice of either. This file is the status;
+and **"yes, partially"** cells that are *ours* to close is planned as M36–M40 at
+[PLAN.md](../PLAN.md) §4 ▸ *Next*, plus the short list at §4 ▸ *Still open* — the cells that were too small to be a slice of either. This file is the status;
 the plan is the work. Nothing that has already shipped is argued here — a closed gap is simply a
 changed cell, and why it changed is in [HISTORY.md](HISTORY.md).
 
