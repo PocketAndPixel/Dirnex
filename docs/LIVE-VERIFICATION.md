@@ -180,6 +180,11 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   passphrase check, `bsdtar`, the `stat` back into local entries, the queue. It landed `one.txt`
   with the right bytes, left the sibling in the archive, and left a temp extraction holding exactly
   one file.
+  - **Both halves of "unreachable" have since moved** (seen 2026-11-08). A tab left inside a local
+    zip came back inside it after a relaunch, and a background `app_click` with `count: 2` on the
+    zip's row enters it. And computer use refuses Edit ▸ Paste and Move Items Here outright ("would
+    touch the system clipboard"), so run those as `run operation "edit.paste"` and
+    `"edit.pasteMove"`, which skip menu validation: the item's enabled state stays unchecked.
   - **The payload has to be minted by hand, not copied from the app**, which is the half that makes
     it evidence: what is being tested is the *reader*, so handing it something the writer produced
     would prove the two agree rather than that either is right (▸ the same rule NOTES.md states for

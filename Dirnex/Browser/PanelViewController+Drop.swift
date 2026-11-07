@@ -44,6 +44,12 @@ extension PanelViewController {
         }
         let destination = plan.destination
         let kind = plan.kind
+        // Into an archive, a drop is ⌘V's repack and never a second way in (PLAN.md §M36): the same
+        // reader, the same Replace question, the same staging of what is not on this disk.
+        if destination.backend.isArchive {
+            addOffered(plan.sources, into: destination, kind: kind)
+            return true
+        }
         // No filter: `dropPlan` has already refused the whole gesture if anything would recurse or
         // if every item already lives here, so there is nothing left to drop per item. The shared
         // funnel owns the off-main stat a foreign board owes and the extraction an archive member
@@ -93,10 +99,11 @@ extension PanelViewController {
         modifiers: NSEvent.ModifierFlags = NSEvent.modifierFlags
     ) -> DropPlan? {
         // A drop needs a real directory to land in — never a virtual pane (search results, the
-        // Trash, or a read-only archive whose write support lands in a later M4 pass).
-        // `writeDirectory` is that directory, and it is what makes the merged iCloud listing a drop
-        // target: its root is the CloudDocs container underneath (PLAN.md §M9).
-        guard let base = writeDirectory else { return nil }
+        // Trash, a nested or self-extracting archive). `writeDirectory` is that directory, and it is
+        // what makes the merged iCloud listing a drop target: its root is the CloudDocs container
+        // underneath (PLAN.md §M9). A browsed archive that takes writes is the other one, since
+        // M36: a drop there adds by repacking, exactly as ⌘V does.
+        guard let base = writeDirectory ?? (isWritableArchive ? panel.path : nil) else { return nil }
         guard let offered = PanelPasteboard.sources(in: info.draggingPasteboard) else { return nil }
 
         let (destination, highlightRow) = dropDestination(
@@ -105,9 +112,8 @@ extension PanelViewController {
         // Validated on the **destination**, not on `base`. They are the same in a flat listing and
         // are not in a tree, where a folder row can belong to another backend entirely — a bucket's
         // contents drawn under an S3 *account* root, whose own rows nothing can be dropped into
-        // (PLAN.md §M23). `receivesFiles` is the same gate ⌘V and F5 read.
-        guard backend.capabilities(for: destination).contains(.write),
-              destination.backend.receivesFiles else { return nil }
+        // (PLAN.md §M23). And `..` at an archive's root is the folder holding the archive.
+        guard acceptsDrop(into: destination) else { return nil }
 
         let sources = droppedPaths(offered)
         guard !sources.isEmpty else { return nil }
@@ -139,6 +145,18 @@ extension PanelViewController {
             sources: offered,
             highlightRow: highlightRow
         )
+    }
+
+    /// Whether bytes can land in `destination`: a folder its backend can write and receive files in
+    /// — `receivesFiles` is the gate ⌘V and F5 read — or a folder inside an archive that takes
+    /// writes, which the archive backend's own capabilities never say, since an add there is a
+    /// rewrite rather than a `.write` primitive (`archiveAcceptsWrites`, the gate F2, F7 and F8 read).
+    private func acceptsDrop(into destination: VFSPath) -> Bool {
+        if let archiveFile = destination.backend.archivePath {
+            return archiveAcceptsWrites(atOnDiskPath: archiveFile)
+        }
+        return backend.capabilities(for: destination).contains(.write)
+            && destination.backend.receivesFiles
     }
 
     /// Where a drop lands: into a directory row it's released *on* (a real subfolder or

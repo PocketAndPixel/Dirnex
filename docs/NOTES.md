@@ -501,6 +501,22 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     blocking SFTP verbs directly. With the S3 suites running too, full runs failed in unrelated
     size-provider tests. Move the whole body through `offCooperativePool` before trusting the
     remaining failures.
+- **A pane flow still running when its test ends finishes against a freed host or a deleted fixture,
+  and its failure alert can then stop the whole run.** Measured 2026-11-08 with
+  `ArchiveAddReachTests` in a parallel run of the full app suite, after the suite had passed alone
+  in 0.15 s. The add's first main-actor hop waited 26 s, so every bounded wait expired and the tests
+  returned, freeing their hosts. The late extraction then found no host (it is `weak`), reported a
+  short set, and with no window `presentOperationFailure` fell back to `runModal()`: an app-modal
+  alert in front of the test host that stalled every suite behind it until a person clicked OK. It
+  happened twice before the cause was found, and a lifetime pin on the host was the wrong first
+  guess.
+  - **To see it, make the window-less alert a log line for one run.** The run then completes, and
+    logs at the flow's steps say which continuation arrived late and what it found.
+  - **Two fixes, both in the suite.** The fixture's `bsdtar` runs through `BlockingWork`: it had
+    called `Process.waitUntilExit()` on the main actor, which spins a nested run loop that drains
+    none of the main actor's work (the stack in the log showed it). And a wait that gives up keeps
+    the pane, the host and the fixtures alive for the rest of the run, so the late work ends quietly
+    instead of failing somewhere nobody is looking.
 - **A wait on a value the code under test sets *before* doing the work is a wait on nothing, and it
   makes a control read as inert.** The Synchronize sheet assigns its comparison synchronously on the
   way in and only then derives the rows, so `settleUntil { sheet.comparison == .content }` is

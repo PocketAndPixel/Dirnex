@@ -19599,6 +19599,95 @@
         }
       }
     },
+    "Can’t add to “%@”": {
+      "comment": "Alert title when F5/F6 into a browsed archive is refused because the archive itself is among the items being added; %@ is the archive's file name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hinzufügen zu „%@“ nicht möglich"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t add to “%@”"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede añadir a «%@»"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible d’ajouter à «%@»"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non puoi aggiungere a “%@”"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”に追加できません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”에 추가할 수 없음"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kan niet toevoegen aan “%@”"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie można dodać do „%@”"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não é possível adicionar a “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нельзя добавить в «%@»"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не можна додати до «%@»"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法添加到“%@”"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法加入至「%@」"
+          }
+        }
+      }
+    },
     "Can’t checksum a folder that isn’t on this Mac": {
       "comment": "Create-checksum failure title when a selected folder is on a server or in an archive.",
       "localizations": {
@@ -102121,6 +102210,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "管理者指令未完成。"
+          }
+        }
+      }
+    },
+    "The archive is one of the items being added, or inside one of them.": {
+      "comment": "Alert detail for the same refusal: a marked item is the archive file, or a folder that contains it, so the archive would end up inside itself.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Archiv ist eines der hinzuzufügenden Objekte oder befindet sich in einem davon."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The archive is one of the items being added, or inside one of them."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El archivo comprimido es uno de los ítems que se añaden, o está dentro de uno de ellos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’archive fait partie des éléments ajoutés, ou se trouve dans l’un d’eux."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’archivio è uno degli elementi da aggiungere, o si trova all’interno di uno di essi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アーカイブは追加する項目のひとつか、そのいずれかの中にあります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아카이브가 추가하려는 항목 중 하나이거나 그중 하나의 안에 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het archief is een van de onderdelen die worden toegevoegd, of staat in een daarvan."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archiwum jest jednym z dodawanych elementów lub znajduje się w jednym z nich."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O arquivo compactado é um dos itens sendo adicionados ou está dentro de um deles."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Архив — один из добавляемых объектов или находится внутри одного из них."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Архів — один з об’єктів, що додаються, або міститься в одному з них."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该归档就是要添加的项目之一，或位于其中某个项目内。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此壓縮檔就是要加入的項目之一，或位於其中某個項目內。"
           }
         }
       }

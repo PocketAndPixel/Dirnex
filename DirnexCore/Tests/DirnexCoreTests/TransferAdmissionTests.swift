@@ -59,6 +59,103 @@ struct TransferAdmissionTests {
         ))
     }
 
+    // MARK: - An archive lives inside its file
+
+    private let backup = VFSBackendID.archive(forArchiveAt: "/Users/oleg/proj/backup.zip")
+
+    /// The one backend crossing that *is* a recursion (PLAN.md §M36). F6 of `proj` into the pane
+    /// browsing `proj/backup.zip` added the folder and then moved it to the Trash, archive and all,
+    /// because the archive's id carries its own backend and `isSelfOrDescendant` stops at the
+    /// backend compare.
+    @Test("a folder holding an archive recurses into that archive's contents")
+    func aFolderHoldingAnArchiveRecursesIntoIt() {
+        #expect(
+            TransferAdmission.recurses(source: .local("/Users/oleg/proj"), into: path(backup, "/"))
+        )
+        #expect(
+            TransferAdmission.recurses(source: .local("/Users/oleg"), into: path(backup, "/src/old"))
+        )
+    }
+
+    @Test("the archive file itself recurses into its own contents")
+    func anArchiveRecursesIntoItself() {
+        #expect(TransferAdmission.recurses(
+            source: .local("/Users/oleg/proj/backup.zip"), into: path(backup, "/docs")
+        ))
+    }
+
+    @Test("a sibling, a same-prefix neighbour and the same path elsewhere do not")
+    func archiveContainmentStaysNarrow() {
+        let inside = path(backup, "/")
+        #expect(
+            !TransferAdmission.recurses(source: .local("/Users/oleg/proj/notes.txt"), into: inside)
+        )
+        #expect(!TransferAdmission.recurses(source: .local("/Users/oleg/pro"), into: inside))
+        #expect(!TransferAdmission.recurses(source: .local("/Users/oleg/proj/backup"), into: inside))
+        // The same spelling on a server is a different folder from the one holding this file.
+        #expect(!TransferAdmission.recurses(source: path(sftp, "/Users/oleg/proj"), into: inside))
+        // …and so is a folder of that name inside another archive.
+        let other = VFSBackendID.archive(forArchiveAt: "/Users/oleg/other.zip")
+        #expect(!TransferAdmission.recurses(source: path(other, "/Users/oleg/proj"), into: inside))
+    }
+
+    // MARK: - One pasted source
+
+    @Test("a same-folder paste copies as the duplicate gesture and moves as nothing")
+    func sameFolderPasteCopiesButDoesNotMove() {
+        let source = VFSPath.local("/tmp/dest/a.txt")
+        let destination = VFSPath.local("/tmp/dest")
+        #expect(TransferAdmission.pasteAdmits(source, into: destination, kind: .copy))
+        #expect(!TransferAdmission.pasteAdmits(source, into: destination, kind: .move))
+        // The control: from anywhere else, both kinds land.
+        let elsewhere = VFSPath.local("/tmp/src/a.txt")
+        #expect(TransferAdmission.pasteAdmits(elsewhere, into: destination, kind: .copy))
+        #expect(TransferAdmission.pasteAdmits(elsewhere, into: destination, kind: .move))
+    }
+
+    /// An add lands every item under its own name, so a same-folder copy into an archive would
+    /// replace the member with itself after asking whether to.
+    @Test("into an archive, a same-folder copy is dropped as well — an add has no duplicate")
+    func sameFolderCopyIntoAnArchiveIsDropped() {
+        let folder = path(backup, "/docs")
+        #expect(
+            !TransferAdmission.pasteAdmits(path(backup, "/docs/x.md"), into: folder, kind: .copy)
+        )
+        // Narrow: another folder of the same archive, and a file from this Mac, still land.
+        #expect(TransferAdmission.pasteAdmits(path(backup, "/x.md"), into: folder, kind: .copy))
+        #expect(TransferAdmission.pasteAdmits(.local("/tmp/x.md"), into: folder, kind: .copy))
+    }
+
+    @Test("a paste refuses a recursion for either kind, the archive's own file included")
+    func pasteRefusesRecursion() {
+        let destination = path(backup, "/")
+        for kind in [FileOperation.Kind.copy, .move] {
+            #expect(!TransferAdmission.pasteAdmits(
+                .local("/Users/oleg/proj"), into: destination, kind: kind
+            ))
+            #expect(!TransferAdmission.pasteAdmits(
+                .local("/Users/oleg/proj/backup.zip"), into: destination, kind: kind
+            ))
+            #expect(!TransferAdmission.pasteAdmits(
+                .local("/tmp/a"), into: .local("/tmp/a/b"), kind: kind
+            ))
+        }
+    }
+
+    @Test("⌥⌘V drops an archive member and keeps everything beside it")
+    func moveDropsAnArchiveMember() {
+        let destination = VFSPath.local("/tmp/dest")
+        #expect(
+            !TransferAdmission.pasteAdmits(path(archive, "/x.md"), into: destination, kind: .move)
+        )
+        #expect(
+            TransferAdmission.pasteAdmits(path(archive, "/x.md"), into: destination, kind: .copy)
+        )
+        #expect(
+            TransferAdmission.pasteAdmits(path(sftp, "/srv/x.md"), into: destination, kind: .move)
+        )
+    }
+
     // MARK: - Volumes
 
     @Test("a backend crossing is never the same volume, whatever the lookup says")

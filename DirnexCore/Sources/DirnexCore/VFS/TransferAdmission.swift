@@ -22,9 +22,56 @@ public enum TransferAdmission {
     ///
     /// `VFSPath.isSelfOrDescendant(of:)` has asked the question correctly since M1 (it compares the
     /// backend first, and walks components rather than characters, so `/tmp/abc` is not inside
-    /// `/tmp/ab`). This is a name for it, not a new rule.
+    /// `/tmp/ab`).
+    ///
+    /// **One backend crossing is a recursion, and it is the one an archive makes** (PLAN.md §M36).
+    /// A browsed archive's contents carry a backend of their own, `archive:<file>`, so the backend
+    /// compare above says a local folder can never contain them — while every byte of them lives
+    /// in a file on this disk that the folder may well hold. Missing it was not a refusal but a loss:
+    /// F6 of `proj` into the pane browsing `proj/backup.zip` added the folder to the archive and then
+    /// moved the folder to the Trash, `backup.zip` inside it. So the archive's own file stands in for
+    /// its contents, and a source that is that file or holds it recurses, for either kind — adding
+    /// an archive to itself is never what anybody meant, and the copy half of it is the half that
+    /// silently doubles the archive's size.
     public static func recurses(source: VFSPath, into destination: VFSPath) -> Bool {
-        destination.isSelfOrDescendant(of: source)
+        if destination.isSelfOrDescendant(of: source) { return true }
+        guard let archiveFile = destination.backend.archivePath else { return false }
+        return VFSPath.local(archiveFile).isSelfOrDescendant(of: source)
+    }
+
+    // MARK: - One pasted source
+
+    /// Whether one pasted `source` may land in `destination` as `kind` — the filter ⌘V and ⌥⌘V apply
+    /// per row.
+    ///
+    /// Per source rather than per set, unlike a drop: a paste's kind is chosen by the *key*, so
+    /// dropping the rows it cannot apply to is what the same-folder rule below has always done,
+    /// where a drag has one kind for the whole gesture and refuses it once. The rule was a private
+    /// function in the app until M36 gave a second reader — the add into an archive — and that
+    /// reader is where it gained its last clause.
+    ///
+    /// - A **recursion** is refused for either kind (``recurses(source:into:)``).
+    /// - A **move** drops an archive member, which has nothing to remove afterwards
+    ///   (``allowsMove(from:)``), and a row already living in the destination, since moving a file
+    ///   onto itself is nothing.
+    /// - A **copy** into the folder it already lives in is kept: that is the duplicate gesture, which
+    ///   the queue renames "<name> copy" the way Finder does. **Except into an archive**, whose add
+    ///   lands every item under its own name and has no duplicate to make, so the copy would replace
+    ///   the member with itself behind a Replace question about nothing.
+    ///
+    /// Any other kind is not something a paste can be, and admits nothing.
+    public static func pasteAdmits(
+        _ source: VFSPath,
+        into destination: VFSPath,
+        kind: FileOperation.Kind
+    ) -> Bool {
+        if recurses(source: source, into: destination) { return false }
+        let landsInPlace = source.parent == destination
+        switch kind {
+        case .move: return allowsMove(from: [source]) && !landsInPlace
+        case .copy: return !(landsInPlace && destination.backend.isArchive)
+        default: return false
+        }
     }
 
     // MARK: - Volumes
