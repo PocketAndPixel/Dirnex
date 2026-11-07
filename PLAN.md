@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M35 shipped** (14 languages; M29's licensing is on in betas, off in stable until the
+Status: **M0–M35 shipped**, **M36–M40 planned** (14 languages; M29's licensing is on in betas, off in stable until the
 store opens; M30's Report a Bug is in every release built while `DIRNEX_BUG_REPORT_URL` is set) ·
 Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
@@ -109,7 +109,7 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 |---|---|---|---|
 | M0 | Scaffolding | 07-05 | — |
 | M1 | Read-only dual-pane browser | 07-06 | — |
-| M2 | Operation engine | 07-07 | Side-by-side text diff in the conflict dialog |
+| M2 | Operation engine | 07-07 | Side-by-side text diff in the conflict dialog — **since shipped** 2026-10-22 with M31 Slice 4, as Compare Contents… for two local files whose bytes are here |
 | M3 | Discoverability layer | 07-08 | SQLite stores (JSON is fine); per-workspace palette entries |
 | M4 | VFS payoff | 07-12 | libarchive C-module gate (`bsdtar` instead); search tag chip + content-grep fallback |
 | M5 | Network and sync | 07-14 | — |
@@ -146,8 +146,137 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 
 ### Next
 
-No milestone is planned. M35 (an SMB server's shares, as a pane) closed 2026-11-05, and is
-archived in [docs/HISTORY.md](docs/HISTORY.md).
+**Planned 2026-11-07: M36–M40.** These five milestones take up what earlier milestones left undone by
+choice rather than for a hard limit, in the order Oleg set: drag and paste, compare and merge, remote,
+Quick View, and everything else. Each item names the milestone that left it and the reason given
+then, because that reason is what the design has to answer. Nothing here has been probed yet. Each
+milestone opens with its probes, and its slices are written then (CLAUDE.md ▸ How to work here). An
+item whose reason still holds after the probe goes back to the *undone* column with what the probe
+found.
+
+M35 (an SMB server's shares, as a pane) closed 2026-11-05, and is archived in
+[docs/HISTORY.md](docs/HISTORY.md).
+
+#### M36 — Drag and paste, where M23 stopped (M)
+
+- **A folder dragged out of a server** (M23). A promise is one file, and a recursive fetch behind a
+  drop had no progress surface and no way to stop it, so a folder travels inside Dirnex only
+  (LOCATION-SUPPORT.md <sup>k</sup>). Since then, `RemoteDragHandoff` (2026-11-03) shows a file's
+  progress under the dragged row when another app is the target, and stops a large one when the drop
+  is refused. The first question is whether that carries to a folder of unknown size, and to
+  Finder's promise.
+- **An archive member dragged out to another app** (M23). A promise is fulfilled behind somebody
+  else's drop, where an encrypted archive would have to raise a passphrase sheet with nothing on
+  screen to answer it on. And `extractArchiveSources` reports a failure with an alert rather than
+  through a completion handler, so this needs M23 Slice 4's always-answers contract first.
+- **A drop into a browsed archive** (M23). ⌘V adds to a top-level archive by repacking, and a drop
+  does not.
+- **⌥⌘V move-paste into an archive** (M23), refused today whether pasted or dropped.
+
+Inherited from M23's risk row (§6): the payload carries locations, not policy, and every paste and
+drop ends in the path F5 takes. A drop into an archive is ⌘V's repack, never a second way in. A live
+check of a drag needs full-screen control or Oleg's hands (docs/LIVE-VERIFICATION.md).
+
+#### M37 — Compare and merge, past M31 and M34 (M–L)
+
+- **A file over 64 MiB in the compare window** (M31), refused by name today and left to the
+  external tools.
+- **A binary comparison** (M31). `ByteComparator` answers "differ", and the window refuses the pair
+  by name.
+- **Synchronize as a way into a merge** (M34). A merge needs a real base, and Synchronize keeps no
+  record of the last sync, so this item starts by giving it one.
+- **Being git's merge tool** (M34). `git mergetool` hands the tool its files and waits for it to
+  exit, so this needs a command-line entry point Dirnex does not have.
+- **An archive member changed behind an edit** (M34). No base is kept for a member's edit.
+- **A merge that ignores whitespace** (M34). It was left because it would drop a whitespace edit
+  without a word, and M34's risk row names an ignore option reaching `ThreeWayMerge` as its tell. So
+  this one is a decision before it is a slice. It is built only in a form where a whitespace-only
+  change on either side still survives or is shown, and otherwise goes back to the *undone* column.
+
+Inherited from M31's and M34's risk rows (§6): lines compare as bytes, git stays the oracle for
+regions, and a merge is offered only over a base that really was the file's.
+
+#### M38 — Remote: what M8, M22, M24, M25 and M32 left (M–L)
+
+- **Owner and group in a remote Get Info** (M25). `chown` and `chgrp` take a numeric id, while
+  `sftp`'s `ls -la` prints names, so a panel built on a listing has nothing to send. A remote
+  `chgrp` also clears set-uid and set-gid without a word, so a change needs the ordering rule
+  `AttributeChangePlan` already encodes locally.
+- **Open in Terminal for an SFTP account** (M24). A local shell cannot `cd` to a server, so this is
+  an `ssh` session to the account's own host. A key account is the easy half; a password account
+  needs its secret kept out of `argv`.
+- **Searching an S3 account pane** (M22). Its rows are buckets, and "search every bucket" is a far
+  more expensive question than the one ⌥F7 asks, so it needs a bound the user sees before it starts.
+- **Dragging a remote folder into the sidebar** (M8). A remote folder cannot ride `.fileURL`, and M8
+  named a private `VFSPath` pasteboard type as the way. M23's `app.dirnex.locations` payload is that
+  type, and a pin on an account already carries where to reconnect (LOCATION-SUPPORT.md
+  <sup>ii</sup>).
+- **A faster Find Files walk in Photos** (LOCATION-SUPPORT.md <sup>nnn</sup>). One PhotoKit fetch
+  could answer every capture date in the library at once, but names cost about 1.1 ms an asset, so a
+  search walks month by month today.
+- **WebDAV locks of our own** (M32). Left because the entity tag already guards the write, so the
+  first question is what a lock would add that the tag does not.
+- **WebDAV sign-in by NTLM, Negotiate and OAuth** (M32), left with no reason recorded. The
+  transport is `curl`, which has flags for NTLM and Negotiate, so the first probe is whether this
+  Mac's `curl` was built with both. OAuth needs a sign-in flow and somewhere to keep the token first.
+- **WebDAV quota** (M32). Left because the NAS does not report it, so the first question is which
+  servers do. The Nextcloud container M32 used is the place to measure.
+
+Inherited from M25's risk row (§6): a capability is learned per connection when it is first needed,
+and what cannot be carried is reported rather than approximated. And from M32's: nothing branches on
+a namespace prefix or the `Server` header, and a capability is used only where the server's own
+answer shows it.
+
+#### M39 — Quick View (L)
+
+- **RTF** (M16, M18), with a source and a page view. It is `NSAttributedString`'s job and shares
+  nothing with the Markdown renderer.
+- **`.webarchive` and `.mhtml`** (M16), which need `loadData` rather than a file load.
+- **Markdown: math, footnotes, definition lists, emoji shortcodes and wiki links** (M18). A wiki
+  link names another file, so it depends on following a link, the item below.
+- **More mermaid diagram types** (M18). Only flowchart and sequence draw today. A class diagram,
+  gantt, state chart or ER diagram falls back to a code fence naming itself.
+- **Following a link to another file** (M18). A preview that follows links is a browser, and needs
+  its own history and its own way back.
+- **Exporting the rendered page** to HTML or PDF (M18). That is a file operation, so it goes through
+  the operation engine with a destination and a conflict policy.
+- **Syntax highlighting** (M17): a theme picker, since the colors are a fixed light and dark table;
+  JSON keys colored apart from values; setext headings and indented code blocks in a Markdown file's
+  source; and Ruby's `=begin` block comment. The JSON and Markdown items need a lookahead or a
+  previous line that the single pass does not keep.
+- **A slideshow timer or a thumbnail filmstrip** (M11). Left because that is an image viewer, and the
+  point of full-size Quick View is that the file list stays the navigation.
+
+Inherited from M17's and M18's risk rows (§6): the highlighter stays one pass with no state stack, and
+only ever adds color. Markdown is judged against a corpus of real files rather than the spec, an
+unreadable construct falls back to its own text, and the generated page stays inert. Mermaid gains
+diagram types, never a config surface read from the diagram's source.
+
+#### M40 — Everything else (M)
+
+- **Places as ⌘K results** (M20). The palette is a registry of commands and places are live data, so
+  this is a second mechanism and its own decision.
+- **Per-workspace palette entries** (M3). Workspaces are reached through the Workspaces… popup
+  today.
+- **Privilege escalation for a multi-selection, and recursively** (M14). The single-item path proved
+  the mechanism, and those sheets refuse a root-only change by name.
+- **Escalating the undo of a non-owned change** (M14), refused today with
+  `attributeRestoreNeedsAdministrator`.
+- **Recents ordered by when each item was last used** (M8). Modification date stands in today,
+  because `mdfind` returns paths in no useful order and a statted `FileEntry` carries no last-used
+  date.
+- **Find Files: the tag chip, and a content-grep fallback for volumes Spotlight does not index**
+  (M4).
+- **Localization** (M12): the stock Finder tag names in the ⌃T menu, which are
+  `FinderTag.systemTagName` data in the core and stay English; a lint rule keeping bare literals out
+  of UI files, which the sweeps stand in for; and the "Results for Search results" stutter, a wording
+  decision rather than a translation gap.
+- **Revoking a refunded key inside the app** (M29). The server marks a refunded key, and M29 set the
+  in-app list to wait until refunds are actually abused. Dirnex never asks a server whether a license
+  is real, so the list ships in the app.
+- **SMB** (M35): a comment column on a server's share list, from the `NetCommentStr` that
+  `EnumerateShares` already returns; and a way up from a share Finder mounted, which keeps `..` →
+  `/Volumes`.
 
 The app's share of selling Dirnex (the private companion repo `dirnex-home`, milestones C1–C15) was
 two milestones, **M29** (a license, and the reminder it removes) and **M30** (Report a Bug), both
@@ -162,8 +291,9 @@ your key?" link in Settings ▸ License.
 Everything through M35 is shipped, and the record of it — the milestone checklists, the dated
 passes that landed outside a milestone of their own, and the reasoning behind every decision — is in
 **[docs/HISTORY.md](docs/HISTORY.md)**, which also tells how everything else on this list came off
-it (HISTORY.md ▸ the follow-on log). What is still open, rather than merely imaginable, is the
-*undone* column in the table above, plus the list below.
+it (HISTORY.md ▸ the follow-on log). What is still open, rather than merely imaginable, is M36–M40
+under *Next*, which take up the items in the table's *undone* column that were left by choice, plus
+the list below. The column itself stays as each milestone's record.
 
 - **The thumbnail grid, brief view and the `PaneSurface` extraction** — M15's cut, and one unit
   rather than three items, argued in HISTORY.md §M15. Any future grid inherits two constraints from
