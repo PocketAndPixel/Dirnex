@@ -652,7 +652,7 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | Send to a **Service** | yes | yes | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | **no**<sup>zz</sup> | n/a | **no**<sup>zz</sup> | yes | yes |
 | Compare By Contents (`⌥F3`) | yes | yes | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | yes, limited<sup>w</sup> | n/a | yes, limited<sup>w</sup> | yes | yes |
 | In the compare window: copy a change across (`⌥⌘←` `⌥⌘→`), save (`⌘S`), and edit a side in your own editor<sup>vvv</sup> | yes | yes | yes, limited<sup>v</sup> | yes | yes | yes | yes | n/a | no<sup>jjj</sup> | yes | yes |
-| Merge a file the server changed under an `F4` edit (Merge… in the save's question)<sup>www</sup> | n/a | n/a | no<sup>www</sup> | yes, limited<sup>www</sup> | yes, limited<sup>www</sup> | yes | yes | n/a | no<sup>jjj</sup> | yes | n/a |
+| Merge a file changed under an `F4` edit, on the server or in its archive (Merge… in the save's question)<sup>www</sup> | n/a | n/a | yes, limited<sup>zzz</sup> | yes, limited<sup>www</sup> | yes, limited<sup>www</sup> | yes | yes | n/a | no<sup>jjj</sup> | yes | n/a |
 | Resolve a git conflict (Resolve Conflict… on a file badged U)<sup>xxx</sup> | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
 | Synchronize Directories | yes | yes | **no**<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | n/a | yes, limited<sup>x</sup> | n/a<sup>x</sup> | n/a<sup>x</sup> |
 | Browse *into* an archive file | yes | yes | yes | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | n/a | n/a | yes | yes |
@@ -738,7 +738,7 @@ first (PLAN.md §M34 Slice 4): the server's version comes down and opens in the 
 edit and the version the edit started from, kept when the edit began and replaced by the bytes each
 upload sends. The result is saved into the editor's copy and uploaded, checked against the version
 merged, so a write meanwhile asks again. It is offered for a save of one file whose three versions
-are text within 64 MiB, and not inside an archive, where no base is kept. **SFTP and FTP are
+are text within 64 MiB; inside an archive, see <sup>zzz</sup>. **SFTP and FTP are
 limited by the check, not the merge:** with no entity tag, the listing gives a size and a time,
 minute-resolution over SFTP and coarser over FTP without `MLSD`. Since 2026-10-27, when both agree,
 the save brings the server's file down and compares it with the base. So a same-size write in the
@@ -749,6 +749,20 @@ goes unseen. The upload carries no condition, so a write between the check and t
 caught. WebDAV and S3 compare entity tags and condition the upload on one. Verified live over SFTP,
 the same-size case included, and over WebDAV (Slice 6): there a server write made while the question
 was up was refused by the upload's `If-Match` with a 412, and the question offered Merge… again.
+
+<sup>zzz</sup> When a member is saved back and its archive has changed since the member was
+extracted, the member is read again and compared with the bytes the edit started from, kept when the
+edit's watch began (PLAN.md §M37 Slice 4). A change is named in the archive's question, which offers
+**Merge…** first for one member: the merge window opens on the archive's version, the edit and that
+base, and the result is saved into the editor's copy, then written back through the archive's own
+question and rewrite. A set with changed members is offered **Skip Changed Files**, and the members
+it skips ask again on their next save. "Limited": a member is checked only where a base was kept, so
+an edit opened before this, or a copy a gesture wrote before its watch began (a compare window's
+copy across), keeps the question it had; an encrypted archive nobody unlocked in this window reads
+as "couldn't be checked" rather than asking for its passphrase, which Merge… does ask for; a member
+taken out of the archive reads the same way, and Save Back puts it back; and a change to the same
+member between the check and the rewrite is replaced. An archive that has not moved costs one
+`stat`, and nothing is read.
 
 <sup>xxx</sup> A file git has badged U opens in the merge window on the versions git holds of it
 (PLAN.md §M34 Slice 5), each read as a checkout would write it, so the file's line endings and

@@ -29,6 +29,11 @@ final class ArchivePreviewCache {
     /// Which archive each cached extraction came out of, so a path that has since been given a
     /// different archive drops its entries instead of previewing bytes that are no longer in it.
     private var identities: [String: ArchiveIdentity] = [:]
+    /// What each extracted copy and its archive were when it landed, keyed by the copy's standardized
+    /// URL: what an edit's base is kept against (`ArchivePreviewCache+Bases`).
+    var extractionStamps: [URL: ArchiveExtractionStamp] = [:]
+    /// The base kept for each edited copy, keyed by its standardized URL (`ArchivePreviewCache+Bases`).
+    var memberBases: [URL: ArchiveMemberBase] = [:]
 
     /// The extracted on-disk URL for `member` if it has already been extracted this session,
     /// else `nil` — a synchronous lookup the preview surfaces use to resolve the file to show.
@@ -79,6 +84,9 @@ final class ArchivePreviewCache {
     ) async throws -> URL {
         dropExtractionsIfReplaced(archivePath: member.archivePath)
         if let url = extracted[member] { return url }
+        // Read before the extraction, so a write during it reads as a move later rather than going
+        // unseen (``DirnexCore/ArchiveMemberBase``).
+        let stamp = identities[member.archivePath]
         let extraction = try await BlockingWork.run {
             Result {
                 try ArchiveExtractor.extract(
@@ -93,6 +101,18 @@ final class ArchivePreviewCache {
         // nothing landed, so this file exists.
         let url = URL(fileURLWithPath: extraction.extractedPaths[0])
         extracted[member] = url
+        extractionStamps[url.standardizedFileURL] = ArchiveExtractionStamp(
+            archive: stamp,
+            copy: EditedFileRevision.current(ofFileAt: url.path)
+        )
         return url
     }
+}
+
+/// What an extracted copy and the archive it came out of were when it landed (PLAN.md §M37 Slice 4).
+struct ArchiveExtractionStamp: Equatable {
+    /// The archive, as read just before the extraction. `nil` when it could not be read.
+    let archive: ArchiveIdentity?
+    /// The copy, as it landed.
+    let copy: EditedFileRevision?
 }

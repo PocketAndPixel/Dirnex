@@ -419,6 +419,71 @@ Decided before Slice 1 (2026-11-08, Oleg, on the probes above):
   through `handleKey`; a pair from a Synchronize row or the conflict dialog; a side near this Mac's
   2 GiB limit; and any translation.
 
+**2026-11-08: Slice 4 landed** (core, then app). A member changed inside its archive under an edit can be
+merged instead of overwritten.
+
+- **Found first:** a save back never looked at the archive. The rewrite extracts the archive as it is now
+  and replaces the member with the copy, so another member's change survived and a change to the same
+  member was replaced without a word, however long ago the copy was extracted.
+- **Decided with Oleg before writing it:** a set with changed members is asked as the server batch is:
+  Save Back, **Skip Changed Files** where some members are clean, Keep Editing. The members it skips
+  stay watched, so each one's next save asks on its own, Merge… included.
+- **Core:** `ArchiveMemberBase` is a member's bytes and the archive's `ArchiveIdentity` read just before
+  their extraction. `ArchiveMemberCheck` answers `unmoved`, `noBase`, `same`, `different` (with the
+  member's size) or `unreadable` for each member of one archive. An archive with the stamped identity
+  is one `stat` and no read; the moved members are extracted in **one** call through an injected
+  extractor and compared through `ByteComparator`, and the extraction is removed. No size bound, since
+  the rewrite that follows extracts every member anyway. `keep` reads one member again into an
+  `EditBaseStore`, stamped first, for a merge.
+- **App:**
+  - **The base** (`ArchivePreviewCache+Bases`). The cache stamps each extraction with the archive's
+    identity from before it and the copy's revision as it landed. When an edit's watch starts on a copy
+    nothing has written since, the cache keeps a clone of it in `DirnexExtract/Bases`, which the launch
+    purge clears and no watch watches. `PanelHost.watchEdit` is now the one call F4, ⏎, a user script
+    and the compare window's Edit make, keeping a server file's base or a member's.
+  - **The question** checks each member first, with the passphrase this window was given and no prompt.
+    One changed member is named before the usual body, with Merge… first where its three versions are
+    text within 64 MiB; one that could not be read says so; a set names how many and the first three.
+    With nothing found, the question is the one it was.
+  - **Merge…** reads the archive's version again through the pane's passphrase funnel, and opens M34's
+    window on it, the copy and the base. Its save writes the result into the editor's copy, makes the
+    archive's version the copy's base, and carries the copy back through the archive's own question and
+    rewrite. A landed rewrite drops the bases of the copies it took in.
+  - Eight new strings, in all 14 languages. "Skip Changed Files" is one shared title now.
+- **[LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md):** the merge row's archive cell, with footnote zzz.
+- **Tests:** 9 in the core (`ArchiveMemberCheckTests`, over a fake extractor) and 17 in the app:
+  `ArchiveMemberBaseTests` (4), `ArchiveMemberCheckLiveTests` (4, real zips through `ArchiveExtractor`,
+  one of them the milestone's sentence end to end: extract, edit, another writer's change, the check,
+  the offer, the archive's version kept, the merge, its adoption and the rewrite, with both edits in the
+  archive after) and `ArchiveWriteBackQuestionTests` (9). Full runs: 4 924 core and 2 305 app tests,
+  without the live server suites, whose code this slice does not touch; the new suites again once the
+  last test was added.
+- **Negative controls:** 7 faults in the core and 12 in the app, one at a time. In the core, each failed
+  its own test; one first try changed nothing a test could see (a missing member already fails the byte
+  comparison) and was replaced by one that did. In the app, 11 failed their own tests. **One passed:** the
+  cache reading the archive's identity after the extraction instead of before. Only a write during a
+  `bsdtar` run tells the two apart, and no test can make one; the core's `keep` pins the same order with
+  a fake extractor that does write.
+- **Run live** on the Debug build, driven from the background, with shell writes to the copies standing
+  in for TextEdit's saves and a repack under the same name for another app:
+  - F4 kept the base beside the copy, byte for byte. With line 2 changed on both sides and line 5 in the
+    archive, the question named the change with Merge… first. The window showed the base as extracted,
+    theirs' line 5 merged and one conflict; Take Both and Save wrote the copy and left the archive's
+    version as the only base; the plain question followed and Save Back put **both edits** in the archive,
+    the other members untouched and no base left.
+  - Two members saved together after another app changed only `keep.txt`: the plain question about two
+    files. After it changed `other.txt`: "1 of them has changed inside the archive…" with Skip Changed
+    Files, which wrote back `notes.txt` alone and kept the other app's `other.txt`. The skipped copy's
+    next save asked on its own with Merge…, merged clean, and went back with both edits.
+  - The defaults domain was restored and compared unchanged.
+- **Not run live:** an encrypted archive (the check reads with the window's passphrase or not at all), a
+  member taken out of the archive, the compare window's save, ⏎ and a user script as the edit's start,
+  a tar or 7z archive, the light appearance, and any translation. The check's cost on a large compressed
+  archive was not measured; the rewrite after it reads the whole archive anyway.
+- **Left open:** a change to the same member between the check and the rewrite is replaced, as M34 left
+  the upload's window over SFTP and FTP. And a merge window saved again after its rewrite landed asks the
+  plain question, since a landed rewrite drops the copy's base.
+
 #### M38 — Remote: what M8, M22, M24, M25 and M32 left (M–L)
 
 - **Owner and group in a remote Get Info** (M25). `chown` and `chgrp` take a numeric id, while

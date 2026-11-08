@@ -891,6 +891,95 @@
         }
       }
     },
+    "%@ Merge… reads the archive’s version beside yours, so both edits can be kept.": {
+      "comment": "Archive write-back prompt body when a merge is offered; %@ is the prompt's own body, which says the member changed inside the archive.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ „Zusammenführen …“ liest die Version aus dem Archiv neben Ihre, sodass beide Bearbeitungen erhalten bleiben können."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Merge… reads the archive’s version beside yours, so both edits can be kept."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Fusionar… lee la versión del archivo comprimido junto a la tuya, para que puedan conservarse ambas ediciones."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Fusionner… lit la version de l’archive à côté de la vôtre, afin de pouvoir conserver les deux modifications."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Unisci… legge la versione dell’archivio accanto alla tua, così da poter mantenere entrambe le modifiche."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ “マージ…”を選ぶと、アーカイブ内のバージョンを自分のバージョンと並べて読み込むので、両方の編集を残せます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ‘병합…’을 선택하면 아카이브의 버전을 내 버전 옆에 읽어 오므로 두 편집을 모두 유지할 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Met ‘Voeg samen…’ wordt de versie uit het archief naast de jouwe gelezen, zodat beide bewerkingen behouden kunnen blijven."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ „Scal…” wczytuje wersję z archiwum obok twojej, aby można było zachować obie edycje."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Mesclar… lê a versão do arquivo compactado ao lado da sua, para que as duas edições possam ser mantidas."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ «Объединить…» прочитает версию из архива рядом с вашей, чтобы можно было сохранить обе правки."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ «Об’єднати…» прочитає версію з архіву поруч із вашою, щоб можна було зберегти обидві правки."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@“合并…”会将归档中的版本读取到你的版本旁边，以便保留两处编辑。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@「合併…」會將壓縮檔中的版本讀取到你的版本旁邊，以便保留兩處編輯。"
+          }
+        }
+      }
+    },
     "%@ available of %@": {
       "comment": "Volume capacity tooltip; %1$@ is free space, %2$@ is total capacity.",
       "localizations": {
@@ -10502,6 +10591,299 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$lld / %2$lld+ 個相符項目"
+          }
+        }
+      }
+    },
+    "%lld of them have changed inside the archive since you opened them, or couldn’t be checked (%@). The rest are as you left them.": {
+      "comment": "Archive write-back prompt over several members, before the usual body, naming how many changed inside the archive or could not be read from it; %1$lld is the count, %2$@ the first few names.",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld davon hat sich seit dem Öffnen im Archiv geändert oder konnte nicht geprüft werden (%2$@). Der Rest ist unverändert."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld davon haben sich seit dem Öffnen im Archiv geändert oder konnten nicht geprüft werden (%2$@). Der Rest ist unverändert."
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld of them has changed inside the archive since you opened it, or couldn’t be checked (%2$@). The rest are as you left them."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld of them have changed inside the archive since you opened them, or couldn’t be checked (%2$@). The rest are as you left them."
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld de ellos ha cambiado dentro del archivo comprimido desde que lo abriste, o no se ha podido comprobar (%2$@). El resto está como lo dejaste."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld de ellos han cambiado dentro del archivo comprimido desde que los abriste, o no se han podido comprobar (%2$@). El resto está como lo dejaste."
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld d’entre eux a changé dans l’archive depuis que vous l’avez ouvert, ou n’a pas pu être vérifié (%2$@). Les autres sont tels que vous les avez laissés."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld d’entre eux ont changé dans l’archive depuis que vous les avez ouverts, ou n’ont pas pu être vérifiés (%2$@). Les autres sont tels que vous les avez laissés."
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld di essi è cambiato nell’archivio da quando l’hai aperto, o non è stato possibile verificarlo (%2$@). Gli altri sono come li hai lasciati."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld di essi sono cambiati nell’archivio da quando li hai aperti, o non è stato possibile verificarli (%2$@). Gli altri sono come li hai lasciati."
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "そのうち %lld 個は、開いた後にアーカイブ内で変更されたか、確認できませんでした（%2$@）。残りはそのままです。"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "そのうち %lld 個は、開いた後にアーカイブ内で変更されたか、確認できませんでした（%2$@）。残りはそのままです。"
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "그중 %lld개는 연 뒤 아카이브 안에서 변경되었거나 확인할 수 없었습니다(%2$@). 나머지는 그대로입니다."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "그중 %lld개는 연 뒤 아카이브 안에서 변경되었거나 확인할 수 없었습니다(%2$@). 나머지는 그대로입니다."
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld daarvan is in het archief gewijzigd sinds je het opende, of kon niet worden gecontroleerd (%2$@). De rest is zoals je het achterliet."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld daarvan zijn in het archief gewijzigd sinds je ze opende, of konden niet worden gecontroleerd (%2$@). De rest is zoals je het achterliet."
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld z nich zmienił się w archiwum od otwarcia albo nie dało się go sprawdzić (%2$@). Reszta jest bez zmian."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld z nich zmieniły się w archiwum od otwarcia albo nie dało się ich sprawdzić (%2$@). Reszta jest bez zmian."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld z nich zmieniło się w archiwum od otwarcia albo nie dało się ich sprawdzić (%2$@). Reszta jest bez zmian."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld z nich zmieniło się w archiwum od otwarcia albo nie dało się ich sprawdzić (%2$@). Reszta jest bez zmian."
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld deles mudou dentro do arquivo compactado desde que você o abriu, ou não pôde ser verificado (%2$@). O restante está como você deixou."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld deles mudaram dentro do arquivo compactado desde que você os abriu, ou não puderam ser verificados (%2$@). O restante está como você deixou."
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld из них изменился в архиве после открытия или его не удалось проверить (%2$@). Остальные — как вы их оставили."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld из них изменились в архиве после открытия или их не удалось проверить (%2$@). Остальные — как вы их оставили."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld из них изменились в архиве после открытия или их не удалось проверить (%2$@). Остальные — как вы их оставили."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld из них изменились в архиве после открытия или их не удалось проверить (%2$@). Остальные — как вы их оставили."
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld із них змінився в архіві після відкриття або його не вдалося перевірити (%2$@). Решта — як ви їх залишили."
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld із них змінилися в архіві після відкриття або їх не вдалося перевірити (%2$@). Решта — як ви їх залишили."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld із них змінилося в архіві після відкриття або їх не вдалося перевірити (%2$@). Решта — як ви їх залишили."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld із них змінилося в архіві після відкриття або їх не вдалося перевірити (%2$@). Решта — як ви їх залишили."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "其中 %lld 个自打开后已在归档中更改，或无法检查（%2$@）。其余与你离开时相同。"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "其中 %lld 个自打开后已在归档中更改，或无法检查（%2$@）。其余与你离开时相同。"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "其中 %lld 個自打開後已在壓縮檔中更改，或無法檢查（%2$@）。其餘與你離開時相同。"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "其中 %lld 個自打開後已在壓縮檔中更改，或無法檢查（%2$@）。其餘與你離開時相同。"
+                }
+              }
+            }
           }
         }
       }
@@ -44248,6 +44630,95 @@
         }
       }
     },
+    "Dirnex couldn’t confirm that any of these files is still in the archive as you opened it: something may have changed them, or the check couldn’t be made.": {
+      "comment": "Archive write-back prompt over several members, before the usual body, when every one of them changed inside the archive or could not be read from it again.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex konnte für keine dieser Dateien bestätigen, dass sie im Archiv noch so ist wie beim Öffnen: Etwas hat sie möglicherweise geändert, oder die Prüfung war nicht möglich."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex couldn’t confirm that any of these files is still in the archive as you opened it: something may have changed them, or the check couldn’t be made."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex no ha podido confirmar que ninguno de estos archivos siga en el archivo comprimido como cuando lo abriste: puede que algo los haya cambiado, o que no se haya podido comprobar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex n’a pu confirmer pour aucun de ces fichiers qu’il est encore dans l’archive tel que vous l’avez ouvert : quelque chose les a peut-être modifiés, ou la vérification a échoué."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex non ha potuto confermare che nessuno di questi file sia ancora nell’archivio com’era quando l’hai aperto: qualcosa potrebbe averli modificati, o la verifica non è riuscita."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "これらのファイルがアーカイブ内で開いたときのままかどうか、Dirnex はいずれも確認できませんでした。何かが変更したか、確認できなかった可能性があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 파일들이 아카이브 안에서 열었을 때 그대로인지 Dirnex가 하나도 확인하지 못했습니다. 무언가가 변경했거나 확인할 수 없었을 수 있습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex kon van geen van deze bestanden bevestigen dat het nog in het archief staat zoals je het opende: iets heeft ze mogelijk gewijzigd, of de controle kon niet worden uitgevoerd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex nie potwierdził, że którykolwiek z tych plików jest wciąż w archiwum taki, jak przy otwarciu: coś mogło je zmienić albo nie udało się tego sprawdzić."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex não conseguiu confirmar que nenhum destes arquivos ainda está no arquivo compactado como quando você o abriu: algo pode tê-los alterado, ou a verificação não pôde ser feita."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex не смог подтвердить, что хоть один из этих файлов остался в архиве таким, каким был при открытии: возможно, их что-то изменило или проверка не удалась."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex не зміг підтвердити, що бодай один із цих файлів лишився в архіві таким, яким був під час відкриття: можливо, їх щось змінило або перевірку не вдалося виконати."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 无法确认其中任何文件在归档中仍与打开时相同：可能有其他程序更改过，或无法完成检查。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 無法確認其中任何檔案在壓縮檔中仍與打開時相同：可能有其他程式更改過，或無法完成檢查。"
+          }
+        }
+      }
+    },
     "Dirnex couldn’t download this file.": {
       "comment": "Quick View placeholder hint after an automatic remote fetch failed.",
       "localizations": {
@@ -45312,6 +45783,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dirnex 需要重新啟動才能切換到 %@。"
+          }
+        }
+      }
+    },
+    "Dirnex no longer has the version your edit started from, so it can’t tell your changes from the archive’s.": {
+      "comment": "Merge failure detail when the base version kept for an edited archive member is gone.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex hat die Version, von der Ihre Bearbeitung ausging, nicht mehr und kann Ihre Änderungen daher nicht von denen im Archiv unterscheiden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex no longer has the version your edit started from, so it can’t tell your changes from the archive’s."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex ya no tiene la versión de la que partió tu edición, así que no puede distinguir tus cambios de los del archivo comprimido."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex n’a plus la version dont votre modification est partie et ne peut donc pas distinguer vos changements de ceux de l’archive."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex non ha più la versione da cui è partita la tua modifica, quindi non può distinguere le tue modifiche da quelle dell’archivio."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex には編集の元になったバージョンがもうないため、自分の変更とアーカイブ側の変更を区別できません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex에 편집을 시작한 버전이 더 이상 없으므로 내 변경 사항과 아카이브의 변경 사항을 구별할 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex heeft de versie waarmee je bewerking begon niet meer, dus kan het jouw wijzigingen niet onderscheiden van die in het archief."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex nie ma już wersji, od której zaczęła się twoja edycja, więc nie może odróżnić twoich zmian od zmian w archiwum."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Dirnex não tem mais a versão a partir da qual sua edição começou, então não consegue distinguir suas alterações das do arquivo compactado."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У Dirnex больше нет версии, с которой началась ваша правка, поэтому он не может отличить ваши изменения от изменений в архиве."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex більше не має версії, з якої почалася ваша правка, тому не може відрізнити ваші зміни від змін в архіві."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 已不再保有你编辑时所基于的版本，因此无法区分你的更改和归档中的更改。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 已不再保有你編輯時所根據的版本，因此無法區分你的更改和壓縮檔中的更改。"
           }
         }
       }
@@ -60915,6 +61475,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "已忽略"
+          }
+        }
+      }
+    },
+    "In the archive now": {
+      "comment": "Merge window, under Theirs: the member as its archive holds it now.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jetzt im Archiv"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In the archive now"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ahora en el archivo comprimido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actuellement dans l’archive"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ora nell’archivio"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在アーカイブ内にあるバージョン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 아카이브에 있는 버전"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nu in het archief"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obecnie w archiwum"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agora no arquivo compactado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сейчас в архиве"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зараз в архіві"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "归档中的当前版本"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "壓縮檔中的目前版本"
           }
         }
       }
@@ -92021,6 +92670,95 @@
         }
       }
     },
+    "Saved into your editor’s copy and written back into “%@”": {
+      "comment": "Merge window, under Result: where a save puts the merged member; %@ is the archive's name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In die Kopie Ihres Editors gesichert und zurück in „%@“ geschrieben"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved into your editor’s copy and written back into “%@”"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se guarda en la copia de tu editor y se vuelve a escribir en «%@»"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistré dans la copie de votre éditeur et réécrit dans « %@ »"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvato nella copia del tuo editor e riscritto in “%@”"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エディタのコピーに保存され、「%@」に書き戻されます"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "편집기의 사본에 저장되고 “%@”에 다시 기록됨"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewaard in de kopie van je editor en teruggeschreven in ‘%@’"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zachowywany w kopii twojego edytora i zapisywany z powrotem w „%@”"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvo na cópia do seu editor e gravado de volta em “%@”"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохраняется в копию вашего редактора и записывается обратно в «%@»"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зберігається в копію вашого редактора й записується назад у «%@»"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "存储到编辑器的副本并写回“%@”"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "儲存到編輯器的副本並寫回「%@」"
+          }
+        }
+      }
+    },
     "Saved search": {
       "comment": "Accessibility label for a saved-search sidebar row's glyph.",
       "localizations": {
@@ -96473,7 +97211,7 @@
       }
     },
     "Skip Changed Files": {
-      "comment": "Button that uploads only the edited files nobody else has touched, leaving the rest for the user to look at.",
+      "comment": "Button that writes back only the edited files nobody else has touched, to the server or into their archive, leaving the rest for the user to look at.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -103634,6 +104372,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "管理者指令未完成。"
+          }
+        }
+      }
+    },
+    "The archive has changed since you opened this file, and Dirnex couldn’t read the file in it to tell whether it changed too.": {
+      "comment": "Archive write-back prompt, before the usual body, when the archive changed and the edited member could not be read from it again.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Archiv hat sich geändert, seit Sie diese Datei geöffnet haben, und Dirnex konnte die Datei darin nicht lesen, um festzustellen, ob auch sie sich geändert hat."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The archive has changed since you opened this file, and Dirnex couldn’t read the file in it to tell whether it changed too."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El archivo comprimido ha cambiado desde que abriste este archivo, y Dirnex no ha podido leer el archivo dentro de él para saber si también ha cambiado."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’archive a changé depuis que vous avez ouvert ce fichier, et Dirnex n’a pas pu y lire le fichier pour savoir s’il a changé lui aussi."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’archivio è cambiato da quando hai aperto questo file, e Dirnex non è riuscito a leggervi il file per capire se è cambiato anch’esso."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このファイルを開いた後にアーカイブが変更されました。Dirnex はアーカイブ内のこのファイルを読み取れなかったため、ファイルも変更されたかどうか判断できません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 파일을 연 뒤 아카이브가 변경되었으며, Dirnex가 아카이브 안의 파일을 읽지 못해 파일도 변경되었는지 확인할 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het archief is gewijzigd sinds je dit bestand opende, en Dirnex kon het bestand daarin niet lezen om te zien of het ook is gewijzigd."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archiwum zmieniło się od otwarcia tego pliku, a Dirnex nie mógł odczytać w nim pliku, aby sprawdzić, czy on też się zmienił."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O arquivo compactado mudou desde que você abriu este arquivo, e o Dirnex não conseguiu ler o arquivo dentro dele para saber se ele também mudou."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Архив изменился с тех пор, как вы открыли этот файл, и Dirnex не смог прочитать в нём файл, чтобы понять, изменился ли и он."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Архів змінився відтоді, як ви відкрили цей файл, і Dirnex не зміг прочитати в ньому файл, щоб зрозуміти, чи змінився й він."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自你打开此文件后，归档已更改，且 Dirnex 无法读取其中的此文件，无法判断它是否也已更改。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自你打開此檔案後，壓縮檔已更改，且 Dirnex 無法讀取其中的此檔案，無法判斷它是否也已更改。"
           }
         }
       }
@@ -164865,6 +165692,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "「%@」在 %lld/%lld 個檔案上失敗"
+          }
+        }
+      }
+    },
+    "“%@” has also changed inside the archive since you opened it, so saving your copy back replaces that change.": {
+      "comment": "Archive write-back prompt, before the usual body, when the edited member changed inside the archive since it was opened; %@ is the file's name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ hat sich seit dem Öffnen auch im Archiv geändert; wenn Sie Ihre Kopie zurücksichern, wird diese Änderung ersetzt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” has also changed inside the archive since you opened it, so saving your copy back replaces that change."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» también ha cambiado dentro del archivo comprimido desde que lo abriste, así que guardar tu copia de nuevo reemplaza ese cambio."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« %@ » a aussi changé dans l’archive depuis que vous l’avez ouvert : enregistrer votre copie remplace cette modification."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anche “%@” è cambiato nell’archivio da quando l’hai aperto, quindi salvare di nuovo la tua copia sostituisce quella modifica."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」は開いた後にアーカイブ内でも変更されているため、自分のコピーを書き戻すとその変更は置き換えられます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”도 연 뒤 아카이브 안에서 변경되었으므로 내 사본을 다시 저장하면 그 변경 사항이 대체됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‘%@’ is sinds je het opende ook in het archief gewijzigd, dus als je je kopie terugzet, wordt die wijziging vervangen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@” zmienił się także w archiwum od otwarcia, więc zapisanie twojej kopii z powrotem zastąpi tę zmianę."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” também mudou dentro do arquivo compactado desde que você o abriu, então salvar sua cópia de volta substitui essa alteração."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» тоже изменился в архиве с тех пор, как вы его открыли, поэтому сохранение вашей копии обратно заменит это изменение."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» теж змінився в архіві відтоді, як ви його відкрили, тому збереження вашої копії назад замінить цю зміну."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自你打开“%@”后，它在归档中也已更改，因此将你的副本存回会替换那处更改。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自你打開「%@」後，它在壓縮檔中也已更改，因此將你的副本存回會取代那處更改。"
           }
         }
       }
