@@ -1227,6 +1227,10 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 
 ### Fixtures and shared state
 
+- **`JSONEncoder` output is not stable between two encodes of one value unless `.sortedKeys` is set.**
+  Seen 2026-11-09 in `GitMergeWireTests`: a test comparing a sent frame with a second `frame(request)`
+  passed three runs and failed the fourth. Anything compared as bytes needs the option.
+
 - **Thousands of `Process` runs with a `Pipe`, from several threads at once, can fail with
   `EBADF`.** Seen 2026-10-26 in M34's history harness: 14 `concurrentPerform` workers ran about
   36 000 `git` commands, each with a fresh `Pipe` on stdout, and partway through `Process.run()`
@@ -1673,6 +1677,13 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
 ## AppKit
 
 ### Windows
+
+- **`NSApp.activate(ignoringOtherApps: true)` does nothing from a background app while another app is
+  in front.** Measured 2026-11-09 on macOS 26 for M37 Slice 6 with `lsappinfo front`: Dirnex running
+  behind Claude, a request over a socket opened the merge window and called it, and the front app stayed
+  Claude. The window was up and nobody could see it. `/usr/bin/open <the app>`, run by the process that
+  wants it in front, brought the running copy forward, with no second process. So a command that opens
+  a window in the app does the bringing forward itself (`GitMergeClient`).
 
 - **`applicationShouldTerminateAfterLastWindowClosed` is asked from a run-loop *timer*, not at the
   moment a window closes — so a bare `true` lets the app quit itself during its own launch.** AppKit
@@ -9660,6 +9671,23 @@ ships a third-party binary. All measured 2026-09-20 against two HERO7 files befo
     stage 2 is the branch being rebased onto and stage 3 the commit being replayed.
   - **`ls-files`, `cat-file` and `rev-parse` write nothing with or without `--no-optional-locks`**,
     since none refreshes the index. Removing the flag failed only the test that pins the argv.
+- **`git mergetool` runs its tool with git's own environment.** Probed 2026-11-09 on git 2.54:
+  `GIT_EXEC_PATH`, `GIT_EDITOR=true`, `GIT_PREFIX`, `GIT_INTERNAL_GETTEXT_SH_SCHEME`, and `GIT_DIR` when
+  the user set it, plus git-core at the front of `PATH`. `open` passes all of it to an app it starts,
+  so a long-lived app launched from a tool keeps pointing its own `git` and terminal drawer at that one
+  run. `GitMergeClient.launchEnvironment` hands `open` a Dock launch's environment instead. Read a
+  child's environment with `ps eww`, and pick the app by its command line: the tool itself is the
+  other process named `Dirnex`.
+- **`mergetool.<tool>.cmd` goes through `eval`.** Single-quote the program's path and leave `"$LOCAL"`
+  and friends for that shell. A path holding a space, a quote and a dollar sign ran through a real
+  `git mergetool` this way, and `git config` stores the backslashes and quotes itself.
+- **After a failed merge `git mergetool` asks "Continue merging other unresolved paths [y/n]?" on
+  stdin**, so a probe or a test with more than one conflicted file sits there forever unless stdin is
+  closed, even with `--no-prompt`. Seen 2026-11-09 as a shell that never came back. It is `git
+  mergetool`'s failure line that names the file, on standard error.
+- **`git config`'s statuses** (git 2.54): `--get` of an unset key is 1 and prints nothing; `--unset` of
+  one is 5; `--remove-section` of a missing section is 128; `--type=bool --get` of a value that is
+  not one is 128. So "unset" and "broken" need telling apart by status.
 
 ## Release pipeline
 

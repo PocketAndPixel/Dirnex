@@ -4,6 +4,12 @@ import AppKit
 // Dirnex is keyboard-first and its UI is built in code (AppKit panels with
 // SwiftUI chrome), so we own the app lifecycle explicitly from here.
 
+// `git mergetool` runs this binary as a plain command (PLAN.md §M37 Slice 6). Before anything below
+// it, so that run sets no defaults, builds no window and never shows in the Dock.
+if let status = GitMergeCommand.runIfAsked(CommandLine.arguments) {
+    exit(status)
+}
+
 // Opt this app out of macOS 26 (Tahoe)'s floating "Liquid Glass" sidebar, which renders
 // the source list as an inset rounded card detached from the window edges. Dirnex wants
 // the classic full-height sidebar flush to the window (traffic lights floating over it),

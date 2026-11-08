@@ -547,6 +547,68 @@ whitespace, which keeps both edits.
   core and the app tests; the server and archive entries, which open the same window; the light
   appearance; and any translation.
 
+**2026-11-09: Slice 6 landed** (core, then app). `git mergetool` opens the merge window and waits for it.
+
+- **Probed first**, with git 2.54 on this Mac:
+  - git runs its tool with `GIT_EXEC_PATH`, `GIT_EDITOR=true` and `GIT_PREFIX` set, and `open` hands all
+    of that to an app it starts, where it would stay for the whole session.
+  - `open <path>` starts that copy with another copy of the same bundle id running, and starts nothing
+    when that copy is already up.
+  - A binary's path holding a space, a quote and a dollar sign survives `cmd`'s `eval` once single-quoted.
+- **Decided with Oleg before writing it:** a button in Settings ▸ Operations that writes all three values
+  to the global git config, naming a tool it replaces. Stop Using takes them out, and the row says when
+  the config runs another copy of Dirnex.
+- **Core:**
+  - `GitMergeArguments` reads the command line and makes each path absolute. `GitMergeRequest` and
+    `GitMergeAnswer` are what cross the socket, and only a saved result exits 0.
+  - `GitMergeWire` frames one request and one answer. `GitMergeSocketPath` names a socket per copy.
+  - `GitMergeClient` is the command's whole conversation, over an injected transport.
+  - `GitMergeToolSetup` reads, writes and removes the three values.
+- **App (`Dirnex/GitMerge/`):** `GitMergeCommand` runs first in `main.swift`, before any window. The socket
+  and `GitMergeListener`, 0600 and peer-checked. `GitMergeService` opens M34's window on the four files and
+  answers when it closes, or when the app quits with it open. Save writes `$MERGED` alone and keeps no
+  undo copy. `GitMergeToolSection` is the Settings row. Twelve new strings, in all 14 languages.
+- **Decided in the slice:**
+  - **A launched app gets a Dock launch's environment** rather than only losing `GIT_*`, since it outlives
+    the merge and a shell's `PATH` or virtual environment would otherwise stay in it.
+  - **The socket is under Application Support**, not the per-user temporary folder macOS cleans out.
+  - **A refusal waits for its alert** before answering, and goes to the terminal as well, in the app's words.
+  - **A window whose command has gone stays up**, as after ⌃C, and its Save still writes the file.
+  - **An empty `$BASE` is labelled as no base**, which a tracked empty file would also get. git's four
+    files can't tell the two apart, and it only words a pane.
+- **Tests:** 68 more in the core and 44 more in the app. A real `git mergetool` ran the command the setup
+  wrote, against a stand-in tool at a hostile path, for `UU`, `AA`, exit 0 and exit 1. The app suites use a
+  real Unix socket and the real merge window and Save. Full runs: 5 014 core and 2 354 app tests, without
+  the live server suites, whose code this slice does not touch. `check_localization_keys.py` found every
+  extracted key in the catalog.
+- **Negative controls:** 52 faults, one at a time. 47 failed their own tests at once. Three passed, and each
+  was a gap, now closed and failing by name: five paths with one empty, a session finished twice, and a client
+  that says nothing holding up the next, whose test had no time limit. One failed only by hanging the run for
+  560 s, and now fails by name. One more pass showed a redundant line in the Settings model, which is gone.
+- **Found by the live run:** `NSApp.activate(ignoringOtherApps:)` did nothing with another app in front, so
+  with Dirnex already running the window opened behind the terminal waiting for it. The command now runs
+  `open` on its own copy, which brings it forward (docs/NOTES.md ▸ Windows).
+- **Run live** on the Debug build, driven from the background, in a scratch repository with git's config kept
+  out of the real `~/.gitconfig`:
+  - With no Dirnex running, `git mergetool` started the copy it belongs to, with `launchd` as its parent, a
+    Dock launch's `PATH` and no `GIT_*`. Take Yours and Save wrote the file with no markers, with git still
+    waiting and the file still `UU`. Closing the window: exit 0, staged, the temporary files gone, nothing else
+    written.
+  - `AA`, with Dirnex up: "None: both sides added the file". Don't Save: "merge of added.txt failed", exit 1, still
+    `AA`, the file's bytes unchanged. Saved and then quit with the window open: exit 0, staged, socket gone.
+  - A binary conflict: the alert, the command waiting behind it, then the sentence on standard error and exit 1.
+  - The app killed with a window up: "Dirnex closed before the merge was finished", exit 1, and the next launch
+    took over the socket it left. The command killed with a window up: the app stayed up through that window's
+    close.
+  - The Settings row against a scratch config: `vimdiff` named and replaced, the written config driving a real
+    `git mergetool`, another copy's command shown with both buttons, and Stop Using leaving the rest of the
+    file. The defaults domain was restored and compared unchanged.
+- **Not run live:** ⌘S and ⌘W, which a background run cannot send; a rebase or a stash, whose words a test pins
+  and which M34 ran live; two real copies of Dirnex at once, measured on throwaway apps with one bundle id; a
+  Release build; Gatekeeper's first launch; the light appearance; and any translation.
+- **Left open:** a Save after ⌃C writes `$MERGED` with nothing waiting on it, so git has moved on and the file
+  stays unstaged.
+
 #### M38 — Remote: what M8, M22, M24, M25 and M32 left (M–L)
 
 - **Owner and group in a remote Get Info** (M25). `chown` and `chgrp` take a numeric id, while

@@ -65856,6 +65856,95 @@
         }
       }
     },
+    "Makes git mergetool open each conflicted file in Dirnex’s merge window, by setting merge.tool and mergetool.dirnex in your global git config.": {
+      "comment": "Settings, git merge tool. git mergetool, merge.tool and mergetool.dirnex are not to be translated.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lässt git mergetool jede Datei mit Konflikten im Zusammenführungsfenster von Dirnex öffnen. Dazu werden merge.tool und mergetool.dirnex in Ihrer globalen git-Konfiguration gesetzt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Makes git mergetool open each conflicted file in Dirnex’s merge window, by setting merge.tool and mergetool.dirnex in your global git config."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hace que git mergetool abra cada archivo en conflicto en la ventana de fusión de Dirnex, definiendo merge.tool y mergetool.dirnex en tu configuración global de git."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permet à git mergetool d’ouvrir chaque fichier en conflit dans la fenêtre de fusion de Dirnex, en définissant merge.tool et mergetool.dirnex dans votre configuration git globale."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fa aprire a git mergetool ogni file in conflitto nella finestra di merge di Dirnex, impostando merge.tool e mergetool.dirnex nella configurazione globale di git."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "グローバルの git 設定に merge.tool と mergetool.dirnex を設定し、git mergetool が競合した各ファイルを Dirnex のマージウインドウで開くようにします。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전역 git 설정에 merge.tool과 mergetool.dirnex를 지정하여 git mergetool이 충돌한 각 파일을 Dirnex 병합 윈도우에서 열도록 합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laat git mergetool elk bestand met een conflict openen in het samenvoegvenster van Dirnex, door merge.tool en mergetool.dirnex in te stellen in je globale git-configuratie."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprawia, że git mergetool otwiera każdy plik z konfliktem w oknie scalania Dirnex, ustawiając merge.tool i mergetool.dirnex w globalnej konfiguracji git."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faz o git mergetool abrir cada arquivo em conflito na janela de mesclagem do Dirnex, definindo merge.tool e mergetool.dirnex na sua configuração global do git."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool будет открывать каждый файл с конфликтом в окне объединения Dirnex: для этого в глобальной конфигурации git задаются merge.tool и mergetool.dirnex."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool відкриватиме кожен файл із конфліктом у вікні об’єднання Dirnex: для цього в глобальній конфігурації git задаються merge.tool і mergetool.dirnex."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在全局 git 配置中设置 merge.tool 和 mergetool.dirnex，让 git mergetool 在 Dirnex 的合并窗口中打开每个有冲突的文件。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在全域 git 設定中設定 merge.tool 和 mergetool.dirnex，讓 git mergetool 在 Dirnex 的合併視窗中打開每個有衝突的檔案。"
+          }
+        }
+      }
+    },
     "Manage Scripts…": {
       "comment": "Scripts submenu item: open the scripts organizer.",
       "localizations": {
@@ -66475,6 +66564,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "合併「%@」"
+          }
+        }
+      }
+    },
+    "Merge tool for git": {
+      "comment": "Settings ▸ Operations: the row that makes Dirnex the tool git mergetool runs. git is a program's name, not to be translated.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Merge-Tool für git"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Merge tool for git"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Herramienta de fusión para git"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Outil de fusion pour git"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Strumento di merge per git"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git のマージツール"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git 병합 도구"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Samenvoegtool voor git"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Narzędzie scalania dla git"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ferramenta de mesclagem do git"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Средство объединения для git"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Засіб об’єднання для git"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git 合并工具"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git 合併工具"
           }
         }
       }
@@ -92581,6 +92759,95 @@
         }
       }
     },
+    "Save, then close this window to go back to git": {
+      "comment": "Merge window, under Result, when git mergetool opened it: git waits until the window closes. git is a program's name, not to be translated.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sichern, dann Fenster schließen: weiter in git"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save, then close this window to go back to git"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guarda y cierra esta ventana para volver a git"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrez, puis fermez pour revenir à git"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salva, poi chiudi la finestra per tornare a git"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存してこのウインドウを閉じると git に戻ります"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저장한 다음 이 윈도우를 닫으면 git으로 돌아갑니다"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewaar en sluit dit venster: terug naar git"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zachowaj i zamknij okno, aby wrócić do git"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salve e feche esta janela para voltar ao git"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохраните и закройте окно — продолжит git"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Збережіть і закрийте вікно — продовжить git"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "存储后关闭此窗口即可返回 git"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "儲存後關閉此視窗即可返回 git"
+          }
+        }
+      }
+    },
     "Saved into your editor’s copy and uploaded to %@": {
       "comment": "Merge window, under Result: where a save puts the merged file; %@ is the server and path.",
       "localizations": {
@@ -99076,6 +99343,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "停止"
+          }
+        }
+      }
+    },
+    "Stop Using": {
+      "comment": "Settings, git merge tool: button that takes Dirnex out of git's config.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht mehr verwenden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop Using"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dejar de usar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ne plus utiliser"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non usare più"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用を停止"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용 중단"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niet meer gebruiken"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przestań używać"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parar de Usar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не использовать"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не використовувати"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "停止使用"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "停止使用"
           }
         }
       }
@@ -122319,6 +122675,95 @@
         }
       }
     },
+    "Use Dirnex": {
+      "comment": "Settings, git merge tool: button that makes Dirnex the tool git mergetool runs.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex verwenden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use Dirnex"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar Dirnex"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utiliser Dirnex"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa Dirnex"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex を使用"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex 사용"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirnex gebruiken"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Użyj Dirnex"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar o Dirnex"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Использовать Dirnex"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Використовувати Dirnex"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用 Dirnex"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用 Dirnex"
+          }
+        }
+      }
+    },
     "Use System Colors": {
       "localizations": {
         "de": {
@@ -122403,6 +122848,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "使用系統顏色"
+          }
+        }
+      }
+    },
+    "Use This Copy": {
+      "comment": "Settings, git merge tool: button shown when git's config runs another copy of Dirnex; it switches git to this copy.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Kopie verwenden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use This Copy"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar esta copia"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utiliser cette copie"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa questa copia"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このコピーを使用"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 사본 사용"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze kopie gebruiken"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Użyj tej kopii"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar Esta Cópia"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Использовать эту копию"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Використовувати цю копію"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用此副本"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用此複本"
           }
         }
       }
@@ -150976,6 +151510,184 @@
         }
       }
     },
+    "git couldn’t change its config. It said: %@": {
+      "comment": "Settings, git merge tool: writing git's config failed; %@ is git's own message, in English.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git konnte seine Konfiguration nicht ändern. Meldung: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git couldn’t change its config. It said: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git no ha podido cambiar su configuración. Dijo: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git n’a pas pu modifier sa configuration. Message : %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git non è riuscito a modificare la configurazione. Messaggio: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git が設定を変更できませんでした。メッセージ: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git이 설정을 변경할 수 없었습니다. 메시지: %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git kon zijn configuratie niet wijzigen. Melding: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git nie mógł zmienić konfiguracji. Komunikat: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O git não conseguiu alterar a configuração. Mensagem: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git не смог изменить конфигурацию. Сообщение: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git не зміг змінити конфігурацію. Повідомлення: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git 无法更改其配置。它返回：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git 無法更改其設定。它回報：%@"
+          }
+        }
+      }
+    },
+    "git couldn’t read its config. It said: %@": {
+      "comment": "Settings, git merge tool: reading git's config failed; %@ is git's own message, in English.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git konnte seine Konfiguration nicht lesen. Meldung: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git couldn’t read its config. It said: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git no ha podido leer su configuración. Dijo: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git n’a pas pu lire sa configuration. Message : %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git non è riuscito a leggere la configurazione. Messaggio: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git が設定を読み取れませんでした。メッセージ: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git이 설정을 읽을 수 없었습니다. 메시지: %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git kon zijn configuratie niet lezen. Melding: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git nie mógł odczytać konfiguracji. Komunikat: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O git não conseguiu ler a configuração. Mensagem: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git не смог прочитать конфигурацию. Сообщение: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git не зміг прочитати конфігурацію. Повідомлення: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git 无法读取其配置。它返回：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git 無法讀取其設定。它回報：%@"
+          }
+        }
+      }
+    },
     "git couldn’t read the file’s versions.": {
       "comment": "Resolve Conflict failure detail when git exited with an error and said nothing.",
       "localizations": {
@@ -151154,6 +151866,273 @@
         }
       }
     },
+    "git mergetool now runs %@. Use Dirnex replaces it in your global git config.": {
+      "comment": "Settings, git merge tool; %@ is the name of the tool git is set to. Use Dirnex is the button beside it. git mergetool is not to be translated.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool führt derzeit %@ aus. „Dirnex verwenden“ ersetzt das in Ihrer globalen git-Konfiguration."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool now runs %@. Use Dirnex replaces it in your global git config."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool ejecuta ahora %@. Usar Dirnex lo sustituye en tu configuración global de git."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool exécute actuellement %@. Utiliser Dirnex le remplace dans votre configuration git globale."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool ora esegue %@. Usa Dirnex lo sostituisce nella configurazione globale di git."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool は現在 %@ を実行します。“Dirnex を使用”を押すと、グローバルの git 設定でこれを置き換えます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool은 현재 %@을(를) 실행합니다. Dirnex 사용을 누르면 전역 git 설정에서 이를 대체합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool voert nu %@ uit. Dirnex gebruiken vervangt dit in je globale git-configuratie."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool uruchamia teraz %@. Użyj Dirnex zastąpi to w globalnej konfiguracji git."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O git mergetool agora executa %@. Usar o Dirnex o substitui na sua configuração global do git."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сейчас git mergetool запускает %@. «Использовать Dirnex» заменит его в глобальной конфигурации git."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зараз git mergetool запускає %@. «Використовувати Dirnex» замінить його в глобальній конфігурації git."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool 目前运行 %@。“使用 Dirnex”会在全局 git 配置中替换它。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool 目前執行 %@。「使用 Dirnex」會在全域 git 設定中取代它。"
+          }
+        }
+      }
+    },
+    "git mergetool opens this copy of Dirnex. Save the merge and close its window, and git stages the file.": {
+      "comment": "Settings, git merge tool, while it is set up. git mergetool is not to be translated.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool öffnet diese Kopie von Dirnex. Wenn Sie die Zusammenführung sichern und ihr Fenster schließen, merkt git die Datei zum Commit vor."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool opens this copy of Dirnex. Save the merge and close its window, and git stages the file."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool abre esta copia de Dirnex. Guarda la fusión y cierra su ventana, y git preparará el archivo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool ouvre cette copie de Dirnex. Enregistrez la fusion et fermez sa fenêtre, et git indexe le fichier."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool apre questa copia di Dirnex. Salva il merge e chiudi la finestra, e git mette il file in stage."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool はこのコピーの Dirnex を開きます。マージを保存してウインドウを閉じると、git がファイルをステージします。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool은 이 Dirnex 사본을 엽니다. 병합을 저장하고 윈도우를 닫으면 git이 파일을 스테이징합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool opent deze kopie van Dirnex. Bewaar het samenvoegen en sluit het venster, dan zet git het bestand klaar."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool otwiera tę kopię Dirnex. Zachowaj scalanie i zamknij jego okno, a git doda plik do poczekalni."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O git mergetool abre esta cópia do Dirnex. Salve a mesclagem e feche a janela, e o git adiciona o arquivo ao stage."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool открывает эту копию Dirnex. Сохраните объединение и закройте его окно, и git проиндексирует файл."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool відкриває цю копію Dirnex. Збережіть об’єднання й закрийте його вікно, і git проіндексує файл."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool 会打开此 Dirnex 副本。存储合并并关闭其窗口后，git 会暂存该文件。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool 會打開此 Dirnex 複本。儲存合併並關閉其視窗後，git 會暫存該檔案。"
+          }
+        }
+      }
+    },
+    "git mergetool runs another copy of Dirnex: %@": {
+      "comment": "Settings, git merge tool; %@ is the command in git's config, a path and its arguments.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool führt eine andere Kopie von Dirnex aus: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool runs another copy of Dirnex: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool ejecuta otra copia de Dirnex: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool exécute une autre copie de Dirnex : %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool esegue un’altra copia di Dirnex: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool は別のコピーの Dirnex を実行します: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool은 다른 Dirnex 사본을 실행합니다: %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool voert een andere kopie van Dirnex uit: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool uruchamia inną kopię Dirnex: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O git mergetool executa outra cópia do Dirnex: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool запускает другую копию Dirnex: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool запускає іншу копію Dirnex: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool 运行的是另一个 Dirnex 副本：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git mergetool 執行的是另一個 Dirnex 複本：%@"
+          }
+        }
+      }
+    },
     "git no longer lists a conflict in this file. It may have been resolved since.": {
       "comment": "Resolve Conflict failure detail when git holds no conflict for the file any more.",
       "localizations": {
@@ -151239,6 +152218,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "git 不再列出此檔案中的衝突。它可能已經被解決。"
+          }
+        }
+      }
+    },
+    "git wasn’t found on this Mac.": {
+      "comment": "Settings, git merge tool: no git is installed. git is a program's name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git wurde auf diesem Mac nicht gefunden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git wasn’t found on this Mac."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha encontrado git en este Mac."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git est introuvable sur ce Mac."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git non è stato trovato su questo Mac."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この Mac に git が見つかりませんでした。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 Mac에서 git을 찾을 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git is niet gevonden op deze Mac."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie znaleziono git na tym Macu."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O git não foi encontrado neste Mac."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git не найден на этом Mac."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git не знайдено на цьому Mac."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在这台 Mac 上找不到 git。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在這台 Mac 上找不到 git。"
           }
         }
       }

@@ -104,6 +104,9 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   - **computer-use's `request_access` for "Dirnex" can grant the old id.** Seen 2026-11-02: the name
     resolved to `com.dirnex.Dirnex`, which is still registered and was not running, while the build
     up was `app.dirnex.Dirnex`. Ask for the bundle id, and `list_apps` says which one is running.
+  - **A `Dirnex --git-merge` command is a second process named `Dirnex`.** Seen 2026-11-09: `pgrep -x
+    Dirnex | head -1` picked the command, and its environment, full of `GIT_*`, read as the app's. The
+    app is the one with no `--git-merge` in its command line, and its parent is `launchd`.
   - **In a wait loop, `pgrep -f` also matches the shell running the loop.** Seen 2026-10-21: the
     agent's shell runs each command as `bash -c '<command>'`, so the pattern is in that shell's own
     command line. The loop waiting for the app to quit never saw it gone, and a `pkill -f` on the
@@ -420,6 +423,10 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
 - **Two clicks on a row with only key presses between them make a double-click.** Seen 2026-10-24:
   click, Space, Space, click on a zip, all inside the double-click interval, opened the archive. Wait
   a second between clicks, or move the cursor with the arrow keys.
+- **`lsappinfo front` says which app is in front, and needs no permission.** `lsappinfo info -only name
+  "$(lsappinfo front)"` found that a window had opened behind another app (2026-11-09), which no
+  background screenshot can show, since it captures a window wherever it is. Put the app you were in
+  back afterwards with `open -b <its bundle id>`.
 - **Find Files on this Mac runs off the Spotlight index, so a fixture in a temp folder finds nothing.**
   Seen 2026-11-05: a saved search scoped to the session scratchpad under `/private/tmp` opened an
   empty results tab, because `SpotlightSearchRunner` asks `mdfind` and `/private/tmp` is not
