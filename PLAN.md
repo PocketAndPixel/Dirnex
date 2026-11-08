@@ -357,6 +357,68 @@ Decided before Slice 1 (2026-11-08, Oleg, on the probes above):
   background run cannot send and tests pin through `handleKey`; the Synchronize row and the conflict
   dialog, which go through the same `CompareOpener` call; the light appearance; and any translation.
 
+**2026-11-08: Slice 3 landed** (larger text).
+
+- **Probed first, in release, on 256 MiB pairs:**
+  - `columns(of:)` was 11.2 s of a pane's 11.7 s. On the dense pair, 27 s of the 32 s was row alignment,
+    not the search.
+  - Encoding detection on a sample is only as good as the sample. Over 235 legacy-encoded files of 2 to
+    8 MiB in 25 encodings, the file's start agreed with the whole-file answer on 185, and 256 KiB of
+    lines holding a non-ASCII byte on 233. The two left are KOI8-R, which the detector gets wrong on the
+    whole file as well.
+  - **Everything on the main thread was cheap but one thing:** replacing a pane's text that already held
+    1.9 million attribute runs ran for over four minutes in `NSMutableRLEArray`, a bug the shipped app
+    has at any size with enough marked words, on every re-compare. Emptying the storage first takes
+    0.02 s (docs/NOTES.md ▸ Text fields and text views).
+- **Core:** the column count's ASCII path. Detection past 4 MiB, which is all Quick View reads, shown a
+  sample and the whole file decoded by its answer. `ComparedText.windowByteLimit` and
+  `ComparedText.precheck`, which reads a few KiB so a binary of gigabytes is not read whole under the
+  larger limit. `ComparisonStop` and a `check` through `LineDiff`, `MyersDiff`, `RowAlignment`,
+  `TextComparison` and the pane text. `ComparedDocument.read` can be stopped between its steps, and
+  `isEdited` answers at once for lines nothing touched.
+- **App:**
+  - **A side past 64 MiB opens the window first**, on stand-ins with the files' names, and reads with it
+    on screen. A smaller pair is read first, as it always was, so nothing flashes for a small file that
+    turns out to be undecodable.
+  - **"Comparing…", a spinner and Stop in the toolbar** once a comparison runs past 200 ms, and ⌘. for
+    Stop. Stop, a newer comparison and closing the window each stop the work.
+  - **Stop empties the panes** and offers Compare Again. By then a swap or a copy may have changed what
+    the old panes were a comparison of, so they are not left up.
+  - The panes' attributed text, fills and kinds are built off the main thread. Three new strings, in all
+    14 languages. A Synchronize row and the conflict dialog take the same route.
+- **Measured** on the Release build, on this 64 GB Mac:
+
+  | | Before | After |
+  |---|---|---|
+  | Pane text, 256 MiB | 11.7 s | 0.7 s |
+  | `isEdited`, 256 MiB | 0.6 s | 0 |
+  | Read a 64 MiB Windows-1251 file | 65 s | 2.9 s |
+  | Stop reaching the work, dense 256 MiB, 8 moments | no way to stop | at most 0.38 s |
+  | Re-compare of a dense pane, main thread | over 4 minutes | at most 0.35 s |
+
+- **Tests:** 38 more in the core and 27 more in the app. Full runs: 4 915 core tests, and 2 289 app tests,
+  green in two runs of three without the live server suites, whose code this slice does not touch. The
+  third failed only `PanesDividerDetentTests`' queued-mouse test, which passed alone three times and in
+  the next full run.
+- **Negative controls:** 30 faults, one at a time, each failed its own test. Three passed at first, and
+  each was a gap, now closed: the loop over a block's alike pairs, the walk over the rows, and Comparing
+  shown at once.
+- **Found by the live run:** the copy arrows and pencils looked enabled while the files were still being
+  read, and the toolbar sat 2 pt higher with Stop in it, moving the panes 4 pt when it left. Both fixed,
+  pinned, and seen fixed.
+- **Run live** on a Release build driven from the background: a 256 MiB pair (window up in under half a
+  second, Comparing… and Stop on screen, 144 changes, worst main-thread answer 106 ms over 371 samples), a dense pair
+  (Stop, 0.3 % CPU after it, Compare Again, then 954 300 changes), Ignore Case on the dense pair, a
+  64 MiB Windows-1251 pair (Russian as written, its one change found), and a 3 GiB pair past the limit,
+  in the byte view with its 4 differing bytes. The sampler's control read 979 ms for a 1 s `SIGSTOP`.
+- **Decided in the slice:**
+  - **Stop empties rather than keeping the last comparison**, as above. A Show Bytes beside Compare Again
+    was left out.
+  - **The sides are read one after the other.** Reading them at once would save about 2 s at 256 MiB.
+- **Not run live:** ⌘. and Escape during a comparison, which a background run cannot send and a test pins
+  through `handleKey`; a pair from a Synchronize row or the conflict dialog; a side near this Mac's
+  2 GiB limit; and any translation.
+
 #### M38 — Remote: what M8, M22, M24, M25 and M32 left (M–L)
 
 - **Owner and group in a remote Get Info** (M25). `chown` and `chgrp` take a numeric id, while

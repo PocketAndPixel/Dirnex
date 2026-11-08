@@ -112,6 +112,10 @@ final class ComparePaneView: NSView {
         endingDiffers: [Bool] = [],
         lineCount: Int
     ) {
+        // Emptied first, because replacing text that is there inserts the new attribute runs one at a
+        // time, moving every run behind each: more than four minutes on the main thread for 1.9
+        // million runs, against 0.13 s into an empty storage (measured 2026-11-08).
+        textView.textStorage?.setAttributedString(NSAttributedString())
         coloring.update(fills: fills, rowStarts: pane.rowStarts)
         textView.pane = pane
         lineNumbers.endingDiffers = endingDiffers

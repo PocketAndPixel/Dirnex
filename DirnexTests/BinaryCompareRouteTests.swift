@@ -29,12 +29,17 @@ struct BinaryCompareRouteTests: ByteWindowTesting {
         var failure: String?
     }
 
-    private func open(_ fixture: ByteWindowFixture, into opened: Opened) {
+    private func open(
+        _ fixture: ByteWindowFixture,
+        into opened: Opened,
+        byteLimit: Int64 = ComparedText.windowByteLimit()
+    ) {
         CompareOpener.openWindow(
             CompareFile(path: fixture.left, origin: .local("/somewhere/shown-left.bin")),
             detail: "shown left",
             CompareFile(path: fixture.right, origin: fixture.right),
             detail: "shown right",
+            byteLimit: byteLimit,
             presentBytes: { left, right, _, reason in
                 opened.sides = (left, right)
                 opened.reason = reason
@@ -63,7 +68,7 @@ struct BinaryCompareRouteTests: ByteWindowTesting {
         #expect(truncate(fixture.left.path, ByteComparator.prescanByteLimit + 1) == 0)
         #expect(truncate(fixture.right.path, ByteComparator.prescanByteLimit + 1) == 0)
         let opened = Opened()
-        open(fixture, into: opened)
+        open(fixture, into: opened, byteLimit: ByteComparator.prescanByteLimit)
         #expect(await until { opened.reason != nil })
         #expect(opened.reason == .tooLarge)
         #expect(opened.failure == nil)

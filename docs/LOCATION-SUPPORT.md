@@ -699,8 +699,9 @@ paste), which repacks them as UTF-8 and flagged — readable everywhere afterwar
 (PLAN.md §M24 Slice 4) — `ByteComparator` still only ever sees real local paths. Dirnex's own compare
 window (PLAN.md §M31) names each side where it lives, the server's or the archive's own path, and an
 external diff tool is handed the copies, which keep their real names. The limits are about what the
-pair *is*: a folder has no contents to compare. Dirnex's window compares text files of up to 64 MiB,
-and since PLAN.md §M37 Slice 2 a binary pair, a pair no encoding reads and a pair past that limit open
+pair *is*: a folder has no contents to compare. Dirnex's window compares text files of up to 1/32 of
+this Mac's memory and never under 64 MiB (PLAN.md §M37 Slice 3), and since Slice 2 a binary pair, a pair
+no encoding reads and a pair past that limit open
 in its byte view instead of being refused: hex side by side at the same offset, of any size, read a
 page at a time off the main thread. An external tool takes anything, and asks first past 64 MiB. The
 Synchronize sheet's Compare Contents… brings its pair down the same way since M31 Slice 4; it used to

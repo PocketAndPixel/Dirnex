@@ -68,6 +68,8 @@ extension CompareWindowController {
         toolbar.onOptionsChange = { [weak self] options in self?.compute(options: options) }
         toolbar.onSwap = { [weak self] in self?.swapSides() }
         toolbar.onCopy = { [weak self] side in self?.copyCurrentChange(to: side) }
+        toolbar.onStop = { [weak self] in self?.stopComparing() }
+        toolbar.onCompareAgain = { [weak self] in self?.compareAgain() }
         toolbar.copy.isHidden = !allowsCopies
         for (side, pane) in panes {
             pane.editButton.isHidden = !allowsCopies

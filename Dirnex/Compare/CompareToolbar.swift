@@ -10,6 +10,8 @@ final class CompareToolbar: NSView {
     var onSwap: (() -> Void)?
     var onCopy: ((ComparisonPaneText.Side) -> Void)?
     var onOptionsChange: ((LineDiffOptions) -> Void)?
+    var onStop: (() -> Void)?
+    var onCompareAgain: (() -> Void)?
 
     let navigation = NSSegmentedControl()
     /// Copy to Left and Copy to Right, beside the change arrows: the side each segment copies to
@@ -17,6 +19,12 @@ final class CompareToolbar: NSView {
     let copy = NSSegmentedControl()
     static let copySides: [ComparisonPaneText.Side] = [.left, .right]
     let counter = NSTextField(labelWithString: "")
+    /// Spins beside the counter while a comparison takes a while (PLAN.md §M37 Slice 3).
+    let comparingSpinner = NSProgressIndicator()
+    /// Stop while a comparison runs, and Compare Again once one has been stopped.
+    let stopButton = NSButton(title: "", target: nil, action: nil)
+    /// What ``stopButton`` is showing.
+    var comparingState = ComparingState.idle
     /// Swap Sides: one momentary segment, so it draws like the change buttons beside it.
     let swap = NSSegmentedControl()
     let whitespace = NSPopUpButton()
@@ -26,6 +34,13 @@ final class CompareToolbar: NSView {
     let counterWidth: NSLayoutConstraint
     /// The change count `counterWidth` was last sized for.
     private var reservedCount: Int?
+
+    /// Whether the toolbar is saying a comparison is running, or was stopped.
+    enum ComparingState {
+        case idle
+        case comparing
+        case stopped
+    }
 
     /// The whitespace choices, in the popup's order.
     static let whitespaceChoices: [LineDiffOptions.Whitespace] = [
@@ -47,7 +62,7 @@ final class CompareToolbar: NSView {
     /// The controls Tab stops at, left to right. One that cannot take the keyboard is passed over:
     /// Copy with neither side taking a copy, or hidden in a window that takes none.
     var keyViews: [NSView] {
-        [navigation, copy, swap, whitespace, ignoresCase, ignoresLineEndings]
+        [navigation, copy, stopButton, swap, whitespace, ignoresCase, ignoresLineEndings]
     }
 
     /// The options the controls show.
@@ -56,26 +71,6 @@ final class CompareToolbar: NSView {
             whitespace: Self.whitespaceChoices[max(0, whitespace.indexOfSelectedItem)],
             ignoresLineEndings: ignoresLineEndings.state == .on,
             ignoresCase: ignoresCase.state == .on
-        )
-    }
-
-    /// "Change 3 of 12", "12 changes" or "No differences".
-    static func counterText(current: Int?, count: Int) -> String {
-        guard count > 0 else {
-            return String(
-                localized: "No differences",
-                comment: "Compare window: the two texts have no changed line."
-            )
-        }
-        guard let current else {
-            return String(
-                localized: "\(count) changes",
-                comment: "Compare window: how many changes; %lld is the count."
-            )
-        }
-        return String(
-            localized: "Change \(current + 1) of \(count)",
-            comment: "Compare window: the change on screen; the first %lld is its position, the second the count."
         )
     }
 
@@ -98,22 +93,6 @@ final class CompareToolbar: NSView {
     func enableCopy(toLeft: Bool, toRight: Bool) {
         copy.setEnabled(toLeft, forSegment: 0)
         copy.setEnabled(toRight, forSegment: 1)
-    }
-
-    /// What the menu's Undo names a copy by: "Undo Copy to Right".
-    static func copyTitle(to side: ComparisonPaneText.Side) -> String {
-        switch side {
-        case .left:
-            String(
-                localized: "Copy to Left",
-                comment: "Compare window button, tooltip and undo name."
-            )
-        case .right:
-            String(
-                localized: "Copy to Right",
-                comment: "Compare window button, tooltip and undo name."
-            )
-        }
     }
 
     /// Size the counter for the longest text it can show in a comparison with `count` changes, so
@@ -195,11 +174,13 @@ final class CompareToolbar: NSView {
             box.action = #selector(optionsChanged(_:))
         }
 
+        buildComparing()
         let spacer = NSView()
         spacer.setContentHuggingPriority(.init(1), for: .horizontal)
         let stack = NSStackView(
             views: [
-                navigation, copy, counter, spacer, swap, whitespace, ignoresCase, ignoresLineEndings
+                navigation, copy, counter, comparingSpinner, stopButton, spacer, swap, whitespace,
+                ignoresCase, ignoresLineEndings
             ]
         )
         stack.orientation = .horizontal
@@ -211,7 +192,10 @@ final class CompareToolbar: NSView {
             stack.leadingAnchor.constraint(equalTo: leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: trailingAnchor),
             stack.topAnchor.constraint(equalTo: topAnchor),
-            stack.bottomAnchor.constraint(equalTo: bottomAnchor)
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor),
+            // The stack shrank its own insets by two points when the small Stop button joined it, and
+            // the panes below jumped four when it left. Tied to the arrows, which are always there.
+            heightAnchor.constraint(equalTo: navigation.heightAnchor, constant: 12)
         ])
     }
 
@@ -231,25 +215,6 @@ final class CompareToolbar: NSView {
         }
         copy.target = self
         copy.action = #selector(copyChange(_:))
-    }
-
-    static func title(for whitespace: LineDiffOptions.Whitespace) -> String {
-        switch whitespace {
-        case .compare:
-            String(localized: "Compare Whitespace", comment: "Compare window whitespace option.")
-        case .ignoreTrailing:
-            String(
-                localized: "Ignore Whitespace at Line End",
-                comment: "Compare window whitespace option."
-            )
-        case .ignoreChanges:
-            String(
-                localized: "Ignore Changes in Whitespace",
-                comment: "Compare window whitespace option."
-            )
-        case .ignoreAll:
-            String(localized: "Ignore All Whitespace", comment: "Compare window whitespace option.")
-        }
     }
 
     @objc private func navigate(_ sender: NSSegmentedControl) {

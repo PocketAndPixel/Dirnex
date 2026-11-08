@@ -29,6 +29,46 @@ public struct ComparedText: Sendable {
         case undecodable
         /// The file could not be opened or read.
         case unreadable
+        /// The caller asked the read to stop.
+        case stopped
+    }
+
+    /// The largest side the compare window reads as text on a Mac with this much memory (PLAN.md
+    /// §M37): 1/32 of it, and never under `ByteComparator.prescanByteLimit`.
+    ///
+    /// A pair costs about 13 times one side's bytes once it is on screen (measured 2026-11-08), so
+    /// this keeps a pair to about 40 % of memory. A pair past it goes to the byte view.
+    public static func windowByteLimit(
+        physicalMemory: UInt64 = ProcessInfo.processInfo.physicalMemory
+    ) -> Int64 {
+        max(ByteComparator.prescanByteLimit, Int64(clamping: physicalMemory / 32))
+    }
+
+    /// What can be told about a file without reading it whole: its size, or the failure a whole read
+    /// would give for being past `byteLimit` or for showing a NUL in its first
+    /// `TextPreview.sniffLength` bytes (PLAN.md §M37 Slice 3).
+    ///
+    /// The limit now lets through files of gigabytes, and a binary among them should not be read
+    /// whole to find the NUL that nearly always sits in its first bytes. Blocking.
+    public static func precheck(
+        contentsOf url: URL,
+        byteLimit: Int64
+    ) throws(Failure) -> Int64 {
+        guard let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize else {
+            throw .unreadable
+        }
+        guard Int64(size) <= byteLimit else {
+            throw .tooLarge(byteSize: Int64(size), limit: byteLimit)
+        }
+        guard let handle = try? FileHandle(forReadingFrom: url) else { throw .unreadable }
+        defer { try? handle.close() }
+        guard let head = try? handle.read(upToCount: TextPreview.sniffLength) else {
+            // `nil` from `read` is the end of the file, which for an empty file is the first read;
+            // the `try?` folds it in with a failed read, and an empty file has no NUL either way.
+            return Int64(size)
+        }
+        guard !TextPreview.isBinary(head) else { throw .binary }
+        return Int64(size)
     }
 
     /// Read and decode a whole local file. Blocking; call it off the main thread.

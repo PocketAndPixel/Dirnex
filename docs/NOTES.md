@@ -161,6 +161,16 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     cooperative pool exists to run. The two external launchers are the other exception — they call
     `process.run()` and return without waiting, so they block on nothing.
 
+- **A pipeline that can be stopped, without making every caller handle a throw: a generic typed-throws
+  `check`.** M37 Slice 3 had to stop a comparison inside five stages that the merge and the tests
+  call as plain non-throwing functions. Each stage takes `check: () throws(Stop) -> Void` with
+  `Stop: Error` and is itself `throws(Stop)`. The stoppable caller passes a closure that throws
+  `CancellationError`, and everyone else passes `{}`, whose error type is inferred as `Never`, so the
+  call needs no `try` (`ComparisonStop`). Two things it costs. A closure
+  passed to `map` infers plain `throws` rather than `throws(Stop)`, so the loops are `for` loops. And a
+  non-escaping `isCancelled` cannot go through an `@escaping` helper that builds the check, so each
+  public entry spells the three-line closure out.
+
 ## Testing
 
 ### Swift Testing and `xcodebuild`
@@ -2915,7 +2925,14 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     lossy answers; take the rest. It is what TextEdit shows, and doing better means shipping a
     charset detector.
   - **It is also slow on a large file:** 6 s for 7.7 MB of Windows-1251 (measured 2026-10-25),
-    where 58 MiB of UTF-8 decodes in 0.35 s. The compare window pays it when it opens such a file.
+    where 58 MiB of UTF-8 decodes in 0.35 s, and 65 s at 64 MiB. It costs about a second per MiB, so
+    past 4 MiB the detector is shown a sample and the whole file is decoded by its answer. **The sample
+    has to be the lines holding a non-ASCII byte.** Over 235 legacy-encoded files of 2 to 8 MiB in 25
+    encodings, the file's first 256 KiB gave the whole-file answer's text on 185, because a file that
+    opens in English reads as ASCII; 256 KiB of non-ASCII lines did on 233, and the other two were
+    KOI8-R, which the detector gets wrong on the whole file as well. 64 KiB lost one file to Big5
+    HKSCS, and 1 MiB gained nothing at four times the cost. A 64 MiB Windows-1251 read went from 65 s to
+    2.9 s (`TextPreview.detectionSample`).
   - **Decoding and encoding back are exact inverses everywhere but two places**, so anything that
     saves has to check the round trip rather than trust it (`ComparedDocument.isSavable`). Probed
     2026-10-25 for M33: `String(data:encoding: .utf8)` drops a *leading* U+FEFF, so a file with
@@ -2956,6 +2973,15 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
     find yellow came out white on yellow and could not be read, while `findHighlightColor` and
     `systemOrange` came through unchanged. A named dynamic color (`NSColor(name:dynamicProvider:)`,
     type `.catalog`) is left alone like them.
+- **Replacing a text storage's contents is quadratic in the attribute runs of the new text; set it
+  empty first.** Measured 2026-11-08 on a real TextKit 2 view with 256 MiB and 1.9 million runs (a
+  dense compare pane's marked words). `setAttributedString` into an empty storage took 0.13 s. The
+  same call over text already there was still going after four minutes, all of it in
+  `-[NSMutableRLEArray insertObject:range:]` → `memmove`, on the main thread: every new run is
+  inserted singly into the run array, which already holds the runs of the text it is about to drop.
+  Setting an empty string first took 0.02 s, and the set after it 0.12 s (`ComparePaneView.show`). A
+  document with a run per paragraph is unaffected, which is why M31's 64 MiB case never showed it: the
+  cost arrives with marks per changed word, on a re-compare rather than the first open.
 - **Under TextKit 2, where a range far into a large document lies is an estimate that moves after it is
   scrolled to, so no single scroll lands on it.** Measured 2026-09-17 in the running app on a 4 MB
   text preview, jumping from the first match to the last: `scrollRangeToVisible` returned in **1 ms**
