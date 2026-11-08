@@ -81,11 +81,8 @@ extension PanelViewController {
     // MARK: - A row on a server, on its way to another app
 
     /// Watch a drag that holds a file on a server or inside an archive, because Finder's promise is no
-    /// use to most apps — or a row of a locked archive, whose staying behind has to be explained.
-    ///
-    /// A server's **folder** alone starts nothing here (PLAN.md §M36 Slice 3): it is promised to
-    /// Finder and handed to no other app, and watching would only rewrite the board over another
-    /// app, which would take the promise away from a Finder drop afterwards.
+    /// use to most apps, or a folder, which is a zip for every app but Finder (`DragOutZip`), or a row
+    /// of a locked archive, whose staying behind has to be explained.
     func fileTable(_ tableView: FileTableView, didBegin session: NSDraggingSession, fromRow row: Int) {
         dragHandoff = nil
         guard let cache = host?.remoteFileCache, let entries = entriesDragged(fromRow: row) else { return }
@@ -95,7 +92,7 @@ extension PanelViewController {
         )
         else { return }
         let status = RemoteDragStatus(session: session)
-        let extractsOnly = !routes.values.contains(.download)
+        let failureTitle = Self.handoffFailureTitle(for: routes)
         dragHandoff = RemoteDragHandoffController(
             board: session.draggingPasteboard,
             entries: entries,
@@ -109,15 +106,12 @@ extension PanelViewController {
                 refreshQuickLookIfVisible()
             },
             onFailure: { [weak self] error in
+                if let zipFailure = error as? DragOutZipFailure {
+                    self?.reportZipFailure(zipFailure)
+                    return
+                }
                 self?.presentOperationFailure(
-                    message: extractsOnly
-                        ? String(localized: "Couldn’t extract from the archive")
-                        : String(
-                            localized: "Couldn’t copy this item from the server",
-                            comment: """
-                            Alert title when a file dragged out of a server to another app can't be downloaded.
-                            """
-                        ),
+                    message: failureTitle,
                     detail: self?.describe(error) ?? ""
                 )
             },
@@ -129,6 +123,36 @@ extension PanelViewController {
                     self?.reportLockedDragRows(entries, routes: routes)
                 }
             )
+        )
+    }
+
+    /// The alert title for a drag whose rows could not be brought over for another app.
+    ///
+    /// By whether anything was coming from a server, a folder included: a server's folder alone that
+    /// fails to come down is a copy that failed, not an extraction. A zip that fails says so on its
+    /// own (`reportZipFailure`).
+    static func handoffFailureTitle(for routes: [VFSPath: DragOutRoute]) -> String {
+        let fromServer = routes.values.contains { $0 == .download || $0 == .downloadFolder }
+        guard fromServer else { return String(localized: "Couldn’t extract from the archive") }
+        return String(
+            localized: "Couldn’t copy this item from the server",
+            comment: """
+            Alert title when a file dragged out of a server to another app can't be downloaded.
+            """
+        )
+    }
+
+    /// Say that a folder dragged to another app could not be made into the zip that app is handed.
+    private func reportZipFailure(_ failure: DragOutZipFailure) {
+        presentOperationFailure(
+            message: String(
+                localized: "Couldn’t compress “\(failure.folderName)”",
+                comment: """
+                Alert title when a folder dragged to another app can't be made into the zip that app \
+                is handed in its place; %@ is the folder's name.
+                """
+            ),
+            detail: describe(failure.underlying)
         )
     }
 
@@ -163,10 +187,11 @@ extension PanelViewController {
         endedAt screenPoint: NSPoint,
         operation: NSDragOperation
     ) {
-        endDragHandoff()
+        endDragHandoff(operation: operation)
     }
 
-    func endDragHandoff() {
+    /// `operation` is what the drop came to, which says whether anybody took the drag's zips.
+    func endDragHandoff(operation: NSDragOperation = []) {
         guard let dragHandoff else { return }
         var mayFinish = false
         if dragHandoff.isTransferring {
@@ -176,7 +201,7 @@ extension PanelViewController {
                 previewLimit: AppPreferences.shared.quickViewFetchLimit
             ) == .fetch
         }
-        dragHandoff.dragEnded(mayFinish: mayFinish)
+        dragHandoff.dragEnded(mayFinish: mayFinish, operation: operation)
     }
 
     /// Every row a drag grabbed on `row` carries.

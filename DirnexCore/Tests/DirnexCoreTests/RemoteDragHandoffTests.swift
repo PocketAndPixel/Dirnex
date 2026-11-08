@@ -197,6 +197,79 @@ struct RemoteDragHandoffTests {
         #expect(handoff.pointerMoved(over: finder).isEmpty)
     }
 
+    // MARK: - A folder: itself for Finder, a zip for everyone else
+
+    /// A handoff for a drag holding a folder, whose pointer has reached `surface`.
+    private func enteredWithFolder(_ surface: RemoteDragHandoff.Surface) -> RemoteDragHandoff {
+        var handoff = RemoteDragHandoff(finderHasItsOwnBoard: true)
+        _ = handoff.pointerMoved(over: surface)
+        return handoff
+    }
+
+    @Test("Another app gets the first rewrite as before, written for other apps")
+    func folderDragLeavesThePromiseForOtherApps() {
+        var handoff = RemoteDragHandoff(finderHasItsOwnBoard: true)
+        #expect(handoff.pointerMoved(over: finder).isEmpty)
+        #expect(handoff.board == .promises)
+        #expect(handoff.pointerMoved(over: teams) == [.writeLazyFileURLs, .startTransfer])
+        #expect(handoff.audience == .otherApps)
+    }
+
+    /// The probe of 2026-11-08: rewritten back over Finder, the board dropped the folder itself.
+    /// Left as it was, Finder would read the zip another app was given.
+    @Test("Crossing back to Finder writes Finder a board of its own")
+    func finderGetsItsOwnBoardBack() {
+        var handoff = enteredWithFolder(teams)
+        #expect(handoff.pointerMoved(over: finder) == [.writeLazyFileURLs])
+        #expect(handoff.audience == .finder)
+        #expect(handoff.pointerMoved(over: finder).isEmpty)
+        #expect(handoff.pointerMoved(over: .neutral).isEmpty)
+        #expect(handoff.pointerMoved(over: slack) == [.writeLazyFileURLs])
+        #expect(handoff.audience == .otherApps)
+        // Another app after another app is one audience, so nothing is written for it.
+        #expect(handoff.pointerMoved(over: teams).isEmpty)
+    }
+
+    @Test("Finder's board answers afresh, after another app was told nothing")
+    func finderWaitsOnItsOwnBoard() {
+        var handoff = enteredWithFolder(teams)
+        handoff.holdEnded(over: teams)
+        #expect(handoff.readFileURL(from: teams) == .nothing)
+        _ = handoff.pointerMoved(over: finder)
+        // Rewritten for Finder, not merely for a different app: Finder's rows are not the zips.
+        #expect(handoff.audience == .finder)
+        #expect(handoff.readFileURL(from: finder) == .wait)
+    }
+
+    @Test("Once everything is here, a crossing writes real URLs for the new audience")
+    func landedCrossingWritesFileURLs() {
+        var handoff = enteredWithFolder(teams)
+        _ = handoff.transferLanded()
+        #expect(handoff.pointerMoved(over: finder) == [.writeFileURLs])
+        #expect(handoff.board == .fileURLs)
+        #expect(handoff.readFileURL(from: finder) == .fileURLs)
+        #expect(handoff.pointerMoved(over: teams) == [.writeFileURLs])
+        #expect(handoff.audience == .otherApps)
+    }
+
+    /// A folder on this disk reaches Finder as itself, which a failed zip has nothing to do with.
+    @Test("A failed transfer still gives Finder its own board")
+    func failedTransferStillCrosses() {
+        var handoff = enteredWithFolder(teams)
+        handoff.transferFailed()
+        #expect(handoff.pointerMoved(over: finder) == [.writeLazyFileURLs])
+        #expect(handoff.readFileURL(from: finder) == .nothing)
+    }
+
+    /// Pinned beside the rest because the flag must not leak: a drag of files reads one board
+    /// everywhere, exactly as it did before folders were zipped.
+    @Test("Without a folder, Finder reads the board another app was given")
+    func withoutAFolderFinderSharesTheBoard() {
+        var handoff = entered(teams)
+        #expect(handoff.pointerMoved(over: finder).isEmpty)
+        #expect(handoff.audience == .otherApps)
+    }
+
     // MARK: - The drag ending
 
     @Test("A running transfer that may not finish unasked is stopped")

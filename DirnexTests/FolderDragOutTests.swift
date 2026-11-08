@@ -217,10 +217,11 @@ struct FolderDragOutTests {
 
     // MARK: - Every other app
 
-    /// Decision B: other apps get no folder until probe P2 shows one takes it. A file beside it in
-    /// the same drag is handed over as before.
-    @Test("over another app a file is brought down and handed over, and the folder is not")
-    func handoffLeavesTheFolderOut() async throws {
+    /// Slice 3 left the folder out for other apps; since 2026-11-08 it is offered as a zip of itself,
+    /// beside the file (`FolderZipHandoffTests` stages and zips one for real). Nothing is read here,
+    /// because this backend cannot stage a folder and the board answers for all of its rows or none.
+    @Test("over another app a folder beside a file is offered too, to be zipped")
+    func handoffOffersTheFolderToo() async throws {
         let file = Fixture.entry("report.pdf")
         let dir = FileEntry(
             path: VFSPath(backend: Fixture.backendID, path: "/photos"),
@@ -258,12 +259,12 @@ struct FolderDragOutTests {
 
         let items = try #require(board.pasteboardItems)
         #expect(items.count == 2)
-        #expect(items[1].types.contains(.fileURL) == false)
-        let read = try #require(items[0].string(forType: .fileURL))
-        #expect(URL(string: read)?.lastPathComponent == "report.pdf")
-        #expect(backend.copyCount == 1)
+        #expect(items[0].types.contains(.fileURL))
+        #expect(items[1].types.contains(.fileURL))
+        #expect(controller.makesZips)
         // Both rows still drop back inside Dirnex on their payloads.
         #expect(PanelPasteboard.payloads(in: board).map(\.path) == [file.path, dir.path])
+        controller.dragEnded(mayFinish: false)
         withExtendedLifetime(controller) {}
     }
 }

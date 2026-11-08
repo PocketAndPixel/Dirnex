@@ -19647,6 +19647,49 @@ Decided by Oleg on 2026-11-08, both as recommended:
   the draft took them. So Mail needs nothing more from Dirnex; whether the handoff should offer a folder
   as a file URL waits on Teams and Chrome, the apps that refuse a promise.
 
+**2026-11-08: a folder dragged to Gmail, Teams or any app but Finder goes as a zip** (core, then app).
+Asked for by Oleg the day M36 closed. A local folder dragged from Dirnex into a Gmail draft in Chrome
+answered "Attachment failed", because Chrome hands the page the folder as a file. A server's folder
+showed no drop box at all, since its drag carried only Finder's promise, which Chrome refuses. Gmail
+takes a dropped file and fails on a folder, so Oleg chose to zip the folder for every app but Finder.
+
+- **What landed.** A folder on this disk now routes as `DragOutRoute.folderURL`, and a server's folder
+  (`.downloadFolder`) joins the drag's handoff. Once the pointer is over an app other than Finder,
+  the board offers a lazy URL to `<folder>.zip`. ⌥F5's `bsdtar` packer makes it in the temp root
+  (`DragOutZip`), after `MaterializeRunner` has staged a server's folder. The drag image says
+  "Compressing…" meanwhile. The transfer loop the controller ran moved into `RemoteDragTransfer`.
+- **Finder still gets the folder.** A rewritten board serves whoever reads it next, so a drag holding a
+  folder rewrites it again whenever the pointer crosses between Finder and another app
+  (`RemoteDragHandoff.Audience`). Finder then gets a local folder by its own URL, and a server's as its
+  staged tree. A throwaway drag source measured this first: rewritten back to the plain folder URL
+  over Finder, the board dropped the folder, not the zip.
+- **What a zip costs.** Hovering over another app starts it, as it starts a download. `bsdtar` zipped
+  11 MB of source in 0.29 s and 200 MB of random bytes in 2.66 s. A zip never finishes after the drag.
+  The drag's end removes what the drop did not take: the zip unless another app took it, the staged
+  tree unless Finder did. What was taken stays until the temp root is cleared at the next launch, for
+  the upload or copy that reads it after the drop.
+- **Two things change for the receiving app.** Mail now gets a zip where it took the folder's promise.
+  A page that takes real folders, such as Google Drive in Chrome, gets one too, since Dirnex can tell
+  apps apart but not the pages inside one.
+- **One wrong sentence fixed on the way.** A server's folder alone that failed to come down would
+  have said "Couldn't extract from the archive", because that title was chosen whenever no row was a
+  server *file*. The choice is now `handoffFailureTitle`, pinned by a test.
+- **Tests:** `DragOutRouteTests` and `RemoteDragHandoffTests` gain the routes and the audience rules
+  (4 804 core tests green). Two controls each failed only their own tests: no audience change, and a
+  local folder routed as a plain URL. `FolderZipHandoffTests` (8) runs real `bsdtar` zips. It stages
+  a "server" folder for real through a backend that mirrors a local directory under a server's id,
+  routed as `CompositeBackend` routes. Seven controls each failed only their own tests: Finder offered
+  the other apps' rows, Finder handed the zip instead of the tree, nothing swept at the end, a zip left
+  to finish, a failed zip's directory left, a folder taken as already here, and the old failure title.
+  The full app run passed 2 225 tests with the known `GestureWaitTests` issue, the defaults domain
+  unchanged by content. It ran before the title fix, and the six drag suites (54 tests) ran green
+  after it. Three strings were added in all 14 languages.
+- **Run by Oleg** on the `build/debug-dd` build, in real Chrome and Teams. A local folder, `drag`, went
+  into a Gmail draft as `drag.zip` (54K). A folder off the NAS, `dav-probe3`, went into the same draft
+  as `dav-probe3.zip` (1K), where before it raised no drop box, and into a Teams chat as
+  `dav-probe3.zip`. He reported the rest of the list working too, including a local folder dragged
+  across Chrome into Finder, which was to land as the folder.
+
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 
 Ninety-one dated passes that landed outside a milestone of their own, between M18's close on

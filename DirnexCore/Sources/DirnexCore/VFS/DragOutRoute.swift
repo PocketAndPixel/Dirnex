@@ -9,15 +9,17 @@ import Foundation
 /// member that M36 adds would have been a fourth reading. So the answer is one function here, and the
 /// app asks it.
 public enum DragOutRoute: Sendable, Equatable {
-    /// The row is a file or folder on this disk: its own `file://` URL, with nothing to fetch.
+    /// The row is a file on this disk: its own `file://` URL, with nothing to fetch.
     case fileURL
+    /// A folder on this disk: its own URL to Finder, and a zip of it to any other app once the pointer
+    /// is over it, since Gmail, Teams and the rest take a file and fail on a folder (2026-11-08).
+    case folderURL
     /// A file on a server: promised to Finder, and downloaded for any other app once the pointer
     /// is over it (`RemoteDragHandoff`).
     case download
     /// A folder on a server: promised to Finder, which is handed the tree F5's own queue job stages
-    /// once the drop lands, with its bar and Stop in Dirnex (decision B, PLAN.md §M36 Slice 3). Mail
-    /// takes the same promise (measured 2026-11-08); an app that refuses a promise is handed nothing
-    /// for it, until probe P2's Teams and Chrome half says whether a file URL would do.
+    /// once the drop lands, with its bar and Stop in Dirnex (decision B, PLAN.md §M36 Slice 3). Any
+    /// other app is handed a zip of it once the pointer is over it, as a folder on this disk is.
     case downloadFolder
     /// A file inside an archive this session can open: promised to Finder and extracted for any
     /// other app, the same two ways a server's file goes.
@@ -44,21 +46,37 @@ public enum DragOutRoute: Sendable, Equatable {
     public var isPromised: Bool {
         switch self {
         case .download, .downloadFolder, .extract: true
+        case .fileURL, .folderURL, .insideDirnexOnly: false
+        }
+    }
+
+    /// Whether an app other than Finder is handed something the drag's handoff has to make once the
+    /// pointer is over it (`RemoteDragHandoff`): a file brought down or extracted, or a folder zipped.
+    ///
+    /// A file on this disk is not: its own URL already serves every app.
+    public var isHandedOff: Bool {
+        switch self {
+        case .download, .downloadFolder, .extract, .folderURL: true
         case .fileURL, .insideDirnexOnly: false
         }
     }
 
-    /// Whether an app that takes no promise is handed a file for the row once the pointer is over
-    /// it, which is what the drag's handoff brings down (`RemoteDragHandoff`).
+    /// Whether the row reaches an app other than Finder as a zip of itself.
     ///
-    /// A server's folder is promised and handed to nobody else. Finder named where it goes before
-    /// anything is fetched, so the tree goes through the queue with a Stop; another app reads a file
-    /// URL while the pointer is over it, and nothing says it takes a folder (probe P2).
-    public var isHandedOff: Bool {
+    /// Gmail, Teams and the rest of Chromium take a dropped file and fail on a folder (Gmail answers
+    /// "Attachment failed"), while Finder takes the folder. So a drag holding one gives Finder a board
+    /// of its own (``RemoteDragHandoff/init(finderHasItsOwnBoard:)``).
+    public var zipsForOtherApps: Bool {
         switch self {
-        case .download, .extract: true
-        case .downloadFolder, .fileURL, .insideDirnexOnly: false
+        case .folderURL, .downloadFolder: true
+        case .download, .extract, .fileURL, .insideDirnexOnly: false
         }
+    }
+
+    /// The name another app is handed for a zip of the folder `folderName`: the folder's own name with
+    /// `.zip` after it, as ⌥F5 names a pack of one folder.
+    public static func zipName(forFolderNamed folderName: String) -> String {
+        ArchivePacking.archiveFileName(baseName: folderName, format: .zip)
     }
 
     /// The route for `entry`.
@@ -71,7 +89,7 @@ public enum DragOutRoute: Sendable, Equatable {
         archiveIsLocked: (String) -> Bool
     ) -> DragOutRoute {
         let backend = entry.path.backend
-        if backend == .local { return .fileURL }
+        if backend == .local { return entry.kind == .directory ? .folderURL : .fileURL }
         if let archivePath = backend.archivePath {
             switch entry.kind {
             case .file:
