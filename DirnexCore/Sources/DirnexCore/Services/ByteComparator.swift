@@ -188,7 +188,7 @@ public enum ByteComparator {
 
     // swiftlint:enable function_parameter_count
 
-    private static func requireRegularFiles(_ lhs: ComparisonSubject, _ rhs: ComparisonSubject) throws {
+    static func requireRegularFiles(_ lhs: ComparisonSubject, _ rhs: ComparisonSubject) throws {
         guard lhs.isRegularFile, rhs.isRegularFile else {
             throw VFSError.unsupported(.contentComparisonNeedsRegularFile)
         }
@@ -196,7 +196,7 @@ public enum ByteComparator {
 
     /// Refuse a comparison whose first read would pull a file out of the cloud, naming the side that
     /// would be downloaded. `allowDataless` is the caller saying the user has already agreed to it.
-    private static func requireDownloaded(
+    static func requireDownloaded(
         _ lhs: ComparisonSubject,
         _ rhs: ComparisonSubject,
         allowDataless: Bool
