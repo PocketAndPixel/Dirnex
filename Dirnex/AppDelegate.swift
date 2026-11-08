@@ -108,6 +108,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let urls = pendingURLs
         pendingURLs = []
         application(NSApp, open: urls)
+
+        // `git mergetool` reaches this copy from here on (PLAN.md §M37 Slice 6).
+        GitMergeService.shared.start()
     }
 
     /// `dirnex://` links: the license email's **Open in Dirnex** (PLAN.md §M29), and the About panel's
@@ -163,6 +166,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// (PLAN.md §M5 "unmount only what we mounted on disconnect/quit"), and hang up the terminal
     /// drawer's shell (PLAN.md §M6) rather than leave it reparented to launchd.
     func applicationWillTerminate(_ notification: Notification) {
+        // Before the windows go: a merge saved and left open still answers git that it was saved.
+        GitMergeService.shared.stop()
         // Capture each pane's final cursor and marks — those don't persist on every keystroke, so the
         // way down is where the last selection is saved for the next launch to restore.
         browserWindowController?.persistTabState()

@@ -25,6 +25,7 @@ struct MergeSubtitleWidthTests {
         "Your edit",
         "On the server now",
         "Saved to the working tree; git add marks it resolved",
+        "Save, then close this window to go back to git",
         "HEAD, the branch you’re on",
         "HEAD, the branch being rebased onto",
         "The branch being merged in",
