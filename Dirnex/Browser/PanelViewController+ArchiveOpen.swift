@@ -62,7 +62,7 @@ extension PanelViewController {
             )
         } onSuccess: { [weak self] url in
             if let destination {
-                self?.host?.editedFiles.watch(EditedFile(
+                self?.host?.watchEdit(EditedFile(
                     destination: destination,
                     temporaryURL: url,
                     name: entry.name

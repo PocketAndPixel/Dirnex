@@ -72,4 +72,16 @@ extension BrowserWindowController {
         alert.offerFullDiskAccessSettings()
         alert.beginSheetIfVisible(over: host)
     }
+
+    /// The button that carries back only the copies the check found nothing to say about, in a
+    /// question about a server batch or about several members of one archive.
+    static var skipChangedFilesTitle: String {
+        String(
+            localized: "Skip Changed Files",
+            comment: """
+            Button that writes back only the edited files nobody else has touched, to the server or \
+            into their archive, leaving the rest for the user to look at.
+            """
+        )
+    }
 }

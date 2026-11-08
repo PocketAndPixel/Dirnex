@@ -45,13 +45,10 @@ extension PanelViewController {
     /// already watched — opening a file with ⏎ and then running a script over it must leave one
     /// watcher on it rather than two questions on every save.
     ///
-    /// A server file's copy also keeps a base, the bytes the edit starts from, so a save that finds
-    /// the server's copy changed can offer to merge the two (PLAN.md §M34 Slice 4).
+    /// The copy also keeps a base, the bytes the edit starts from (``PanelHost/watchEdit(_:)``).
     func watchForWriteBack(of entry: FileEntry, at url: URL) {
         guard let destination = editDestination(for: entry) else { return }
-        let edit = EditedFile(destination: destination, temporaryURL: url, name: entry.name)
-        host?.editedFiles.watch(edit)
-        host?.remoteFileCache.keepBase(for: edit)
+        host?.watchEdit(EditedFile(destination: destination, temporaryURL: url, name: entry.name))
     }
 
     /// The same over a whole set, pairing rows with copies **positionally**.
@@ -65,5 +62,17 @@ extension PanelViewController {
         for (row, url) in zip(rows, urls) {
             watchForWriteBack(of: row, at: url)
         }
+    }
+}
+
+extension PanelHost {
+    /// Watch `edit`'s copy for a save, and keep the base a merge of it would start from: a server
+    /// file's in `remoteFileCache` (PLAN.md §M34 Slice 4), an archive member's in
+    /// `archivePreviewCache` (§M37 Slice 4). Each cache keeps only its own kind, so this is the one
+    /// call every gesture that hands a copy to an editor makes.
+    func watchEdit(_ edit: EditedFile) {
+        editedFiles.watch(edit)
+        remoteFileCache.keepBase(for: edit)
+        archivePreviewCache.keepBase(for: edit)
     }
 }

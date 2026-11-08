@@ -230,7 +230,7 @@ extension BrowserWindowController {
         MergeWindowController.present(input, saving: saving)
     }
 
-    private func presentMergeFailure(_ name: String, detail: String, over host: NSWindow?) {
+    func presentMergeFailure(_ name: String, detail: String, over host: NSWindow?) {
         presentWriteBackFailure(
             message: String(
                 localized: "Couldn’t merge “\(name)”",
