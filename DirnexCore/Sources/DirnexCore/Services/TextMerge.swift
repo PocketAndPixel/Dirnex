@@ -13,6 +13,10 @@ import Foundation
 /// Lines are taken as their side has them, endings included, as git takes them. The one exception
 /// is taking both sides: when the first side's lines end with its file's last line, which has no
 /// line break, that line gets the result's common one, or the second side's lines would join it.
+///
+/// A conflict whitespace explains is labelled (`whitespace`, PLAN.md §M37 Slice 5), and where one
+/// side changed only whitespace it may take the other side's text with that whitespace. The regions
+/// are the merge's own all the same: no ignore option reaches `ThreeWayMerge`.
 public struct TextMerge: Sendable {
     /// What a conflict takes.
     public enum Choice: Sendable, Equatable, CaseIterable {
@@ -22,6 +26,9 @@ public struct TextMerge: Sendable {
         case yoursThenTheirs
         /// Both: theirs' lines, then yours'.
         case theirsThenYours
+        /// Both edits, where one side changed only whitespace: the other side's text, each line
+        /// given that whitespace (`ConflictWhitespace.combined`). Offered only where it exists.
+        case editWithWhitespace
     }
 
     /// One change to the result: conflict `conflict` takes `choice`, or is open again for `nil`.
@@ -47,6 +54,8 @@ public struct TextMerge: Sendable {
     public private(set) var rows: [MergeRow] = []
     /// The rows of each conflict, in order, for moving from one conflict to the next.
     public private(set) var conflictRows: [Range<Int>] = []
+    /// What whitespace explains in each conflict, in order, `nil` where it explains nothing.
+    public let whitespace: [ConflictWhitespace?]
 
     /// The region of each conflict, in order.
     private let conflictRegions: [Int]
@@ -77,6 +86,12 @@ public struct TextMerge: Sendable {
         self.merge = merge
         conflictRegions = merge.regions.indices.filter { merge.regions[$0].kind == .conflict }
         choices = Array(repeating: nil, count: conflictRegions.count)
+        whitespace = ConflictWhitespace.explain(
+            merge,
+            base: base.lines,
+            yours: yours.lines,
+            theirs: theirs.lines
+        )
         templates = MergeRowLayout.templates(
             merge,
             base: base.lines,
@@ -102,15 +117,25 @@ public struct TextMerge: Sendable {
     /// Whether every conflict has a choice, so the result can be saved.
     public var isResolved: Bool { !choices.contains(nil) }
 
+    /// Whether conflict `conflict` can take `choice`. Every conflict takes either side or both;
+    /// `editWithWhitespace` only where whitespace explains it and can be carried.
+    public func offers(_ choice: Choice, forConflict conflict: Int) -> Bool {
+        choice != .editWithWhitespace || whitespace[conflict]?.combined != nil
+    }
+
     /// Make `step`'s choice, and return the step that undoes it. A step that changes nothing
-    /// returns itself.
+    /// returns itself. The choice must be one the conflict `offers`.
     @discardableResult
     public mutating func apply(_ step: Step) -> Step {
         let previous = choices[step.conflict]
         guard previous != step.choice else { return step }
+        precondition(
+            step.choice.map { offers($0, forConflict: step.conflict) } ?? true,
+            "conflict \(step.conflict) does not offer \(String(describing: step.choice))"
+        )
         let region = conflictRegions[step.conflict]
         let start = resultCounts[..<region].reduce(0, +)
-        let replacement = lines(for: step.choice, of: merge.regions[region])
+        let replacement = lines(for: step.choice, of: step.conflict)
         result.apply(LineEdit(range: start..<start + resultCounts[region], replacement: replacement))
         resultCounts[region] = replacement.count
         choices[step.conflict] = step.choice
@@ -153,8 +178,9 @@ public struct TextMerge: Sendable {
 
     // MARK: - The result's lines
 
-    /// What a conflict puts in the result for `choice`.
-    private func lines(for choice: Choice?, of region: ThreeWayMerge.Region) -> [TextLine] {
+    /// What conflict `conflict` puts in the result for `choice`.
+    private func lines(for choice: Choice?, of conflict: Int) -> [TextLine] {
+        let region = merge.regions[conflictRegions[conflict]]
         let yoursLines = Array(yours.lines[region.yours])
         let theirsLines = Array(theirs.lines[region.theirs])
         switch choice {
@@ -163,6 +189,7 @@ public struct TextMerge: Sendable {
         case .theirs: return theirsLines
         case .yoursThenTheirs: return joined(yoursLines, theirsLines)
         case .theirsThenYours: return joined(theirsLines, yoursLines)
+        case .editWithWhitespace: return whitespace[conflict]?.combined ?? []
         }
     }
 
@@ -189,7 +216,7 @@ public struct TextMerge: Sendable {
                 of: template,
                 region: region,
                 resultStart: resultStart,
-                choice: isConflict ? choices[conflict] : nil
+                repeating: template.resultRepeats.map { [$0] } ?? resultColumns(of: conflict)
             )
             if isConflict {
                 conflictRows.append(first..<rows.count)
@@ -199,5 +226,18 @@ public struct TextMerge: Sendable {
         }
         self.rows = rows
         self.conflictRows = conflictRows
+    }
+
+    /// The columns conflict `conflict`'s result lines repeat, in order: none while it is open.
+    private func resultColumns(of conflict: Int) -> [MergeRow.Column] {
+        switch choices[conflict] {
+        case nil: []
+        case .yours: [.yours]
+        case .theirs: [.theirs]
+        case .yoursThenTheirs: [.yours, .theirs]
+        case .theirsThenYours: [.theirs, .yours]
+        // One line for each of the edit side's, so each sits level with the line it came from.
+        case .editWithWhitespace: whitespace[conflict]?.editSide.map { [$0] } ?? []
+        }
     }
 }

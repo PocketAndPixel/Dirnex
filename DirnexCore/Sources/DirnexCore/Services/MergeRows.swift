@@ -155,12 +155,14 @@ enum MergeRowLayout {
     }
 
     /// The rows of one region, with the result's lines filled in from `resultStart`, its first line
-    /// in the result. `choice` is the conflict's, and is ignored for any other region.
+    /// in the result. The result repeats the lines of `columns` in order: the first on the rows of
+    /// its own lines, a second on the rows after them. None leaves the result empty, as an open
+    /// conflict's is.
     static func rows(
         of template: Template,
         region: Int,
         resultStart: Int,
-        choice: TextMerge.Choice?
+        repeating columns: [MergeRow.Column]
     ) -> [MergeRow] {
         var rows = template.rows
         var result: [Int?] = Array(repeating: nil, count: rows.count)
@@ -186,14 +188,11 @@ enum MergeRowLayout {
                 offset += 1
             }
         }
-        switch template.resultRepeats ?? choice.map(Self.firstColumn) {
-        case let column?:
-            let next = repeating(column, startingAt: resultStart)
-            if template.resultRepeats == nil, let choice, let second = Self.secondColumn(of: choice) {
-                following(second, startingAt: next)
+        if let first = columns.first {
+            let next = repeating(first, startingAt: resultStart)
+            if columns.count > 1 {
+                following(columns[1], startingAt: next)
             }
-        case nil:
-            break
         }
         return zip(rows, result).map { row, result in
             MergeRow(
@@ -203,21 +202,6 @@ enum MergeRowLayout {
                 theirs: row.theirs,
                 base: row.base
             )
-        }
-    }
-
-    private static func firstColumn(of choice: TextMerge.Choice) -> MergeRow.Column {
-        switch choice {
-        case .yours, .yoursThenTheirs: .yours
-        case .theirs, .theirsThenYours: .theirs
-        }
-    }
-
-    private static func secondColumn(of choice: TextMerge.Choice) -> MergeRow.Column? {
-        switch choice {
-        case .yours, .theirs: nil
-        case .yoursThenTheirs: .theirs
-        case .theirsThenYours: .yours
         }
     }
 }

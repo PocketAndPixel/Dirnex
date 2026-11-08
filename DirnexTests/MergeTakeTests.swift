@@ -53,7 +53,7 @@ struct MergeTakeTests {
 
     /// Press one segment the way VoiceOver does: a momentary control keeps no selection set from
     /// code (docs/NOTES.md ▸ Windows).
-    private func press(segment: Int, of control: NSSegmentedControl) throws {
+    static func press(segment: Int, of control: NSSegmentedControl) throws {
         let cell = try #require(control.accessibilityChildren()?.first as? NSObject)
         let segments = try #require(cell.value(forKey: "accessibilityChildren") as? [NSObject])
         try #require(segments.count > segment)
@@ -62,11 +62,20 @@ struct MergeTakeTests {
 
     @Test("each take button makes its choice, in the order the toolbar draws them")
     func takeButtons() async throws {
-        #expect(MergeToolbar.takeChoices == [.yours, .yoursThenTheirs, .theirsThenYours, .theirs])
-        for (segment, choice) in MergeToolbar.takeChoices.enumerated() {
+        #expect(
+            MergeToolbar.takeChoices == [
+                .yours,
+                .yoursThenTheirs,
+                .theirsThenYours,
+                .theirs,
+                .editWithWhitespace
+            ]
+        )
+        // The last is offered only where whitespace explains a conflict (`MergeWhitespaceTests`).
+        for (segment, choice) in MergeToolbar.takeChoices.enumerated() where choice != .editWithWhitespace {
             let rig = try MergeRig()
             defer { rig.cleanup() }
-            try press(segment: segment, of: rig.controller.toolbar.take)
+            try Self.press(segment: segment, of: rig.controller.toolbar.take)
             #expect(rig.controller.choicesMade == 1, "the press reached the take")
             try await rig.landed()
             #expect(rig.controller.merge?.choices.first == choice)
