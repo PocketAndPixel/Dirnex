@@ -31,7 +31,25 @@ struct CompareReadFailure: Error, Equatable {
 /// the Synchronize sheet and the conflict dialog all open the window through here.
 @MainActor
 enum CompareOpener {
-    /// Read the pair and open the window on it, or hand `failed` the alert's detail.
+    /// Opens the byte view: the real window, or a test's record of what it would have shown.
+    typealias ByteWindowPresenter = @MainActor (
+        BinaryCompareSide,
+        BinaryCompareSide,
+        BinaryFilePair,
+        BinaryCompareReason
+    ) -> Void
+
+    static func presentByteWindow(
+        _ left: BinaryCompareSide,
+        _ right: BinaryCompareSide,
+        pair: BinaryFilePair,
+        reason: BinaryCompareReason
+    ) {
+        BinaryCompareWindowController.present(left: left, right: right, pair: pair, reason: reason)
+    }
+
+    /// Read the pair and open the window on it, or the byte view on a pair that cannot be read as
+    /// text, or hand `failed` the alert's detail.
     ///
     /// `leftDetail` and `rightDetail` are what each pane's header says under the file's name: where
     /// the file is, as the user knows it. `saving` is where the window's saves keep their undo
@@ -43,6 +61,7 @@ enum CompareOpener {
         _ right: CompareFile,
         detail rightDetail: String,
         saving: CompareSaving? = nil,
+        presentBytes: @escaping ByteWindowPresenter = presentByteWindow,
         failed: @escaping @MainActor (String) -> Void
     ) {
         Task {
@@ -58,7 +77,47 @@ enum CompareOpener {
                     saving: saving ?? .none
                 )
             case let .failure(failure):
-                failed(failureDetail(failure))
+                guard let reason = BinaryCompareReason(failure) else {
+                    return failed(failureDetail(failure))
+                }
+                openByteWindow(
+                    BinaryCompareSide(
+                        name: left.origin.lastComponent,
+                        detail: leftDetail,
+                        path: left.path
+                    ),
+                    BinaryCompareSide(
+                        name: right.origin.lastComponent,
+                        detail: rightDetail,
+                        path: right.path
+                    ),
+                    reason: reason,
+                    presentBytes: presentBytes,
+                    failed: failed
+                )
+            }
+        }
+    }
+
+    /// Open the byte view on a pair the text window cannot read (PLAN.md §M37 Slice 2): a binary
+    /// file, one no encoding reads, or one too large to hold. Only a file that cannot be opened at
+    /// all still ends in `failed`.
+    private static func openByteWindow(
+        _ left: BinaryCompareSide,
+        _ right: BinaryCompareSide,
+        reason: BinaryCompareReason,
+        presentBytes: @escaping ByteWindowPresenter,
+        failed: @escaping @MainActor (String) -> Void
+    ) {
+        Task {
+            let opened = await BlockingWork.run {
+                Result { try BinaryFilePair(left: left.path, right: right.path) }
+            }
+            switch opened {
+            case let .success(pair):
+                presentBytes(left, right, pair, reason)
+            case let .failure(error):
+                failed(VFSErrorText.sentence(for: error))
             }
         }
     }

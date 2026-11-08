@@ -120,6 +120,35 @@ struct BinaryComparisonTests {
         #expect(chunked == whole)
     }
 
+    @Test("a pair already open gives the answer the two paths give")
+    func scanOfAnOpenPair() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        var right = [UInt8](repeating: 0, count: 3000)
+        right[1500] = 1
+        let leftPath = try write(tree, "a", [UInt8](repeating: 0, count: 3000) + [5])
+        let rightPath = try write(tree, "b", right)
+        let pair = try BinaryFilePair(left: leftPath, right: rightPath)
+        #expect(try BinaryComparison.scan(pair) == BinaryComparison.scan(leftPath, rightPath))
+    }
+
+    @Test("a scan of an open pair goes by the sizes it was opened at")
+    func scanOfAnOpenPairKeepsItsSizes() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        let bytes = [UInt8](repeating: 1, count: 100)
+        let leftPath = try write(tree, "a", bytes)
+        let rightPath = try write(tree, "b", bytes)
+        let pair = try BinaryFilePair(left: leftPath, right: rightPath)
+        let handle = try FileHandle(forWritingTo: URL(fileURLWithPath: leftPath.path))
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data([9, 9]))
+        try handle.close()
+        let answer = try BinaryComparison.scan(pair)
+        #expect(answer.leftByteSize == 100)
+        #expect(answer.isIdentical)
+    }
+
     // MARK: - While it runs
 
     @Test("Stop throws, before and during the scan")

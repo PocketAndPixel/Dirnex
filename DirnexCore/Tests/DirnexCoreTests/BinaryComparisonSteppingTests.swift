@@ -78,6 +78,30 @@ struct BinaryComparisonSteppingTests {
         #expect(answer.changeIndex(containing: 1000) == 1)
     }
 
+    @Test("a change's rows run from the row of its first byte to the row of its last")
+    func changeRows() {
+        let answer = comparison(leftByteSize: 1000, rightByteSize: 1010, differing: [15, 16, 500])
+        #expect(answer.changeRows == [0..<2, 31..<32, 62..<64])
+    }
+
+    @Test("how far a scan has got is a percentage of what the two sides share")
+    func percentScanned() {
+        let list = BinaryDifferenceList()
+        func percent(_ scanned: Int64, of size: Int64) -> Int {
+            BinaryComparison(
+                leftByteSize: size,
+                rightByteSize: size,
+                differences: list,
+                scannedByteCount: scanned
+            ).percentScanned
+        }
+        #expect(percent(0, of: 1000) == 0)
+        #expect(percent(450, of: 1000) == 45)
+        #expect(percent(1000, of: 1000) == 100)
+        #expect(percent(0, of: 0) == 100)
+        #expect(percent(1 << 62, of: 1 << 62) == 100)
+    }
+
     @Test("the binary searches agree with a walk", arguments: [1, 2, 3, 8, 40])
     func searchesAgreeWithWalk(step: Int) {
         var generator = SeededGenerator(seed: UInt64(step))

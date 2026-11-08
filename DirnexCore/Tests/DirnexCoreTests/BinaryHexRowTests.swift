@@ -223,6 +223,28 @@ struct BinaryHexRowTests {
         #expect(try pair.page(0).left == [1, 2, 3])
     }
 
+    @Test("a pair knows each file's size from when it was opened")
+    func pairSizes() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        let left = try write(tree, "a", [1, 2, 3])
+        let pair = try BinaryFilePair(left: left, right: write(tree, "b", [1]))
+        #expect(pair.leftByteSize == 3)
+        #expect(pair.rightByteSize == 1)
+        _ = try write(tree, "a", [1, 2, 3, 4, 5])
+        #expect(pair.leftByteSize == 3)
+    }
+
+    @Test("a named pipe opens at once, and is no regular file")
+    func namedPipe() throws {
+        let tree = try TempTree()
+        defer { tree.cleanup() }
+        #expect(mkfifo(tree.path("pipe"), 0o600) == 0)
+        let file = try write(tree, "a", [1])
+        let pair = try BinaryFilePair(left: tree.vfsPath("pipe"), right: file)
+        #expect(throws: VFSError.self) { try BinaryComparison.scan(pair) }
+    }
+
     @Test("a file that cannot be opened throws")
     func openFailure() throws {
         let tree = try TempTree()

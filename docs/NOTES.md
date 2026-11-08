@@ -2743,6 +2743,35 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   entirely, including from any pending-work set, or a row with no total is pending forever and
   gets re-queued on every render.
 
+#### A table of billions of rows
+
+Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 bytes of a file.
+
+- **`NSTableView` itself is exact up to 2^44 points.** At 2^36 rows (1 TiB of file) `rect(ofRow:)`,
+  `rows(in:)`, `scrollRowToVisible` and the drawn cells all landed on the right row. Past 2^44 the
+  clip view stops and the end of the table cannot be reached.
+- **Auto Layout cuts it at 10^10 points, on the first pass after a size change.** A layout constant
+  over that is "substituted", as the log says once: *a constant that exceeds internal limits*. A
+  table's intrinsic height is its rows times its row height, so past about 9 GiB of file the table
+  came back 10 000 000 668 points tall. Nothing fails: the rows up to there are right and the scroller
+  just stops short. A window with no Auto Layout at all hides it, as a first probe did, and so does
+  never resizing. Override `intrinsicContentSize` with `noIntrinsicMetric` **and** turn
+  `translatesAutoresizingMaskIntoConstraints` off, since either alone leaves a constraint on the
+  height. Pin it with a resize.
+- **A table's accessibility children are every row, and a large one crashes the app when read.**
+  `-[NSTableView _accessibilityChildrenInRange:]` asks for one array of the whole row count, and at
+  1.3 billion rows Core Foundation aborts with "size unreasonably big". Anything that reads the tree
+  sets it off: VoiceOver, and a computer-use screenshot, which is how it was found. No unit test
+  reads the tree the way a client does. Override `accessibilityChildren()` and `accessibilityRows()`
+  to cover what is on screen.
+  - **The elements have to be AppKit's `NSTableRow` proxies.** A row view answers `false` to
+    `isAccessibilityElement`, so handing out row views left an external client with no table at all,
+    while the same array looked complete in-process (124 elements against the client's 11). Each row
+    view's `accessibilityParent()` is its proxy. Only a client can show this, so check it with one.
+  - **`accessibilityVisibleRows()` is typed `[any NSAccessibilityRow]` and its elements do not
+    conform.** Passing the array along works, and reading one element traps with "NSArray element
+    failed to match the Swift Array Element type". The Swift signature is not to be believed here.
+
 #### Outline views and the tree
 
 - **`NSOutlineView.reloadData` keeps a row open only while its item is still among the children the

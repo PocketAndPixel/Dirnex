@@ -19243,6 +19243,95 @@
         }
       }
     },
+    "Bytes that differ: %@ of %@.": {
+      "comment": "Byte comparison window; the first %@ is how many differ, the second how many were compared.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "value": "Abweichende Bytes: %1$@ von %2$@.",
+            "state": "translated"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "value": "Bytes that differ: %1$@ of %2$@.",
+            "state": "translated"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "value": "Bytes que difieren: %1$@ de %2$@.",
+            "state": "translated"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "value": "Octets différents : %1$@ sur %2$@.",
+            "state": "translated"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "value": "Byte diversi: %1$@ su %2$@.",
+            "state": "translated"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "value": "異なるバイト: %2$@ 中 %1$@。",
+            "state": "translated"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "value": "다른 바이트: %2$@ 중 %1$@.",
+            "state": "translated"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "value": "Verschillende bytes: %1$@ van %2$@.",
+            "state": "translated"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "value": "Różniące się bajty: %1$@ z %2$@.",
+            "state": "translated"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "value": "Bytes diferentes: %1$@ de %2$@.",
+            "state": "translated"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "value": "Различающихся байт: %1$@ из %2$@.",
+            "state": "translated"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "value": "Відмінних байтів: %1$@ із %2$@.",
+            "state": "translated"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "value": "不同的字节：%1$@ / %2$@。",
+            "state": "translated"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "value": "不同的位元組：%1$@ / %2$@。",
+            "state": "translated"
+          }
+        }
+      }
+    },
     "Cancel": {
       "comment": "Conflict dialog cancel button.",
       "localizations": {
@@ -26312,6 +26401,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "用 %@ 比較…"
+          }
+        }
+      }
+    },
+    "Compared %lld%% so far.": {
+      "comment": "Byte comparison window, while the scan runs; %lld is a percentage.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "value": "Bisher %lld %% verglichen.",
+            "state": "translated"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "value": "Compared %lld%% so far.",
+            "state": "translated"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "value": "Comparado hasta ahora: %lld %%.",
+            "state": "translated"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "value": "%lld %% comparés pour l’instant.",
+            "state": "translated"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "value": "Confrontato finora: %lld%%.",
+            "state": "translated"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "value": "%lld%% まで比較しました。",
+            "state": "translated"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "value": "지금까지 %lld%% 비교했습니다.",
+            "state": "translated"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "value": "Tot nu toe %lld%% vergeleken.",
+            "state": "translated"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "value": "Dotąd porównano %lld%%.",
+            "state": "translated"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "value": "Comparado até agora: %lld%%.",
+            "state": "translated"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "value": "Сравнено %lld %%.",
+            "state": "translated"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "value": "Порівняно %lld %%.",
+            "state": "translated"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "value": "已比较 %lld%%。",
+            "state": "translated"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "value": "已比較 %lld%%。",
+            "state": "translated"
           }
         }
       }
@@ -57625,6 +57803,95 @@
         }
       }
     },
+    "From %@ to %@ nearly every byte differs. If bytes were inserted or removed there, everything after them reads as changed.": {
+      "comment": "Byte comparison window; the two %@ are hexadecimal byte offsets.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "value": "Von %1$@ bis %2$@ weicht fast jedes Byte ab. Wurden dort Bytes eingefügt oder entfernt, erscheint alles danach als geändert.",
+            "state": "translated"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "value": "From %1$@ to %2$@ nearly every byte differs. If bytes were inserted or removed there, everything after them reads as changed.",
+            "state": "translated"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "value": "De %1$@ a %2$@ casi todos los bytes difieren. Si se insertaron o eliminaron bytes ahí, todo lo que sigue aparece como cambiado.",
+            "state": "translated"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "value": "De %1$@ à %2$@, presque tous les octets diffèrent. Si des octets y ont été insérés ou supprimés, tout ce qui suit apparaît comme modifié.",
+            "state": "translated"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "value": "Da %1$@ a %2$@ quasi ogni byte è diverso. Se lì sono stati inseriti o rimossi dei byte, tutto ciò che segue risulta modificato.",
+            "state": "translated"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "value": "%1$@ から %2$@ まで、ほぼすべてのバイトが異なります。そこでバイトが挿入または削除された場合、それ以降はすべて変更されたように見えます。",
+            "state": "translated"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "value": "%1$@부터 %2$@까지 거의 모든 바이트가 다릅니다. 그곳에서 바이트가 삽입되거나 제거되었다면 그 뒤의 모든 내용이 변경된 것으로 보입니다.",
+            "state": "translated"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "value": "Van %1$@ tot %2$@ verschilt bijna elke byte. Als daar bytes zijn ingevoegd of verwijderd, lijkt alles daarna gewijzigd.",
+            "state": "translated"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "value": "Od %1$@ do %2$@ różni się niemal każdy bajt. Jeśli wstawiono tam lub usunięto bajty, wszystko po nich wygląda na zmienione.",
+            "state": "translated"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "value": "De %1$@ a %2$@ quase todos os bytes diferem. Se bytes foram inseridos ou removidos ali, tudo o que vem depois aparece como alterado.",
+            "state": "translated"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "value": "С %1$@ по %2$@ различается почти каждый байт. Если там были вставлены или удалены байты, всё после них выглядит изменённым.",
+            "state": "translated"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "value": "Від %1$@ до %2$@ відрізняється майже кожен байт. Якщо там було вставлено або видалено байти, усе після них виглядає зміненим.",
+            "state": "translated"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "value": "从 %1$@ 到 %2$@，几乎每个字节都不同。如果在那里插入或删除了字节，其后的所有内容都会显示为已更改。",
+            "state": "translated"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "value": "從 %1$@ 到 %2$@，幾乎每個位元組都不同。如果在那裡插入或移除了位元組，其後的所有內容都會顯示為已變更。",
+            "state": "translated"
+          }
+        }
+      }
+    },
     "Function key": {
       "comment": "Scripts organizer field label: the F-key bound to the script.",
       "localizations": {
@@ -72875,6 +73142,95 @@
         }
       }
     },
+    "Offset": {
+      "comment": "Byte comparison window: the column of byte offsets.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "value": "Offset",
+            "state": "translated"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "value": "Offset",
+            "state": "translated"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "value": "Desplazamiento",
+            "state": "translated"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "value": "Décalage",
+            "state": "translated"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "value": "Offset",
+            "state": "translated"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "value": "オフセット",
+            "state": "translated"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "value": "오프셋",
+            "state": "translated"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "value": "Offset",
+            "state": "translated"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "value": "Przesunięcie",
+            "state": "translated"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "value": "Deslocamento",
+            "state": "translated"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "value": "Смещение",
+            "state": "translated"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "value": "Зсув",
+            "state": "translated"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "value": "偏移量",
+            "state": "translated"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "value": "位移",
+            "state": "translated"
+          }
+        }
+      }
+    },
     "On the server now": {
       "comment": "Merge window, under Theirs: the server's current version of the file.",
       "localizations": {
@@ -72960,6 +73316,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "伺服器上的目前版本"
+          }
+        }
+      }
+    },
+    "One of the files got shorter during the comparison, so the rest wasn’t compared.": {
+      "comment": "Byte comparison window, when a file shrinks while being compared.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "value": "Eine der Dateien wurde während des Vergleichs kürzer, daher wurde der Rest nicht verglichen.",
+            "state": "translated"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "value": "One of the files got shorter during the comparison, so the rest wasn’t compared.",
+            "state": "translated"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "value": "Uno de los archivos se acortó durante la comparación, así que el resto no se comparó.",
+            "state": "translated"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "value": "L’un des fichiers a raccourci pendant la comparaison, le reste n’a donc pas été comparé.",
+            "state": "translated"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "value": "Uno dei file si è accorciato durante il confronto, quindi il resto non è stato confrontato.",
+            "state": "translated"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "value": "比較中にファイルの 1 つが短くなったため、残りの部分は比較されていません。",
+            "state": "translated"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "value": "비교 중에 파일 하나가 짧아져 나머지는 비교하지 못했습니다.",
+            "state": "translated"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "value": "Een van de bestanden werd korter tijdens het vergelijken, dus de rest is niet vergeleken.",
+            "state": "translated"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "value": "Jeden z plików skrócił się podczas porównywania, więc reszty nie porównano.",
+            "state": "translated"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "value": "Um dos arquivos ficou menor durante a comparação, então o restante não foi comparado.",
+            "state": "translated"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "value": "Один из файлов стал короче во время сравнения, поэтому остаток не сравнивался.",
+            "state": "translated"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "value": "Один із файлів став коротшим під час порівняння, тому решту не порівняно.",
+            "state": "translated"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "value": "比较期间其中一个文件变短了，因此其余部分未比较。",
+            "state": "translated"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "value": "比較期間其中一個檔案變短了，因此其餘部分未比較。",
+            "state": "translated"
           }
         }
       }
@@ -77603,6 +78048,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "面板"
+          }
+        }
+      }
+    },
+    "Part of these files couldn’t be read: %@": {
+      "comment": "Byte comparison window, when bytes on screen can't be read; %@ says why.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "value": "Ein Teil dieser Dateien konnte nicht gelesen werden: %@",
+            "state": "translated"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "value": "Part of these files couldn’t be read: %@",
+            "state": "translated"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "value": "No se pudo leer parte de estos archivos: %@",
+            "state": "translated"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "value": "Une partie de ces fichiers n’a pas pu être lue : %@",
+            "state": "translated"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "value": "Non è stato possibile leggere una parte di questi file: %@",
+            "state": "translated"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "value": "これらのファイルの一部を読み取れませんでした: %@",
+            "state": "translated"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "value": "이 파일들의 일부를 읽을 수 없습니다: %@",
+            "state": "translated"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "value": "Een deel van deze bestanden kon niet worden gelezen: %@",
+            "state": "translated"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "value": "Nie udało się odczytać części tych plików: %@",
+            "state": "translated"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "value": "Não foi possível ler parte destes arquivos: %@",
+            "state": "translated"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "value": "Не удалось прочитать часть этих файлов: %@",
+            "state": "translated"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "value": "Не вдалося прочитати частину цих файлів: %@",
+            "state": "translated"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "value": "无法读取这些文件的部分内容：%@",
+            "state": "translated"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "value": "無法讀取這些檔案的部分內容：%@",
+            "state": "translated"
           }
         }
       }
@@ -103905,6 +104439,95 @@
         }
       }
     },
+    "The comparison stopped: %@": {
+      "comment": "Byte comparison window, when the scan fails; %@ says why.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "value": "Der Vergleich wurde beendet: %@",
+            "state": "translated"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "value": "The comparison stopped: %@",
+            "state": "translated"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "value": "La comparación se detuvo: %@",
+            "state": "translated"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "value": "La comparaison s’est arrêtée : %@",
+            "state": "translated"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "value": "Il confronto si è interrotto: %@",
+            "state": "translated"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "value": "比較を中止しました: %@",
+            "state": "translated"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "value": "비교가 중단되었습니다: %@",
+            "state": "translated"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "value": "De vergelijking is gestopt: %@",
+            "state": "translated"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "value": "Porównywanie przerwano: %@",
+            "state": "translated"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "value": "A comparação parou: %@",
+            "state": "translated"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "value": "Сравнение прервано: %@",
+            "state": "translated"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "value": "Порівняння перервано: %@",
+            "state": "translated"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "value": "比较已停止：%@",
+            "state": "translated"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "value": "比較已停止：%@",
+            "state": "translated"
+          }
+        }
+      }
+    },
     "The connection couldn’t be set up.": {
       "comment": "Generic server-connect failure with no more specific reason.",
       "localizations": {
@@ -110314,6 +110937,95 @@
         }
       }
     },
+    "The two files hold the same bytes.": {
+      "comment": "Byte comparison window: nothing differs.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "value": "Beide Dateien enthalten dieselben Bytes.",
+            "state": "translated"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "value": "The two files hold the same bytes.",
+            "state": "translated"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "value": "Los dos archivos contienen los mismos bytes.",
+            "state": "translated"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "value": "Les deux fichiers contiennent les mêmes octets.",
+            "state": "translated"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "value": "I due file contengono gli stessi byte.",
+            "state": "translated"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "value": "2 つのファイルのバイトは同じです。",
+            "state": "translated"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "value": "두 파일의 바이트가 같습니다.",
+            "state": "translated"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "value": "De twee bestanden bevatten dezelfde bytes.",
+            "state": "translated"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "value": "Oba pliki zawierają te same bajty.",
+            "state": "translated"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "value": "Os dois arquivos contêm os mesmos bytes.",
+            "state": "translated"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "value": "Оба файла содержат одни и те же байты.",
+            "state": "translated"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "value": "Обидва файли містять ті самі байти.",
+            "state": "translated"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "value": "这两个文件的字节相同。",
+            "state": "translated"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "value": "這兩個檔案的位元組相同。",
+            "state": "translated"
+          }
+        }
+      }
+    },
     "The vault file stays where it is and nothing inside it is deleted. Its saved passphrase is removed from your Keychain, so you’ll be asked for it next time.": {
       "comment": "Body of the remove-vault confirmation.",
       "localizations": {
@@ -111289,6 +112001,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "這些檔案很大（%@）。"
+          }
+        }
+      }
+    },
+    "These files are too large to compare as text, so they are compared byte by byte.": {
+      "comment": "Byte comparison window: why it opened.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "value": "Diese Dateien sind zu groß für einen Textvergleich, daher werden sie Byte für Byte verglichen.",
+            "state": "translated"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "value": "These files are too large to compare as text, so they are compared byte by byte.",
+            "state": "translated"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "value": "Estos archivos son demasiado grandes para compararlos como texto, así que se comparan byte a byte.",
+            "state": "translated"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "value": "Ces fichiers sont trop volumineux pour être comparés comme du texte, ils sont donc comparés octet par octet.",
+            "state": "translated"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "value": "Questi file sono troppo grandi per il confronto come testo, quindi vengono confrontati byte per byte.",
+            "state": "translated"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "value": "これらのファイルはテキストとして比較するには大きすぎるため、バイト単位で比較します。",
+            "state": "translated"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "value": "이 파일들은 텍스트로 비교하기에는 너무 커서 바이트 단위로 비교합니다.",
+            "state": "translated"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "value": "Deze bestanden zijn te groot om als tekst te vergelijken, dus ze worden byte voor byte vergeleken.",
+            "state": "translated"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "value": "Te pliki są zbyt duże, by porównać je jako tekst, więc są porównywane bajt po bajcie.",
+            "state": "translated"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "value": "Estes arquivos são grandes demais para comparar como texto, então são comparados byte a byte.",
+            "state": "translated"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "value": "Эти файлы слишком велики для сравнения как текст, поэтому они сравниваются побайтово.",
+            "state": "translated"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "value": "Ці файли завеликі для порівняння як текст, тому вони порівнюються побайтово.",
+            "state": "translated"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "value": "这些文件太大，无法按文本比较，因此按字节比较。",
+            "state": "translated"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "value": "這些檔案太大，無法以文字比較，因此逐位元組比較。",
+            "state": "translated"
           }
         }
       }
@@ -164246,6 +165047,95 @@
         }
       }
     },
+    "“%@” is longer: only it has the last %@.": {
+      "comment": "Byte comparison window; the first %@ is a file name, the second a byte size.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "value": "„%1$@“ ist länger: Nur diese Datei enthält die letzten %2$@.",
+            "state": "translated"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "value": "“%1$@” is longer: only it has the last %2$@.",
+            "state": "translated"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "value": "«%1$@» es más largo: solo él tiene los últimos %2$@.",
+            "state": "translated"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "value": "«%1$@» est plus long : lui seul contient les derniers %2$@.",
+            "state": "translated"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "value": "“%1$@” è più lungo: solo lui contiene gli ultimi %2$@.",
+            "state": "translated"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "value": "“%1$@”のほうが長く、末尾の %2$@ はこのファイルにしかありません。",
+            "state": "translated"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "value": "“%1$@”이(가) 더 길며 마지막 %2$@은(는) 이 파일에만 있습니다.",
+            "state": "translated"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "value": "“%1$@” is langer: alleen dat bestand heeft de laatste %2$@.",
+            "state": "translated"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "value": "„%1$@” jest dłuższy: tylko on ma ostatnie %2$@.",
+            "state": "translated"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "value": "“%1$@” é maior: só ele tem os últimos %2$@.",
+            "state": "translated"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "value": "«%1$@» длиннее: только в нём есть последние %2$@.",
+            "state": "translated"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "value": "«%1$@» довший: лише в ньому є останні %2$@.",
+            "state": "translated"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "value": "“%1$@”更长：最后 %2$@ 只有它才有。",
+            "state": "translated"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "value": "「%1$@」較長：最後 %2$@ 只有它才有。",
+            "state": "translated"
+          }
+        }
+      }
+    },
     "“%@” is not a file Dirnex can reveal.": {
       "comment": "Shortcuts error for an unrevealable path; %@ is the file name.",
       "localizations": {
@@ -164424,6 +165314,95 @@
         }
       }
     },
+    "“%@” isn’t a text file, so these files are compared byte by byte.": {
+      "comment": "Byte comparison window: why it opened; %@ is a file name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "value": "„%@“ ist keine Textdatei, daher werden diese Dateien Byte für Byte verglichen.",
+            "state": "translated"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "value": "“%@” isn’t a text file, so these files are compared byte by byte.",
+            "state": "translated"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "value": "«%@» no es un archivo de texto, así que estos archivos se comparan byte a byte.",
+            "state": "translated"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "value": "«%@» n’est pas un fichier texte, ces fichiers sont donc comparés octet par octet.",
+            "state": "translated"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "value": "“%@” non è un file di testo, quindi questi file vengono confrontati byte per byte.",
+            "state": "translated"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "value": "“%@”はテキストファイルではないため、これらのファイルをバイト単位で比較します。",
+            "state": "translated"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "value": "“%@”은(는) 텍스트 파일이 아니므로 이 파일들을 바이트 단위로 비교합니다.",
+            "state": "translated"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "value": "“%@” is geen tekstbestand, dus deze bestanden worden byte voor byte vergeleken.",
+            "state": "translated"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "value": "„%@” nie jest plikiem tekstowym, więc te pliki są porównywane bajt po bajcie.",
+            "state": "translated"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "value": "“%@” não é um arquivo de texto, então estes arquivos são comparados byte a byte.",
+            "state": "translated"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "value": "«%@» — не текстовый файл, поэтому файлы сравниваются побайтово.",
+            "state": "translated"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "value": "«%@» — не текстовий файл, тому файли порівнюються побайтово.",
+            "state": "translated"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "value": "“%@”不是文本文件，因此按字节比较这些文件。",
+            "state": "translated"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "value": "「%@」不是文字檔案，因此逐位元組比較這些檔案。",
+            "state": "translated"
+          }
+        }
+      }
+    },
     "“%@” isn’t a text file. Dirnex compares text files only.": {
       "comment": "Compare failure detail; %@ is a file name.",
       "localizations": {
@@ -164598,6 +165577,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "「%@」不可用"
+          }
+        }
+      }
+    },
+    "“%@” isn’t text in any encoding Dirnex can read, so these files are compared byte by byte.": {
+      "comment": "Byte comparison window: why it opened; %@ is a file name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "value": "„%@“ ist in keiner von Dirnex lesbaren Kodierung Text, daher werden diese Dateien Byte für Byte verglichen.",
+            "state": "translated"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "value": "“%@” isn’t text in any encoding Dirnex can read, so these files are compared byte by byte.",
+            "state": "translated"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "value": "«%@» no es texto en ninguna codificación que Dirnex pueda leer, así que estos archivos se comparan byte a byte.",
+            "state": "translated"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "value": "«%@» n’est du texte dans aucun encodage lisible par Dirnex, ces fichiers sont donc comparés octet par octet.",
+            "state": "translated"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "value": "“%@” non è testo in nessuna codifica leggibile da Dirnex, quindi questi file vengono confrontati byte per byte.",
+            "state": "translated"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "value": "“%@”は Dirnex が読み取れるどのエンコーディングでもテキストとして読めないため、これらのファイルをバイト単位で比較します。",
+            "state": "translated"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "value": "“%@”은(는) Dirnex가 읽을 수 있는 어떤 인코딩으로도 텍스트가 아니므로 이 파일들을 바이트 단위로 비교합니다.",
+            "state": "translated"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "value": "“%@” is in geen enkele codering die Dirnex kan lezen tekst, dus deze bestanden worden byte voor byte vergeleken.",
+            "state": "translated"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "value": "„%@” nie jest tekstem w żadnym kodowaniu, które Dirnex potrafi odczytać, więc te pliki są porównywane bajt po bajcie.",
+            "state": "translated"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "value": "“%@” não é texto em nenhuma codificação que o Dirnex consiga ler, então estes arquivos são comparados byte a byte.",
+            "state": "translated"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "value": "«%@» не читается как текст ни в одной из кодировок, известных Dirnex, поэтому файлы сравниваются побайтово.",
+            "state": "translated"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "value": "«%@» не читається як текст у жодному кодуванні, відомому Dirnex, тому файли порівнюються побайтово.",
+            "state": "translated"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "value": "“%@”在 Dirnex 可读取的任何编码下都不是文本，因此按字节比较这些文件。",
+            "state": "translated"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "value": "「%@」在 Dirnex 可讀取的任何編碼下都不是文字，因此逐位元組比較這些檔案。",
+            "state": "translated"
           }
         }
       }

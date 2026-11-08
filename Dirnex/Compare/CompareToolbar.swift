@@ -86,6 +86,14 @@ final class CompareToolbar: NSView {
         navigation.setEnabled(count > 0, forSegment: 1)
     }
 
+    /// Leave only the change arrows and the counter, for the byte view (PLAN.md §M37 Slice 2), which
+    /// has no lines to copy and no options to overlook anything by.
+    func showOnlyNavigation() {
+        for control in [copy, swap, whitespace, ignoresCase, ignoresLineEndings] as [NSView] {
+            control.isHidden = true
+        }
+    }
+
     /// Enable each copy button when a copy to its side would go through.
     func enableCopy(toLeft: Bool, toRight: Bool) {
         copy.setEnabled(toLeft, forSegment: 0)
