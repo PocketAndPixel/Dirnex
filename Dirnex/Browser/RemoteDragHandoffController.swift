@@ -4,17 +4,20 @@ import DirnexCore
 /// One drag of rows whose bytes are on a server, while it is under way: what lets such a row drop into
 /// Teams, Slack, Chrome and everything else that only takes a real file. Since M36 Slice 2 a file
 /// inside an archive is one of those rows too, **extracted** where a server's file is downloaded, and
-/// everything else here is the same for both.
+/// since 2026-11-08 a **folder**, here or on a server, is made into a zip, because those apps take a
+/// file and fail on a folder (`DragOutZip`).
 ///
 /// `RemoteDragHandoff` holds the rules and says why each is there. This object does what they ask:
 /// it watches which app is under the pointer, rewrites the drag's board, brings the bytes down and
-/// answers the reads. A drop into Finder never involves it, because Finder takes the promise the drag
-/// started with and `+DragPromise` fulfils that as it always has.
+/// answers the reads. A drop into Finder before any other app was crossed never involves it, because
+/// Finder takes the promise or the URL the drag started with. After a crossing, a drag holding a
+/// folder writes Finder a board of its own, with the folder rather than its zip.
 ///
 /// **The bytes land in the cache and do not go through the queue.** A queued job is something the user
 /// asked for, reported per item with a Stop button in a window they have left, and this is something
 /// the pointer did on its way across the screen. So a row already fetched for a preview costs nothing
-/// here, and what this brings down serves the next preview and the next drag.
+/// here, and what this brings down serves the next preview and the next drag. A zip serves nobody
+/// after the drag, so it is never left to finish unasked, and what the drop did not use is removed.
 ///
 /// **The transfer needs nothing from the main thread until it is over**, because a held read is
 /// sitting on that thread waiting for it. It runs off the main actor and leaves its outcome in a box
@@ -24,11 +27,11 @@ import DirnexCore
 /// finished. Turning the run loop bought nothing anyway, since the drag does not move during a read.
 @MainActor
 final class RemoteDragHandoffController {
-    private var handoff = RemoteDragHandoff()
+    private var handoff: RemoteDragHandoff
     /// The drag session's own board.
     private let board: NSPasteboard
-    /// Every row of the drag, in order, including any a file URL cannot stand for (a folder, a row of
-    /// a locked archive), which the board keeps carrying on its payload alone.
+    /// Every row of the drag, in order, including any a file URL cannot stand for (a folder inside an
+    /// archive, a row of a locked archive), which the board keeps carrying on its payload alone.
     let entries: [FileEntry]
     private let cache: RemoteFileCache
     private let backend: any VFSBackend
@@ -40,13 +43,21 @@ final class RemoteDragHandoffController {
     private let onFailure: (any Error) -> Void
     /// What each row offers another app, and what extracting a member needs.
     private let offer: DragOutOffer
+    /// What writes a folder's zip: ⌥F5's `bsdtar` packer, injected so a test can watch it.
+    private let zipWriter: any PlainPackWriting
     /// Whether the drag has been over another app yet, so a locked row is mentioned once.
     private var hasLeftDirnex = false
 
-    /// The copies landed so far, by the row they are of.
+    /// What each row is handed to an app other than Finder as: a copy brought down, a member
+    /// extracted, or a folder's zip.
     private var files: [VFSPath: URL] = [:]
+    /// What Finder is handed where that differs: a server folder's staged tree rather than its zip.
+    private var finderFiles: [VFSPath: URL] = [:]
+    /// The zips and staged trees this drag made, which the drag's end sorts into kept and removed.
+    private var zipped: [DragOutZip.Made] = []
     /// Written by the transfer's own thread and read when the status is drawn.
     private let moved = ByteCounter()
+    private let phase = RemoteDragPhaseBox(.downloading)
     private let cancellation = CancellationFlag()
     private let outcome = RemoteDragTransferOutcome()
     /// Kept here because a pasteboard item does not promise to keep its data provider alive.
@@ -60,16 +71,22 @@ final class RemoteDragHandoffController {
         handoff.transfer == .running
     }
 
-    /// The rows of `entries` this has to bring down or extract: files, never a server's folder, which
-    /// is Finder's alone (`DragOutRoute.isHandedOff`).
+    /// Whether the drag makes a zip, which is never left to finish after it: nothing keeps one for a
+    /// second try, so finishing would only spend the time and the disk.
+    var makesZips: Bool {
+        remoteRows.contains { offer.routes[$0.path]?.zipsForOtherApps == true }
+    }
+
+    /// The rows of `entries` this has to bring down, extract or zip.
     private var remoteRows: [FileEntry] {
         entries.filter { offer.routes[$0.path]?.isHandedOff == true }
     }
 
-    /// Whether every row this brings over comes out of an archive, which is what the drag image says.
-    private var extractsOnly: Bool {
-        let rows = remoteRows
-        return !rows.isEmpty && rows.allSatisfy { offer.routes[$0.path] == .extract }
+    /// The rows the board offers through this object to whoever it is written for: every one for
+    /// other apps, and for Finder all but a folder on this disk, which Finder takes by its own URL.
+    private var rowsForAudience: [FileEntry] {
+        guard handoff.audience == .finder else { return remoteRows }
+        return remoteRows.filter { offer.routes[$0.path] != .folderURL }
     }
 
     init(
@@ -82,9 +99,12 @@ final class RemoteDragHandoffController {
         showStatus: @escaping (String?) -> Void,
         onLanded: @escaping () -> Void,
         onFailure: @escaping (any Error) -> Void,
-        offer: DragOutOffer? = nil
+        offer: DragOutOffer? = nil,
+        zipWriter: any PlainPackWriting = ArchivePacker()
     ) {
-        self.offer = offer ?? .serverFilesOnly(entries, cache: cache)
+        let offer = offer ?? .serverFilesOnly(entries, cache: cache)
+        self.offer = offer
+        handoff = RemoteDragHandoff(finderHasItsOwnBoard: offer.finderHasItsOwnBoard)
         self.board = board
         self.entries = entries
         self.cache = cache
@@ -94,6 +114,7 @@ final class RemoteDragHandoffController {
         self.showStatus = showStatus
         self.onLanded = onLanded
         self.onFailure = onFailure
+        self.zipWriter = zipWriter
     }
 
     // MARK: - The drag
@@ -110,11 +131,14 @@ final class RemoteDragHandoffController {
     }
 
     /// The drag is over, whichever way. `mayFinish` is whether a transfer still running may carry on
-    /// with nobody watching.
-    func dragEnded(mayFinish: Bool) {
+    /// with nobody watching, which a zip never may. `operation` is what the drop came to, which with
+    /// where the pointer let go says which of the drag's zips and staged trees anybody took.
+    func dragEnded(mayFinish: Bool, operation: NSDragOperation = []) {
         isDragging = false
         statusTask?.cancel()
-        apply(handoff.dragEnded(mayFinish: mayFinish))
+        apply(handoff.dragEnded(mayFinish: mayFinish && !makesZips))
+        zipped.sweep(droppedOn: operation.isEmpty ? nil : surfaceUnderPointer())
+        zipped = []
         if let failure { onFailure(failure) }
         failure = nil
     }
@@ -131,7 +155,13 @@ final class RemoteDragHandoffController {
             answer = handoff.readFileURL(from: surface)
         }
         guard answer == .fileURLs else { return nil }
-        return files[entry.path]?.absoluteString
+        return handedFile(for: entry)?.absoluteString
+    }
+
+    /// The file the board's current audience is handed for `entry`.
+    private func handedFile(for entry: FileEntry) -> URL? {
+        if handoff.audience == .finder, let staged = finderFiles[entry.path] { return staged }
+        return files[entry.path]
     }
 
     /// Keep the app waiting until the bytes land, the limit runs out, or the pointer moves on from it.
@@ -154,7 +184,7 @@ final class RemoteDragHandoffController {
         for effect in effects {
             switch effect {
             case .writeLazyFileURLs:
-                providers = remoteRows.map { FileURLProvider(entry: $0, owner: self) }
+                providers = rowsForAudience.map { FileURLProvider(entry: $0, owner: self) }
                 let byPath = Dictionary(
                     providers.map { ($0.entry.path, $0) }, uniquingKeysWith: { first, _ in first }
                 )
@@ -162,8 +192,10 @@ final class RemoteDragHandoffController {
                     byPath[entry.path].map { .answeredWhenRead($0) }
                 })
             case .writeFileURLs:
-                write(PanelPasteboard.handoffItems(for: entries) { [files] entry in
-                    files[entry.path].map { .here($0) }
+                let offered = Set(rowsForAudience.map(\.path))
+                write(PanelPasteboard.handoffItems(for: entries) { entry in
+                    guard offered.contains(entry.path) else { return nil }
+                    return self.handedFile(for: entry).map { .here($0) }
                 })
             case .startTransfer:
                 startTransfer()
@@ -180,7 +212,9 @@ final class RemoteDragHandoffController {
 
     private func startTransfer() {
         let rows = remoteRows
-        for row in rows {
+        for row in rows where offer.routes[row.path]?.zipsForOtherApps != true {
+            // A folder is never "already here" as a zip: `alreadyHere` answers a folder on this disk
+            // with the folder itself, which is exactly what another app cannot take.
             if let held = offer.alreadyHere(row) { files[row.path] = held }
         }
         let missing = rows.filter { files[$0.path] == nil }
@@ -190,52 +224,31 @@ final class RemoteDragHandoffController {
         }
         // Two transfers of the row the cursor is on would otherwise race for one object.
         cache.cancelAutomaticFetch()
+        phase.value = RemoteDragTransfer.phase(startingWith: missing[0], routes: offer.routes)
         followProgress(ofBytes: missing.map(\.byteSize))
         runTransfer(of: missing)
     }
 
     /// Bring `rows` down on a thread of their own, and come back to the main actor once they are done.
-    ///
-    /// A member is extracted rather than downloaded (`DragOutExtraction`), with what the main actor
-    /// knew about its archive gathered up front. Extraction reports no bytes as it goes, so the count
-    /// moves a whole member at a time.
     private func runTransfer(of rows: [FileEntry]) {
-        let root = RemoteFileCache.temporaryRoot.path
-        let backend = backend
-        let moved = moved
-        let cancellation = cancellation
+        let transfer = RemoteDragTransfer(
+            rows: rows,
+            extractions: offer.extractions,
+            zips: Dictionary(uniqueKeysWithValues: rows.compactMap { row in
+                guard offer.routes[row.path]?.zipsForOtherApps == true else { return nil }
+                return (row.path, DragOutZip(
+                    row: row, root: RemoteFileCache.temporaryRoot, backend: backend,
+                    writer: zipWriter
+                ))
+            }),
+            backend: backend,
+            moved: moved,
+            phase: phase,
+            cancellation: cancellation
+        )
         let outcome = outcome
-        let extractions = offer.extractions
         DispatchQueue.global(qos: .userInitiated).async {
-            var landed: [MaterializedFile] = []
-            var extracted: [VFSPath: URL] = [:]
-            var done: Int64 = 0
-            do {
-                for row in rows {
-                    let before = done
-                    if let extraction = extractions[row.path] {
-                        // An extraction cannot be stopped once it starts, so a drag already called
-                        // off starts none. A download is left to see the flag itself, as it always
-                        // has: checked here too, a stop that beat the first row would never reach
-                        // the server, which is the stop `RemoteDragHandoffEndingTests` watches for.
-                        if cancellation.isCancelled { throw CancellationError() }
-                        extracted[row.path] = try extraction.run()
-                    } else {
-                        try landed.append(MaterializeRunner.materialize(
-                            row,
-                            intoDirectory: root,
-                            using: backend,
-                            onBytes: { moved.value = before + $0 },
-                            isCancelled: { cancellation.isCancelled }
-                        ))
-                    }
-                    done += max(row.byteSize, 0)
-                    moved.value = done
-                }
-                outcome.settle(landed: landed, extracted: extracted, error: nil)
-            } catch {
-                outcome.settle(landed: landed, extracted: extracted, error: error)
-            }
+            outcome.settle(transfer.run())
             Task { @MainActor [self] in settleTransfer() }
         }
     }
@@ -250,6 +263,11 @@ final class RemoteDragHandoffController {
             files[file.source] = URL(fileURLWithPath: file.localPath)
         }
         files.merge(settled.extracted) { _, extracted in extracted }
+        for made in settled.zipped {
+            files[made.source] = made.zip
+            if let staged = made.staged { finderFiles[made.source] = staged }
+        }
+        zipped = settled.zipped
         statusTask?.cancel()
         guard let error = settled.error else {
             landed()
@@ -291,106 +309,24 @@ final class RemoteDragHandoffController {
         case .notStarted:
             showStatus(nil)
         case .running:
-            showStatus(
-                extractsOnly
-                    ? RemoteDragStatus.extracting
-                    : RemoteDragStatus.downloading(moved: moved.value, of: total)
-            )
+            switch phase.value {
+            case .extracting: showStatus(RemoteDragStatus.extracting)
+            case .compressing: showStatus(RemoteDragStatus.compressing)
+            case .downloading: showStatus(
+                    RemoteDragStatus.downloading(moved: moved.value, of: total)
+                )
+            }
         case .landed:
             // Worth saying only to an app that was already told there was nothing, because it will
             // not look again until the pointer leaves it and comes back.
             showStatus(handoff.board == .fileURLs ? RemoteDragStatus.ready : nil)
         case .failed:
-            showStatus(extractsOnly ? RemoteDragStatus.extractionFailed : RemoteDragStatus.failed)
+            switch phase.value {
+            case .extracting: showStatus(RemoteDragStatus.extractionFailed)
+            case .compressing: showStatus(RemoteDragStatus.compressionFailed)
+            case .downloading: showStatus(RemoteDragStatus.failed)
+            }
         }
-    }
-}
-
-/// What a transfer ended with, handed from its own thread to the main actor.
-///
-/// A box rather than an `await`, because whoever wants it may be holding the main thread.
-private final class RemoteDragTransferOutcome: @unchecked Sendable {
-    struct Settled {
-        let landed: [MaterializedFile]
-        /// Members extracted out of an archive, which no cache adopts: `ArchivePreviewCache` keeps
-        /// what it extracted itself, and these sit in the extractor's temp root until next launch.
-        let extracted: [VFSPath: URL]
-        let error: (any Error)?
-    }
-
-    private let lock = NSLock()
-    private var value: Settled?
-
-    var settled: Settled? {
-        lock.withLock { value }
-    }
-
-    var isSettled: Bool {
-        settled != nil
-    }
-
-    func settle(landed: [MaterializedFile], extracted: [VFSPath: URL], error: (any Error)?) {
-        lock.withLock { value = Settled(landed: landed, extracted: extracted, error: error) }
-    }
-}
-
-/// What one drag offers other apps, gathered on the main actor when it begins (PLAN.md §M36).
-///
-/// The controller used to work this out for itself from each row's backend, which knew only servers.
-/// The pane knows the rest: which archives are locked this session, what a member's extraction needs,
-/// and which copies its window already holds, in either cache.
-struct DragOutOffer {
-    /// The route each row takes, by path (`DragOutRoute`).
-    let routes: [VFSPath: DragOutRoute]
-    /// What extracting each `.extract` row needs, by path.
-    let extractions: [VFSPath: DragOutExtraction]
-    /// A copy of the row already on this disk, from a preview, an open or an earlier drag.
-    let alreadyHere: @MainActor (FileEntry) -> URL?
-    /// Called once, the first time the pointer is over another app, when a row is a member of a
-    /// locked archive (decision A): that row goes nowhere outside Dirnex, and the user is told why.
-    let onLockedRowsLeaving: @MainActor () -> Void
-
-    /// Whether any row stays behind because its archive is locked.
-    var holdsLockedRows: Bool {
-        routes.values.contains(.insideDirnexOnly(.lockedArchive))
-    }
-
-    /// What a drag offered before archive members could go out: every file on a server, from the
-    /// cache it would land in. The default for a caller that names no offer.
-    static func serverFilesOnly(_ entries: [FileEntry], cache: RemoteFileCache) -> DragOutOffer {
-        var routes: [VFSPath: DragOutRoute] = [:]
-        for entry in entries where entry.path.backend.archivePath == nil {
-            routes[entry.path] = DragOutRoute.route(for: entry) { _ in true }
-        }
-        return DragOutOffer(
-            routes: routes,
-            extractions: [:],
-            alreadyHere: { cache.cachedURL(for: $0) },
-            onLockedRowsLeaving: {}
-        )
-    }
-}
-
-/// What is under the pointer during a real drag.
-@MainActor
-enum RemoteDragPointer {
-    /// Asked through the window server, since the answer is about other apps' windows and the drag's
-    /// own image is not one it reports. About 0.3 ms when measured, which a drag's moves can afford.
-    static func surface() -> RemoteDragHandoff.Surface {
-        let number = NSWindow.windowNumber(at: NSEvent.mouseLocation, belowWindowWithWindowNumber: 0)
-        guard number > 0,
-              let info = CGWindowListCopyWindowInfo(.optionIncludingWindow, CGWindowID(number))
-              as? [[String: Any]],
-              let processID = info.first?[kCGWindowOwnerPID as String] as? pid_t else {
-            return .neutral
-        }
-        let app = NSRunningApplication(processIdentifier: processID)
-        return .classify(
-            processID: processID,
-            bundleIdentifier: app?.bundleIdentifier,
-            isRegularApp: app?.activationPolicy == .regular,
-            ownProcessID: ProcessInfo.processInfo.processIdentifier
-        )
     }
 }
 

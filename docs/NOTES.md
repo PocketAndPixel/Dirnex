@@ -4125,6 +4125,15 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   - **A press on an inactive window only activated it.** The probe's view did not take the first
     mouse, so the first drag of a run logged no `mouseDown` and no session; a click on the window
     first fixed it. Read the source's own log before reading a missing drop as a refusal.
+- **Gmail in Chrome fails on a dropped folder, and a board rewritten back for Finder drops the folder
+  itself.** Seen 2026-11-08 by Oleg: a local folder dropped from Dirnex into a Gmail draft gave
+  "Attachment failed", because Chrome hands the page the folder as a file. So since then every app but
+  Finder is handed `<folder>.zip` (`DragOutZip`). The worry was Finder after a crossing, since a
+  rewritten board serves whoever reads it next. A throwaway drag source measured it: a plain folder
+  URL, rewritten to a lazy zip URL as the pointer entered another app (read 9 ms later) and back to
+  the plain folder URL as it entered Finder, dropped the **folder** into Finder with operation 1.
+  - **`bsdtar` zips a folder fast enough to sit inside the 3 s hold.** Measured the same day: 3 MB of
+    docs in 0.13 s, 551 files and 11 MB of source in 0.29 s, 200 MB of random bytes in 2.66 s.
 - **Mail takes a promised folder, and a lazy file URL naming one.** Measured 2026-11-08 (PLAN.md §M36
   probe P2, Mail half) into a compose window: Dirnex's folder promise was fulfilled into Mail's
   `~/Library/Containers/com.apple.mail/Data/tmp/WebKitDropDestination-*/`, and a throwaway source's

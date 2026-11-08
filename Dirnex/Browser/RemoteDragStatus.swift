@@ -115,4 +115,25 @@ final class RemoteDragStatus {
             comment: "Under a file being dragged out of an archive, when it could not be extracted."
         )
     }
+
+    /// Under a folder being dragged to another app, while it is made into the zip that app is handed.
+    /// No percentage, for the reason extraction has none: the usual folder is done before it is drawn.
+    static var compressing: String {
+        String(
+            localized: "Compressing…",
+            comment: """
+            Under a folder being dragged to another app, while Dirnex makes the zip that app is \
+            handed in the folder's place.
+            """
+        )
+    }
+
+    static var compressionFailed: String {
+        String(
+            localized: "Couldn’t compress",
+            comment: """
+            Under a folder being dragged to another app, when the zip of it could not be made.
+            """
+        )
+    }
 }

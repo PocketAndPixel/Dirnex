@@ -88,11 +88,26 @@ struct DragOutRouteTests {
 
     // MARK: - What the app answered before, unchanged
 
-    @Test("a row on this disk offers its own URL, a folder included")
-    func localRowsOfferTheirURL() {
-        #expect(route(entry(.local("/tmp/a.txt"))) == .fileURL)
-        #expect(route(entry(.local("/tmp/dir"), kind: .directory)) == .fileURL)
-        #expect(!route(entry(.local("/tmp/a.txt"))).isPromised)
+    @Test("a file on this disk offers its own URL to every app, with nothing to make")
+    func localFilesOfferTheirURL() {
+        let file = route(entry(.local("/tmp/a.txt")))
+        #expect(file == .fileURL)
+        #expect(!file.isPromised)
+        #expect(!file.isHandedOff)
+        #expect(!file.zipsForOtherApps)
+    }
+
+    /// Gmail answers "Attachment failed" for a folder dropped from Chrome, so every app but Finder
+    /// is handed a zip of one (2026-11-08). Finder still takes the folder by its own URL.
+    @Test("a folder on this disk offers its URL to Finder and a zip to any other app")
+    func localFolderIsZippedForOtherApps() {
+        let folder = route(entry(.local("/tmp/dir"), kind: .directory))
+        #expect(folder == .folderURL)
+        #expect(!folder.isPromised)
+        #expect(folder.isHandedOff)
+        #expect(folder.zipsForOtherApps)
+        // A link to a folder is still a link: its own URL, as before.
+        #expect(route(entry(.local("/tmp/link"), kind: .symlink)) == .fileURL)
     }
 
     @Test("a file on a server is downloaded, and handed to other apps as well as to Finder")
@@ -107,10 +122,10 @@ struct DragOutRouteTests {
 
     // MARK: - A folder on a server, the row Slice 3 adds
 
-    /// Decision B, 2026-11-08: Finder is promised the folder and the queue stages it, while an app
-    /// that takes no promise is offered nothing for it until probe P2 says one takes a folder.
-    @Test("a folder on a server is promised to Finder and handed to no other app")
-    func serverFolderIsPromisedToFinderOnly() {
+    /// Decision B, 2026-11-08: Finder is promised the folder and the queue stages it. Any other app
+    /// is handed a zip of it, as a folder on this disk is.
+    @Test("a folder on a server is promised to Finder and zipped for any other app")
+    func serverFolderIsPromisedToFinderAndZippedForOthers() {
         let backends = [
             sftp,
             VFSBackendID("ftp://user@host"),
@@ -123,7 +138,8 @@ struct DragOutRouteTests {
             )
             #expect(folder == .downloadFolder, "\(backend.rawValue)")
             #expect(folder.isPromised)
-            #expect(!folder.isHandedOff)
+            #expect(folder.isHandedOff)
+            #expect(folder.zipsForOtherApps)
         }
     }
 
@@ -143,13 +159,26 @@ struct DragOutRouteTests {
         }
     }
 
-    @Test("only a file on a server or in an archive is handed to other apps")
+    @Test("what the handoff has to make for another app, and which of it is a zip")
     func handedOffRows() {
         #expect(DragOutRoute.download.isHandedOff)
         #expect(DragOutRoute.extract.isHandedOff)
-        #expect(!DragOutRoute.downloadFolder.isHandedOff)
+        #expect(DragOutRoute.downloadFolder.isHandedOff)
+        #expect(DragOutRoute.folderURL.isHandedOff)
         #expect(!DragOutRoute.fileURL.isHandedOff)
         #expect(!DragOutRoute.insideDirnexOnly(.lockedArchive).isHandedOff)
+        #expect(!DragOutRoute.insideDirnexOnly(.folder).zipsForOtherApps)
+        #expect(!DragOutRoute.download.zipsForOtherApps)
+        #expect(!DragOutRoute.extract.zipsForOtherApps)
+    }
+
+    @Test("a folder's zip is named after it, as a pack of one folder is")
+    func zipName() {
+        #expect(DragOutRoute.zipName(forFolderNamed: "photos") == "photos.zip")
+        #expect(DragOutRoute.zipName(forFolderNamed: "photos.2024") == "photos.2024.zip")
+        #expect(DragOutRoute.zipName(forFolderNamed: "Tool.app") == "Tool.app.zip")
+        // Not `x.zip.zip`: a folder that already carries the suffix keeps its name.
+        #expect(DragOutRoute.zipName(forFolderNamed: "x.zip") == "x.zip")
     }
 
     @Test("a row of a backend that is no place bytes come from offers nothing")

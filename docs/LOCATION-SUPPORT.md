@@ -366,12 +366,16 @@ when Finder takes the drop, `F5`'s own queue job stages the tree in the temp roo
 in Dirnex, and moves it to the path Finder named once all of it is here. Finder draws nothing while it
 waits, so the queue bar is the only progress; Stop or a failure leaves nothing in Finder's folder, and a
 failure is reported by Dirnex, since Finder says nothing. Run live over SFTP, FTP, WebDAV and S3
-(2026-11-08). **Mail takes the same promise**: a folder dragged alone from S3 arrived in a draft
-byte-identical. No app is handed a folder as a file URL, so the apps that refuse a promise (Teams,
-Chrome and the rest of Chromium) get nothing for it; whether they would take one is PLAN.md §M36 probe
-P2's unrun half. A folder dragged alone keeps its promise across other apps on its way to Finder;
-dragged with files, it loses it once the pointer has been over another app and the board has become
-those files' URLs. A bucket in an account pane and a share
+(2026-11-08). **Every other app is handed a zip of the folder** since the same day, because Gmail in
+Chrome answers "Attachment failed" for a dropped folder: once the pointer is over such an
+app, the folder is brought down whole and zipped, and the app is handed `<folder>.zip`. A folder **on
+this disk** goes the same way, zipped where it is, while Finder still takes it by its own URL. Back
+over Finder after a crossing, Finder is handed the folder rather than the zip: a local one by its
+own URL, a server's as the staged tree, once it has arrived. The zip is made in the temp root by
+⌥F5's packer, shows "Compressing…" under the dragged row while it is made, is stopped if the drag
+ends first, and is removed at the drag's end unless an app took it, when it stays until the next
+launch for the upload that reads it. Checked by Oleg in Gmail and Teams, with a local folder and one
+off the NAS (2026-11-08). A bucket in an account pane and a share
 in a server pane are places rather than folders and stay inside Dirnex. And a **virtual listing** — a results tab, the merged Trash — is a
 source and never a destination: its rows carry their real paths and copy or drag out per row, while
 nothing can be pasted or dropped *into* a listing that has no directory of its own. The merged

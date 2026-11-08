@@ -22,6 +22,12 @@ import Foundation
 ///   image stops following the pointer, and a release during the hold comes out refused. It works, and
 ///   it is what makes an ordinary file feel like an ordinary drag, so it is bounded by ``holdLimit``
 ///   and given up as soon as the pointer leaves that app.
+/// - **A folder is two different things**, itself for Finder and a zip of itself for any other app,
+///   because Gmail and the rest of Chromium take a dropped file and fail on a folder. A rewritten
+///   board serves whoever reads it, so a drag holding a folder rewrites it again whenever the pointer
+///   moves between Finder and another app (``Audience``). Measured 2026-11-08 with a throwaway drag
+///   source: a board rewritten to a lazy zip URL over another app and back to the folder's own URL
+///   over Finder dropped the folder into Finder, not the zip.
 ///
 /// Pure, like `Panel`: the caller performs the writes and the transfer and reports back, so every
 /// one of these rules is testable without a drag session, which cannot be synthesized.
@@ -96,6 +102,17 @@ public struct RemoteDragHandoff: Sendable, Equatable {
         case stopTransfer
     }
 
+    /// Who the board's rows were last written for.
+    ///
+    /// The same for both until a row is offered differently to Finder, which only a folder is
+    /// (``init(finderHasItsOwnBoard:)``).
+    public enum Audience: Sendable, Equatable {
+        /// Finder, which takes a folder as itself.
+        case finder
+        /// Every other app, which is handed a zip of a folder.
+        case otherApps
+    }
+
     /// What to tell an app reading `public.file-url`.
     public enum Answer: Sendable, Equatable {
         /// The bytes are here: answer with the path.
@@ -108,6 +125,13 @@ public struct RemoteDragHandoff: Sendable, Equatable {
 
     public private(set) var board: Board = .promises
     public private(set) var transfer: Transfer = .notStarted
+    /// Who the board was last written for. Meaningful once it has left ``Board/promises``, which only
+    /// another app makes it do.
+    public private(set) var audience: Audience = .otherApps
+
+    /// Whether Finder is offered something other than what the rest are, so the board is written
+    /// again each time the pointer crosses between the two.
+    private let finderHasItsOwnBoard: Bool
 
     /// The answer this board has given, which every other row of it has to share. All of them or
     /// none: a drop of three that quietly attached two is worse than a refusal.
@@ -115,7 +139,12 @@ public struct RemoteDragHandoff: Sendable, Equatable {
     /// Who was told ``Answer/nothing``, so a different app can be given a board of its own.
     private var refusedProcessID: Int32?
 
-    public init() {}
+    /// `finderHasItsOwnBoard` is whether a row reaches Finder as something other than what every
+    /// other app gets: a folder, which is a zip everywhere but Finder (`DragOutRoute.zipsForOtherApps`).
+    /// Without one, Finder reads the same rewritten board as everybody else, as it always has.
+    public init(finderHasItsOwnBoard: Bool = false) {
+        self.finderHasItsOwnBoard = finderHasItsOwnBoard
+    }
 
     /// The pointer is over `surface`. Called as it moves, so it has to come out as no effects almost
     /// always, and it has to run before that app reads the board: the move arrives first, 6 ms ahead
@@ -126,11 +155,13 @@ public struct RemoteDragHandoff: Sendable, Equatable {
         case .promises:
             guard case .otherApp = surface else { return [] }
             board = .lazyFileURLs
+            audience = .otherApps
             answer = nil
             guard transfer == .notStarted else { return [.writeLazyFileURLs] }
             transfer = .running
             return [.writeLazyFileURLs, .startTransfer]
         case .lazyFileURLs:
+            if let rewrite = changeAudience(for: surface) { return rewrite }
             // An app that was already told "nothing" keeps that answer until the bytes land, when it
             // has to leave and come back. A different app gets its own chance to wait.
             guard answer == .nothing, refusedProcessID != processID, transfer == .running else {
@@ -140,8 +171,30 @@ public struct RemoteDragHandoff: Sendable, Equatable {
             refusedProcessID = nil
             return [.writeLazyFileURLs]
         case .fileURLs:
-            return []
+            return changeAudience(for: surface) ?? []
         }
+    }
+
+    /// Write the board again for whoever `surface` belongs to, when that is a different audience
+    /// from the one it was written for and the drag has a row the two are offered differently.
+    ///
+    /// The new board answers afresh, so Finder gets a wait of its own after another app was told
+    /// "nothing". It is written whatever became of the transfer, since a folder on this disk reaches
+    /// Finder as itself and needs nothing the transfer was making.
+    private mutating func changeAudience(for surface: Surface) -> [Effect]? {
+        guard finderHasItsOwnBoard else { return nil }
+        let wanted: Audience = if case .finder = surface { .finder } else { .otherApps }
+        guard wanted != audience else { return nil }
+        audience = wanted
+        refusedProcessID = nil
+        guard transfer == .landed else {
+            board = .lazyFileURLs
+            answer = nil
+            return [.writeLazyFileURLs]
+        }
+        board = .fileURLs
+        answer = .fileURLs
+        return [.writeFileURLs]
     }
 
     /// An app is reading `public.file-url` from one of the board's rows.

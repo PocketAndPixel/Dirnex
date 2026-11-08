@@ -81,16 +81,10 @@ enum RemoteFolderPromise {
     }
 
     /// Remove the directory `MaterializeRunner` staged the tree in, holder and all, whether the tree
-    /// is still in it or has been moved out.
-    ///
-    /// Only a holder under the temp root is one the runner made, which is the same guard
-    /// `RemoteFileCache.sweepStagedTrees` keeps; that one needs the tree still there, and after a
-    /// move it is not.
+    /// is still in it or has been moved out (`RemoteFileCache.sweepStagedTrees` needs it still there,
+    /// and after a move it is not).
     private static func sweep(_ staged: URL?) {
         guard let staged else { return }
-        let root = RemoteFileCache.temporaryRoot.standardizedFileURL.path
-        let holder = staged.standardizedFileURL.deletingLastPathComponent()
-        guard holder.path.hasPrefix(root + "/") else { return }
-        try? FileManager.default.removeItem(at: holder)
+        RemoteDragArtifacts.remove(holderOf: staged)
     }
 }
