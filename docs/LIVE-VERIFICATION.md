@@ -65,6 +65,13 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     `run operation "file.trash"` over the `.sdef` verbs runs the whole shipped path per item. Read
     the preference before assuming a delete is unreachable; ⇧F8 and every *permanent* delete do
     confirm, and are not drivable this way.
+- **A measurement at scale needs a Release build, and an ad-hoc signed one needs the hardened runtime
+  off.** A Debug `DirnexCore` is `-Onone`, far too slow to say anything about a 256 MiB comparison.
+  Seen 2026-11-08: `xcodebuild -configuration Release CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual
+  DEVELOPMENT_TEAM=` builds, `open` answers 0, and the app is simply not there: under the hardened
+  runtime library validation refuses the ad-hoc Sparkle, and the only trace is
+  `dyld: Library not loaded: @rpath/Sparkle.framework` from the binary run in a shell, and a crash
+  report per try. Add `ENABLE_HARDENED_RUNTIME=NO`, into `build/release-dd`, and launch by path.
 - **A second copy of the app with the same bundle id is the stale-binary trap wearing different
   clothes, and it fails as a *confident false negative*.** Measured 2026-09-10: with the DerivedData
   build correctly quit and rebuilt, launching by **name** (`open -a Dirnex`, or a computer-use

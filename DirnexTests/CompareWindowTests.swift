@@ -38,7 +38,7 @@ struct CompareWindowTests {
         let leftSource = try source("left.swift", left, language: .swift)
         let rightSource = try source("right.swift", right, language: .swift)
         let controller = CompareWindowController(left: leftSource, right: rightSource, saving: .none)
-        let prepared = CompareWindowController.prepare(
+        let prepared = try CompareWindowController.prepare(
             left: leftSource,
             right: rightSource,
             options: options,

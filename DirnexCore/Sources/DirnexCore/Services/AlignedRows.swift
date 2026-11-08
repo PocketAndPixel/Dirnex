@@ -70,6 +70,18 @@ enum RowAlignment {
         diff: LineDiff,
         options: LineDiffOptions
     ) -> Layout {
+        layout(left: left, right: right, diff: diff, options: options, check: {})
+    }
+
+    /// `layout`, asking `check` often enough that a large comparison can be stopped. On a dense pair
+    /// this is the slow part: 27 s of 32 s at 256 MiB and 954 300 changes (measured 2026-11-08).
+    static func layout<Stop: Error>(
+        left: [TextLine],
+        right: [TextLine],
+        diff: LineDiff,
+        options: LineDiffOptions,
+        check: () throws(Stop) -> Void
+    ) throws(Stop) -> Layout {
         var layout = Layout()
         layout.rows.reserveCapacity(max(left.count, right.count) + diff.changes.count)
         var leftIndex = 0
@@ -87,12 +99,14 @@ enum RowAlignment {
             }
         }
         for change in diff.changes {
+            try check()
             appendSame(until: change.left.lowerBound)
             let first = layout.rows.count
-            layout.rows += blockRows(
+            layout.rows += try blockRows(
                 left: change.left.map { ($0, left[$0]) },
                 right: change.right.map { ($0, right[$0]) },
-                options: options
+                options: options,
+                check: check
             )
             layout.changeRows.append(first..<layout.rows.count)
             leftIndex = change.left.upperBound
@@ -108,7 +122,22 @@ enum RowAlignment {
         right: [(index: Int, line: TextLine)],
         options: LineDiffOptions
     ) -> [AlignedRow] {
-        let pairs = alikePairs(left.map(\.line), right.map(\.line), options: options)
+        blockRows(left: left, right: right, options: options, check: {})
+    }
+
+    /// `blockRows`, asking `check` as it goes: one rewritten file is one block of millions of lines.
+    static func blockRows<Stop: Error>(
+        left: [(index: Int, line: TextLine)],
+        right: [(index: Int, line: TextLine)],
+        options: LineDiffOptions,
+        check: () throws(Stop) -> Void
+    ) throws(Stop) -> [AlignedRow] {
+        let pairs = try alikePairs(
+            left.map(\.line),
+            right.map(\.line),
+            options: options,
+            check: check
+        )
         var rows: [AlignedRow] = []
         var leftNext = 0
         var rightNext = 0
@@ -122,6 +151,7 @@ enum RowAlignment {
                 rows.append(row(leftLine, rightLine, inline: nil))
             }
             guard pair.0 < left.count else { break }
+            try check()
             let leftLine = left[pair.0]
             let rightLine = right[pair.1]
             let inline = InlineDiff.difference(
@@ -165,14 +195,42 @@ enum RowAlignment {
         _ right: [TextLine],
         options: LineDiffOptions
     ) -> [(Int, Int)] {
+        alikePairs(left, right, options: options, check: {})
+    }
+
+    private static func fingerprints<Stop: Error>(
+        of lines: [TextLine],
+        options: LineDiffOptions,
+        check: () throws(Stop) -> Void
+    ) throws(Stop) -> [LineFingerprint] {
+        var prints: [LineFingerprint] = []
+        prints.reserveCapacity(lines.count)
+        for (index, line) in lines.enumerated() {
+            if index % ComparisonStop.linesBetweenChecks == 0 { try check() }
+            prints.append(LineFingerprint(line.content, ignoresCase: options.ignoresCase))
+        }
+        return prints
+    }
+
+    static func alikePairs<Stop: Error>(
+        _ left: [TextLine],
+        _ right: [TextLine],
+        options: LineDiffOptions,
+        check: () throws(Stop) -> Void
+    ) throws(Stop) -> [(Int, Int)] {
         guard !left.isEmpty, !right.isEmpty else { return [] }
-        let leftPrints = left.map { LineFingerprint($0.content, ignoresCase: options.ignoresCase) }
-        let rightPrints = right.map { LineFingerprint($0.content, ignoresCase: options.ignoresCase) }
+        let leftPrints = try fingerprints(of: left, options: options, check: check)
+        let rightPrints = try fingerprints(of: right, options: options, check: check)
         let threshold = LineFingerprint.pairingThreshold
         guard left.count * right.count <= maximumPairingWork else {
-            return (0..<min(left.count, right.count)).filter {
-                leftPrints[$0].similarity(to: rightPrints[$0]) >= threshold
-            }.map { ($0, $0) }
+            var sameDepth: [(Int, Int)] = []
+            for index in 0..<min(left.count, right.count) {
+                if index % ComparisonStop.linesBetweenChecks == 0 { try check() }
+                if leftPrints[index].similarity(to: rightPrints[index]) >= threshold {
+                    sameDepth.append((index, index))
+                }
+            }
+            return sameDepth
         }
         // The most alike set of pairs that keeps both sides in order: a table of the best total for
         // each prefix of the two sides, read back from the far corner.

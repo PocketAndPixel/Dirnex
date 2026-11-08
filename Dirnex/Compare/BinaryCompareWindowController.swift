@@ -27,7 +27,7 @@ enum BinaryCompareReason: Equatable {
         case .binary: self = .notText(name: failure.name)
         case .undecodable: self = .undecodable(name: failure.name)
         case .tooLarge: self = .tooLarge
-        case .unreadable: return nil
+        case .unreadable, .stopped: return nil
         }
     }
 }

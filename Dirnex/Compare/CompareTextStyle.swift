@@ -15,12 +15,19 @@ import DirnexCore
 /// (docs/NOTES.md ▸ Text fields and text views).
 @MainActor
 enum CompareTextStyle {
-    static let font = NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
-    static let lineHeight = ceil(font.ascender - font.descender + font.leading)
+    /// Read off the main thread by `document`. `NSFont` and `NSParagraphStyle` are not marked
+    /// `Sendable`, and neither of these two changes after it is made.
+    nonisolated(unsafe) static let font = NSFont.monospacedSystemFont(
+        ofSize: NSFont.systemFontSize,
+        weight: .regular
+    )
+    nonisolated static let lineHeight = ceil(font.ascender - font.descender + font.leading)
     /// One column of the monospaced font.
-    static let columnWidth = ceil(("0" as NSString).size(withAttributes: [.font: font]).width * 100) / 100
+    nonisolated static let columnWidth = ceil(
+        ("0" as NSString).size(withAttributes: [.font: font]).width * 100
+    ) / 100
 
-    static let paragraph: NSParagraphStyle = {
+    nonisolated(unsafe) static let paragraph: NSParagraphStyle = {
         let style = NSMutableParagraphStyle()
         style.minimumLineHeight = lineHeight
         style.maximumLineHeight = lineHeight
@@ -43,7 +50,10 @@ enum CompareTextStyle {
     }
 
     /// How each row of `side` is painted.
-    static func fills(for side: ComparisonPaneText.Side, rows: [AlignedRow]) -> [AlignedRowFill] {
+    nonisolated static func fills(
+        for side: ComparisonPaneText.Side,
+        rows: [AlignedRow]
+    ) -> [AlignedRowFill] {
         rows.map { row in
             let index = side == .left ? row.left : row.right
             guard index != nil else { return .gap }
@@ -55,7 +65,7 @@ enum CompareTextStyle {
     }
 
     /// What each change does, in the order of `TextComparison.changeRows`.
-    static func changeKinds(_ comparison: TextComparison) -> [CompareChangeKind] {
+    nonisolated static func changeKinds(_ comparison: TextComparison) -> [CompareChangeKind] {
         comparison.changeRows.map { rows in
             let kinds = Set(comparison.rows[rows].map(\.kind))
             if kinds == [.removed] {
@@ -70,8 +80,9 @@ enum CompareTextStyle {
 
     /// A pane's text, colored: syntax tokens for the foreground, and the words that differ inside a
     /// changed row marked behind them. A row's own background is not here; the row draws it across
-    /// the whole pane (`CompareRowFragment`).
-    static func document(
+    /// the whole pane (`CompareRowFragment`). Built off the main thread: a dense pair marks millions
+    /// of words.
+    nonisolated static func document(
         for pane: ComparisonPaneText,
         rows: [AlignedRow],
         tokens: [SyntaxToken]
