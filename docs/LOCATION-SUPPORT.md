@@ -19,7 +19,7 @@ closed simply reads differently — it is not explained here.
 |---|---|
 | **yes** | Fully done. Behaves as it does on the local disk. |
 | **yes, limited** | Fully done for what the technology allows. The remaining difference **cannot** be closed from our side — the protocol, the service or macOS does not expose it. |
-| **yes, partially** | Done, and the gap **could** be narrowed to look more local. What is left of the parity backlog is planned as M36–M40 at PLAN.md §4 ▸ *Next*, plus the short list at §4 ▸ *Still open*. |
+| **yes, partially** | Done, and the gap **could** be narrowed to look more local. What is left of the parity backlog is planned as M37–M40 at PLAN.md §4 ▸ *Next*, plus the short list at §4 ▸ *Still open*. |
 | **no** | Not implemented, and nothing structural prevents it — so it is backlog too, and its footnote names the milestone. A "no" with no route to a yes is written **n/a** instead. |
 | **n/a** | The concept does not exist there (a Trash inside the Trash, a checksum of a bucket list). |
 
@@ -342,8 +342,9 @@ the member is extracted when it takes the drop, and any other app is handed the 
 the pointer is over it. A member of an encrypted archive goes out only once this session holds its
 passphrase, from a preview, ⏎ or `F5`; before that it drags inside Dirnex only and the status line
 says to open a file in the archive first, because asking would put a sheet behind somebody else's
-drop. A **folder** inside an archive does not drag out yet, waiting on the same probe as a server's
-folder (PLAN.md §M36 Slice 3).
+drop. A **folder** inside an archive does not drag out yet. A server's folder does since PLAN.md §M36
+Slice 3, and the probe it needed (Finder and a promised folder) answers for an archive's too, so what
+is left is the extraction of a subtree behind the promise.
 
 <sup>k</sup> What a drag can and cannot reach, in three parts. A row on a server is dragged **out**
 to Finder as an `NSFilePromiseProvider`: the board advertises the file and the bytes are fetched only
@@ -359,9 +360,19 @@ and come back. Letting go early refuses the drop and nothing is lost: a set up t
 finishes anyway so the next drag is immediate, and a larger one stops and leaves nothing behind. Two
 limits follow from a promise being gone once the board has been rewritten: a large file that crosses
 another app on its way to Finder has to arrive before Finder will take it, and an app that could have
-taken a promise is offered the file URL too (Mail took a 36.1 MB file from S3 this way, 2026-11-03). A **folder** is not promised
-or offered (a promise is one file, and a recursive fetch behind a drop has no progress surface and no
-way to stop it), so it travels inside Dirnex only; dragging one out is planned as PLAN.md §M36. And a **virtual listing** — a results tab, the merged Trash — is a
+taken a promise is offered the file URL too (Mail took a 36.1 MB file from S3 this way, 2026-11-03). A
+**folder** goes to **Finder** since PLAN.md §M36 Slice 3 (2026-11-08): it is promised as a folder, and
+when Finder takes the drop, `F5`'s own queue job stages the tree in the temp root, with its bar and Stop
+in Dirnex, and moves it to the path Finder named once all of it is here. Finder draws nothing while it
+waits, so the queue bar is the only progress; Stop or a failure leaves nothing in Finder's folder, and a
+failure is reported by Dirnex, since Finder says nothing. Run live over SFTP, FTP, WebDAV and S3
+(2026-11-08). **Mail takes the same promise**: a folder dragged alone from S3 arrived in a draft
+byte-identical. No app is handed a folder as a file URL, so the apps that refuse a promise (Teams,
+Chrome and the rest of Chromium) get nothing for it; whether they would take one is PLAN.md §M36 probe
+P2's unrun half. A folder dragged alone keeps its promise across other apps on its way to Finder;
+dragged with files, it loses it once the pointer has been over another app and the board has become
+those files' URLs. A bucket in an account pane and a share
+in a server pane are places rather than folders and stay inside Dirnex. And a **virtual listing** — a results tab, the merged Trash — is a
 source and never a destination: its rows carry their real paths and copy or drag out per row, while
 nothing can be pasted or dropped *into* a listing that has no directory of its own. The merged
 iCloud row is the exception, landing in the CloudDocs container underneath.
@@ -1186,7 +1197,7 @@ download ends within 1 ms of the cancel, without one it runs to the end (docs/NO
 The two milestones this list was written for have closed: **M24** (every local-only feature, on a
 file that is not local) on 2026-08-28 and **M25** (what a remote write carries, and what a remote
 delete costs) on 2026-08-29, both archived in [HISTORY.md](HISTORY.md). What is left of the **"no"**
-and **"yes, partially"** cells that are *ours* to close is planned as M36–M40 at
+and **"yes, partially"** cells that are *ours* to close is planned as M37–M40 at
 [PLAN.md](../PLAN.md) §4 ▸ *Next*, plus the short list at §4 ▸ *Still open* — the cells that were too small to be a slice of either. This file is the status;
 the plan is the work. Nothing that has already shipped is argued here — a closed gap is simply a
 changed cell, and why it changed is in [HISTORY.md](HISTORY.md).

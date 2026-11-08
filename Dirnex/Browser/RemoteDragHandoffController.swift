@@ -27,8 +27,8 @@ final class RemoteDragHandoffController {
     private var handoff = RemoteDragHandoff()
     /// The drag session's own board.
     private let board: NSPasteboard
-    /// Every row of the drag, in order, including any a file URL cannot stand for (a folder, a row in
-    /// an archive), which the board keeps carrying exactly as `PanelPasteboard` does for them.
+    /// Every row of the drag, in order, including any a file URL cannot stand for (a folder, a row of
+    /// a locked archive), which the board keeps carrying on its payload alone.
     let entries: [FileEntry]
     private let cache: RemoteFileCache
     private let backend: any VFSBackend
@@ -60,9 +60,10 @@ final class RemoteDragHandoffController {
         handoff.transfer == .running
     }
 
-    /// The rows of `entries` this has to bring down or extract.
+    /// The rows of `entries` this has to bring down or extract: files, never a server's folder, which
+    /// is Finder's alone (`DragOutRoute.isHandedOff`).
     private var remoteRows: [FileEntry] {
-        entries.filter { offer.routes[$0.path]?.isPromised == true }
+        entries.filter { offer.routes[$0.path]?.isHandedOff == true }
     }
 
     /// Whether every row this brings over comes out of an archive, which is what the drag image says.

@@ -58,10 +58,10 @@ enum PanelPasteboard {
     /// `delegate` is held **weakly** by every promise AppKit builds here, so the caller has to be
     /// something that outlives the drag; a pane is, which is why it is the pane that conforms.
     ///
-    /// `routes` says which rows are promised (`DragOutRoute.isPromised`): a file on a server, and
-    /// since M36 Slice 2 a file inside an archive this session can open. A row with no route, or a
-    /// route that promises nothing, gets the plain item, which another app takes only for a row on
-    /// this disk.
+    /// `routes` says which rows are promised (`DragOutRoute.isPromised`): a file on a server, since
+    /// M36 Slice 2 a file inside an archive this session can open, and since Slice 3 a folder on a
+    /// server. A row with no route, or a route that promises nothing, gets the plain item, which
+    /// another app takes only for a row on this disk.
     static func dragWriters(
         for entries: [FileEntry],
         routes: [VFSPath: DragOutRoute],

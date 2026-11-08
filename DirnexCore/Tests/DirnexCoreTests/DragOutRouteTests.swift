@@ -95,13 +95,61 @@ struct DragOutRouteTests {
         #expect(!route(entry(.local("/tmp/a.txt"))).isPromised)
     }
 
-    @Test("a file on a server is downloaded, a folder there is not promised")
+    @Test("a file on a server is downloaded, and handed to other apps as well as to Finder")
     func serverRows() {
-        #expect(route(entry(VFSPath(backend: sftp, path: "/srv/report.pdf"))) == .download)
-        #expect(route(entry(VFSPath(backend: sftp, path: "/srv/photos"), kind: .directory))
-            == .insideDirnexOnly(.folder))
+        let file = route(entry(VFSPath(backend: sftp, path: "/srv/report.pdf")))
+        #expect(file == .download)
+        #expect(file.isPromised)
+        #expect(file.isHandedOff)
         #expect(route(entry(VFSPath(backend: sftp, path: "/srv/link"), kind: .symlink))
             == .insideDirnexOnly(.notAFile))
+    }
+
+    // MARK: - A folder on a server, the row Slice 3 adds
+
+    /// Decision B, 2026-11-08: Finder is promised the folder and the queue stages it, while an app
+    /// that takes no promise is offered nothing for it until probe P2 says one takes a folder.
+    @Test("a folder on a server is promised to Finder and handed to no other app")
+    func serverFolderIsPromisedToFinderOnly() {
+        let backends = [
+            sftp,
+            VFSBackendID("ftp://user@host"),
+            S3Location(host: "s3.example.com", bucket: "b", region: "eu-west-1", accessKeyID: "K")
+                .backendID
+        ]
+        for backend in backends {
+            let folder = route(
+                entry(VFSPath(backend: backend, path: "/srv/photos"), kind: .directory)
+            )
+            #expect(folder == .downloadFolder, "\(backend.rawValue)")
+            #expect(folder.isPromised)
+            #expect(!folder.isHandedOff)
+        }
+    }
+
+    /// An account pane's rows are buckets and a server pane's are shares: places, not folders the
+    /// queue's copy can walk from where they are listed.
+    @Test("a bucket or a share listed at an account's top level is not promised")
+    func accountLevelRowsAreNotPromised() {
+        let account = S3Location(
+            host: "s3.example.com", bucket: "b", region: "eu-west-1", accessKeyID: "K"
+        ).account.backendID
+        let server = VFSBackendID.smbServer(SMBLocation(host: "nas"))
+        #expect(account.isRemoteConnection)
+        #expect(server.isRemoteConnection)
+        for backend in [account, server] {
+            #expect(route(entry(VFSPath(backend: backend, path: "/media"), kind: .directory))
+                == .insideDirnexOnly(.folder))
+        }
+    }
+
+    @Test("only a file on a server or in an archive is handed to other apps")
+    func handedOffRows() {
+        #expect(DragOutRoute.download.isHandedOff)
+        #expect(DragOutRoute.extract.isHandedOff)
+        #expect(!DragOutRoute.downloadFolder.isHandedOff)
+        #expect(!DragOutRoute.fileURL.isHandedOff)
+        #expect(!DragOutRoute.insideDirnexOnly(.lockedArchive).isHandedOff)
     }
 
     @Test("a row of a backend that is no place bytes come from offers nothing")

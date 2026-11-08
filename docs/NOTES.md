@@ -939,6 +939,13 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
   left stale the second save raised "changed since this window read it" and waited on it for ten
   minutes. Two windows, one save each, turn that into a failure. Where a second save in one window
   is the subject, wait for either outcome and end any sheet that came up, then assert.
+- **A control that removes a branch can send its input down a neighbour's failure path, and that
+  path may raise an alert.** Seen 2026-11-08 controlling M36 Slice 3: taking out the folder branch of
+  `fulfillPromise` sent a server folder into the *file* fetch, which failed against the test's stub
+  backend and called `presentOperationFailure`. With no window that is `runModal`, so the test host
+  put "Couldn’t copy this item from the server" on Oleg's screen and the run waited on it. Before
+  running a control, follow where the rerouted input goes; control the step *inside* the branch
+  instead (answer without queuing, say), which fails the same tests and reaches no alert.
 - **A decision that reads live global state *inside itself* cannot be varied by a test, and the tell
   is a negative control that fails nothing.** `PanelViewController+Drop.resolvedKind` asked
   `NSEvent.modifierFlags` directly, so a rule keyed on ⌘ or ⌥ had exactly one reachable value — the
@@ -4098,6 +4105,35 @@ A trap that can bite any live run goes there; one tied to an area goes under tha
     the main thread blocked**, which is what lets a held read notice the pointer leaving. The second
     skips the drag image, and about 0.3 ms with `CGWindowListCopyWindowInfo` is cheap enough for every
     move. The desktop answers as Finder's own window at a large negative layer.
+- **Finder takes a promised *folder*, asks for it at its final path, and then waits for it in
+  silence.** Measured 2026-11-08 (PLAN.md §M36 probe P1) with a throwaway drag source promising
+  `public.folder` into a Finder window, full-screen computer use doing the drags:
+  - **The URL is the drop folder's own path, and nothing is there yet** when
+    `writePromiseTo` is called, every time. On a name clash Finder asks for `Name 2` itself, so the
+    collision is never the source's to settle. A file's promise is the older code's worry
+    (`placePromisedFile` replaces a placeholder); a folder found at its URL later arrived while it was
+    coming down and is somebody else's.
+  - **The drag session ends at once, with operation 1, whatever the answer.** The session's `endedAt`
+    cannot tell a delivered folder from a refused one, so it is no signal of success.
+  - **Finder draws nothing while it waits**: no placeholder, no progress, nothing in the list until the
+    folder is there. It stays responsive (AppleEvents round-tripped in the usual ~140 ms) and took a
+    folder answered **100 s** after the drop, so there is no timeout to race at that scale.
+  - **An error answer shows nothing and leaves nothing.** Finder says nothing about it, so the source
+    has to.
+  - A folder staged in `$TMPDIR` and moved onto the URL just before answering is taken like one
+    written there.
+  - **A press on an inactive window only activated it.** The probe's view did not take the first
+    mouse, so the first drag of a run logged no `mouseDown` and no session; a click on the window
+    first fixed it. Read the source's own log before reading a missing drop as a refusal.
+- **Mail takes a promised folder, and a lazy file URL naming one.** Measured 2026-11-08 (PLAN.md §M36
+  probe P2, Mail half) into a compose window: Dirnex's folder promise was fulfilled into Mail's
+  `~/Library/Containers/com.apple.mail/Data/tmp/WebKitDropDestination-*/`, and a throwaway source's
+  `NSPasteboardItem` whose `public.file-url` was lazy and named a folder in `$TMPDIR` was read 0.22 s
+  into the drag, as the pointer entered the draft, and attached as a folder.
+  - **A compose window's header strip takes a promise and refuses a file URL.** In a draft sized to
+    278 points there was no body to drop on, and four file-URL drops, a plain file among them, came
+    back operation 0 with the lazy URL never read, while a promise dropped on the same spot was taken.
+    Run a file control at the same point before reading a refusal as being about folders.
 - **LaunchServices is keyed by *type* and `NSSharingServicePicker` by *items*, so only one of the two
   hand-off gestures can show its list before the files exist.** Open With's list is
   `urlsForApplications(toOpen: UTType)` — already measured to answer identically to the per-URL

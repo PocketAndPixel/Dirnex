@@ -401,6 +401,15 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   double-click ran, so the window zoomed. On a tab's × it came back "AXPress", and the button fired
   once. So it cannot produce a double-click that starts on a control and ends somewhere else. Read which
   of the two the tool reports before counting the run as a test of the second click.
+- **A background `app_click` on a row of the inactive pane selects it and leaves the other pane
+  active.** Seen 2026-11-08: the click reported `set AXSelected=true` on the right pane's row, and the
+  function bar's F5 then copied the *left* pane's cursor row the other way, a server's `#recycle` down
+  into the scratch folder. Switch panes with `app_key tab`, zoom on the tab strip to see which one is
+  blue, and only then press F5 or F6.
+- **Restoring a minimized window brings it back in front, at its old frame.** Seen 2026-11-08: Mail's
+  viewer, un-minimized after a drag test, came back over Dirnex, and the next click meant for a pane
+  row landed on a selected mailbox and opened its name for editing. List the windows at the click point
+  after any `osascript` that moves, raises or restores a window.
 - **Two clicks on a row with only key presses between them make a double-click.** Seen 2026-10-24:
   click, Space, Space, click on a zip, all inside the double-click interval, opened the archive. Wait
   a second between clicks, or move the cursor with the arrow keys.

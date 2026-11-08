@@ -137,19 +137,20 @@ struct DragPromiseTests {
         #expect(!isPromised(local("/tmp/a.txt")))
     }
 
-    @Test("a remote folder is not promised — a promise is one file")
-    func remoteFolderIsNotPromised() {
-        // Deliberately out of scope (PLAN.md §M23): a recursive fetch behind a Finder drop has no
-        // progress surface and no way to stop it. The row still drags inside Dirnex on its payload.
+    /// Out of scope at M23, where a recursive fetch behind a Finder drop had no progress surface and
+    /// no way to stop it; since PLAN.md §M36 Slice 3 the queue stages it, with both
+    /// (`FolderDragOutTests`).
+    @Test("a remote folder is promised too, as one promise")
+    func remoteFolderIsPromised() {
         let folder = remote("/srv/photos", kind: .directory)
-        #expect(!isPromised(folder))
+        #expect(isPromised(folder))
 
         let pane = pane()
         let writers = PanelPasteboard.dragWriters(
             for: [folder], routes: pane.dragOutRoutes(for: [folder]), promisedTo: pane
         )
         #expect(writers.count == 1)
-        #expect(!(writers.first is NSFilePromiseProvider))
+        #expect(writers.first is RemoteFilePromiseProvider)
     }
 
     @Test("the promised type comes off the extension, and an extension-less name still drags")

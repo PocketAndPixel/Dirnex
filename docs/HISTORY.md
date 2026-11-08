@@ -1,4 +1,4 @@
-# Dirnex — build history (M0 → M35)
+# Dirnex — build history (M0 → M36)
 
 The shipped record of Dirnex's milestones: the milestone checklists as they were completed,
 plus the per-pass progress log — what was probed, what was decided, what was rejected and why.
@@ -27,7 +27,9 @@ beta. **M31** (a compare window of our own) was planned and closed 10-22, in fiv
 Nextcloud in a container as well as Apache. **M33** (copying a change across, and saving) and
 **M34** (a three-way merge) were planned together on 10-25, M33 first because M34's result pane,
 undo and save are its; M33 closed 10-26 and M34 10-27. **M35** (an SMB server's shares, as a
-pane) was planned 11-04 and closed 11-05, its last live check waiting a day for the NAS.
+pane) was planned 11-04 and closed 11-05, its last live check waiting a day for the NAS. **M36** (drag
+and paste, where M23 stopped) was planned 11-07 and closed 11-08, the first of five that take up what
+earlier milestones left undone by choice.
 **After M19** carries the thirty-one dated passes from 2026-08-07 → 08-25 that landed outside a
 milestone of their own — it sits at the end rather than in date order, because it is the file's
 catch-all rather than a numeric slot. Two sections frame them, both handed over by the plan on
@@ -19429,6 +19431,221 @@ went back to where they thought it was.
   unchanged. **Not run live**: ⇧F8, a redo, and a hit on a server.
 
 ---
+
+### M36 — Drag and paste, where M23 stopped (M)
+
+**Closed 2026-11-08**, the day after it was planned, in three slices and two probes. Every way into a
+browsed archive now reaches one funnel, `beginArchiveAdd`: ⌘V, ⌥⌘V, a drop from Dirnex or another
+app, and F5/F6. It stages a row on a server or in another archive first, asks the Replace question,
+repacks, and on a move removes the originals. A file inside an archive drags out the way a server's
+file does, promised to Finder and extracted for any other app, unless the archive is locked this
+session, when it stays inside Dirnex and the status line says why. A folder on a server drags into
+Finder: F5's own queue job stages it in the temp root with its bar and Stop, and moves it to the path
+Finder named once all of it is here. Mail takes the same promise.
+
+Three findings are worth not re-deriving. **The add path was not one path**, and reading it before any
+Swift found two bugs on the route the drop and ⌥⌘V were about to join: F5/F6 from a server pane into
+an archive read whatever local file had the server's spelling, and F6 of the folder holding an
+archive put the folder into the archive and then trashed it, archive and all. **Finder and a promised
+folder** (probe P1): Finder asks at the drop folder's own path with nothing there yet, picks `Name 2`
+itself on a clash, ends the drag at once with operation 1 whatever the answer, draws nothing while it
+waits, still took a folder answered after 100 s, and shows nothing for an error, so a failure is
+Dirnex's to report (docs/NOTES.md ▸ Drag and drop). **Mail takes a promised folder, and a lazy file
+URL naming one**, but a compose window's header strip refuses any file URL while taking a promise, so
+the first four probe drops there read as refusals of a folder.
+
+Two run traps are in docs/LIVE-VERIFICATION.md and one test trap is in docs/NOTES.md. A background
+click on the other pane's row does not make that pane active, so F5 ran the other way. Restoring a
+minimized window brings it back in front. And a negative control that removed a branch sent its
+input down a neighbour's failure path, whose alert ran modally in the test host and waited on Oleg's
+screen.
+
+Some paths were not exercised by the close, and are recorded rather than argued. Edit ▸ Move Items
+Here being enabled was not checked, since computer use will not press a menu item that touches the
+clipboard. Three drags were not run live: F5 from a server into an archive, a member of an archive
+dropped into a Chromium app, and a server folder that crosses another app on its way to Finder,
+whether alone or with files.
+
+Left deliberately undone: **a folder for the apps that refuse a promise**, Teams, Chrome and the rest
+of Chromium, since probe P2's half for them was not run: Chrome is read-only to computer use, and a
+drop into Teams uploads to the account's chat files. **A folder inside an archive**, which probe P1
+answers for too, leaving the extraction of a subtree behind the promise. And **a folder dragged with
+files keeps no promise** once the pointer has been over another app, because the board's rewrite to
+file URLs is one way.
+
+The section as the plan carried it through the milestone:
+
+- **A folder dragged out of a server** (M23). A promise is one file, and a recursive fetch behind a
+  drop had no progress surface and no way to stop it, so a folder travels inside Dirnex only
+  (LOCATION-SUPPORT.md <sup>k</sup>). Since then, `RemoteDragHandoff` (2026-11-03) shows a file's
+  progress under the dragged row when another app is the target, and stops a large one when the drop
+  is refused. The first question is whether that carries to a folder of unknown size, and to
+  Finder's promise.
+- **An archive member dragged out to another app** (M23). A promise is fulfilled behind somebody
+  else's drop, where an encrypted archive would have to raise a passphrase sheet with nothing on
+  screen to answer it on. And `extractArchiveSources` reports a failure with an alert rather than
+  through a completion handler, so this needs M23 Slice 4's always-answers contract first.
+- **A drop into a browsed archive** (M23). ⌘V adds to a top-level archive by repacking, and a drop
+  does not.
+- **⌥⌘V move-paste into an archive** (M23), refused today whether pasted or dropped.
+
+Inherited from M23's risk row (§6): the payload carries locations, not policy, and every paste and
+drop ends in the path F5 takes. A drop into an archive is ⌘V's repack, never a second way in. A live
+check of a drag needs full-screen control or Oleg's hands (docs/LIVE-VERIFICATION.md).
+
+**Opened 2026-11-08.** Reading the add path before any Swift found it was not one path. ⌘V read file
+URLs only, so a ⌘C on a server or inside another archive enabled Paste over an archive and then did
+nothing. And two bugs sat on the route the drop and ⌥⌘V were about to join:
+
+- **F5/F6 from a server pane into an archive read this Mac's disk.** `addSelectionToArchive` handed
+  the rows to `ArchiveWriter.add`, which copies `URL(fileURLWithPath: entry.path.path)`: whatever
+  local file has the server's spelling, or a failure naming one. F6 then offered to delete the server
+  originals.
+- **F6 of the folder holding the archive trashed the archive.** An archive's contents carry the
+  backend `archive:<file>`, and `isSelfOrDescendant` stops at the backend compare, so nothing saw that
+  `proj` holds `proj/backup.zip`. The add put `proj` into the archive and the move then trashed `proj`,
+  archive and all. Reproduced as a failing core test before the fix.
+
+#### Slices
+
+1. **One way into an archive** (landed 2026-11-08, core then app). ⌘V, ⌥⌘V, a drop and F5/F6 all
+   reach `beginArchiveAdd`, which admits through `TransferAdmission.pasteAdmits` (moved into the core
+   from the app), asks the Replace question, stages through `materialize` (⌥F5's funnel, under the new
+   `RemoteFetchPurpose.addToArchive`), rewrites from the staged files and removes the *originals* on a
+   move. `TransferAdmission.recurses` learned that an archive lives inside its file. F5 from one archive
+   into another is now the add ⌘V already was, rather than "Open a folder on disk".
+2. **An archive member dragged out to another app** (landed 2026-11-08, core then app). The core's
+   `DragOutRoute` is now the one answer to what a dragged row offers another app, where three places
+   in the app each read the backend for themselves. A file in an archive is promised to Finder and
+   extracted for any other app, unless the archive is locked this session (decision **A**).
+3. **A folder dragged out of a server** (landed 2026-11-08, probe, core, then app). Finder is promised
+   the folder as `public.folder`; when it takes the drop, `MaterializeRunner`'s queue job (F5's engine,
+   with a bar and Stop since 2026-08-30) stages the tree in the temp root, and `RemoteFolderPromise`
+   moves it to Finder's path once all of it is here. No app gets a file URL for it (decision **B**);
+   Mail takes the promise itself, so a folder dragged alone reaches Mail the way it reaches Finder.
+
+Probes owed before Slices 2 and 3, each needing a real drag session (full-screen control or Oleg's
+hands): **P1**, Finder and an `NSFilePromiseProvider` whose type is `public.folder` — is it taken, what
+URL comes back when the name is already there, and does Finder draw or time out anything while it
+waits (**run 2026-11-08**, below); **P2**, Teams, Chrome and Mail handed a lazy `public.file-url` that
+names a folder (**Mail run 2026-11-08**, below; **Teams and Chrome still owed**: Chrome is read-only to
+computer use, and a drop into Teams uploads). A third, a member's promise fulfilled while a passphrase sheet is up
+on Dirnex's inactive window, was dropped with decision A, which never raises one there.
+
+Decided by Oleg on 2026-11-08, both as recommended:
+
+- **A — a member of an encrypted archive** is offered to other apps only when the archive's passphrase
+  is already held this session (unlocked by a preview, ⏎ or F5). Otherwise the row still drags inside
+  Dirnex, and the status line says to unlock the archive first. Nothing ever asks for a passphrase
+  behind somebody else's drop.
+- **B — a server folder into Finder** is fetched by F5's own queue job into the temp root, with its
+  bar and Stop in Dirnex, then moved to the URL Finder named before the promise is answered. Stop or a
+  failure leaves nothing in Finder's folder. Other apps get no folder until P2 shows one is taken.
+
+#### Progress
+
+- *2026-11-08, Slice 1.* Core: `TransferAdmission.recurses` (archive containment),
+  `TransferAdmission.pasteAdmits`, `RemoteFetchPurpose.addToArchive`; +8 tests, 4 786 green. Three
+  controls run one at a time, each failing only its own tests: containment (3 tests, 7 issues), the
+  archive same-folder copy (1), a member's move (1). App: `ArchiveAddReachTests` (10), over a real
+  `bsdtar` zip with a scratch undo store, since through a pane the default store is the developer's own
+  Application Support. Three controls: rewriting from the rows' paths instead of the staged files (the
+  server test then read *this Mac's bytes*), a drop gate without the archive (4 tests), and the
+  admission removed at both sites (1). Two strings in all 14 languages. The full app suite, run in
+  parallel: 2 202 tests passed with the known `GestureWaitTests` issue, the defaults domain unchanged
+  by content; the live suites were not up. **Two earlier full runs hung** on an app-modal alert in
+  front of the test host: the end-to-end adds were slower than their waits under the full suite's
+  load, and finished after their tests had freed the host. Fixed in the suite, not the app (NOTES.md ▸
+  Testing ▸ Waits).
+- *2026-11-08, Slice 1 live*, on a fresh Debug build with background computer use and the `.sdef`
+  verbs, saved tabs cleared first so no server tab could raise a Keychain prompt, and the defaults
+  domain imported back afterwards (71 keys unchanged by content). ⌘V of a file Dirnex had copied added
+  it to a real zip with its bytes, the original left alone. ⌥⌘V from the other pane added a file and
+  sent the original to the Trash, and the other pane's listing followed. F6 with the folder holding a
+  zip under the cursor raised "Can’t add to “holder.zip”", and the zip stayed byte-identical. **The run
+  found one bug**: after ⌥⌘V, focus had moved to the pane holding the originals, because their
+  removal focuses its own pane. It now takes focus only if that pane had it when the add finished, so
+  F6 is unchanged; seen fixed on a rebuilt binary. **Not run live**: Edit ▸ Move Items Here being
+  enabled (computer use will not press a menu item that touches the clipboard), F5 from the throwaway
+  `sshd`, and a real drag, which needs a person.
+- *2026-11-08, Slice 2.* Core: `DragOutRoute` (+7 tests, 4 793 green), with three controls one at a
+  time: the lock ignored, a member folder extracted, the lock asked of every row. App: the route
+  decides the drag's writers and its handoff; `RemoteFilePromiseProvider.canPromise` is gone. Finder's
+  promise for a member is extracted through the window's `ArchivePreviewCache` with the passphrase the
+  session holds and never asks for one; the handoff extracts off the main actor where it downloads,
+  says "Extracting…" on the drag image, and a locked row is named on the status line the first time
+  the pointer is over another app. `ArchiveDragOutTests` (7) runs against real `bsdtar` and AES-256
+  zips, and `DragPromiseTests`' member test now pins the promise instead of its absence. Four controls,
+  each failing only its own tests: a promise answered without the bytes, the handoff not extracting,
+  the lock ignored, the notice removed. Three strings in all 14 languages. The first full parallel
+  run failed one handoff test: a "stopped?" check put before every row could stop a download before
+  it reached the server, which the test watches for, so the check now guards extractions only. Then
+  2 210 app tests passed, with the known `GestureWaitTests` issue, and the defaults domain was
+  unchanged.
+- *2026-11-08, Slice 2 live*, with full-screen control on a fresh Debug build, saved tabs cleared first
+  and the defaults domain imported back afterwards (71 keys unchanged by content). A file dragged out
+  of a plain zip into a Finder window landed with its bytes. The same file dropped into a TextEdit
+  document arrived as an attachment, reusing the copy Finder's promise had extracted, so nothing was
+  extracted twice. A file of a password-protected zip dragged toward Finder landed nothing and
+  extracted nothing, and the status line read "Open a file in “secret.zip” first to drag its files
+  out" while the pointer was over Finder. **Not run live**: a Chromium app. Chrome is granted to
+  computer use as read-only, so nothing may be dropped on it, and a drop into Teams uploads the file
+  to the account's chat files. TextEdit takes the same hand-off code, but from outside it cannot be
+  told whether TextEdit read the hand-off's file URL or took the promise itself.
+- *2026-11-08, probe P1*, with a throwaway drag source promising `public.folder` into real Finder, the
+  drags done with full-screen control. Finder takes it and asks at the drop folder's own path, with
+  nothing there yet; on a clash it asks for `Name 2` itself. The drag ends at once with operation 1
+  whatever the answer. Finder draws nothing while it waits, stays responsive (AppleEvents in the usual
+  ~140 ms), and took a folder answered 100 s after the drop. An error answer shows nothing and leaves
+  nothing, so a failure is Dirnex's to report. A folder staged in `$TMPDIR` and moved onto the path is
+  taken like one written there. NOTES.md ▸ Drag and drop has the list.
+- *2026-11-08, Slice 3.* Core: `DragOutRoute.downloadFolder`, promised and not handed off
+  (`isHandedOff`), and a bucket or share listed at an account's top level stays inside Dirnex; +3 tests,
+  4 796 green. Two controls, one at a time, each failing only its own tests: the account guard removed
+  (2 issues), the folder handed off (4). App: the promise's type is `public.folder`; fulfilling it queues
+  `materializeRemoteFiles` with nothing asked first, and `RemoteFolderPromise.settle` moves the staged
+  tree off the main actor, refuses a path something else now holds, sweeps the holder on every ending,
+  and answers Finder before the alert. The handoff starts only for rows it hands off, so a folder alone
+  keeps its promise across other apps. `FolderDragOutTests` (8), and `DragPromiseTests`' M23 folder test
+  now pins the promise. Five controls, each failing only its own tests: replacing what is at the path,
+  answering without queuing, no sweep after the move, a type off the name, the handoff bringing the
+  folder down. **A first version of the second control removed the folder branch**, which sent the folder
+  into the file fetch, whose failure alert ran modally in the test host and waited on Oleg's screen
+  (NOTES.md ▸ Testing ▸ Negative controls). One string in all 14 languages. The full app suite: 2 218
+  tests passed with the known `GestureWaitTests` issue, the defaults domain unchanged; the live suites
+  were not up.
+- *2026-11-08, Slice 3 live*, on the Debug build launched by path with full-screen control, against the
+  throwaway `sshd` through a key-authenticated tab seeded with Dirnex quit, so nothing read the
+  Keychain. A three-level folder dragged into Finder landed byte-identical, the temp root empty after it.
+  Dropped again, it landed as `m36-folder 2`. A folder holding a file the server refuses to read raised
+  "Couldn’t copy “m36-broken” from the server" with the server's refusal, and nothing landed. A 400-file
+  folder showed "Downloading m36-many" in the queue bar, and Stop left nothing in Finder's folder or the
+  temp root, with no alert. Claude's own floating panel covered the first spot chosen for the Finder
+  window, as on 2026-11-03, and the window list caught it before any drag. Afterwards the defaults domain
+  was imported back (71 keys unchanged by content), `known_hosts` restored byte for byte and the servers
+  taken down. **Not run live**: a folder dragged across another app on its way to Finder, alone or with
+  files.
+- *2026-11-08, Slice 3 live on real servers*, asked for by Oleg, on the `build/debug-dd` build (the
+  default DerivedData build cannot reach the LAN), through the saved sidebar rows FTP DT, WebDAV DT and
+  Amazon, one Keychain prompt each, answered by Oleg. A three-level fixture with a space in one name was
+  copied up with F5, dragged back into Finder and compared: **byte-identical over FTP, WebDAV and S3**,
+  dates kept, the temp root empty after each. A **bucket** row dragged from the account pane landed
+  nothing, as routed. The fixture was deleted from the NAS and the bucket afterwards, the NAS keeping
+  its usual `#recycle` copy, and the defaults domain imported back (71 keys unchanged by content). Two
+  slips on the way, neither touching a server's files: a background click selected a row of the other
+  pane without making it active, so F5 copied the NAS home's `#recycle` *down* into the scratch folder,
+  and restoring Mail's minimized viewer put it over Dirnex, so a click opened a mailbox's name for
+  editing, left unchanged with Return (LIVE-VERIFICATION.md).
+- *2026-11-08, probe P2, Mail half*, with full-screen control and a draft that was discarded afterwards
+  and is not in Drafts. **A folder dragged alone from S3 in Dirnex reached Mail through the promise**:
+  the drag has no handoff, Mail took the promised folder, and the tree that arrived in Mail's
+  `WebKitDropDestination` was byte-identical. The probe's **lazy `public.file-url` naming a folder in
+  `$TMPDIR` was taken too**, read 0.22 s into the drag when the pointer entered the draft, attached as a
+  folder with operation 1. Its control, a lazy URL naming a file, was taken at the same spot. **The first
+  four probe drops were all refused** with operation 0 and no read, the file control included: they
+  landed on the 278-point draft's header strip, which took the promise but refuses a file URL. Enlarged,
+  the draft took them. So Mail needs nothing more from Dirnex; whether the handoff should offer a folder
+  as a file URL waits on Teams and Chrome, the apps that refuse a promise.
 
 ### After M19 — the follow-on log (2026-08-07 → 2026-09-21)
 

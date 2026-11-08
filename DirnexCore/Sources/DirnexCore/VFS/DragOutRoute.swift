@@ -14,6 +14,11 @@ public enum DragOutRoute: Sendable, Equatable {
     /// A file on a server: promised to Finder, and downloaded for any other app once the pointer
     /// is over it (`RemoteDragHandoff`).
     case download
+    /// A folder on a server: promised to Finder, which is handed the tree F5's own queue job stages
+    /// once the drop lands, with its bar and Stop in Dirnex (decision B, PLAN.md §M36 Slice 3). Mail
+    /// takes the same promise (measured 2026-11-08); an app that refuses a promise is handed nothing
+    /// for it, until probe P2's Teams and Chrome half says whether a file URL would do.
+    case downloadFolder
     /// A file inside an archive this session can open: promised to Finder and extracted for any
     /// other app, the same two ways a server's file goes.
     case extract
@@ -22,8 +27,9 @@ public enum DragOutRoute: Sendable, Equatable {
 
     /// Why a row offers another app nothing.
     public enum Reason: Sendable, Equatable {
-        /// A folder that is not on this disk. A promise is one file, and a folder dragged into Finder
-        /// waits on how Finder treats a promised folder (PLAN.md §M36, probe P1).
+        /// A folder inside an archive, or a bucket or share listed at an account's top level, which
+        /// names a place rather than a folder F5 could copy out. A server's own folder is
+        /// ``DragOutRoute/downloadFolder``.
         case folder
         /// A member of an encrypted archive whose passphrase this session does not hold. Asking for
         /// it would put a sheet on Dirnex's window, behind the app the drop went to, so the row is
@@ -37,8 +43,21 @@ public enum DragOutRoute: Sendable, Equatable {
     /// Whether the row goes out as an `NSFilePromiseProvider`, rather than as a URL or not at all.
     public var isPromised: Bool {
         switch self {
-        case .download, .extract: true
+        case .download, .downloadFolder, .extract: true
         case .fileURL, .insideDirnexOnly: false
+        }
+    }
+
+    /// Whether an app that takes no promise is handed a file for the row once the pointer is over
+    /// it, which is what the drag's handoff brings down (`RemoteDragHandoff`).
+    ///
+    /// A server's folder is promised and handed to nobody else. Finder named where it goes before
+    /// anything is fetched, so the tree goes through the queue with a Stop; another app reads a file
+    /// URL while the pointer is over it, and nothing says it takes a folder (probe P2).
+    public var isHandedOff: Bool {
+        switch self {
+        case .download, .extract: true
+        case .downloadFolder, .fileURL, .insideDirnexOnly: false
         }
     }
 
@@ -64,7 +83,11 @@ public enum DragOutRoute: Sendable, Equatable {
         guard backend.isRemoteConnection else { return .insideDirnexOnly(.notAFile) }
         switch entry.kind {
         case .file: return .download
-        case .directory: return .insideDirnexOnly(.folder)
+        case .directory:
+            // An account pane lists buckets and a server pane lists shares: places, which the
+            // queue's copy cannot walk from there.
+            if backend.isS3Account || backend.isSMBServer { return .insideDirnexOnly(.folder) }
+            return .downloadFolder
         case .symlink, .other: return .insideDirnexOnly(.notAFile)
         }
     }
