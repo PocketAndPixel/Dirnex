@@ -177,6 +177,136 @@ M36 (drag and paste, where M23 stopped) closed 2026-11-08, and is archived in
 Inherited from M31's and M34's risk rows (§6): lines compare as bytes, git stays the oracle for
 regions, and a merge is offered only over a base that really was the file's.
 
+**Opened 2026-11-08.** Probed on this Mac (64 GB) with git 2.54, through throwaway release harnesses
+over the real core:
+
+- **The text path grows in a straight line, and the window is not what limits it.** Log-shaped text
+  with 500 edits, both sides read, compared once, each pane built once:
+
+  | One side | Read and decode, each | Compare | Pane text, each | Footprint |
+  |---|---|---|---|---|
+  | 64 MiB (651 543 lines) | 0.5 s | 1.0 s | 2.9 s | 0.5 GiB |
+  | 256 MiB | 2.1 s | 4.3 s | 11.4 s | 2.0 GiB |
+  | 512 MiB | 4.2 s | 8.8 s | 23.5 s | 4.1 GiB |
+  | 1 GiB (10.4 million lines) | 8.4 s | 18.3 s | 47 s | 8.3 GiB |
+
+  TextKit 2 stays lazy at 256 MiB: setting the text took 0.02 s, the first draw 0.01 s and a jump
+  anywhere 3 ms, at about 0.75 GiB per pane for ASCII text. So memory is the limit, about 13 times
+  one side's bytes for a pair, and the slowest step is the pane text, where `columns(of:)` walking
+  `Character`s is the first suspect.
+- **Two hazards that a higher limit makes worse.** A dense pair (256 MiB, 868 724 changes) took 33 s
+  to compare rather than 4.3 s, with nothing on screen and no way to stop it. And a Windows-1251 file
+  takes **65 s per side at 64 MiB**, in `NSString.stringEncoding(for:)`, which is already true at
+  today's limit.
+- **A comparison at the same offset is nearly free.** Two 1 GiB files with 2 000 patches: 0.37 s from
+  the page cache, and `cmp -l` agrees on the 15 938 differing bytes. Sixteen bytes inserted 4 KiB in
+  make 1 069 480 528 bytes differ (99.6 %), in 4.2 million stretches, so the stretches need a bound.
+- **What `git mergetool` hands a tool.** Four paths, relative, with the command's working directory
+  at the top of the worktree even when `git mergetool` ran in a subfolder. The three versions are
+  temporary files beside the file (`a_LOCAL_74127.txt`), removed afterwards, and `$MERGED` holds the
+  conflict markers. `$BASE` is 0 bytes for add/add. Under `trustExitCode`, exit 0 stages the file, and
+  exit 1 prints "merge of added.txt failed" and leaves it `AA`.
+- **git's whitespace options drop whitespace edits, as M34 feared.** With `-Xignore-space-change` or
+  `-Xignore-all-space`: ours re-indents and theirs edits the same line, and the result is theirs
+  alone (`  B!`, the re-indent gone); the mirror image gives the same; and both re-indenting
+  differently takes theirs, with no conflict. Each of the three stops as a conflict without the
+  option.
+
+Decided before Slice 1 (2026-11-08, Oleg, on the probes above):
+
+- **A byte view at the same offset, of any size.** Hex rows side by side, with no alignment. It takes
+  a binary pair and a text pair too large for the text window, instead of refusing them, and says
+  plainly when nearly every byte differs from some point on, which is what an insertion looks like.
+  **Aligning across insertions goes back to the *undone* column**: it needs gaps in the rows, a size
+  limit, and has no oracle.
+- **The text window's limit becomes a share of this Mac's memory**: a side of up to 1/32 of it, and
+  never under today's 64 MiB, so a pair costs at most about 40 % of memory. The merge window keeps
+  64 MiB: it holds three or four panes, and M34's reads stay as they are.
+- **A sync keeps a base only when asked, per folder pair.** A checkbox in the Synchronize window, off
+  by default, in keeping with §6's rule about what Dirnex remembers without being asked. It keeps
+  each text file of up to 64 MiB that the sync left equal on both sides, an APFS clone where the
+  volumes allow, under a total budget with the oldest dropped first, and never a vault path.
+- **git reaches Dirnex through the app's own binary and a private socket.**
+  `Dirnex.app/Contents/MacOS/Dirnex --git-merge "$LOCAL" "$BASE" "$REMOTE" "$MERGED"` runs as a plain
+  command before any AppKit starts, launches the copy it belongs to if that copy is not up, and exits
+  when the merge window closes: 0 for saved, 1 for anything else. No new build target and no
+  Automation prompt, and it works from any terminal or IDE. M34's window and refusals are reused, and
+  Save writes `$MERGED` alone. git stays the one that stages it.
+- **Whitespace never reaches `ThreeWayMerge`.** The regions stay byte-exact. A conflict that whitespace
+  explains is labelled, and gains one more take: this side's text with the other side's indentation.
+  Save still waits for an answer to every conflict, so a whitespace edit is either kept or was chosen
+  against.
+
+#### Slices
+
+1. **The byte comparison** (core, additive). The differing stretches of two local files at the same
+   offset, bounded, cancellable and reporting as it goes; the rows a window shows; pages read on
+   demand. `cmp -l` is the oracle.
+2. **The byte window** (app). One table of hex rows for both sides, a page loaded off the main thread,
+   next and previous difference, an overview strip, and the opening routes: ⌥F3, the Synchronize row
+   and the conflict dialog, in place of the two refusals.
+3. **Larger text** (core, then app). The column count's fast path, encoding detection bounded on a
+   large file, the limit as a share of memory, "Comparing…" in the window and a Stop that really
+   stops, and the byte view past the limit.
+4. **An archive member's edit** (app, on M34's base). A base kept for a member, the member read again
+   at save when the archive moved, and Merge… in the archive's question.
+5. **Whitespace in a merge** (core, then the merge window). What whitespace explains in a conflict, the
+   extra take, and git as the check that the regions did not move.
+6. **git's merge tool** (core, then app). The request and the socket's protocol against a fake, the
+   binary's command-line entry, a merge window whose end answers the command, and a way to set it up.
+7. **The sync's record** (core). The kept versions, the budget, and which side changed since.
+8. **Merge from Synchronize** (app). The checkbox, keeping after a sync, "changed on both sides", and
+   Merge… on such a row.
+9. **Live, and the record.** Every entry point on a real pair, 14 languages, and M37 closed.
+
+**Done when:**
+- a binary pair and a pair past the text limit open and show every difference, checked against
+  `cmp -l`, with the window up before the scan ends;
+- a 256 MiB text pair opens without a beachball on this Mac, and a dense one can be stopped;
+- a member changed behind its edit merges and repacks with both edits in it;
+- `git mergetool` resolves `UU` and `AA` files through the window and reports a closed window as a
+  failure, and nothing but `$MERGED` is written;
+- a file changed on both sides of a remembered sync merges over the base that sync kept, and a pair
+  with no record offers no merge;
+- no ignore option reaches `ThreeWayMerge`, and nothing is saved while a conflict is open.
+
+#### Progress
+
+**2026-11-08: Slice 1 landed** (core only; the app is untouched).
+
+- **Core:**
+  - `BinaryDifferenceList` holds the stretches, with an exact count of differing bytes. Two differing
+    bytes join when fewer than a row's width of equal bytes lie between them. Past 100 000 stretches
+    the gap doubles and the list is joined up again, so a pathological pair loses resolution and no
+    difference.
+  - `BinaryComparison` is the scan, the bytes only one side has, stepping between changes, and the
+    dense stretch an insertion leaves. Like `ByteComparator`, it refuses an evicted placeholder.
+  - `BinaryFilePair` holds both files open and reads a page at any offset, from any thread.
+  - `BinaryHexLayout`, `BinaryHexRow`, `BinaryPage` and `BinaryPageCache` are what the window draws.
+  - `ByteComparator.requireRegularFiles` and `requireDownloaded` went from private to internal, so
+    the two comparisons share those rules.
+- **Tests:** 67 in six suites. `BinaryComparisonCmpTests` asks `/usr/bin/cmp -l` about 40 random
+  pairs at the sizes where an off-by-one would show, an inserted run, a chunk boundary and this Mac's
+  own programs. The rest pin what joins and what stays apart, every promise of the list at every
+  bound, the refusals, reports and Stop, the hex text column by column, and pages past a file's end.
+  Full run: 4 871 core tests. The app suite was not run, since the app is untouched.
+- **Measured** in release, on 1 GiB pairs:
+
+  | Pair | Time | Stretches | Differing bytes |
+  |---|---|---|---|
+  | 2 000 patches | 0.44 s | 2 000 | 15 929, as `cmp -l` counts |
+  | Sixteen bytes inserted 4 KiB in | 1.79 s | 1, named as dense from 4096 to the end | 1 069 543 201 |
+  | One byte in every 19 differing | 0.57 s | 1, the gap doubled once | 56 513 536 |
+  | A file against itself | 0.09 s | 0 | 0 |
+
+- **Negative controls:** 14 faults put in the source, one at a time. Eleven failed at once. Three
+  passed, and each was a gap in the tests, now closed: a stretch touching the bytes only one side
+  has, a scan ending exactly on a report's boundary, and a file that shrank to exactly a chunk's
+  edge.
+- **Found on the way, for Slice 6:** `VFSPath.local` with a relative path gives a path from the root
+  (`data/a.bin` became `/data/a.bin`), and `git mergetool` passes relative paths. The command-line
+  entry has to resolve them against its own working directory first.
+
 #### M38 — Remote: what M8, M22, M24, M25 and M32 left (M–L)
 
 - **Owner and group in a remote Get Info** (M25). `chown` and `chgrp` take a numeric id, while
