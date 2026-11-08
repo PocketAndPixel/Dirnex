@@ -101884,6 +101884,95 @@
         }
       }
     },
+    "Take One Side with the Other’s Whitespace": {
+      "comment": "Merge window tooltip, while unavailable: the take offered where one side changed only whitespace, which keeps both edits.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Version übernehmen, mit dem Leerraum der anderen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Take One Side with the Other’s Whitespace"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar una versión, con los espacios en blanco de la otra"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prendre une version, avec les espaces de l’autre"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa una versione, con gli spazi dell’altra"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一方を採用（空白はもう一方）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한쪽 버전 사용, 공백은 다른 쪽대로"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gebruik één versie, met de witruimte van de andere"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Użyj jednej wersji, z białymi znakami drugiej"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar uma Versão, com os Espaços em Branco da Outra"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взять одну версию, с пробелами другой"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взяти одну версію, з пробілами іншої"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "采用一方的，保留另一方的空白"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "採用一方的，保留另一方的空白"
+          }
+        }
+      }
+    },
     "Take Ownership": {
       "comment": "ACL right chown: become the item's owner.",
       "localizations": {
@@ -102062,6 +102151,95 @@
         }
       }
     },
+    "Take Theirs with Your Whitespace": {
+      "comment": "Merge window button, tooltip and undo name: their lines, with the indentation, spacing and line endings you gave the same lines, where yours changed only whitespace.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Andere übernehmen, mit Ihrem Leerraum"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Take Theirs with Your Whitespace"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar la otra, con tus espacios en blanco"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prendre la leur, avec vos espaces"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa la loro, con i tuoi spazi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "相手の方を採用（空白は自分の方）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "상대 버전 사용, 공백은 내 버전대로"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gebruik hun versie, met jouw witruimte"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Użyj ich, z twoimi białymi znakami"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar a Deles, com Seus Espaços em Branco"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взять их, с вашими пробелами"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взяти їхню, з вашими пробілами"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "采用对方的，保留你的空白"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "採用對方的，保留你的空白"
+          }
+        }
+      }
+    },
     "Take Yours": {
       "comment": "Merge window button, tooltip and undo name.",
       "localizations": {
@@ -102147,6 +102325,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "採用你的"
+          }
+        }
+      }
+    },
+    "Take Yours with Their Whitespace": {
+      "comment": "Merge window button, tooltip and undo name: your lines, with the indentation, spacing and line endings they gave the same lines, where theirs changed only whitespace.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihre übernehmen, mit dem anderen Leerraum"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Take Yours with Their Whitespace"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar la tuya, con los espacios en blanco de la otra"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prendre la vôtre, avec leurs espaces"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa la tua, con i loro spazi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自分の方を採用（空白は相手の方）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 버전 사용, 공백은 상대 버전대로"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gebruik jouw versie, met hun witruimte"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Użyj twojej, z ich białymi znakami"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar a Sua, com os Espaços em Branco Deles"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взять вашу, с их пробелами"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взяти вашу, з їхніми пробілами"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "采用你的，保留对方的空白"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "採用你的，保留對方的空白"
           }
         }
       }
@@ -112120,6 +112387,95 @@
         }
       }
     },
+    "The two sides differ only in whitespace in this conflict.": {
+      "comment": "Merge window: the current conflict, where your version and the other one differ only in indentation, spacing or line endings.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die beiden Versionen unterscheiden sich in diesem Konflikt nur im Leerraum."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The two sides differ only in whitespace in this conflict."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En este conflicto, las dos versiones solo difieren en los espacios en blanco."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans ce conflit, les deux versions ne diffèrent que par les espaces."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In questo conflitto le due versioni differiscono solo negli spazi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この競合では、2つのバージョンの違いは空白だけです。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 충돌에서 두 버전은 공백만 다릅니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In dit conflict verschillen de twee versies alleen in witruimte."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W tym konflikcie obie wersje różnią się tylko białymi znakami."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neste conflito, as duas versões diferem apenas nos espaços em branco."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом конфликте версии отличаются только пробелами."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У цьому конфлікті версії відрізняються лише пробілами."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在此冲突中，双方只在空白上不同。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在此衝突中，雙方只在空白上不同。"
+          }
+        }
+      }
+    },
     "The vault file stays where it is and nothing inside it is deleted. Its saved passphrase is removed from your Keychain, so you’ll be asked for it next time.": {
       "comment": "Body of the remove-vault confirmation.",
       "localizations": {
@@ -112294,6 +112650,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "對方的版本"
+          }
+        }
+      }
+    },
+    "Theirs changed only whitespace in this conflict, on lines yours changed too.": {
+      "comment": "Merge window: the current conflict, where the other version changed only indentation, spacing or line endings, on lines your version also changed, so the two cannot be combined.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die andere Version hat in diesem Konflikt nur Leerraum geändert, aber in Zeilen, die auch Ihre Version geändert hat."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Theirs changed only whitespace in this conflict, on lines yours changed too."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En este conflicto, la otra versión solo cambió espacios en blanco, en líneas que la tuya también cambió."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans ce conflit, leur version n’a changé que des espaces, sur des lignes que la vôtre a aussi changées."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In questo conflitto la loro versione ha cambiato solo spazi, in righe che anche la tua ha cambiato."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この競合では、相手のバージョンは空白だけを変更していますが、自分のバージョンも変更した行です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 충돌에서 상대 버전은 공백만 변경했지만, 내 버전도 변경한 줄입니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In dit conflict heeft hun versie alleen witruimte gewijzigd, in regels die jouw versie ook wijzigde."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W tym konflikcie ich wersja zmieniła tylko białe znaki, w wierszach, które zmieniła też twoja wersja."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neste conflito, a versão deles mudou apenas espaços em branco, em linhas que a sua também mudou."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом конфликте их версия изменила только пробелы, но в строках, которые изменила и ваша версия."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У цьому конфлікті їхня версія змінила лише пробіли, але в рядках, які змінила і ваша версія."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在此冲突中，对方的版本只更改了空白，但你也更改了这些行。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在此衝突中，對方的版本只更改了空白，但你也更改了這些行。"
+          }
+        }
+      }
+    },
+    "Theirs changed only whitespace in this conflict. Take Yours with Their Whitespace keeps both edits.": {
+      "comment": "Merge window: the current conflict, where the other version changed only indentation, spacing or line endings. Take Yours with Their Whitespace is the button's name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die andere Version hat in diesem Konflikt nur Leerraum geändert. „Ihre übernehmen, mit dem anderen Leerraum“ behält beide Änderungen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Theirs changed only whitespace in this conflict. Take Yours with Their Whitespace keeps both edits."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En este conflicto, la otra versión solo cambió espacios en blanco. «Usar la tuya, con los espacios en blanco de la otra» conserva ambos cambios."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans ce conflit, leur version n’a changé que des espaces. « Prendre la vôtre, avec leurs espaces » garde les deux modifications."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In questo conflitto la loro versione ha cambiato solo spazi. «Usa la tua, con i loro spazi» mantiene entrambe le modifiche."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この競合では、相手のバージョンは空白だけを変更しています。「自分の方を採用（空白は相手の方）」で両方の変更を残せます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 충돌에서 상대 버전은 공백만 변경했습니다. ‘내 버전 사용, 공백은 상대 버전대로’를 선택하면 두 변경을 모두 유지합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In dit conflict heeft hun versie alleen witruimte gewijzigd. ‘Gebruik jouw versie, met hun witruimte’ behoudt beide wijzigingen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W tym konflikcie ich wersja zmieniła tylko białe znaki. „Użyj twojej, z ich białymi znakami” zachowa obie zmiany."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neste conflito, a versão deles mudou apenas espaços em branco. “Usar a Sua, com os Espaços em Branco Deles” mantém as duas alterações."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом конфликте их версия изменила только пробелы. «Взять вашу, с их пробелами» сохранит обе правки."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У цьому конфлікті їхня версія змінила лише пробіли. «Взяти вашу, з їхніми пробілами» збереже обидві правки."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在此冲突中，对方的版本只更改了空白。“采用你的，保留对方的空白”会保留双方的更改。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在此衝突中，對方的版本只更改了空白。「採用你的，保留對方的空白」會保留雙方的更改。"
           }
         }
       }
@@ -126740,6 +127274,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "你的版本"
+          }
+        }
+      }
+    },
+    "Yours changed only whitespace in this conflict, on lines theirs changed too.": {
+      "comment": "Merge window: the current conflict, where your version changed only indentation, spacing or line endings, on lines the other version also changed, so the two cannot be combined.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihre Version hat in diesem Konflikt nur Leerraum geändert, aber in Zeilen, die auch die andere Version geändert hat."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yours changed only whitespace in this conflict, on lines theirs changed too."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En este conflicto, tu versión solo cambió espacios en blanco, en líneas que la otra también cambió."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans ce conflit, votre version n’a changé que des espaces, sur des lignes que la leur a aussi changées."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In questo conflitto la tua versione ha cambiato solo spazi, in righe che anche la loro ha cambiato."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この競合では、自分のバージョンは空白だけを変更していますが、相手のバージョンも変更した行です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 충돌에서 내 버전은 공백만 변경했지만, 상대 버전도 변경한 줄입니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In dit conflict heeft jouw versie alleen witruimte gewijzigd, in regels die hun versie ook wijzigde."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W tym konflikcie twoja wersja zmieniła tylko białe znaki, w wierszach, które zmieniła też ich wersja."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neste conflito, sua versão mudou apenas espaços em branco, em linhas que a deles também mudou."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом конфликте ваша версия изменила только пробелы, но в строках, которые изменила и их версия."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У цьому конфлікті ваша версія змінила лише пробіли, але в рядках, які змінила і їхня версія."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在此冲突中，你的版本只更改了空白，但对方也更改了这些行。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在此衝突中，你的版本只更改了空白，但對方也更改了這些行。"
+          }
+        }
+      }
+    },
+    "Yours changed only whitespace in this conflict. Take Theirs with Your Whitespace keeps both edits.": {
+      "comment": "Merge window: the current conflict, where your version changed only indentation, spacing or line endings. Take Theirs with Your Whitespace is the button's name.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihre Version hat in diesem Konflikt nur Leerraum geändert. „Andere übernehmen, mit Ihrem Leerraum“ behält beide Änderungen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yours changed only whitespace in this conflict. Take Theirs with Your Whitespace keeps both edits."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En este conflicto, tu versión solo cambió espacios en blanco. «Usar la otra, con tus espacios en blanco» conserva ambos cambios."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans ce conflit, votre version n’a changé que des espaces. « Prendre la leur, avec vos espaces » garde les deux modifications."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In questo conflitto la tua versione ha cambiato solo spazi. «Usa la loro, con i tuoi spazi» mantiene entrambe le modifiche."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この競合では、自分のバージョンは空白だけを変更しています。「相手の方を採用（空白は自分の方）」で両方の変更を残せます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 충돌에서 내 버전은 공백만 변경했습니다. ‘상대 버전 사용, 공백은 내 버전대로’를 선택하면 두 변경을 모두 유지합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In dit conflict heeft jouw versie alleen witruimte gewijzigd. ‘Gebruik hun versie, met jouw witruimte’ behoudt beide wijzigingen."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W tym konflikcie twoja wersja zmieniła tylko białe znaki. „Użyj ich, z twoimi białymi znakami” zachowa obie zmiany."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neste conflito, sua versão mudou apenas espaços em branco. “Usar a Deles, com Seus Espaços em Branco” mantém as duas alterações."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом конфликте ваша версия изменила только пробелы. «Взять их, с вашими пробелами» сохранит обе правки."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У цьому конфлікті ваша версія змінила лише пробіли. «Взяти їхню, з вашими пробілами» збереже обидві правки."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在此冲突中，你的版本只更改了空白。“采用对方的，保留你的空白”会保留双方的更改。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在此衝突中，你的版本只更改了空白。「採用對方的，保留你的空白」會保留雙方的更改。"
           }
         }
       }

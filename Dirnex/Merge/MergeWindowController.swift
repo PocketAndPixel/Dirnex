@@ -229,11 +229,7 @@ final class MergeWindowController: NSWindowController, NSWindowDelegate {
         overview.rowCount = prepared.rowCount
         overview.changeRows = prepared.markRows
         overview.kinds = prepared.markKinds
-        banner.stringValue = Self.bannerText(
-            conflicts: prepared.conflictCount,
-            open: prepared.openConflictCount
-        ) ?? ""
-        banner.isHidden = banner.stringValue.isEmpty
+        refreshBanner()
         window?.contentView?.layoutSubtreeIfNeeded()
         refreshControls()
         if let conflict, prepared.conflictRows.indices.contains(conflict) {
@@ -255,7 +251,8 @@ final class MergeWindowController: NSWindowController, NSWindowDelegate {
         theirsPane.setTitle(Self.columnTitle(.theirs), detail: input.theirs.detail)
         let count = merge?.choices.count
         let current = currentConflict.flatMap { (count ?? 0) > $0 ? $0 : nil }
-        toolbar.showCounter(current: current, count: count)
+        toolbar.showCounter(current: current, count: count, whitespace: currentWhitespace)
+        refreshBanner()
         let mark = current.flatMap { conflict in
             shown.flatMap { $0.conflictMarks.indices.contains(conflict) ? $0.conflictMarks[conflict] : nil }
         }

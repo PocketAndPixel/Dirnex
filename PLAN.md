@@ -484,6 +484,69 @@ merged instead of overwritten.
   the upload's window over SFTP and FTP. And a merge window saved again after its rewrite landed asks the
   plain question, since a landed rewrite drops the copy's base.
 
+**2026-11-08: Slice 5 landed** (core, then the merge window). A conflict whitespace explains is labelled,
+and where one side changed only whitespace, the conflict can take the other side's text with that
+whitespace, which keeps both edits.
+
+- **Probed first**, with git 2.54 through `merge-tree`: `-Xignore-space-change` and `-Xignore-all-space`
+  drop a stripped trailing space and a CRLF conversion exactly as they drop a re-indent. Each settles on
+  the side with the edit and says nothing.
+- **Decided with Oleg before writing it:** the extra take carries every whitespace change a line can
+  carry, its indentation, its trailing whitespace and its line ending, rather than the indentation alone.
+  It is named for its sides: Take Theirs with Your Whitespace, or Take Yours with Their Whitespace.
+- **Core:**
+  - `ConflictWhitespace` reads each conflict once the merge is made: yours changed only whitespace,
+    theirs did, or the two sides are the same but for whitespace. Whitespace is git's `-w`, line for
+    line, so a blank line added is a line. A conflict is read with the shared lines `--zdiff3` moved out
+    of it, since its base range is still the whole stretch both sides replaced.
+  - `WhitespaceCarry` puts one side's whitespace on the other's lines. Each line is paired with its base
+    line as the compare window lays a block out, and its four parts are carried one at a time. An
+    indentation the edit deepened keeps its extra depth on top of the other side's, and a line the edit
+    added follows the paired line whose base indentation it starts with. A part both sides changed
+    differently refuses the take rather than guessing.
+  - `TextMerge.Choice.editWithWhitespace`, `TextMerge.whitespace` and `offers(_:forConflict:)`. `apply`
+    traps on a choice the conflict does not offer. `MergeRowLayout.rows` takes the columns the result
+    repeats rather than the choice.
+  - `ThreeWayMerge` is untouched, and no ignore option reaches it.
+- **App:** a fifth take, enabled only on a conflict that offers it and named for its sides in its tooltip
+  and in Edit ▸ Undo, with ⌥⌘I. The banner says what whitespace explains in the current conflict before
+  how many are open. Eight new strings, in all 14 languages.
+- **Tests:** 22 more in the core and 4 more in the app.
+  - git is the check twice, over 623 triples: this repository's files and 500 short random texts, one
+    side respaced over a stretch and the other edited inside it. The merge is git's plain `--zdiff3` byte
+    for byte from git's comparisons, and from its own but for 5 ties. Each of git's `--diff3` conflicts is
+    labelled exactly as `git diff -w` reads its three sections: 445 labelled, of all three kinds, 276 of
+    them offering the take. And on the four probed cases, `merge-tree -X` writes the edit alone where the
+    take writes both.
+  - Without git: over 3 000 random edits, the edit survives but for whitespace, line for line, and every
+    line it kept takes the other side's exactly (402 refused). Over 2 000 merges, any sequence of choices
+    with the take among them keeps every column whole and level.
+  - Full runs: 4 946 core tests, and 2 310 app tests without the live server suites, whose code this
+    slice does not touch. `check_localization_keys.py` found every extracted key in the catalog.
+- **Negative controls:** 14 faults in the core and 6 in the app, one at a time, each failed its own test.
+  Two first ended the run by trapping on the new precondition, so the tests now require the take to be
+  offered before making it, and both then failed by name. One passed at first, a take offered when carrying
+  changed nothing, since the case that tested it was refused earlier for another reason. It has a case of
+  its own now: theirs removed every line yours respaced.
+- **Found on the way:** pairing only alike lines left a short edited line unpaired (`x` made `x!`), and
+  the whitespace the other side gave it was dropped without a word. The pairing now takes the compare
+  window's rows, where the lines between two alike pairs sit side by side.
+- **Run live** on the Debug build, driven from the background, on a real `git merge` conflict in a scratch
+  repository opened through Resolve Conflict… (`reveal`, then `run operation "file.resolveConflict"`). It
+  held three conflicts: yours re-indented a function that theirs edited and added a line to, both changed
+  one line, and both re-indented another differently, spaces against a tab.
+  - The first was named "Yours changed only whitespace in this conflict…", with the fifth take enabled and
+    titled Take Theirs with Your Whitespace. Pressing it put theirs' two edits in the result at yours'
+    indentation and went on to the next.
+  - On the ordinary conflict the sentence was gone and the take dimmed. On the third the banner said the
+    two sides differ only in whitespace, and the take stayed dimmed.
+  - Save wrote exactly those choices, with no markers, and git still listed the file `UU`. The defaults
+    domain was restored and compared unchanged.
+- **Not run live:** ⌥⌘I, which the window takes with its key monitor and a background run cannot send, so
+  a test pins it through `handleKey`; a labelled conflict whose whitespace cannot be carried, pinned in the
+  core and the app tests; the server and archive entries, which open the same window; the light
+  appearance; and any translation.
+
 #### M38 — Remote: what M8, M22, M24, M25 and M32 left (M–L)
 
 - **Owner and group in a remote Get Info** (M25). `chown` and `chgrp` take a numeric id, while

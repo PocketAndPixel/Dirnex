@@ -9618,6 +9618,15 @@ ships a third-party binary. All measured 2026-09-20 against two HERO7 files befo
   byte in `--diff3` and `--zdiff3` alike (M34 Slice 1). `--no-indent-heuristic` does take effect
   with `--no-index`; check it on a case where the lowest slot is not the readable one, since most
   blocks have only one candidate either way.
+- **`git merge-file` takes no whitespace option; ask `merge-tree -X` instead.** Its `-h` (git 2.54)
+  lists the styles, `--ours`/`--theirs`/`--union`, the algorithm and the marker size, and nothing
+  like `-Xignore-space-change`. What a merge under `-Xignore-space-change` or `-Xignore-all-space`
+  writes comes from `git merge-tree --write-tree -X<option> yours theirs` over two branches of a
+  scratch repository, then `git cat-file -p <tree>:<file>`; it needs no worktree checkout of the
+  result. Both options settled a re-indent, a stripped trailing space and a CRLF conversion against
+  an edit by taking the edit and dropping the whitespace, without a conflict (M37 Slice 5,
+  `ConflictWhitespaceGitTests`). `merge-file --marker-size=40` makes markers no `=======` line of a
+  Markdown document can pass for, when a test reads conflicts back out of git's output.
 - **`--zdiff3` can print a conflict with nothing on either side.** When both sides end up with the
   same lines in a conflict, say each deleted a different one of two equal lines, the trimming takes
   every line and git still writes the markers around the base. Seen in 5 of 9 114 history triples.

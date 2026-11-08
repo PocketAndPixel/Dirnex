@@ -2,7 +2,9 @@ import AppKit
 import DirnexCore
 
 /// The row along the top of the merge window (PLAN.md §M34 Slice 3): the previous and next
-/// conflict, which one is shown, what the current one takes, Show Base and Save.
+/// conflict, which one is shown, what the current one takes, Show Base and Save. The fifth take
+/// keeps both edits where one side changed only whitespace (§M37 Slice 5), and is enabled only on a
+/// conflict that offers it.
 @MainActor
 final class MergeToolbar: NSView {
     var onPrevious: (() -> Void)?
@@ -12,7 +14,7 @@ final class MergeToolbar: NSView {
     var onSave: (() -> Void)?
 
     let navigation = NSSegmentedControl()
-    /// The four takes, in `takeChoices`' order.
+    /// The takes, in `takeChoices`' order.
     let take = NSSegmentedControl()
     let counter = NSTextField(labelWithString: "")
     let showBase = NSButton(checkboxWithTitle: "", target: nil, action: nil)
@@ -21,12 +23,14 @@ final class MergeToolbar: NSView {
     let counterWidth: NSLayoutConstraint
     private var reservedCount: Int?
 
-    /// The takes, in the segments' order: each side, and both sides in either order between them.
+    /// The takes, in the segments' order: each side, both sides in either order between them, and
+    /// last the edit with the other side's whitespace.
     static let takeChoices: [TextMerge.Choice] = [
         .yours,
         .yoursThenTheirs,
         .theirsThenYours,
-        .theirs
+        .theirs,
+        .editWithWhitespace
     ]
 
     init() {
@@ -68,20 +72,29 @@ final class MergeToolbar: NSView {
     }
 
     /// Show where the merge stands. `count` is `nil` while the merge is being computed, which says
-    /// nothing yet rather than "No conflicts".
-    func showCounter(current: Int?, count: Int?) {
+    /// nothing yet rather than "No conflicts". `whitespace` is what whitespace explains in the
+    /// current conflict, which names the fifth take and says whether it is offered.
+    func showCounter(current: Int?, count: Int?, whitespace: ConflictWhitespace? = nil) {
         if let count, count != reservedCount { reserveCounterWidth(for: count) }
         counter.stringValue = count.map { Self.counterText(current: current, count: $0) } ?? ""
         let hasConflicts = (count ?? 0) > 0
         navigation.setEnabled(hasConflicts, forSegment: 0)
         navigation.setEnabled(hasConflicts, forSegment: 1)
-        for segment in Self.takeChoices.indices {
-            take.setEnabled(current != nil, forSegment: segment)
+        for (segment, choice) in Self.takeChoices.enumerated() {
+            let offered = choice != .editWithWhitespace || whitespace?.combined != nil
+            take.setEnabled(current != nil && offered, forSegment: segment)
+        }
+        if let segment = Self.takeChoices.firstIndex(of: .editWithWhitespace) {
+            let title = Self.takeTitle(.editWithWhitespace, editSide: whitespace?.editSide)
+            take.setToolTip("\(title) (\(Self.takeKey(.editWithWhitespace)))", forSegment: segment)
+            take.image(forSegment: segment)?.accessibilityDescription = title
         }
     }
 
-    /// What the menu's Undo names a take by, and the take's button: "Undo Take Yours".
-    static func takeTitle(_ choice: TextMerge.Choice) -> String {
+    /// What the menu's Undo names a take by, and the take's button: "Undo Take Yours". The edit with
+    /// the other side's whitespace is named by `editSide`, the side whose text it keeps, and in
+    /// general terms while no conflict offers it.
+    static func takeTitle(_ choice: TextMerge.Choice, editSide: MergeRow.Column? = nil) -> String {
         switch choice {
         case .yours:
             String(localized: "Take Yours", comment: "Merge window button, tooltip and undo name.")
@@ -97,6 +110,37 @@ final class MergeToolbar: NSView {
                 localized: "Take Both, Theirs First",
                 comment: "Merge window button, tooltip and undo name: their lines, then yours."
             )
+        case .editWithWhitespace:
+            whitespaceTakeTitle(editSide: editSide)
+        }
+    }
+
+    private static func whitespaceTakeTitle(editSide: MergeRow.Column?) -> String {
+        switch editSide {
+        case .theirs?:
+            String(
+                localized: "Take Theirs with Your Whitespace",
+                comment: """
+                Merge window button, tooltip and undo name: their lines, with the indentation, spacing \
+                and line endings you gave the same lines, where yours changed only whitespace.
+                """
+            )
+        case .yours?:
+            String(
+                localized: "Take Yours with Their Whitespace",
+                comment: """
+                Merge window button, tooltip and undo name: your lines, with the indentation, spacing \
+                and line endings they gave the same lines, where theirs changed only whitespace.
+                """
+            )
+        default:
+            String(
+                localized: "Take One Side with the Other’s Whitespace",
+                comment: """
+                Merge window tooltip, while unavailable: the take offered where one side changed only \
+                whitespace, which keeps both edits.
+                """
+            )
         }
     }
 
@@ -108,6 +152,7 @@ final class MergeToolbar: NSView {
         case .theirs: "⌥⌘←"
         case .yoursThenTheirs: "⇧⌥⌘→"
         case .theirsThenYours: "⇧⌥⌘←"
+        case .editWithWhitespace: "⌥⌘I"
         }
     }
 
@@ -188,8 +233,9 @@ final class MergeToolbar: NSView {
         ])
     }
 
-    /// The four takes, one momentary control drawn like the conflict arrows. The arrows point the
-    /// way the lines go; the turning ones take both sides, the side they come from first.
+    /// The takes, one momentary control drawn like the conflict arrows. The arrows point the way the
+    /// lines go; the turning ones take both sides, the side they come from first, and the joining
+    /// one takes one side's text with the other's whitespace.
     private func buildTake() {
         take.segmentCount = Self.takeChoices.count
         take.trackingMode = .momentary
@@ -201,6 +247,7 @@ final class MergeToolbar: NSView {
             case .yoursThenTheirs: "arrow.turn.right.down"
             case .theirsThenYours: "arrow.turn.left.down"
             case .theirs: "arrow.left"
+            case .editWithWhitespace: "arrow.triangle.merge"
             }
             take.setImage(
                 NSImage(systemSymbolName: symbol, accessibilityDescription: title),
