@@ -15,22 +15,60 @@ public final class BinaryFilePair: Sendable {
     private let right: Int32
     private let leftPath: VFSPath
     private let rightPath: VFSPath
+    /// What `fstat` said about each file when it was opened, so a window's rows and the scan behind
+    /// them agree on the sizes even if a file changes a moment later.
+    let leftSubject: ComparisonSubject
+    let rightSubject: ComparisonSubject
 
-    /// Open both files for reading.
+    /// Open both files for reading. Opening reads no bytes, so an evicted cloud file is not
+    /// downloaded by this.
     /// - Throws: `VFSError` when either cannot be opened, and then neither is left open.
     public init(left leftPath: VFSPath, right rightPath: VFSPath) throws {
-        let left = open(leftPath.path, O_RDONLY | O_CLOEXEC)
-        guard left >= 0 else { throw VFSError.fromErrno(errno, path: leftPath) }
-        let right = open(rightPath.path, O_RDONLY | O_CLOEXEC)
-        guard right >= 0 else {
-            let failure = errno
-            close(left)
-            throw VFSError.fromErrno(failure, path: rightPath)
+        let left = try Self.open(leftPath)
+        do {
+            let right = try Self.open(rightPath)
+            self.left = left.descriptor
+            self.right = right.descriptor
+            leftSubject = left.subject
+            rightSubject = right.subject
+        } catch {
+            close(left.descriptor)
+            throw error
         }
-        self.left = left
-        self.right = right
         self.leftPath = leftPath
         self.rightPath = rightPath
+    }
+
+    /// `O_NONBLOCK` so a named pipe answers at once and is refused as not a regular file, where a
+    /// plain open would wait for a writer that may never come.
+    private static func open(_ path: VFSPath) throws -> (
+        descriptor: Int32,
+        subject: ComparisonSubject
+    ) {
+        let descriptor = Darwin.open(path.path, O_RDONLY | O_CLOEXEC | O_NONBLOCK)
+        guard descriptor >= 0 else { throw VFSError.fromErrno(errno, path: path) }
+        var status = stat()
+        guard fstat(descriptor, &status) == 0 else {
+            let failure = errno
+            close(descriptor)
+            throw VFSError.fromErrno(failure, path: path)
+        }
+        return (descriptor, ComparisonSubject(
+            path: path,
+            isRegularFile: (status.st_mode & S_IFMT) == S_IFREG,
+            byteSize: Int64(status.st_size),
+            isDataless: (status.st_flags & UInt32(SF_DATALESS)) != 0
+        ))
+    }
+
+    /// The left file's size when it was opened.
+    public var leftByteSize: Int64 {
+        leftSubject.byteSize
+    }
+
+    /// The right file's size when it was opened.
+    public var rightByteSize: Int64 {
+        rightSubject.byteSize
     }
 
     deinit {

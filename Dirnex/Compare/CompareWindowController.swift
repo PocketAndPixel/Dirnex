@@ -108,7 +108,7 @@ final class CompareWindowController: NSWindowController, NSWindowDelegate {
     var sync: CompareScrollSync?
     var keyMonitor: Any?
     /// Watches for the end of the modal window this one was raised over (`+Modal`).
-    var modalLevelObserver: (any NSObjectProtocol)?
+    let modalLevel = ModalLevelKeeper()
     /// Bumped by every computation, so a slow earlier one cannot land over a newer one.
     private var generation = 0
 

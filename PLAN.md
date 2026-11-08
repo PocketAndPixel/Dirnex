@@ -307,6 +307,56 @@ Decided before Slice 1 (2026-11-08, Oleg, on the probes above):
   (`data/a.bin` became `/data/a.bin`), and `git mergetool` passes relative paths. The command-line
   entry has to resolve them against its own working directory first.
 
+**2026-11-08: Slice 2 landed** (the byte window, and the routes to it).
+
+- **App (`Dirnex/Compare/`):**
+  - `BinaryCompareWindowController`, with `+Table`, `+Changes`, `+Layout` and `+Banner`. The window
+    knows its rows from the two sizes, so it is up before the scan ends, and closing it stops the
+    scan.
+  - `BinaryHexTable`, `BinaryHexCell` and `BinaryCompareStyle`: one table holds both sides, so they
+    are level by construction, with each cell drawn in one pass.
+  - `BinaryRowSource` reads a page off the main thread when a row needs one: one read at a time, and
+    only of a page still on screen.
+  - `ModalLevelKeeper` is the text window's rule for opening over a modal window, moved so both
+    windows share it. `CompareToolbar` can show only its arrows and counter.
+  - **Routes:** `CompareOpener` sends a binary, undecodable or too-large pair to the byte view, which
+    covers ⌥F3, the Synchronize row and the conflict dialog. A file that cannot be opened is still an
+    alert. Twelve new strings, in all 14 languages.
+- **Core:** `BinaryFilePair` keeps each file's size from `fstat` at open, and `BinaryComparison.scan`
+  takes an open pair, so the rows and the scan see the same two files. `percentScanned`, whose first
+  version overflowed `Int64` near 2^62, and `changeRows`.
+- **Tests:** 6 more in the core and 36 in the app. Full runs: 4 877 core tests, and the app suite
+  green twice in a row without the live server suites, whose code this slice does not touch.
+- **Decided in the slice:**
+  - **An ordinary table, not a custom view.** It brings the row keys, scrolling and accessibility with
+    it, and it is exact for any file up to about 16 TiB once it is kept out of Auto Layout.
+  - **"No differences" waits for the scan to end.** Before that the counter is blank, since it would
+    be a claim about bytes nobody has compared.
+  - **Left out:** a Go to Offset, copying bytes, Swap Sides, a file that changes while it is shown,
+    and a Stop short of closing the window.
+- **Negative controls:** 10 faults, one at a time, each failed its own test: the intrinsic height left
+  in, no refill on scroll, a close that keeps scanning, "No differences" said early, the next
+  difference missing one on the current row, a jump after the user moved, reading every wanted page,
+  the tail marked as a change, the header's height left out of a jump, and a page queued again while
+  it was being read.
+- **Found by a full run:** that last one, a real double read that passed alone and failed once in a
+  full suite, depending on when a redraw landed. Its test now holds the read open and asks during it.
+  The waits in these suites went from 10 s to 60 s, after a full run's other suites held the main
+  actor long enough to expire them.
+- **Run live** on the Debug build, driven from the background: the patched program pair (5 changes, 6
+  bytes, as patched), a 70 MiB text pair (24 bytes, as `cmp -l` counts) and a sparse 20 GiB pair, whose
+  window was up at "Compared 51 %" and landed on the last row. The row keys, the arrows, the close
+  button and the screen reader's tree were each tried there. Two bugs only that run could find:
+  - **An accessibility read crashed the app** on the 20 GiB pair, and the first two fixes left a real
+    client with no table at all (docs/NOTES.md ▸ A table of billions of rows).
+  - **A change opened with one row above it, not three**, since the column header floats over the
+    clip view.
+  - An earlier window-less probe had also passed a table Auto Layout then cut at 10^10 points, the
+    case the 1 TiB test now resizes for.
+- **Not run live:** the keys the window takes with its monitor (⌥⌘↓, ⌥⌘↑, ⌘W, Escape), which a
+  background run cannot send and tests pin through `handleKey`; the Synchronize row and the conflict
+  dialog, which go through the same `CompareOpener` call; the light appearance; and any translation.
+
 #### M38 — Remote: what M8, M22, M24, M25 and M32 left (M–L)
 
 - **Owner and group in a remote Get Info** (M25). `chown` and `chgrp` take a numeric id, while

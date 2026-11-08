@@ -53,6 +53,13 @@ public struct BinaryComparison: Sendable, Equatable {
         return leftByteSize > rightByteSize ? .left : .right
     }
 
+    /// How much of the length the two sides share has been compared, as a whole percentage. Through
+    /// `Double`, since the product of a very large size and 100 would not fit an `Int64`.
+    public var percentScanned: Int {
+        guard scannedByteCount < commonByteCount else { return 100 }
+        return Int(Double(scannedByteCount) / Double(commonByteCount) * 100)
+    }
+
     /// Whether the scan has covered everything the two sides share.
     public var isFinished: Bool {
         endedEarly || scannedByteCount >= commonByteCount
@@ -67,6 +74,15 @@ public struct BinaryComparison: Sendable, Equatable {
     public var changes: [Range<Int64>] {
         let shared = differences.stretches.map(\.range)
         return tail.map { shared + [$0] } ?? shared
+    }
+
+    /// The rows of the byte view each change covers, in the order of ``changes``.
+    public var changeRows: [Range<Int>] {
+        changes.map { change in
+            let first = BinaryHexLayout.row(containing: change.lowerBound)
+            let last = BinaryHexLayout.row(containing: change.upperBound - 1)
+            return Int(first)..<Int(last + 1)
+        }
     }
 
     // MARK: - Moving between changes
@@ -168,11 +184,54 @@ extension BinaryComparison {
         )
     }
 
+    /// Compare a pair already open, from the sizes it was opened at: the window's own pair, so the
+    /// rows on screen and the scan behind them are looking at the same two files.
+    public static func scan(
+        _ pair: BinaryFilePair,
+        allowDataless: Bool = false,
+        report: (BinaryComparison) -> Void = { _ in },
+        isCancelled: () -> Bool = { false }
+    ) throws -> BinaryComparison {
+        try run(
+            pair.leftSubject,
+            pair.rightSubject,
+            open: { pair },
+            chunkSize: defaultChunkSize,
+            allowDataless: allowDataless,
+            reportEvery: reportInterval,
+            report: report,
+            isCancelled: isCancelled
+        )
+    }
+
     // Every knob spelled out, as in `ByteComparator`, rather than a second set of defaults.
     // swiftlint:disable:next function_parameter_count
     static func scan(
         _ left: ComparisonSubject,
         _ right: ComparisonSubject,
+        chunkSize: Int,
+        allowDataless: Bool,
+        reportEvery: Int64,
+        report: (BinaryComparison) -> Void,
+        isCancelled: () -> Bool
+    ) throws -> BinaryComparison {
+        try run(
+            left,
+            right,
+            open: { try BinaryFilePair(left: left.path, right: right.path) },
+            chunkSize: chunkSize,
+            allowDataless: allowDataless,
+            reportEvery: reportEvery,
+            report: report,
+            isCancelled: isCancelled
+        )
+    }
+
+    // swiftlint:disable:next function_parameter_count
+    private static func run(
+        _ left: ComparisonSubject,
+        _ right: ComparisonSubject,
+        open: () throws -> BinaryFilePair,
         chunkSize: Int,
         allowDataless: Bool,
         reportEvery: Int64,
@@ -188,7 +247,7 @@ extension BinaryComparison {
         guard common > 0 else { return state.result(endedEarly: false) }
         try ByteComparator.requireDownloaded(left, right, allowDataless: allowDataless)
 
-        let pair = try BinaryFilePair(left: left.path, right: right.path)
+        let pair = try open()
         let leftBuffer = UnsafeMutableRawBufferPointer.allocate(byteCount: chunkSize, alignment: 16)
         defer { leftBuffer.deallocate() }
         let rightBuffer = UnsafeMutableRawBufferPointer.allocate(byteCount: chunkSize, alignment: 16)

@@ -158,8 +158,8 @@ extension PanelViewController {
     ///
     /// Three outcomes, and only one of them opens anything: identical files say so and stop (a
     /// multi-second GUI launch to be told "0 differences" is the worst payoff the feature has),
-    /// files too large to scan ask first (or, for Dirnex's window, are refused), and everything
-    /// else opens. A pre-flight *failure* (permission, vanished mid-read) opens anyway — this is an
+    /// files too large to scan ask first (or, for Dirnex's window, go straight to its byte view),
+    /// and everything else opens. A pre-flight *failure* (permission, vanished mid-read) opens anyway — this is an
     /// optimization, not a gate, and the tool reports an unreadable file better than a second alert
     /// here would.
     ///
@@ -237,8 +237,8 @@ extension PanelViewController {
 
     /// Ask before handing a very large pair to a visual diff tool: past `prescanByteLimit` the tool
     /// is the slow part, and the user is better placed than we are to say whether it's worth it.
-    /// Dirnex's own window reads a file whole or not at all, and that limit is the same one, so
-    /// there it is a refusal that states the limit rather than a question.
+    /// Dirnex's own byte view has no such limit and reads only what is on screen, so there is
+    /// nothing to ask (PLAN.md §M37 Slice 2).
     private func confirmOversizedCompare(
         _ left: CompareFile,
         _ right: CompareFile,
@@ -246,7 +246,7 @@ extension PanelViewController {
         byteSize: Int64
     ) {
         guard case let .external(tool) = compareTool else {
-            refuseOversizedCompare(byteSize: byteSize)
+            spawn(compareTool, comparing: left, with: right)
             return
         }
         let alert = NSAlert()
