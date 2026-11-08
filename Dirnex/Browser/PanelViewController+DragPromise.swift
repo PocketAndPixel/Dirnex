@@ -76,6 +76,11 @@ extension PanelViewController: NSFilePromiseProviderDelegate {
             completionHandler(CocoaError(.fileReadUnknown))
             return
         }
+        // A folder on a server is staged by the queue and moved to `url` (PLAN.md §M36 Slice 3).
+        if entry.kind == .directory {
+            fulfillFolderPromise(entry, writingTo: url, then: completionHandler)
+            return
+        }
         // A file inside an archive is extracted where a server's file is fetched (PLAN.md §M36).
         if let member = Self.archiveMember(for: entry) {
             fulfillMemberPromise(member, writingTo: url, then: completionHandler)

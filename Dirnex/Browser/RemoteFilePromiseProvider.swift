@@ -3,8 +3,9 @@ import DirnexCore
 import UniformTypeIdentifiers
 
 /// A dragged row whose bytes are not a file on this Mac yet — what Finder is handed so a file on a
-/// server can be dropped into it (PLAN.md §M23 Slice 4), and since M36 Slice 2 a file inside an
-/// archive, which the promise extracts where a server's file is downloaded.
+/// server can be dropped into it (PLAN.md §M23 Slice 4), since M36 Slice 2 a file inside an archive,
+/// which the promise extracts where a server's file is downloaded, and since Slice 3 a server's
+/// folder, which the queue stages (`RemoteFolderPromise`).
 ///
 /// Which rows get one is `DragOutRoute`'s decision, read by `PanelPasteboard.dragWriters`; this type
 /// only builds the promise it is asked for. The name predates the archive member and is kept, since
@@ -48,9 +49,10 @@ final class RemoteFilePromiseProvider: NSFilePromiseProvider {
         payload: Data,
         delegate: any NSFilePromiseProviderDelegate
     ) -> RemoteFilePromiseProvider {
-        let provider = RemoteFilePromiseProvider(
-            fileType: fileType(for: entry.name), delegate: delegate
-        )
+        // A server's folder is promised as one (PLAN.md §M36 Slice 3): Finder took `public.folder`
+        // in probe P1, where a type off the name would call `photos.2024` some kind of document.
+        let type = entry.kind == .directory ? UTType.folder.identifier : fileType(for: entry.name)
+        let provider = RemoteFilePromiseProvider(fileType: type, delegate: delegate)
         provider.entry = entry
         provider.locations = payload
         return provider

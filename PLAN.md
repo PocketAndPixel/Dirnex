@@ -4,7 +4,7 @@ A dual-pane, keyboard-first file manager for macOS in the spirit of Total Comman
 built native (Swift), with macOS-only superpowers TC never had: Quick Look, Spotlight
 search, APFS clones, Finder tags, a command palette, and universal undo.
 
-Status: **M0–M35 shipped**, **M36 in progress**, **M37–M40 planned** (14 languages; M29's licensing is on in betas, off in stable until the
+Status: **M0–M36 shipped**, **M37–M40 planned** (14 languages; M29's licensing is on in betas, off in stable until the
 store opens; M30's Report a Bug is in every release built while `DIRNEX_BUG_REPORT_URL` is set) ·
 Created: 2026-07-05 ·
 Log: [docs/HISTORY.md](docs/HISTORY.md) · What works where:
@@ -99,7 +99,7 @@ Dirnex/
 Sizes are relative (S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks of focused work).
 Each milestone ends in something runnable; no milestone depends on a later one.
 
-### Shipped: M0 → M35 (2026-07-05 → 2026-11-05)
+### Shipped: M0 → M36 (2026-07-05 → 2026-11-08)
 
 Every milestone is closed. The checklists and the full per-pass progress log — what was probed,
 decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source comments citing
@@ -143,136 +143,20 @@ decided, and rejected — live in **[docs/HISTORY.md](docs/HISTORY.md)**; source
 | M33 | Copy a change across, and save | 10-26 | **Typing in a pane** and **find and replace**, M11's call; **copying every change at once**, which is F5; **a save that changes the encoding or the line endings**, since a save keeps both; **editing in the conflict dialog's window**, whose right-hand file waits on that dialog. **Not run live**: FTP and S3 sides, a Synchronize row compared again after a save, a side with nowhere to save, and an editor's unsaved edit met by a save |
 | M34 | A three-way merge | 10-27 | **Synchronize as an entry point**, until a sync keeps a record of the last one; **three files picked by hand**, whose base would be a guess; **an archive member** changed behind an edit; **being git's merge tool**, which needs a command-line entry point; **conflict markers** in any form; **a merge that ignores whitespace**; **a binary file**. **Not run live**: FTP in the app, a batch's question, a file past the content check's limit, the take keys and the light appearance. Over SFTP and FTP a write between the check and the upload goes unseen, since that upload carries no condition |
 | M35 | An SMB server's shares, as a pane | 11-05 | **Anything that writes to the list**: creating, renaming or deleting a share, or copying onto it; **a comment column**; **a way up from a share Finder mounted**, which keeps `..` → `/Volumes`. **Not run live**: the plain permission sentence, since no share is listed to `dirnex-test` and refused; ⌘Return into the other pane; a saved sidebar row; `..` from a share typed into the sheet while its server is not connected; and marks inside a share after a relaunch |
+| M36 | Drag and paste, where M23 stopped | 11-08 | **A folder for Teams, Chrome and the rest of Chromium**, which refuse a promise: Mail takes the folder's promise, and probe P2's Chromium half was not run, since Chrome is read-only to computer use and a drop into Teams uploads to the account's chat files; **a folder inside an archive**, which probe P1 answers for too, leaving the extraction of a subtree behind the promise; **a folder dragged with files** losing its promise once the pointer has been over another app, the board's rewrite to file URLs being one way. **Not run live**: Edit ▸ Move Items Here being enabled, F5 from a server into an archive, an archive member into a Chromium app, and a server folder crossing another app on its way to Finder |
 
 ### Next
 
 **Planned 2026-11-07: M36–M40.** These five milestones take up what earlier milestones left undone by
 choice rather than for a hard limit, in the order Oleg set: drag and paste, compare and merge, remote,
 Quick View, and everything else. Each item names the milestone that left it and the reason given
-then, because that reason is what the design has to answer. Nothing here has been probed yet. Each
+then, because that reason is what the design has to answer. Nothing left here has been probed yet. Each
 milestone opens with its probes, and its slices are written then (CLAUDE.md ▸ How to work here). An
 item whose reason still holds after the probe goes back to the *undone* column with what the probe
 found.
 
-M35 (an SMB server's shares, as a pane) closed 2026-11-05, and is archived in
+M36 (drag and paste, where M23 stopped) closed 2026-11-08, and is archived in
 [docs/HISTORY.md](docs/HISTORY.md).
-
-#### M36 — Drag and paste, where M23 stopped (M)
-
-- **A folder dragged out of a server** (M23). A promise is one file, and a recursive fetch behind a
-  drop had no progress surface and no way to stop it, so a folder travels inside Dirnex only
-  (LOCATION-SUPPORT.md <sup>k</sup>). Since then, `RemoteDragHandoff` (2026-11-03) shows a file's
-  progress under the dragged row when another app is the target, and stops a large one when the drop
-  is refused. The first question is whether that carries to a folder of unknown size, and to
-  Finder's promise.
-- **An archive member dragged out to another app** (M23). A promise is fulfilled behind somebody
-  else's drop, where an encrypted archive would have to raise a passphrase sheet with nothing on
-  screen to answer it on. And `extractArchiveSources` reports a failure with an alert rather than
-  through a completion handler, so this needs M23 Slice 4's always-answers contract first.
-- **A drop into a browsed archive** (M23). ⌘V adds to a top-level archive by repacking, and a drop
-  does not.
-- **⌥⌘V move-paste into an archive** (M23), refused today whether pasted or dropped.
-
-Inherited from M23's risk row (§6): the payload carries locations, not policy, and every paste and
-drop ends in the path F5 takes. A drop into an archive is ⌘V's repack, never a second way in. A live
-check of a drag needs full-screen control or Oleg's hands (docs/LIVE-VERIFICATION.md).
-
-**Opened 2026-11-08.** Reading the add path before any Swift found it was not one path. ⌘V read file
-URLs only, so a ⌘C on a server or inside another archive enabled Paste over an archive and then did
-nothing. And two bugs sat on the route the drop and ⌥⌘V were about to join:
-
-- **F5/F6 from a server pane into an archive read this Mac's disk.** `addSelectionToArchive` handed
-  the rows to `ArchiveWriter.add`, which copies `URL(fileURLWithPath: entry.path.path)`: whatever
-  local file has the server's spelling, or a failure naming one. F6 then offered to delete the server
-  originals.
-- **F6 of the folder holding the archive trashed the archive.** An archive's contents carry the
-  backend `archive:<file>`, and `isSelfOrDescendant` stops at the backend compare, so nothing saw that
-  `proj` holds `proj/backup.zip`. The add put `proj` into the archive and the move then trashed `proj`,
-  archive and all. Reproduced as a failing core test before the fix.
-
-Slices:
-
-1. **One way into an archive** (landed 2026-11-08, core then app). ⌘V, ⌥⌘V, a drop and F5/F6 all
-   reach `beginArchiveAdd`, which admits through `TransferAdmission.pasteAdmits` (moved into the core
-   from the app), asks the Replace question, stages through `materialize` (⌥F5's funnel, under the new
-   `RemoteFetchPurpose.addToArchive`), rewrites from the staged files and removes the *originals* on a
-   move. `TransferAdmission.recurses` learned that an archive lives inside its file. F5 from one archive
-   into another is now the add ⌘V already was, rather than "Open a folder on disk".
-2. **An archive member dragged out to another app** (landed 2026-11-08, core then app). The core's
-   `DragOutRoute` is now the one answer to what a dragged row offers another app, where three places
-   in the app each read the backend for themselves. A file in an archive is promised to Finder and
-   extracted for any other app, unless the archive is locked this session (decision **A**).
-3. **A folder dragged out of a server.** `MaterializeRunner` has staged a remote folder as a queue job
-   with a bar and Stop since 2026-08-30, which is the progress surface M23 said was missing. Needs
-   probes **P1** and **P2**; decision **B** is taken.
-
-Probes owed before Slices 2 and 3, each needing a real drag session (full-screen control or Oleg's
-hands): **P1**, Finder and an `NSFilePromiseProvider` whose type is `public.folder` — is it taken, what
-URL comes back when the name is already there, and does Finder draw or time out anything while it
-waits; **P2**, Teams, Chrome and Mail handed a lazy `public.file-url` that names a folder. A third, a
-member's promise fulfilled while a passphrase sheet is up on Dirnex's inactive window, was dropped
-with decision A, which never raises one there.
-
-Decided by Oleg on 2026-11-08, both as recommended:
-
-- **A — a member of an encrypted archive** is offered to other apps only when the archive's passphrase
-  is already held this session (unlocked by a preview, ⏎ or F5). Otherwise the row still drags inside
-  Dirnex, and the status line says to unlock the archive first. Nothing ever asks for a passphrase
-  behind somebody else's drop.
-- **B — a server folder into Finder** is fetched by F5's own queue job into the temp root, with its
-  bar and Stop in Dirnex, then moved to the URL Finder named before the promise is answered. Stop or a
-  failure leaves nothing in Finder's folder. Other apps get no folder until P2 shows one is taken.
-
-**Progress.**
-
-- *2026-11-08, Slice 1.* Core: `TransferAdmission.recurses` (archive containment),
-  `TransferAdmission.pasteAdmits`, `RemoteFetchPurpose.addToArchive`; +8 tests, 4 786 green. Three
-  controls run one at a time, each failing only its own tests: containment (3 tests, 7 issues), the
-  archive same-folder copy (1), a member's move (1). App: `ArchiveAddReachTests` (10), over a real
-  `bsdtar` zip with a scratch undo store, since through a pane the default store is the developer's own
-  Application Support. Three controls: rewriting from the rows' paths instead of the staged files (the
-  server test then read *this Mac's bytes*), a drop gate without the archive (4 tests), and the
-  admission removed at both sites (1). Two strings in all 14 languages. The full app suite, run in
-  parallel: 2 202 tests passed with the known `GestureWaitTests` issue, the defaults domain unchanged
-  by content; the live suites were not up. **Two earlier full runs hung** on an app-modal alert in
-  front of the test host: the end-to-end adds were slower than their waits under the full suite's
-  load, and finished after their tests had freed the host. Fixed in the suite, not the app (NOTES.md ▸
-  Testing ▸ Waits).
-- *2026-11-08, Slice 1 live*, on a fresh Debug build with background computer use and the `.sdef`
-  verbs, saved tabs cleared first so no server tab could raise a Keychain prompt, and the defaults
-  domain imported back afterwards (71 keys unchanged by content). ⌘V of a file Dirnex had copied added
-  it to a real zip with its bytes, the original left alone. ⌥⌘V from the other pane added a file and
-  sent the original to the Trash, and the other pane's listing followed. F6 with the folder holding a
-  zip under the cursor raised "Can’t add to “holder.zip”", and the zip stayed byte-identical. **The run
-  found one bug**: after ⌥⌘V, focus had moved to the pane holding the originals, because their
-  removal focuses its own pane. It now takes focus only if that pane had it when the add finished, so
-  F6 is unchanged; seen fixed on a rebuilt binary. **Not run live**: Edit ▸ Move Items Here being
-  enabled (computer use will not press a menu item that touches the clipboard), F5 from the throwaway
-  `sshd`, and a real drag, which needs a person.
-- *2026-11-08, Slice 2.* Core: `DragOutRoute` (+7 tests, 4 793 green), with three controls one at a
-  time: the lock ignored, a member folder extracted, the lock asked of every row. App: the route
-  decides the drag's writers and its handoff; `RemoteFilePromiseProvider.canPromise` is gone. Finder's
-  promise for a member is extracted through the window's `ArchivePreviewCache` with the passphrase the
-  session holds and never asks for one; the handoff extracts off the main actor where it downloads,
-  says "Extracting…" on the drag image, and a locked row is named on the status line the first time
-  the pointer is over another app. `ArchiveDragOutTests` (7) runs against real `bsdtar` and AES-256
-  zips, and `DragPromiseTests`' member test now pins the promise instead of its absence. Four controls,
-  each failing only its own tests: a promise answered without the bytes, the handoff not extracting,
-  the lock ignored, the notice removed. Three strings in all 14 languages. The first full parallel
-  run failed one handoff test: a "stopped?" check put before every row could stop a download before
-  it reached the server, which the test watches for, so the check now guards extractions only. Then
-  2 210 app tests passed, with the known `GestureWaitTests` issue, and the defaults domain was
-  unchanged.
-- *2026-11-08, Slice 2 live*, with full-screen control on a fresh Debug build, saved tabs cleared first
-  and the defaults domain imported back afterwards (71 keys unchanged by content). A file dragged out
-  of a plain zip into a Finder window landed with its bytes. The same file dropped into a TextEdit
-  document arrived as an attachment, reusing the copy Finder's promise had extracted, so nothing was
-  extracted twice. A file of a password-protected zip dragged toward Finder landed nothing and
-  extracted nothing, and the status line read "Open a file in “secret.zip” first to drag its files
-  out" while the pointer was over Finder. **Not run live**: a Chromium app. Chrome is granted to
-  computer use as read-only, so nothing may be dropped on it, and a drop into Teams uploads the file
-  to the account's chat files. TextEdit takes the same hand-off code, but from outside it cannot be
-  told whether TextEdit read the hand-off's file URL or took the promise itself.
 
 #### M37 — Compare and merge, past M31 and M34 (M–L)
 
@@ -385,10 +269,10 @@ your key?" link in Settings ▸ License.
 
 ### Still open
 
-Everything through M35 is shipped, and the record of it — the milestone checklists, the dated
+Everything through M36 is shipped, and the record of it — the milestone checklists, the dated
 passes that landed outside a milestone of their own, and the reasoning behind every decision — is in
 **[docs/HISTORY.md](docs/HISTORY.md)**, which also tells how everything else on this list came off
-it (HISTORY.md ▸ the follow-on log). What is still open, rather than merely imaginable, is M36–M40
+it (HISTORY.md ▸ the follow-on log). What is still open, rather than merely imaginable, is M37–M40
 under *Next*, which take up the items in the table's *undone* column that were left by choice, plus
 the list below. The column itself stays as each milestone's record.
 

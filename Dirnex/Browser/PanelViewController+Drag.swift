@@ -80,14 +80,18 @@ extension PanelViewController {
 
     // MARK: - A row on a server, on its way to another app
 
-    /// Watch a drag that holds a row on a server or inside an archive, because Finder's promise is no
+    /// Watch a drag that holds a file on a server or inside an archive, because Finder's promise is no
     /// use to most apps — or a row of a locked archive, whose staying behind has to be explained.
+    ///
+    /// A server's **folder** alone starts nothing here (PLAN.md §M36 Slice 3): it is promised to
+    /// Finder and handed to no other app, and watching would only rewrite the board over another
+    /// app, which would take the promise away from a Finder drop afterwards.
     func fileTable(_ tableView: FileTableView, didBegin session: NSDraggingSession, fromRow row: Int) {
         dragHandoff = nil
         guard let cache = host?.remoteFileCache, let entries = entriesDragged(fromRow: row) else { return }
         let routes = dragOutRoutes(for: entries)
         guard routes.values.contains(
-            where: { $0.isPromised || $0 == .insideDirnexOnly(.lockedArchive) }
+            where: { $0.isHandedOff || $0 == .insideDirnexOnly(.lockedArchive) }
         )
         else { return }
         let status = RemoteDragStatus(session: session)
