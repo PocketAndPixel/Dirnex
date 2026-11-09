@@ -73,18 +73,24 @@ public enum ComparedFileSave {
     ///
     /// `overwritingChanges` skips the check that the file is still as it was read: the user's
     /// answer when the window asked. Blocking; call it off the main thread.
+    ///
+    /// `dateSource` names a file whose modification time the saved file takes, which is what a merge
+    /// saved into both sides of a sync needs: the two then agree on their date as a sync's copy does,
+    /// however long the second write came after the first (PLAN.md §M37 Slice 8).
     public static func save(
         _ document: ComparedDocument,
         to target: Target,
         overwritingChanges: Bool = false,
-        undo: UndoCopy?
+        undo: UndoCopy?,
+        dateSource: String? = nil
     ) throws(Failure) -> Saved {
         try save(
             document,
             to: target,
             overwritingChanges: overwritingChanges,
             undo: undo,
-            writer: InPlaceFileWrite.writeAll
+            writer: InPlaceFileWrite.writeAll,
+            dateSource: dateSource
         )
     }
 
@@ -95,7 +101,8 @@ public enum ComparedFileSave {
         overwritingChanges: Bool,
         undo: UndoCopy?,
         writer: InPlaceFileWrite.Writer,
-        patience: TimeInterval = CoordinatedFileWrite.patience
+        patience: TimeInterval = CoordinatedFileWrite.patience,
+        dateSource: String? = nil
     ) throws(Failure) -> Saved {
         let file = VFSPath.local(target.path)
         let data: Data
@@ -122,7 +129,12 @@ public enum ComparedFileSave {
 
             let snapshot = undo?.store.capture(archiveAt: resolved, live: undo?.live ?? [])
             do {
-                try InPlaceFileWrite.replaceContents(ofFileAt: resolved, with: data, writer: writer)
+                try InPlaceFileWrite.replaceContents(
+                    ofFileAt: resolved,
+                    with: data,
+                    modified: dateSource.flatMap(InPlaceFileWrite.modificationTime(ofFileAt:)),
+                    writer: writer
+                )
             } catch {
                 if error.touchedTheFile {
                     try? InPlaceFileWrite.replaceContents(

@@ -19,7 +19,7 @@ closed simply reads differently — it is not explained here.
 |---|---|
 | **yes** | Fully done. Behaves as it does on the local disk. |
 | **yes, limited** | Fully done for what the technology allows. The remaining difference **cannot** be closed from our side — the protocol, the service or macOS does not expose it. |
-| **yes, partially** | Done, and the gap **could** be narrowed to look more local. What is left of the parity backlog is planned as M37–M40 at PLAN.md §4 ▸ *Next*, plus the short list at §4 ▸ *Still open*. |
+| **yes, partially** | Done, and the gap **could** be narrowed to look more local. What is left of the parity backlog is planned as M38–M40 at PLAN.md §4 ▸ *Next*, plus the short list at §4 ▸ *Still open*. |
 | **no** | Not implemented, and nothing structural prevents it — so it is backlog too, and its footnote names the milestone. A "no" with no route to a yes is written **n/a** instead. |
 | **n/a** | The concept does not exist there (a Trash inside the Trash, a checksum of a bucket list). |
 
@@ -1234,7 +1234,7 @@ download ends within 1 ms of the cancel, without one it runs to the end (docs/NO
 The two milestones this list was written for have closed: **M24** (every local-only feature, on a
 file that is not local) on 2026-08-28 and **M25** (what a remote write carries, and what a remote
 delete costs) on 2026-08-29, both archived in [HISTORY.md](HISTORY.md). What is left of the **"no"**
-and **"yes, partially"** cells that are *ours* to close is planned as M37–M40 at
+and **"yes, partially"** cells that are *ours* to close is planned as M38–M40 at
 [PLAN.md](../PLAN.md) §4 ▸ *Next*, plus the short list at §4 ▸ *Still open* — the cells that were too small to be a slice of either. This file is the status;
 the plan is the work. Nothing that has already shipped is argued here — a closed gap is simply a
 changed cell, and why it changed is in [HISTORY.md](HISTORY.md).

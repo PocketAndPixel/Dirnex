@@ -65,6 +65,29 @@ struct SyncRecordBoxTests {
         #expect(sheet.view.fittingSize.height == 546)
     }
 
+    /// The checkbox gives way rather than crushing anything, so a label that does not fit would
+    /// lose words at the end. One row of 680 pt, in every language it ships in.
+    @Test("the box's label fits its row in every language")
+    func labelFits() async throws {
+        let rig = try SyncRecordRig()
+        defer { rig.cleanup() }
+        let sheet = try await rig.sheet()
+        let all = ConnectPlaceholderWidthTests.translations(
+            of: "Keep synced versions of text files for merging"
+        )
+        #expect(all.count >= 14, "expected all 14 shipped languages, found \(all.count)")
+        for translation in all {
+            sheet.keepBox.title = translation.text
+            #expect(
+                sheet.keepBox.intrinsicContentSize.width <= 680,
+                "\(translation.language): \(translation.text)"
+            )
+        }
+        // The control must be able to fail.
+        sheet.keepBox.title = String(repeating: "Zusammenführen ", count: 12)
+        #expect(sheet.keepBox.intrinsicContentSize.width > 680)
+    }
+
     @Test("the box is off until a pair is remembered, and on once it is", arguments: [false, true])
     func boxFollowsRecord(remembered: Bool) async throws {
         let rig = try SyncRecordRig(remembering: remembered)

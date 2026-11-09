@@ -72,7 +72,7 @@ struct SyncMergeTests {
         }
         var remaining = answers
         while true {
-            try await settleUntil { flag.finished || host.attachedSheet != nil }
+            try await settleUntil(within: .seconds(60)) { flag.finished || host.attachedSheet != nil }
             guard !flag.finished, let sheet = host.attachedSheet else { break }
             if remaining.isEmpty {
                 Issue.record(
@@ -83,7 +83,7 @@ struct SyncMergeTests {
             } else {
                 host.endSheet(sheet, returnCode: remaining.removeFirst())
             }
-            try await settleUntil { flag.finished || host.attachedSheet !== sheet }
+            try await settleUntil(within: .seconds(60)) { flag.finished || host.attachedSheet !== sheet }
         }
         #expect(
             remaining.isEmpty,
@@ -160,6 +160,16 @@ struct SyncMergeTests {
         #expect(rig.readLeft("a.txt") == "ONE\ntwo\nTHREE!\n")
         #expect(rig.readRight("a.txt") == "ONE\ntwo\nTHREE!\n")
         #expect(!controller.hasUnsavedResult)
+        // The same date to the nanosecond, as a copy has, or Size & Date can go on listing the row.
+        let (left, right) = (
+            rig.left.appendingPathComponent("a.txt"),
+            rig.right.appendingPathComponent("a.txt")
+        )
+        #expect(
+            ArchiveUndoWitness.current(ofFileAt: left.path) == ArchiveUndoWitness.current(
+                ofFileAt: right.path
+            )
+        )
     }
 
     @Test("a second save checks each file against what the first left")
@@ -173,12 +183,12 @@ struct SyncMergeTests {
         let input = try await opened(rig).input
         let controller = window(input)
         controller.take(.yours)
-        try await settleUntil { controller.shownChoices == controller.choicesMade }
+        try await settleUntil(within: .seconds(60)) { controller.shownChoices == controller.choicesMade }
         #expect(try await save(controller))
         #expect(rig.readRight("a.txt") == "L\n")
 
         controller.take(.theirs)
-        try await settleUntil { controller.shownChoices == controller.choicesMade }
+        try await settleUntil(within: .seconds(60)) { controller.shownChoices == controller.choicesMade }
         #expect(try await save(controller))
         #expect(rig.readLeft("a.txt") == "RR\n")
         #expect(rig.readRight("a.txt") == "RR\n")
@@ -244,8 +254,8 @@ struct SyncMergeTests {
 
         #expect(try await save(controller))
         #expect(rig.keptText("a.txt") == "ONE\ntwo\nTHREE!\n")
-        try await settleUntil { sheet.rows.isEmpty }
-        try await settleUntil { !sheet.isReadingChanges }
+        try await settleUntil(within: .seconds(60)) { sheet.rows.isEmpty }
+        try await settleUntil(within: .seconds(60)) { !sheet.isReadingChanges }
         #expect(sheet.changes.isEmpty)
     }
 
@@ -269,7 +279,7 @@ struct SyncMergeTests {
             Self.retained.append(controller)
             return controller
         }
-        try await settleUntil { !opened.isEmpty }
+        try await settleUntil(within: .seconds(60)) { !opened.isEmpty }
         #expect(opened.first?.secondTarget?.path.hasSuffix("/right/a.txt") == true)
     }
 }

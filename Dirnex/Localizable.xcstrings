@@ -15486,6 +15486,12 @@
             "state": "translated",
             "value": "每次同步後，Dirnex 會保留兩個檔案夾中都有的文字檔案副本，以便之後合併兩側都有更改的檔案。關閉此選項並同步後，這些副本將被移除。"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After each sync, Dirnex keeps a copy of the text files both folders hold, so a file later changed on both sides can be merged. Turning this off and synchronizing removes the copies."
+          }
         }
       }
     },
@@ -18237,6 +18243,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "上次同步時的版本"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As of the last sync"
           }
         }
       }
@@ -24834,6 +24846,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "自上次同步後，兩側都有更改。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changed on both sides since the last sync."
           }
         }
       }
@@ -31551,6 +31569,12 @@
             "state": "translated",
             "value": "拷貝會取代另一側的更改。"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copying replaces the other side’s changes."
+          }
         }
       }
     },
@@ -35990,6 +36014,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "無法保留用於合併的版本"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t keep versions for merging"
           }
         }
       }
@@ -64443,6 +64473,12 @@
             "state": "translated",
             "value": "保留已同步的文字檔案版本以便合併"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep synced versions of text files for merging"
+          }
         }
       }
     },
@@ -91788,6 +91824,12 @@
             "state": "translated",
             "value": "右鍵按一下以合併。"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right-click to merge."
+          }
         }
       }
     },
@@ -94654,6 +94696,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "儲存到兩個檔案夾"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved to both folders"
           }
         }
       }
