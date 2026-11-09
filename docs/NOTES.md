@@ -8729,6 +8729,17 @@ against a second APFS volume from `hdiutil`.
     `NSUserCancelledError` (3072) and never ran the accessor. The writer gives up after 10 s.
   - **Coordination matches across `/var` and `/private/var`.** A presenter registered at the
     `/var/folders/…` path heard a write coordinated on the `realpath` under `/private/var`.
+- **A clone keeps a locked file's flag, and then nothing can remove it.** Probed 2026-11-09 with
+  `clonefile` on one fixture per case. A file with `uchg` (Finder's Locked box) gave a clone with
+  `uchg`, and `rm` answered "Operation not permitted", so a store that takes such a clone can never
+  evict it. Mode 0444 came across and removed fine, a `deny delete` ACL did not come across, a
+  quarantine attribute did, and mode 000 refused with `EACCES`. `SyncRecordStore` clears the flags and
+  sets 0600 on every kept clone. Neither call breaks the sharing of blocks, since only metadata moves.
+- **Spotlight indexes a copy under Application Support unless a folder above it ends in `.noindex`.**
+  Probed 2026-11-09 with a token in each of three files, each passed to `mdimport`. `notes.txt` and a
+  file named only with a UUID were both found within two seconds, the second despite its `public.data`
+  type. `store.noindex/notes.txt` was not found at all. A store of the user's old text wants that
+  suffix, or the old words go on turning up in Find Files and Recents after the file has lost them.
 
 ### shasum, md5sum and the checksum-file formats
 
