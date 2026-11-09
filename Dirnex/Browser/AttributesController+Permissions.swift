@@ -60,13 +60,6 @@ extension AttributesController {
                 view: makePermissionGrid()
             ),
             makeModeRow(),
-            AttributeRow.make(
-                label: String(
-                    localized: "Special:",
-                    comment: "Info panel field label: set-uid, set-gid and the sticky bit."
-                ),
-                view: makeSpecialBitsRow()
-            ),
             AttributeRow.separator(),
             AttributeRow.make(
                 label: String(
@@ -148,10 +141,13 @@ extension AttributesController {
             for access in POSIXPermissions.Access.allCases {
                 views.append(accessCheckbox(cls, access))
             }
+            let lastAccess = views.last
+            views.append(makeSpecialBox(under: cls))
             let column = NSStackView(views: views)
             column.orientation = .vertical
             column.alignment = .leading
             column.spacing = 2
+            if let lastAccess { column.setCustomSpacing(8, after: lastAccess) }
             return column
         }
         let grid = NSStackView(views: columns)
@@ -222,38 +218,42 @@ extension AttributesController {
 
     // MARK: - Special bits
 
-    /// Set-UID / Set-GID / Sticky as a row of checkboxes — the other three of the twelve mode bits,
-    /// which the read-only grid hid in a text line. Editable for the owner; a `chown` would clear
-    /// set-uid/gid, but owner editing is a later pass, so nothing here re-orders around it yet.
-    private func makeSpecialBitsRow() -> NSView {
+    /// The special bit that closes `cls`'s column: Set-UID under Owner, Set-GID under Group, Sticky
+    /// under Everyone — the other three of the twelve mode bits, which the read-only grid hid in a
+    /// text line. In the columns rather than a row of their own so they line up in any language.
+    /// Editable for the owner; a `chown` would clear set-uid/gid, but owner editing is a later pass,
+    /// so nothing here re-orders around it yet.
+    private func makeSpecialBox(under cls: POSIXPermissions.Class) -> NSButton {
         let permissions = snapshot.attributes.permissions
-        let setUID = editableCheckbox(
-            title: String(
-                localized: "Set-UID", comment: "Mode special bit 4000, as a checkbox label."
-            ),
-            isOn: permissions.setUserID
-        )
-        setUserIDBox = setUID
-        let setGID = editableCheckbox(
-            title: String(
-                localized: "Set-GID", comment: "Mode special bit 2000, as a checkbox label."
-            ),
-            isOn: permissions.setGroupID
-        )
-        setGroupIDBox = setGID
-        let sticky = editableCheckbox(
-            title: String(
-                localized: "Sticky", comment: "Mode special bit 1000, as a checkbox label."
-            ),
-            isOn: permissions.sticky
-        )
-        stickyBox = sticky
-
-        let row = NSStackView(views: [setUID, setGID, sticky])
-        row.orientation = .horizontal
-        row.alignment = .centerY
-        row.spacing = 20
-        return row
+        switch cls {
+        case .owner:
+            let box = editableCheckbox(
+                title: String(
+                    localized: "Set-UID", comment: "Mode special bit 4000, as a checkbox label."
+                ),
+                isOn: permissions.setUserID
+            )
+            setUserIDBox = box
+            return box
+        case .group:
+            let box = editableCheckbox(
+                title: String(
+                    localized: "Set-GID", comment: "Mode special bit 2000, as a checkbox label."
+                ),
+                isOn: permissions.setGroupID
+            )
+            setGroupIDBox = box
+            return box
+        case .other:
+            let box = editableCheckbox(
+                title: String(
+                    localized: "Sticky", comment: "Mode special bit 1000, as a checkbox label."
+                ),
+                isOn: permissions.sticky
+            )
+            stickyBox = box
+            return box
+        }
     }
 
     // MARK: - Flags

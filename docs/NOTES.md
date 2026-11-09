@@ -4611,6 +4611,11 @@ and hands its English over as data. `LocalizedCatalog` is the join, `L10n` its o
   shell. Also: `NSButtonCell.titleRect(forBounds:)` is not a usable measure for a borderless button
   — it returns the bounds unchanged (no reserved padding) and returns **zero width** on an early
   layout pass.
+- **Two rows can line up in English by luck, and a test that measures them passes.** Seen 2026-11-10 on
+  Get Info's special bits, a row of their own under the mode grid: "Set-UID" and "Execute" are both
+  73 pt wide, so Set-GID stood exactly under Group, and a position check passed on the layout it was
+  written to reject. In Russian "Выполнение" is 103 pt and the same row is about 30 pt off by the
+  third column. Put the two in one stack and ask whether they share it, which holds in any language.
 - **A fixed-width label column clips a longer translation.** The pack sheet laid its `Name:` /
   `Format:` captions in a hardcoded 48 pt right-aligned column that the English fit and Russian
   «Формат:» did not — the "т:" was simply cut, invisible in an English screenshot and at build time.
