@@ -47,6 +47,15 @@ public struct SyncRecordStore: Sendable {
         return SyncRecord(pair: pair, directory: directory, versions: manifest.versions)
     }
 
+    /// Whether the user has asked to remember this pair, without reading what it holds: the
+    /// answer a window needs as it opens. A record that turns out to be damaged reads as none
+    /// through ``record(for:)``, and ``purge()`` clears it at the next launch.
+    public func isRemembered(_ pair: SyncRecordPair) -> Bool {
+        FileManager.default.fileExists(
+            atPath: directory(of: pair).appendingPathComponent(Self.recordName).path
+        )
+    }
+
     /// Start keeping versions for this pair. One already remembered keeps what it has.
     public func remember(_ pair: SyncRecordPair) throws {
         guard record(for: pair) == nil else { return }

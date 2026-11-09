@@ -252,3 +252,128 @@ struct SyncRecordHistoryTests {
         }
     }
 }
+
+/// What the Synchronize window asks of a record for its rows (PLAN.md §M37 Slice 8).
+@Suite("SyncRecord, for a window's rows")
+struct SyncRecordRowsTests {
+    @Test("rows with a version are answered, and the rest are not")
+    func changesOfRows() throws {
+        let fixture = try SyncRecordFixture()
+        defer { fixture.cleanup() }
+        try fixture.writeBoth("both.txt", "kept\n")
+        try fixture.writeBoth("left.txt", "kept\n")
+        try fixture.keep()
+        try fixture.writeLeft("both.txt", "mine\n")
+        try fixture.writeRight("both.txt", "theirs\n")
+        try fixture.writeLeft("left.txt", "mine\n")
+        try fixture.writeBoth("new.txt", "no version\n")
+        try fixture.writeLeft("only.txt", "one side\n")
+
+        let rows = try DirectorySync.survey(
+            left: fixture.tree.vfsPath("L"),
+            right: fixture.tree.vfsPath("R"),
+            leftBackend: fixture.backend,
+            rightBackend: fixture.backend
+        )
+        let record = try fixture.record
+        let answers = try record.changes(of: rows)
+        let base = try #require(record.keptFile(for: "both.txt"))
+        #expect(answers == ["both.txt": .changedOnBoth(base: base), "left.txt": .changedOnLeft])
+    }
+
+    @Test("a file with a version that has since become a link has no answer")
+    func becameALink() throws {
+        let fixture = try SyncRecordFixture()
+        defer { fixture.cleanup() }
+        try fixture.writeBoth("a.txt", "kept\n")
+        try fixture.keep()
+        try FileManager.default.removeItem(at: fixture.left("a.txt"))
+        try fixture.tree.symlink("L/a.txt", to: "../R/a.txt")
+
+        let rows = try DirectorySync.survey(
+            left: fixture.tree.vfsPath("L"),
+            right: fixture.tree.vfsPath("R"),
+            leftBackend: fixture.backend,
+            rightBackend: fixture.backend
+        )
+        #expect(try fixture.record.changes(of: rows).isEmpty)
+    }
+
+    @Test("a stop is passed on")
+    func stopIsPassedOn() throws {
+        let fixture = try SyncRecordFixture()
+        defer { fixture.cleanup() }
+        try fixture.writeBoth("a.txt", "kept\n")
+        try fixture.keep()
+        let rows = try DirectorySync.survey(
+            left: fixture.tree.vfsPath("L"),
+            right: fixture.tree.vfsPath("R"),
+            leftBackend: fixture.backend,
+            rightBackend: fixture.backend
+        )
+        let record = try fixture.record
+        #expect(throws: CancellationError.self) {
+            try record.changes(of: rows, isCancelled: { true })
+        }
+    }
+
+    @Test("only a file changed differently on both sides has a merge base")
+    func mergeBase() {
+        let base = URL(fileURLWithPath: "/base")
+        #expect(SyncChange.changedOnBoth(base: base).mergeBase == base)
+        for other: SyncChange in [
+            .noVersion,
+            .unchanged,
+            .changedOnLeft,
+            .changedOnRight,
+            .changedAlike,
+            .unreadable
+        ] {
+            #expect(other.mergeBase == nil)
+        }
+    }
+
+    @Test(
+        "Both Directions leaves a file changed on both sides for a merge, and a mirror still copies"
+    )
+    func defaultAction() {
+        let both = SyncChange.changedOnBoth(base: URL(fileURLWithPath: "/base"))
+        #expect(
+            DirectorySync.defaultAction(for: .leftNewer, direction: .bidirectional, change: both) == .conflict
+        )
+        #expect(
+            DirectorySync.defaultAction(for: .rightNewer, direction: .bidirectional, change: both) == .conflict
+        )
+        #expect(
+            DirectorySync.defaultAction(for: .leftNewer, direction: .rightToLeft, change: both) == .copyToLeft
+        )
+        #expect(
+            DirectorySync.defaultAction(for: .rightNewer, direction: .leftToRight, change: both) == .copyToRight
+        )
+    }
+
+    @Test("what the record cannot say leaves the direction's default alone")
+    func noClaimNoOverride() {
+        for change: SyncChange? in [
+            nil,
+            .noVersion,
+            .unchanged,
+            .changedOnLeft,
+            .changedAlike,
+            .unreadable
+        ] {
+            for status: SyncStatus in [.leftNewer, .rightNewer, .differ, .leftOnly, .typeMismatch] {
+                for direction: SyncDirection in [.leftToRight, .bidirectional, .rightToLeft] {
+                    #expect(
+                        DirectorySync.defaultAction(
+                            for: status,
+                            direction: direction,
+                            change: change
+                        )
+                            == DirectorySync.defaultAction(for: status, direction: direction)
+                    )
+                }
+            }
+        }
+    }
+}

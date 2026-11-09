@@ -163,6 +163,11 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   iCloud-only clip it was there to test. The same button clicked by window coordinate went through as
   an `AXPress` on "Cancel all". Click anything that is updating by coordinate, and read the tool's own
   report of what it pressed before trusting the result.
+  - **A window's title-bar buttons are not at fixed indexes.** Seen 2026-11-09: the zoom control is
+    listed `AXZoomButton` on one capture and `AXFullScreenButton` on the next, after Close, at a number
+    that moves when Show Base adds a pane's elements. A click on the index read from an earlier capture
+    took a merge window full screen on Oleg's display. `app_menu` with Window ▸ Close Window closes the
+    key window with no index at all.
 - **Fully quit a running Dirnex before relaunching.** `open` re-focuses the stale process, so
   new menu items and behavior silently don't appear. A Debug build's code lives in
   `Dirnex.debug.dylib`, not the thin executable — grep the dylib to confirm new code actually

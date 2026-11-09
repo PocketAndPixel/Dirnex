@@ -8729,6 +8729,10 @@ against a second APFS volume from `hdiutil`.
     `NSUserCancelledError` (3072) and never ran the accessor. The writer gives up after 10 s.
   - **Coordination matches across `/var` and `/private/var`.** A presenter registered at the
     `/var/folders/…` path heard a write coordinated on the `realpath` under `/private/var`.
+- **One gesture that writes two files has to ask the undo store twice.** `ArchiveUndoBudget.plan`
+  evicts any snapshot the journal does not name, so a second capture given the `live` list taken
+  before the first would remove the first file's copy, and its ⌘Z would then have nothing to restore
+  (PLAN.md §M37 Slice 8). Journal the first save, then ask for `live` again.
 - **A clone keeps a locked file's flag, and then nothing can remove it.** Probed 2026-11-09 with
   `clonefile` on one fixture per case. A file with `uchg` (Finder's Locked box) gave a clone with
   `uchg`, and `rm` answered "Operation not permitted", so a store that takes such a clone can never

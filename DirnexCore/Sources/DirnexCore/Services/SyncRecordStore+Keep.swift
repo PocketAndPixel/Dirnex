@@ -11,7 +11,12 @@ public struct SyncKeepReport: Sendable, Equatable {
     /// Files that did not fit the budget.
     public internal(set) var overBudget = 0
 
-    public init() {}
+    public init(kept: Int = 0, notEqual: Int = 0, notKeepable: Int = 0, overBudget: Int = 0) {
+        self.kept = kept
+        self.notEqual = notEqual
+        self.notKeepable = notKeepable
+        self.overBudget = overBudget
+    }
 }
 
 /// Keeping what a sync left equal (PLAN.md §M37 Slice 7).
@@ -57,29 +62,98 @@ public extension SyncRecordStore {
             vaultMountPoints: vaultMountPoints,
             report: &report
         )
-        let admitted = zip(candidates, budget.admitted(candidates.map(\.byteSize))).compactMap { $1 ? $0 : nil }
-        report.overBudget = candidates.count - admitted.count
-        try makeRoom(for: admitted, in: before)
+        try run(
+            candidates,
+            from: before,
+            rows: rows,
+            date: date,
+            report: &report,
+            isCancelled: isCancelled
+        )
+        return report
+    }
 
-        // Read again: making room may have taken some of this pair's own.
-        guard let record = record(for: pair) else { return report }
-        var pass = Pass(record: record, date: date)
-        for candidate in admitted where !isCancelled() {
-            pass.keep(candidate, report: &report, isCancelled: isCancelled)
+    /// Keep a version of the one file at `relativePath`, which both sides have just been made to
+    /// hold: a merge saved into both (PLAN.md §M37 Slice 8). Proved as a pass proves it, and no
+    /// other file is read. Blocking; call it off the main thread.
+    ///
+    /// Does nothing for a pair the user has not asked to remember, and throws what writing the record
+    /// throws.
+    func keep(
+        relativePath: String,
+        left: URL,
+        right: URL,
+        for pair: SyncRecordPair,
+        vaultMountPoints: [String] = [],
+        date: Date = Date()
+    ) throws -> SyncKeepReport {
+        guard let before = record(for: pair) else { return SyncKeepReport() }
+        var report = SyncKeepReport()
+        guard let size = EditedFileRevision.current(ofFileAt: left.path)?.byteSize,
+              Self.isKeepable(
+                  .local(left.path),
+                  .local(right.path),
+                  vaultMountPoints: vaultMountPoints
+              )
+        else {
+            report.notKeepable = 1
+            return report
         }
-        pass.forgetVanished(given: rows)
-        do {
-            try write(Manifest(pair: pair, versions: pass.versions), to: directory(of: pair))
-        } catch {
-            pass.removeWritten()
-            throw error
-        }
-        pass.removeReplaced()
+        let candidate = Candidate(
+            relativePath: relativePath,
+            left: left,
+            right: right,
+            byteSize: size
+        )
+        try run(
+            [candidate],
+            from: before,
+            rows: nil,
+            date: date,
+            report: &report,
+            isCancelled: { false }
+        )
         return report
     }
 }
 
 extension SyncRecordStore {
+    // One past SwiftLint's ceiling, and `rows` is the argument: its absence is what tells the two
+    // entry points apart.
+    // swiftlint:disable function_parameter_count
+
+    /// Keep what fits of `candidates` and write the record. `rows` is a whole walk of the pair, whose
+    /// absences say what has gone from both sides, or `nil` when only these files were looked at.
+    fileprivate func run(
+        _ candidates: [Candidate],
+        from before: SyncRecord,
+        rows: [SyncEntry]?,
+        date: Date,
+        report: inout SyncKeepReport,
+        isCancelled: () -> Bool
+    ) throws {
+        let admitted = zip(candidates, budget.admitted(candidates.map(\.byteSize))).compactMap { $1 ? $0 : nil }
+        report.overBudget = candidates.count - admitted.count
+        try makeRoom(for: admitted, in: before)
+
+        // Read again: making room may have taken some of this pair's own.
+        guard let record = record(for: before.pair) else { return }
+        var pass = Pass(record: record, date: date)
+        for candidate in admitted where !isCancelled() {
+            pass.keep(candidate, report: &report, isCancelled: isCancelled)
+        }
+        if let rows { pass.forgetVanished(given: rows) }
+        do {
+            try write(Manifest(pair: record.pair, versions: pass.versions), to: record.directory)
+        } catch {
+            pass.removeWritten()
+            throw error
+        }
+        pass.removeReplaced()
+    }
+
+    // swiftlint:enable function_parameter_count
+
     /// A file both sides hold, worth trying to keep.
     struct Candidate {
         let relativePath: String
@@ -91,7 +165,7 @@ extension SyncRecordStore {
     /// The rows worth keeping, by what can be told without reading them whole.
     ///
     /// Anything but a file on both sides is no concern of a merge and is not counted.
-    private static func candidates(
+    fileprivate static func candidates(
         in rows: [SyncEntry],
         vaultMountPoints: [String],
         report: inout SyncKeepReport
@@ -122,7 +196,7 @@ extension SyncRecordStore {
     /// The placeholder is asked about first, since sniffing the file for text is a read and a read
     /// of an evicted file downloads it. One side's text is enough: a version is kept only if the two
     /// are then found equal.
-    private static func isKeepable(_ left: VFSPath, _ right: VFSPath, vaultMountPoints: [String]) -> Bool {
+    fileprivate static func isKeepable(_ left: VFSPath, _ right: VFSPath, vaultMountPoints: [String]) -> Bool {
         guard !VaultPrivacy.isInside(left, mountPoints: vaultMountPoints),
               !VaultPrivacy.isInside(right, mountPoints: vaultMountPoints),
               let leftSubject = try? ByteComparator.subject(left),

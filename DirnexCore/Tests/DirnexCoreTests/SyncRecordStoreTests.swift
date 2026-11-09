@@ -85,6 +85,17 @@ struct SyncRecordStoreTests {
         #expect(record.versions.isEmpty)
     }
 
+    @Test("whether a pair is remembered can be asked without reading its record")
+    func isRemembered() throws {
+        let fixture = try SyncRecordFixture(remembering: false)
+        defer { fixture.cleanup() }
+        #expect(!fixture.store.isRemembered(fixture.pair))
+        try fixture.store.remember(fixture.pair)
+        #expect(fixture.store.isRemembered(fixture.pair))
+        fixture.store.forget(fixture.pair)
+        #expect(!fixture.store.isRemembered(fixture.pair))
+    }
+
     @Test("a pair nobody asked to remember keeps nothing, and writes nothing")
     func nothingUnasked() throws {
         let fixture = try SyncRecordFixture(remembering: false)

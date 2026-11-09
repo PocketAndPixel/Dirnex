@@ -655,6 +655,7 @@ the agent and adds a last-opened date, and it names a Live Photo's movie `.mov` 
 | Merge a file changed under an `F4` edit, on the server or in its archive (Merge… in the save's question)<sup>www</sup> | n/a | n/a | yes, limited<sup>zzz</sup> | yes, limited<sup>www</sup> | yes, limited<sup>www</sup> | yes | yes | n/a | no<sup>jjj</sup> | yes | n/a |
 | Resolve a git conflict (Resolve Conflict… on a file badged U, or as `git mergetool`'s tool)<sup>xxx</sup> | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
 | Synchronize Directories | yes | yes | **no**<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | yes, limited<sup>x</sup> | n/a | yes, limited<sup>x</sup> | n/a<sup>x</sup> | n/a<sup>x</sup> |
+| Keep synced versions of text files, and merge a file changed on both sides (Merge… on a Synchronize row)<sup>aam</sup> | yes | yes, limited<sup>aam</sup> | n/a | **no**<sup>aam</sup> | **no**<sup>aam</sup> | **no**<sup>aam</sup> | **no**<sup>aam</sup> | n/a | **no**<sup>aam</sup> | n/a | n/a |
 | Browse *into* an archive file | yes | yes | yes | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | read-only<sup>y</sup> | n/a | n/a | yes | yes |
 
 <sup>r</sup> The member is extracted to a temp file first; only the **cursor's** member is ever
@@ -778,6 +779,16 @@ reaches the same window through `Dirnex --git-merge`, once Settings ▸ Operatio
 alone and keeps no undo copy. A saved window answers 0, which stages the file, and anything else
 answers 1. git itself handles a deletion or a link and never calls the tool for one; a binary file
 and a version over 64 MiB are refused as above.
+
+<sup>aam</sup> A box in the Synchronize window, off by default and per pair of folders (PLAN.md §M37
+Slices 7 and 8). After the sync, each text file of up to 64 MiB that both sides hold is kept once a
+byte comparison finds the two equal, under 5 GiB across every pair with the oldest dropped first, in
+a folder Spotlight and Time Machine skip. A later scan marks a file whose bytes moved on differently
+on each side. Both Directions leaves such a row unticked, a mirror keeps its copy, and Merge… on the
+row opens the merge window over the kept version. Save writes the result into both files, and it
+becomes the kept version. **A side on a server has no record**, since each version is proved against
+both sides' bytes, which would download every text file on every sync (PLAN.md §M38). Nothing inside
+a vault is kept, and an evicted cloud placeholder is neither kept nor read to say what changed.
 
 <sup>x</sup> A side stopped having to be on this disk at PLAN.md §M25 Slice 5c, and what it gains is
 comparison by **size**, which is honest anywhere. Comparing by **timestamp** is withdrawn the moment

@@ -231,13 +231,13 @@ extension BrowserWindowController {
     }
 
     func presentMergeFailure(_ name: String, detail: String, over host: NSWindow?) {
-        presentWriteBackFailure(
-            message: String(
-                localized: "Couldn’t merge “\(name)”",
-                comment: "Alert title when the merge of a server file with its edit can't open; %@ is the name."
-            ),
-            detail: detail,
-            over: host
+        presentWriteBackFailure(message: Self.mergeFailureTitle(name), detail: detail, over: host)
+    }
+
+    static func mergeFailureTitle(_ name: String) -> String {
+        String(
+            localized: "Couldn’t merge “\(name)”",
+            comment: "Alert title when the merge of a server file with its edit can't open; %@ is the name."
         )
     }
 
