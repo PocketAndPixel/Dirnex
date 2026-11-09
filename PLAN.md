@@ -609,6 +609,56 @@ whitespace, which keeps both edits.
 - **Left open:** a Save after ⌃C writes `$MERGED` with nothing waiting on it, so git has moved on and the file
   stays unstaged.
 
+**2026-11-09: Slice 7 landed** (core only; the app is untouched). What a sync left equal can be kept, and a later
+look says which side moved on from it.
+
+- **Probed first**, on this Mac:
+  - `clonefile` keeps a locked file's `uchg`, and `rm` then refuses the clone, so a store could never evict it.
+    Mode 0444 comes across and removes fine, a `deny delete` ACL does not come across, and mode 000 refuses.
+  - Spotlight found a token in a file under Application Support within two seconds, even under a name with no
+    extension. In a folder ending `.noindex` it found nothing, even through `mdimport`.
+  - This repository with its build products and worktrees holds 71 945 text files of up to 64 MiB, 1.7 GiB: 6 s to
+    clone them and 14 s to compare each clone with its file. No file had a NUL past the first 8 KiB, so the sniff
+    the compare window already uses is enough here, and 13 did not decode, which a merge's own read refuses.
+- **Decided with Oleg before writing it: local pairs only.** A pair with a side on a server has no record. A
+  version is proved against both sides' bytes, which would download every text file on every sync, and no server
+  listing has a clock that can say what changed. It went to M38 with that reason.
+- **Core:**
+  - `SyncRecordPair` is the one definition of which pairs can have a record. It answers `nil` for a server side, a
+    folder with itself and a side inside a vault, and has no direction, so swapping the panes finds the same record.
+  - `SyncRecordStore` keeps one folder per pair under `SyncRecords.noindex`, excluded from backups. A record's
+    existence is the user's yes: `remember` and `forget` are the checkbox, and `keep` does nothing without one.
+    `purge` is for launch.
+  - `keep` walks the two folders as they now stand, and clones each text file of up to 64 MiB that both hold. The
+    clone is what gets compared with the other side, so a write during the comparison leaves nothing kept. Flags
+    are cleared and the mode set to 0600 on every clone. A version that still holds both sides' bytes is confirmed
+    rather than copied again. A file the sides disagree on keeps the version they last agreed on.
+  - `SyncRecordBudget` is 5 GiB across every pair, oldest dropped first, with ties settled by the file's identifier.
+  - `SyncRecord.change` says which side changed since, by bytes alone: `unchanged`, `changedOnLeft`,
+    `changedOnRight`, `changedAlike`, `changedOnBoth(base:)`, `noVersion` or `unreadable`. A `touch` is no change, and
+    an edit that kept the date and the size is one.
+- **Tests:** 65 in 8 suites, over real files. Forty random histories check every kept version and every answer
+  against a plain model, one test takes the milestone's sentence through `TextMerge` with both edits in the result,
+  and a stop is tried at every moment of a pass. Full run: 5 079 core tests. The app builds, and its suite was not run,
+  since no app file changed.
+- **Negative controls:** 60 faults, one at a time. 54 failed at once. Six passed, and each was a gap, now closed and
+  failing by name: a replaced version counted against the budget, because the test's dates spared the other record;
+  confirming a version against one side only; a stop counted as a failed file; a failed file not counted; a stop not
+  heard between files; and removing the replaced versions before the record is written.
+- **Run on real pairs**, through the real store in a release build, with `/usr/bin/cmp` as the judge:
+
+  | Pair | First pass | Second, nothing changed | After edits | Versions | `cmp` |
+  |---|---|---|---|---|---|
+  | Same volume, 29 246 files, 1.7 GiB | 9.5 s | 4.2 s | 5.5 s | 12 504 (262 MiB) | 4 168 checked against both sides, 0 differ |
+  | Store on another APFS volume, a real copy each | 0.38 s | 0.10 s | 0.12 s | 563, a locked file among them | 282 checked, 0 differ |
+
+  One edit of each kind on each pair gave the right answer, and the two-sided edit held its old version through the
+  next pass. Forget emptied both stores.
+- **Not checked:** a real evicted placeholder, whose flag no test can set, so the decision is pinned through
+  `ComparisonSubject`; and two windows syncing one pair at once, which the design leaves reading as no version.
+- **For Slice 8:** nothing in the app calls this yet. It needs the store's parent (Application Support), `purge` at
+  launch, the vault mount points, `keep` when the sync's queue jobs have finished, and `change` for a row on both sides.
+
 #### M38 — Remote: what M8, M22, M24, M25 and M32 left (M–L)
 
 - **Owner and group in a remote Get Info** (M25). `chown` and `chgrp` take a numeric id, while
@@ -634,6 +684,10 @@ whitespace, which keeps both edits.
   Mac's `curl` was built with both. OAuth needs a sign-in flow and somewhere to keep the token first.
 - **WebDAV quota** (M32). Left because the NAS does not report it, so the first question is which
   servers do. The Nextcloud container M32 used is the place to measure.
+- **A sync's record with a side on a server** (M37). Left because a kept version is proved against
+  both sides' bytes, which would download every text file on every sync, and no server listing has a
+  clock that can say what changed. The first question is whether the rows the sync itself copied are
+  proof enough, with Merge… downloading the server's file when it is asked for.
 
 Inherited from M25's risk row (§6): a capability is learned per connection when it is first needed,
 and what cannot be carried is reported rather than approximated. And from M32's: nothing branches on
