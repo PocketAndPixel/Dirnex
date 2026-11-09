@@ -109,6 +109,8 @@ final class PanelViewController: NSViewController {
     var transientStatus: String?
     /// The drag this pane last started that holds a row on a server, for as long as a read may reach it.
     var dragHandoff: RemoteDragHandoffController?
+    /// A remote Get Info is waiting on who the account is, before its panel can open.
+    var isAskingAccountIdentity = false
     /// Bumped by each `showTransientStatus`, so a later message's expiry can't clear an earlier
     /// one's — the same stale-callback guard as `loadToken`.
     var transientStatusToken = 0

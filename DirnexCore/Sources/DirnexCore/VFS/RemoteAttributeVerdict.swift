@@ -34,10 +34,19 @@ public struct RemoteAttributeVerdict: Sendable, Equatable {
     /// What the item carries now, read back after the write. The panel redraws from this rather than
     /// from what it sent, so what is on screen is the server's answer even where it disagrees.
     public let landed: FileEntry
+    /// What `chown` printed when it refused, or `nil` with nothing to quote. Each implementation
+    /// words it differently and only the server knows why, so it is shown as the server's own and
+    /// never read.
+    public let serverWords: String?
 
-    public init(refused: Set<RemoteAttributeField>, landed: FileEntry) {
+    public init(
+        refused: Set<RemoteAttributeField>,
+        landed: FileEntry,
+        serverWords: String? = nil
+    ) {
         self.refused = refused
         self.landed = landed
+        self.serverWords = serverWords
     }
 
     /// Whether everything asked for arrived.
@@ -52,13 +61,33 @@ public struct RemoteAttributeVerdict: Sendable, Equatable {
     ///     ``SFTPBackend/record(_:against:)`` already gives: `sftp` names the failing *path* and not
     ///     the failing attribute, so two steps in one batch produce one indistinguishable line. Over-
     ///     reporting a loss is the safe direction; claiming a write that did not land is not.
+    ///     **A `chown` is the exception**, since it runs alone on its own channel: blaming the mode
+    ///     for it would report a loss on a mode the user never touched, because a set-id item's mode
+    ///     is re-sent with every group change.
     ///   - landed: the item re-read after the write.
     public static func weigh(
         _ change: RemoteAttributeChange,
         refusals: [RemoteMetadataRefusal],
         landed: FileEntry
     ) -> RemoteAttributeVerdict {
-        var refused: Set<RemoteAttributeField> = refusals.isEmpty ? [] : change.fields
+        let chownWords = refusals.compactMap { refusal -> String? in
+            if case let .ownershipRefused(words) = refusal { return words }
+            return nil
+        }
+        let ownership: Set<RemoteAttributeField> = [.owner, .group]
+        var refused: Set<RemoteAttributeField> = []
+        if refusals.count > chownWords.count {
+            var blamed = change.fields.subtracting(ownership)
+            // Beside a `chown` the mode may be only the repair a set-id item needs, so one that
+            // reads back as asked has lost nothing. Seen live on an immutable file, where both
+            // were refused and the alert reported a loss on a mode nobody had touched.
+            if !change.fields.isDisjoint(with: ownership),
+               landed.permissions == change.permissions?.rawValue {
+                blamed.remove(.permissions)
+            }
+            refused.formUnion(blamed)
+        }
+        if !chownWords.isEmpty { refused.formUnion(change.fields.intersection(ownership)) }
         // The read-back, which is the half a clean exit cannot speak for. Only the mode: see the
         // type's own doc for why a listing's timestamp is not an instrument.
         if let asked = change.permissions, landed.permissions != asked.rawValue {
@@ -68,6 +97,10 @@ public struct RemoteAttributeVerdict: Sendable, Equatable {
         // on a server that resolved the name differently still shows up here.
         if let asked = change.owner, !asked.matches(landed.ownerName) { refused.insert(.owner) }
         if let asked = change.group, !asked.matches(landed.groupName) { refused.insert(.group) }
-        return RemoteAttributeVerdict(refused: refused, landed: landed)
+        return RemoteAttributeVerdict(
+            refused: refused,
+            landed: landed,
+            serverWords: chownWords.first { !$0.isEmpty }
+        )
     }
 }

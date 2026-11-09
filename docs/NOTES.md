@@ -6231,6 +6231,16 @@ works, which makes this whole family probeable on any Mac).
   - **`id` is the one question worth asking.** `uid=501(oleg) gid=20(staff) groups=20(staff),12(…)` on
     all three, one line, with the number alone for an id with no name. `getent` does not exist on
     macOS. `LC_ALL=C` because GNU translates the labels.
+  - **`chflags uchg` on a fixture makes a real `chown` refuse, and everything sent beside it.** Seen
+    2026-11-10 in a live Get Info: `chown` printed `Operation not permitted` and the `chmod` re-sent
+    behind it was refused as well, while the mode read back exactly as asked. So beside a `chown` the
+    mode is judged by the read-back alone, or the alert reports a loss on a mode nobody touched
+    (`RemoteAttributeVerdict.weigh`).
+  - **A `ForceCommand` wrapper draws a root account on an ordinary `sshd`.** A script that answers
+    `*"LC_ALL=C id")` with `uid=0(root) gid=0(root) groups=0(root)` and `exec /bin/sh -c
+    "$SSH_ORIGINAL_COMMAND"` otherwise gives the panel its root layout, while every `chown` still runs
+    as the real account, so what is refused is really refused. The `sftp` subsystem goes through the
+    same wrapper and needs nothing more. It cannot show a change only root may make land.
 
 ### curl (FTP and FTPS)
 

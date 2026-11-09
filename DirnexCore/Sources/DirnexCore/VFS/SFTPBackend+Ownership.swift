@@ -44,7 +44,7 @@ extension SFTPBackend {
                 owner: owner,
                 group: group,
                 of: remotePath
-            ) else { return .itemRefused("") }
+            ) else { return .ownershipRefused("") }
             return try SSHOwnershipCommand.refusal(
                 in: transport.runCommand(command, isCancelled: { false })
             )

@@ -51,6 +51,99 @@ struct RemoteOwnershipUndoTests {
         #expect(verdict.refused == [.permissions])
     }
 
+    @Test("a refused chown names the group and not the mode re-sent beside it")
+    func refusedChownLeavesTheModeAlone() {
+        // A set-id item's mode goes out with every group change, so blaming every field the change
+        // set would report a permissions loss on a mode nobody touched and that reads back exact.
+        let verdict = RemoteAttributeVerdict.weigh(
+            RemoteAttributeChange(permissions: POSIXPermissions(rawValue: 0o6755), group: admin),
+            refusals: [.ownershipRefused("chown: you are not a member of group admin")],
+            landed: entry(permissions: 0o6755)
+        )
+        #expect(verdict.refused == [.group])
+        #expect(verdict.serverWords == "chown: you are not a member of group admin")
+    }
+
+    @Test("a refused chmod names the mode and not the group that landed")
+    func refusedChmodLeavesTheOwnershipAlone() {
+        let verdict = RemoteAttributeVerdict.weigh(
+            RemoteAttributeChange(permissions: POSIXPermissions(rawValue: 0o600), group: admin),
+            refusals: [.itemRefused("remote setstat \"/srv/report.txt\": Permission denied")],
+            landed: entry(permissions: 0o644, group: "admin")
+        )
+        #expect(verdict.refused == [.permissions])
+        // Only a `chown`'s words are quoted: this line is the transport's, and is about the path.
+        #expect(verdict.serverWords == nil)
+    }
+
+    @Test("a re-sent mode refused beside a chown, reading back as asked, has lost nothing")
+    func refusedRepairIsNoLoss() {
+        // Seen live on an immutable file: the `chown` and the `chmod` behind it were both refused,
+        // and the mode nobody had touched was reported as not stored.
+        let verdict = RemoteAttributeVerdict.weigh(
+            RemoteAttributeChange(permissions: POSIXPermissions(rawValue: 0o6755), group: admin),
+            refusals: [
+                .ownershipRefused("chown: /srv/report.txt: Operation not permitted"),
+                .itemRefused("Couldn't setstat on \"/srv/report.txt\": Operation not permitted")
+            ],
+            landed: entry(permissions: 0o6755)
+        )
+        #expect(verdict.refused == [.group])
+    }
+
+    @Test("a mode beside a chown that did not land is still reported")
+    func refusedModeBesideAChownIsReported() {
+        // The narrowness half: the read-back decides, so a mode that really did not arrive is named.
+        let verdict = RemoteAttributeVerdict.weigh(
+            RemoteAttributeChange(permissions: POSIXPermissions(rawValue: 0o600), group: admin),
+            refusals: [
+                .ownershipRefused("chown: /srv/report.txt: Operation not permitted"),
+                .itemRefused("Couldn't setstat on \"/srv/report.txt\": Operation not permitted")
+            ],
+            landed: entry(permissions: 0o644)
+        )
+        #expect(verdict.refused == [.group, .permissions])
+    }
+
+    @Test("a chown that printed nothing leaves nothing to quote")
+    func emptyRefusalHasNoWords() {
+        let verdict = RemoteAttributeVerdict.weigh(
+            RemoteAttributeChange(group: admin),
+            refusals: [.ownershipRefused("")],
+            landed: entry()
+        )
+        #expect(verdict.refused == [.group])
+        #expect(verdict.serverWords == nil)
+    }
+
+    // MARK: - What to offer
+
+    @Test("an item in the account's own group offers the account's groups as they are")
+    func ownGroupOffersTheList() throws {
+        let identity = try RemoteOwnershipFixture.identity()
+        #expect(identity.groupChoices(listed: "admin") == identity.groups)
+    }
+
+    @Test("an item's group outside the account's still leads the list")
+    func strangerGroupLeadsTheList() throws {
+        let identity = try RemoteOwnershipFixture.identity()
+        let choices = identity.groupChoices(listed: "wheel")
+        #expect(choices.first == RemotePrincipal(name: "wheel"))
+        #expect(Array(choices.dropFirst()) == identity.groups)
+    }
+
+    @Test("a listing's number is the group it stands for, and adds nothing")
+    func numberMatchesItsGroup() throws {
+        let identity = try RemoteOwnershipFixture.identity()
+        #expect(identity.groupChoices(listed: "80") == identity.groups)
+    }
+
+    @Test("a listing with no group offers the account's")
+    func noListedGroup() throws {
+        let identity = try RemoteOwnershipFixture.identity()
+        #expect(identity.groupChoices(listed: nil) == identity.groups)
+    }
+
     // MARK: - Undo
 
     private func undo(
@@ -105,7 +198,7 @@ struct RemoteOwnershipUndoTests {
         #expect(undo(
             from: entry(),
             asked: RemoteAttributeChange(group: admin),
-            refusals: [.itemRefused("chown: nosuch: illegal group name")],
+            refusals: [.ownershipRefused("chown: nosuch: illegal group name")],
             landed: entry()
         ) == nil)
     }
