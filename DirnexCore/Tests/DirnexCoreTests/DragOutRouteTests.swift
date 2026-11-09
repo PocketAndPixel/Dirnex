@@ -94,18 +94,19 @@ struct DragOutRouteTests {
         #expect(file == .fileURL)
         #expect(!file.isPromised)
         #expect(!file.isHandedOff)
-        #expect(!file.zipsForOtherApps)
+        #expect(!file.zipsWithShift)
     }
 
-    /// Gmail answers "Attachment failed" for a folder dropped from Chrome, so every app but Finder
-    /// is handed a zip of one (2026-11-08). Finder still takes the folder by its own URL.
-    @Test("a folder on this disk offers its URL to Finder and a zip to any other app")
+    /// Gmail answers "Attachment failed" for a folder dropped from Chrome (2026-11-08), and VLC takes
+    /// the folder where a zip is no use (2026-11-09), so a folder goes by its own URL to every app and
+    /// as a zip of itself to any app but Finder while Shift is held.
+    @Test("a folder on this disk offers its URL to every app, and a zip with Shift")
     func localFolderIsZippedForOtherApps() {
         let folder = route(entry(.local("/tmp/dir"), kind: .directory))
         #expect(folder == .folderURL)
         #expect(!folder.isPromised)
         #expect(folder.isHandedOff)
-        #expect(folder.zipsForOtherApps)
+        #expect(folder.zipsWithShift)
         // A link to a folder is still a link: its own URL, as before.
         #expect(route(entry(.local("/tmp/link"), kind: .symlink)) == .fileURL)
     }
@@ -123,8 +124,8 @@ struct DragOutRouteTests {
     // MARK: - A folder on a server, the row Slice 3 adds
 
     /// Decision B, 2026-11-08: Finder is promised the folder and the queue stages it. Any other app
-    /// is handed a zip of it, as a folder on this disk is.
-    @Test("a folder on a server is promised to Finder and zipped for any other app")
+    /// is handed the staged tree, or a zip of it with Shift, as a folder on this disk is.
+    @Test("a folder on a server is promised to Finder, and handed to other apps, zipped with Shift")
     func serverFolderIsPromisedToFinderAndZippedForOthers() {
         let backends = [
             sftp,
@@ -139,7 +140,7 @@ struct DragOutRouteTests {
             #expect(folder == .downloadFolder, "\(backend.rawValue)")
             #expect(folder.isPromised)
             #expect(folder.isHandedOff)
-            #expect(folder.zipsForOtherApps)
+            #expect(folder.zipsWithShift)
         }
     }
 
@@ -167,9 +168,9 @@ struct DragOutRouteTests {
         #expect(DragOutRoute.folderURL.isHandedOff)
         #expect(!DragOutRoute.fileURL.isHandedOff)
         #expect(!DragOutRoute.insideDirnexOnly(.lockedArchive).isHandedOff)
-        #expect(!DragOutRoute.insideDirnexOnly(.folder).zipsForOtherApps)
-        #expect(!DragOutRoute.download.zipsForOtherApps)
-        #expect(!DragOutRoute.extract.zipsForOtherApps)
+        #expect(!DragOutRoute.insideDirnexOnly(.folder).zipsWithShift)
+        #expect(!DragOutRoute.download.zipsWithShift)
+        #expect(!DragOutRoute.extract.zipsWithShift)
     }
 
     @Test("a folder's zip is named after it, as a pack of one folder is")

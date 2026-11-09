@@ -217,10 +217,11 @@ struct FolderDragOutTests {
 
     // MARK: - Every other app
 
-    /// Slice 3 left the folder out for other apps; since 2026-11-08 it is offered as a zip of itself,
-    /// beside the file (`FolderZipHandoffTests` stages and zips one for real). Nothing is read here,
-    /// because this backend cannot stage a folder and the board answers for all of its rows or none.
-    @Test("over another app a folder beside a file is offered too, to be zipped")
+    /// Slice 3 left the folder out for other apps; since 2026-11-08 it is offered too, beside the file,
+    /// as its staged tree and as a zip of that while Shift is held (`FolderZipHandoffTests` stages and
+    /// zips one for real). Nothing is read here, because this backend cannot stage a folder and the
+    /// board answers for all of its rows or none.
+    @Test("over another app a folder beside a file is offered too, to be staged")
     func handoffOffersTheFolderToo() async throws {
         let file = Fixture.entry("report.pdf")
         let dir = FileEntry(
@@ -261,7 +262,7 @@ struct FolderDragOutTests {
         #expect(items.count == 2)
         #expect(items[0].types.contains(.fileURL))
         #expect(items[1].types.contains(.fileURL))
-        #expect(controller.makesZips)
+        #expect(controller.stagesFolders)
         // Both rows still drop back inside Dirnex on their payloads.
         #expect(PanelPasteboard.payloads(in: board).map(\.path) == [file.path, dir.path])
         controller.dragEnded(mayFinish: false)

@@ -4,8 +4,9 @@ import DirnexCore
 /// The line drawn under a dragged row while its bytes come down.
 ///
 /// On the drag image because that is the one thing still in front of somebody holding a drag over
-/// another app. It says what the receiving app cannot: that the file is on its way, and, when that app
-/// has already been told there was nothing, that it has to be left and come back to.
+/// another app. It says what the receiving app cannot: that the file is on its way, when that app
+/// has already been told there was nothing, that it has to be left and come back to, and over an app
+/// that may want a folder zipped, that entering it with ⇧ held makes the zip.
 @MainActor
 final class RemoteDragStatus {
     private let session: NSDraggingSession
@@ -124,6 +125,43 @@ final class RemoteDragStatus {
             comment: """
             Under a folder being dragged to another app, while Dirnex makes the zip that app is \
             handed in the folder's place.
+            """
+        )
+    }
+
+    /// Under a folder over an app, while it goes as itself: how to send its zip instead (2026-11-09).
+    /// Nothing tells a drag which an app wants, so the user chooses, and the key counts as the pointer
+    /// enters, which is what Teams and Chrome drop.
+    static var holdShiftAndReenter: String {
+        String(
+            localized: "Hold ⇧ and re-enter for a zip",
+            comment: """
+            Under a folder being dragged over another app, which gets the folder itself: moving out of \
+            that app's window and back in with the Shift key (⇧) held hands it a zip of the folder \
+            instead.
+            """
+        )
+    }
+
+    /// Under a folder over an app once ⇧ has changed since the pointer entered it, which that app only
+    /// sees on the next entry.
+    static var moveOutAndBackIn: String {
+        String(
+            localized: "Now move out and back in",
+            comment: """
+            Under a folder being dragged over another app, after the Shift key was pressed or let go: \
+            the app only notices once the pointer leaves its window and comes back.
+            """
+        )
+    }
+
+    /// Under a folder over an app the pointer entered with Shift held, once its zip is made.
+    static var asZip: String {
+        String(
+            localized: "As a zip",
+            comment: """
+            Under a folder being dragged to another app with the Shift key held: that app gets a zip \
+            of the folder rather than the folder itself.
             """
         )
     }

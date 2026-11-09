@@ -10,8 +10,8 @@ final class RemoteDragTransferOutcome: @unchecked Sendable {
         /// Members extracted out of an archive, which no cache adopts: `ArchivePreviewCache` keeps
         /// what it extracted itself, and these sit in the extractor's temp root until next launch.
         let extracted: [VFSPath: URL]
-        /// Folders made into zips, with a server folder's staged tree beside its zip (`DragOutZip`).
-        let zipped: [DragOutZip.Made]
+        /// A server's folders brought down whole, each in a directory of its own under the temp root.
+        let staged: [VFSPath: URL]
         let error: (any Error)?
     }
 
@@ -31,12 +31,12 @@ final class RemoteDragTransferOutcome: @unchecked Sendable {
     }
 }
 
-/// What the transfer is doing now, written by its thread and read when the status is drawn.
+/// What the transfer is doing now, written by its thread and read when the status is drawn. A zip is
+/// made after the transfer, so the handoff's own state says when that is under way.
 final class RemoteDragPhaseBox: @unchecked Sendable {
     enum Phase: Sendable {
         case downloading
         case extracting
-        case compressing
     }
 
     private let lock = NSLock()
@@ -73,10 +73,16 @@ struct DragOutOffer {
         routes.values.contains(.insideDirnexOnly(.lockedArchive))
     }
 
-    /// Whether Finder is offered something other than every other app is: a folder, which is itself
-    /// for Finder and a zip for the rest (`RemoteDragHandoff.init(finderHasItsOwnBoard:)`).
-    var finderHasItsOwnBoard: Bool {
-        routes.values.contains(where: \.zipsForOtherApps)
+    /// Whether a row is a folder, which goes to an app the pointer enters with Shift held as a zip
+    /// (`RemoteDragHandoff.Form`).
+    var holdsFolders: Bool {
+        routes.values.contains(where: \.zipsWithShift)
+    }
+
+    /// Whether a row went out as a promise, which an app other than Finder cannot read. Without one the
+    /// board the drag began with serves every app, as long as each folder goes as itself.
+    var beganWithPromises: Bool {
+        routes.values.contains(where: \.isPromised)
     }
 
     /// What a drag offered before archive members could go out: every file on a server, from the

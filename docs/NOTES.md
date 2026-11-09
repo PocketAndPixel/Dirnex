@@ -4200,6 +4200,31 @@ Measured 2026-11-08 for M37's byte view, whose table has a row for every 16 byte
   the plain folder URL as it entered Finder, dropped the **folder** into Finder with operation 1.
   - **`bsdtar` zips a folder fast enough to sit inside the 3 s hold.** Measured the same day: 3 MB of
     docs in 0.13 s, 551 files and 11 MB of source in 0.29 s, 200 MB of random bytes in 2.66 s.
+  - **And VLC takes the folder, so the zip is behind ⇧ since 2026-11-09.** Seen by Oleg: a season
+    dragged off the SMB share to VLC started compressing, a 141 GB folder read over the network for a
+    zip VLC had no use for. No app says which it wants, so the folder goes as itself and entering any
+    app with ⇧ held, Finder included, asks for the zip (`RemoteDragHandoff.Form`). The apps' own `Info.plist` was
+    looked at first and dropped: VLC, VS Code, Terminal, Preview, Notes, Mail and Claude declare a folder
+    type and Chrome, Teams and Safari do not, but Gmail and Google Drive are one app, and a list keyed
+    by app would still need adapting app by app.
+- **A drag tells its source nothing when only a modifier changes, so ⇧ has to be polled.** Measured
+  2026-11-09 with a throwaway drag source: two ⇧ presses with the pointer at rest brought no
+  `draggingSession(_:movedTo:)` call, the source's `sourceOperationMaskFor` was not asked again, and a
+  local `.flagsChanged` monitor that saw both presses outside a drag saw nothing during one. A 10 ms
+  `Timer` in `.common` read `NSEvent.modifierFlags` changing each time (`DragShiftWatch`). ⇧ is the
+  one modifier a drag leaves free: ⌥ copies, ⌘ moves, ⌃ makes an alias.
+  - **A ⇧ press makes an app already holding the drag read the board again, and the drop ignores
+    it.** With the pointer still over Teams, a board rewritten on the press was read 4 ms later, which
+    looked like the press working; the probe's drop that day was only taken after a re-entry. Oleg's
+    own drops, logged on 2026-11-09, settled it: six times ⇧ went down over Teams or Chrome, the board
+    became the zip and was read again within 30 ms, and the drop took the folder read on entry
+    (Teams attached the folder's files, Gmail failed on `drag (1K)`). With ⇧ held from before the
+    entry the same drop took the zip. So **Chromium drops what it read on entry**, and Dirnex counts
+    ⇧ only then; a change over the app says "Now move out and back in" (`DragShiftWatch`). A release
+    timing theory came first and was wrong: the log showed ⇧ still held at every one of those drops.
+  - **A board that began as plain URLs needs no handoff at all until ⇧.** A folder on this disk drags
+    out on its own URL, which VLC added to its playlist first time (operation 4), so nothing is
+    rewritten or made for it unless ⇧ asks for the zip.
 - **Mail takes a promised folder, and a lazy file URL naming one.** Measured 2026-11-08 (PLAN.md §M36
   probe P2, Mail half) into a compose window: Dirnex's folder promise was fulfilled into Mail's
   `~/Library/Containers/com.apple.mail/Data/tmp/WebKitDropDestination-*/`, and a throwaway source's

@@ -19690,6 +19690,69 @@ takes a dropped file and fails on a folder, so Oleg chose to zip the folder for 
   `dav-probe3.zip`. He reported the rest of the list working too, including a local folder dragged
   across Chrome into Finder, which was to land as the folder.
 
+**2026-11-09: a folder goes to other apps as itself, and as a zip only while ⇧ is held** (core, then
+app). Reported by Oleg the day after the zip shipped: a season dragged off the SMB share into VLC
+started compressing. The share is mounted at `/Volumes/media`, so to Dirnex it was a folder on this disk,
+and every app but Finder got a zip: a 141 GB folder read over the network for a zip VLC had no use for.
+A per-app answer was looked at first and dropped. Each app's `Info.plist` names the folder types it
+opens (VLC, VS Code, Terminal, Preview, Notes, Mail and Claude do; Chrome, Teams and Safari do not),
+but Gmail and Google Drive are one app to Dirnex, and the list would need tending app by app. Oleg's
+design instead: the folder by default, and the zip while ⇧ is held, the one modifier no drag operation
+uses. He chose live ⇧ over a press that latches the zip for the rest of the drag, as ⌥ works in Finder.
+
+- **Measured first** with a throwaway drag source, driven with computer use. VLC added a dropped
+  folder URL to its playlist. ⇧ pressed with the pointer still brought the source no `movedTo` and
+  no flags event, while a 10 ms timer in `.common` read the flags changing. And over Teams the board
+  rewritten on the press was read 4 ms later, without the pointer leaving (NOTES.md ▸ Drag and drop).
+- **What landed.** `RemoteDragHandoff` trades its Finder-or-other-apps audience for `Form`: `.folders`
+  for Finder, and for any other app until ⇧; `.zips` for another app while ⇧ is held. The zips are a
+  second piece of work (`compression`), started once the transfer has landed, because a server's
+  folder is zipped from the tree the transfer staged. A drag whose board began without a promise, such
+  as folders on this disk, is left alone until ⇧. `needsReentry` now says when "move out and back in"
+  applies, since letting go of ⇧ also writes a board of real URLs. In the app, `RemoteDragTransfer`
+  stages a server's folder and `DragOutCompression` makes the zips; `DragShiftWatch` reads ⇧ every
+  20 ms in `.common` while a drag holds a folder. The drag's end keeps a zip only if the drop took the
+  zip and a staged tree only if it took the folder, and a zip that failed is reported only if the drag
+  ended still asking for zips. The row's line says "Hold ⇧ for a zip" over another app and "As a zip"
+  once it is made: two strings, in all 14 languages.
+- **Tests:** the ⇧ rules are `RemoteDragHandoffShiftTests`, and the core ran 5 105 tests green. Three
+  controls each failed only their own tests: a zip over any other app whatever ⇧ said (7 tests),
+  Finder obeying ⇧, and a zip started after the drag ended. `FolderZipHandoffTests` was rewritten
+  for ⇧ (11 tests, the fixtures moved to `FolderZipFixtures`), including a press with the pointer still
+  that the real timer notices. Three controls there: a watch that never notices, an end that keeps
+  nothing, a zip failure reported whatever was dropped. The full app run passed 2 392 tests with the
+  known `GestureWaitTests` issue, the defaults domain unchanged by content; the live suites skipped
+  without their configs, and none of them drags.
+- **Run live** on the `build/debug-dd` build, with computer use. A local folder of two clips dragged
+  to VLC said "Hold ⇧ for a zip" under the row, landed in VLC's playlist as the folder, and left the
+  temp root empty. Held over Teams with the pointer still, a ⇧ press made `Season Probe.zip` with both
+  clips in it, the line went back to "Hold ⇧ for a zip" when ⇧ was let go, and the drag's end, taken
+  by no zip, removed it. A drop with ⇧ held needs a person's hands (LIVE-VERIFICATION.md), so the zip
+  reaching Gmail and Teams this way waits for Oleg.
+- **Oleg's own drops with ⇧ held then reached Gmail and Teams as the folder**: Gmail failed on
+  `drag (1K)` and Teams attached the folder's two files. Finder took the folder with or without ⇧, as
+  built. He asked for **⇧ to mean the zip in Finder too** ("let a user decide"), and that landed. The
+  first theory for the folder was a key let go a moment before the button, so a 150 ms grace on ⇧'s
+  release went in, with an env-gated log beside it (`DIRNEX_DRAG_LOG`, and `DIRNEX_FAKE_SHIFT_FILE`
+  for a held key computer use cannot give). A drop with the fake ⇧ held from before the entry
+  attached `Season Probe.zip` in Teams. Oleg's retry, logged, showed the theory wrong: in six drops ⇧
+  went down only once the pointer was over Teams or Chrome, the board became the zip and was read
+  again within 30 ms, ⇧ was still held at the drop, and the drop took the folder. **Teams and Chrome
+  drop what they read on entry** (NOTES.md ▸ Drag and drop).
+- **So ⇧ counts as the pointer enters an app** (`RemoteDragHandoff` keeps the app it entered). A change
+  over the app the pointer is in leaves the board alone and turns the line to "Now move out and back
+  in"; the hint reads "Hold ⇧ and re-enter for a zip". The grace and the probe came out again. This
+  also mended a sweep that went by the board at the drop: a key changed over Teams would have deleted
+  the staged tree Teams had read on entry and was still uploading. Two strings replaced one, in 14
+  languages. Tests: the entry rule in the core (56 in the three drag suites); a control letting ⇧ count
+  on every move failed only the three tests about it. In the app, a change over the app asks for a
+  re-entry and leaves the board (`FolderZipHandoffTests`, 11), with a control that drops the line
+  failing only that test. The core ran 5 107 tests green and the app 2 394, with the known issue; one
+  app run before that failed `GitMergeSocketEdgeTests`' `stale` ("expected notListening"), which passed
+  alone three times and in the next full run.
+- **Run by Oleg** on the `build/debug-dd` build: a local folder, `drag`, entered with ⇧ held, landed as
+  `drag.zip` in Finder, in a Gmail draft (54K) and in a Teams chat.
+
 ### M37 — Compare and merge, past M31 and M34 (M–L)
 
 **Closed 2026-11-09**, two days after it opened, in nine slices. A binary pair, or a pair past the text

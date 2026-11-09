@@ -1,113 +1,37 @@
 import DirnexCore
 import Foundation
 
-/// A folder dragged toward an app that is not Finder, made into the zip that app is handed
-/// (2026-11-08, asked for by Oleg after Gmail refused a folder).
+/// A folder dragged into an app with Shift held, made into the zip that app is handed (2026-11-08,
+/// asked for by Oleg after Gmail refused a folder; behind Shift since 2026-11-09, after VLC was handed
+/// a zip of a whole season it would have played as a folder).
 ///
 /// Gmail answers "Attachment failed" for a folder dropped from Chrome, Finder's included, and Teams
-/// and the rest of Chromium take a dropped file the same way. So once the pointer is over such an app,
-/// the drag's handoff offers `<folder>.zip` in the folder's place (`DragOutRoute.zipsForOtherApps`).
-/// Finder is never offered the zip: it takes a folder on this disk by its own URL, and a server's
-/// folder by the promise the drag began with, or after a crossing by the staged tree this leaves.
+/// and the rest of Chromium take a dropped file the same way, while VLC and Finder take a folder. Nothing
+/// tells a drag which an app wants, so the folder goes as itself unless the pointer enters the app with
+/// Shift held, when the handoff offers `<folder>.zip` in its place (`DragOutRoute.zipsWithShift`).
 ///
-/// Both halves are machinery that already ships. The zip is ⌥F5's own `bsdtar` writer
-/// (`ArchivePacker`), and a server's folder comes down through `MaterializeRunner`, F5's engine
-/// pointed at the temp root, as ⌥F5 stages one. A folder of 11 MB and 551 files zipped in 0.3 s and
-/// 200 MB of random bytes in 2.7 s, measured on this Mac, so an ordinary folder is ready inside the
-/// handoff's hold.
+/// The zip is ⌥F5's own `bsdtar` writer (`ArchivePacker`). A server's folder is zipped from the tree
+/// the drag's transfer staged (`RemoteDragTransfer`), F5's engine pointed at the temp root, so the
+/// tree that serves the folder's own form serves its zip too. A folder of 11 MB and 551 files zipped
+/// in 0.3 s and 200 MB of random bytes in 2.7 s, measured on this Mac, so an ordinary folder is ready
+/// inside the handoff's hold.
 struct DragOutZip: Sendable {
     /// The folder row.
     let row: FileEntry
-    /// The temp root the zip, and a server folder's staged tree, each get a directory under.
+    /// The folder's bytes on this disk: the row's own folder, or a server folder's staged tree.
+    let folder: URL
+    /// The temp root the zip gets a directory of its own under.
     let root: URL
-    /// What a server's folder is staged through: the pane's routing backend, which a staging needs
-    /// because it reads from the server and writes here (`MaterializeRunner`).
-    let backend: any VFSBackend
     /// ⌥F5's `bsdtar` packer, or a test's stand-in.
     let writer: any PlainPackWriting
 
-    /// What zipping one folder left in the temp root, for the drag to hand over and later remove.
-    struct Made: Sendable {
-        /// The row it stands for.
-        let source: VFSPath
-        /// The zip, in a directory of its own, which is what another app is handed.
-        let zip: URL
-        /// A server folder's staged tree, which Finder is handed after a crossing. `nil` for a folder
-        /// on this disk, which Finder takes by its own URL.
-        let staged: URL?
-
-        /// Remove the zip's directory.
-        func removeZip() {
-            RemoteDragArtifacts.remove(holderOf: zip)
-        }
-
-        /// Remove the staged tree's directory.
-        func removeStaged() {
-            guard let staged else { return }
-            RemoteDragArtifacts.remove(holderOf: staged)
-        }
-    }
-
-    /// Zip the folder into a directory of its own under `root`, staging it first when it is on a
-    /// server. Blocks, and leaves nothing behind when it throws.
+    /// Write `folder` into `<name>.zip` in a fresh directory under `root`, with the folder itself as
+    /// the zip's one top-level entry, as Finder's Compress and ⌥F5 both lay one out. Blocks, and leaves
+    /// nothing behind when it throws.
     ///
     /// A failure of the zip itself comes out as ``DragOutZipFailure``, so the pane can say it was the
-    /// compression that failed rather than the download; a server's refusal stays the server's.
-    func run(
-        onPhase: @Sendable (RemoteDragPhaseBox.Phase) -> Void,
-        onBytes: @escaping @Sendable (Int64) -> Void,
-        isCancelled: @escaping @Sendable () -> Bool
-    ) throws -> Made {
-        var staged: URL?
-        let folder: URL
-        if row.path.backend == .local {
-            folder = row.path.localURL
-        } else {
-            onPhase(.downloading)
-            let tree = try stage(onBytes: onBytes, isCancelled: isCancelled)
-            staged = tree
-            folder = tree
-        }
-        do {
-            onPhase(.compressing)
-            let zip = try compress(folder, isCancelled: isCancelled)
-            return Made(source: row.path, zip: zip, staged: staged)
-        } catch {
-            if let staged { RemoteDragArtifacts.remove(holderOf: staged) }
-            throw error
-        }
-    }
-
-    /// Bring a server's folder down whole, through the queue's own runner without the queue.
-    ///
-    /// The handoff's transfer is something the pointer did, not a job the user asked for, so it is not
-    /// queued (`RemoteDragHandoffController`); the runner is the same one ⌥F5 stages through.
-    private func stage(
-        onBytes: @escaping @Sendable (Int64) -> Void,
-        isCancelled: @escaping @Sendable () -> Bool
-    ) throws -> URL {
-        let report = MaterializeRunner.run(
-            FileOperation(
-                kind: .materialize,
-                sources: [row],
-                destinationDirectory: .local(root.path)
-            ),
-            using: backend,
-            onProgress: { onBytes($0.completedBytes) },
-            isCancelled: isCancelled
-        )
-        if report.wasCancelled { throw CancellationError() }
-        if let failure = report.failures.first { throw failure.error }
-        guard let tree = report.materialized?.first(
-            where: { $0.isDirectory && $0.source == row.path }
-        )
-        else { throw CocoaError(.fileReadUnknown) }
-        return URL(fileURLWithPath: tree.localPath, isDirectory: true)
-    }
-
-    /// Write `folder` into `<name>.zip` in a fresh directory under `root`, with the folder itself as
-    /// the zip's one top-level entry, as Finder's Compress and ⌥F5 both lay one out.
-    private func compress(_ folder: URL, isCancelled: @escaping @Sendable () -> Bool) throws -> URL {
+    /// compression that failed rather than the download.
+    func run(isCancelled: @escaping @Sendable () -> Bool) throws -> URL {
         let holder = root.appendingPathComponent(UUID().uuidString, isDirectory: true)
         let zip = holder.appendingPathComponent(DragOutRoute.zipName(forFolderNamed: row.name))
         do {
@@ -136,22 +60,50 @@ struct DragOutZip: Sendable {
     }
 }
 
-extension [DragOutZip.Made] {
-    /// Remove what the drop did not use, keeping what an app may still be reading.
-    ///
-    /// Finder copies a folder after the drop and an upload reads its zip after it, so what was taken
-    /// stays until the temp root is cleared at the next launch, as a downloaded copy does. `surface`
-    /// is where the pointer let go, or `nil` when nothing took the drop.
-    func sweep(droppedOn surface: RemoteDragHandoff.Surface?) {
-        for made in self {
-            switch surface {
-            case .finder?: made.removeZip()
-            case .otherApp?: made.removeStaged()
-            case .neutral?, nil:
-                made.removeZip()
-                made.removeStaged()
+/// Every folder of one drag zipped in turn, on a thread of their own, once the transfer has landed.
+///
+/// All or none, as the board hands over all of its rows or none of them: a set that fails or is
+/// stopped removes every zip it made.
+struct DragOutCompression: Sendable {
+    let zips: [DragOutZip]
+    let cancellation: CancellationFlag
+
+    /// Run every folder, in order. Blocks.
+    func run() -> DragOutCompressionOutcome.Settled {
+        var made: [VFSPath: URL] = [:]
+        do {
+            for zip in zips {
+                if cancellation.isCancelled { throw CancellationError() }
+                made[zip.row.path] = try zip.run(isCancelled: { cancellation.isCancelled })
             }
+            return .init(zips: made, error: nil)
+        } catch {
+            for url in made.values {
+                RemoteDragArtifacts.remove(holderOf: url)
+            }
+            return .init(zips: [:], error: error)
         }
+    }
+}
+
+/// What a drag's zips ended with, handed from their thread to the main actor, for the reason
+/// `RemoteDragTransferOutcome` is a box.
+final class DragOutCompressionOutcome: @unchecked Sendable {
+    struct Settled {
+        /// Each folder's zip, in a directory of its own under the temp root.
+        let zips: [VFSPath: URL]
+        let error: (any Error)?
+    }
+
+    private let lock = NSLock()
+    private var value: Settled?
+
+    var settled: Settled? {
+        lock.withLock { value }
+    }
+
+    func settle(_ settled: Settled) {
+        lock.withLock { value = settled }
     }
 }
 
@@ -173,5 +125,27 @@ enum RemoteDragArtifacts {
         let holder = url.standardizedFileURL.deletingLastPathComponent()
         guard holder.path.hasPrefix(root + "/") else { return }
         try? FileManager.default.removeItem(at: holder)
+    }
+
+    /// Remove what the drop did not take. `taken` is what the board offered a folder as when an app
+    /// took the drop, or `nil` when nothing did.
+    ///
+    /// Finder copies a folder after the drop and an upload reads its zip after it, so what was taken
+    /// stays until the temp root is cleared at the next launch, as a downloaded copy does.
+    static func sweep(
+        zips: [URL],
+        stagedTrees: [URL],
+        taken: RemoteDragHandoff.Form?
+    ) {
+        if taken != .zips {
+            for zip in zips {
+                remove(holderOf: zip)
+            }
+        }
+        if taken != .folders {
+            for tree in stagedTrees {
+                remove(holderOf: tree)
+            }
+        }
     }
 }

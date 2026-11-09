@@ -397,6 +397,18 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   - **A throttled `sftp-server` only throttles the subsystem.** Seen 2026-11-03: 70 MB arrived in 0.68 s
     through a `Subsystem sftp` wrapper at 30 KB/s, because a large download goes over the exec channel.
     `ForceCommand` running the same wrapper catches both.
+- **computer use cannot hold a modifier through a pointer move or a release.** Measured 2026-11-09
+  with a throwaway drag source logging `NSEvent.modifierFlags`: `hold_key shift` is a real press,
+  seen by a local `.flagsChanged` monitor and by the flags, but it holds the batch for its whole
+  duration, so nothing moves while it is down. `"shift"` given to `left_mouse_up` or to
+  `left_click_drag` only marks those events: the source read ⇧ up throughout both drags and at the
+  drop. So a drop made with a modifier held needs Oleg's hands; a press with the pointer still is the
+  part computer use can do.
+  - **A file the app polls can stand in for the held key.** A temporary probe made Shift count as
+    held while a file named in `DIRNEX_FAKE_SHIFT_FILE` existed, and logged every move, read and drop
+    to `DIRNEX_DRAG_LOG`, launched with `open --env`. That drove a drop "with ⇧ held" into Teams, and
+    the same log, on while Oleg dropped with the real key, is what showed his ⇧ going down only after
+    the pointer had entered.
 - **A browser is no drop target for computer use, so a Chromium check needs another app.** Seen
   2026-11-08: Chrome is granted only at the "read" tier, and the grant says to send it no input by any
   means, which a drop is. Teams is Chromium but uploads what is dropped (above). TextEdit is a regular
