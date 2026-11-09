@@ -58,6 +58,29 @@ public enum SyncChange: Sendable, Equatable {
     /// A side could not be read, or is a placeholder whose bytes are not on this disk, so nothing
     /// is claimed about it.
     case unreadable
+
+    /// The version a merge would start from, for a file that moved on differently on both sides.
+    public var mergeBase: URL? {
+        if case let .changedOnBoth(base) = self { return base }
+        return nil
+    }
+}
+
+public extension DirectorySync {
+    /// ``defaultAction(for:direction:)``, told what the record knows about the file.
+    ///
+    /// Both Directions lets the newer file win because it has nothing better to go on, and that
+    /// overwrites the older file's edit. A file known to have changed on both sides is a conflict
+    /// instead, left for a merge or a choice made by hand. A mirror keeps its copy, since replacing
+    /// the other side is what a mirror was asked to do.
+    static func defaultAction(
+        for status: SyncStatus,
+        direction: SyncDirection,
+        change: SyncChange?
+    ) -> SyncAction {
+        if direction == .bidirectional, change?.mergeBase != nil { return .conflict }
+        return defaultAction(for: status, direction: direction)
+    }
 }
 
 /// What is remembered about one folder pair: for each file, the bytes both sides last held.
@@ -103,6 +126,27 @@ public struct SyncRecord: Sendable, Equatable {
             return nil
         }
         return file
+    }
+
+    /// What changed in each of `rows` holding a file on both sides that has a kept version, by
+    /// relative path. Rows with nothing to compare have no answer. Blocking; call it off the main
+    /// thread. Throws only `CancellationError`.
+    public func changes(
+        of rows: [SyncEntry],
+        isCancelled: () -> Bool = { false }
+    ) throws -> [String: SyncChange] {
+        var answers: [String: SyncChange] = [:]
+        for row in rows {
+            guard versions[row.relativePath] != nil, let left = row.left, let right = row.right,
+                  left.kind == .file, right.kind == .file else { continue }
+            answers[row.relativePath] = try change(
+                of: row.relativePath,
+                left: URL(fileURLWithPath: left.path.path),
+                right: URL(fileURLWithPath: right.path.path),
+                isCancelled: isCancelled
+            )
+        }
+        return answers
     }
 
     /// Which side of the file at `relativePath` changed since the last sync, given the two sides'

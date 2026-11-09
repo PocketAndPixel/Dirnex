@@ -41,8 +41,11 @@ extension MergeWindowController {
         Task { await saveResult() }
     }
 
-    /// Write the result into the target, asking first when the file changed since it was read.
-    /// `true` when it was written.
+    /// Write the result into the target and the second target if there is one, asking first when a
+    /// file changed since it was read. `true` when every file was written.
+    ///
+    /// A second file refused leaves the first written and the result still unsaved, so the window
+    /// goes on showing it and the next save writes the second file again.
     @discardableResult
     func saveResult() async -> Bool {
         guard let merge, merge.isResolved, !isSaving else { return false }
@@ -50,11 +53,30 @@ extension MergeWindowController {
         defer { isSaving = false }
         let document = merge.result
         let choices = merge.choices
+        guard let saved = await write(document, to: target) else { return false }
+        target = saved
+        if let second = secondTarget {
+            guard let saved = await write(document, to: second) else { return false }
+            secondTarget = saved
+        }
+        savedChoices = choices
+        await saving.carry?(window)
+        return true
+    }
+
+    /// Write the result into one file, journal the save, and answer the file as it now stands, or
+    /// `nil` when it was not written.
+    ///
+    /// The undo store is asked afresh for each file. It evicts any snapshot the journal does not
+    /// name, so the second file's capture, given the first's list, would remove the first's copy.
+    private func write(
+        _ document: ComparedDocument,
+        to target: ComparedFileSave.Target
+    ) async -> ComparedFileSave.Target? {
         let request = saving.undo()
         let undo = request.store.map { ComparedFileSave.UndoCopy(store: $0, live: request.live) }
         var overwriting = false
         while true {
-            let target = target
             let answer = overwriting
             let result = await BlockingWork.run {
                 Result { () throws(ComparedFileSave.Failure) in
@@ -68,14 +90,11 @@ extension MergeWindowController {
             }
             switch result {
             case let .success(saved):
-                self.target = saved.target
-                savedChoices = choices
                 if let record = saved.undo { saving.journal(record) }
-                await saving.carry?(window)
-                return true
+                return saved.target
             case .failure(.changedSinceRead):
                 guard await CompareWindowController.askToSaveAnyway(input.name, over: window) else {
-                    return false
+                    return nil
                 }
                 overwriting = true
             case let .failure(.unencodable(line, character)):
@@ -88,14 +107,14 @@ extension MergeWindowController {
                     ),
                     over: window
                 )
-                return false
+                return nil
             case let .failure(.failed(error)):
                 await CompareWindowController.reportSaveFailure(
                     input.name,
                     detail: VFSErrorText.sentence(for: error),
                     over: window
                 )
-                return false
+                return nil
             }
         }
     }

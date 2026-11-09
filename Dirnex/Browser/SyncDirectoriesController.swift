@@ -31,8 +31,20 @@ final class SyncDirectoriesController: NSViewController {
     /// (``SyncDirection/available(leftAcceptsChanges:rightAcceptsChanges:)``) — a read-only side
     /// loses the directions that would write to it.
     let directions: [SyncDirection]
-    /// Handed the checked, actionable decisions when the user commits.
-    var onApply: (([Decision]) -> Void)?
+    /// The pair's record, `nil` when these two folders cannot have one (PLAN.md §M37 Slice 8).
+    let records: SyncRecordAccess?
+    /// Whether the record existed as the window opened, which is what the box is compared with.
+    let rememberedAtOpen: Bool
+    /// Handed the checked, actionable decisions and the box's choice when the user commits.
+    var onApply: (([Decision], SyncRecordChoice?) -> Void)?
+    /// Invoked with a row's merge. The panel owns reading the three versions and the window.
+    var onMerge: ((SyncMergeRequest) -> Void)?
+    /// What the record says about the rows on screen, by relative path (`+Records`).
+    var changes: [String: SyncChange] = [:]
+    /// Bumped by every read of ``changes``, so a slow earlier one cannot land over a newer one.
+    var changesGeneration = 0
+    /// Whether the record is being read for the rows on screen.
+    var isReadingChanges = false
     /// Invoked to show how two files differ (Compare Contents…), in Dirnex's compare window or an
     /// external diff tool. The controller is a pure view; the panel owns bringing a server's or an
     /// archive's files down, opening the window or launching the tool, and error UI.
@@ -92,19 +104,25 @@ final class SyncDirectoriesController: NSViewController {
     let spinner = NSProgressIndicator()
     let statusLabel = NSTextField(labelWithString: "")
     let syncButton = NSButton()
+    let keepBox = NSButton(checkboxWithTitle: "", target: nil, action: nil)
 
     init(
         leftDir: VFSPath,
         rightDir: VFSPath,
         backend: any VFSBackend,
         comparisons: [SyncComparison],
-        directions: [SyncDirection]
+        directions: [SyncDirection],
+        records: SyncRecordAccess? = nil
     ) {
         self.leftDir = leftDir
         self.rightDir = rightDir
         self.backend = backend
         self.comparisons = comparisons
         self.directions = directions
+        self.records = records
+        // One `stat`, so the box is right as the window appears. The record itself is read with
+        // the scan, off the main thread.
+        rememberedAtOpen = records.map { $0.store.isRemembered($0.pair) } ?? false
         // The opening choices come from the core's own rules rather than from a constant here, so
         // the segment that is preselected is always one the control actually offers.
         direction = directions.first ?? .leftToRight
@@ -128,7 +146,8 @@ final class SyncDirectoriesController: NSViewController {
         )
         NSLayoutConstraint.activate([
             container.widthAnchor.constraint(equalToConstant: 720),
-            container.heightAnchor.constraint(equalToConstant: 520)
+            // The box's row comes out of the window rather than out of the table.
+            container.heightAnchor.constraint(equalToConstant: records == nil ? 520 : 546)
         ])
         view = container
     }
@@ -157,7 +176,7 @@ final class SyncDirectoriesController: NSViewController {
     /// less surprising than preserving stale checks).
     private func recomputeActions() {
         rows = rows.map { row in
-            let action = DirectorySync.defaultAction(for: row.entry.status, direction: direction)
+            let action = defaultAction(for: row.entry)
             return Row(entry: row.entry, action: action, included: isActionable(action))
         }
         tableView.reloadData()
@@ -210,8 +229,9 @@ final class SyncDirectoriesController: NSViewController {
         let decisions = rows
             .filter { $0.included && isActionable($0.action) }
             .map { Decision(entry: $0.entry, action: $0.action) }
-        guard !decisions.isEmpty else { return }
-        onApply?(decisions)
+        // Ticking the box on folders already in sync is a commit with no rows to run.
+        guard !decisions.isEmpty || boxDiffersFromRecord else { return }
+        onApply?(decisions, recordChoice)
         dismiss(sender)
     }
 

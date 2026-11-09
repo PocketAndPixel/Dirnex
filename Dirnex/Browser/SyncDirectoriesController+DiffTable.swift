@@ -23,7 +23,7 @@ extension SyncDirectoriesController: NSTableViewDelegate {
             )
         case "name": return nameCell(for: data.entry)
         case "left": return detailCell(for: data.entry.left)
-        case "action": return actionCell(for: data.action)
+        case "action": return actionCell(for: data)
         case "right": return detailCell(for: data.entry.right)
         default: return nil
         }
@@ -68,8 +68,10 @@ extension SyncDirectoriesController: NSTableViewDelegate {
         return field
     }
 
-    private func actionCell(for action: SyncAction) -> NSView {
-        let display = actionDisplay(action)
+    private func actionCell(for row: Row) -> NSView {
+        let display = isChangedOnBoth(row.entry)
+            ? changedOnBothDisplay(actionDisplay(row.action), of: row)
+            : actionDisplay(row.action)
         let field = NSTextField(labelWithString: display.glyph)
         field.alignment = .center
         field.textColor = display.color
@@ -103,6 +105,28 @@ extension SyncDirectoriesController: NSTableViewDelegate {
         }
     }
 
+    /// A row changed on both sides keeps its action's glyph, in the warning color, and says what it
+    /// is: a copy here replaces somebody's edit.
+    private func changedOnBothDisplay(_ style: ActionStyle, of row: Row) -> ActionStyle {
+        var sentences = [String(
+            localized: "Changed on both sides since the last sync.",
+            comment: "Sync action tooltip: a file changed in both folders since the last sync."
+        )]
+        if isCopy(row.action) {
+            sentences.append(String(
+                localized: "Copying replaces the other side’s changes.",
+                comment: "Sync action tooltip, after saying a file changed in both folders."
+            ))
+        }
+        if mergeRequest(for: row) != nil {
+            sentences.append(String(
+                localized: "Right-click to merge.",
+                comment: "Sync action tooltip, after saying a file changed in both folders."
+            ))
+        }
+        return ActionStyle(style.glyph, .systemOrange, sentences.joined(separator: " "))
+    }
+
     /// "Copy to <folder>" for both the action cell's tooltip and the override menu; %@ is a
     /// folder name (data), so one localized frame serves every side.
     private func copyToTip(_ folder: String) -> String {
@@ -127,9 +151,24 @@ extension SyncDirectoriesController: NSMenuDelegate {
     /// (`DirectorySync.availableActions`), a check on the row's current action, and a disabled
     /// caption when a row has no safe override (a file-vs-folder clash).
     func menuNeedsUpdate(_ menu: NSMenu) {
+        fill(menu, forRow: tableView.clickedRow)
+    }
+
+    /// Internal so a test can ask what a row offers: `clickedRow` is only set by a real click.
+    func fill(_ menu: NSMenu, forRow clicked: Int) {
         menu.removeAllItems()
-        let clicked = tableView.clickedRow
         guard let data = row(at: clicked) else { return }
+
+        if mergeRequest(for: data) != nil {
+            let merge = NSMenuItem(
+                title: BrowserWindowController.mergeButtonTitle,
+                action: #selector(mergeRow(_:)),
+                keyEquivalent: ""
+            )
+            merge.target = self
+            merge.tag = clicked
+            menu.addItem(merge)
+        }
 
         // A both-sides pair of regular files can be compared line by line — the "how do they
         // differ?" companion to the byte comparison (PLAN.md §M5 Compare-by-content).

@@ -97,7 +97,7 @@ extension SyncDirectoriesController {
 
         hint.widthAnchor.constraint(equalToConstant: 680).isActive = true
 
-        let controls = NSStackView(views: [directionRow, comparisonRow, hint])
+        let controls = NSStackView(views: [directionRow, comparisonRow, makeKeepBox(), hint])
         controls.orientation = .vertical
         controls.alignment = .leading
         controls.spacing = 8

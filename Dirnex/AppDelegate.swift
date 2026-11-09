@@ -55,6 +55,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // others: nothing is rewriting yet, and the persisted journal *is* the live set until a
         // window exists to change it.
         ArchiveUndoStorage.purgeUnreferenced()
+        // And the versions a sync kept: what no record names is left over from a crash.
+        SyncRecordStorage.purgeUnreferenced()
 
         // Merge the standard places into the pin list before any window builds its sidebar
         // (PLAN.md §M8) — the Favorites section reads the favorites now, so an un-seeded store

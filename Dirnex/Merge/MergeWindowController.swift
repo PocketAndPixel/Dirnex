@@ -23,6 +23,9 @@ struct MergeInput: Sendable {
     let resultDetail: String
     /// The grammar the panes are colored by, or `nil` for none.
     let language: SyntaxLanguage?
+    /// A second local file that takes the same result, as it was when the versions were read: the
+    /// other side of a Synchronize row (PLAN.md §M37 Slice 8). `nil` where a save writes one file.
+    var secondTarget: ComparedFileSave.Target?
 }
 
 /// What the merge window's save needs besides the file: the undo store, and whose journal records
@@ -70,6 +73,10 @@ final class MergeWindowController: NSWindowController, NSWindowDelegate {
     /// The file Save writes, as it was read or last saved: the witness the next save is checked
     /// against.
     var target: ComparedFileSave.Target
+    /// The second file Save writes, kept the same way, or `nil` for none.
+    var secondTarget: ComparedFileSave.Target?
+    /// Keeps the window visible over an app-modal window such as the Synchronize window.
+    let modalLevel = ModalLevelKeeper()
     /// The choices the file holds, `nil` until the result has been saved.
     var savedChoices: [TextMerge.Choice?]?
     /// Whether a save is running.
@@ -128,6 +135,7 @@ final class MergeWindowController: NSWindowController, NSWindowDelegate {
         open.append(controller)
         controller.place()
         controller.showWindow(nil)
+        controller.raiseAboveModalWindow()
         controller.start()
         return controller
     }
@@ -136,6 +144,7 @@ final class MergeWindowController: NSWindowController, NSWindowDelegate {
         self.input = input
         self.saving = saving
         target = input.target
+        secondTarget = input.secondTarget
         // Not deferred, so a save's sheets attach to a window a test builds and never shows
         // (docs/NOTES.md ▸ Testing).
         let window = CompareWindow(
@@ -323,8 +332,15 @@ final class MergeWindowController: NSWindowController, NSWindowDelegate {
         edits
     }
 
+    /// Put the window at the level of the app-modal window in front, if there is one above it.
+    func raiseAboveModalWindow() {
+        guard let window else { return }
+        modalLevel.raise(window)
+    }
+
     func windowWillClose(_ notification: Notification) {
         removeKeyMonitor()
+        modalLevel.stop()
         sync?.stop()
         edits.removeAllActions()
         Self.open.removeAll { $0 === self }

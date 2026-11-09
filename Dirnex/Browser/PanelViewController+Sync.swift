@@ -80,7 +80,13 @@ extension PanelViewController {
         presentAsMovableWindow(makeSyncController(
             leftDir: leftDir,
             rightDir: rightDir,
-            directions: directions
+            directions: directions,
+            records: SyncRecordAccess(
+                left: leftDir,
+                right: rightDir,
+                store: SyncRecordStorage.shared,
+                vaultMountPoints: VaultMounts.shared.mountPoints
+            )
         ))
     }
 
@@ -97,17 +103,27 @@ extension PanelViewController {
     func makeSyncController(
         leftDir: VFSPath,
         rightDir: VFSPath,
-        directions: [SyncDirection]
+        directions: [SyncDirection],
+        records: SyncRecordAccess? = nil
     ) -> SyncDirectoriesController {
         let controller = SyncDirectoriesController(
             leftDir: leftDir,
             rightDir: rightDir,
             backend: backend,
             comparisons: SyncComparison.available(between: leftDir.backend, and: rightDir.backend),
-            directions: directions
+            directions: directions,
+            records: records
         )
-        controller.onApply = { [weak self] decisions in
-            self?.confirmAndApplySync(decisions, leftDir: leftDir, rightDir: rightDir)
+        controller.onApply = { [weak self] decisions, choice in
+            self?.confirmAndApplySync(
+                decisions,
+                record: choice,
+                leftDir: leftDir,
+                rightDir: rightDir
+            )
+        }
+        controller.onMerge = { [weak self, weak controller] request in
+            self?.mergeSyncRow(request, in: controller)
         }
         controller.onCompare = { [weak self] left, right in
             self?.compare(left, right)
@@ -216,6 +232,7 @@ extension PanelViewController {
     /// an account, which is the ordinary shape — says both halves.
     private func confirmAndApplySync(
         _ decisions: [SyncDirectoriesController.Decision],
+        record: SyncRecordChoice?,
         leftDir: VFSPath,
         rightDir: VFSPath
     ) {
@@ -224,7 +241,13 @@ extension PanelViewController {
             backend.capabilities(for: $0).deleteStrategy
         }
         guard !plan.isEmpty else {
-            applySync(decisions, deleting: plan, leftDir: leftDir, rightDir: rightDir)
+            applySync(
+                decisions,
+                deleting: plan,
+                record: record,
+                leftDir: leftDir,
+                rightDir: rightDir
+            )
             return
         }
         let alert = NSAlert()
@@ -239,7 +262,13 @@ extension PanelViewController {
         alert.enableEscapeToCancel()
         let apply: (NSApplication.ModalResponse) -> Void = { [weak self] response in
             guard response == .alertFirstButtonReturn else { return }
-            self?.applySync(decisions, deleting: plan, leftDir: leftDir, rightDir: rightDir)
+            self?.applySync(
+                decisions,
+                deleting: plan,
+                record: record,
+                leftDir: leftDir,
+                rightDir: rightDir
+            )
         }
         if let window = view.window {
             alert.beginSheetModal(for: window, completionHandler: apply)
@@ -343,6 +372,7 @@ extension PanelViewController {
     private func applySync(
         _ decisions: [SyncDirectoriesController.Decision],
         deleting plan: SyncDeletePlan,
+        record: SyncRecordChoice?,
         leftDir: VFSPath,
         rightDir: VFSPath
     ) {
@@ -371,10 +401,9 @@ extension PanelViewController {
                 break // deletes come from `deleteTargets(in:)`, the one derivation the sheet counted
             }
         }
-        for (destination, sources) in copyGroups {
-            submitSyncCopy(sources: sources, destination: destination)
-        }
-        if !plan.isEmpty { runSyncDeletes(plan) }
+        let copies = submitSyncCopies(copyGroups)
+        let deletes = plan.isEmpty ? nil : runSyncDeletes(plan)
+        finishSyncRecord(record, after: copies, deletes)
     }
 
     /// The directory a copy of the item at `relativePath` lands in, under `root`. The relative
@@ -385,23 +414,24 @@ extension PanelViewController {
         return parents.reduce(root) { $0.appending(String($1)) }
     }
 
-    /// Enqueue one copy job under the `.overwrite` policy — the user already decided in the diff,
-    /// so newer/changed items replace their counterpart without a per-file prompt (the atomic
-    /// temp-swap keeps the original until the copy completes). Failures still surface via
-    /// `ErrorPrompter`; the window journals the transfer for undo as the job finishes.
-    private func submitSyncCopy(sources: [FileEntry], destination: VFSPath) {
+    /// Enqueue one copy job per folder under the `.overwrite` policy — the user already decided in
+    /// the diff, so newer/changed items replace their counterpart without a per-file prompt (the
+    /// atomic temp-swap keeps the original until the copy completes). Failures still surface via
+    /// `ErrorPrompter`; the window journals each transfer for undo as its job finishes.
+    ///
+    /// Answered with a task that ends once the queue has drained, for the sync's record to wait on.
+    private func submitSyncCopies(_ groups: [VFSPath: [FileEntry]]) -> Task<Void, Never> {
         let errorPrompter = ErrorPrompter(window: view.window)
-        let operation = FileOperation(
-            kind: .copy,
-            sources: sources,
-            destinationDirectory: destination
-        )
-        host?.enqueue(
-            operation,
-            conflictPolicy: .overwrite,
-            resolveConflict: nil,
-            onError: { errorPrompter.resolve($0) }
-        )
+        let operations = groups.map { destination, sources in
+            FileOperation(kind: .copy, sources: sources, destinationDirectory: destination)
+        }
+        return Task { [host] in
+            await host?.runToCompletion(
+                operations,
+                conflictPolicy: .overwrite,
+                onError: { errorPrompter.resolve($0) }
+            )
+        }
     }
 
     /// Run the sync's deletions off the main thread, journal what can be undone, and re-list both
@@ -431,9 +461,10 @@ extension PanelViewController {
     /// Internal rather than private so the Trash-less path can be driven directly: reaching it
     /// through the sheet would mean presenting a movable window in the test host, which wedges
     /// the run rather than failing it (docs/NOTES.md ▸ Testing).
-    func runSyncDeletes(_ plan: SyncDeletePlan) {
+    @discardableResult
+    func runSyncDeletes(_ plan: SyncDeletePlan) -> Task<Void, Never> {
         let backend = backend
-        Task {
+        return Task {
             let outcome = await BlockingWork.run { () -> DeletePass.Outcome in
                 let trashed = DeletePass.run(plan.toTrash, using: backend, permanent: false)
                 let erased = DeletePass.run(plan.permanent, using: backend, permanent: true)

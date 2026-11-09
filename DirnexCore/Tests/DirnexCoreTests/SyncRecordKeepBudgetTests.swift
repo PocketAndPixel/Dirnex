@@ -95,3 +95,95 @@ struct SyncRecordKeepBudgetTests {
         try fixture.expectStoreMatchesRecord()
     }
 }
+
+/// Keeping the one file a merge just wrote to both sides (PLAN.md §M37 Slice 8).
+@Suite("SyncRecordStore.keep, one file")
+struct SyncRecordKeepOneTests {
+    private func keepOne(_ fixture: SyncRecordFixture, _ path: String = "a.txt") throws -> SyncKeepReport {
+        try fixture.store.keep(
+            relativePath: path,
+            left: fixture.left(path),
+            right: fixture.right(path),
+            for: fixture.pair
+        )
+    }
+
+    @Test("what both sides now hold becomes the version, and the old one goes")
+    func replaces() throws {
+        let fixture = try SyncRecordFixture()
+        defer { fixture.cleanup() }
+        try fixture.writeBoth("a.txt", "old")
+        try fixture.keep()
+        try fixture.writeBoth("a.txt", "merged")
+
+        #expect(try keepOne(fixture).kept == 1)
+        #expect(try fixture.kept("a.txt") == "merged")
+        try fixture.expectStoreMatchesRecord()
+    }
+
+    @Test("other files are left as they were, even ones gone from both sides")
+    func looksAtOneFile() throws {
+        let fixture = try SyncRecordFixture()
+        defer { fixture.cleanup() }
+        try fixture.writeBoth("a.txt", "old")
+        try fixture.writeBoth("gone.txt", "kept")
+        try fixture.keep()
+        try FileManager.default.removeItem(at: fixture.left("gone.txt"))
+        try FileManager.default.removeItem(at: fixture.right("gone.txt"))
+        try fixture.writeBoth("a.txt", "merged")
+
+        _ = try keepOne(fixture)
+        #expect(try Set(fixture.record.versions.keys) == ["a.txt", "gone.txt"])
+    }
+
+    @Test("sides that do not agree keep the old version")
+    func notEqual() throws {
+        let fixture = try SyncRecordFixture()
+        defer { fixture.cleanup() }
+        try fixture.writeBoth("a.txt", "old")
+        try fixture.keep()
+        try fixture.writeLeft("a.txt", "mine")
+        try fixture.writeRight("a.txt", "yours")
+
+        #expect(try keepOne(fixture).notEqual == 1)
+        #expect(try fixture.kept("a.txt") == "old")
+    }
+
+    @Test("a pair nobody asked to remember keeps nothing")
+    func notRemembered() throws {
+        let fixture = try SyncRecordFixture(remembering: false)
+        defer { fixture.cleanup() }
+        try fixture.writeBoth("a.txt", "merged")
+        #expect(try keepOne(fixture) == SyncKeepReport())
+        #expect(!FileManager.default.fileExists(atPath: fixture.store.root.path))
+    }
+
+    @Test("a file that is not there, or not text, or in a vault is not kept")
+    func notKeepable() throws {
+        let fixture = try SyncRecordFixture()
+        defer { fixture.cleanup() }
+        #expect(try keepOne(fixture, "missing.txt").notKeepable == 1)
+        try fixture.writeBoth("a.bin", "te\0xt")
+        #expect(try keepOne(fixture, "a.bin").notKeepable == 1)
+
+        try fixture.writeBoth("a.txt", "private")
+        let report = try fixture.store.keep(
+            relativePath: "a.txt",
+            left: fixture.left("a.txt"),
+            right: fixture.right("a.txt"),
+            for: fixture.pair,
+            vaultMountPoints: [fixture.tree.path("R")]
+        )
+        #expect(report.notKeepable == 1)
+        #expect(try fixture.record.versions.isEmpty)
+    }
+
+    @Test("a file past the budget is counted")
+    func overBudget() throws {
+        let fixture = try SyncRecordFixture(budget: SyncRecordBudget(bytes: 3))
+        defer { fixture.cleanup() }
+        try fixture.writeBoth("a.txt", "too long")
+        #expect(try keepOne(fixture).overBudget == 1)
+        #expect(try fixture.record.versions.isEmpty)
+    }
+}

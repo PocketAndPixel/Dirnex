@@ -63,6 +63,14 @@ final class StubPanelHost: PanelHost {
         enqueued.append(operation)
     }
 
+    func runToCompletion(
+        _ operations: [FileOperation],
+        conflictPolicy: ConflictPolicy,
+        onError: (@Sendable (OperationErrorContext) -> ErrorResolution)?
+    ) async {
+        enqueued.append(contentsOf: operations)
+    }
+
     /// Every record a gesture journaled, in order.
     ///
     /// A recorder rather than a no-op for the reason `enqueued` is: journaling is a seam whose

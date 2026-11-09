@@ -659,6 +659,66 @@ look says which side moved on from it.
 - **For Slice 8:** nothing in the app calls this yet. It needs the store's parent (Application Support), `purge` at
   launch, the vault mount points, `keep` when the sync's queue jobs have finished, and `change` for a row on both sides.
 
+**2026-11-09: Slice 8 landed** (core, then app). A file changed on both sides of a remembered sync merges from its
+Synchronize row, over the version that sync kept.
+
+- **Decided with Oleg before writing it:**
+  - **Save writes both files**, so the two agree at once, the row leaves the list and the kept version becomes the
+    merge. Writing one side and letting the next sync copy it would leave the row reading as changed on both sides, and
+    a Right → Left mirror would overwrite the merge.
+  - **Both Directions leaves such a row unticked as a conflict**, where the newer file used to overwrite the older one's
+    edit. A mirror keeps its copy, with the row marked.
+- **Core:** `isRemembered`, one `stat` for the box as the window opens. `keep(relativePath:left:right:for:)`, the one file
+  a merge just wrote. `SyncRecord.changes(of:)` for a window's rows, `SyncChange.mergeBase`, and
+  `DirectorySync.defaultAction(for:direction:change:)`.
+- **App:**
+  - **The box** takes effect with Synchronize, as a dialog's controls do, so Cancel leaves the record alone and unticking
+    removes nothing until it is committed. Ticking it on two folders already in sync enables Synchronize, which is how a
+    record starts. A pair that cannot have a record has no box and the window keeps its size; the box's row otherwise
+    adds 26 pt to the window rather than taking it from the table.
+  - **After a sync**, `finishSyncRecord` waits for the copies and the deletes, then keeps. `PanelHost.runToCompletion`
+    queues the copies in order and returns once the queue has drained, which the fire-and-forget `enqueue` could not say.
+    The status line reports the count, what did not fit, or a failure.
+  - **The rows:** `readChanges` runs after every set of rows, off the main thread, by bytes. A row changed on both sides
+    has its action in orange, a tooltip saying so, and a clause in the footer.
+  - **Merge…** comes first on the row's menu, where both sides are within 64 MiB and both can take the result. Yours is
+    the left file, Theirs the right. `MergeInput.secondTarget` is the second file Save writes, each checked against what
+    was read. A second file refused leaves the result unsaved, so the window goes on saying so.
+  - `ModalLevelKeeper` raises the merge window over the app-modal Synchronize window, as the compare window is.
+  - `PanelHost` moved out to its own file, at `PanelViewController.swift`'s 500-line ceiling. `SyncRecordStorage` purges
+    at launch. Eleven new strings, in all 14 languages.
+- **[LOCATION-SUPPORT.md](docs/LOCATION-SUPPORT.md):** a new row, with footnote aam.
+- **Tests:** 13 more in the core and 34 in the app, over real folders and the real merge window. Full runs: 5 092 core and
+  2 388 app tests, without the live server suites, whose code this slice does not touch.
+  `check_localization_keys.py` found every extracted key in the catalog, and the three source checks passed.
+- **Negative controls:** 52 faults, one at a time. 46 failed their own tests at once. Two failed only by hanging the run on
+  a question nobody answered, and they now fail by name through a helper that answers only the questions a test expects.
+  Two passed, and each was a gap, now closed: a stale read landing, which the test could not tell from a fresh one, and a
+  file become a link since it was kept. Two did not apply at first, since SwiftFormat had rewrapped their text, and failed
+  by name once they did.
+- **Found on the way:**
+  - Asking the undo store once for both files would have removed the first file's copy (docs/NOTES.md ▸ Keeping a file's
+    previous bytes).
+  - Two files written a moment apart read as neither newer, which Both Directions already calls a conflict, so the first
+    tests of what the record adds passed without it. The rig now makes one side an hour newer.
+- **Run live** on the Debug build, driven from the background, in two scratch folders and the real store under Application
+  Support:
+  - The box off by default. Ticked with one row to copy: the copy landed and the record held the three text files, each
+    matching both sides by `cmp`, with the binary left out, and the store excluded from Time Machine.
+  - Edits on both sides of two files, and one side of a third: the two in orange and "2 changed on both sides", the third
+    green. The merge window over the modal window at level 8, dropping to 0 once it closed. One file merged clean and one
+    had a real conflict, whose Base read "As of the last sync" and whose Save stayed disabled until a take. Save wrote both
+    files, moved the kept version to the merge, took the row out of the list and said "Kept 3 versions for merging" after
+    the next sync. ⌘Z went one file per press.
+  - Relaunched: the box still on, the record intact, and a planted stray file and folder gone. Both Directions showed the
+    conflict unticked with its ⚠. Unticking and Cancel left the record, and unticking and Synchronize removed it.
+  - The defaults domain was restored and compared unchanged.
+- **Not run live:** the right-click itself, which a background run cannot open, so a temporary probe pressed Merge… and a
+  test pins the menu item; a vault inside the pair; an evicted cloud placeholder; a side over 64 MiB; the Save Anyway
+  question on the second file, pinned by a test; the light appearance; and any translation in the window.
+- **Left open:** under Both Directions, a file changed on one side only still goes by the clock, so an edit with an older
+  date than the other side's untouched file is overwritten. The record knows better, and this slice was not asked to use it.
+
 #### M38 — Remote: what M8, M22, M24, M25 and M32 left (M–L)
 
 - **Owner and group in a remote Get Info** (M25). `chown` and `chgrp` take a numeric id, while
