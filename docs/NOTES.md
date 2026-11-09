@@ -5827,6 +5827,12 @@ do not share a resolver, and neither half of that is obvious from either call si
     race the clock: `FileManager.setAttributes` on the server's own file for SFTP, `MFMT` through
     `applyMetadata` for FTP. Then neither a minute nor a second can tell them apart, and the run
     does not depend on where the minute boundary falls (`RemoteWriteBackContentLiveTests`).
+- **`sftp`'s `ls -ln` prints names on a current server, so no listing supplies a number.** Measured
+  2026-11-09 with OpenSSH 10.3 at both ends: `ls -ln` printed `oleg staff`, because the client asks the
+  server to resolve the ids through its `users-groups-by-id` request. With that one request withheld
+  (`sftp-server -P users-groups-by-id`, spelled as `-Q requests` lists it, and not with `@openssh.com`)
+  the same command printed `501 20`. `sftp`'s own `chown` and `chgrp` take only a number, so on an
+  SFTP-only connection there is nothing to send them (`SSHOwnershipCommand`).
 
 #### Writing a file: `put`, exclusive creates and offsets
 
@@ -6172,6 +6178,21 @@ works, which makes this whole family probeable on any Mac).
     no fixture has 50 000 rows. The cap had to become settable before the branch could be tested at
     all. Worth generalizing: a constant chosen to be *never hit in practice* makes its own rule
     untestable, so either the constant is injectable or the rule is unwatched.
+
+- **Owner and group go over the exec channel by name, and `--` goes before the owner operand.** Measured
+  2026-11-09 on a real `sshd` (macOS), GNU coreutils and busybox. `chown -h -- :admin '<path>'` changes
+  the group by the name a listing printed, and `-h` changes a symlink itself where `sftp`'s `chgrp`
+  changes its target. BSD's `chgrp -h admin -- path` took `--` for a file and exited 1, having already
+  changed the link. Each `chown` words a refusal differently (`illegal group name`, `invalid group:
+  ':x'`, `unknown group x`), so success is a token printed after it and the refusal's text is only shown.
+  - **Any group change clears set-uid and set-gid**, and the same group counts. `6755` became `755`
+    with exit 0 and nothing printed, on all three. A directory's set-gid was cleared on macOS and kept
+    on GNU and busybox. `chown` then `chmod 6755` kept both bits, and `chmod` then `chown` lost them. So
+    Save re-sends a set-id item's mode after the group, and the undo does too, since putting the group
+    back clears them again.
+  - **`id` is the one question worth asking.** `uid=501(oleg) gid=20(staff) groups=20(staff),12(…)` on
+    all three, one line, with the number alone for an id with no name. `getent` does not exist on
+    macOS. `LC_ALL=C` because GNU translates the labels.
 
 ### curl (FTP and FTPS)
 
@@ -8479,6 +8500,11 @@ during the session. This is the ground the Photos backend stands on (PLAN.md §M
   - At the public rate a 30 000-asset flat listing is about 35 s of names, while a year/month
     structure keeps each directory to the hundreds. Whether the per-call cost *grows* with library
     size is **unmeasured** — 25 assets cannot say.
+  - **No fetch can filter by name, and asking one kills the process.** Measured 2026-11-09: a
+    `filename CONTAINS[c]` predicate raised `NSInvalidArgumentException` ("Unsupported predicate in
+    fetch options"). So the walk's names cannot be pushed into a fetch. With 33 assets over 12 months
+    one fetch per month cost 14 ms in all and one fetch for every date 3.9 ms, about 1 ms saved a month
+    against 2.0 ms a name, so a single date fetch would not change what a search costs (PLAN.md §M38).
 
 - **Exporting an original is an APFS clone, and it refuses an existing destination.**
   `PHAssetResourceManager.writeData(for:toFile:options:)` wrote the 2.66 GB video in **0.70 ms**, and

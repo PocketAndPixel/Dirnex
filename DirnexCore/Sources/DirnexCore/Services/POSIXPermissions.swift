@@ -22,6 +22,10 @@ public struct POSIXPermissions: Sendable, Hashable, Codable {
     /// over directly.
     public init(rawValue: UInt16) { self.rawValue = rawValue & 0o7777 }
 
+    /// Whether a change of owner or group would clear something: set-uid or set-gid, and not the
+    /// sticky bit, which a `chown` leaves alone.
+    public var carriesSetID: Bool { rawValue & 0o6000 != 0 }
+
     private static func bit(_ cls: Class, _ access: Access) -> UInt16 {
         let base: UInt16
         switch cls {
