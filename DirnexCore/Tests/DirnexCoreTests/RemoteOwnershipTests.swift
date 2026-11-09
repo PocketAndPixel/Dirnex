@@ -185,11 +185,11 @@ struct RemoteOwnershipTests {
         ]
     )
     func readsRefusals(_ output: String, _ words: String) {
-        #expect(SSHOwnershipCommand.refusal(in: output) == .itemRefused(words))
+        #expect(SSHOwnershipCommand.refusal(in: output) == .ownershipRefused(words))
     }
 
     @Test("a command that could not be asked is a refusal too")
     func noAnswerIsARefusal() {
-        #expect(SSHOwnershipCommand.refusal(in: nil) == .itemRefused(""))
+        #expect(SSHOwnershipCommand.refusal(in: nil) == .ownershipRefused(""))
     }
 }

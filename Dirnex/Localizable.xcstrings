@@ -70756,6 +70756,95 @@
         }
       }
     },
+    "Neither the owner nor the group was stored as asked. The panel now shows what the item actually carries.": {
+      "comment": "Remote Get Info: neither the owner nor the group was stored.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weder der Eigentümer noch die Gruppe wurden wie gewünscht gespeichert. Das Fenster zeigt jetzt, was das Objekt tatsächlich trägt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neither the owner nor the group was stored as asked. The panel now shows what the item actually carries."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ni el propietario ni el grupo se guardaron como se pidió. El panel muestra ahora lo que el ítem tiene realmente."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ni le propriétaire ni le groupe n’ont été enregistrés comme demandé. La fenêtre affiche maintenant ce que l’élément porte réellement."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Né il proprietario né il gruppo sono stati memorizzati come richiesto. Il pannello mostra ora ciò che l’elemento ha davvero."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所有者もグループも要求どおりには保存されませんでした。パネルは現在、項目が実際に持つ値を表示しています。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "소유자와 그룹 모두 요청대로 저장되지 않았습니다. 패널은 이제 항목이 실제로 가진 값을 표시합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch de eigenaar, noch de groep zijn opgeslagen zoals gevraagd. Het paneel toont nu wat het onderdeel werkelijk heeft."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ani właściciel, ani grupa nie zostały zapisane zgodnie z żądaniem. Panel pokazuje teraz to, co element faktycznie ma."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nem o proprietário nem o grupo foram armazenados como pedido. O painel agora mostra o que o item realmente tem."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ни владелец, ни группа не были сохранены так, как запрошено. Панель показывает то, что объект несёт на самом деле."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ані власника, ані групу не збережено так, як запитано. Панель показує те, що об’єкт має насправді."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所有者和群组均未按要求保存。面板现在显示该项目实际具有的内容。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "擁有者和群組均未按要求儲存。面板現在顯示該項目實際具有的內容。"
+          }
+        }
+      }
+    },
     "Neither the permissions nor the modification time were stored as asked. The panel now shows what the item actually carries.": {
       "comment": "Remote Get Info: neither field was stored.",
       "localizations": {
@@ -109795,6 +109884,95 @@
         }
       }
     },
+    "The group was not stored as asked. The panel now shows what the item actually carries.": {
+      "comment": "Remote Get Info: the group was refused or came back different.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Gruppe wurde nicht wie gewünscht gespeichert. Das Fenster zeigt jetzt, was das Objekt tatsächlich trägt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The group was not stored as asked. The panel now shows what the item actually carries."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El grupo no se guardó como se pidió. El panel muestra ahora lo que el ítem tiene realmente."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le groupe n’a pas été enregistré comme demandé. La fenêtre affiche maintenant ce que l’élément porte réellement."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il gruppo non è stato memorizzato come richiesto. Il pannello mostra ora ciò che l’elemento ha davvero."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "グループは要求どおりには保存されませんでした。パネルは現在、項目が実際に持つ値を表示しています。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹이 요청대로 저장되지 않았습니다. 패널은 이제 항목이 실제로 가진 값을 표시합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De groep is niet opgeslagen zoals gevraagd. Het paneel toont nu wat het onderdeel werkelijk heeft."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grupa nie została zapisana zgodnie z żądaniem. Panel pokazuje teraz to, co element faktycznie ma."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O grupo não foi armazenado como pedido. O painel agora mostra o que o item realmente tem."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Группа не была сохранена так, как запрошено. Панель показывает то, что объект несёт на самом деле."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Групу не збережено так, як запитано. Панель показує те, що об’єкт має насправді."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "群组未按要求保存。面板现在显示该项目实际具有的内容。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "群組未按要求儲存。面板現在顯示該項目實際具有的內容。"
+          }
+        }
+      }
+    },
     "The identity of “%@” has changed": {
       "comment": "Host-key-change alert title; %@ is the host name.",
       "localizations": {
@@ -110948,6 +111126,184 @@
           "stringUnit": {
             "state": "translated",
             "value": "另一個面板不是可拷貝到其中的檔案夾。"
+          }
+        }
+      }
+    },
+    "The owner and group can’t be changed here, because that takes a command on the server and this account didn’t run one. An account limited to file transfer can’t run any.": {
+      "comment": "Info panel note: an SFTP account with no shell, so owner and group stay read-only.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eigentümer und Gruppe lassen sich hier nicht ändern, denn dafür ist ein Befehl auf dem Server nötig, und dieses Konto hat keinen ausgeführt. Ein Konto, das auf Dateiübertragung beschränkt ist, kann keine Befehle ausführen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The owner and group can’t be changed here, because that takes a command on the server and this account didn’t run one. An account limited to file transfer can’t run any."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El propietario y el grupo no se pueden cambiar aquí, porque hace falta un comando en el servidor y esta cuenta no ejecutó ninguno. Una cuenta limitada a la transferencia de archivos no puede ejecutar comandos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le propriétaire et le groupe ne peuvent pas être modifiés ici, car il faut une commande sur le serveur et ce compte n’en a exécuté aucune. Un compte limité au transfert de fichiers ne peut exécuter aucune commande."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il proprietario e il gruppo non possono essere modificati qui, perché serve un comando sul server e questo account non ne ha eseguito alcuno. Un account limitato al trasferimento di file non può eseguire comandi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所有者とグループはここでは変更できません。変更にはサーバー上でのコマンド実行が必要ですが、このアカウントでは実行されませんでした。ファイル転送のみに制限されたアカウントではコマンドを実行できません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여기서는 소유자와 그룹을 변경할 수 없습니다. 변경하려면 서버에서 명령을 실행해야 하는데 이 계정은 명령을 실행하지 못했습니다. 파일 전송으로 제한된 계정은 명령을 실행할 수 없습니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De eigenaar en groep kunnen hier niet worden gewijzigd, want daarvoor is een commando op de server nodig en dit account heeft er geen uitgevoerd. Een account dat beperkt is tot bestandsoverdracht kan geen commando’s uitvoeren."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Właściciela i grupy nie można tu zmienić, ponieważ wymaga to polecenia na serwerze, a to konto żadnego nie wykonało. Konto ograniczone do przesyłania plików nie może wykonywać poleceń."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O proprietário e o grupo não podem ser alterados aqui, porque isso exige um comando no servidor e esta conta não executou nenhum. Uma conta limitada à transferência de arquivos não pode executar comandos."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Владельца и группу здесь изменить нельзя: для этого нужна команда на сервере, а эта учётная запись её не выполнила. Учётная запись, ограниченная передачей файлов, команд выполнять не может."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Власника й групу тут змінити не можна: для цього потрібна команда на сервері, а цей обліковий запис її не виконав. Обліковий запис, обмежений передаванням файлів, не може виконувати команди."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法在此更改所有者和群组，因为这需要在服务器上运行命令，而此账户未能运行。仅限文件传输的账户无法运行命令。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法在此更改擁有者和群組，因為這需要在伺服器上執行指令，而此帳號未能執行。僅限檔案傳輸的帳號無法執行指令。"
+          }
+        }
+      }
+    },
+    "The owner was not stored as asked. The panel now shows what the item actually carries.": {
+      "comment": "Remote Get Info: the owner was refused or came back different.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Eigentümer wurde nicht wie gewünscht gespeichert. Das Fenster zeigt jetzt, was das Objekt tatsächlich trägt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The owner was not stored as asked. The panel now shows what the item actually carries."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El propietario no se guardó como se pidió. El panel muestra ahora lo que el ítem tiene realmente."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le propriétaire n’a pas été enregistré comme demandé. La fenêtre affiche maintenant ce que l’élément porte réellement."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il proprietario non è stato memorizzato come richiesto. Il pannello mostra ora ciò che l’elemento ha davvero."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所有者は要求どおりには保存されませんでした。パネルは現在、項目が実際に持つ値を表示しています。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "소유자가 요청대로 저장되지 않았습니다. 패널은 이제 항목이 실제로 가진 값을 표시합니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De eigenaar is niet opgeslagen zoals gevraagd. Het paneel toont nu wat het onderdeel werkelijk heeft."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Właściciel nie został zapisany zgodnie z żądaniem. Panel pokazuje teraz to, co element faktycznie ma."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O proprietário não foi armazenado como pedido. O painel agora mostra o que o item realmente tem."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Владелец не был сохранён так, как запрошено. Панель показывает то, что объект несёт на самом деле."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Власника не збережено так, як запитано. Панель показує те, що об’єкт має насправді."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所有者未按要求保存。面板现在显示该项目实际具有的内容。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "擁有者未按要求儲存。面板現在顯示該項目實際具有的內容。"
           }
         }
       }
@@ -113440,6 +113796,95 @@
           "stringUnit": {
             "state": "translated",
             "value": "伺服器拒絕了這次上傳：這個檔案已經不在了 — 有人把它刪除或移走了。仍要上傳會把它當作新檔案重新放回去。"
+          }
+        }
+      }
+    },
+    "The server said: %@": {
+      "comment": "Remote Get Info: the refusal in the server's own words; %@ is left in its language.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Server meldete: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The server said: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servidor respondió: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le serveur a répondu : %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server ha risposto: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバーの応答: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 응답: %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De server meldde: %@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serwer odpowiedział: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O servidor respondeu: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ответ сервера: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відповідь сервера: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器返回：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器回應：%@"
           }
         }
       }

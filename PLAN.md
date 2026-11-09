@@ -302,6 +302,30 @@ failed the test that watches them. The builders' exact strings also ran on a rea
 went to `admin` with its mode intact, the undo brought back `staff` and `6755`, a stranger's group and an
 unknown one each came back in the server's words, and an `sftp`-only account answered no identity.
 
+**2026-11-10: Slice 2 landed** (the app, with two small additions to the core). Get Info asks
+`accountIdentity` off the main thread before an SFTP panel opens, and `CompositeBackend` forwards it. Root
+gets a field for each of owner and group, since nothing lists a server's users. Any other account gets a
+popup of its own groups on items it owns, led by the item's own group when the account is not in it. An
+SFTP account with no answer keeps text rows and a note saying why. FTP, WebDAV and S3 get no such note,
+since read-only is simply what those rows are. All of it is in 14 languages. In the core, a refused `chown`
+is now `RemoteMetadataRefusal.ownershipRefused`, so it blames the owner and group and not the mode, and
+`RemoteAttributeVerdict.serverWords` carries its sentence to the alert. Beside a `chown` the mode is judged
+by the read-back alone. That came from the live run: on an immutable file the `chown` and the `chmod` re-sent
+behind it were both refused, and the alert reported a loss on a mode nobody had touched.
+
+Run live on throwaway `sshd`s, in a copy built under its own bundle id. A popup pick took a `6755` file to
+`admin` with its mode intact, and Edit ▸ Undo brought back `staff` and `6755`, both read with `ls -ln`. A
+locked file and an unknown name each came back in the server's words, naming only the field refused. An
+`sftp`-only account showed the note, in English and Russian. 9 core tests and 26 app tests are new, four of
+them live, and four negative controls each failed the tests that watch them.
+
+**Not seen:** a click in the popup's own menu, since the background tools refuse to open one (an env-gated
+`performActionForItem` chose the item, and it is gone); and a real root login. The root layout ran against
+a server whose `id` claims root, so typed text reached a real `chown` and its refusal, but a typed change
+that lands was not watched. Both are Slice 10's. **A known rough edge:** root typing a number where the
+listing prints a name is told the owner was not stored as asked, because a read-back compares what it
+has, and the panel then shows what landed.
+
 #### M39 — Quick View (L)
 
 - **RTF** (M16, M18), with a source and a page view. It is `NSAttributedString`'s job and shares

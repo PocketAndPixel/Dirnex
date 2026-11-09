@@ -65,6 +65,14 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
     `run operation "file.trash"` over the `.sdef` verbs runs the whole shipped path per item. Read
     the preference before assuming a delete is unreachable; ⇧F8 and every *permanent* delete do
     confirm, and are not drivable this way.
+- **A copy built under its own bundle id leaves a running Debug build and the shared defaults alone.**
+  Done 2026-11-10 with Oleg's Debug build up: `xcodebuild build -derivedDataPath build/<name>
+  PRODUCT_BUNDLE_IDENTIFIER=app.dirnex.Dirnex.<name> CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual
+  DEVELOPMENT_TEAM= ENABLE_HARDENED_RUNTIME=NO`. Nobody has to quit, nothing lands in
+  `app.dirnex.Dirnex`, and computer use and AppleEvents reach it by its own id. Seed
+  `Dirnex.pref.hasSeenFirstRunTour` and `Dirnex.pref.hasSeenFullDiskAccessOnboarding` true, or the
+  first-run flow covers the window. Afterwards `lsregister -u` the app, `defaults delete` the domain and
+  remove the build. Stop it by a PID read back with `ps`: `pkill -x Dirnex` takes the other copy too.
 - **A measurement at scale needs a Release build, and an ad-hoc signed one needs the hardened runtime
   off.** A Debug `DirnexCore` is `-Onone`, far too slow to say anything about a 256 MiB comparison.
   Seen 2026-11-08: `xcodebuild -configuration Release CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual
@@ -486,6 +494,15 @@ so a trap goes here only if it can bite any live run; one tied to an area goes u
   accessibility hit test at those points answers its `AXTextArea` (pinned in `MultiLineFieldTests`).
   Typing by `element_index` and `app_click` by `element_index` both worked. Neither moved the window's
   first responder, though, so a focus ring that should follow the click can't be checked this way.
+  - **A plain text field can answer the same, so the second field of a form is out of reach.** Seen
+    2026-11-10 on Get Info's root layout: `app_key tab` on the Group field was refused, `app_click` left
+    the focus in Owner, and `app_type` with `target: focused` typed into Owner. Plan a run around the
+    field that holds the focus when the window opens.
+- **Background computer-use refuses to open a pop-up button, and `performActionForItem(at:)` chooses
+  an item the way a click does.** Seen 2026-11-10: `app_click` answered that a menu control cannot be
+  clicked in the background. A temporary env-gated line calling `popup.menu?.performActionForItem(at:)`
+  a second after the panel was built moved the selection and fired the popup's action, so Save lit and
+  everything after it ran the shipped path. Only the menu's own drawing and tracking stay unseen.
 - **A background `app_click` on a text field or text view is an accessibility write, not a click,
   and leaves the keyboard focus where it was.** Measured 2026-10-24 in Report a Bug…: the tool
   reported `set AXSelectedTextRange={loc:0,len:0}` on Steps, then on the email field, and a letter

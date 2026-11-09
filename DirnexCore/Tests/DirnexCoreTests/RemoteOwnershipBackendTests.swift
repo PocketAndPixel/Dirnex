@@ -108,7 +108,7 @@ struct RemoteOwnershipBackendTests {
             ],
             at: path
         )
-        #expect(refusals == [.itemRefused("chown: you are not a member of group daemon")])
+        #expect(refusals == [.ownershipRefused("chown: you are not a member of group daemon")])
         #expect(transport.appliedMetadata.count == 1)
     }
 

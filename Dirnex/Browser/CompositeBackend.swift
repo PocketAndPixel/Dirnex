@@ -295,6 +295,13 @@ final class CompositeBackend: VFSBackend, @unchecked Sendable {
         return owner.editableMetadata(at: path)
     }
 
+    /// Routed per path for the reason ``editableMetadata(at:)`` is, and with the same answer for a
+    /// path with no backend: nothing could be asked (PLAN.md §M38 Slice 2).
+    func accountIdentity(at path: VFSPath, isCancelled: () -> Bool) throws -> RemoteAccountIdentity? {
+        guard let owner = try? backend(for: path) else { return nil }
+        return try owner.accountIdentity(at: path, isCancelled: isCancelled)
+    }
+
     func applyMetadata(
         _ steps: [RemoteMetadataStep],
         at path: VFSPath

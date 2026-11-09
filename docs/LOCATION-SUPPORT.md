@@ -966,6 +966,7 @@ shortcut (<sup>cc</sup>). Planned as PLAN.md §M38.
 | Functionality | Local | Cloud mount | Archive | SFTP | FTP | WebDAV | S3 | S3 acct | Photos | Results | Trash |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Get Info: permissions, flags, dates | yes | yes | read-only<sup>tt</sup> | mode editable<sup>tt</sup> | mode + date editable<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | read-only<sup>tt</sup> | yes<sup>ee</sup> | yes<sup>ee</sup> |
+| Get Info: owner and group | yes | yes | read-only<sup>tt</sup> | editable with an exec channel<sup>tt</sup> | read-only<sup>tt</sup> | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
 | Get Info: ACLs, extended attributes | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
 | Privilege escalation for a root-only change | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes | yes |
 | Finder tags (`⌃T`, tag dots) | yes | yes | n/a | n/a | n/a | n/a | n/a | n/a | n/a | yes<sup>ee</sup> | yes<sup>ee</sup> |
@@ -1065,10 +1066,15 @@ offers the **mode** and no date, because `sftp`'s batch language has no verb tha
 FTP offers **both**, because `SITE CHMOD` carries a mode and `MFMT` writes an exact UTC-anchored
 modification time — the one place FTP is the richer protocol. WebDAV offers neither, since it has no
 mode and its one time property is read-only (<sup>q</sup>). An account that answers "no such
-command" has the control withdrawn for the rest of that connection. Owner and group are offered
-**nowhere**: `chown`/`chgrp` need a numeric id and `sftp`'s `ls -la` prints names, and a remote
-`chgrp` clears set-uid and set-gid as a side effect. A saved change is **read back**, and the panel
-redraws from what the item carries rather than from what was sent — `sftp`'s `chmod` reports success
+command" has the control withdrawn for the rest of that connection. **Owner and group are SFTP's
+alone, and only for an account that can run a command** (PLAN.md §M38 Slice 2): they go by name over
+the exec channel, because `sftp`'s own `chown` and `chgrp` take a number and no listing supplies one.
+Root gets a field for each, since nothing lists a server's users. Any other account gets a popup of
+its own groups, on items it owns, and no owner, which is all a server lets it do. An account with no
+exec channel keeps the read-only rows and says why. A group change clears set-uid and set-gid as a
+side effect, so the mode is sent again after it, and its undo does the same. A saved change is
+**read back**, and the panel redraws from what the item carries rather than from what was sent —
+`sftp`'s `chmod` reports success
 for a mode the server did not store, measured (docs/NOTES.md ▸ sftp / ssh). It has been **undoable
 since 2026-09-01**, and ⌘Z there is a *second write* rather than a rewind: the previous values go
 back through the same `applyMetadata` Save used, are read back and weighed the same way, and a

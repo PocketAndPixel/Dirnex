@@ -52,6 +52,6 @@ public enum SSHOwnershipCommand {
     /// these controls only once `id` has answered on this connection.
     public static func refusal(in output: String?) -> RemoteMetadataRefusal? {
         let last = output?.split(whereSeparator: \.isNewline).last.map(String.init)
-        return last == successToken ? nil : .itemRefused(last ?? "")
+        return last == successToken ? nil : .ownershipRefused(last ?? "")
     }
 }

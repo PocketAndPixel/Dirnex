@@ -51,6 +51,17 @@ public struct RemoteAccountIdentity: Sendable, Equatable {
 
     public var isSuperuser: Bool { user.id == 0 }
 
+    /// The groups to offer for an item listed in the group `listed`: this account's own, led by the
+    /// item's where the account does not belong to it.
+    ///
+    /// The item's group has to be there whatever the account's membership, because a control that
+    /// cannot show what the item has now would open already reading as a change. Matched with
+    /// ``RemotePrincipal/matches(_:)``, so a search hit's `20` selects the account's `staff`.
+    public func groupChoices(listed: String?) -> [RemotePrincipal] {
+        guard let listed, !groups.contains(where: { $0.matches(listed) }) else { return groups }
+        return [RemotePrincipal(name: listed)] + groups
+    }
+
     /// The account as `id`'s output describes it, or `nil` when `output` is not `id`'s.
     ///
     /// **The output's shape is the only evidence the command ran.** An `sftp`-only account answers
